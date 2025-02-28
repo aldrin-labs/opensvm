@@ -229,6 +229,8 @@ export default function TransactionContent({ signature }: { signature: string })
   const [tx, setTx] = useState<DetailedTransactionInfo | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
+  const [gptAnalysis, setGptAnalysis] = useState<string | null>(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   useEffect(() => {
     const fetchTransaction = async () => {
@@ -252,6 +254,48 @@ export default function TransactionContent({ signature }: { signature: string })
   if (error || !tx) {
     return <ErrorDisplay error={error || new Error('Failed to load transaction')} signature={signature} />;
   }
+  
+  const handleAnalyzeWithGPT = async () => {
+    if (!tx) return;
+    
+    setIsAnalyzing(true);
+    try {
+      // Extract relevant data from transaction
+      const logs = tx.logs || [];
+      const type = tx.type || 'Unknown';
+      const status = tx.success ? 'Success' : 'Failed';
+      const amount = tx.amount?.toString() || '0';
+      const from = tx.from || 'Unknown';
+      const to = tx.to || 'Unknown';
+      
+      const response = await fetch('/api/analyze-transaction', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          logs,
+          type,
+          status,
+          amount,
+          from,
+          to
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to analyze transaction');
+      }
+      
+      const data = await response.json();
+      setGptAnalysis(data.analysis);
+    } catch (error) {
+      console.error('Error analyzing transaction with GPT:', error);
+      toast.error('Failed to analyze transaction');
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
 
   return (
     <ErrorBoundary>
@@ -273,7 +317,33 @@ export default function TransactionContent({ signature }: { signature: string })
           <ErrorBoundary fallback={<div>Error loading transaction analysis</div>}>
             <Suspense fallback={<LoadingSpinner />}>
               <div className="bg-background rounded-lg p-6 shadow-lg border border-border">
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Analysis</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-semibold text-foreground">Transaction Analysis</h2>
+                  <Button 
+                    onClick={handleAnalyzeWithGPT} 
+                    disabled={isAnalyzing}
+                    className="bg-primary text-primary-foreground hover:bg-primary/90"
+                  >
+                    {isAnalyzing ? (
+                      <span className="flex items-center">
+                        <LoadingSpinner className="w-4 h-4 mr-2" />
+                        Analyzing...
+                      </span>
+                    ) : (
+                      'Analyze with GPT'
+                    )}
+                  </Button>
+                </div>
+                
+                {gptAnalysis && (
+                  <div className="mb-6 p-4 bg-muted rounded-lg">
+                    <h3 className="text-lg font-medium mb-2 text-foreground">GPT Analysis</h3>
+                    <div className="prose prose-sm dark:prose-invert">
+                      <p className="whitespace-pre-wrap text-foreground">{gptAnalysis}</p>
+                    </div>
+                  </div>
+                )}
+                
                 <TransactionAnalysis tx={tx} />
               </div>
             </Suspense>

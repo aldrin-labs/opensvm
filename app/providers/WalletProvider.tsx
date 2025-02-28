@@ -11,7 +11,8 @@ import { useSettings } from '@/lib/settings';
 import { connectionPool } from '@/lib/solana-connection';
 import type { Connection } from '@solana/web3.js';
 
-require('@solana/wallet-adapter-react-ui/styles.css');
+// Import wallet adapter styles
+import '@solana/wallet-adapter-react-ui/styles.css';
 
 interface WalletProviderProps {
   children: ReactNode;
