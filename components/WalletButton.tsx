@@ -44,6 +44,7 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
     );
   }
 
+  // Use the WalletMultiButton with additional styling to ensure it's visible
   return (
     <WalletMultiButton
       className="min-w-[180px] h-9 px-4 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 inline-flex items-center justify-center font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
