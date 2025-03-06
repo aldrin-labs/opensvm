@@ -149,7 +149,9 @@ const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props)
 
   return (
     <div className="w-full h-full">
-      <Line data={chartData} options={options} />
+      <Suspense fallback={<div className="w-full h-full flex items-center justify-center">Loading chart...</div>}>
+        <Line data={chartData} options={options} />
+      </Suspense>
     </div>
   );
 });

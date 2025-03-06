@@ -231,9 +231,12 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
     setAgentMessages(prev => [...prev, helpMessage]);
   }, [setAgentMessages]);
 
+  // Optimize resize event handling
   useEffect(() => {
+    if (!isOpen) return;
+    
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
+      if (!isResizingRef.current) return;
       
       const newWidth = window.innerWidth - e.clientX;
       if (newWidth > 300 && newWidth < 800) {
@@ -247,8 +250,9 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
       onResizeEnd();
     };
 
+    // Only add listeners when resizing
     if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
       window.addEventListener('mouseup', handleMouseUp);
     }
 
@@ -256,7 +260,7 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, onWidthChange, onResizeEnd]);
+  }, [isResizing, onWidthChange, onResizeEnd, isOpen]);
 
   if (!isOpen) return null;
   

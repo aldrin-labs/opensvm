@@ -5,7 +5,7 @@ const nextConfig = {
     tsconfigPath: 'tsconfig.json',
     // Disable type checking in development for better performance
     // Still runs in build mode for CI/deployment safety
-    ignoreBuildErrors: false,
+    ignoreBuildErrors: process.env.NODE_ENV === 'development',
   },
   // Environment variables that should be available to the client
   env: {
@@ -23,9 +23,12 @@ const nextConfig = {
     ],
     // Enhanced image optimization settings
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 60,
-    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
-    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
+    minimumCacheTTL: 3600, // Increase cache TTL to 1 hour
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256],
+    dangerouslyAllowSVG: true,
+    contentDispositionType: 'attachment',
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
   },
   // Experimental features
   experimental: {
@@ -40,17 +43,30 @@ const nextConfig = {
       'framer-motion',
       'react-markdown',
       'tailwind-merge',
-      'clsx'
+      'clsx',
+      'date-fns',
+      'lodash',
+      'zod',
+      'react-chartjs-2'
     ],
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    }
+    },
+    // Enable modern optimizations
+    serverComponentsExternalPackages: [
+      '@solana/web3.js',
+      'chart.js'
+    ],
+    // Optimize page loading
+    ppr: true,
+    // Optimize memory usage
+    memoryBasedWorkersCount: true
   },
   // Enable React strict mode
   reactStrictMode: false,
   // Enable production source maps for better debugging
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false, // Disable for better performance
   // Optimize page loading
   poweredByHeader: false,
   compress: true,
@@ -70,9 +86,77 @@ const nextConfig = {
           enforce: true,
         },
       };
+      
+      // Add bundle analyzer in analyze mode
+      if (process.env.ANALYZE === 'true') {
+        const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+        config.plugins.push(
+          new BundleAnalyzerPlugin({
+            analyzerMode: 'server',
+            analyzerPort: 8888,
+            openAnalyzer: true,
+          })
+        );
+      }
+      
+      // Optimize chunk size
+      config.optimization.splitChunks.chunks = 'all';
+      config.optimization.splitChunks.maxInitialRequests = 25;
+      config.optimization.splitChunks.maxAsyncRequests = 25;
+      config.optimization.splitChunks.minSize = 20000;
+      
+      // Enable module concatenation
+      config.optimization.concatenateModules = true;
+      
+      // Enable tree shaking
+      config.optimization.usedExports = true;
     }
 
     return config;
+  },
+  // Add headers for better caching and security
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
+          },
+          {
+            key: 'X-Content-Type-Options',
+            value: 'nosniff',
+          },
+          {
+            key: 'X-Frame-Options',
+            value: 'DENY',
+          },
+          {
+            key: 'X-XSS-Protection',
+            value: '1; mode=block',
+          },
+        ],
+      },
+      {
+        source: '/fonts/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/images/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+    ];
   },
 };
 

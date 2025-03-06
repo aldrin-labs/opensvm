@@ -230,18 +230,6 @@ export function Navbar({ children }: NavbarProps) {
       <main className="pt-14 min-h-screen">
         {children}
       </main>
-
-      {/* AI Chat Sidebar - Only render when open */}
-      {isAIChatOpen && (
-        <AIChatSidebar
-          isOpen={isAIChatOpen}
-          onClose={handleCloseAIChat}
-          onWidthChange={handleSidebarWidthChange}
-          onResizeStart={handleResizeStart}
-          onResizeEnd={handleResizeEnd}
-          initialWidth={sidebarWidth}
-        />
-      )}
     </>
   );
 }

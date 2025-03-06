@@ -232,34 +232,14 @@ export default function HomePage() {
       >
         <div className="container mx-auto px-4 py-12">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
-              OpenSVM Explorer
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              The quieter you become, the more you are able to hear.
-            </p>
-          </div>
+          <HeroSection />
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-16">
-            <form onSubmit={handleSearch} className="relative">
-              <Input
-                type="text"
-                placeholder="Search transactions, blocks, programs and tokens..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
-              />
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Button 
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
-              >
-                Search
-              </Button>
-            </form>
-          </div>
+          <SearchForm 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleSearch={handleSearch}
+          />
 
           {/* Stats Grid */}
           <StatsDisplay stats={stats} />
@@ -271,21 +251,27 @@ export default function HomePage() {
           <div className="bg-background border border-border rounded-lg p-6 mb-12">
             <h2 className="text-xl font-semibold mb-4 text-foreground">Network Performance</h2>
             <div className="h-[300px]">
-              <NetworkResponseChart data={networkData} />
+              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
+                <NetworkResponseChart data={networkData} />
+              </Suspense>
             </div>
           </div>
 
           {/* Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-background border border-border rounded-lg p-6">
-              <RecentBlocks 
-                blocks={blocks}
-                onBlockSelect={handleBlockSelect}
-                isLoading={isLoading}
-              />
+              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
+                <RecentBlocks 
+                  blocks={blocks}
+                  onBlockSelect={handleBlockSelect}
+                  isLoading={isLoading}
+                />
+              </Suspense>
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
-              <TransactionsInBlock block={selectedBlock} />
+              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
+                <TransactionsInBlock block={selectedBlock} />
+              </Suspense>
             </div>
           </div>
 
@@ -293,7 +279,7 @@ export default function HomePage() {
           <div className="fixed bottom-6 right-6">
             <Button
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 h-12 px-6 rounded-full shadow-lg"
-              onClick={() => setIsAIChatOpen(true)}
+              onClick={handleOpenAIChat}
             >
               AI Assistant
             </Button>
@@ -301,15 +287,17 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar 
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onWidthChange={setSidebarWidth}
-        onResizeStart={() => setIsResizing(true)}
-        onResizeEnd={() => setIsResizing(false)}
-        initialWidth={sidebarWidth}
-      />
+      {/* AI Chat Sidebar - Only render when open */}
+      {isAIChatOpen && (
+        <AIChatSidebar 
+          isOpen={isAIChatOpen}
+          onClose={handleCloseAIChat}
+          onWidthChange={handleSidebarWidthChange}
+          onResizeStart={handleResizeStart}
+          onResizeEnd={handleResizeEnd}
+          initialWidth={sidebarWidth}
+        />
+      )}
     </div>
   );
 }

@@ -97,6 +97,16 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={inter.className}>
+        {/* Inline critical CSS for faster rendering */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          body { display: block; }
+          .h-14 { height: 3.5rem; }
+          .border-b { border-bottom-width: 1px; }
+          .border-border { border-color: hsl(var(--border)); }
+          .bg-background { background-color: hsl(var(--background)); }
+          .min-h-screen { min-height: 100vh; }
+        `}} />
+        
         <Providers>
           <Suspense fallback={<div className="min-h-screen bg-background" />}>
             <Navbar>
@@ -104,6 +114,12 @@ export default function RootLayout({
             </Navbar>
           </Suspense>
         </Providers>
+        
+        {/* Defer non-critical scripts */}
+        <Script
+          src="/scripts/analytics.js"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   );

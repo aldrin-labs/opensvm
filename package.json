@@ -109,7 +109,8 @@
     "prettier-plugin-tailwindcss": "^0.6.0",
     "sass": "^1.83.4",
     "tailwindcss": "^3.4.1",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "webpack-bundle-analyzer": "^4.10.1"
   },
   "jest": {
     "testEnvironment": "jsdom",
