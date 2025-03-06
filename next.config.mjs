@@ -45,24 +45,7 @@ const nextConfig = {
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    },
-    // Enable modern bundling optimizations
-    swcMinify: true,
-    // Enable modern CSS optimizations
-    optimizeCss: true,
-    // Enable modern font optimizations
-    fontLoaders: [
-      { loader: '@next/font/google', options: { subsets: ['latin'] } },
-    ],
-    // Enable modern image optimizations
-    images: {
-      allowFutureImage: true,
-    },
-    // Enable modern script optimizations
-    scriptLoader: {
-      dangerouslyAllowSVG: true,
-      contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
-    },
+    }
   },
   // Enable React strict mode
   reactStrictMode: false,
@@ -71,6 +54,8 @@ const nextConfig = {
   // Optimize page loading
   poweredByHeader: false,
   compress: true,
+  // Enable SWC minify
+  swcMinify: true,
   // Add custom webpack configuration for better performance
   webpack: (config, { dev, isServer }) => {
     // Optimize CSS

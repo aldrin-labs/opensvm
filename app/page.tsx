@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,71 @@ import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
+
+// Define the StatsDisplay component
+const StatsDisplay = ({ stats }: { stats: NetworkStats | null }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.blockHeight?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Blocks Processed
+        </div>
+      </div>
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.activeValidators?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Active Validators
+        </div>
+      </div>
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.tps?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          TPS
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Define the NetworkStatsDisplay component
+const NetworkStatsDisplay = ({ stats }: { stats: NetworkStats | null }) => {
+  return (
+    <div className="bg-background border border-border rounded-lg p-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
+          <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
+          <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-primary h-1" 
+              style={{ width: `${stats?.epochProgress ?? 0}%` }}
+            />
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Network Load</div>
+          <div className="text-2xl font-mono text-foreground">
+            {stats?.epochProgress?.toFixed(2) ?? '0'}%
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Block Height</div>
+          <div className="text-2xl font-mono text-foreground">
+            {stats?.blockHeight?.toLocaleString() ?? '...'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 interface Block {
   slot: number;
@@ -46,6 +111,13 @@ export default function HomePage() {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const [networkData, setNetworkData] = useState<NetworkData[]>([]);
+
+  // Define mainStyle using useMemo
+  const mainStyle = useMemo(() => ({
+    width: isAIChatOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
+    transition: !isResizing ? 'all 300ms ease-in-out' : 'none',
+    marginRight: isAIChatOpen ? `${sidebarWidth}px` : 0
+  }), [isAIChatOpen, sidebarWidth, isResizing]);
 
   useEffect(() => {
     let mounted = true;
