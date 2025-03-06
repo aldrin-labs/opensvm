@@ -278,34 +278,36 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
 
   return (
     <div style={{ width: `${width}px` }}>
-      <Chat 
-        variant="sidebar" 
-        isOpen={isOpen}
-        onClose={onClose}
-        onWidthChange={handleWidthChange}
-        onResizeStart={onResizeStart}
-        onResizeEnd={onResizeEnd}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onReset={handleReset}
-        onNewChat={handleNewChat}
-        messages={messages}
-        input={input}
-        isProcessing={isProcessing}
-        onInputChange={setInput}
-        onSubmit={handleSubmit}
-        notes={notes}
-        onClearNotes={clearNotes}
-        agentActions={agentActions}
-        onRetryAction={handleRetryAction}
-        onExport={handleExport}
-        onShare={handleShare}
-        onSettings={handleSettings}
-        onHelp={handleHelp}
-        onVoiceRecord={startRecording}
-        isRecording={isRecording}
-        className="transition-transform duration-200"
-      />
+      <Suspense fallback={<div className="bg-black text-white p-4">Loading chat interface...</div>}>
+        <Chat 
+          variant="sidebar" 
+          isOpen={isOpen}
+          onClose={onClose}
+          onWidthChange={handleWidthChange}
+          onResizeStart={onResizeStart}
+          onResizeEnd={onResizeEnd}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onReset={handleReset}
+          onNewChat={handleNewChat}
+          messages={messages}
+          input={input}
+          isProcessing={isProcessing}
+          onInputChange={setInput}
+          onSubmit={handleSubmit}
+          notes={notes}
+          onClearNotes={clearNotes}
+          agentActions={agentActions}
+          onRetryAction={handleRetryAction}
+          onExport={handleExport}
+          onShare={handleShare}
+          onSettings={handleSettings}
+          onHelp={handleHelp}
+          onVoiceRecord={startRecording}
+          isRecording={isRecording}
+          className="transition-transform duration-200"
+        />
+      </Suspense>
     </div>
   );
 });

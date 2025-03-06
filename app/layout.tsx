@@ -3,8 +3,10 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-// Import Navbar directly
-import { Navbar } from '@/components/Navbar';
+// Import Navbar with dynamic loading
+const Navbar = dynamic(() => import('@/components/Navbar').then(mod => mod.Navbar), {
+  loading: () => <div className="h-14 border-b border-border bg-background" />
+});
 
 // Load fonts
 const inter = Inter({
@@ -86,6 +88,13 @@ export default function RootLayout({
         
         {/* Base favicon */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        
+        {/* Performance optimization meta tags */}
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body className={inter.className}>
         <Providers>

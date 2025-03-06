@@ -215,15 +215,17 @@ export function Navbar({ children }: NavbarProps) {
         {children}
       </main>
 
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onWidthChange={setSidebarWidth}
-        onResizeStart={() => setIsResizing(true)}
-        onResizeEnd={() => setIsResizing(false)}
-        initialWidth={sidebarWidth}
-      />
+      {/* AI Chat Sidebar - Only render when open */}
+      {isAIChatOpen && (
+        <AIChatSidebar
+          isOpen={isAIChatOpen}
+          onClose={handleCloseAIChat}
+          onWidthChange={handleSidebarWidthChange}
+          onResizeStart={handleResizeStart}
+          onResizeEnd={handleResizeEnd}
+          initialWidth={sidebarWidth}
+        />
+      )}
     </>
   );
 }

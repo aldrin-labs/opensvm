@@ -21,6 +21,11 @@ const nextConfig = {
         hostname: '**.arweave.net',
       },
     ],
+    // Enhanced image optimization settings
+    formats: ['image/avif', 'image/webp'],
+    minimumCacheTTL: 60,
+    deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
+    imageSizes: [16, 32, 48, 64, 96, 128, 256, 384],
   },
   // Experimental features
   experimental: {
@@ -30,17 +35,60 @@ const nextConfig = {
       '@radix-ui/react-dropdown-menu',
       '@radix-ui/react-dialog',
       '@radix-ui/react-select',
-      '@radix-ui/react-tabs'
+      '@radix-ui/react-tabs',
+      'chart.js',
+      'framer-motion',
+      'react-markdown',
+      'tailwind-merge',
+      'clsx'
     ],
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    }
+    },
+    // Enable modern bundling optimizations
+    swcMinify: true,
+    // Enable modern CSS optimizations
+    optimizeCss: true,
+    // Enable modern font optimizations
+    fontLoaders: [
+      { loader: '@next/font/google', options: { subsets: ['latin'] } },
+    ],
+    // Enable modern image optimizations
+    images: {
+      allowFutureImage: true,
+    },
+    // Enable modern script optimizations
+    scriptLoader: {
+      dangerouslyAllowSVG: true,
+      contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    },
   },
   // Enable React strict mode
   reactStrictMode: false,
   // Enable production source maps for better debugging
   productionBrowserSourceMaps: true,
+  // Optimize page loading
+  poweredByHeader: false,
+  compress: true,
+  // Add custom webpack configuration for better performance
+  webpack: (config, { dev, isServer }) => {
+    // Optimize CSS
+    if (!dev && !isServer) {
+      // Enable CSS optimization in production
+      config.optimization.splitChunks.cacheGroups = {
+        ...config.optimization.splitChunks.cacheGroups,
+        styles: {
+          name: 'styles',
+          test: /\.(css|scss)$/,
+          chunks: 'all',
+          enforce: true,
+        },
+      };
+    }
+
+    return config;
+  },
 };
 
 export default nextConfig;
