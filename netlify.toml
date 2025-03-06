@@ -48,22 +48,6 @@
 # Enable HTTP/2 server push
 [[plugins]]
   package = "@netlify/plugin-nextjs"
-  
-  [plugins.inputs]
-    # Enable HTTP/2 server push for critical assets
-    enable_server_push = true
-    
-    # Optimize Largest Contentful Paint
-    optimize_lcp = true
-    
-    # Optimize Cumulative Layout Shift
-    optimize_cls = true
-    
-    # Optimize First Input Delay
-    optimize_fid = true
-    
-    # Minify HTML
-    minify_html = true
 
 [[plugins]]
   package = "netlify-plugin-inline-functions-env"
