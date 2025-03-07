@@ -126,7 +126,7 @@ export function useNetworkPerformance(maxDataPoints = 30, refreshInterval = 3000
       initialData: [],
       onSuccess: (newDataPoint) => {
         // This will be handled by the mutate function to append to existing data
-        return newDataPoint;
+        // No return needed as onSuccess is defined to return void
       }
     }
   );

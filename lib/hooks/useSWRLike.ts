@@ -162,7 +162,8 @@ export function useSWRLike<T>(
           newData = updatedData;
         } else if (dataOrUpdater !== undefined) {
           // Use provided data directly
-          newData = await dataOrUpdater;
+          const result = await dataOrUpdater;
+          newData = result as T;
         } else {
           // Refetch data if no updater provided
           return fetchData();
