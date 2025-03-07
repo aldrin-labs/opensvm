@@ -24,7 +24,7 @@ const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props)
         label: new Date(d.timestamp).toLocaleTimeString()
       })),
       color: 'rgb(75, 192, 192)',
-      yAxisId: 'left'
+      yAxisId: 'left' as const
     },
     {
       name: 'Latency (ms)',
@@ -33,7 +33,7 @@ const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props)
         label: new Date(d.timestamp).toLocaleTimeString()
       })),
       color: 'rgb(255, 99, 132)',
-      yAxisId: 'right'
+      yAxisId: 'right' as const
     }
   ], [data]);
 
