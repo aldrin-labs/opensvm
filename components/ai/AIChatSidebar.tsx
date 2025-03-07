@@ -27,9 +27,15 @@ export const AIChatSidebar = memo(function AIChatSidebar({
   initialWidth = 400 
 }: AIChatSidebarProps) {
   const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false); // Add the missing ref
   const [width, setWidth] = useState(initialWidth);
   const [agent, setAgent] = useState<SolanaAgent | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // Update the ref when state changes
+  useEffect(() => {
+    isResizingRef.current = isResizing;
+  }, [isResizing]);
 
   useEffect(() => {
     const init = async () => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,52 @@ import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
+
+// Define the HeroSection component
+const HeroSection = () => {
+  return (
+    <div className="text-center mb-12">
+      <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
+        OpenSVM Explorer
+      </h1>
+      <p className="text-xl text-muted-foreground">
+        The quieter you become, the more you are able to hear.
+      </p>
+    </div>
+  );
+};
+
+// Define the SearchForm component
+const SearchForm = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch 
+}: { 
+  searchQuery: string; 
+  setSearchQuery: (query: string) => void; 
+  handleSearch: (e: React.FormEvent) => void; 
+}) => {
+  return (
+    <div className="max-w-2xl mx-auto mb-16">
+      <form onSubmit={handleSearch} className="relative">
+        <Input
+          type="text"
+          placeholder="Search transactions, blocks, programs and tokens..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
+        />
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+        <Button 
+          type="submit"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
+        >
+          Search
+        </Button>
+      </form>
+    </div>
+  );
+};
 
 // Define the StatsDisplay component
 const StatsDisplay = ({ stats }: { stats: NetworkStats | null }) => {
@@ -111,6 +157,27 @@ export default function HomePage() {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const [networkData, setNetworkData] = useState<NetworkData[]>([]);
+
+  // Define handler functions using useCallback
+  const handleOpenAIChat = useCallback(() => {
+    setIsAIChatOpen(true);
+  }, []);
+
+  const handleCloseAIChat = useCallback(() => {
+    setIsAIChatOpen(false);
+  }, []);
+
+  const handleSidebarWidthChange = useCallback((width: number) => {
+    setSidebarWidth(width);
+  }, []);
+
+  const handleResizeStart = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+  }, []);
 
   // Define mainStyle using useMemo
   const mainStyle = useMemo(() => ({

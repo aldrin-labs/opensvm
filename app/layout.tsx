@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
+import Script from 'next/script';
 // Import Navbar with dynamic loading
 const Navbar = dynamic(() => import('@/components/Navbar').then(mod => mod.Navbar), {
   loading: () => <div className="h-14 border-b border-border bg-background" />

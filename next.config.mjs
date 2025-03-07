@@ -52,16 +52,11 @@ const nextConfig = {
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    },
-    // Enable modern optimizations
-    serverComponentsExternalPackages: [
-      '@solana/web3.js',
-      'chart.js'
-    ],
-    // Optimize page loading
-    ppr: true,
-    // Optimize memory usage
-    memoryBasedWorkersCount: true
+    }
+    // Removed unsupported experimental features:
+    // - serverComponentsExternalPackages
+    // - ppr
+    // - memoryBasedWorkersCount
   },
   // Enable React strict mode
   reactStrictMode: false,
