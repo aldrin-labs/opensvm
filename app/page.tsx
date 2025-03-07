@@ -326,9 +326,9 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-background border border-border rounded-lg p-6">
               <RecentBlocks 
-                blocks={blocks}
+                blocks={blocks || []}
                 onBlockSelect={handleBlockSelect}
-                isLoading={isLoading}
+                isLoading={blocksLoading}
               />
             </div>
             <div className="bg-background border border-border rounded-lg p-6">

@@ -294,7 +294,11 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
           isOpen={isOpen}
           onClose={onClose}
           onWidthChange={handleWidthChange}
-          onResizeStart={onResizeStart}
+          onResizeStart={() => {
+            setIsResizing(true);
+            isResizingRef.current = true;
+            onResizeStart();
+          }}
           onResizeEnd={onResizeEnd}
           activeTab={activeTab}
           onTabChange={setActiveTab}

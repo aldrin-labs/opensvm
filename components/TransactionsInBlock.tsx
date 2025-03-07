@@ -45,27 +45,18 @@ export default function TransactionsInBlock({ block }: Props) {
           View Block Details →
         </Link>
       </div>
-      <div className="space-y-3">
-        {block.transactions.map((tx) => (
-          <Link
-            key={tx.signature}
-            href={`/tx/${tx.signature}`}
-            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/10 transition-colors"
-          >
-            <div className="flex flex-col">
-              <div className="text-sm font-mono text-foreground truncate max-w-[200px]">
-                {tx.signature}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {tx.type}
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : 'Pending'}
-            </div>
-          </Link>
-        ))}
-      </div>
+      {/* Use VirtualizedList for better performance with large transaction lists */}
+      <VirtualizedList
+        items={block.transactions}
+        height={300}
+        itemHeight={70}
+        className="space-y-3"
+        renderItem={(transaction) => (
+          <TransactionItem transaction={transaction} />
+        )}
+      />
     </div>
   );
-}
+});
+
+export default TransactionsInBlock;

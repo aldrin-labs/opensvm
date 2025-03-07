@@ -122,10 +122,36 @@ export default function RootLayout({
           .border-border { border-color: hsl(var(--border)); }
           .bg-background { background-color: hsl(var(--background)); }
           .min-h-screen { min-height: 100vh; }
+          .skeleton { 
+            background: linear-gradient(90deg, hsl(var(--background)) 25%, hsl(var(--muted)) 50%, hsl(var(--background)) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+          }
+          @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
         `}} />
         
         <Providers>
-          <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <Suspense fallback={
+            <div className="min-h-screen bg-background flex flex-col">
+              <div className="h-14 border-b border-border bg-background"></div>
+              <div className="container mx-auto px-4 py-12 flex-1">
+                <div className="h-12 w-1/2 mx-auto skeleton rounded mb-8"></div>
+                <div className="h-6 w-1/3 mx-auto skeleton rounded mb-16"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-background border border-border rounded-lg p-6">
+                      <div className="h-8 skeleton rounded mb-2"></div>
+                      <div className="h-4 skeleton rounded w-24"></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-background border border-border rounded-lg p-6 mb-12 h-[400px] skeleton"></div>
+              </div>
+            </div>
+          }>
             <Navbar>
               {children}
             </Navbar>
