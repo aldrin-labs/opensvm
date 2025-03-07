@@ -84,7 +84,7 @@ npm run optimize:preload
 npm run analyze
 
 # Run all optimizations and build
-npm run build:optimized
+npm run build
 
 # Run Lighthouse benchmark
 npm run lighthouse

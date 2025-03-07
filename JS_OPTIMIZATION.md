@@ -68,7 +68,7 @@ This document outlines the comprehensive JavaScript optimizations implemented to
 To build the application with all optimizations enabled:
 
 ```bash
-npm run build:optimized
+npm run build
 ```
 
 This command will:

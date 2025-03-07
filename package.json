@@ -4,12 +4,11 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build --debug",
+    "build": "next build && node scripts/optimize-js.js",
     "start": "next start",
     "build:fixed": "bun install --force && next build --debug",
     "build:legacy": "npm install --legacy-peer-deps && next build --debug",
     "build:force": "npm install --force && next build --debug",
-    "build:optimized": "next build && node scripts/optimize-js.js",
     "lint": "next lint",
     "install:fixed": "bun install --force",
     "install:legacy": "npm install --legacy-peer-deps",
