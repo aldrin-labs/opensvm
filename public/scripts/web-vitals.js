@@ -11,7 +11,7 @@
       metrics[metric.name] = metric.value;
       
       // Log the metric to console in development
-      if (process.env.NODE_ENV !== 'production') {
+      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
         console.log(`Web Vitals: ${metric.name} = ${metric.value}`);
       }
       

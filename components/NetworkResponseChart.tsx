@@ -150,7 +150,7 @@ const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props)
   // Use a lightweight loading state
   return (
     <div className="w-full h-full">
-      <LineChart data={chartData} options={options} />
+      <Line data={chartData} options={options} />
     </div>
   );
 });

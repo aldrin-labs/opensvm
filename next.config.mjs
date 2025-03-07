@@ -57,15 +57,7 @@ const nextConfig = {
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    },
-    // Optimize CSS
-    optimizeCss: true,
-    // Optimize fonts
-    optimizeFonts: true,
-    // Optimize bundle size
-    optimizeServerReact: true,
-    // Optimize package imports
-    optimizePackageImports: true,
+    }
   },
   // Enable React strict mode
   reactStrictMode: false,
@@ -118,24 +110,11 @@ const nextConfig = {
       // Enable tree shaking
       config.optimization.usedExports = true;
       
-      // Add TerserPlugin options for better minification
-      config.optimization.minimizer = config.optimization.minimizer || [];
-      config.optimization.minimizer.push(
-        new TerserPlugin({
-          terserOptions: {
-            compress: {
-              drop_console: true, // Remove console.log in production
-              pure_funcs: ['console.info', 'console.debug', 'console.warn'],
-              passes: 2, // Multiple passes for better minification
-            },
-            mangle: true,
-            output: {
-              comments: false, // Remove comments
-            },
-          },
-          extractComments: false,
-        })
-      );
+      // Add minification options without TerserPlugin
+      if (config.optimization.minimizer) {
+        // Use existing minimizers but with optimized settings
+        config.optimization.minimize = true;
+      }
     }
 
     // Add module aliases for faster resolution
