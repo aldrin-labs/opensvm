@@ -318,27 +318,21 @@ export default function HomePage() {
           <div className="bg-background border border-border rounded-lg p-6 mb-12">
             <h2 className="text-xl font-semibold mb-4 text-foreground">Network Performance</h2>
             <div className="h-[300px]">
-              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
-                <NetworkResponseChart data={networkData} />
-              </Suspense>
+              <NetworkResponseChart data={networkData} />
             </div>
           </div>
 
           {/* Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-background border border-border rounded-lg p-6">
-              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
-                <RecentBlocks 
-                  blocks={blocks}
-                  onBlockSelect={handleBlockSelect}
-                  isLoading={isLoading}
-                />
-              </Suspense>
+              <RecentBlocks 
+                blocks={blocks}
+                onBlockSelect={handleBlockSelect}
+                isLoading={isLoading}
+              />
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
-              <Suspense fallback={<div className="h-[300px] bg-background animate-pulse" />}>
-                <TransactionsInBlock block={selectedBlock} />
-              </Suspense>
+              <TransactionsInBlock block={selectedBlock} />
             </div>
           </div>
 

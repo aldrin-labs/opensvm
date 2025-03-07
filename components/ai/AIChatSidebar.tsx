@@ -317,7 +317,6 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
           isRecording={isRecording}
           className="transition-transform duration-200"
         />
-      </Suspense>
     </div>
   );
 });

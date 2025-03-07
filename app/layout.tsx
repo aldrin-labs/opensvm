@@ -96,6 +96,22 @@ export default function RootLayout({
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
+        {/* PWA manifest and meta tags */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#00DC82" />
+        <meta name="application-name" content="OpenSVM Explorer" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="OpenSVM" />
+
+        {/* Add iOS splash screen images */}
+        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="apple-touch-startup-image" href="/favicon.svg" />
+
+        {/* Add preload for critical resources */}
+        <link rel="preload" href="/styles/critical.css" as="style" />
+        <link rel="stylesheet" href="/styles/critical.css" />
       </head>
       <body className={inter.className}>
         {/* Inline critical CSS for faster rendering */}
@@ -120,6 +136,35 @@ export default function RootLayout({
         <Script
           src="/scripts/analytics.js"
           strategy="lazyOnload"
+        />
+        
+        {/* Register service worker */}
+        <Script
+          id="register-sw"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    },
+                    function(error) {
+                      console.log('ServiceWorker registration failed: ', error);
+                    }
+                  );
+                });
+              }
+            `
+          }}
+        />
+        
+        {/* Web Vitals monitoring */}
+        <Script
+          id="web-vitals"
+          strategy="afterInteractive"
+          src="/scripts/web-vitals.js"
         />
       </body>
     </html>

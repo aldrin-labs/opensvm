@@ -23,12 +23,14 @@ const nextConfig = {
     ],
     // Enhanced image optimization settings
     formats: ['image/avif', 'image/webp'],
-    minimumCacheTTL: 3600, // Increase cache TTL to 1 hour
+    minimumCacheTTL: 86400, // Increase cache TTL to 24 hours
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048],
     imageSizes: [16, 32, 48, 64, 96, 128, 256],
     dangerouslyAllowSVG: true,
     contentDispositionType: 'attachment',
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
+    // Disable image optimization in development for faster builds
+    unoptimized: process.env.NODE_ENV === 'development',
   },
   // Experimental features
   experimental: {
@@ -47,26 +49,35 @@ const nextConfig = {
       'date-fns',
       'lodash',
       'zod',
-      'react-chartjs-2'
+      'react-chartjs-2',
+      '@solana/web3.js',
+      'bn.js',
+      'bs58'
     ],
     // Enable server actions with increased limit
     serverActions: {
       bodySizeLimit: '2mb'
-    }
-    // Removed unsupported experimental features:
-    // - serverComponentsExternalPackages
-    // - ppr
-    // - memoryBasedWorkersCount
+    },
+    // Optimize CSS
+    optimizeCss: true,
+    // Optimize fonts
+    optimizeFonts: true,
+    // Optimize bundle size
+    optimizeServerReact: true,
+    // Optimize package imports
+    optimizePackageImports: true,
   },
   // Enable React strict mode
   reactStrictMode: false,
-  // Enable production source maps for better debugging
-  productionBrowserSourceMaps: false, // Disable for better performance
+  // Disable production source maps for better performance
+  productionBrowserSourceMaps: false,
   // Optimize page loading
   poweredByHeader: false,
   compress: true,
   // Enable SWC minify
   swcMinify: true,
+  // Disable telemetry
+  telemetry: { telemetryDisabled: true },
   // Add custom webpack configuration for better performance
   webpack: (config, { dev, isServer }) => {
     // Optimize CSS
@@ -99,13 +110,39 @@ const nextConfig = {
       config.optimization.splitChunks.maxInitialRequests = 25;
       config.optimization.splitChunks.maxAsyncRequests = 25;
       config.optimization.splitChunks.minSize = 20000;
+      config.optimization.splitChunks.maxSize = 244000; // 244KB chunks for better caching
       
       // Enable module concatenation
       config.optimization.concatenateModules = true;
       
       // Enable tree shaking
       config.optimization.usedExports = true;
+      
+      // Add TerserPlugin options for better minification
+      config.optimization.minimizer = config.optimization.minimizer || [];
+      config.optimization.minimizer.push(
+        new TerserPlugin({
+          terserOptions: {
+            compress: {
+              drop_console: true, // Remove console.log in production
+              pure_funcs: ['console.info', 'console.debug', 'console.warn'],
+              passes: 2, // Multiple passes for better minification
+            },
+            mangle: true,
+            output: {
+              comments: false, // Remove comments
+            },
+          },
+          extractComments: false,
+        })
+      );
     }
+
+    // Add module aliases for faster resolution
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': __dirname,
+    };
 
     return config;
   },
@@ -131,6 +168,14 @@ const nextConfig = {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
           },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+          },
         ],
       },
       {
@@ -144,6 +189,24 @@ const nextConfig = {
       },
       {
         source: '/images/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=86400, stale-while-revalidate=604800',
+          },
+        ],
+      },
+      {
+        source: '/_next/static/(.*)',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+        ],
+      },
+      {
+        source: '/_next/image(.*)',
         headers: [
           {
             key: 'Cache-Control',

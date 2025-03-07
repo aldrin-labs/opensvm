@@ -147,11 +147,10 @@ const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props)
     }
   }), [data.length]);
 
+  // Use a lightweight loading state
   return (
     <div className="w-full h-full">
-      <Suspense fallback={<div className="w-full h-full flex items-center justify-center">Loading chart...</div>}>
-        <Line data={chartData} options={options} />
-      </Suspense>
+      <LineChart data={chartData} options={options} />
     </div>
   );
 });

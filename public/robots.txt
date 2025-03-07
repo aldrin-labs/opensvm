@@ -1,0 +1,14 @@
+# robots.txt for OpenSVM Explorer
+User-agent: *
+Allow: /
+
+# Sitemap
+Sitemap: https://opensvm.com/sitemap.xml
+
+# Disallow specific paths
+Disallow: /api/
+Disallow: /_next/
+Disallow: /admin/
+
+# Crawl delay
+Crawl-delay: 1
