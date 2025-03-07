@@ -1,4 +1,10 @@
 /** @type {import('next').NextConfig} */
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+// Define __dirname for ES Modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 const nextConfig = {
   typescript: {
     // Use an alternate config for type checking to ignore test-related files
