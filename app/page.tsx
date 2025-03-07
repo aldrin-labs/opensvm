@@ -328,7 +328,7 @@ export default function HomePage() {
               <RecentBlocks 
                 blocks={blocks || []}
                 onBlockSelect={handleBlockSelect}
-                isLoading={blocksLoading}
+                isLoading={isLoading}
               />
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
