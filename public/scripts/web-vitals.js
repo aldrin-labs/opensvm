@@ -1,82 +1,103 @@
-// Web Vitals monitoring script
+// Optimized Web Vitals monitoring script - minimal implementation
 (function() {
-  // Check if the web-vitals API is supported
-  if ('performance' in window && 'PerformanceObserver' in window) {
-    // Create a variable to store the metrics
-    let metrics = {};
+  // Only run in production and if the browser supports the necessary APIs
+  if (!('PerformanceObserver' in window)) return;
+  
+  // Minimal metrics storage
+  const metrics = {};
+  
+  // Simplified analytics sender
+  function sendMetric(name, value, attribution) {
+    metrics[name] = value;
     
-    // Function to send metrics to analytics
-    function sendToAnalytics(metric) {
-      // Store the metric
-      metrics[metric.name] = metric.value;
-      
-      // Log the metric to console in development
-      if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        console.log(`Web Vitals: ${metric.name} = ${metric.value}`);
-      }
-      
-      // Send the metric to your analytics service
-      // This is a placeholder - replace with your actual analytics code
-      if (window.gtag) {
-        window.gtag('event', 'web_vitals', {
-          event_category: 'Web Vitals',
-          event_label: metric.name,
-          value: Math.round(metric.name === 'CLS' ? metric.value * 1000 : metric.value),
-          non_interaction: true,
-        });
-      }
+    // Only log in development
+    if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+      console.log(`Web Vitals: ${name} = ${value}`);
     }
     
-    // Load the web-vitals library
-    import('https://unpkg.com/web-vitals@3/dist/web-vitals.attribution.iife.js')
-      .then(({ onCLS, onFID, onLCP, onTTFB, onINP }) => {
-        // Core Web Vitals
-        onCLS(sendToAnalytics);
-        onFID(sendToAnalytics);
-        onLCP(sendToAnalytics);
-        
-        // Additional metrics
-        onTTFB(sendToAnalytics);
-        onINP(sendToAnalytics);
-      })
-      .catch(err => console.error('Error loading web-vitals', err));
-    
-    // Report metrics when the page is being unloaded
-    window.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden') {
-        // Use the beacon API to send the data
-        if (navigator.sendBeacon && Object.keys(metrics).length > 0) {
-          navigator.sendBeacon(
-            '/api/vitals',
-            JSON.stringify({
-              url: window.location.href,
-              metrics,
-              userAgent: navigator.userAgent,
-              timestamp: Date.now(),
-            })
-          );
-        }
-      }
-    });
-    
-    // Custom performance mark for time to interactive
-    if ('mark' in performance) {
-      // Mark when the page starts loading
-      performance.mark('app-start');
-      
-      // Mark when the page is interactive
-      window.addEventListener('load', () => {
-        setTimeout(() => {
-          performance.mark('app-interactive');
-          performance.measure('time-to-interactive', 'app-start', 'app-interactive');
-          
-          const tti = performance.getEntriesByName('time-to-interactive')[0];
-          sendToAnalytics({
-            name: 'TTI',
-            value: tti.duration,
-          });
-        }, 0);
+    // Send to analytics if available
+    if (window.gtag) {
+      window.gtag('event', 'web_vitals', {
+        event_category: 'Web Vitals',
+        event_label: name,
+        value: Math.round(name === 'CLS' ? value * 1000 : value),
+        non_interaction: true,
       });
     }
+  }
+  
+  // Minimal CLS implementation
+  let clsValue = 0;
+  let clsEntries = [];
+  
+  // Create a CLS observer
+  try {
+    new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        // Only count layout shifts without recent user input
+        if (!entry.hadRecentInput) {
+          clsEntries.push(entry);
+          // Only keep the 5 most recent entries
+          if (clsEntries.length > 5) {
+            clsEntries.shift();
+          }
+          // Update CLS value
+          clsValue = clsEntries.reduce((sum, entry) => sum + entry.value, 0);
+          sendMetric('CLS', clsValue);
+        }
+      }
+    }).observe({type: 'layout-shift', buffered: true});
+  } catch (e) {
+    // Silently fail if observer throws
+  }
+  
+  // Minimal LCP implementation
+  try {
+    new PerformanceObserver((entryList) => {
+      const entries = entryList.getEntries();
+      const lastEntry = entries[entries.length - 1];
+      sendMetric('LCP', lastEntry.startTime + lastEntry.duration);
+    }).observe({type: 'largest-contentful-paint', buffered: true});
+  } catch (e) {
+    // Silently fail if observer throws
+  }
+  
+  // Minimal FID implementation
+  try {
+    new PerformanceObserver((entryList) => {
+      for (const entry of entryList.getEntries()) {
+        sendMetric('FID', entry.processingStart - entry.startTime);
+      }
+    }).observe({type: 'first-input', buffered: true});
+  } catch (e) {
+    // Silently fail if observer throws
+  }
+  
+  // Send metrics on page unload
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden' && Object.keys(metrics).length > 0) {
+      // Use the beacon API to send the data
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(
+          '/api/vitals',
+          JSON.stringify({
+            url: window.location.href,
+            metrics,
+            timestamp: Date.now(),
+          })
+        );
+      }
+    }
+  }, {passive: true});
+  
+  // Mark page load time
+  if ('mark' in performance) {
+    performance.mark('app-start');
+    window.addEventListener('load', () => {
+      performance.mark('app-loaded');
+      performance.measure('load-time', 'app-start', 'app-loaded');
+      const loadTime = performance.getEntriesByName('load-time')[0];
+      sendMetric('LoadTime', loadTime.duration);
+    }, {passive: true, once: true});
   }
 })();

@@ -199,6 +199,20 @@ const nextConfig = {
           },
         ],
       },
+      // Add specific headers for JavaScript files
+      {
+        source: '/_next/static/chunks/(.*).js',
+        headers: [
+          {
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
+          },
+          {
+            key: 'Content-Encoding',
+            value: 'gzip',
+          },
+        ],
+      },
     ];
   },
 };

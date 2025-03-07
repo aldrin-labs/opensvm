@@ -20,6 +20,13 @@ self.addEventListener('install', event => {
   );
 });
 
+// Add a message handler to receive messages from the client
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
 // Activate event - clean up old caches
 self.addEventListener('activate', event => {
   event.waitUntil(

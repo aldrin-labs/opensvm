@@ -9,6 +9,7 @@
     "build:fixed": "bun install --force && next build --debug",
     "build:legacy": "npm install --legacy-peer-deps && next build --debug",
     "build:force": "npm install --force && next build --debug",
+    "build:optimized": "next build && node scripts/optimize-js.js",
     "lint": "next lint",
     "install:fixed": "bun install --force",
     "install:legacy": "npm install --legacy-peer-deps",
@@ -17,7 +18,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "dev:test": "NODE_ENV=test next dev",
-    "build:test": "NODE_ENV=test next build"
+    "build:test": "NODE_ENV=test next build",
+    "analyze": "ANALYZE=true next build",
+    "optimize:js": "node scripts/optimize-js.js"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

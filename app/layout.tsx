@@ -186,11 +186,12 @@ export default function RootLayout({
           }}
         />
         
-        {/* Web Vitals monitoring */}
+        {/* Web Vitals monitoring with optimized loading */}
         <Script
           id="web-vitals"
           strategy="afterInteractive"
           src="/scripts/web-vitals.js"
+          defer
         />
       </body>
     </html>
