@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, memo, useRef } from 'react';
+import { useEffect, useState, useCallback, memo, useRef, Suspense } from 'react';
 import { Chat } from './Chat';
 import { useAIChatTabs } from '@/lib/ai/hooks/useAIChatTabs';
 import { createSolanaAgent } from '@/lib/ai/core/factory';
@@ -27,9 +27,15 @@ export const AIChatSidebar = memo(function AIChatSidebar({
   initialWidth = 400 
 }: AIChatSidebarProps) {
   const [isResizing, setIsResizing] = useState(false);
+  const isResizingRef = useRef(false); // Add the missing ref
   const [width, setWidth] = useState(initialWidth);
   const [agent, setAgent] = useState<SolanaAgent | null>(null);
   const [isInitializing, setIsInitializing] = useState(true);
+
+  // Update the ref when state changes
+  useEffect(() => {
+    isResizingRef.current = isResizing;
+  }, [isResizing]);
 
   useEffect(() => {
     const init = async () => {
@@ -231,9 +237,12 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
     setAgentMessages(prev => [...prev, helpMessage]);
   }, [setAgentMessages]);
 
+  // Optimize resize event handling
   useEffect(() => {
+    if (!isOpen) return;
+    
     const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return;
+      if (!isResizingRef.current) return;
       
       const newWidth = window.innerWidth - e.clientX;
       if (newWidth > 300 && newWidth < 800) {
@@ -247,8 +256,9 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
       onResizeEnd();
     };
 
+    // Only add listeners when resizing
     if (isResizing) {
-      window.addEventListener('mousemove', handleMouseMove);
+      window.addEventListener('mousemove', handleMouseMove, { passive: true });
       window.addEventListener('mouseup', handleMouseUp);
     }
 
@@ -256,7 +266,7 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isResizing, onWidthChange, onResizeEnd]);
+  }, [isResizing, onWidthChange, onResizeEnd, isOpen]);
 
   if (!isOpen) return null;
   
@@ -278,34 +288,40 @@ To get started, just ask me anything about Solana blockchain data, Sonic protoco
 
   return (
     <div style={{ width: `${width}px` }}>
-      <Chat 
-        variant="sidebar" 
-        isOpen={isOpen}
-        onClose={onClose}
-        onWidthChange={handleWidthChange}
-        onResizeStart={onResizeStart}
-        onResizeEnd={onResizeEnd}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onReset={handleReset}
-        onNewChat={handleNewChat}
-        messages={messages}
-        input={input}
-        isProcessing={isProcessing}
-        onInputChange={setInput}
-        onSubmit={handleSubmit}
-        notes={notes}
-        onClearNotes={clearNotes}
-        agentActions={agentActions}
-        onRetryAction={handleRetryAction}
-        onExport={handleExport}
-        onShare={handleShare}
-        onSettings={handleSettings}
-        onHelp={handleHelp}
-        onVoiceRecord={startRecording}
-        isRecording={isRecording}
-        className="transition-transform duration-200"
-      />
+      <Suspense fallback={<div className="bg-black text-white p-4">Loading chat interface...</div>}>
+        <Chat 
+          variant="sidebar" 
+          isOpen={isOpen}
+          onClose={onClose}
+          onWidthChange={handleWidthChange}
+          onResizeStart={() => {
+            setIsResizing(true);
+            isResizingRef.current = true;
+            onResizeStart();
+          }}
+          onResizeEnd={onResizeEnd}
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          onReset={handleReset}
+          onNewChat={handleNewChat}
+          messages={messages}
+          input={input}
+          isProcessing={isProcessing}
+          onInputChange={setInput}
+          onSubmit={handleSubmit}
+          notes={notes}
+          onClearNotes={clearNotes}
+          agentActions={agentActions}
+          onRetryAction={handleRetryAction}
+          onExport={handleExport}
+          onShare={handleShare}
+          onSettings={handleSettings}
+          onHelp={handleHelp}
+          onVoiceRecord={startRecording}
+          isRecording={isRecording}
+          className="transition-transform duration-200"
+        />
+      </Suspense>
     </div>
   );
 });

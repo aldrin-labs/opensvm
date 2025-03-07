@@ -1,0 +1,40 @@
+{
+  "name": "OpenSVM Explorer",
+  "short_name": "OpenSVM",
+  "description": "AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#00DC82",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "48x48 72x72 96x96 128x128 256x256 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Home",
+      "short_name": "Home",
+      "description": "Go to the home page",
+      "url": "/",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Blocks",
+      "short_name": "Blocks",
+      "description": "View recent blocks",
+      "url": "/blocks",
+      "icons": [{ "src": "/favicon.svg", "sizes": "192x192" }]
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false,
+  "categories": ["finance", "utilities", "productivity"],
+  "screenshots": [],
+  "lang": "en-US",
+  "dir": "ltr"
+}

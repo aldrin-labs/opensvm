@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,117 @@ import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
+
+// Define the HeroSection component
+const HeroSection = () => {
+  return (
+    <div className="text-center mb-12">
+      <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
+        OpenSVM Explorer
+      </h1>
+      <p className="text-xl text-muted-foreground">
+        The quieter you become, the more you are able to hear.
+      </p>
+    </div>
+  );
+};
+
+// Define the SearchForm component
+const SearchForm = ({ 
+  searchQuery, 
+  setSearchQuery, 
+  handleSearch 
+}: { 
+  searchQuery: string; 
+  setSearchQuery: (query: string) => void; 
+  handleSearch: (e: React.FormEvent) => void; 
+}) => {
+  return (
+    <div className="max-w-2xl mx-auto mb-16">
+      <form onSubmit={handleSearch} className="relative">
+        <Input
+          type="text"
+          placeholder="Search transactions, blocks, programs and tokens..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
+        />
+        <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
+        <Button 
+          type="submit"
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
+        >
+          Search
+        </Button>
+      </form>
+    </div>
+  );
+};
+
+// Define the StatsDisplay component
+const StatsDisplay = ({ stats }: { stats: NetworkStats | null }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.blockHeight?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Blocks Processed
+        </div>
+      </div>
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.activeValidators?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          Active Validators
+        </div>
+      </div>
+      <div className="bg-background border border-border rounded-lg p-6">
+        <div className="text-3xl font-mono text-foreground mb-2">
+          {stats?.tps?.toLocaleString() ?? '...'}
+        </div>
+        <div className="text-sm text-muted-foreground">
+          TPS
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Define the NetworkStatsDisplay component
+const NetworkStatsDisplay = ({ stats }: { stats: NetworkStats | null }) => {
+  return (
+    <div className="bg-background border border-border rounded-lg p-6 mb-12">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
+          <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
+          <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
+            <div 
+              className="bg-primary h-1" 
+              style={{ width: `${stats?.epochProgress ?? 0}%` }}
+            />
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Network Load</div>
+          <div className="text-2xl font-mono text-foreground">
+            {stats?.epochProgress?.toFixed(2) ?? '0'}%
+          </div>
+        </div>
+        <div>
+          <div className="text-sm text-muted-foreground mb-2">Block Height</div>
+          <div className="text-2xl font-mono text-foreground">
+            {stats?.blockHeight?.toLocaleString() ?? '...'}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 
 interface Block {
   slot: number;
@@ -46,6 +157,34 @@ export default function HomePage() {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const [networkData, setNetworkData] = useState<NetworkData[]>([]);
+
+  // Define handler functions using useCallback
+  const handleOpenAIChat = useCallback(() => {
+    setIsAIChatOpen(true);
+  }, []);
+
+  const handleCloseAIChat = useCallback(() => {
+    setIsAIChatOpen(false);
+  }, []);
+
+  const handleSidebarWidthChange = useCallback((width: number) => {
+    setSidebarWidth(width);
+  }, []);
+
+  const handleResizeStart = useCallback(() => {
+    setIsResizing(true);
+  }, []);
+
+  const handleResizeEnd = useCallback(() => {
+    setIsResizing(false);
+  }, []);
+
+  // Define mainStyle using useMemo
+  const mainStyle = useMemo(() => ({
+    width: isAIChatOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
+    transition: !isResizing ? 'all 300ms ease-in-out' : 'none',
+    marginRight: isAIChatOpen ? `${sidebarWidth}px` : 0
+  }), [isAIChatOpen, sidebarWidth, isResizing]);
 
   useEffect(() => {
     let mounted = true;
@@ -156,98 +295,24 @@ export default function HomePage() {
     <div className="relative">
       <main 
         className="min-h-screen bg-background"
-        style={{ 
-          width: isAIChatOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
-          transition: !isResizing ? 'all 300ms ease-in-out' : 'none',
-          marginRight: isAIChatOpen ? `${sidebarWidth}px` : 0
-        }}
+        style={mainStyle}
       >
         <div className="container mx-auto px-4 py-12">
           {/* Hero Section */}
-          <div className="text-center mb-12">
-            <h1 className="text-4xl md:text-6xl font-bold text-foreground mb-4">
-              OpenSVM Explorer
-            </h1>
-            <p className="text-xl text-muted-foreground">
-              The quieter you become, the more you are able to hear.
-            </p>
-          </div>
+          <HeroSection />
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-16">
-            <form onSubmit={handleSearch} className="relative">
-              <Input
-                type="text"
-                placeholder="Search transactions, blocks, programs and tokens..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
-              />
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Button 
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
-              >
-                Search
-              </Button>
-            </form>
-          </div>
+          <SearchForm 
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            handleSearch={handleSearch}
+          />
 
           {/* Stats Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-background border border-border rounded-lg p-6">
-              <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.blockHeight?.toLocaleString() ?? '...'}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Blocks Processed
-              </div>
-            </div>
-            <div className="bg-background border border-border rounded-lg p-6">
-              <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.activeValidators?.toLocaleString() ?? '...'}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                Active Validators
-              </div>
-            </div>
-            <div className="bg-background border border-border rounded-lg p-6">
-              <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.tps?.toLocaleString() ?? '...'}
-              </div>
-              <div className="text-sm text-muted-foreground">
-                TPS
-              </div>
-            </div>
-          </div>
+          <StatsDisplay stats={stats} />
 
           {/* Network Stats */}
-          <div className="bg-background border border-border rounded-lg p-6 mb-12">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div>
-                <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
-                <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
-                <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-primary h-1" 
-                    style={{ width: `${stats?.epochProgress ?? 0}%` }}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-2">Network Load</div>
-                <div className="text-2xl font-mono text-foreground">
-                  {stats?.epochProgress?.toFixed(2) ?? '0'}%
-                </div>
-              </div>
-              <div>
-                <div className="text-sm text-muted-foreground mb-2">Block Height</div>
-                <div className="text-2xl font-mono text-foreground">
-                  {stats?.blockHeight?.toLocaleString() ?? '...'}
-                </div>
-              </div>
-            </div>
-          </div>
+          <NetworkStatsDisplay stats={stats} />
 
           {/* Network Performance Chart */}
           <div className="bg-background border border-border rounded-lg p-6 mb-12">
@@ -261,7 +326,7 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-background border border-border rounded-lg p-6">
               <RecentBlocks 
-                blocks={blocks}
+                blocks={blocks || []}
                 onBlockSelect={handleBlockSelect}
                 isLoading={isLoading}
               />
@@ -275,7 +340,7 @@ export default function HomePage() {
           <div className="fixed bottom-6 right-6">
             <Button
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 h-12 px-6 rounded-full shadow-lg"
-              onClick={() => setIsAIChatOpen(true)}
+              onClick={handleOpenAIChat}
             >
               AI Assistant
             </Button>
@@ -283,15 +348,17 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar 
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onWidthChange={setSidebarWidth}
-        onResizeStart={() => setIsResizing(true)}
-        onResizeEnd={() => setIsResizing(false)}
-        initialWidth={sidebarWidth}
-      />
+      {/* AI Chat Sidebar - Only render when open */}
+      {isAIChatOpen && (
+        <AIChatSidebar 
+          isOpen={isAIChatOpen}
+          onClose={handleCloseAIChat}
+          onWidthChange={handleSidebarWidthChange}
+          onResizeStart={handleResizeStart}
+          onResizeEnd={handleResizeEnd}
+          initialWidth={sidebarWidth}
+        />
+      )}
     </div>
   );
 }

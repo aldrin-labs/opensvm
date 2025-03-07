@@ -1,6 +1,8 @@
 'use client';
 
 import Link from 'next/link';
+import { memo } from 'react';
+import VirtualizedList from './VirtualizedList';
 
 interface Transaction {
   signature: string;
@@ -17,8 +19,28 @@ interface Props {
   block: Block | null;
 }
 
-// Changed to default export
-export default function TransactionsInBlock({ block }: Props) {
+// TransactionItem component
+const TransactionItem = ({ transaction }: { transaction: Transaction }) => (
+  <Link
+    href={`/tx/${transaction.signature}`}
+    className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/10 transition-colors"
+  >
+    <div className="flex flex-col">
+      <div className="text-sm font-mono text-foreground truncate max-w-[200px]">
+        {transaction.signature}
+      </div>
+      <div className="text-xs text-muted-foreground">
+        {transaction.type}
+      </div>
+    </div>
+    <div className="text-xs text-muted-foreground">
+      {transaction.timestamp ? new Date(transaction.timestamp * 1000).toLocaleString() : 'Pending'}
+    </div>
+  </Link>
+);
+
+// Main component with memo for performance
+const TransactionsInBlock = memo(function TransactionsInBlock({ block }: Props) {
   if (!block || !block.transactions) {
     return (
       <div>
@@ -45,27 +67,17 @@ export default function TransactionsInBlock({ block }: Props) {
           View Block Details →
         </Link>
       </div>
-      <div className="space-y-3">
-        {block.transactions.map((tx) => (
-          <Link
-            key={tx.signature}
-            href={`/tx/${tx.signature}`}
-            className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-accent/10 transition-colors"
-          >
-            <div className="flex flex-col">
-              <div className="text-sm font-mono text-foreground truncate max-w-[200px]">
-                {tx.signature}
-              </div>
-              <div className="text-xs text-muted-foreground">
-                {tx.type}
-              </div>
-            </div>
-            <div className="text-xs text-muted-foreground">
-              {tx.timestamp ? new Date(tx.timestamp * 1000).toLocaleString() : 'Pending'}
-            </div>
-          </Link>
-        ))}
-      </div>
+      <VirtualizedList
+        items={block.transactions}
+        height={300}
+        itemHeight={70}
+        className="space-y-3"
+        renderItem={(transaction) => (
+          <TransactionItem transaction={transaction} />
+        )}
+      />
     </div>
   );
-}
+});
+
+export default TransactionsInBlock;

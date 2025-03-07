@@ -3,8 +3,11 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-// Import Navbar directly
-import { Navbar } from '@/components/Navbar';
+import Script from 'next/script';
+// Import Navbar with dynamic loading
+const Navbar = dynamic(() => import('@/components/Navbar').then(mod => mod.Navbar), {
+  loading: () => <div className="h-14 border-b border-border bg-background" />
+});
 
 // Load fonts
 const inter = Inter({
@@ -86,15 +89,110 @@ export default function RootLayout({
         
         {/* Base favicon */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        
+        {/* Performance optimization meta tags */}
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta name="format-detection" content="telephone=no" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        
+        {/* PWA manifest and meta tags */}
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#00DC82" />
+        <meta name="application-name" content="OpenSVM Explorer" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <meta name="apple-mobile-web-app-title" content="OpenSVM" />
+
+        {/* Add iOS splash screen images */}
+        <link rel="apple-touch-icon" href="/favicon.svg" />
+        <link rel="apple-touch-startup-image" href="/favicon.svg" />
+
+        {/* Add preload for critical resources */}
+        <link rel="preload" href="/styles/critical.css" as="style" />
+        <link rel="stylesheet" href="/styles/critical.css" />
       </head>
       <body className={inter.className}>
+        {/* Inline critical CSS for faster rendering */}
+        <style dangerouslySetInnerHTML={{ __html: `
+          body { display: block; }
+          .h-14 { height: 3.5rem; }
+          .border-b { border-bottom-width: 1px; }
+          .border-border { border-color: hsl(var(--border)); }
+          .bg-background { background-color: hsl(var(--background)); }
+          .min-h-screen { min-height: 100vh; }
+          .skeleton { 
+            background: linear-gradient(90deg, hsl(var(--background)) 25%, hsl(var(--muted)) 50%, hsl(var(--background)) 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+          }
+          @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+          }
+        `}} />
+        
         <Providers>
-          <Suspense fallback={<div className="min-h-screen bg-background" />}>
+          <Suspense fallback={
+            <div className="min-h-screen bg-background flex flex-col">
+              <div className="h-14 border-b border-border bg-background"></div>
+              <div className="container mx-auto px-4 py-12 flex-1">
+                <div className="h-12 w-1/2 mx-auto skeleton rounded mb-8"></div>
+                <div className="h-6 w-1/3 mx-auto skeleton rounded mb-16"></div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="bg-background border border-border rounded-lg p-6">
+                      <div className="h-8 skeleton rounded mb-2"></div>
+                      <div className="h-4 skeleton rounded w-24"></div>
+                    </div>
+                  ))}
+                </div>
+                <div className="bg-background border border-border rounded-lg p-6 mb-12 h-[400px] skeleton"></div>
+              </div>
+            </div>
+          }>
             <Navbar>
               {children}
             </Navbar>
           </Suspense>
         </Providers>
+        
+        {/* Defer non-critical scripts */}
+        <Script
+          src="/scripts/analytics.js"
+          strategy="lazyOnload"
+        />
+        
+        {/* Register service worker */}
+        <Script
+          id="register-sw"
+          strategy="afterInteractive"
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    },
+                    function(error) {
+                      console.log('ServiceWorker registration failed: ', error);
+                    }
+                  );
+                });
+              }
+            `
+          }}
+        />
+        
+        {/* Web Vitals monitoring with optimized loading */}
+        <Script
+          id="web-vitals"
+          strategy="afterInteractive"
+          src="/scripts/web-vitals.js"
+          defer
+        />
       </body>
     </html>
   );

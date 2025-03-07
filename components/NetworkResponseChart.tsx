@@ -1,28 +1,7 @@
 'use client';
 
-import { Line } from 'react-chartjs-2';
-import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend,
-} from 'chart.js';
-import type { ChartData, ChartOptions } from 'chart.js';
-
-// Register Chart.js components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  PointElement,
-  LineElement,
-  Title,
-  Tooltip,
-  Legend
-);
+import { memo, useMemo } from 'react';
+import LightweightChart from './LightweightChart';
 
 interface NetworkData {
   timestamp: number;
@@ -34,72 +13,63 @@ interface Props {
   data: NetworkData[];
 }
 
-export default function NetworkResponseChart({ data }: Props) {
-  const chartData: ChartData<'line'> = {
-    labels: data.map(d => new Date(d.timestamp).toLocaleTimeString()),
-    datasets: [
-      {
-        label: 'Success Rate',
-        data: data.map(d => d.successRate),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.5)',
-        yAxisID: 'y',
-      },
-      {
-        label: 'Latency (ms)',
-        data: data.map(d => d.latency),
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.5)',
-        yAxisID: 'y1',
-      }
-    ]
-  };
-
-  const options: ChartOptions<'line'> = {
-    responsive: true,
-    interaction: {
-      mode: 'index' as const,
-      intersect: false,
+// Use memo to prevent unnecessary re-renders
+const NetworkResponseChart = memo(function NetworkResponseChart({ data }: Props) {
+  // Transform data for the chart
+  const chartSeries = useMemo(() => [
+    {
+      name: 'Success Rate',
+      data: data.map(d => ({
+        value: d.successRate,
+        label: new Date(d.timestamp).toLocaleTimeString()
+      })),
+      color: 'rgb(75, 192, 192)',
+      yAxisId: 'left' as const
     },
-    scales: {
-      y: {
-        type: 'linear' as const,
-        display: true,
-        position: 'left' as const,
-        title: {
-          display: true,
-          text: 'Success Rate (%)'
-        },
-        min: 0,
-        max: 100
-      },
-      y1: {
-        type: 'linear' as const,
-        display: true,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'Latency (ms)'
-        },
-        min: 0,
-        grid: {
-          drawOnChartArea: false,
-        },
-      },
-    },
-    plugins: {
-      legend: {
-        position: 'top' as const,
-      },
-      title: {
-        display: false
-      }
+    {
+      name: 'Latency (ms)',
+      data: data.map(d => ({
+        value: d.latency,
+        label: new Date(d.timestamp).toLocaleTimeString()
+      })),
+      color: 'rgb(255, 99, 132)',
+      yAxisId: 'right' as const
     }
-  };
+  ], [data]);
+
+  // Chart options
+  const chartOptions = useMemo(() => ({
+    height: 300,
+    yAxis: {
+      left: {
+        min: 0,
+        max: 100,
+        title: 'Success Rate (%)'
+      },
+      right: {
+        min: 0,
+        title: 'Latency (ms)'
+      }
+    },
+    xAxis: {
+      showLabels: true,
+      maxLabels: 10
+    },
+    grid: {
+      show: true,
+      color: 'rgba(200, 200, 200, 0.2)'
+    }
+  }), []);
 
   return (
     <div className="w-full h-full">
-      <Line data={chartData} options={options} />
+      <LightweightChart 
+        series={chartSeries} 
+        options={chartOptions} 
+        className="w-full h-full"
+      />
     </div>
   );
-}
+});
+
+export default NetworkResponseChart;
