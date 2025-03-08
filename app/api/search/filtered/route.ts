@@ -35,73 +35,86 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'Invalid query' }, { status: 400 });
     }
 
-    let results: TransactionResult[] = [];
+    // Create connections for each network
+    const networkConnections = networks.map(network => ({
+      networkId: network.id,
+      networkName: network.name,
+      connection: new Connection(network.endpoints.mainnet || 'https://api.mainnet-beta.solana.com')
+    }));
 
-    try {
-      // Get recent transactions for the address
-      const pubkey = new PublicKey(sanitizedQuery);
-      const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 100 });
+    // Search across all networks in parallel
+    const allResults = await Promise.all(
+      networkConnections.map(async ({ networkId, networkName, connection }) => {
+        try {
+          // Get recent transactions for the address
+          const pubkey = new PublicKey(sanitizedQuery);
+          const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 100 });
 
-      // Fetch full transaction details
-      const transactions = await Promise.all(
-        signatures.map(async (sig) => {
-          try {
-            const tx = await connection.getTransaction(sig.signature, {
-              maxSupportedTransactionVersion: 0,
-            });
+          // Fetch full transaction details
+          const transactions = await Promise.all(
+            signatures.map(async (sig) => {
+              try {
+                const tx = await connection.getTransaction(sig.signature, {
+                  maxSupportedTransactionVersion: 0,
+                });
 
-            if (!tx || !tx.meta) return null;
+                if (!tx || !tx.meta) return null;
 
-            const timestamp = sig.blockTime ? new Date(sig.blockTime * 1000).toISOString() : null;
-            const postBalance = tx.meta.postBalances[0] ?? 0;
-            const preBalance = tx.meta.preBalances[0] ?? 0;
-            const amount = (postBalance - preBalance) / 1e9;
-            
-            return {
-              address: sanitizedQuery,
-              signature: sig.signature,
-              timestamp,
-              type: tx.meta.err ? 'failed' : 'success',
-              status: tx.meta.err ? 'failed' : 'success',
-              amount: Math.abs(amount),
-              balance: postBalance / 1e9,
-            } as TransactionResult;
-          } catch (error) {
-            console.error('Error fetching transaction:', error);
-            return null;
-          }
-        })
-      );
+                const timestamp = sig.blockTime ? new Date(sig.blockTime * 1000).toISOString() : null;
+                const postBalance = tx.meta.postBalances[0] ?? 0;
+                const preBalance = tx.meta.preBalances[0] ?? 0;
+                const amount = (postBalance - preBalance) / 1e9;
+                
+                return {
+                  address: sanitizedQuery,
+                  signature: sig.signature,
+                  timestamp,
+                  type: tx.meta.err ? 'failed' : 'success',
+                  status: tx.meta.err ? 'failed' : 'success',
+                  amount: Math.abs(amount),
+                  balance: postBalance / 1e9,
+                  network: networkName // Add network name to the result
+                } as TransactionResult;
+              } catch (error) {
+                console.error(`Error fetching transaction from ${networkName}:`, error);
+                return null;
+              }
+            })
+          );
 
-      results = transactions.filter((tx): tx is TransactionResult => tx !== null);
+          const networkResults = transactions.filter((tx): tx is TransactionResult => tx !== null);
+          return networkResults;
+        } catch (error) {
+          console.error(`Error fetching transactions from ${networkName}:`, error);
+          return [];
+        }
+      })
+    );
 
-      // Apply filters
-      if (start) {
-        results = results.filter(tx => tx.timestamp && tx.timestamp >= start);
-      }
-      if (end) {
-        results = results.filter(tx => tx.timestamp && tx.timestamp <= end);
-      }
-      if (type) {
-        results = results.filter(tx => tx.type === type.toLowerCase());
-      }
-      if (status) {
-        results = results.filter(tx => tx.status === status.toLowerCase());
-      }
-      if (min) {
-        results = results.filter(tx => tx.amount >= parseFloat(min));
-      }
-      if (max) {
-        results = results.filter(tx => tx.amount <= parseFloat(max));
-      }
+    // Combine results from all networks
+    let combinedResults: TransactionResult[] = allResults.flat();
 
-    } catch (error) {
-      console.error('Error fetching transactions:', error);
-      // If not a valid address or other error, return empty results
-      results = [];
+    // Apply filters
+    if (start) {
+      combinedResults = combinedResults.filter(tx => tx.timestamp && tx.timestamp >= start);
+    }
+    if (end) {
+      combinedResults = combinedResults.filter(tx => tx.timestamp && tx.timestamp <= end);
+    }
+    if (type) {
+      combinedResults = combinedResults.filter(tx => tx.type === type.toLowerCase());
+    }
+    if (status) {
+      combinedResults = combinedResults.filter(tx => tx.status === status.toLowerCase());
+    }
+    if (min) {
+      combinedResults = combinedResults.filter(tx => tx.amount >= parseFloat(min));
+    }
+    if (max) {
+      combinedResults = combinedResults.filter(tx => tx.amount <= parseFloat(max));
     }
 
-    return NextResponse.json(results);
+    return NextResponse.json(combinedResults);
   } catch (error) {
     console.error('Error in filtered search API:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
