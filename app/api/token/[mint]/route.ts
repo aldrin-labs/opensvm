@@ -7,9 +7,9 @@ import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
 
 // Rate limit configuration for token details
 const TOKEN_RATE_LIMIT = {
-  limit: 100,          // 5 requests
+  limit: 5,          // 5 requests
   windowMs: 500,    // per 5 seconds
-  maxRetries: 10,     // Allow 2 retries
+  maxRetries: 10,     // Allow 10 retries
   initialRetryDelay: 10,
   maxRetryDelay: 3000
 };
