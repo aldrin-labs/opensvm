@@ -87,6 +87,8 @@ async function fetchTransactionBatch(
                 tokenSymbol: 'SOL',
                 tokenAmount: amount.toString(),
                 transferType: delta < 0 ? 'OUT' : 'IN',
+                usdValue: (amount * 20).toFixed(2), // Placeholder USD value (SOL price ~$20)
+                currentUsdValue: (amount * 20).toFixed(2) // Placeholder current USD value
               });
             }
 
