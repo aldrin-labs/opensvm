@@ -11,110 +11,17 @@ import { ExecutionMode } from '../types';
 export class SolanaAIAgentCapability extends BaseCapability {
   type: CapabilityType = 'solana-ai';
   executionMode = ExecutionMode.Sequential;
-  private solanaAIAgent: any; // Using any type until we have proper typings
+  private solanaAIAgent: SolanaAgentKit;
 
   constructor(connection: Connection) {
     super(connection);
     try {
-      // We'll initialize the actual SDK in a production environment
-      // const { SolanaAgentKit } = require('solana-ai-agent');
-      // this.solanaAIAgent = new SolanaAgentKit(privateKey, rpcUrl, config);
-      
-      // For now, we'll use a mock implementation
-      this.solanaAIAgent = this.createMockSolanaAIAgent();
+      // Initialize the actual SDK
+      this.solanaAIAgent = new SolanaAgentKit({ connection });
     } catch (error) {
       console.error('Failed to initialize Solana AI Agent:', error);
-      this.solanaAIAgent = this.createMockSolanaAIAgent();
+      throw new Error('Failed to initialize Solana AI Agent. Real implementation is required.');
     }
-  }
-  
-  private createMockSolanaAIAgent() {
-    // Create a mock implementation for development
-    return {
-      // Mock methods that simulate the Solana AI Agent functionality
-      getBalance: async (tokenAddress?: string) => {
-        return {
-          sol: 10.5,
-          tokens: [
-            {
-              tokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-              name: 'USD Coin',
-              symbol: 'USDC',
-              balance: 100,
-              decimals: 6
-            },
-            {
-              tokenAddress: 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
-              name: 'Marinade staked SOL',
-              symbol: 'mSOL',
-              balance: 5,
-              decimals: 9
-            }
-          ]
-        };
-      },
-      
-      getTPS: async () => {
-        return {
-          currentTPS: 2500,
-          peakTPS: 4000,
-          averageTPS: 2000,
-          status: 'healthy'
-        };
-      },
-      
-      getTokenPrice: async (tokenSymbol: string) => {
-        const mockPrices: Record<string, number> = {
-          'SOL': 150.75,
-          'USDC': 1.0,
-          'BTC': 65750.25,
-          'ETH': 3250.50,
-          'BONK': 0.000025,
-          'JTO': 3.78
-        };
-        
-        return {
-          symbol: tokenSymbol,
-          price: mockPrices[tokenSymbol] || Math.random() * 10,
-          timestamp: new Date().toISOString()
-        };
-      },
-      
-      trade: async (outputMint: string, inputAmount: number, inputMint?: string, slippage?: number) => {
-        return {
-          success: true,
-          txId: 'simulated-tx-' + Math.random().toString(36).substr(2, 9),
-          fromToken: inputMint || 'SOL',
-          toToken: outputMint,
-          fromAmount: inputAmount,
-          toAmount: inputAmount * 1.5,
-          executionPrice: 1.5,
-          fee: inputAmount * 0.0035,
-          slippage: slippage || 0.01
-        };
-      },
-      
-      openPerpTradeLong: async (args: any) => {
-        return {
-          success: true,
-          txId: 'simulated-tx-' + Math.random().toString(36).substr(2, 9),
-          market: args.market || 'SOL-PERP',
-          size: args.size || 1,
-          price: args.price || 150.75,
-          leverage: args.leverage || 5,
-          status: 'open'
-        };
-      },
-      
-      getPerpMarketFundingRate: async (symbol: string, period: string = 'year') => {
-        return {
-          symbol,
-          fundingRate: 0.0125,
-          period,
-          annualizedRate: period === 'year' ? 0.0125 : 0.0125 * 8760
-        };
-      }
-    };
   }
 
   tools = [
@@ -127,9 +34,15 @@ export class SolanaAIAgentCapability extends BaseCapability {
           const addressMatch = message.content.match(/(?:address|wallet|account)[\s:]*([\w\d]+)/i);
           const tokenMatch = message.content.match(/(?:token|for token|of token)[\s:]*([\w\d]+)/i);
           
+          if (!addressMatch) {
+            return 'Please specify a wallet address to check the balance.';
+          }
+          
+          const walletAddress = addressMatch[1];
           const tokenAddress = tokenMatch ? tokenMatch[1] : undefined;
           
-          const result = await this.solanaAIAgent.getBalance(tokenAddress);
+          // Use the real implementation to get wallet balance
+          const result = await this.solanaAIAgent.getWalletBalance(walletAddress, tokenAddress);
           return JSON.stringify(result, null, 2);
         } catch (error) {
           console.error('Error getting wallet balance:', error);
@@ -143,7 +56,8 @@ export class SolanaAIAgentCapability extends BaseCapability {
       'Gets the current TPS of the Solana network',
       async () => {
         try {
-          const result = await this.solanaAIAgent.getTPS();
+          // Use the real implementation to get network TPS
+          const result = await this.solanaAIAgent.getNetworkTPS();
           return JSON.stringify(result, null, 2);
         } catch (error) {
           console.error('Error getting network TPS:', error);
@@ -165,6 +79,7 @@ export class SolanaAIAgentCapability extends BaseCapability {
           }
           
           const token = tokenMatch[1];
+          // Use the real implementation to get token price
           const result = await this.solanaAIAgent.getTokenPrice(token);
           return JSON.stringify(result, null, 2);
         } catch (error) {
@@ -189,12 +104,15 @@ export class SolanaAIAgentCapability extends BaseCapability {
             return 'Please specify to token and amount for trading.';
           }
           
-          const outputMint = toTokenMatch[1];
-          const inputAmount = parseFloat(amountMatch[1]);
-          const inputMint = fromTokenMatch ? fromTokenMatch[1] : undefined;
-          const slippage = slippageMatch ? parseFloat(slippageMatch[1]) / 100 : undefined;
+          const params = {
+            outputMint: toTokenMatch[1],
+            inputAmount: parseFloat(amountMatch[1]),
+            inputMint: fromTokenMatch ? fromTokenMatch[1] : undefined,
+            slippage: slippageMatch ? parseFloat(slippageMatch[1]) / 100 : undefined
+          };
           
-          const result = await this.solanaAIAgent.trade(outputMint, inputAmount, inputMint, slippage);
+          // Use the real implementation to trade tokens
+          const result = await this.solanaAIAgent.tradeTokens(params);
           return JSON.stringify(result, null, 2);
         } catch (error) {
           console.error('Error executing token trade:', error);
@@ -225,6 +143,7 @@ export class SolanaAIAgentCapability extends BaseCapability {
             leverage: leverageMatch ? parseFloat(leverageMatch[1]) : undefined
           };
           
+          // Use the real implementation to open a perp trade
           const result = await this.solanaAIAgent.openPerpTradeLong(args);
           return JSON.stringify(result, null, 2);
         } catch (error) {
@@ -250,6 +169,7 @@ export class SolanaAIAgentCapability extends BaseCapability {
           const market = marketMatch[1];
           const period = periodMatch ? periodMatch[1] : 'year';
           
+          // Use the real implementation to get funding rate
           const result = await this.solanaAIAgent.getPerpMarketFundingRate(market, period);
           return JSON.stringify(result, null, 2);
         } catch (error) {
