@@ -188,13 +188,25 @@ function EChartsTransactionGraph({
     parentSignature: string | null = null
   ) => {
     try {
+      if (!address) {
+        console.warn('Attempted to process account with empty address');
+        return;
+      }
+      
       await addAccountToGraph(address, totalAccounts, depth, parentSignature);
     } catch (e) {
       const accountKey = `${address}:${depth}`;
       console.error(`Error processing account ${address}:`, e);
       pendingFetchesRef.current?.delete(accountKey);
+      
+      // Don't set global error for individual account fetch issues
+      // Instead, show a warning that doesn't block the UI
+      setError({
+        message: `Note: Could not process account ${address.slice(0, 8)}... This won't affect the rest of the graph.`,
+        severity: 'warning'
+      });
     }
-  }, [totalAccounts]);
+  }, [totalAccounts, addAccountToGraph, setError]);
 
   // Add a node to the graph
   const addNode = useCallback((node: CachedNode) => {
@@ -205,7 +217,11 @@ function EChartsTransactionGraph({
       
       // Update the chart if it exists
       if (chartRef.current) {
-        updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        try {
+          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        } catch (error) {
+          console.error('Error updating graph data after adding node:', error);
+        }
       }
     }
   }, [updateNodeCount]);
@@ -218,7 +234,11 @@ function EChartsTransactionGraph({
       
       // Update the chart if it exists
       if (chartRef.current) {
-        updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        try {
+          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        } catch (error) {
+          console.error('Error updating graph data after adding edge:', error);
+        }
       }
     }
   }, []);
@@ -288,9 +308,10 @@ function EChartsTransactionGraph({
       // Queue related accounts for processing if depth allows
       if (depth < maxDepth) {
         const txDetails = await fetchTransactionDataWithCache(tx.signature);
-        if (txDetails?.accounts) {
+        // Add proper checks to ensure txDetails.accounts is an array before iterating
+        if (txDetails && txDetails.accounts && Array.isArray(txDetails.accounts)) {
           for (const account of txDetails.accounts) {
-            if (!shouldExcludeAddress(account.pubkey)) {
+            if (account && account.pubkey && !shouldExcludeAddress(account.pubkey)) {
               queueAccountFetch(account.pubkey, depth + 1, tx.signature);
             }
           }
@@ -341,31 +362,33 @@ function EChartsTransactionGraph({
       }
       
       // Process accounts
-      for (const account of txData.accounts) {
-        if (shouldExcludeAddress(account.pubkey)) continue;
-        
-        // Add account node
-        addNode({
-          data: {
-            id: account.pubkey,
-            label: account.pubkey.slice(0, 8) + '...',
-            type: 'account',
-            fullAddress: account.pubkey
-          }
-        });
-        
-        // Add edge from transaction to account
-        addEdge({
-          data: {
-            id: `${signature}->${account.pubkey}`,
-            source: signature,
-            target: account.pubkey,
-            type: 'connection'
-          }
-        });
-        
-        // Queue account for further processing
-        queueAccountFetch(account.pubkey, 1, signature);
+      if (txData.accounts && Array.isArray(txData.accounts)) {
+        for (const account of txData.accounts) {
+          if (!account || !account.pubkey || shouldExcludeAddress(account.pubkey)) continue;
+          
+          // Add account node
+          addNode({
+            data: {
+              id: account.pubkey,
+              label: account.pubkey.slice(0, 8) + '...',
+              type: 'account',
+              fullAddress: account.pubkey
+            }
+          });
+          
+          // Add edge from transaction to account
+          addEdge({
+            data: {
+              id: `${signature}->${account.pubkey}`,
+              source: signature,
+              target: account.pubkey,
+              type: 'connection'
+            }
+          });
+          
+          // Queue account for further processing
+          queueAccountFetch(account.pubkey, 1, signature);
+        }
       }
       
       // Apply layout

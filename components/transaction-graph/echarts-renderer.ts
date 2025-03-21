@@ -4,14 +4,6 @@ import * as echarts from 'echarts';
 import 'echarts-gl';
 import { Transaction, AccountData } from './types';
 
-// Configure ECharts to use WebGL renderer for better performance
-echarts.registerPostInit(function(chart) {
-  chart.getZr().configLayer(0, {
-    useWebGL: true,
-    preferWebGL: true
-  });
-});
-
 // Define node and edge types for the graph
 interface GraphNode {
   id: string;
@@ -80,23 +72,46 @@ const COLORS = {
 };
 
 /**
- * Initialize ECharts instance
+ * Initialize ECharts instance with fallback to canvas renderer if WebGL fails
  * @param container DOM element to render chart in
  * @returns ECharts instance
  */
 export const initializeECharts = (container: HTMLElement): echarts.ECharts => {
-  const chart = echarts.init(container, 'dark', {
-    renderer: 'canvas', // Start with canvas renderer, WebGL will be used for 3D elements
-    devicePixelRatio: window.devicePixelRatio,
-    useDirtyRect: true, // Enable dirty rectangle optimization
-  });
+  let chart: echarts.ECharts;
+  
+  try {
+    // Try to initialize with WebGL support
+    chart = echarts.init(container, 'dark', {
+      renderer: 'canvas', // Start with canvas renderer, WebGL will be used for 3D elements
+      devicePixelRatio: window.devicePixelRatio,
+      useDirtyRect: true, // Enable dirty rectangle optimization
+    });
+    
+    // Configure WebGL
+    try {
+      chart.getZr().configLayer(0, {
+        useWebGL: true,
+        preferWebGL: true
+      });
+    } catch (error) {
+      console.warn('Failed to configure WebGL, falling back to canvas renderer:', error);
+    }
+  } catch (error) {
+    console.error('Failed to initialize ECharts with WebGL, falling back to basic canvas renderer:', error);
+    // Fallback to basic canvas renderer
+    chart = echarts.init(container, 'dark', {
+      renderer: 'canvas',
+      devicePixelRatio: 1, // Use lower resolution for better performance
+      useDirtyRect: false
+    });
+  }
 
-  // Set default options
+  // Set default options with safer configuration
   chart.setOption({
     backgroundColor: 'rgba(0,0,0,0.02)',
     title: {
       text: 'Transaction Graph',
-      subtext: 'Powered by ECharts GL',
+      subtext: 'Powered by ECharts',
       left: 'center',
       top: 0,
       textStyle: {
@@ -145,11 +160,12 @@ export const initializeECharts = (container: HTMLElement): echarts.ECharts => {
         color: '#ccc'
       }
     },
-    animationDuration: 1500,
+    animationDuration: 1000, // Reduced from 1500
     animationEasingUpdate: 'quinticInOut',
     series: [{
       name: 'Transaction Graph',
-      type: 'graphGL',
+      // Use regular graph type instead of graphGL for better compatibility
+      type: 'graph',
       layout: 'force',
       force: {
         repulsion: 100,
@@ -180,7 +196,8 @@ export const initializeECharts = (container: HTMLElement): echarts.ECharts => {
         position: 'right',
         formatter: '{b}'
       },
-      autoCurveness: true,
+      edgeSymbol: ['none', 'arrow'],
+      edgeSymbolSize: 8,
       data: [],
       links: [],
       categories: CATEGORIES
@@ -338,54 +355,99 @@ export const focusOnNode = (chart: echarts.ECharts, nodeId: string): void => {
  * @param layoutType Type of layout to apply
  */
 export const applyLayout = (chart: echarts.ECharts, layoutType: string): void => {
-  let layout: any;
-  
-  switch (layoutType) {
-    case 'force':
-      layout = {
-        type: 'graphGL',
-        layout: 'force',
-        force: {
-          repulsion: 100,
-          gravity: 0.1,
-          edgeLength: 50,
-          friction: 0.6
+  try {
+    let layout: any;
+    
+    switch (layoutType) {
+      case 'force':
+        layout = {
+          type: 'graphGL',
+          layout: 'force',
+          force: {
+            repulsion: 100,
+            gravity: 0.1,
+            edgeLength: 50,
+            friction: 0.6
+          }
+        };
+        break;
+      case 'circular':
+        layout = {
+          type: 'graphGL',
+          layout: 'circular',
+          circular: {
+            rotateLabel: true
+          }
+        };
+        break;
+      case 'tree':
+        // Use a safer force layout as fallback instead of forceAtlas2 which can have WebGL issues
+        layout = {
+          type: 'graphGL',
+          layout: 'force',
+          force: {
+            repulsion: 200,
+            gravity: 0.2,
+            edgeLength: 80,
+            friction: 0.8,
+            layoutAnimation: true
+          }
+        };
+        
+        // Try to apply the layout with error handling
+        try {
+          chart.setOption({
+            series: [layout]
+          });
+        } catch (error) {
+          console.warn('Error applying tree layout, falling back to basic force layout:', error);
+          // Fallback to even simpler force layout without WebGL
+          chart.setOption({
+            series: [{
+              type: 'graph',
+              layout: 'force',
+              force: {
+                repulsion: 100,
+                gravity: 0.1,
+                edgeLength: 50
+              },
+              roam: true,
+              data: chart.getOption().series[0].data,
+              links: chart.getOption().series[0].links,
+              categories: chart.getOption().series[0].categories
+            }]
+          });
         }
-      };
-      break;
-    case 'circular':
-      layout = {
-        type: 'graphGL',
-        layout: 'circular',
-        circular: {
-          rotateLabel: true
-        }
-      };
-      break;
-    case 'tree':
-      layout = {
-        type: 'graphGL',
-        layout: 'forceAtlas2',
-        forceAtlas2: {
-          steps: 50,
-          stopThreshold: 1,
-          jitterTolerence: 10,
-          edgeWeight: [0.2, 1],
-          gravity: 5,
-          scaling: 5
-        }
-      };
-      break;
-    default:
-      layout = {
-        type: 'graphGL',
-        layout: 'force'
-      };
+        return; // Return early to skip the standard chart.setOption call
+      default:
+        layout = {
+          type: 'graphGL',
+          layout: 'force'
+        };
+    }
+    
+    // Only apply the layout if we didn't return early
+    chart.setOption({
+      series: [layout]
+    });
+  } catch (error) {
+    console.error('Error applying layout:', error);
+    // Fallback to basic layout
+    try {
+      chart.setOption({
+        series: [{
+          type: 'graph',
+          layout: 'force',
+          force: {
+            repulsion: 50,
+            edgeLength: 50
+          }
+        }]
+      });
+    } catch (e) {
+      console.error('Failed to apply fallback layout:', e);
+    }
   }
-  
-  chart.setOption({
-    series: [layout]
-  });
 };
 
 /**
