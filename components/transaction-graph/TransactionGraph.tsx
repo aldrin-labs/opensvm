@@ -1195,7 +1195,7 @@ if (elementsCount > 100) {
             <option value="concentric">Concentric</option>
           </select>
         </div>
-        
+                
         <div className="flex flex-col gap-1">
           <label className="text-xs font-medium">Node Limit</label>
           <select 
@@ -1245,91 +1245,7 @@ if (elementsCount > 100) {
                   cyRef.current.pixelRatio(1);
                   
                   // Limit visible nodes for very large graphs
-                  if (nodeCount.current > 500 && nodeVisibilityLimit > 200) {
-                    setNodeVisibilityLimit(200);
-                  }
-                } else {
-                  // Restore normal settings
-                  cyRef.current.style()
-                    .selector('node')
-                    .style({
-                      'transition-property': 'background-color, border-color, border-width, opacity, scale',
-                      'transition-duration': '200ms'
-                    })
-                    .selector('edge')
-                    .style({
-                      'transition-property': 'opacity, width',
-                      'transition-duration': '200ms'
-                    })
-                    .update();
-                  
-                  // Restore rendering quality
-                  cyRef.current.userZoomingEnabled(true);
-                  cyRef.current.userPanningEnabled(true);
-                  cyRef.current.hideEdgesOnViewport(false);
-                  cyRef.current.hideLabelsOnViewport(false);
-                  cyRef.current.textureOnViewport(false);
-                  cyRef.current.motionBlur(false);
-                  cyRef.current.pixelRatio('auto');
-                }
-              }
-            }}
-          >
-            <option value="normal">Normal Mode</option>
-            <option value="high">High Performance</option>
-          </select>
-        </div>
-        
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium">Node Limit</label>
-          <select 
-            className="text-xs bg-background border border-border rounded-md p-1"
-            value={nodeVisibilityLimit}
-            onChange={(e) => {
-              const limit = Number(e.target.value);
-              setNodeVisibilityLimit(limit);
-            }}
-          >
-            <option value="100">100 nodes (fastest)</option>
-            <option value="200">200 nodes (fast)</option>
-            <option value="500">500 nodes (balanced)</option>
-            <option value="1000">1000 nodes (detailed)</option>
-            <option value="10000">All nodes (slowest)</option>
-          </select>
-        </div>
-        
-        <div className="flex flex-col gap-1">
-          <label className="text-xs font-medium">Performance Mode</label>
-          <select 
-            className="text-xs bg-background border border-border rounded-md p-1"
-            value={performanceMode ? 'high' : 'normal'}
-            onChange={(e) => {
-              const mode = e.target.value === 'high';
-              setPerformanceMode(mode);
-              
-              if (cyRef.current) {
-                // Apply performance optimizations
-                if (mode) {
-                  // Disable animations and transitions
-                  cyRef.current.style()
-                    .selector('node, edge')
-                    .style({
-                      'transition-property': 'none',
-                      'transition-duration': 0
-                    })
-                    .update();
-                  
-                  // Reduce rendering quality
-                  cyRef.current.userZoomingEnabled(true);
-                  cyRef.current.userPanningEnabled(true);
-                  cyRef.current.hideEdgesOnViewport(true);
-                  cyRef.current.hideLabelsOnViewport(true);
-                  cyRef.current.textureOnViewport(true);
-                  cyRef.current.motionBlur(false);
-                  cyRef.current.pixelRatio(1);
-                  
-                  // Limit visible nodes for very large graphs
-                  if (nodeCount.current > 500 && nodeVisibilityLimit > 200) {
+                  if (nodeCount > 500 && nodeVisibilityLimit > 200) {
                     setNodeVisibilityLimit(200);
                   }
                 } else {

@@ -13,12 +13,12 @@ let tooltipCache: HTMLElement | null = null;
 let lastElementId = '';
 
 // Throttle function to limit tooltip updates
-const throttle = (func: Function, limit: number): Function => {
+const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T => {
   let inThrottle: boolean;
   let lastFunc: ReturnType<typeof setTimeout>;
   let lastRan: number;
   
-  return function(this: any, ...args: any[]) {
+  return function(this: any, ...args: Parameters<T>) {
     const context = this;
     
     if (!inThrottle) {
@@ -38,7 +38,7 @@ const throttle = (func: Function, limit: number): Function => {
         }
       }, limit - (Date.now() - lastRan));
     }
-  };
+  } as T;
 };
 
 /**
