@@ -112,7 +112,7 @@ export default function GraphContent({ signature }: GraphContentProps) {
       <div className="bg-background rounded-lg p-2 sm:p-4 md:p-5 shadow-lg border border-border h-full flex flex-col transaction-graph-card" ref={graphContainerRef} style={{ minHeight: "calc(70vh - 200px)" }}>
         <div className="transaction-graph-container flex-1 relative overflow-hidden">
           {initialAccount ? (
-            <TransactionGraphWrapper
+            <TransactionGraph
               initialSignature={signature} 
               initialAccount={initialAccount}
               onTransactionSelect={handleTransactionSelect}
