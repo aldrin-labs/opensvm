@@ -54,6 +54,8 @@
     "d3": "^7.9.0",
     "date-fns": "^4.1.0",
     "dotenv": "^16.4.7",
+    "echarts": "^5.6.0",
+    "echarts-gl": "^2.0.9",
     "encoding": "^0.1.13",
     "eventsource-parser": "^3.0.0",
     "framer-motion": "^12.4.7",
