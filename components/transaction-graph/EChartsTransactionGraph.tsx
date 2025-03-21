@@ -282,14 +282,30 @@ function EChartsTransactionGraph({
         
         // Queue related accounts for processing if depth allows
         if (depth < maxDepth) {
-          const txDetails = await fetchTransactionDataWithCache(tx.signature);
-          // Add proper checks to ensure txDetails.accounts is an array before iterating
-          if (txDetails && txDetails.accounts && Array.isArray(txDetails.accounts)) {
-            for (const account of txDetails.accounts) {
-              if (account && account.pubkey && !shouldExcludeAddress(account.pubkey)) {
-                queueAccountFetch(account.pubkey, depth + 1, tx.signature);
+          try {
+            const txDetails = await fetchTransactionDataWithCache(tx.signature);
+            
+            // More robust check for accounts array
+            if (txDetails && 
+                txDetails.accounts && 
+                Array.isArray(txDetails.accounts) && 
+                txDetails.accounts.length > 0) {
+              
+              // Use for-loop with index instead of for-of to avoid iteration issues
+              for (let i = 0; i < txDetails.accounts.length; i++) {
+                const account = txDetails.accounts[i];
+                if (account && 
+                    typeof account === 'object' && 
+                    account.pubkey && 
+                    typeof account.pubkey === 'string' && 
+                    !shouldExcludeAddress(account.pubkey)) {
+                  queueAccountFetch(account.pubkey, depth + 1, tx.signature);
+                }
               }
             }
+          } catch (error) {
+            console.error(`Error processing transaction details for ${tx.signature}:`, error);
+            // Continue processing other transactions even if one fails
           }
         }
       }
@@ -386,14 +402,30 @@ function EChartsTransactionGraph({
       
       // Queue related accounts for processing if depth allows
       if (depth < maxDepth) {
-        const txDetails = await fetchTransactionDataWithCache(tx.signature);
-        // Add proper checks to ensure txDetails.accounts is an array before iterating
-        if (txDetails && txDetails.accounts && Array.isArray(txDetails.accounts)) {
-          for (const account of txDetails.accounts) {
-            if (account && account.pubkey && !shouldExcludeAddress(account.pubkey)) {
-              queueAccountFetch(account.pubkey, depth + 1, tx.signature);
+        try {
+          const txDetails = await fetchTransactionDataWithCache(tx.signature);
+          
+          // More robust check for accounts array
+          if (txDetails && 
+              txDetails.accounts && 
+              Array.isArray(txDetails.accounts) && 
+              txDetails.accounts.length > 0) {
+            
+            // Use for-loop with index instead of for-of to avoid iteration issues
+            for (let i = 0; i < txDetails.accounts.length; i++) {
+              const account = txDetails.accounts[i];
+              if (account && 
+                  typeof account === 'object' && 
+                  account.pubkey && 
+                  typeof account.pubkey === 'string' && 
+                  !shouldExcludeAddress(account.pubkey)) {
+                queueAccountFetch(account.pubkey, depth + 1, tx.signature);
+              }
             }
           }
+        } catch (error) {
+          console.error(`Error processing transaction details for ${tx.signature}:`, error);
+          // Continue processing other transactions even if one fails
         }
       }
     }
@@ -441,9 +473,15 @@ function EChartsTransactionGraph({
       }
       
       // Process accounts
-      if (txData.accounts && Array.isArray(txData.accounts)) {
-        for (const account of txData.accounts) {
-          if (!account || !account.pubkey || shouldExcludeAddress(account.pubkey)) continue;
+      if (txData.accounts && Array.isArray(txData.accounts) && txData.accounts.length > 0) {
+        // Use for-loop with index instead of for-of to avoid iteration issues
+        for (let i = 0; i < txData.accounts.length; i++) {
+          const account = txData.accounts[i];
+          if (!account || 
+              typeof account !== 'object' || 
+              !account.pubkey || 
+              typeof account.pubkey !== 'string' || 
+              shouldExcludeAddress(account.pubkey)) continue;
           
           // Add account node
           addNode({
