@@ -491,12 +491,18 @@ isInitialized.current = true;
   // @ts-ignore - dagre layout options are not fully typed
   rankDir: 'LR',
   fit: true,
-  padding: 50,
-  animate: true,
-  animationDuration: 500,
+  padding: 30, // Reduced from 50
+  animate: false, // Disable animation for initial load
+  animationDuration: 300, // Reduced from 500
   animationEasing: 'ease-in-out-cubic'
 }).run();
-cyRef.current.zoom(0.5);
+// Adjust zoom level based on graph size
+const elementsCount = cyRef.current.elements().length;
+if (elementsCount > 100) {
+  cyRef.current.zoom(0.3); // Zoom out more for larger graphs
+} else {
+  cyRef.current.zoom(0.5);
+}
               }
             });
           }
@@ -849,11 +855,24 @@ cyRef.current.zoom(0.5);
           onClick={() => {
             if (cyRef.current) {
               try {
-                // Use a more specific selector to avoid empty selection errors
                 const elements = cyRef.current.elements();
+                const elementsCount = elements.length;
+                
                 if (elements.length > 0) {
-                  cyRef.current.fit(elements);
-                  cyRef.current.center();
+                  // Skip animation for large graphs
+                  if (elementsCount > 100) {
+                    cyRef.current.fit(elements);
+                    cyRef.current.center();
+                  } else {
+                    cyRef.current.animate({
+                      fit: {
+                        eles: elements,
+                        padding: 20
+                      }
+                    }, {
+                      duration: 200 // Reduced duration
+                    });
+                  }
                 }
               } catch (err) {
                 console.error('Error during fit view:', err);
@@ -887,8 +906,20 @@ cyRef.current.zoom(0.5);
           onClick={() => {
             if (cyRef.current) {
               const zoom = cyRef.current.zoom();
+              const elementsCount = cyRef.current.elements().length;
+              
               try {
-                cyRef.current.zoom(zoom / 1.2);
+                // Skip animation for large graphs
+                if (elementsCount > 100) {
+                  cyRef.current.zoom(zoom / 1.2);
+                } else {
+                  cyRef.current.animate({
+                    zoom: zoom / 1.2,
+                    easing: 'ease-out-cubic'
+                  }, {
+                    duration: 100 // Reduced from default
+                  });
+                }
               } catch (err) {
                 console.error('Error during zoom out:', err);
               }
@@ -934,15 +965,41 @@ cyRef.current.zoom(0.5);
             onChange={(e) => {
               const filterStatus = e.target.value;
               if (cyRef.current) {
-                if (filterStatus === 'all') {
-                  cyRef.current.elements('node[type="transaction"]').removeClass('filtered').style('opacity', 1);
-                  cyRef.current.elements('node[type="transaction"]').connectedEdges().removeClass('filtered').style('opacity', 1);
+                // Disable animations during filtering for better performance
+                const elementsCount = cyRef.current.elements().length;
+                const isLargeGraph = elementsCount > 100;
+                
+                // For large graphs, use batch updates
+                if (isLargeGraph) {
+                  cyRef.current.batch(() => {
+                    if (filterStatus === 'all') {
+                      cyRef.current.elements('node[type="transaction"]').removeClass('filtered');
+                      cyRef.current.elements('node[type="transaction"]').style('opacity', 1);
+                      cyRef.current.elements('node[type="transaction"]').connectedEdges().removeClass('filtered');
+                      cyRef.current.elements('node[type="transaction"]').connectedEdges().style('opacity', 1);
+                    } else {
+                      const successValue = filterStatus === 'success';
+                      cyRef.current.elements('node[type="transaction"]').addClass('filtered');
+                      cyRef.current.elements('node[type="transaction"]').style('opacity', 0.2);
+                      cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).removeClass('filtered');
+                      cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).style('opacity', 1);
+                      // Also show connected edges for visible nodes
+                      cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).connectedEdges().removeClass('filtered');
+                      cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).connectedEdges().style('opacity', 1);
+                    }
+                  });
                 } else {
-                  const successValue = filterStatus === 'success';
-                  cyRef.current.elements('node[type="transaction"]').addClass('filtered').style('opacity', 0.2);
-                  cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).removeClass('filtered').style('opacity', 1);
-                  // Also show connected edges for visible nodes
-                  cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).connectedEdges().removeClass('filtered').style('opacity', 1);
+                  // For smaller graphs, use regular updates
+                  if (filterStatus === 'all') {
+                    cyRef.current.elements('node[type="transaction"]').removeClass('filtered').style('opacity', 1);
+                    cyRef.current.elements('node[type="transaction"]').connectedEdges().removeClass('filtered').style('opacity', 1);
+                  } else {
+                    const successValue = filterStatus === 'success';
+                    cyRef.current.elements('node[type="transaction"]').addClass('filtered').style('opacity', 0.2);
+                    cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).removeClass('filtered').style('opacity', 1);
+                    // Also show connected edges for visible nodes
+                    cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).connectedEdges().removeClass('filtered').style('opacity', 1);
+                  }
                 }
               }
             }}
@@ -960,12 +1017,16 @@ cyRef.current.zoom(0.5);
             onChange={(e) => {
               const layoutType = e.target.value;
               if (cyRef.current) {
+                // Disable animations for large graphs
+                const elementsCount = cyRef.current.elements().length;
+                const shouldAnimate = elementsCount <= 100;
+                
                 let layoutOptions: any = {
-                  animate: true,
-                  animationDuration: 500,
+                  animate: shouldAnimate,
+                  animationDuration: 300, // Reduced from 500
                   animationEasing: 'ease-in-out-cubic',
                   fit: true,
-                  padding: 50
+                  padding: 30 // Reduced from 50
                 };
                 
                 if (layoutType === 'dagre') {
@@ -974,15 +1035,15 @@ cyRef.current.zoom(0.5);
                     name: 'dagre',
                     rankDir: 'LR',
                     ranker: 'tight-tree',
-                    rankSep: 100,
-                    nodeSep: 80,
-                    edgeSep: 50,
+                    rankSep: 50, // Reduced from 100
+                    nodeSep: 40, // Reduced from 80
+                    edgeSep: 25, // Reduced from 50
                   };
                 } else if (layoutType === 'circle') {
                   layoutOptions = {
                     ...layoutOptions,
                     name: 'circle',
-                    radius: 200,
+                    radius: 150, // Reduced from 200
                     startAngle: 3 / 2 * Math.PI,
                     sweep: 2 * Math.PI,
                   };
@@ -997,7 +1058,7 @@ cyRef.current.zoom(0.5);
                   layoutOptions = {
                     ...layoutOptions,
                     name: 'concentric',
-                    minNodeSpacing: 50,
+                    minNodeSpacing: 30, // Reduced from 50
                     concentric: (node: any) => {
                       // Transactions in the center, accounts in outer rings
                       return node.data('type') === 'transaction' ? 2 : 1;
@@ -1005,7 +1066,36 @@ cyRef.current.zoom(0.5);
                   };
                 }
                 
-                cyRef.current.layout(layoutOptions).run();
+                // For large graphs, show loading indicator
+                if (elementsCount > 200) {
+                  // Optional: Show a loading indicator for large graphs
+                  const loadingIndicator = document.createElement('div');
+                  loadingIndicator.id = 'layout-loading';
+                  loadingIndicator.style.position = 'absolute';
+                  loadingIndicator.style.top = '50%';
+                  loadingIndicator.style.left = '50%';
+                  loadingIndicator.style.transform = 'translate(-50%, -50%)';
+                  loadingIndicator.style.background = 'rgba(0,0,0,0.7)';
+                  loadingIndicator.style.color = 'white';
+                  loadingIndicator.style.padding = '10px 20px';
+                  loadingIndicator.style.borderRadius = '4px';
+                  loadingIndicator.style.zIndex = '1000';
+                  loadingIndicator.textContent = 'Applying layout...';
+                  containerRef.current?.appendChild(loadingIndicator);
+                  
+                  // Use requestAnimationFrame to avoid blocking the UI
+                  requestAnimationFrame(() => {
+                    cyRef.current?.layout(layoutOptions).run();
+                    
+                    // Remove loading indicator after layout is complete
+                    setTimeout(() => {
+                      document.getElementById('layout-loading')?.remove();
+                    }, 500);
+                  });
+                } else {
+                  // For smaller graphs, apply layout immediately
+                  cyRef.current.layout(layoutOptions).run();
+                }
               }
             }}
           >
@@ -1013,6 +1103,90 @@ cyRef.current.zoom(0.5);
             <option value="circle">Circular</option>
             <option value="grid">Grid</option>
             <option value="concentric">Concentric</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Node Limit</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            value={nodeVisibilityLimit}
+            onChange={(e) => {
+              const limit = Number(e.target.value);
+              setNodeVisibilityLimit(limit);
+            }}
+          >
+            <option value="100">100 nodes (fastest)</option>
+            <option value="200">200 nodes (fast)</option>
+            <option value="500">500 nodes (balanced)</option>
+            <option value="1000">1000 nodes (detailed)</option>
+            <option value="10000">All nodes (slowest)</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Performance Mode</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            value={performanceMode ? 'high' : 'normal'}
+            onChange={(e) => {
+              const mode = e.target.value === 'high';
+              setPerformanceMode(mode);
+              
+              if (cyRef.current) {
+                // Apply performance optimizations
+                if (mode) {
+                  // Disable animations and transitions
+                  cyRef.current.style()
+                    .selector('node, edge')
+                    .style({
+                      'transition-property': 'none',
+                      'transition-duration': 0
+                    })
+                    .update();
+                  
+                  // Reduce rendering quality
+                  cyRef.current.userZoomingEnabled(true);
+                  cyRef.current.userPanningEnabled(true);
+                  cyRef.current.hideEdgesOnViewport(true);
+                  cyRef.current.hideLabelsOnViewport(true);
+                  cyRef.current.textureOnViewport(true);
+                  cyRef.current.motionBlur(false);
+                  cyRef.current.pixelRatio(1);
+                  
+                  // Limit visible nodes for very large graphs
+                  if (nodeCount > 500 && nodeVisibilityLimit > 200) {
+                    setNodeVisibilityLimit(200);
+                  }
+                } else {
+                  // Restore normal settings
+                  cyRef.current.style()
+                    .selector('node')
+                    .style({
+                      'transition-property': 'background-color, border-color, border-width, opacity, scale',
+                      'transition-duration': '200ms'
+                    })
+                    .selector('edge')
+                    .style({
+                      'transition-property': 'opacity, width',
+                      'transition-duration': '200ms'
+                    })
+                    .update();
+                  
+                  // Restore rendering quality
+                  cyRef.current.userZoomingEnabled(true);
+                  cyRef.current.userPanningEnabled(true);
+                  cyRef.current.hideEdgesOnViewport(false);
+                  cyRef.current.hideLabelsOnViewport(false);
+                  cyRef.current.textureOnViewport(false);
+                  cyRef.current.motionBlur(false);
+                  cyRef.current.pixelRatio('auto');
+                }
+              }
+            }}
+          >
+            <option value="normal">Normal Mode</option>
+            <option value="high">High Performance</option>
           </select>
         </div>
       </div>

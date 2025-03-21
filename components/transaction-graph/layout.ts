@@ -352,16 +352,34 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
       name: 'dagre' as any,
       rankDir: 'LR',
       ranker: 'network-simplex',
-      rankSep: 200,
-      nodeSep: 200,
-      edgeSep: 100,
-      padding: 80,
-      spacingFactor: 2.5
+      rankSep: 80, // Reduced from 100
+      nodeSep: 50, // Reduced from 100
+      edgeSep: 30, // Reduced from 50
+      padding: 30, // Reduced from 40
+      spacingFactor: 1.2 // Reduced from 1.5
     },
     minZoom: 0.2,
     maxZoom: 3,
-    wheelSensitivity: 1.0, // Using default value for consistent zoom behavior across different mice
-    motionBlur: true, // Enable motion blur for smoother animations
-    pixelRatio: 'auto' // Use device pixel ratio for better rendering
+    wheelSensitivity: 0.2, // Reduced for smoother zooming
+    motionBlur: false, // Disable motion blur for better performance
+    pixelRatio: 1, // Use fixed pixel ratio instead of 'auto' for better performance
+    textureOnViewport: true, // Add texture on viewport for better performance with large graphs
+    hideEdgesOnViewport: true, // Hide edges during viewport changes for better performance
+    hideLabelsOnViewport: true, // Hide labels during viewport changes for better performance
+    styleEnabled: true, // Keep styles enabled
+    autoungrabify: false, // Allow nodes to be moved
+    userZoomingEnabled: true,
+    userPanningEnabled: true,
+    boxSelectionEnabled: false, // Disable box selection for better performance
+    selectionType: 'single', // Only allow selecting one element at a time
+    touchTapThreshold: 8, // Increase touch tap threshold for better mobile performance
+    desktopTapThreshold: 4, // Increase desktop tap threshold for better performance
+    autolock: false, // Don't lock the graph
+    autopan: true, // Enable auto pan
+    autounselectify: false, // Don't auto unselectify
+    maxSimulationTime: 2000, // Limit simulation time for force-directed layouts
+    panningEnabled: true,
+    zoomingEnabled: true,
+    fitPadding: 30 // Reduced from default
   });
 };

@@ -289,9 +289,15 @@ export const setupGraphInteractions = (
     }
   });
   
-  // Add mouse wheel handler for smoother zooming
+  // Add mouse wheel handler for smoother zooming with less overhead
   const wheelHandler = (event: WheelEvent) => {
     if (!containerRef.current?.contains(event.target as Node)) return;
+    
+    // Throttle wheel events for better performance
+    if ((wheelHandler as any).timeout) return;
+    (wheelHandler as any).timeout = setTimeout(() => {
+      (wheelHandler as any).timeout = null;
+    }, 50);
     
     // Get mouse position relative to the container
     const containerRect = containerRef.current.getBoundingClientRect();
@@ -305,14 +311,23 @@ export const setupGraphInteractions = (
     const delta = event.deltaY;
     const zoomFactor = delta > 0 ? 0.9 : 1.1;
     
-    // Animate zoom centered on mouse position
-    cy.animate({
-      zoom: cy.zoom() * zoomFactor,
-      center: { x: pos[0], y: pos[1] },
-      easing: 'ease-out-cubic'
-    }, {
-      duration: 100
-    });
+    // For large graphs, skip animation for better performance
+    const elementCount = cy.elements().length;
+    if (elementCount > 100) {
+      cy.zoom({
+        level: cy.zoom() * zoomFactor,
+        position: { x: pos[0], y: pos[1] }
+      });
+    } else {
+      // Animate zoom centered on mouse position with shorter duration
+      cy.animate({
+        zoom: cy.zoom() * zoomFactor,
+        center: { x: pos[0], y: pos[1] },
+        easing: 'ease-out-cubic'
+      }, {
+        duration: 50 // Reduced from 100
+      });
+    }
     
     // Prevent default browser behavior
     event.preventDefault();
@@ -328,9 +343,7 @@ export const setupGraphInteractions = (
 };
 
 /**
- * Handle graph resizing
- * @param cyRef Reference to cytoscape instance 
- * @param preserveViewport Whether to preserve the current viewport (default: true)
+ * Handle graph resizing with performance optimizations
  */
 export const resizeGraph = (
   cyRef: React.MutableRefObject<cytoscape.Core | null>,
