@@ -166,10 +166,17 @@ function EChartsTransactionGraph({
       pendingFetchesRef,
       loadedAccountsRef,
       setTotalAccounts,
-      processAccountFetchQueue,
+      () => {
+        processAccountFetchQueueUtil(
+          fetchQueueRef,
+          fetchAndProcessAccount,
+          isProcessingQueueRef,
+          nodeCount
+        );
+      },
       isProcessingQueueRef
     );
-  }, []);
+  }, [nodeCount]);
 
   // Process the fetch queue in parallel
   const processAccountFetchQueue = useCallback(() => {
@@ -193,7 +200,69 @@ function EChartsTransactionGraph({
         return;
       }
       
-      await addAccountToGraph(address, totalAccounts, depth, parentSignature);
+      // Use the custom implementation directly
+      // Create a custom version of addAccountToGraphUtil that works with ECharts
+      const transactions = await fetchAccountTransactionsWithError(address);
+      
+      if (!transactions || transactions.length === 0) {
+        return;
+      }
+      
+      // Add the account node
+      addNode({
+        data: {
+          id: address,
+          label: address.slice(0, 8) + '...',
+          type: 'account',
+          fullAddress: address
+        }
+      });
+      
+      // Process each transaction
+      for (const tx of transactions) {
+        if (!shouldIncludeTransaction(tx)) continue;
+        
+        // Add transaction node
+        addNode({
+          data: {
+            id: tx.signature,
+            label: tx.signature.slice(0, 8) + '...',
+            type: 'transaction',
+            success: tx.err === null,
+            fullSignature: tx.signature,
+            timestamp: tx.blockTime,
+            formattedTime: tx.blockTime ? new Date(tx.blockTime * 1000).toLocaleString() : 'Unknown'
+          }
+        });
+        
+        // Add edge from account to transaction
+        addEdge({
+          data: {
+            id: `${address}->${tx.signature}`,
+            source: address,
+            target: tx.signature,
+            type: 'connection'
+          }
+        });
+        
+        // Queue related accounts for processing if depth allows
+        if (depth < maxDepth) {
+          const txDetails = await fetchTransactionDataWithCache(tx.signature);
+          // Add proper checks to ensure txDetails.accounts is an array before iterating
+          if (txDetails && txDetails.accounts && Array.isArray(txDetails.accounts)) {
+            for (const account of txDetails.accounts) {
+              if (account && account.pubkey && !shouldExcludeAddress(account.pubkey)) {
+                queueAccountFetch(account.pubkey, depth + 1, tx.signature);
+              }
+            }
+          }
+        }
+      }
+      
+      // Apply layout after adding elements
+      if (chartRef.current) {
+        applyLayout(chartRef.current, 'force');
+      }
     } catch (e) {
       const accountKey = `${address}:${depth}`;
       console.error(`Error processing account ${address}:`, e);
@@ -206,7 +275,17 @@ function EChartsTransactionGraph({
         severity: 'warning'
       });
     }
-  }, [totalAccounts, addAccountToGraph, setError]);
+  }, [
+    fetchAccountTransactionsWithError, 
+    shouldIncludeTransaction, 
+    addNode, 
+    addEdge, 
+    maxDepth, 
+    fetchTransactionDataWithCache, 
+    shouldExcludeAddress, 
+    queueAccountFetch, 
+    setError
+  ]);
 
   // Add a node to the graph
   const addNode = useCallback((node: CachedNode) => {
