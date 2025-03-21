@@ -74,3 +74,33 @@ export interface NavigationHistoryState {
   currentIndex: number;
   isNavigating: boolean;
 }
+
+// Performance optimization related types
+export interface ElementCache {
+  nodes: Map<string, cytoscape.NodeDefinition>;
+  edges: Map<string, cytoscape.EdgeDefinition>;
+}
+
+export interface RenderBatch {
+  nodes: cytoscape.NodeDefinition[];
+  edges: cytoscape.EdgeDefinition[];
+}
+
+export interface PerformanceConfig {
+  batchSize: number;
+  renderDelay: number;
+  useElementCache: boolean;
+  useVirtualization: boolean;
+  maxVisibleElements?: number;
+}
+
+export interface VirtualizationState {
+  visibleArea: {
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+  };
+  renderedElements: Set<string>;
+  hiddenElements: Set<string>;
+}

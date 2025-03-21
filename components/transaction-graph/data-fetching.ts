@@ -164,16 +164,18 @@ export const queueAccountFetch = (
 };
 
 /**
- * Process the fetch queue in parallel
+ * Process the fetch queue in parallel - optimized for performance
  * @param fetchQueueRef Reference to fetch queue
  * @param fetchAndProcessAccount Function to fetch and process an account
  * @param isProcessingQueueRef Reference to track if queue is being processed (optional)
+ * @param currentNodeCount Current number of nodes in the graph (optional)
  * @returns Promise that resolves when processing is complete
  */
 export const processAccountFetchQueue = async (
   fetchQueueRef: React.MutableRefObject<FetchQueueItem[]>,
   fetchAndProcessAccount: (address: string, depth: number, parentSignature: string | null) => Promise<void>,
-  isProcessingQueueRef?: React.MutableRefObject<boolean>
+  isProcessingQueueRef?: React.MutableRefObject<boolean>,
+  currentNodeCount = 0
 ): Promise<void> => { 
   // Early return if queue is empty or already processing
   if (fetchQueueRef.current.length === 0) return;
@@ -185,10 +187,18 @@ export const processAccountFetchQueue = async (
       isProcessingQueueRef.current = true;
     }
     
+    // Determine batch size based on graph size
+    let batchSize = 10;
+    if (currentNodeCount > LARGE_GRAPH_THRESHOLD) {
+      batchSize = 3; // Very small batches for large graphs
+    } else if (currentNodeCount > MEDIUM_GRAPH_THRESHOLD) {
+      batchSize = 5; // Small batches for medium graphs
+    }
+    
     // Use iterative approach instead of recursion to avoid stack overflow
     while (fetchQueueRef.current.length > 0) {
-      // Process batches of 10 accounts in parallel
-      const batch = fetchQueueRef.current.splice(0, 10);
+      // Process batches of accounts in parallel
+      const batch = fetchQueueRef.current.splice(0, batchSize);
       
       // Fetch all accounts in parallel with timeout protection
       await Promise.allSettled(
@@ -207,7 +217,15 @@ export const processAccountFetchQueue = async (
       );
       
       // Add small delay between batches to prevent overwhelming the API
-      await new Promise(resolve => setTimeout(resolve, 50));
+      // Adjust delay based on graph size
+      let delayBetweenBatches = 50;
+      if (currentNodeCount > LARGE_GRAPH_THRESHOLD) {
+        delayBetweenBatches = 200; // Longer delay for large graphs
+      } else if (currentNodeCount > MEDIUM_GRAPH_THRESHOLD) {
+        delayBetweenBatches = 100; // Medium delay for medium graphs
+      }
+      
+      await new Promise(resolve => setTimeout(resolve, delayBetweenBatches));
     }
   } catch (error) {
     console.error('Error processing fetch queue:', error);

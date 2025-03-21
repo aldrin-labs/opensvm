@@ -340,7 +340,7 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
 ];
 
 /**
- * Initialize a Cytoscape instance with default settings
+ * Initialize a Cytoscape instance with optimized settings
  * @param container HTML element to contain the graph
  * @returns Cytoscape instance
  */
@@ -348,16 +348,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
   return cytoscape({
     container: container,
     style: createGraphStyle(),
-    layout: <DagreLayoutOptions>{
-      name: 'dagre' as any,
-      rankDir: 'LR',
-      ranker: 'network-simplex',
-      rankSep: 80, // Reduced from 100
-      nodeSep: 50, // Reduced from 100
-      edgeSep: 30, // Reduced from 50
-      padding: 30, // Reduced from 40
-      spacingFactor: 1.2 // Reduced from 1.5
-    },
+    layout: getAdaptiveLayoutOptions(null as any, false), // Pass null for initial layout
     minZoom: 0.2,
     maxZoom: 3,
     wheelSensitivity: 0.2, // Reduced for smoother zooming
@@ -382,4 +373,11 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
     zoomingEnabled: true,
     fitPadding: 30 // Reduced from default
   });
+};
+
+/**
+ * Clear layout cache
+ */
+export const clearLayoutCache = (): void => {
+  layoutCache.clear();
 };

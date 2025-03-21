@@ -1329,7 +1329,7 @@ if (elementsCount > 100) {
                   cyRef.current.pixelRatio(1);
                   
                   // Limit visible nodes for very large graphs
-                  if (nodeCount > 500 && nodeVisibilityLimit > 200) {
+                  if (nodeCount.current > 500 && nodeVisibilityLimit > 200) {
                     setNodeVisibilityLimit(200);
                   }
                 } else {
