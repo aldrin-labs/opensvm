@@ -121,6 +121,13 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
   // Router for navigation
   const router = useRouter();
 
+  // Add this function after the state declarations
+  const updateNodeCount = useCallback(() => {
+    if (cyRef.current) {
+      setNodeCount(cyRef.current.nodes().length);
+    }
+  }, []);
+
   // Create address and transaction filters
   const shouldExcludeAddress = useMemo(
     () => createAddressFilter(EXCLUDED_ACCOUNTS, EXCLUDED_PROGRAM_SUBSTRINGS),
@@ -686,7 +693,7 @@ if (elementsCount > 100) {
       transactionCache.current.clear();
       pendingFetchesRef.current.clear();
     };
-  }, [initialAccount, initialSignature]);
+  }, [initialAccount, initialSignature, setupGraphInteractionsCallback, currentSignature, focusOnTransaction, queueAccountFetch]);
   
   // Improved viewport state restoration
   useEffect(() => {
@@ -783,7 +790,7 @@ if (elementsCount > 100) {
         cyRef.current.off('add remove');
       }
     };
-  }, [updateNodeCount]);
+  }, []);
 
   // Navigation history handlers
   const navigateBack = useCallback(() => {
