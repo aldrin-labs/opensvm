@@ -512,19 +512,11 @@ export const addAccountToGraph = async (
 
 /**
  * Expand the transaction graph
- * @param signature Transaction signature
- * @param cyRef Reference to cytoscape instance
- * @param fetchTransactionData Function to fetch transaction data
- * @param queueAccountFetch Function to queue an account for fetching
- * @param addAccountToGraph Function to add account to graph
- * @param setExpandedNodesCount Function to update expanded nodes count
- * @param loadedTransactionsRef Reference to loaded transactions
- * @param signal Optional AbortSignal for cancelling operations
- * @returns Promise that resolves to true if new elements were added
+ * This function is now a placeholder - the actual implementation is in EChartsTransactionGraph.tsx
  */
 export const expandTransactionGraph = async (
   signature: string,
-  cyRef: React.MutableRefObject<cytoscape.Core | null>,
+  chartRef: React.MutableRefObject<echarts.ECharts | null>,
   fetchTransactionData: (signature: string) => Promise<any>,
   queueAccountFetch: (address: string, depth: number, parentSignature: string | null) => void,
   addAccountToGraph: (address: string, totalAccounts: number, depth: number, parentSignature: string | null, newElements?: Set<string>) => Promise<GraphElementAddResult | undefined>,
@@ -532,149 +524,6 @@ export const expandTransactionGraph = async (
   loadedTransactionsRef: React.MutableRefObject<Set<string>>,
   signal?: AbortSignal
 ): Promise<boolean> => {
-  const cy = cyRef.current;
-  if (!cy) return false;
-
-  // Check if the operation has been aborted
-  if (signal?.aborted) {
-    return false;
-  }
-
-  // Save viewport state before expansion
-  const initialViewport = { zoom: cy.zoom(), pan: cy.pan() };
-  
-  // Track new elements added during this expansion
-  const newElements = new Set<string>();
-
-  // Always create or update the transaction node first
-  const existingNode = cy.getElementById(signature);
-  if (existingNode.length === 0) {
-    cy.add({ 
-      data: { 
-        id: signature, 
-        label: signature.slice(0, 8) + '...', 
-        type: 'transaction' 
-      }, 
-      classes: 'transaction' 
-    });
-  }
-
-  try {
-    // Check for abort before expensive operations
-    if (signal?.aborted) {
-      return false;
-    }
-    
-    // Fetch transaction data even if node exists to ensure we have latest data
-    const transactionData = await fetchTransactionData(signature);
-    
-    // Check for abort after network request
-    if (signal?.aborted) {
-      return false;
-    }
-    
-    // Add the transaction signature to loadedTransactionsRef to prevent re-processing
-    loadedTransactionsRef.current.add(signature);
-    
-    if (transactionData?.details?.accounts?.length > 0) {
-      // Process all accounts in parallel instead of just the first one
-      const accountPromises = transactionData.details.accounts.map(account => {
-        if (account.pubkey) {
-          return new Promise<void>((resolve) => {
-            queueAccountFetch(account.pubkey, 1, signature);
-            resolve();
-          });
-        }
-        return Promise.resolve();
-      });
-      
-      // Wait for all account queuing to complete
-      if (!signal?.aborted) {
-        await Promise.all(accountPromises);
-        
-        // Wait a short time for processing to start
-        await new Promise(resolve => {
-          const timeout = setTimeout(resolve, 300);
-          if (signal) {
-            signal.addEventListener('abort', () => {
-              clearTimeout(timeout);
-              resolve(undefined);
-            }, { once: true });
-          }
-        });
-      }
-    }
-  } catch (error) {
-    // Only log errors if they're not from an aborted request
-    if (!(error instanceof DOMException && error.name === 'AbortError')) {
-      console.error(`Error fetching transaction data for expansion: ${signature}`, error);
-    }
-    return false;
-  }
-  
-  // Check if aborted after transaction fetch
-  if (signal?.aborted) {
-    return false;
-  }
-  
-  // Get connected accounts to this transaction
-  const connectedAccounts = cy.getElementById(signature).connectedEdges().connectedNodes()
-    .filter(node => node.data('type') === 'account')
-    .map(node => node.id() as string);
-
-  try {
-    // Process accounts in parallel with proper error handling
-    if (connectedAccounts.length > 0) {
-      const accountProcessPromises = connectedAccounts.map(accountId => 
-        addAccountToGraph(accountId, connectedAccounts.length, 1, signature, newElements)
-          .catch(err => {
-            console.error(`Error processing account ${accountId}:`, err);
-            return undefined;
-          })
-      );
-      
-      await Promise.all(accountProcessPromises);
-    }
-    
-    // Check for abort after processing accounts
-    if (signal?.aborted) {
-      return false;
-    }
-    
-    // Apply incremental layout only if we have new elements
-    if (newElements.size > 0) {
-      const elementsToAnimate = Array.from(newElements);
-
-      // Start with zero opacity for smooth fade-in
-      cy.$(elementsToAnimate.map(id => `#${id}`).join(',')).style({
-        'opacity': 0
-      });
-      
-      // Run incremental layout that preserves existing node positions
-      runIncrementalLayout(cy, elementsToAnimate);
-      
-      // Update analytics count
-      setExpandedNodesCount(prev => prev + newElements.size);
-      
-      // Animate new elements with a fade-in effect
-      cy.$(elementsToAnimate.map(id => `#${id}`).join(',')).animate({
-        style: { opacity: 1 }
-      }, { 
-        duration: 300,
-        easing: 'ease-in-out'
-      });
-      
-      // Restore original viewport position to maintain user's perspective
-      cy.viewport(initialViewport);
-      
-      return true;
-    }
-  } catch (error) {
-    // Only log errors if they're not from an aborted request
-    if (!(error instanceof DOMException && error.name === 'AbortError')) {
-      console.error(`Error processing connected accounts for ${signature}:`, error);
-    }
-  }
-  
-  return newElements.size > 0;
+  console.warn('expandTransactionGraph is now implemented in EChartsTransactionGraph.tsx');
+  return false;
 };

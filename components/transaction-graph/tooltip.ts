@@ -1,6 +1,7 @@
 'use client';
 
-import cytoscape from 'cytoscape';
+import * as echarts from 'echarts';
+import { GraphNode, GraphLink } from './types';
 
 // Cache for tooltip content to avoid redundant DOM operations
 const tooltipContentCache = new Map<string, string>();
@@ -18,7 +19,7 @@ const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T
   let lastFunc: ReturnType<typeof setTimeout>;
   let lastRan: number;
   
-  // Use arrow function to preserve 'this' context without aliasing
+  // Use arrow function to preserve 'this' context
   return function(this: any, ...args: Parameters<T>) {
     if (!inThrottle) {
       func.apply(this, args);
@@ -77,12 +78,12 @@ export const createTooltip = (): HTMLElement => {
 
 /**
  * Generate tooltip content based on element type
- * @param element Cytoscape element
+ * @param params ECharts event parameters
  * @returns HTML content string
  */
-const generateTooltipContent = (element: cytoscape.SingularElementReturnValue): string => {
+export const generateTooltipContent = (params: any): string => {
   // Use element ID as cache key
-  const cacheKey = element.id();
+  const cacheKey = params.data.id || params.name;
   
   // Return cached content if available
   if (tooltipContentCache.has(cacheKey)) {
@@ -91,43 +92,45 @@ const generateTooltipContent = (element: cytoscape.SingularElementReturnValue): 
   
   let content = '';
   
-  if (element.isNode()) {
-    const type = element.data('type');
+  if (params.dataType === 'node') {
+    const data = params.data;
+    const type = data.data?.type;
     
     if (type === 'transaction') {
       // Simplified transaction tooltip
       content = `
         <div style="font-weight: bold; margin-bottom: 4px;">Transaction</div>
-        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${element.data('fullSignature') || element.id()}</div>
-        ${element.data('timestamp') ? `<div style="margin-top: 4px;">Time: ${element.data('formattedTime')}</div>` : ''}
-        ${element.data('success') !== undefined ? `<div style="margin-top: 4px;">Status: ${element.data('success') ? 'Success' : 'Error'}</div>` : ''}
+        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${data.data.fullSignature || data.id}</div>
+        ${data.data.timestamp ? `<div style="margin-top: 4px;">Time: ${data.data.formattedTime}</div>` : ''}
+        ${data.data.success !== undefined ? `<div style="margin-top: 4px;">Status: ${data.data.success ? 'Success' : 'Error'}</div>` : ''}
         <div style="margin-top: 8px; font-size: 10px;">Click to expand</div>
       `;
     } else if (type === 'account') {
       // Simplified account tooltip
       content = `
         <div style="font-weight: bold; margin-bottom: 4px;">Account</div>
-        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${element.data('fullAddress') || element.id()}</div>
+        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${data.data.fullAddress || data.id}</div>
         <div style="margin-top: 8px; font-size: 10px;">Click to explore transactions</div>
       `;
     }
-  } else if (element.isEdge()) {
-    const type = element.data('type');
+  } else if (params.dataType === 'edge') {
+    const data = params.data;
+    const type = data.data?.type;
     
     if (type === 'transfer') {
       // Simplified transfer tooltip
       content = `
         <div style="font-weight: bold; margin-bottom: 4px;">Token Transfer</div>
-        <div>Amount: ${element.data('label')}</div>
-        <div style="margin-top: 4px;">From: ${element.source().data('label')}</div>
-        <div>To: ${element.target().data('label')}</div>
+        <div>Amount: ${data.data.label}</div>
+        <div style="margin-top: 4px;">From: ${data.data.source}</div>
+        <div>To: ${data.data.target}</div>
       `;
     } else {
       // Simplified connection tooltip
       content = `
         <div style="font-weight: bold; margin-bottom: 4px;">Connection</div>
-        <div>From: ${element.source().data('label')}</div>
-        <div>To: ${element.target().data('label')}</div>
+        <div>From: ${data.source}</div>
+        <div>To: ${data.target}</div>
       `;
     }
   }
@@ -144,10 +147,10 @@ const generateTooltipContent = (element: cytoscape.SingularElementReturnValue): 
 export const showTooltip = throttle(
   (
     event: MouseEvent,
-    element: cytoscape.SingularElementReturnValue,
+    params: any,
     containerRef: React.RefObject<HTMLDivElement>
   ): void => {
-    const elementId = element.id();
+    const elementId = params.data?.id || params.name;
     
     // Skip if showing tooltip for the same element
     if (tooltipVisible && elementId === lastElementId) return;
@@ -164,7 +167,7 @@ export const showTooltip = throttle(
     const y = event.clientY - containerRect.top - 10;
     
     // Generate tooltip content
-    const content = generateTooltipContent(element);
+    const content = generateTooltipContent(params);
     
     // Only update DOM if content changed
     if (tooltip.innerHTML !== content) {
