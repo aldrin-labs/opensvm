@@ -188,6 +188,41 @@ function EChartsTransactionGraph({
     );
   }, [nodeCount]);
 
+  // Add a node to the graph
+  const addNode = useCallback((node: CachedNode) => {
+    if (!processedNodesRef.current.has(node.data.id)) {
+      nodesRef.current.push(node);
+      processedNodesRef.current.add(node.data.id);
+      updateNodeCount();
+      
+      // Update the chart if it exists
+      if (chartRef.current) {
+        try {
+          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        } catch (error) {
+          console.error('Error updating graph data after adding node:', error);
+        }
+      }
+    }
+  }, [updateNodeCount]);
+
+  // Add an edge to the graph
+  const addEdge = useCallback((edge: CachedEdge) => {
+    if (!processedEdgesRef.current.has(edge.data.id)) {
+      edgesRef.current.push(edge);
+      processedEdgesRef.current.add(edge.data.id);
+      
+      // Update the chart if it exists
+      if (chartRef.current) {
+        try {
+          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
+        } catch (error) {
+          console.error('Error updating graph data after adding edge:', error);
+        }
+      }
+    }
+  }, []);
+
   // Fetch and process a single account
   const fetchAndProcessAccount = useCallback(async (
     address: string,
@@ -286,41 +321,6 @@ function EChartsTransactionGraph({
     queueAccountFetch, 
     setError
   ]);
-
-  // Add a node to the graph
-  const addNode = useCallback((node: CachedNode) => {
-    if (!processedNodesRef.current.has(node.data.id)) {
-      nodesRef.current.push(node);
-      processedNodesRef.current.add(node.data.id);
-      updateNodeCount();
-      
-      // Update the chart if it exists
-      if (chartRef.current) {
-        try {
-          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
-        } catch (error) {
-          console.error('Error updating graph data after adding node:', error);
-        }
-      }
-    }
-  }, [updateNodeCount]);
-
-  // Add an edge to the graph
-  const addEdge = useCallback((edge: CachedEdge) => {
-    if (!processedEdgesRef.current.has(edge.data.id)) {
-      edgesRef.current.push(edge);
-      processedEdgesRef.current.add(edge.data.id);
-      
-      // Update the chart if it exists
-      if (chartRef.current) {
-        try {
-          updateGraphData(chartRef.current, nodesRef.current, edgesRef.current);
-        } catch (error) {
-          console.error('Error updating graph data after adding edge:', error);
-        }
-      }
-    }
-  }, []);
 
   // Add account and its transactions to the graph
   const addAccountToGraph = useCallback(async (

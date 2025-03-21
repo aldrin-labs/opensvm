@@ -15,30 +15,38 @@ let lastElementId = '';
 
 // Throttle function to limit tooltip updates
 const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T => {
-  let inThrottle: boolean;
-  let lastFunc: ReturnType<typeof setTimeout>;
-  let lastRan: number;
+  // Initialize variables with default values
+  let inThrottle = false;
+  let lastFunc: ReturnType<typeof setTimeout> | null = null;
+  let lastRan = 0;
   
-  // Use arrow function to preserve 'this' context
-  return function(this: any, ...args: Parameters<T>) {
+  // Use function expression instead of arrow function to avoid 'this' aliasing issues
+  const throttled = function(this: any, ...args: Parameters<T>) {
+    const now = Date.now();
+    
     if (!inThrottle) {
       func.apply(this, args);
-      lastRan = Date.now();
+      lastRan = now;
       inThrottle = true;
       
       setTimeout(() => {
         inThrottle = false;
       }, limit);
     } else {
-      clearTimeout(lastFunc);
+      if (lastFunc) {
+        clearTimeout(lastFunc);
+      }
+      
       lastFunc = setTimeout(() => {
-        if (Date.now() - lastRan >= limit) {
+        if ((now - lastRan) >= limit) {
           func.apply(this, args);
-          lastRan = Date.now();
+          lastRan = now;
         }
-      }, limit - (Date.now() - lastRan));
+      }, limit - (now - lastRan));
     }
-  } as T;
+  };
+  
+  return throttled as T;
 };
 
 /**
