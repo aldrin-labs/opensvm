@@ -95,6 +95,11 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
   const [currentHistoryIndex, setCurrentHistoryIndex] = useState<number>(-1);
   const [isNavigatingHistory, setIsNavigatingHistory] = useState<boolean>(false);
   
+  // Add state for node count, performance mode, and node visibility limit
+  const [nodeCount, setNodeCount] = useState<number>(0);
+  const [performanceMode, setPerformanceMode] = useState<boolean>(false);
+  const [nodeVisibilityLimit, setNodeVisibilityLimit] = useState<number>(500);
+  
   // Track when props change without causing remounts
   const initialSignatureRef = useRef<string>(initialSignature);
   const initialAccountRef = useRef<string>(initialAccount);
@@ -189,6 +194,15 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
     parentSignature: string | null = null, 
     newElements?: Set<string>
   ) => {
+    // Add node limiting for performance
+    const currentNodeCount = cyRef.current?.nodes().length || 0;
+    const maxNodes = performanceMode ? 150 : 300; // Limit nodes in performance mode
+    
+    if (currentNodeCount > maxNodes && depth > 1) {
+      console.log(`Node limit reached (${currentNodeCount}/${maxNodes}), skipping expansion at depth ${depth}`);
+      return false;
+    }
+
     const result = await addAccountToGraphUtil(
       address,
       totalAccounts,
@@ -209,23 +223,49 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
       queueAccountFetch
     );
 
-if (cyRef.current) {
-  cyRef.current.layout({
-    name: 'dagre',
-    // @ts-ignore - dagre layout options are not fully typed
-    rankDir: 'LR',
-    fit: true,
-    padding: 50
-  }).run();
-}
+    if (cyRef.current) {
+      // Use a simpler layout for large graphs
+      const elementsCount = cyRef.current.elements().length;
+      if (elementsCount > 200 || performanceMode) {
+        // For large graphs or in performance mode, use a simpler layout
+        cyRef.current.layout({
+          name: 'dagre',
+          // @ts-ignore - dagre layout options are not fully typed
+          rankDir: 'LR',
+          fit: true,
+          padding: 30,
+          animate: false, // Disable animation for large graphs
+          rankSep: 50, // Reduced spacing
+          nodeSep: 40,
+          edgeSep: 25
+        }).run();
+      } else {
+        // For smaller graphs, use the standard layout with animation
+        cyRef.current.layout({
+          name: 'dagre',
+          // @ts-ignore - dagre layout options are not fully typed
+          rankDir: 'LR',
+          fit: true,
+          padding: 50,
+          animate: true,
+          animationDuration: 300,
+          animationEasing: 'ease-in-out-cubic'
+        }).run();
+      }
+    }
 
-return result;
+    // Update node count after adding new elements
+    updateNodeCount();
+
+    return result;
   }, [
     maxDepth,
     shouldExcludeAddress,
     shouldIncludeTransaction,
     fetchAccountTransactionsWithError,
-    queueAccountFetch
+    queueAccountFetch,
+    performanceMode, // Add performance mode as dependency
+    updateNodeCount // Add updateNodeCount as dependency
   ]);
 
   // Expand the transaction graph incrementally
@@ -695,6 +735,56 @@ if (elementsCount > 100) {
     return () => window.removeEventListener('resize', handleResize);
   }, [resizeGraphCallback]);
 
+  // Add this effect to apply node visibility limits
+  useEffect(() => {
+    if (!cyRef.current) return;
+    
+    const cy = cyRef.current;
+    const allNodes = cy.nodes();
+    
+    if (allNodes.length > nodeVisibilityLimit) {
+      // Hide nodes beyond the limit
+      allNodes.forEach((node, i) => {
+        if (i >= nodeVisibilityLimit) {
+          node.style('display', 'none');
+          // Also hide connected edges
+          node.connectedEdges().style('display', 'none');
+        } else {
+          node.style('display', 'element');
+        }
+      });
+      
+      console.log(`Limited visible nodes to ${nodeVisibilityLimit} (hiding ${allNodes.length - nodeVisibilityLimit} nodes)`);
+    } else {
+      // Show all nodes
+      allNodes.style('display', 'element');
+      cy.edges().style('display', 'element');
+    }
+  }, [nodeVisibilityLimit, nodeCount]);
+
+  // Add this effect to update node count when the graph changes
+  useEffect(() => {
+    if (!cyRef.current) return;
+    
+    // Update initially
+    updateNodeCount();
+    
+    // Set up a timer to periodically update node count
+    const intervalId = setInterval(updateNodeCount, 2000);
+    
+    // Also listen for add/remove events on the graph
+    cyRef.current.on('add remove', debounce(() => {
+      updateNodeCount();
+    }, 500));
+    
+    return () => {
+      clearInterval(intervalId);
+      if (cyRef.current) {
+        cyRef.current.off('add remove');
+      }
+    };
+  }, [updateNodeCount]);
+
   // Navigation history handlers
   const navigateBack = useCallback(() => {
     if (currentHistoryIndex > 0) {
@@ -1103,6 +1193,90 @@ if (elementsCount > 100) {
             <option value="circle">Circular</option>
             <option value="grid">Grid</option>
             <option value="concentric">Concentric</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Node Limit</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            value={nodeVisibilityLimit}
+            onChange={(e) => {
+              const limit = Number(e.target.value);
+              setNodeVisibilityLimit(limit);
+            }}
+          >
+            <option value="100">100 nodes (fastest)</option>
+            <option value="200">200 nodes (fast)</option>
+            <option value="500">500 nodes (balanced)</option>
+            <option value="1000">1000 nodes (detailed)</option>
+            <option value="10000">All nodes (slowest)</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Performance Mode</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            value={performanceMode ? 'high' : 'normal'}
+            onChange={(e) => {
+              const mode = e.target.value === 'high';
+              setPerformanceMode(mode);
+              
+              if (cyRef.current) {
+                // Apply performance optimizations
+                if (mode) {
+                  // Disable animations and transitions
+                  cyRef.current.style()
+                    .selector('node, edge')
+                    .style({
+                      'transition-property': 'none',
+                      'transition-duration': 0
+                    })
+                    .update();
+                  
+                  // Reduce rendering quality
+                  cyRef.current.userZoomingEnabled(true);
+                  cyRef.current.userPanningEnabled(true);
+                  cyRef.current.hideEdgesOnViewport(true);
+                  cyRef.current.hideLabelsOnViewport(true);
+                  cyRef.current.textureOnViewport(true);
+                  cyRef.current.motionBlur(false);
+                  cyRef.current.pixelRatio(1);
+                  
+                  // Limit visible nodes for very large graphs
+                  if (nodeCount.current > 500 && nodeVisibilityLimit > 200) {
+                    setNodeVisibilityLimit(200);
+                  }
+                } else {
+                  // Restore normal settings
+                  cyRef.current.style()
+                    .selector('node')
+                    .style({
+                      'transition-property': 'background-color, border-color, border-width, opacity, scale',
+                      'transition-duration': '200ms'
+                    })
+                    .selector('edge')
+                    .style({
+                      'transition-property': 'opacity, width',
+                      'transition-duration': '200ms'
+                    })
+                    .update();
+                  
+                  // Restore rendering quality
+                  cyRef.current.userZoomingEnabled(true);
+                  cyRef.current.userPanningEnabled(true);
+                  cyRef.current.hideEdgesOnViewport(false);
+                  cyRef.current.hideLabelsOnViewport(false);
+                  cyRef.current.textureOnViewport(false);
+                  cyRef.current.motionBlur(false);
+                  cyRef.current.pixelRatio('auto');
+                }
+              }
+            }}
+          >
+            <option value="normal">Normal Mode</option>
+            <option value="high">High Performance</option>
           </select>
         </div>
         
