@@ -3,7 +3,7 @@
 import cytoscape from 'cytoscape';
 import { AccountData, FetchQueueItem, GraphElementAddResult, Transaction } from './types';
 import { formatSolChange, formatTimestamp, shortenString } from './utils';
-import { runIncrementalLayout } from './layout';
+import { runIncrementalLayout, SMALL_GRAPH_THRESHOLD, MEDIUM_GRAPH_THRESHOLD, LARGE_GRAPH_THRESHOLD } from './layout';
 import { GraphStateCache } from '@/lib/graph-state-cache';
 
 /**
