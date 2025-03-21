@@ -1,6 +1,6 @@
 'use client';
 
-import cytoscape from 'cytoscape';
+import * as echarts from 'echarts';
 import { AccountData, FetchQueueItem, GraphElementAddResult, Transaction } from './types';
 import { formatSolChange, formatTimestamp, shortenString } from './utils';
 import { runIncrementalLayout, SMALL_GRAPH_THRESHOLD, MEDIUM_GRAPH_THRESHOLD, LARGE_GRAPH_THRESHOLD } from './layout';
