@@ -4,6 +4,7 @@ import cytoscape from 'cytoscape';
 import { debounce } from '@/lib/utils';
 import { ViewportState } from '@/lib/graph-state-cache';
 import { runLayout } from './layout';
+import { showTooltip, hideTooltip } from './tooltip';
 
 /**
  * Focus on a specific transaction in the graph
