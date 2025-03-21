@@ -339,6 +339,98 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
   }
 ];
 
+// Cache for layout options to avoid recalculating for similar graph sizes
+const layoutCache = new Map<string, DagreLayoutOptions>();
+
+// Constants for graph size thresholds
+export const SMALL_GRAPH_THRESHOLD = 50;
+export const MEDIUM_GRAPH_THRESHOLD = 150;
+export const LARGE_GRAPH_THRESHOLD = 300;
+
+/**
+ * Get adaptive layout options based on graph size
+ * @param cy Cytoscape instance
+ * @param animate Whether to animate the layout changes
+ * @returns Layout options optimized for the current graph size
+ */
+export const getAdaptiveLayoutOptions = (
+  cy: cytoscape.Core | null,
+  animate = true
+): DagreLayoutOptions => {
+  // Default options for small graphs
+  const defaultOptions: DagreLayoutOptions = {
+    name: 'dagre' as any,
+    rankDir: 'LR',
+    ranker: 'tight-tree',
+    rankSep: 100,
+    nodeSep: 80,
+    edgeSep: 50,
+    padding: 50,
+    spacingFactor: 1.5,
+    animate: animate,
+    animationDuration: 300,
+    animationEasing: 'ease-in-out-cubic',
+    fit: true
+  };
+
+  // If no cytoscape instance, return default options
+  if (!cy) return defaultOptions;
+
+  // Get element count
+  const elementCount = cy.elements().length;
+  
+  // Generate cache key based on element count and animation preference
+  const cacheKey = `${elementCount}-${animate ? 'animated' : 'static'}`;
+  
+  // Return cached options if available
+  if (layoutCache.has(cacheKey)) {
+    return layoutCache.get(cacheKey)!;
+  }
+  
+  // Adjust options based on graph size
+  let options = { ...defaultOptions };
+  
+  if (elementCount > LARGE_GRAPH_THRESHOLD) {
+    // Options for very large graphs
+    options = {
+      ...options,
+      animate: false, // Disable animation for large graphs
+      rankSep: 40,
+      nodeSep: 30,
+      edgeSep: 20,
+      padding: 20,
+      spacingFactor: 0.8,
+      ranker: 'network-simplex' // More efficient for large graphs
+    };
+  } else if (elementCount > MEDIUM_GRAPH_THRESHOLD) {
+    // Options for medium-large graphs
+    options = {
+      ...options,
+      animate: animate && elementCount < 200, // Only animate smaller medium graphs
+      animationDuration: 200, // Shorter animation
+      rankSep: 60,
+      nodeSep: 40,
+      edgeSep: 30,
+      padding: 30,
+      spacingFactor: 1.0
+    };
+  } else if (elementCount > SMALL_GRAPH_THRESHOLD) {
+    // Options for medium graphs
+    options = {
+      ...options,
+      rankSep: 80,
+      nodeSep: 60,
+      edgeSep: 40,
+      spacingFactor: 1.2
+    };
+  }
+  
+  // Cache the calculated options
+  layoutCache.set(cacheKey, options);
+  
+  return options;
+};
+
 /**
  * Initialize a Cytoscape instance with optimized settings
  * @param container HTML element to contain the graph
