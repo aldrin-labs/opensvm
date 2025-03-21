@@ -189,9 +189,10 @@ export const setupGraphInteractions = (
     }
   });
   
-  // Add hover effects for nodes and edges
+  // Add hover effects for nodes and edges with tooltips
   cy.on('mouseover', 'node, edge', (event) => {
     const ele = event.target;
+    const originalEvent = event.originalEvent as MouseEvent;
     
     if (ele.isNode() && ele.data('type') === 'transaction') {
       containerRef.current?.style.setProperty('cursor', 'pointer');
@@ -207,12 +208,18 @@ export const setupGraphInteractions = (
       ele.addClass('hover');
       ele.connectedEdges().addClass('hover');
     }
+    
+    // Show tooltip with element details
+    if (originalEvent) {
+      showTooltip(originalEvent, ele, containerRef);
+    }
   });
   
   // Remove hover effects when mouse leaves
   cy.on('mouseout', 'node, edge', () => {
     cy.elements().removeClass('hover');
     containerRef.current?.style.removeProperty('cursor');
+    hideTooltip();
   });
 
   // Add click handler for edges
@@ -240,6 +247,24 @@ export const setupGraphInteractions = (
     }
   });
   
+  // Enable node dragging for manual repositioning
+  cy.on('drag', 'node', (event) => {
+    const node = event.target;
+    
+    // Highlight connected edges during drag
+    node.connectedEdges().addClass('highlighted');
+  });
+  
+  // Handle end of drag
+  cy.on('dragfree', 'node', (event) => {
+    const node = event.target;
+    
+    // Remove highlights after drag
+    setTimeout(() => {
+      node.connectedEdges().removeClass('highlighted');
+    }, 300);
+  });
+  
   // Track viewport changes
   cy.on('viewport', debounce(() => {
     setViewportState({
@@ -247,6 +272,58 @@ export const setupGraphInteractions = (
       pan: cy.pan()
     });
   }, 100));
+  
+  // Add double-click handler for zooming in
+  cy.on('dblclick', (event) => {
+    if (event.target === cy) {
+      // Double click on background - zoom in to that point
+      const pos = event.position;
+      cy.animate({
+        zoom: cy.zoom() * 1.5,
+        center: { x: pos.x, y: pos.y },
+        easing: 'ease-in-out-cubic'
+      }, {
+        duration: 300
+      });
+    }
+  });
+  
+  // Add mouse wheel handler for smoother zooming
+  const wheelHandler = (event: WheelEvent) => {
+    if (!containerRef.current?.contains(event.target as Node)) return;
+    
+    // Get mouse position relative to the container
+    const containerRect = containerRef.current.getBoundingClientRect();
+    const x = event.clientX - containerRect.left;
+    const y = event.clientY - containerRect.top;
+    
+    // Convert to graph coordinates
+    const pos = cy.renderer().projectIntoViewport(x, y);
+    
+    // Calculate zoom factor based on wheel delta
+    const delta = event.deltaY;
+    const zoomFactor = delta > 0 ? 0.9 : 1.1;
+    
+    // Animate zoom centered on mouse position
+    cy.animate({
+      zoom: cy.zoom() * zoomFactor,
+      center: { x: pos[0], y: pos[1] },
+      easing: 'ease-out-cubic'
+    }, {
+      duration: 100
+    });
+    
+    // Prevent default browser behavior
+    event.preventDefault();
+  };
+  
+  // Add wheel event listener to container
+  containerRef.current?.addEventListener('wheel', wheelHandler, { passive: false });
+  
+  // Return cleanup function
+  return () => {
+    containerRef.current?.removeEventListener('wheel', wheelHandler);
+  };
 };
 
 /**

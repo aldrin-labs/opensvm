@@ -491,7 +491,10 @@ isInitialized.current = true;
   // @ts-ignore - dagre layout options are not fully typed
   rankDir: 'LR',
   fit: true,
-  padding: 50
+  padding: 50,
+  animate: true,
+  animationDuration: 500,
+  animationEasing: 'ease-in-out-cubic'
 }).run();
 cyRef.current.zoom(0.5);
               }
@@ -896,6 +899,122 @@ cyRef.current.zoom(0.5);
         >
           <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
         </button>
+      </div>
+
+      {/* Filter controls overlay */}
+      <div className="absolute top-4 right-4 flex gap-2 bg-background/90 p-2 rounded-md shadow-md backdrop-blur-sm border border-border">
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Filter by Type</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            onChange={(e) => {
+              const filterType = e.target.value;
+              if (cyRef.current) {
+                if (filterType === 'all') {
+                  cyRef.current.elements().removeClass('filtered').style('opacity', 1);
+                } else {
+                  cyRef.current.elements().addClass('filtered').style('opacity', 0.2);
+                  cyRef.current.elements(`node[type="${filterType}"]`).removeClass('filtered').style('opacity', 1);
+                  // Also show connected edges for visible nodes
+                  cyRef.current.elements(`node[type="${filterType}"]`).connectedEdges().removeClass('filtered').style('opacity', 1);
+                }
+              }
+            }}
+          >
+            <option value="all">All Elements</option>
+            <option value="transaction">Transactions Only</option>
+            <option value="account">Accounts Only</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Transaction Status</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            onChange={(e) => {
+              const filterStatus = e.target.value;
+              if (cyRef.current) {
+                if (filterStatus === 'all') {
+                  cyRef.current.elements('node[type="transaction"]').removeClass('filtered').style('opacity', 1);
+                  cyRef.current.elements('node[type="transaction"]').connectedEdges().removeClass('filtered').style('opacity', 1);
+                } else {
+                  const successValue = filterStatus === 'success';
+                  cyRef.current.elements('node[type="transaction"]').addClass('filtered').style('opacity', 0.2);
+                  cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).removeClass('filtered').style('opacity', 1);
+                  // Also show connected edges for visible nodes
+                  cyRef.current.elements(`node[type="transaction"][success=${successValue}]`).connectedEdges().removeClass('filtered').style('opacity', 1);
+                }
+              }
+            }}
+          >
+            <option value="all">All Transactions</option>
+            <option value="success">Successful Only</option>
+            <option value="error">Failed Only</option>
+          </select>
+        </div>
+        
+        <div className="flex flex-col gap-1">
+          <label className="text-xs font-medium">Layout</label>
+          <select 
+            className="text-xs bg-background border border-border rounded-md p-1"
+            onChange={(e) => {
+              const layoutType = e.target.value;
+              if (cyRef.current) {
+                let layoutOptions: any = {
+                  animate: true,
+                  animationDuration: 500,
+                  animationEasing: 'ease-in-out-cubic',
+                  fit: true,
+                  padding: 50
+                };
+                
+                if (layoutType === 'dagre') {
+                  layoutOptions = {
+                    ...layoutOptions,
+                    name: 'dagre',
+                    rankDir: 'LR',
+                    ranker: 'tight-tree',
+                    rankSep: 100,
+                    nodeSep: 80,
+                    edgeSep: 50,
+                  };
+                } else if (layoutType === 'circle') {
+                  layoutOptions = {
+                    ...layoutOptions,
+                    name: 'circle',
+                    radius: 200,
+                    startAngle: 3 / 2 * Math.PI,
+                    sweep: 2 * Math.PI,
+                  };
+                } else if (layoutType === 'grid') {
+                  layoutOptions = {
+                    ...layoutOptions,
+                    name: 'grid',
+                    rows: undefined,
+                    cols: undefined,
+                  };
+                } else if (layoutType === 'concentric') {
+                  layoutOptions = {
+                    ...layoutOptions,
+                    name: 'concentric',
+                    minNodeSpacing: 50,
+                    concentric: (node: any) => {
+                      // Transactions in the center, accounts in outer rings
+                      return node.data('type') === 'transaction' ? 2 : 1;
+                    },
+                  };
+                }
+                
+                cyRef.current.layout(layoutOptions).run();
+              }
+            }}
+          >
+            <option value="dagre">Hierarchical (Default)</option>
+            <option value="circle">Circular</option>
+            <option value="grid">Grid</option>
+            <option value="concentric">Concentric</option>
+          </select>
+        </div>
       </div>
     </div>
   );

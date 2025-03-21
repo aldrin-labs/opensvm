@@ -11,11 +11,65 @@ type DagreLayoutOptions = cytoscape.LayoutOptions & {
 };
 
 /**
+ * Animate new elements with smooth transitions
+ * @param cy Cytoscape instance
+ * @param elementIds Array of element IDs to animate
+ * @param duration Animation duration in milliseconds
+ */
+export const animateNewElements = (
+  cy: cytoscape.Core, 
+  elementIds: string[] = [], 
+  duration = 500
+): void => {
+  if (!elementIds.length) return;
+  
+  // Get elements by IDs
+  const elements = cy.collection();
+  elementIds.forEach(id => {
+    const ele = cy.getElementById(id);
+    if (ele.length > 0) {
+      elements.merge(ele);
+    }
+  });
+  
+  if (elements.length === 0) return;
+  
+  // Set initial state for animation
+  elements.style({
+    'opacity': 0,
+    'scale': 0.5
+  });
+  
+  // Animate elements with staggered timing for a more natural flow
+  elements.forEach((ele, i) => {
+    // Stagger animations slightly for a cascade effect
+    const delay = Math.min(i * 50, 500);
+    
+    setTimeout(() => {
+      ele.animate({
+        style: { 
+          'opacity': 1,
+          'scale': 1
+        }
+      }, {
+        duration: duration,
+        easing: 'ease-in-out-cubic'
+      });
+    }, delay);
+  });
+};
+
+/**
  * Run incremental layout that preserves existing positions
  * @param cy Cytoscape instance
  * @param newElementIds Array of new element IDs to position
+ * @param animate Whether to animate the layout changes
  */
-export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[] = []): void => {
+export const runIncrementalLayout = (
+  cy: cytoscape.Core, 
+  newElementIds: string[] = [],
+  animate = true
+): void => {
   // If there are specific new elements, run layout only on them and their neighborhood
   if (newElementIds.length > 0) {
     // Create a collection of the new elements
@@ -32,7 +86,7 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
     const subgraph = newElements.merge(neighborhood);
     
     // Run layout only on the subgraph but preserve existing positions
-    subgraph.layout(<DagreLayoutOptions>{
+    const layout = subgraph.layout(<DagreLayoutOptions>{
       name: 'dagre' as any,
       rankDir: 'LR',
       ranker: 'tight-tree',
@@ -42,8 +96,9 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
       nodeDimensionsIncludeLabels: true,
       padding: 50,
       spacingFactor: 2.0,
-      animate: false,
-      animationDuration: 300,
+      animate: animate,
+      animationDuration: 500,
+      animationEasing: 'ease-in-out-cubic',
       fit: false,
       randomize: false,
       // Only adjust positions of new nodes, preserve existing ones
@@ -54,10 +109,19 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
         }
         return undefined; // Let the layout algorithm position new nodes
       }
-    }).run();
+    });
+    
+    layout.run();
+    
+    // Animate new elements after layout is complete
+    if (animate) {
+      layout.on('layoutstop', () => {
+        animateNewElements(cy, newElementIds);
+      });
+    }
   } else {
     // Default layout behavior for all elements
-    cy.layout(<DagreLayoutOptions>{
+    const layout = cy.layout(<DagreLayoutOptions>{
       name: 'dagre' as any,
       rankDir: 'TB', // Top to bottom layout
       ranker: 'tight-tree',
@@ -66,23 +130,30 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
       edgeSep: 80,
       padding: 100,
       spacingFactor: 3.0,
-      animate: false,
-      animationDuration: 300,
+      animate: animate,
+      animationDuration: 500,
+      animationEasing: 'ease-in-out-cubic',
       fit: false,
       randomize: false,
       boundingBox: { x1: 0, y1: 0, w: cy.width(), h: cy.height() },
       nodeDimensionsIncludeLabels: true,
       // Only position nodes that don't have a position
       position: (node: any) => node.position()
-    }).run();
+    });
+    
+    layout.run();
   }
 };
 
 /**
  * Run full graph layout
  * @param cy Cytoscape instance
+ * @param animate Whether to animate the layout changes
  */
-export const runLayout = (cy: cytoscape.Core): void => {
+export const runLayout = (
+  cy: cytoscape.Core,
+  animate = true
+): void => {
   cy.layout(<DagreLayoutOptions>{
     name: 'dagre' as any,
     rankDir: 'LR', // Left to right layout
@@ -92,8 +163,9 @@ export const runLayout = (cy: cytoscape.Core): void => {
     edgeSep: 80,
     padding: 100,
     spacingFactor: 1.5,
-    animate: false,
+    animate: animate,
     animationDuration: 500,
+    animationEasing: 'ease-in-out-cubic',
     fit: true,
     boundingBox: { x1: 0, y1: 0, w: cy.width(), h: cy.height() }
   }).run();
@@ -117,6 +189,8 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'background-color': '#4a5568',
       'border-width': 1,
       'border-color': '#555',
+      'transition-property': 'background-color, border-color, border-width, opacity, scale',
+      'transition-duration': '300ms'
     }
   },
   {
@@ -199,13 +273,18 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       'opacity': 0.9,
-      'arrow-scale': 1.5
+      'arrow-scale': 1.5,
+      'transition-property': 'line-color, target-arrow-color, opacity, width',
+      'transition-duration': '300ms'
     }
   },
   {
     selector: 'edge.hover',
     css: {
-      'width': 2
+      'width': 3,
+      'line-color': '#90cdf4',
+      'target-arrow-color': '#90cdf4',
+      'opacity': 1
     }
   },
   {
@@ -247,8 +326,15 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: '.fade-in',
     css: {
       'opacity': 0,
-      'transition-property': 'opacity',
+      'transition-property': 'opacity, scale',
       'transition-duration': 500
+    }
+  },
+  {
+    // Add style for elements that will pulse to draw attention
+    selector: '.pulse',
+    css: {
+      'animation': 'pulse 1.5s ease-in-out infinite alternate'
     }
   }
 ];
@@ -275,5 +361,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
     minZoom: 0.2,
     maxZoom: 3,
     wheelSensitivity: 1.0, // Using default value for consistent zoom behavior across different mice
+    motionBlur: true, // Enable motion blur for smoother animations
+    pixelRatio: 'auto' // Use device pixel ratio for better rendering
   });
 };
