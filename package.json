@@ -28,6 +28,7 @@
     "@netlify/plugin-nextjs": "^5.9.4",
     "@qdrant/js-client-rest": "^1.13.0",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
+    "@radix-ui/react-tooltip": "^2.0.6",
     "@sendaifun/sonic-agent-kit": "github:sendaifun/sonic-agent-kit",
     "@solana/codecs": "^2.0.0",
     "@solana/spl-token": "^0.3.8",
