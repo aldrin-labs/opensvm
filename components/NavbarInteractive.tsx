@@ -263,14 +263,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
             </DropdownMenu>
   
             <SettingsMenu />
-            <Button 
-              variant="outline"
-              size="sm" 
-              className="px-3 h-9 ml-1.5 text-sm border-border/70"
-              onClick={() => router.push('/wallet')}
-            >
-              Connect Wallet
-            </Button>
+            <WalletButton />
             <Button 
               size="sm" 
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"
@@ -461,13 +454,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
             </div>
             
             <div className="flex gap-2 mt-4 border-t pt-4 border-border/40">
-              <Button 
-                variant="outline"
-                className="flex-1"
-                onClick={() => router.push('/wallet')}
-              >
-                Connect Wallet
-              </Button>
+              <div className="flex-1">
+                <WalletButton />
+              </div>
               <SettingsMenu />
               <Button 
                 className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 flex-1"
