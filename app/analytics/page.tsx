@@ -168,7 +168,7 @@ export default function AnalyticsPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium mb-2">Total Value Locked</h3>
-                  <div className="text-2xl font-bold">${(networkStats.totalValueLocked / 1000000).toFixed(2)}M</div>
+                  <div className="text-2xl font-bold">${(networkStats?.totalValueLocked || 0) / 1000000 > 0 ? ((networkStats?.totalValueLocked || 0) / 1000000).toFixed(2) : 0}M</div>
                   <p className="text-xs text-muted-foreground mt-1">Across all Solana DeFi protocols</p>
                 </div>
               </div>

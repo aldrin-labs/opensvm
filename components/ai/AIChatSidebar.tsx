@@ -187,7 +187,7 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
           </Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          The AI assistant can help with Solana questions, transactions, and network information.
+          Try asking about: network stats, staking, NFTs, tokens, or wallet connection
         </p>
       </div>
     </div>

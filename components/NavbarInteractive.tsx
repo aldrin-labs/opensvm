@@ -453,6 +453,38 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
               </Button>
             </div>
             
+            <div className="font-medium border-b pb-1 mt-5 mb-3 text-sm uppercase tracking-wider text-primary">Solana Ecosystem</div>
+            <div className="flex flex-col gap-1">
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground" 
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/solana'); }}
+              >
+                Overview
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground" 
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/tokens?filter=solana'); }}
+              >
+                Solana Tokens
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground" 
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/nfts?filter=solana'); }}
+              >
+                Solana NFTs
+              </Button>
+              <Button 
+                variant="ghost" 
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground" 
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/analytics?tab=defi'); }}
+              >
+                DeFi Metrics
+              </Button>
+            </div>
+            
             <div className="flex gap-2 mt-4 border-t pt-4 border-border/40">
               <div className="flex-1">
                 <WalletButton />
