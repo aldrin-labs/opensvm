@@ -10,7 +10,6 @@ import {
   SolflareWalletAdapter,
   TorusWalletAdapter,
   LedgerWalletAdapter,
-  SlopeWalletAdapter,
   SolletWalletAdapter,
   SolletExtensionWalletAdapter
 } from '@solana/wallet-adapter-wallets';
@@ -26,7 +25,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
     new SolflareWalletAdapter(),
     new TorusWalletAdapter(),
     new LedgerWalletAdapter(),
-    new SlopeWalletAdapter(),
     new SolletWalletAdapter(),
     new SolletExtensionWalletAdapter()
   ], []);
