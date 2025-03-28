@@ -4,7 +4,15 @@ import type { DetailedTransactionInfo, InstructionWithAccounts } from '@/lib/sol
 import { useState } from 'react';
 import AccountLink from './AccountLink';
 import JsonTree from './JsonTree';
-import { Tooltip } from './ui/tooltip';
+// Custom tooltip implementation to avoid dependency issues
+const Tooltip = ({ content, children }: { content: string, children: React.ReactNode }) => (
+  <div className="relative group inline-block">
+    {children}
+    <div className="absolute opacity-0 group-hover:opacity-100 transition-opacity duration-300 bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-1 bg-primary text-primary-foreground text-xs rounded-md whitespace-nowrap z-10">
+      {content}
+    </div>
+  </div>
+);
 
 interface TransactionNodeDetailsProps {
   tx: DetailedTransactionInfo;
