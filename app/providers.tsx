@@ -9,9 +9,7 @@ import {
   PhantomWalletAdapter,
   SolflareWalletAdapter,
   TorusWalletAdapter,
-  LedgerWalletAdapter,
-  SolletWalletAdapter,
-  SolletExtensionWalletAdapter
+  LedgerWalletAdapter
 } from '@solana/wallet-adapter-wallets';
 import { useMemo } from 'react';
 
@@ -24,9 +22,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     new PhantomWalletAdapter(),
     new SolflareWalletAdapter(),
     new TorusWalletAdapter(),
-    new LedgerWalletAdapter(),
-    new SolletWalletAdapter(),
-    new SolletExtensionWalletAdapter()
+    new LedgerWalletAdapter()
   ], []);
 
   return (
