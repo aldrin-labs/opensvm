@@ -4,7 +4,7 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import AutocompleteSearchBar from '@/components/AutocompleteSearchBar';
+import EnhancedSearchBar from '@/components/EnhancedSearchBar';
 import { Select } from '@/components/ui/select';
 import { sanitizeSearchQuery, formatNumber, isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils';
 
@@ -197,7 +197,7 @@ function SearchResults() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <AutocompleteSearchBar />
+        <EnhancedSearchBar />
       </div>
       
       <h1 className="text-2xl font-bold mb-6">Search Results for "{query}"</h1>
