@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { SearchSettings } from './types';
+import { cn } from "@/lib/utils";
 
 interface SortOptionsProps {
   searchSettings: SearchSettings;
@@ -14,10 +15,10 @@ export const SortOptions: React.FC<SortOptionsProps> = ({
 }) => {
   return (
     <div className="space-y-3">
-      <h4 className="font-medium text-sm text-gray-700">Sort Results</h4>
+      <h4 className="font-medium text-sm text-foreground/80">Sort Results</h4>
       <div className="grid grid-cols-2 gap-2">
         <div>
-          <label htmlFor="sort-by" className="block text-xs text-gray-500 mb-1">Sort By</label>
+          <label htmlFor="sort-by" className="block text-xs text-muted-foreground mb-1">Sort By</label>
           <select
             id="sort-by"
             value={searchSettings.sortBy}
@@ -25,7 +26,7 @@ export const SortOptions: React.FC<SortOptionsProps> = ({
               ...searchSettings,
               sortBy: e.target.value as any
             })}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-sm"
+            className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
           >
             <option value="relevance">Relevance</option>
             <option value="date">Date</option>
@@ -33,7 +34,7 @@ export const SortOptions: React.FC<SortOptionsProps> = ({
           </select>
         </div>
         <div>
-          <label htmlFor="sort-order" className="block text-xs text-gray-500 mb-1">Order</label>
+          <label htmlFor="sort-order" className="block text-xs text-muted-foreground mb-1">Order</label>
           <select
             id="sort-order"
             value={searchSettings.sortOrder}
@@ -41,7 +42,7 @@ export const SortOptions: React.FC<SortOptionsProps> = ({
               ...searchSettings,
               sortOrder: e.target.value as any
             })}
-            className="w-full rounded border border-gray-200 px-2 py-1 text-sm"
+            className="w-full rounded border border-input bg-background px-2 py-1 text-sm text-foreground"
           >
             <option value="desc">Descending</option>
             <option value="asc">Ascending</option>

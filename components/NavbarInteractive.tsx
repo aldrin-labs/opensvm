@@ -158,7 +158,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
               />
               <button
                 type="button"
-                onClick={() => router.push('/search')}
+                onClick={() => window.location.href = '/search'}
                 className="bg-background/80 border border-l-0 border-border/50 hover:border-foreground/20 px-2 h-9 rounded-r-md"
                 aria-label="Search Settings"
               >
@@ -366,7 +366,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
                   />
                   <button
                     type="button"
-                    onClick={() => router.push('/search')}
+                    onClick={() => window.location.href = '/search'}
                     className="bg-background border border-l-0 border-r-0 border-border hover:border-foreground/20 px-3 h-10"
                     aria-label="Search Settings"
                   >
