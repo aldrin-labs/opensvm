@@ -1,240 +1,214 @@
-# Enhanced Multi-SVM Search Documentation
+# Enhanced Search Documentation
 
-This documentation covers the enhancements made to the OpenSVM search functionality, including smooth animations, AI enhancements, and integration with multiple search sources.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [New Features](#new-features)
-3. [Architecture](#architecture)
-4. [Components](#components)
-5. [Search Sources](#search-sources)
-6. [Performance Optimizations](#performance-optimizations)
-7. [Usage Examples](#usage-examples)
-8. [API Reference](#api-reference)
+This document provides an overview of the enhanced multi-SVM search functionality with AI enhancements and additional search capabilities.
 
 ## Overview
 
-The enhanced multi-SVM search provides a unified search experience across multiple data sources, including Solana blockchain data (via SVM and Moralis API), social media (Telegram and X.com), and web search (DuckDuckGo). The interface features smooth animations, AI-enhanced results similar to Perplexity, and a responsive design.
+The enhanced search functionality provides a smooth, animated experience with AI-powered insights and the ability to search across multiple platforms:
 
-## New Features
-
-### Smooth Animations
-- Fade-in/out transitions for search results
-- Slide animations for expanding/collapsing content
-- Loading state animations
-- Hover effects for interactive elements
-
-### AI Enhancements
-- Perplexity-like streaming response UI
-- Thinking/processing state visualization
-- Citation and source highlighting
-- Contextual suggestions based on search results
-
-### Multi-Source Search
-- Solana Virtual Machine (SVM) data
-- Moralis API integration for enhanced blockchain data
-- Telegram chat search
+- Solana VM (blockchain data)
+- Telegram chats
 - DuckDuckGo web search
-- X.com (Twitter) search
+- X.com (Twitter) posts
 
-### Performance Optimizations
-- Result caching to reduce redundant API calls
-- Request debouncing to prevent excessive API calls
-- Batched search requests for better resource utilization
-- Lazy loading of search results
-- Image optimization for faster loading
+## Key Features
 
-## Architecture
+### 1. AI-Enhanced Search Results
 
-The enhanced search functionality follows a modular architecture with separate components for each search source and shared utilities for common functionality.
+The search now integrates with OpenRouter API to provide intelligent analysis of blockchain data:
 
-```
-lib/
-├── moralis-api.ts         # Moralis API integration for Solana data
-├── telegram-search.ts     # Telegram chat search functionality
-├── duckduckgo-search.ts   # DuckDuckGo web search integration
-├── xcom-search.ts         # X.com (Twitter) search integration
-├── unified-search.ts      # Unified search interface combining all sources
-└── search-optimization.ts # Performance optimizations
-```
+- Context-aware model selection based on data complexity
+- Detailed explanations of blockchain transactions, tokens, and accounts
+- Source extraction for better citations with relevant links
+- Type-specific instructions based on blockchain data type
+
+### 2. Comprehensive Blockchain Data
+
+Enhanced Moralis API integration provides rich blockchain data:
+
+- Token data (price, supply, holders, transfers)
+- NFT metadata and collection statistics
+- Account portfolio and transaction history
+- Transaction details and token transfers
+
+### 3. Data Visualizations
+
+Interactive visualizations for different types of blockchain data:
+
+- **Token Visualizations**: Price history charts, token distribution, top holders
+- **NFT Visualizations**: Collection statistics, attributes, rarity distribution
+- **Account Visualizations**: Portfolio composition, token holdings, transaction activity
+- **Transaction Visualizations**: Instructions, account interactions, token transfers
+
+### 4. Multi-Platform Search
+
+Unified search across multiple platforms:
+
+- **Telegram**: Search public Telegram chats for discussions
+- **DuckDuckGo**: Web search for relevant information
+- **X.com**: Find related posts and discussions on X.com (Twitter)
+
+### 5. Enhanced User Experience
+
+Smooth animations and transitions throughout the interface:
+
+- Animated search input with focus effects
+- Staggered animations for search results
+- Loading state animations
+- Hover and interaction effects
+
+### 6. Performance Optimizations
+
+Several optimizations to ensure fast and responsive search:
+
+- Caching system for API responses
+- Batch processing for large result sets
+- Result deduplication to remove similar items
+- Relevance scoring for better result ordering
+
+## Usage
+
+### Basic Search
+
+Enter your query in the search bar and press Enter or click the Search button. The search will return results from all available sources.
+
+### Search Options
+
+Use the settings button next to the search bar to access additional options:
+
+- **Sources**: Choose which platforms to search (All, SVM, Telegram, DuckDuckGo, X.com)
+- **Time Range**: Filter results by time (All, Day, Week, Month, Year)
+- **Sort By**: Sort results by relevance or date
+- **Sort Order**: Choose ascending or descending order
+- **Include Blockchain Data**: Toggle to include or exclude detailed blockchain data
+
+### Keyboard Shortcuts
+
+- Press `/` to focus the search input
+- Press `Escape` to clear the search input
+- Use arrow keys to navigate through search suggestions
+- Press `Enter` to select a suggestion
 
 ## Components
 
 ### SearchInput
-Enhanced search input with animations and improved user experience.
 
-### AIResponsePanel
-Displays AI-generated insights about search results with a streaming interface similar to Perplexity.
+Enhanced search input with animations and keyboard shortcuts.
+
+```tsx
+<SearchInput
+  query={query}
+  setQuery={setQuery}
+  showSettings={showSettings}
+  setShowSettings={setShowSettings}
+  setShowSuggestions={setShowSuggestions}
+  clearSearch={clearSearch}
+  isSearching={isLoading}
+/>
+```
 
 ### SearchSuggestions
-Provides contextual suggestions as the user types.
 
-### SearchSettings
-Configurable search settings with animated transitions.
+Animated suggestions dropdown with staggered animations.
+
+```tsx
+<SearchSuggestions
+  showSuggestions={showSuggestions}
+  suggestions={suggestions}
+  suggestionsRef={suggestionsRef}
+  setQuery={setQuery}
+  setShowSuggestions={setShowSuggestions}
+  handleSubmit={handleSubmit}
+  isLoading={isLoadingSuggestions}
+/>
+```
 
 ### SearchButton
-Enhanced search button with loading animations.
 
-## Search Sources
+Animated search button with loading state.
 
-### SVM (Solana Virtual Machine)
-The primary search source for blockchain data, providing information about:
-- Accounts
-- Transactions
-- Tokens
-- Programs
+```tsx
+<SearchButton isLoading={isLoading} />
+```
+
+### AIResponsePanel
+
+AI-powered analysis panel with tabbed interface.
+
+```tsx
+<AIResponsePanel
+  query={query}
+  searchResults={searchResults}
+  isLoading={isLoadingAI}
+/>
+```
+
+### Blockchain Visualizations
+
+Data visualizations for different blockchain data types.
+
+```tsx
+// Token visualization
+<TokenVisualization tokenData={tokenData} />
+
+// NFT visualization
+<NFTVisualization nftData={nftData} />
+
+// Account visualization
+<AccountVisualization accountData={accountData} />
+
+// Transaction visualization
+<TransactionVisualization transactionData={transactionData} />
+```
+
+## API Integration
+
+### OpenRouter API
+
+The OpenRouter API is used to generate AI responses based on blockchain data.
+
+```typescript
+// Generate AI response
+const response = await generateAIResponse(query, blockchainData);
+```
 
 ### Moralis API
-Enhances blockchain data with additional context:
-- Token pair statistics
-- NFT metadata
-- Portfolio information
-- Token balances
 
-### Telegram
-Searches public Telegram chats for relevant discussions about the search query.
+Comprehensive blockchain data is fetched using the Moralis API.
 
-### DuckDuckGo
-Provides web search results related to the query.
-
-### X.com (Twitter)
-Searches X.com for relevant posts and discussions.
-
-## Performance Optimizations
-
-### Caching
 ```typescript
-// Example of using the cache
-const cacheKey = generateCacheKey(query, options);
-let results = getCachedResults(cacheKey);
-
-if (!results) {
-  results = await performSearch(query, options);
-  cacheResults(cacheKey, results);
-}
+// Get comprehensive blockchain data
+const data = await getComprehensiveBlockchainData(query);
 ```
-
-### Debouncing
-```typescript
-// Example of debounced search
-const debouncedSearch = debounce(performSearch, 300);
-inputElement.addEventListener('input', (e) => {
-  debouncedSearch(e.target.value);
-});
-```
-
-### Lazy Loading
-```typescript
-// Example of lazy loading results
-const loader = createLazyLoader(allResults);
-const initialResults = loader.getCurrentPage();
-
-// When user scrolls to bottom
-if (loader.hasMoreResults()) {
-  const nextPageResults = loader.loadNextPage();
-  displayResults(nextPageResults);
-}
-```
-
-## Usage Examples
-
-### Basic Search
-```typescript
-import { unifiedSearch } from '../lib/unified-search';
-
-// Search across all sources
-const results = await unifiedSearch('Solana NFT', {
-  sources: ['all'],
-  limit: 10,
-  sortBy: 'relevance',
-  sortOrder: 'desc'
-});
-
-// Display results
-console.log(`Found ${results.combined.length} results`);
-```
-
-### Source-Specific Search
-```typescript
-// Search only Telegram and X.com
-const socialResults = await unifiedSearch('Solana NFT', {
-  sources: ['telegram', 'xcom'],
-  limit: 10,
-  sortBy: 'date',
-  sortOrder: 'desc'
-});
-
-console.log(`Found ${socialResults.sources.telegram.length} Telegram results`);
-console.log(`Found ${socialResults.sources.xcom.length} X.com results`);
-```
-
-## API Reference
 
 ### Unified Search
+
+The unified search function combines results from all sources.
+
 ```typescript
-unifiedSearch(query: string, options?: SearchOptions): Promise<{
-  query: string;
-  sources: {
-    svm: UnifiedSearchResult[];
-    telegram: UnifiedSearchResult[];
-    duckduckgo: UnifiedSearchResult[];
-    xcom: UnifiedSearchResult[];
-  };
-  combined: UnifiedSearchResult[];
-}>
+// Perform unified search
+const results = await unifiedSearch(query, {
+  sources: ['all'],
+  timeRange: 'all',
+  sortBy: 'relevance',
+  sortOrder: 'desc',
+  includeBlockchainData: true
+});
 ```
 
-#### SearchOptions
-```typescript
-interface SearchOptions {
-  sources?: ('svm' | 'telegram' | 'duckduckgo' | 'xcom' | 'all')[];
-  limit?: number;
-  sortBy?: 'relevance' | 'date';
-  sortOrder?: 'asc' | 'desc';
-}
-```
+## Performance Considerations
 
-### Moralis API
-```typescript
-// Get token pair statistics
-getTokenPairStats(network: 'mainnet' | 'devnet', address: string): Promise<any>
+- API responses are cached to reduce redundant network requests
+- Search results are optimized and deduplicated
+- Animations are optimized to avoid performance impact
+- Batch processing is used for large result sets
 
-// Get NFT metadata
-getNFTMetadata(network: 'mainnet' | 'devnet', address: string): Promise<any>
+## Future Enhancements
 
-// Get portfolio for an address
-getPortfolio(network: 'mainnet' | 'devnet', address: string, nftMetadata?: boolean): Promise<any>
+Potential future enhancements to consider:
 
-// Enrich search results with Moralis data
-enrichSearchResultsWithMoralisData(query: string, results: any[]): Promise<any[]>
-```
-
-### Search Optimization
-```typescript
-// Cache management
-getCachedResults(cacheKey: string): any | null
-cacheResults(cacheKey: string, results: any): void
-generateCacheKey(query: string, options: any): string
-clearExpiredCache(): void
-
-// Debouncing
-debounce<T extends (...args: any[]) => any>(func: T, wait: number): (...args: Parameters<T>) => void
-
-// Batching
-batchSearchRequests<T>(requests: Array<() => Promise<T>>): Promise<T[]>
-
-// Lazy loading
-createLazyLoader(allResults: any[], pageSize?: number): {
-  getCurrentPage(): any[];
-  loadNextPage(): any[];
-  hasMoreResults(): boolean;
-  getTotalCount(): number;
-  reset(): void;
-}
-
-// Performance tracking
-withPerformanceTracking<T extends (...args: any[]) => Promise<any>>(
-  searchFunction: T
-): (...args: Parameters<T>) => Promise<ReturnType<T>>
-```
+- Integration with additional data sources
+- Advanced filtering options
+- Customizable visualization themes
+- Saved search functionality
+- Export and sharing capabilities

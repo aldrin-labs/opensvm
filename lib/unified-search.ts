@@ -5,10 +5,11 @@
  * into a unified search interface with consistent result formatting and display.
  */
 
-import { enrichSearchResultsWithMoralisData } from './moralis-api';
+import { moralis, getComprehensiveBlockchainData } from './moralis-api';
 import { searchTelegramChats, formatTelegramResults } from './telegram-search';
 import { searchDuckDuckGo, formatDuckDuckGoResults } from './duckduckgo-search';
 import { searchXCom, formatXComResults } from './xcom-search';
+import { optimizeSearchResults } from './search-optimization';
 
 // Search source types
 export type SearchSource = 'svm' | 'telegram' | 'duckduckgo' | 'xcom' | 'all';
@@ -22,6 +23,8 @@ export interface UnifiedSearchResult {
   url?: string;
   timestamp?: string;
   metadata?: any;
+  score?: number;
+  relevance?: number;
 }
 
 // Search options interface
@@ -30,7 +33,14 @@ export interface SearchOptions {
   limit?: number;
   sortBy?: 'relevance' | 'date';
   sortOrder?: 'asc' | 'desc';
+  includeBlockchainData?: boolean;
+  filterByType?: string[];
+  timeRange?: 'day' | 'week' | 'month' | 'year' | 'all';
 }
+
+// Cache for recent search results to improve performance
+const searchCache: Record<string, { results: any; timestamp: number }> = {};
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 /**
  * Perform a unified search across all specified sources
@@ -43,8 +53,20 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
     sources = ['all'],
     limit = 10,
     sortBy = 'relevance',
-    sortOrder = 'desc'
+    sortOrder = 'desc',
+    includeBlockchainData = true,
+    filterByType = [],
+    timeRange = 'all'
   } = options;
+  
+  // Create cache key based on query and options
+  const cacheKey = `${query}:${JSON.stringify(options)}`;
+  
+  // Check cache for recent results
+  if (searchCache[cacheKey] && Date.now() - searchCache[cacheKey].timestamp < CACHE_DURATION) {
+    console.log('Using cached search results for:', query);
+    return searchCache[cacheKey].results;
+  }
   
   // Determine which sources to search
   const searchSVM = sources.includes('all') || sources.includes('svm');
@@ -59,6 +81,7 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
       telegram: UnifiedSearchResult[];
       duckduckgo: UnifiedSearchResult[];
       xcom: UnifiedSearchResult[];
+      blockchainData?: any;
     } = {
       svm: [],
       telegram: [],
@@ -69,16 +92,28 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
     // Perform searches in parallel
     const searchPromises: Promise<any>[] = [];
     
+    // Fetch blockchain data if requested
+    if (includeBlockchainData) {
+      const blockchainDataPromise = getComprehensiveBlockchainData(query)
+        .then(data => {
+          if (data) {
+            results.blockchainData = data;
+          }
+        })
+        .catch(error => {
+          console.error('Error fetching blockchain data:', error);
+        });
+      
+      searchPromises.push(blockchainDataPromise);
+    }
+    
     // SVM search (using existing API)
     if (searchSVM) {
       const svmSearchPromise = fetch(`/api/search/filtered?q=${encodeURIComponent(query)}`)
         .then(response => response.json())
-        .then(async data => {
-          // Enrich SVM results with Moralis data
-          const enrichedData = await enrichSearchResultsWithMoralisData(query, data);
-          
+        .then(data => {
           // Format SVM results
-          results.svm = enrichedData.map((result: any) => ({
+          results.svm = data.map((result: any) => ({
             id: result.address || `svm_${Math.random().toString(36).substring(2, 15)}`,
             type: 'svm',
             title: result.type ? `${result.type.charAt(0).toUpperCase() + result.type.slice(1)}` : 'Solana Address',
@@ -86,7 +121,7 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
             timestamp: result.timestamp,
             metadata: {
               ...result,
-              moralisData: result.moralisData
+              blockchainData: results.blockchainData
             }
           }));
         })
@@ -143,6 +178,34 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
     // Wait for all searches to complete
     await Promise.all(searchPromises);
     
+    // Apply time range filter if specified
+    if (timeRange !== 'all') {
+      const cutoffDate = getTimeRangeCutoff(timeRange);
+      
+      Object.keys(results).forEach(key => {
+        if (key !== 'blockchainData' && Array.isArray(results[key as keyof typeof results])) {
+          const resultsArray = results[key as keyof typeof results] as UnifiedSearchResult[];
+          results[key as keyof typeof results] = resultsArray.filter(result => {
+            if (!result.timestamp) return true;
+            const resultDate = new Date(result.timestamp);
+            return resultDate >= cutoffDate;
+          }) as any;
+        }
+      });
+    }
+    
+    // Apply type filter if specified
+    if (filterByType.length > 0) {
+      Object.keys(results).forEach(key => {
+        if (key !== 'blockchainData' && Array.isArray(results[key as keyof typeof results])) {
+          const resultsArray = results[key as keyof typeof results] as UnifiedSearchResult[];
+          results[key as keyof typeof results] = resultsArray.filter(result => 
+            filterByType.includes(result.type)
+          ) as any;
+        }
+      });
+    }
+    
     // Combine and sort results
     let allResults: UnifiedSearchResult[] = [
       ...results.svm,
@@ -151,10 +214,19 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
       ...results.xcom
     ];
     
+    // Optimize and score results based on relevance to query
+    allResults = optimizeSearchResults(allResults, query);
+    
     // Sort results
     allResults = sortResults(allResults, sortBy, sortOrder);
     
-    return {
+    // Limit total results if specified
+    if (limit > 0 && allResults.length > limit) {
+      allResults = allResults.slice(0, limit);
+    }
+    
+    // Prepare final result object
+    const finalResults = {
       query,
       sources: {
         svm: results.svm,
@@ -162,11 +234,42 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
         duckduckgo: results.duckduckgo,
         xcom: results.xcom
       },
-      combined: allResults
+      blockchainData: results.blockchainData,
+      combined: allResults,
+      timestamp: new Date().toISOString()
     };
+    
+    // Cache the results
+    searchCache[cacheKey] = {
+      results: finalResults,
+      timestamp: Date.now()
+    };
+    
+    return finalResults;
   } catch (error) {
     console.error('Error in unified search:', error);
     throw error;
+  }
+}
+
+/**
+ * Get cutoff date for time range filter
+ * @param timeRange - Time range to filter by
+ * @returns Date object representing the cutoff
+ */
+function getTimeRangeCutoff(timeRange: string): Date {
+  const now = new Date();
+  switch (timeRange) {
+    case 'day':
+      return new Date(now.setDate(now.getDate() - 1));
+    case 'week':
+      return new Date(now.setDate(now.getDate() - 7));
+    case 'month':
+      return new Date(now.setMonth(now.getMonth() - 1));
+    case 'year':
+      return new Date(now.setFullYear(now.getFullYear() - 1));
+    default:
+      return new Date(0); // Beginning of time
   }
 }
 
@@ -191,21 +294,20 @@ function sortResults(
     });
   }
   
-  // For relevance sorting, we would typically use a scoring algorithm
-  // For this implementation, we'll use a simple approach based on result type
-  const typeWeights: Record<string, number> = {
-    svm: 10,      // Prioritize SVM results
-    telegram: 7,  // Then social media
-    xcom: 6,
-    web: 5        // Then web results
-  };
-  
+  // For relevance sorting, use the relevance score if available
   return results.sort((a, b) => {
-    const weightA = typeWeights[a.type] || 0;
-    const weightB = typeWeights[b.type] || 0;
+    const scoreA = a.relevance || 0;
+    const scoreB = b.relevance || 0;
     
-    return sortOrder === 'asc' ? weightA - weightB : weightB - weightA;
+    return sortOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
   });
+}
+
+/**
+ * Clear the search cache
+ */
+export function clearSearchCache() {
+  Object.keys(searchCache).forEach(key => delete searchCache[key]);
 }
 
 /**
@@ -229,6 +331,41 @@ export function getResultTypeIcon(type: string): string {
 }
 
 /**
+ * Get appropriate background and text colors for result type
+ * @param type - Result type
+ * @returns Object with background and text color classes
+ */
+export function getResultTypeColors(type: string): { bg: string; text: string } {
+  switch (type) {
+    case 'svm':
+      return {
+        bg: 'bg-purple-100 dark:bg-purple-900/20',
+        text: 'text-purple-500 dark:text-purple-300'
+      };
+    case 'telegram':
+      return {
+        bg: 'bg-blue-100 dark:bg-blue-900/20',
+        text: 'text-blue-500 dark:text-blue-300'
+      };
+    case 'web':
+      return {
+        bg: 'bg-green-100 dark:bg-green-900/20',
+        text: 'text-green-500 dark:text-green-300'
+      };
+    case 'x_com':
+      return {
+        bg: 'bg-gray-100 dark:bg-gray-800',
+        text: 'text-gray-700 dark:text-gray-300'
+      };
+    default:
+      return {
+        bg: 'bg-primary/10',
+        text: 'text-primary'
+      };
+  }
+}
+
+/**
  * Render a unified search result
  * @param result - Search result to render
  * @returns HTML string for the result card
@@ -237,33 +374,12 @@ export function renderUnifiedSearchResult(result: UnifiedSearchResult): string {
   const icon = getResultTypeIcon(result.type);
   const date = result.timestamp ? new Date(result.timestamp) : null;
   const formattedDate = date ? `${date.toLocaleDateString()} ${date.toLocaleTimeString()}` : '';
-  
-  let bgColor = 'bg-primary/10';
-  let textColor = 'text-primary';
-  
-  switch (result.type) {
-    case 'svm':
-      bgColor = 'bg-purple-100 dark:bg-purple-900/20';
-      textColor = 'text-purple-500 dark:text-purple-300';
-      break;
-    case 'telegram':
-      bgColor = 'bg-blue-100 dark:bg-blue-900/20';
-      textColor = 'text-blue-500 dark:text-blue-300';
-      break;
-    case 'web':
-      bgColor = 'bg-green-100 dark:bg-green-900/20';
-      textColor = 'text-green-500 dark:text-green-300';
-      break;
-    case 'x_com':
-      bgColor = 'bg-gray-100 dark:bg-gray-800';
-      textColor = 'text-gray-700 dark:text-gray-300';
-      break;
-  }
+  const colors = getResultTypeColors(result.type);
   
   return `
     <div class="border rounded-lg p-4 hover:bg-muted/30 transition-colors duration-200 animate-in fade-in-0" style="animation-delay: ${Math.random() * 300}ms">
       <div class="flex items-start gap-3">
-        <div class="flex-shrink-0 w-10 h-10 ${bgColor} rounded-full flex items-center justify-center ${textColor}">
+        <div class="flex-shrink-0 w-10 h-10 ${colors.bg} rounded-full flex items-center justify-center ${colors.text}">
           ${icon}
         </div>
         <div class="flex-1">
@@ -279,8 +395,57 @@ export function renderUnifiedSearchResult(result: UnifiedSearchResult): string {
               </a>
             </div>
           ` : ''}
+          ${result.relevance ? `
+            <div class="mt-1">
+              <span class="text-xs text-muted-foreground">Relevance: ${Math.round(result.relevance * 100)}%</span>
+            </div>
+          ` : ''}
         </div>
       </div>
     </div>
   `;
+}
+
+/**
+ * Group search results by source type
+ * @param results - Combined search results
+ * @returns Object with results grouped by source
+ */
+export function groupResultsBySource(results: UnifiedSearchResult[]): Record<string, UnifiedSearchResult[]> {
+  const grouped: Record<string, UnifiedSearchResult[]> = {
+    svm: [],
+    telegram: [],
+    web: [],
+    x_com: []
+  };
+  
+  results.forEach(result => {
+    const type = result.type;
+    if (!grouped[type]) {
+      grouped[type] = [];
+    }
+    grouped[type].push(result);
+  });
+  
+  return grouped;
+}
+
+/**
+ * Get source name for display
+ * @param source - Source type
+ * @returns Formatted source name
+ */
+export function getSourceDisplayName(source: string): string {
+  switch (source) {
+    case 'svm':
+      return 'Solana VM';
+    case 'telegram':
+      return 'Telegram';
+    case 'web':
+      return 'Web (DuckDuckGo)';
+    case 'x_com':
+      return 'X.com';
+    default:
+      return source.charAt(0).toUpperCase() + source.slice(1);
+  }
 }
