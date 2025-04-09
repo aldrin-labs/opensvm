@@ -49,16 +49,16 @@ function generateSimulatedXComResults(query: string, limit: number) {
   ];
   
   const tweetTemplates = [
-    'Just published a new article about {query}. Check it out! #Solana #Blockchain',
-    'The latest {query} update is a game-changer for the Solana ecosystem. Thoughts? 🧵',
-    '{query} is trending today with some impressive metrics. Here's what you need to know:',
-    'I've been exploring {query} on Solana and I'm impressed with the performance. 10/10 would recommend.',
+    `Just published a new article about {query}. Check it out! #Solana #Blockchain`,
+    `The latest {query} update is a game-changer for the Solana ecosystem. Thoughts? 🧵`,
+    `{query} is trending today with some impressive metrics. Here's what you need to know:`,
+    `I've been exploring {query} on Solana and I'm impressed with the performance. 10/10 would recommend.`,
     'Breaking: New developments in {query} could reshape how we think about blockchain technology.',
-    'Hot take: {query} is underrated and will be a key player in the next bull run. #NotFinancialAdvice',
-    'Just released a tutorial on how to use {query} effectively. Link in bio! #SolanaDevs',
-    'The community response to {query} has been overwhelming. Thanks for all the support!',
-    'Unpopular opinion: {query} still has major issues that need to be addressed before mass adoption.',
-    'Excited to announce our partnership with {query}! More details coming soon. #Bullish'
+    `Hot take: {query} is underrated and will be a key player in the next bull run. #NotFinancialAdvice`,
+    `Just released a tutorial on how to use {query} effectively. Link in bio! #SolanaDevs`,
+    `The community response to {query} has been overwhelming. Thanks for all the support!`,
+    `Unpopular opinion: {query} still has major issues that need to be addressed before mass adoption.`,
+    `Excited to announce our partnership with {query}! More details coming soon. #Bullish`
   ];
   
   const results = [];
