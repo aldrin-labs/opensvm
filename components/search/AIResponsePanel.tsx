@@ -385,8 +385,8 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                           </div>
                           <div>
                             <p className="text-muted-foreground">24h Change:</p>
-                            <p className={`font-medium ${(blockchainData.data.price.24hrChange || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {blockchainData.data.price.24hrChange?.toFixed(2) || 0}%
+                            <p className={`font-medium ${(blockchainData.data.price['24hrChange'] || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                              {blockchainData.data.price['24hrChange']?.toFixed(2) || 0}%
                             </p>
                           </div>
                         </>
