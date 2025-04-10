@@ -1,16 +1,11 @@
-// AI-enhanced search response component
-'use client';
+"use client";
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { openrouter } from '@/lib/openrouter-api';
-import { moralis } from '@/lib/moralis-api';
-import { Skeleton } from '@/components/ui/skeleton';
 import { Badge } from '@/components/ui/badge';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Copy, Info, ExternalLink, RefreshCw, ThumbsUp, ThumbsDown } from 'lucide-react';
+import { Info, ExternalLink, ThumbsUp, ThumbsDown } from 'lucide-react';
 
 interface AIResponsePanelProps {
   query: string;
@@ -22,118 +17,175 @@ interface Source {
   url: string;
 }
 
-// Data type for blockchain information
-type BlockchainDataType = 'token' | 'nft' | 'account' | 'transaction' | 'unknown' | 'error';
-
 const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => {
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [isAiStreaming, setIsAiStreaming] = useState<boolean>(false);
   const [aiStreamComplete, setAiStreamComplete] = useState<boolean>(false);
   const [aiSources, setAiSources] = useState<Source[]>([]);
-  const [blockchainData, setBlockchainData] = useState<any>(null);
-  const [blockchainDataType, setBlockchainDataType] = useState<BlockchainDataType>('unknown');
   const [error, setError] = useState<string | null>(null);
-  const [isRefreshing, setIsRefreshing] = useState<boolean>(false);
-  const [selectedModel, setSelectedModel] = useState<string>('');
-  const [activeTab, setActiveTab] = useState<string>('ai');
-  const [copySuccess, setCopySuccess] = useState<boolean>(false);
+  const [apiKeyAvailable, setApiKeyAvailable] = useState<boolean>(false);
+  const [promptButtons, setPromptButtons] = useState<string[]>([]);
   const [feedbackGiven, setFeedbackGiven] = useState<'up' | 'down' | null>(null);
 
-  // Function to copy AI response to clipboard
-  const copyToClipboard = useCallback(() => {
-    navigator.clipboard.writeText(aiResponse);
-    setCopySuccess(true);
-    setTimeout(() => setCopySuccess(false), 2000);
-  }, [aiResponse]);
-
-  // Function to handle user feedback
-  const handleFeedback = useCallback((type: 'up' | 'down') => {
-    setFeedbackGiven(type);
-    // Here you could also send the feedback to a backend API
-    console.log(`User gave ${type === 'up' ? 'positive' : 'negative'} feedback for query: ${query}`);
-  }, [query]);
-
-  // Function to refresh the AI response
-  const refreshResponse = useCallback(() => {
-    setIsRefreshing(true);
-    generateAIResponse(query);
-  }, [query]);
-
-  // Main function to generate AI response
-  const generateAIResponse = useCallback(async (searchQuery: string) => {
-    if (!searchQuery) return;
+  // Check if API key is available
+  useEffect(() => {
+    const checkApiKey = async () => {
+      try {
+        const response = await fetch('/api/check-ai-key');
+        const data = await response.json();
+        setApiKeyAvailable(data.available);
+        
+        if (!data.available) {
+          setError('AI functionality is currently disabled. No API key is available.');
+        }
+      } catch (err) {
+        console.error('Error checking API key:', err);
+        setApiKeyAvailable(false);
+        setError('Unable to verify AI functionality status.');
+      }
+    };
     
-    // Reset AI states
-    setAiResponse('');
-    setAiSources([]);
-    setAiStreamComplete(false);
-    setBlockchainData(null);
-    setBlockchainDataType('unknown');
-    setError(null);
-    setFeedbackGiven(null);
+    checkApiKey();
+  }, []);
+
+  // Generate AI response when query changes and API key is available
+  useEffect(() => {
+    if (!query || !apiKeyAvailable) return;
     
-    // Start AI thinking state
-    setIsAiThinking(true);
+    const generateResponse = async () => {
+      // Reset states
+      setAiResponse('');
+      setAiSources([]);
+      setAiStreamComplete(false);
+      setError(null);
+      setPromptButtons([]);
+      setFeedbackGiven(null);
+      
+      // Start AI thinking state
+      setIsAiThinking(true);
+      
+      try {
+        // Call the AI API endpoint
+        const response = await fetch('/api/ai/generate', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query }),
+        });
+        
+        if (!response.ok) {
+          throw new Error(`API error: ${response.status}`);
+        }
+        
+        // Switch to streaming mode
+        setIsAiThinking(false);
+        setIsAiStreaming(true);
+        
+        // Read the streaming response
+        const reader = response.body?.getReader();
+        if (!reader) throw new Error('Response body is not readable');
+        
+        let decoder = new TextDecoder();
+        let done = false;
+        
+        while (!done) {
+          const { value, done: readerDone } = await reader.read();
+          done = readerDone;
+          
+          if (value) {
+            const chunk = decoder.decode(value, { stream: !done });
+            setAiResponse(prev => prev + chunk);
+          }
+        }
+        
+        // Streaming complete
+        setIsAiStreaming(false);
+        setAiStreamComplete(true);
+        
+        // Generate follow-up prompt buttons
+        generatePromptButtons(query);
+        
+        // Fetch sources
+        const sourcesResponse = await fetch('/api/ai/sources', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ query }),
+        });
+        
+        if (sourcesResponse.ok) {
+          const sourcesData = await sourcesResponse.json();
+          setAiSources(sourcesData.sources);
+        }
+      } catch (err) {
+        console.error('Error generating AI response:', err);
+        setError('Failed to generate AI response. Please try again later.');
+        setIsAiThinking(false);
+        setIsAiStreaming(false);
+      }
+    };
+    
+    generateResponse();
+  }, [query, apiKeyAvailable]);
+  
+  // Function to generate context-based prompt buttons
+  const generatePromptButtons = async (query: string) => {
+    if (!apiKeyAvailable) return;
     
     try {
-      // Fetch blockchain data using enhanced Moralis API
-      const data = await moralis.getComprehensiveBlockchainData(searchQuery);
-      setBlockchainData(data);
+      const response = await fetch('/api/ai/suggest-prompts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          query,
+          currentResponse: aiResponse 
+        }),
+      });
       
-      if (data) {
-        setBlockchainDataType(data.type as BlockchainDataType);
+      if (response.ok) {
+        const data = await response.json();
+        setPromptButtons(data.prompts || []);
       }
-      
-      // Select the best model based on the data
-      const modelToUse = openrouter.selectBestModelForData(data);
-      setSelectedModel(modelToUse);
-      
-      // Create prompt with blockchain data
-      const prompt = openrouter.createBlockchainSearchPrompt(searchQuery, data);
-      
-      // Switch to streaming mode
-      setIsAiThinking(false);
-      setIsAiStreaming(true);
-      
-      // Use streaming response
-      await openrouter.generateStreamingAIResponse(
-        prompt,
-        (chunk) => {
-          setAiResponse(prev => prev + chunk);
-        },
-        () => {
-          setIsAiStreaming(false);
-          setAiStreamComplete(true);
-          setIsRefreshing(false);
-          
-          // Extract sources from blockchain data
-          const sources = openrouter.extractSourcesFromBlockchainData(data);
-          setAiSources(sources);
-        },
-        {
-          model: modelToUse,
-          temperature: 0.7,
-          max_tokens: 1500
-        }
-      );
     } catch (err) {
-      console.error('Error generating AI response:', err);
-      setError('Failed to generate AI response. Please try again later.');
-      setIsAiThinking(false);
-      setIsAiStreaming(false);
-      setIsRefreshing(false);
+      console.error('Error generating prompt buttons:', err);
     }
-  }, []);
+  };
   
-  // Initialize AI response when query changes
-  useEffect(() => {
-    if (!query) return;
-    generateAIResponse(query);
-  }, [query, generateAIResponse]);
+  // Function to handle user feedback
+  const handleFeedback = (type: 'up' | 'down') => {
+    setFeedbackGiven(type);
+    
+    // Send feedback to backend
+    fetch('/api/ai/feedback', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ 
+        query,
+        feedback: type,
+        response: aiResponse
+      }),
+    }).catch(err => {
+      console.error('Error sending feedback:', err);
+    });
+  };
+  
+  // Function to handle prompt button click
+  const handlePromptClick = (promptText: string) => {
+    // Treat the prompt as a user message
+    window.dispatchEvent(new CustomEvent('ai-prompt-selected', { 
+      detail: { prompt: promptText }
+    }));
+  };
   
   // Format the AI response with proper styling
-  const formattedResponse = useCallback(() => {
+  const formattedResponse = () => {
     if (!aiResponse) return null;
     
     // Split by paragraphs and format
@@ -170,82 +222,14 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
         </p>
       );
     });
-  }, [aiResponse, aiStreamComplete]);
+  };
   
-  // Get a badge color based on blockchain data type
-  const getDataTypeBadge = useCallback(() => {
-    switch (blockchainDataType) {
-      case 'token':
-        return <Badge className="bg-green-500">Token</Badge>;
-      case 'nft':
-        return <Badge className="bg-purple-500">NFT</Badge>;
-      case 'account':
-        return <Badge className="bg-blue-500">Account</Badge>;
-      case 'transaction':
-        return <Badge className="bg-orange-500">Transaction</Badge>;
-      case 'error':
-        return <Badge className="bg-red-500">Error</Badge>;
-      default:
-        return <Badge className="bg-gray-500">Unknown</Badge>;
-    }
-  }, [blockchainDataType]);
-  
-  // Get model information
-  const getModelInfo = useCallback(() => {
-    const modelName = selectedModel.split('/').pop() || 'AI Model';
-    return modelName.replace(/-/g, ' ').replace(/:beta/g, '');
-  }, [selectedModel]);
-  
-  return (
-    <Card className="mb-6 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 shadow-lg">
-      <CardHeader className="bg-primary/5 border-b">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
+  if (error) {
+    return (
+      <Card className="mb-6 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 shadow-lg">
+        <CardHeader className="bg-primary/5 border-b">
+          <div className="flex justify-between items-center">
             <h3 className="text-lg font-semibold">AI-Enhanced Results</h3>
-            {blockchainDataType !== 'unknown' && getDataTypeBadge()}
-            {selectedModel && (
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <div className="flex items-center text-xs text-muted-foreground">
-                      <Info className="h-3 w-3 mr-1" />
-                      {getModelInfo()}
-                    </div>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Using {getModelInfo()} for this analysis</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            )}
-          </div>
-          
-          <div className="flex items-center gap-2">
-            {aiStreamComplete && (
-              <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={copyToClipboard}
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  <Copy className="h-4 w-4 mr-1" />
-                  {copySuccess ? 'Copied!' : 'Copy'}
-                </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={refreshResponse}
-                  disabled={isRefreshing}
-                  className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                >
-                  <RefreshCw className={`h-4 w-4 mr-1 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  Refresh
-                </Button>
-              </>
-            )}
-            
             <button 
               onClick={onClose}
               className="text-muted-foreground hover:text-foreground transition-colors duration-200"
@@ -255,80 +239,120 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
               </svg>
             </button>
           </div>
+        </CardHeader>
+        <CardContent className="p-4">
+          <div className="text-red-500 p-4 rounded-md bg-red-50 dark:bg-red-900/20">
+            <p>{error}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+  
+  return (
+    <Card className="mb-6 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 shadow-lg">
+      <CardHeader className="bg-primary/5 border-b">
+        <div className="flex justify-between items-center">
+          <div className="flex items-center gap-2">
+            <h3 className="text-lg font-semibold">AI-Enhanced Results</h3>
+            {apiKeyAvailable && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <div className="flex items-center text-xs text-muted-foreground">
+                      <Info className="h-3 w-3 mr-1" />
+                      AI Enabled
+                    </div>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Using real AI data for this analysis</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+          
+          <button 
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground transition-colors duration-200"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+            </svg>
+          </button>
         </div>
       </CardHeader>
       
-      <Tabs defaultValue="ai" value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid grid-cols-2 mx-4 mt-2">
-          <TabsTrigger value="ai">AI Analysis</TabsTrigger>
-          <TabsTrigger value="data">Blockchain Data</TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="ai" className="p-0">
-          <CardContent className="p-4">
-            {error ? (
-              <div className="text-red-500 p-4 rounded-md bg-red-50 dark:bg-red-900/20">
-                <p>{error}</p>
+      <CardContent className="p-4">
+        {isAiThinking ? (
+          <div className="space-y-3">
+            <div className="flex items-center space-x-2">
+              <div className="flex space-x-1">
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '600ms' }}></div>
+              </div>
+              <p className="text-sm text-muted-foreground">Analyzing data for "{query}"...</p>
+            </div>
+          </div>
+        ) : (
+          <div className="prose dark:prose-invert max-w-none">
+            {formattedResponse()}
+            {!aiStreamComplete && isAiStreaming && (
+              <span className="inline-block w-1 h-4 bg-primary animate-pulse"></span>
+            )}
+            
+            {aiStreamComplete && (
+              <div className="mt-4 flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">Was this analysis helpful?</span>
                 <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={refreshResponse}
-                  className="mt-2"
+                  variant={feedbackGiven === 'up' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => handleFeedback('up')}
+                  disabled={feedbackGiven !== null}
+                  className="h-8 px-2"
                 >
-                  Try Again
+                  <ThumbsUp className="h-4 w-4" />
+                </Button>
+                <Button 
+                  variant={feedbackGiven === 'down' ? 'default' : 'outline'} 
+                  size="sm"
+                  onClick={() => handleFeedback('down')}
+                  disabled={feedbackGiven !== null}
+                  className="h-8 px-2"
+                >
+                  <ThumbsDown className="h-4 w-4" />
                 </Button>
               </div>
-            ) : isAiThinking ? (
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '300ms' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" style={{ animationDelay: '600ms' }}></div>
-                  </div>
-                  <p className="text-sm text-muted-foreground">Analyzing blockchain data for "{query}"...</p>
-                </div>
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-[90%]" />
-                <Skeleton className="h-4 w-[80%]" />
-                <Skeleton className="h-4 w-full" />
-                <Skeleton className="h-4 w-[85%]" />
-              </div>
-            ) : (
-              <div className="prose dark:prose-invert max-w-none">
-                {formattedResponse()}
-                {!aiStreamComplete && isAiStreaming && (
-                  <span className="inline-block w-1 h-4 bg-primary animate-pulse"></span>
-                )}
-                
-                {aiStreamComplete && (
-                  <div className="mt-4 flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Was this analysis helpful?</span>
-                    <Button 
-                      variant={feedbackGiven === 'up' ? 'default' : 'outline'} 
-                      size="sm"
-                      onClick={() => handleFeedback('up')}
-                      disabled={feedbackGiven !== null}
-                      className="h-8 px-2"
-                    >
-                      <ThumbsUp className="h-4 w-4" />
-                    </Button>
-                    <Button 
-                      variant={feedbackGiven === 'down' ? 'default' : 'outline'} 
-                      size="sm"
-                      onClick={() => handleFeedback('down')}
-                      disabled={feedbackGiven !== null}
-                      className="h-8 px-2"
-                    >
-                      <ThumbsDown className="h-4 w-4" />
-                    </Button>
-                  </div>
-                )}
-              </div>
             )}
-          </CardContent>
+          </div>
+        )}
+      </CardContent>
+      
+      {aiStreamComplete && (
+        <>
+          {/* Prompt buttons */}
+          {promptButtons.length > 0 && (
+            <div className="px-4 pb-2">
+              <p className="text-sm font-medium mb-2">Related questions:</p>
+              <div className="flex flex-wrap gap-2">
+                {promptButtons.map((prompt, index) => (
+                  <Button
+                    key={index}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => handlePromptClick(prompt)}
+                    className="text-xs"
+                  >
+                    {prompt}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           
-          {aiStreamComplete && aiSources.length > 0 && (
+          {/* Sources */}
+          {aiSources.length > 0 && (
             <CardFooter className="bg-muted/30 border-t p-4">
               <div className="w-full">
                 <h4 className="text-sm font-medium mb-2">Sources:</h4>
@@ -349,182 +373,8 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
               </div>
             </CardFooter>
           )}
-        </TabsContent>
-        
-        <TabsContent value="data" className="p-0">
-          <CardContent className="p-4">
-            {!blockchainData ? (
-              <div className="text-center p-4">
-                <p className="text-muted-foreground">No blockchain data available for this query.</p>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Raw Blockchain Data</h3>
-                  <Badge variant="outline">{blockchainDataType}</Badge>
-                </div>
-                
-                {/* Data visualization based on type */}
-                {blockchainDataType === 'token' && blockchainData.data.metadata && (
-                  <div className="bg-muted/30 p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Token Information</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Name:</p>
-                        <p className="font-medium">{blockchainData.data.metadata.name || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Symbol:</p>
-                        <p className="font-medium">{blockchainData.data.metadata.symbol || 'Unknown'}</p>
-                      </div>
-                      {blockchainData.data.price && (
-                        <>
-                          <div>
-                            <p className="text-muted-foreground">Price:</p>
-                            <p className="font-medium">${blockchainData.data.price.usdPrice?.toFixed(6) || 'Unknown'}</p>
-                          </div>
-                          <div>
-                            <p className="text-muted-foreground">24h Change:</p>
-                            <p className={`font-medium ${(blockchainData.data.price['24hrChange'] || 0) >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                              {blockchainData.data.price['24hrChange']?.toFixed(2) || 0}%
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {blockchainDataType === 'nft' && blockchainData.data.metadata && (
-                  <div className="bg-muted/30 p-3 rounded-md">
-                    <h4 className="font-medium mb-2">NFT Information</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">Name:</p>
-                        <p className="font-medium">{blockchainData.data.metadata.name || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Collection:</p>
-                        <p className="font-medium">{blockchainData.data.metadata.collection?.name || 'Unknown'}</p>
-                      </div>
-                      {blockchainData.data.metadata.attributes && (
-                        <div className="col-span-2">
-                          <p className="text-muted-foreground mb-1">Attributes:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {blockchainData.data.metadata.attributes.map((attr: any, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {attr.trait_type}: {attr.value}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {blockchainDataType === 'account' && blockchainData.data.portfolio && (
-                  <div className="bg-muted/30 p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Account Information</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div>
-                        <p className="text-muted-foreground">SOL Balance:</p>
-                        <p className="font-medium">
-                          {blockchainData.data.nativeBalance?.solana || 
-                           blockchainData.data.portfolio.nativeBalance?.solana || 
-                           'Unknown'} SOL
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Tokens:</p>
-                        <p className="font-medium">
-                          {blockchainData.data.portfolio.tokens?.length || 
-                           blockchainData.data.tokenBalances?.length || 
-                           0}
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">NFTs:</p>
-                        <p className="font-medium">
-                          {blockchainData.data.portfolio.nfts?.length || 
-                           blockchainData.data.nfts?.length || 
-                           0}
-                        </p>
-                      </div>
-                      {blockchainData.data.domains && (
-                        <div>
-                          <p className="text-muted-foreground">Domains:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {blockchainData.data.domains.map((domain: any, i: number) => (
-                              <Badge key={i} variant="outline" className="text-xs">
-                                {domain.name}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                
-                {blockchainDataType === 'transaction' && blockchainData.data.transaction && (
-                  <div className="bg-muted/30 p-3 rounded-md">
-                    <h4 className="font-medium mb-2">Transaction Information</h4>
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      <div className="col-span-2">
-                        <p className="text-muted-foreground">Signature:</p>
-                        <p className="font-medium truncate">{blockchainData.query}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Status:</p>
-                        <Badge className={blockchainData.data.transaction.status === 'success' ? 'bg-green-500' : 'bg-red-500'}>
-                          {blockchainData.data.transaction.status || 'Unknown'}
-                        </Badge>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Block:</p>
-                        <p className="font-medium">{blockchainData.data.transaction.block || 'Unknown'}</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Fee:</p>
-                        <p className="font-medium">{blockchainData.data.transaction.fee || 'Unknown'} SOL</p>
-                      </div>
-                      <div>
-                        <p className="text-muted-foreground">Date:</p>
-                        <p className="font-medium">
-                          {blockchainData.data.transaction.blockTime ? 
-                            new Date(blockchainData.data.transaction.blockTime * 1000).toLocaleString() : 
-                            'Unknown'}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-                
-                {/* Raw data explorer */}
-                <div className="mt-4">
-                  <details className="group">
-                    <summary className="cursor-pointer flex items-center text-sm font-medium">
-                      <span className="mr-2">View Raw JSON Data</span>
-                      <svg 
-                        className="h-4 w-4 transition-transform group-open:rotate-180" 
-                        xmlns="http://www.w3.org/2000/svg" 
-                        viewBox="0 0 20 20" 
-                        fill="currentColor"
-                      >
-                        <path fillRule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clipRule="evenodd" />
-                      </svg>
-                    </summary>
-                    <div className="mt-2 p-2 bg-muted rounded-md text-xs overflow-auto max-h-96">
-                      <pre>{JSON.stringify(blockchainData, null, 2)}</pre>
-                    </div>
-                  </details>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </TabsContent>
-      </Tabs>
+        </>
+      )}
     </Card>
   );
 };
