@@ -131,7 +131,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
           
           {/* Interactive search form */}
           <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-4 items-center">
-            <div className="relative group">
+            <div className="relative group flex w-full">
               <svg 
                 width="18" 
                 height="18" 
@@ -151,11 +151,21 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Search"
-                className="w-full bg-background/80 border border-border/50 hover:border-foreground/20 focus:border-foreground/30 focus:ring-1 focus:ring-primary/20 pl-10 h-9 transition-all rounded-md text-sm"
+                className="w-full bg-background/80 border border-r-0 border-border/50 hover:border-foreground/20 focus:border-foreground/30 focus:ring-1 focus:ring-primary/20 pl-10 h-9 transition-all rounded-l-md text-sm"
                 placeholder="Search accounts, tokens, or programs..."
                 role="searchbox"
                 data-testid="navbar-search"
               />
+              <button
+                type="button"
+                onClick={() => router.push('/search')}
+                className="bg-background/80 border border-l-0 border-border/50 hover:border-foreground/20 px-2 h-9 rounded-r-md"
+                aria-label="Search Settings"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" viewBox="0 0 20 20" fill="currentColor">
+                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                </svg>
+              </button>
             </div>
           </form>
   
@@ -354,6 +364,16 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
                     data-testid="mobile-search"
                     autoComplete="off"
                   />
+                  <button
+                    type="button"
+                    onClick={() => router.push('/search')}
+                    className="bg-background border border-l-0 border-r-0 border-border hover:border-foreground/20 px-3 h-10"
+                    aria-label="Search Settings"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-muted-foreground" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
+                    </svg>
+                  </button>
                   <Button 
                     type="submit" 
                     className="rounded-l-none h-10 px-4 font-medium" 
