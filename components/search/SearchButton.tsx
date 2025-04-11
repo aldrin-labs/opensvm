@@ -16,8 +16,9 @@ export const SearchButton: React.FC<SearchButtonProps> = ({ isLoading }) => {
       whileHover={{ scale: isLoading ? 1 : 1.03, backgroundColor: 'rgb(var(--primary) / 0.9)' }}
       whileTap={{ scale: isLoading ? 1 : 0.97 }}
       initial={{ opacity: 0.9 }}
-      animate={{ opacity: 1 }}
+      animate={{ opacity: 1, boxShadow: isLoading ? '0 0 0 1px rgba(var(--primary), 0.5)' : '0 0 0 0 transparent' }}
       transition={{ duration: 0.2 }}
+      title="Execute search"
     >
       {isLoading ? (
         <motion.div 
@@ -32,7 +33,8 @@ export const SearchButton: React.FC<SearchButtonProps> = ({ isLoading }) => {
           </svg>
           <motion.span 
             animate={{ 
-              opacity: [0.6, 1, 0.6],
+              opacity: [0.7, 1, 0.7],
+              letterSpacing: ['0px', '0.5px', '0px']
             }}
             transition={{ 
               repeat: Infinity, 
@@ -52,17 +54,35 @@ export const SearchButton: React.FC<SearchButtonProps> = ({ isLoading }) => {
         >
           <motion.svg 
             xmlns="http://www.w3.org/2000/svg" 
-            className="h-4 w-4 mr-1" 
+            className="h-4 w-4 mr-2" 
             fill="none" 
             viewBox="0 0 24 24" 
             stroke="currentColor"
-            animate={{ rotate: [0, 15, 0] }}
-            transition={{ duration: 0.5, delay: 0.2 }}
+            strokeWidth={2.5}
+            animate={{ 
+              rotate: [0, 15, 0],
+              scale: [1, 1.1, 1]
+            }}
+            transition={{ 
+              duration: 0.5, 
+              delay: 0.2, 
+              ease: 'easeInOut'
+            }}
           >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
           </motion.svg>
-          Search
+          <span className="font-medium">Search</span>
         </motion.span>
+      )}
+      
+      {/* Animated background highlight effect */}
+      {!isLoading && (
+        <motion.span
+          className="absolute inset-0 rounded-r-lg bg-primary/20 pointer-events-none"
+          initial={{ scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 1.2, 1], opacity: [0, 0.2, 0] }}
+          transition={{ duration: 1, repeat: Infinity, repeatDelay: 3 }}
+        />
       )}
     </motion.button>
   );
