@@ -186,7 +186,8 @@ export async function POST(request: NextRequest) {
         code: -32000,
         message
       },
-      id: 1
+      id: body.id
     }, { status });
   }
 }
+
