@@ -131,7 +131,9 @@ export function useTransfers(address: string): UseTransfersResult {
           tokenSymbol: item.tokenSymbol,
           from: item.from,
           to: item.to,
-          tokenName: item.tokenSymbol === 'SOL' ? 'Solana' : undefined
+          tokenName: item.tokenSymbol === 'SOL' ? 'Solana' : undefined,
+          usdValue: item.usdValue ? parseFloat(item.usdValue) : undefined,
+          currentUsdValue: item.currentUsdValue ? parseFloat(item.currentUsdValue) : undefined
         }));
 
         newTransfers = [...transfers, ...mappedTransfers];

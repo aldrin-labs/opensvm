@@ -90,7 +90,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
   const columns = useMemo(() => [
     {
       field: 'timestamp',
-      title: 'Time',
+      title: 'Date',
       width: 180,
       sortable: true,
       render: (row: Transfer) => {
@@ -185,8 +185,30 @@ export function TransfersTable({ address }: TransfersTableProps) {
       )
     },
     {
+      field: 'usdValue',
+      title: 'USD Value',
+      width: 120,
+      sortable: true,
+      render: (row: Transfer) => (
+        <div className="text-right font-mono" data-test="usdValue">
+          {row.usdValue !== undefined ? `$${formatNumber(row.usdValue)}` : '-'}
+        </div>
+      )
+    },
+    {
+      field: 'currentUsdValue',
+      title: 'Current USD',
+      width: 120,
+      sortable: true,
+      render: (row: Transfer) => (
+        <div className="text-right font-mono" data-test="currentUsdValue">
+          {row.currentUsdValue !== undefined ? `$${formatNumber(row.currentUsdValue)}` : '-'}
+        </div>
+      )
+    },
+    {
       field: 'signature',
-      title: 'Transaction',
+      title: 'Tx ID',
       width: 200,
       sortable: false,
       render: (row: Transfer) => (
@@ -282,20 +304,26 @@ export function TransfersTable({ address }: TransfersTableProps) {
         </h2>
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
-        <VTableWrapper
-          columns={columns}
-          data={sortedTransfers}
-          rowKey={getRowId}
-          loading={loading}
-          onSort={handleSort}
-          selectedRowId={selectedRowId}
-          onRowSelect={handleRowSelect}
-          renderRowAction={renderPinButton}
-          pinnedRowIds={pinnedRowIds}
-          aria-busy={loading ? 'true' : 'false'}
-        />
-      </div>
+      {transfers.length === 0 && !loading && !error ? (
+        <div className="p-4 text-center border border-border rounded-lg">
+          <p className="text-muted-foreground">No transfers found for this account</p>
+        </div>
+      ) : (
+        <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
+          <VTableWrapper
+            columns={columns}
+            data={sortedTransfers}
+            rowKey={getRowId}
+            loading={loading}
+            onSort={handleSort}
+            selectedRowId={selectedRowId}
+            onRowSelect={handleRowSelect}
+            renderRowAction={renderPinButton}
+            pinnedRowIds={pinnedRowIds}
+            aria-busy={loading ? 'true' : 'false'}
+          />
+        </div>
+      )}
 
       {hasMore && (
         <div className="flex justify-center mt-4">
