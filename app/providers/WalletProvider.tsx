@@ -4,6 +4,7 @@ import { useMemo, useState, useEffect, type ReactNode } from 'react';
 import {
   ConnectionProvider,
   WalletProvider as SolanaWalletProvider,
+  useWallet,
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
@@ -30,9 +31,54 @@ function getEndpoint(connection: Connection): string {
   return 'rpcEndpoint' in connection ? connection.rpcEndpoint : DEFAULT_ENDPOINT;
 }
 
+// ErrorBoundary component to catch wallet-related errors
+function WalletErrorBoundary({ children }: { children: ReactNode }) {
+  const [hasError, setHasError] = useState(false);
+  
+  useEffect(() => {
+    const handleError = (event: ErrorEvent) => {
+      // Check if the error is related to wallet functionality
+      if (
+        event.error?.message?.includes('getBalance') ||
+        event.error?.message?.includes('wallet')
+      ) {
+        console.error('Caught wallet-related error:', event.error);
+        setHasError(true);
+        event.preventDefault(); // Prevent the error from bubbling up
+      }
+    };
+
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
+  if (hasError) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700">
+        <p className="font-medium">Wallet connection error</p>
+        <p className="text-sm">Please try refreshing the page or reconnecting your wallet.</p>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
+// Safe wallet component that protects from undefined errors
+function SafeWalletProvider({ children }: { children: ReactNode }) {
+  const { publicKey, connected, connecting } = useWallet();
+
+  useEffect(() => {
+    console.log('Wallet state:', { connected, connecting, publicKey: publicKey?.toString() });
+  }, [connected, connecting, publicKey]);
+
+  return <>{children}</>;
+}
+
 export function WalletProvider({ children }: WalletProviderProps): ReactNode {
   const { rpcEndpoint } = useSettings();
   const [endpoint, setEndpoint] = useState<string>(DEFAULT_ENDPOINT);
+  const [connectionReady, setConnectionReady] = useState(false);
   
   // Initialize wallets
   const wallets = useMemo(
@@ -43,7 +89,6 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
   // Initialize connection
   useEffect(() => {
     let mounted = true;
-    //let currentEndpointIndex = 0;
 
     const tryEndpoint = async (url: string): Promise<boolean> => {
       try {
@@ -81,6 +126,7 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
           if (await tryEndpoint(poolEndpoint)) {
             if (mounted) {
               setEndpoint(poolEndpoint);
+              setConnectionReady(true);
               return;
             }
           }
@@ -91,6 +137,7 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
           if (await tryEndpoint(fallback)) {
             if (mounted) {
               setEndpoint(fallback);
+              setConnectionReady(true);
               return;
             }
           }
@@ -101,12 +148,14 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
         if (mounted) {
           console.warn('All RPC endpoints failed, using default');
           setEndpoint(DEFAULT_ENDPOINT);
+          setConnectionReady(true);
         }
       } catch (err) {
         console.error('Connection error:', err);
         if (mounted) {
           console.warn('Connection error, using default endpoint');
           setEndpoint(DEFAULT_ENDPOINT);
+          setConnectionReady(true);
         }
       }
     };
@@ -118,12 +167,20 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
     };
   }, [rpcEndpoint?.url]);
 
+  if (!connectionReady) {
+    return <div className="text-center py-4">Connecting to Solana network...</div>;
+  }
+
   return (
     <ConnectionProvider endpoint={endpoint}>
       <SolanaWalletProvider wallets={wallets} autoConnect>
-        <WalletModalProvider>
-          {children}
-        </WalletModalProvider>
+        <WalletErrorBoundary>
+          <WalletModalProvider>
+            <SafeWalletProvider>
+              {children}
+            </SafeWalletProvider>
+          </WalletModalProvider>
+        </WalletErrorBoundary>
       </SolanaWalletProvider>
     </ConnectionProvider>
   );

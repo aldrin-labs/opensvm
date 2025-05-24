@@ -34,6 +34,17 @@ const TransactionAnalysis = dynamic(
   }
 );
 
+const TransactionGPTAnalysis = dynamic(
+  () => import('@/components/TransactionGPTAnalysis').catch(err => {
+    console.error('Failed to load TransactionGPTAnalysis:', err);
+    return () => <div>Error loading GPT analysis</div>;
+  }),
+  {
+    loading: () => <LoadingSpinner />,
+    ssr: false
+  }
+);
+
 const TransactionGraph = dynamic(
   () => import('@/components/TransactionGraph').catch(err => {
     console.error('Failed to load TransactionGraph:', err);
@@ -878,6 +889,15 @@ export default function TransactionContent({ signature }: { signature: string })
             </ErrorBoundaryWrapper>
           </div>
         </div>
+        
+        {/* GPT Analysis Section */}
+        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading GPT analysis</div>}>
+          <Suspense fallback={<div className="h-full min-h-[200px] flex items-center justify-center"><LoadingSpinner /></div>}>
+            <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
+              <TransactionGPTAnalysis tx={tx} />
+            </div>
+          </Suspense>
+        </ErrorBoundaryWrapper>
         
         {/* Community Notes Section */}
         <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading community notes</div>}>
