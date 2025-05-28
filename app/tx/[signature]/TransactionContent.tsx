@@ -34,6 +34,7 @@ const TransactionAnalysis = dynamic(
   }
 );
 
+// Dynamically import the TransactionGraphWrapper component
 const TransactionGraph = dynamic(
   () => import('@/components/TransactionGraph').catch(err => {
     console.error('Failed to load TransactionGraph:', err);

@@ -1,15 +1,23 @@
-import { redirect } from 'next/navigation';
+import { Metadata } from 'next';
+import GraphContent from './GraphContent';
 
-interface Props {
-  params: Promise<{ signature: string }>;
+interface PageProps {
+  params: {
+    signature: string;
+  };
 }
 
-// Redirect from /tx/[signature]/graph to /tx/[signature]
-// since the graph is now integrated directly on the main transaction page
-export default async function TransactionGraphPage({ params }: Props) {
-  // Await the params in the server component
-  const { signature } = await params;
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { signature } = params;
   
-  // Redirect to the main transaction page
-  redirect(`/tx/${signature}`);
+  return {
+    title: `Transaction Graph: ${signature.slice(0, 8)}... | OpenSVM`,
+    description: `Interactive visualization of transaction ${signature.slice(0, 8)}... and its related accounts and transactions.`,
+  };
+}
+
+export default function TransactionGraphPage({ params }: PageProps) {
+  const { signature } = params;
+  
+  return <GraphContent signature={signature} />;
 }
