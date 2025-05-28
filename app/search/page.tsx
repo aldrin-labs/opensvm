@@ -339,6 +339,10 @@ function SearchResults() {
                                 <h4 className="text-sm font-medium text-gray-500">Amount</h4>
                                 <p className="text-sm">{result.amount ? `${formatNumber(result.amount)} SOL` : 'N/A'}</p>
                               </div>
+                              <div>
+                                <h4 className="text-sm font-medium text-gray-500">Network</h4>
+                                <p className="text-sm">{result.network || 'N/A'}</p>
+                              </div>
                             </div>
                           </div>
                         )}
