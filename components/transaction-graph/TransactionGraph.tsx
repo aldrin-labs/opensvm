@@ -139,6 +139,15 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
     [setError]
   );
 
+  // Process the fetch queue in parallel
+  const processAccountFetchQueue = useCallback(() => {
+    processAccountFetchQueueUtil(
+      fetchQueueRef,
+      fetchAndProcessAccount,
+      isProcessingQueueRef
+    );
+  }, []);
+
   // Queue an account for fetching
   const queueAccountFetch = useCallback((address: string, depth = 0, parentSignature: string | null = null) => {
     if (!address || loadedAccountsRef.current.has(address) || pendingFetchesRef.current.has(`${address}:${depth}`)) {
@@ -155,16 +164,7 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
       processAccountFetchQueue,
       isProcessingQueueRef
     );
-  }, []);
-
-  // Process the fetch queue in parallel
-  const processAccountFetchQueue = useCallback(() => {
-    processAccountFetchQueueUtil(
-      fetchQueueRef,
-      fetchAndProcessAccount,
-      isProcessingQueueRef
-    );
-  }, []);
+  }, [processAccountFetchQueue]);
 
   // Fetch and process a single account
   const fetchAndProcessAccount = useCallback(async (
@@ -179,7 +179,7 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
       console.error(`Error processing account ${address}:`, e);
       pendingFetchesRef.current?.delete(accountKey);
     }
-  }, []);
+  }, [addAccountToGraph, totalAccounts]);
 
   // Add account and its transactions to the graph
   const addAccountToGraph = useCallback(async (
@@ -241,7 +241,7 @@ return result;
       loadedTransactionsRef,
       signal
     );
-  }, [fetchTransactionDataWithCache, queueAccountFetch, addAccountToGraph, loadedTransactionsRef]);
+  }, [fetchTransactionDataWithCache, queueAccountFetch, addAccountToGraph]);
 
   // Focus on a specific transaction
   const focusOnTransaction = useCallback(async (
@@ -486,134 +486,21 @@ isInitialized.current = true;
               if (cyRef.current) {
                 cyRef.current.fit();
                 cyRef.current.center();
-                cyRef.current.layout({
-  name: 'dagre',
-  // @ts-ignore - dagre layout options are not fully typed
-  rankDir: 'LR',
-  fit: true,
-  padding: 50
-}).run();
-cyRef.current.zoom(0.5);
+                cyRef.current.zoom(0.8);
               }
             });
           }
-          
         } else if (initialSignature) {
           // Update ref to prevent reinitialization
           initialSignatureRef.current = initialSignature;
           
-          // Check for cached state first
-          const cachedState = GraphStateCache.loadState(initialSignature);
-          const hasExistingElements = cyRef.current?.elements().length > 0;
-          
-          // Skip initialization if we already have elements and signature matches
-          if (hasExistingElements && initialSignature === currentSignature) {
-            setLoading(false);
-            return;
-          }
-          
-          // Create initial transaction node regardless of cache state
-          if (cyRef.current && !cyRef.current.getElementById(initialSignature).length) {
-            cyRef.current.add({ 
-              data: { 
-                id: initialSignature, 
-                label: initialSignature.slice(0, 8) + '...', 
-                type: 'transaction' 
-              }, 
-              classes: 'transaction highlight-transaction' 
-            });
-          }
-
-          // If we have cached state, restore it first
-          if (cachedState && Array.isArray(cachedState.nodes) && cachedState.nodes.length > 0) {
-            try {
-              // Restore cached nodes and edges
-              const typedState = cachedState as unknown as CachedState;
-              typedState.nodes.forEach(node => {
-                if (node.data && !cyRef.current?.getElementById(node.data.id).length) {
-                  cyRef.current?.add(node);
-                }
-              });
-              
-              if (typedState.edges) {
-                typedState.edges.forEach(edge => {
-                  if (edge.data && !cyRef.current?.getElementById(edge.data.id).length) {
-                    cyRef.current?.add(edge);
-                  }
-                });
-              }
-              
-              // Run layout with proper typing
-              if (cyRef.current) {
-                cyRef.current.layout({
-                  name: 'dagre',
-                  // @ts-ignore - dagre layout options are not fully typed
-                  rankDir: 'LR',
-                  fit: true,
-                  padding: 50
-                }).run();
-              }
-            } catch (err) {
-              console.warn('Error restoring cached state:', err);
-            }
-          }
-
-          // Only fetch fresh data if we don't have cached state
-          if (!cachedState || !cachedState.nodes.length) {
-            const response = await fetch(`/api/transaction/${initialSignature}`);
-            
-            if (response.ok) {
-              const txData = await response.json();
-              
-              // Queue the first account for processing regardless of cache state
-              if (txData.details?.accounts?.length > 0) {
-                const firstAccount = txData.details.accounts[0].pubkey;
-                if (firstAccount) {
-                  queueAccountFetch(firstAccount, 0, initialSignature);
-                  
-                  // Wait for initial processing to complete
-                  await new Promise<void>((resolve) => {
-                    let attempts = 0;
-                    const maxAttempts = 100;
-                    const checkInterval = setInterval(() => {
-                      attempts++;
-                      const elements = cyRef.current?.elements().length || 0;
-                      
-                      if (elements > 1 || attempts >= maxAttempts) {
-                        clearInterval(checkInterval);
-                        resolve();
-                      }
-                    }, 100);
-                    
-                    timeoutIds.current.push(setTimeout(() => {
-                      clearInterval(checkInterval);
-                      resolve();
-                    }, 10000));
-                  });
-                }
-              }
-
-              // Focus on transaction after data is loaded
-              await focusOnTransaction(initialSignature, true, true, false);
-            }
-          }
-          
-          // Ensure proper viewport after loading
-          if (cyRef.current) {
-            requestAnimationFrame(() => {
-              if (cyRef.current) {
-                cyRef.current.fit();
-                cyRef.current.center();
-                cyRef.current.zoom(0.5);
-              }
-            });
-          }
+          // Focus on the initial transaction
+          await focusOnTransaction(initialSignature, true, true, false);
         }
-      } catch (err) {
-        console.error('Error in loadInitialData:', err);
+      } catch (error) {
+        console.error('Error loading initial data:', error);
         setError({
-          message: 'Failed to load transaction graph data. ' + 
-            (err instanceof Error ? err.message : 'Unknown error occurred.'),
+          message: 'Failed to load initial data. Please try again.',
           severity: 'error'
         });
       } finally {
@@ -623,282 +510,71 @@ cyRef.current.zoom(0.5);
 
     loadInitialData();
 
-    // Cleanup function
+    // Clean up function
     return () => {
-      timeoutIds.current.forEach(id => clearTimeout(id));
+      timeoutIds.current.forEach(clearTimeout);
       if (cyRef.current) {
         cyRef.current.destroy();
         cyRef.current = null;
       }
-      processedNodesRef.current.clear();
-      processedEdgesRef.current.clear();
-      loadedTransactionsRef.current.clear();
-      loadedAccountsRef.current.clear();
-      transactionCache.current.clear();
-      pendingFetchesRef.current.clear();
     };
-  }, [initialAccount, initialSignature]);
-  
-  // Improved viewport state restoration
-  useEffect(() => {
-    const cy = cyRef.current;
-    if (!cy || !viewportState || isNavigatingHistory) return;
-    
-    // Use requestAnimationFrame to ensure DOM is ready
-    requestAnimationFrame(() => {
-      try {
-        if (cy && viewportState) {
-          cy.viewport({
-            zoom: viewportState.zoom,
-            pan: viewportState.pan
-          });
-        }
-      } catch (err) {
-        console.error('Error during viewport restoration:', err);
-      }
-    });
-  }, [viewportState, isNavigatingHistory]);
-
-  // Handle window resize
-  const resizeGraphCallback = useCallback(() => {
-    resizeGraph(cyRef, true); // Preserve viewport when resizing
-  }, []);
-  
-  // Use ResizeObserver for container resizing
-  useEffect(() => {
-    if (!containerRef.current) return;
-    
-    const observer = new ResizeObserver(() => {
-      setTimeout(resizeGraphCallback, 100);
-    }); 
-    
-    observer.observe(containerRef.current);
-    return () => observer.disconnect();
-  }, [resizeGraphCallback]);
+  }, [initialSignature, initialAccount, focusOnTransaction, setupGraphInteractionsCallback, queueAccountFetch]);
 
   // Handle window resize
   useEffect(() => {
     const handleResize = debounce(() => {
-      resizeGraphCallback();
+      if (cyRef.current && containerRef.current) {
+        resizeGraph(cyRef.current, containerRef.current);
+      }
     }, 250);
 
     window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [resizeGraphCallback]);
-
-  // Navigation history handlers
-  const navigateBack = useCallback(() => {
-    if (currentHistoryIndex > 0) {
-      setIsNavigatingHistory(true);
-      const prevIndex = currentHistoryIndex - 1;
-      const prevSignature = navigationHistory[prevIndex];
-      setCurrentHistoryIndex(prevIndex);
-      
-      // Focus on the previous transaction without adding to history
-      focusOnTransaction(prevSignature, false);
-      
-      // Reset navigation flag after a short delay 
-      setTimeout(() => setIsNavigatingHistory(false), 100);
-    }
-  }, [currentHistoryIndex, navigationHistory, focusOnTransaction]);
-
-  const navigateForward = useCallback(() => {
-    if (currentHistoryIndex < navigationHistory.length - 1) {
-      setIsNavigatingHistory(true);
-      const nextIndex = currentHistoryIndex + 1;
-      const nextSignature = navigationHistory[nextIndex];
-      setCurrentHistoryIndex(nextIndex);
-      
-      // Focus on the next transaction without adding to history
-      focusOnTransaction(nextSignature, false);
-      
-      // Reset navigation flag after a short delay 
-      setTimeout(() => setIsNavigatingHistory(false), 100);
-    }
-  }, [currentHistoryIndex, navigationHistory, focusOnTransaction]);
-
-  const showCloudView = useCallback(() => {
-    if (cyRef.current) {
-      try {
-        // Use a more specific selector to avoid empty selection errors
-        const elements = cyRef.current.elements();
-        if (elements.length > 0) {
-          // Use dynamic padding based on graph size
-          const padding = Math.min(50, elements.length * 2);
-          cyRef.current.fit(elements, padding);
-        } else {
-          cyRef.current.fit(undefined, 20);
-        }
-        // Adjust zoom level based on number of elements
-        if (elements.length > 50) {
-          cyRef.current.zoom(cyRef.current.zoom() * 0.8); // Zoom out more for larger graphs
-        }
-      } catch (err) {
-        console.error('Error during cloud view fit:', err);
-      }
-    }
+    return () => {
+      window.removeEventListener('resize', handleResize);
+    };
   }, []);
 
-  // Update internal state when props change - FIXED to prevent circular updates
-  useEffect(() => {
-    const isProgrammaticNavigation = sessionStorage.getItem('programmatic_nav') === 'true';
-
-    if (initialSignature && initialSignature !== initialSignatureRef.current) {
-      initialSignatureRef.current = initialSignature;
-
-      // Don't navigate if this is a programmatic navigation
-      if (!isProgrammaticNavigation && initialSignature !== currentSignature) {
-        // First check if we have the transaction in cache
-        if (GraphStateCache.hasState(initialSignature)) {
-          focusOnTransaction(initialSignature, false, false, false);
-        } else {
-          focusOnTransaction(initialSignature, false, true, false);
-        }
-      }
-    }
-
-    sessionStorage.removeItem('programmatic_nav');
-  }, [initialSignature, currentSignature, focusOnTransaction]);
-
+  // Render the graph container
   return (
-    <div className="transaction-graph-wrapper relative w-full h-full transition-all flex flex-col">
-      {error && (
-        <div className={`fixed bottom-4 left-4 z-20 ${error.severity === 'error' ? 'bg-destructive/10 border-destructive text-destructive' : 'bg-warning/10 border-warning text-warning'} border p-4 rounded-md max-w-md shadow-lg`}>
-          <p className="text-sm">{error.message}</p>
-          <button 
-            className="absolute top-1 right-1 text-sm"
-            onClick={() => setError(null)}
-            aria-label="Dismiss"
-          >
-            ✕
-          </button>
-          {error.severity === 'error' && (
-            <button 
-              className="mt-2 px-3 py-1 text-sm bg-destructive text-destructive-foreground rounded-md"
-              onClick={() => window.location.reload()}
-            >
-              Retry
-            </button>
-          )}
-        </div>
-      )}
-      
-      {/* Progress indicator */}
-      {loadingProgress > 0 && loadingProgress < 100 && (
-        <div className="graph-loading-indicator">
-          Loading transaction graph: {loadingProgress}%
-        </div>
-      )}
-
-      <div 
+    <div className="relative w-full h-full">
+      <div
         ref={containerRef}
-        className="cytoscape-container w-full bg-muted/50 rounded-lg border border-border overflow-hidden"
-        style={{ 
-          width: '100%', 
-          height: '100%', // Further increased height for better visibility
-          position: 'relative',
-          overflow: 'hidden',
-          margin: '0 auto', // Center the container
-        }}
+        className="w-full h-full"
+        style={{ width, height }}
       />
-
-      {/* Controls overlay with better styling and positioning */}
-      <div className="absolute bottom-4 right-4 flex gap-2 bg-background/90 p-2 rounded-md shadow-md backdrop-blur-sm border border-border">
-        {/* Back button */}
-        <button 
-          className={`p-1.5 hover:bg-primary/10 rounded-md transition-colors ${currentHistoryIndex <= 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={navigateBack}
-          disabled={currentHistoryIndex <= 0}
-          title="Navigate back"
-          aria-label="Navigate back"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M19 12H5"></path>
-            <path d="M12 19l-7-7 7-7"></path>
-          </svg>
-        </button>
-        
-        {/* Forward button */}
-        <button 
-          className={`p-1.5 hover:bg-primary/10 rounded-md transition-colors ${currentHistoryIndex >= navigationHistory.length - 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
-          onClick={navigateForward}
-          disabled={currentHistoryIndex >= navigationHistory.length - 1}
-          title="Navigate forward"
-          aria-label="Navigate forward"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M5 12h14"></path>
-            <path d="M12 5l7 7-7 7"></path>
-          </svg>
-        </button>
-        
-        {/* Cloud view button */}
-        <button 
-          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
-          onClick={showCloudView}
-          title="Show cloud view"
-          aria-label="Show cloud view"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
-        </button>
-        <button 
-          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
-          onClick={() => {
-            if (cyRef.current) {
-              try {
-                // Use a more specific selector to avoid empty selection errors
-                const elements = cyRef.current.elements();
-                if (elements.length > 0) {
-                  cyRef.current.fit(elements);
-                  cyRef.current.center();
-                }
-              } catch (err) {
-                console.error('Error during fit view:', err);
-              }
-            } 
-          }}
-          title="Fit all elements in view"
-          aria-label="Fit view"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="15 3 21 3 21 9"></polygon><polygon points="9 21 3 21 3 15"></polygon><line x1="21" y1="3" x2="14" y2="10"></line><line x1="3" y1="21" x2="10" y2="14"></line></svg>
-        </button>
-        <button 
-          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
-          onClick={() => {
-            if (cyRef.current) {
-              const zoom = cyRef.current.zoom();
-              try {
-                cyRef.current.zoom(zoom * 1.2);
-              } catch (err) {
-                console.error('Error during zoom in:', err);
-              }
-            }
-          }}
-          title="Zoom in on graph"
-          aria-label="Zoom in"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-        </button>
-        <button 
-          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
-          onClick={() => {
-            if (cyRef.current) {
-              const zoom = cyRef.current.zoom();
-              try {
-                cyRef.current.zoom(zoom / 1.2);
-              } catch (err) {
-                console.error('Error during zoom out:', err);
-              }
-            }
-          }}
-          title="Zoom out on graph"
-          aria-label="Zoom out"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
-        </button>
-      </div>
+      {loading && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <div className="text-center">
+            <div className="mb-2">Loading transaction graph...</div>
+            <div className="w-48 h-2 bg-muted rounded-full overflow-hidden">
+              <div
+                className="h-full bg-primary transition-all duration-300 ease-in-out"
+                style={{ width: `${Math.min(loadingProgress, 100)}%` }}
+              />
+            </div>
+            <div className="mt-1 text-xs text-muted-foreground">
+              {totalAccounts > 0 ? `Processed ${expandedNodesCount} of ${totalAccounts} accounts` : 'Initializing...'}
+            </div>
+          </div>
+        </div>
+      )}
+      {error && (
+        <div className={`absolute bottom-4 right-4 p-4 rounded-md shadow-lg z-20 ${
+          error.severity === 'error' ? 'bg-destructive/90 text-destructive-foreground' : 'bg-warning/90 text-warning-foreground'
+        }`}>
+          <div className="flex items-start">
+            <div className="flex-1">{error.message}</div>
+            <button
+              onClick={() => setError(null)}
+              className="ml-4 text-current hover:text-current/80"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-export default React.memo(TransactionGraph);
+export default TransactionGraph;
