@@ -90,22 +90,40 @@ export default function EnhancedSearchBar() {
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
         
+        // Store search results in localStorage for the destination page to access
+        localStorage.setItem('lastSearchQuery', trimmedQuery);
+        localStorage.setItem('searchSettings', JSON.stringify(searchSettings));
+        
         switch (data.type) {
           case 'token':
-            window.location.href = `/token/${trimmedQuery}`;
+            window.location.href = `/token/${trimmedQuery}?fromSearch=true`;
             break;
           case 'program':
-            window.location.href = `/program/${trimmedQuery}`;
+            window.location.href = `/program/${trimmedQuery}?fromSearch=true`;
             break;
           case 'account':
-            window.location.href = `/account/${trimmedQuery}`;
+            window.location.href = `/account/${trimmedQuery}?fromSearch=true`;
             break;
           default:
             // Build search URL with settings
             buildAndNavigateToSearchUrl(trimmedQuery);
         }
       } else {
-        // Use search page with settings
+        // Check if query is a user freeform message or specific entity
+        // If it's a specific entity type that we can identify, navigate directly
+        const lowerQuery = trimmedQuery.toLowerCase();
+        if (lowerQuery.includes('account') && lowerQuery.match(/\b[a-zA-Z0-9]{32,44}\b/)) {
+          // Extract the address from the query
+          const addressMatch = lowerQuery.match(/\b[a-zA-Z0-9]{32,44}\b/);
+          if (addressMatch) {
+            localStorage.setItem('lastSearchQuery', trimmedQuery);
+            localStorage.setItem('searchSettings', JSON.stringify(searchSettings));
+            window.location.href = `/account/${addressMatch[0]}?fromSearch=true`;
+            return;
+          }
+        }
+        
+        // For other types of queries, use search page
         buildAndNavigateToSearchUrl(trimmedQuery);
       }
     } catch (error) {
