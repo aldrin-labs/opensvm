@@ -88,6 +88,12 @@ For more detailed documentation, see:
 
 See [dependency audit report](./docs/dependency-audit-2025.md) for complete details.
 
+## Development Documentation
+
+- **[ESLint Configuration](./docs/eslint-configuration.md)** - Detailed explanation of linting rules and migration strategy
+- **[Dependency Management Action Plan](./docs/dependency-management-action-plan.md)** - Ongoing dependency maintenance strategy
+- **[Dependency Upgrade Guidelines](./docs/dependency-upgrade-guidelines.md)** - Best practices for future upgrades
+
 ## License
 
 [MIT License](LICENSE)

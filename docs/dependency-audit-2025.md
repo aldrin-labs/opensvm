@@ -131,8 +131,38 @@ npm install --force
 
 1. **Test current changes**: Verify ESLint, Puppeteer, and Playwright upgrades work correctly
 2. **Address GitHub dependencies**: Resolve installation conflicts
-3. **Update transitive dependencies**: Let package managers handle glob/rimraf updates
+3. **Update transitive dependencies**: Address remaining medium priority issues
 4. **Performance validation**: Ensure no regressions in build times or functionality
+
+### Priority Actions for Remaining Issues
+
+#### Medium Priority Dependencies
+
+**Glob 7.2.3 → 11.x Upgrade**
+- **Current Status**: Transitive dependency in build tools
+- **Risk Assessment**: Potential file system traversal vulnerabilities
+- **Action Plan**: 
+  - Monitor package maintainers for updates
+  - Consider manual overrides in package.json if critical
+  - Estimated Timeline: 2-3 months
+
+**Rimraf 3.0.2 → 6.x Upgrade**  
+- **Current Status**: Transitive dependency in cleanup processes
+- **Risk Assessment**: File deletion operation vulnerabilities
+- **Action Plan**:
+  - Track Next.js and other tool updates
+  - Implement dependency overrides if urgent
+  - Estimated Timeline: 2-3 months
+
+#### Installation Process Improvement
+
+**Dependency Conflict Resolution**
+- **Current Issue**: Requires `--legacy-peer-deps` or `--force` flags
+- **Root Cause**: GitHub-hosted dependencies causing workspace protocol conflicts
+- **Improvement Plan**:
+  - Evaluate necessity of GitHub dependencies
+  - Consider npm-published alternatives
+  - Implement more robust dependency management strategy
 
 ## Migration Guide
 
