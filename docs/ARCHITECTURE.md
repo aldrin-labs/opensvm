@@ -47,6 +47,15 @@ graph TD
 - **Tools**: Specialized tools for different blockchain operations
 - **Knowledge Base**: Structured knowledge about Solana and blockchain concepts
 - **LLM Integration**: Integration with language models for generating responses
+- **Anomaly Detection**: AI-powered system for detecting suspicious blockchain activities
+
+### Real-Time Components
+
+- **Event Stream Manager**: Manages real-time blockchain event subscriptions
+- **WebSocket API**: Provides real-time event streaming to clients
+- **Anomaly Detector**: AI system for real-time threat detection
+- **Alert System**: Notification system for security alerts
+- **Monitoring Dashboard**: Live dashboard for event and anomaly visualization
 
 ## Data Flow
 
@@ -97,7 +106,7 @@ graph LR
 
 ### AI Assistant
 
-The AI assistant system processes natural language queries:
+The AI assistant system processes natural language queries and provides real-time anomaly detection:
 
 ```mermaid
 graph LR
@@ -105,7 +114,24 @@ graph LR
     Agent --> Tools[Blockchain Tools]
     Tools --> SolanaAPI[Solana API]
     Agent --> LLM[Language Model]
+    Agent --> AnomalyDetector[Anomaly Detection]
+    AnomalyDetector --> Alerts[Security Alerts]
     LLM --> Response[AI Response]
+```
+
+### Real-Time Event Streaming
+
+The real-time event streaming system monitors blockchain activity with AI-driven anomaly detection:
+
+```mermaid
+graph LR
+    SolanaRPC[Solana RPC] --> EventStream[Event Stream Manager]
+    EventStream --> WebSocket[WebSocket API]
+    EventStream --> AnomalyDetector[Anomaly Detector]
+    AnomalyDetector --> PatternMatcher[Pattern Matcher]
+    PatternMatcher --> AlertSystem[Alert System]
+    AlertSystem --> Dashboard[Monitoring Dashboard]
+    WebSocket --> Dashboard
 ```
 
 ## Deployment Architecture

@@ -3,7 +3,7 @@ export enum ExecutionMode {
   Parallel = 'parallel'
 }
 
-export type CapabilityType = 'transaction' | 'account' | 'network' | 'general';
+export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'anomaly_detection';
 
 export interface Note {
   id: string;

@@ -110,8 +110,67 @@ const timeoutIds = useRef<NodeJS.Timeout[]>([]);
   // Add a reference to track if the queue is being processed
   const isProcessingQueueRef = useRef<boolean>(false);
   
-  // Track the current focus transaction
-  const focusSignatureRef = useRef<string>(initialSignature);
+  // Add fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+
+  // Fullscreen functionality
+  const toggleFullscreen = useCallback(() => {
+    if (!containerRef.current) return;
+
+    if (!isFullscreen) {
+      // Enter fullscreen
+      if (containerRef.current.requestFullscreen) {
+        containerRef.current.requestFullscreen();
+      } else if ((containerRef.current as any).mozRequestFullScreen) {
+        (containerRef.current as any).mozRequestFullScreen();
+      } else if ((containerRef.current as any).webkitRequestFullscreen) {
+        (containerRef.current as any).webkitRequestFullscreen();
+      } else if ((containerRef.current as any).msRequestFullscreen) {
+        (containerRef.current as any).msRequestFullscreen();
+      }
+    } else {
+      // Exit fullscreen
+      if (document.exitFullscreen) {
+        document.exitFullscreen();
+      } else if ((document as any).mozCancelFullScreen) {
+        (document as any).mozCancelFullScreen();
+      } else if ((document as any).webkitExitFullscreen) {
+        (document as any).webkitExitFullscreen();
+      } else if ((document as any).msExitFullscreen) {
+        (document as any).msExitFullscreen();
+      }
+    }
+  }, [isFullscreen]);
+
+  // Listen for fullscreen changes
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // Resize graph when entering/exiting fullscreen
+      setTimeout(() => {
+        resizeGraphCallback();
+      }, 100);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('msfullscreenchange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('msfullscreenchange', handleFullscreenChange);
+    };
+  }, [resizeGraphCallback]);
   
   // Router for navigation
   const router = useRouter();
@@ -213,7 +272,7 @@ if (cyRef.current) {
   cyRef.current.layout({
     name: 'dagre',
     // @ts-ignore - dagre layout options are not fully typed
-    rankDir: 'LR',
+    rankDir: 'TB', // Changed from 'LR' to 'TB' to rotate 90 degrees to the right
     fit: true,
     padding: 50
   }).run();
@@ -487,12 +546,12 @@ isInitialized.current = true;
                 cyRef.current.fit();
                 cyRef.current.center();
                 cyRef.current.layout({
-  name: 'dagre',
-  // @ts-ignore - dagre layout options are not fully typed
-  rankDir: 'LR',
-  fit: true,
-  padding: 50
-}).run();
+                  name: 'dagre',
+                  // @ts-ignore - dagre layout options are not fully typed
+                  rankDir: 'TB', // Changed from 'LR' to 'TB' to rotate 90 degrees to the right
+                  fit: true,
+                  padding: 50
+                }).run();
 cyRef.current.zoom(0.5);
               }
             });
@@ -548,7 +607,7 @@ cyRef.current.zoom(0.5);
                 cyRef.current.layout({
                   name: 'dagre',
                   // @ts-ignore - dagre layout options are not fully typed
-                  rankDir: 'LR',
+                  rankDir: 'TB', // Changed from 'LR' to 'TB' to rotate 90 degrees to the right
                   fit: true,
                   padding: 50
                 }).run();
@@ -792,11 +851,13 @@ cyRef.current.zoom(0.5);
 
       <div 
         ref={containerRef}
-        className="cytoscape-container w-full bg-muted/50 rounded-lg border border-border overflow-hidden"
+        className={`cytoscape-container w-full bg-muted/50 rounded-lg border border-border overflow-hidden ${
+          isFullscreen ? 'fixed inset-0 z-50 rounded-none border-none' : ''
+        }`}
         style={{ 
           width: '100%', 
           height: '100%', // Further increased height for better visibility
-          position: 'relative',
+          position: isFullscreen ? 'fixed' : 'relative',
           overflow: 'hidden',
           margin: '0 auto', // Center the container
         }}
@@ -830,6 +891,30 @@ cyRef.current.zoom(0.5);
             <path d="M5 12h14"></path>
             <path d="M12 5l7 7-7 7"></path>
           </svg>
+        </button>
+        
+        {/* Fullscreen button */}
+        <button 
+          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
+              <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
+              <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
+              <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7V3h4"></path>
+              <path d="M17 3h4v4"></path>
+              <path d="M21 17v4h-4"></path>
+              <path d="M7 21H3v-4"></path>
+            </svg>
+          )}
         </button>
         
         {/* Cloud view button */}
