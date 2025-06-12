@@ -9,8 +9,8 @@ const nextConfig = {
   },
   // Environment variables that should be available to the client
   env: {
-    OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST,
-    OPENSVM_RPC_LIST_2: process.env.OPENSVM_RPC_LIST_2
+    OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST || '',
+    OPENSVM_RPC_LIST_2: process.env.OPENSVM_RPC_LIST_2 || ''
   },
   // Image optimization
   images: {
@@ -22,20 +22,10 @@ const nextConfig = {
       },
     ],
   },
-  // Experimental features
+  // Experimental features (safe subset for Next.js 14)
   experimental: {
-    // Enable modern optimizations
-    optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-select',
-      '@radix-ui/react-tabs'
-    ],
-    // Enable server actions with increased limit
-    serverActions: {
-      bodySizeLimit: '2mb'
-    }
+    // Enable server actions
+    serverActions: true
   },
   // Enable React strict mode
   reactStrictMode: false,

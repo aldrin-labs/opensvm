@@ -6,6 +6,7 @@ import dagre from 'cytoscape-dagre';
 import { useRouter } from 'next/navigation';
 import { GraphStateCache, ViewportState } from '@/lib/graph-state-cache';
 import { debounce } from '@/lib/utils';
+import { TrackingStatsPanel } from './TrackingStatsPanel';
 import {
   TransactionGraphProps,
   createAddressFilter,
@@ -27,7 +28,6 @@ if (typeof window !== 'undefined') {
   cytoscape.use(dagre);
 }
 
-// Add type definitions at the top of the file after imports
 interface CachedNode {
   data: {
     id: string;
@@ -49,6 +49,25 @@ interface CachedState {
   edges?: CachedEdge[];
 }
 
+interface TrackingStats {
+  totalTransactions: number;
+  splTransfers: number;
+  filteredSplTransfers: number;
+  topVolumeByAddress: Array<{
+    address: string;
+    volume: number;
+    tokenSymbol: string;
+  }>;
+  topVolumeByToken: Array<{
+    token: string;
+    volume: number;
+    transactionCount: number;
+  }>;
+  lastUpdate: number;
+  isTracking: boolean;
+  trackedAddress: string | null;
+}
+
 function TransactionGraph({
   initialSignature,
   initialAccount,
@@ -63,6 +82,17 @@ function TransactionGraph({
 const isInitialized = useRef<boolean>(false);
 const timeoutIds = useRef<NodeJS.Timeout[]>([]);
   const cyRef = useRef<cytoscape.Core | null>(null);
+  
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
+  
+  // Address tracking state
+  const [trackedAddress, setTrackedAddress] = useState<string | null>(null);
+  const [isTrackingMode, setIsTrackingMode] = useState<boolean>(false);
+  const [trackingStats, setTrackingStats] = useState<TrackingStats | null>(null);
+  const trackingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const trackedTransactionsRef = useRef<Set<string>>(new Set());
+  const MAX_TRACKED_TRANSACTIONS = 100;
   
   // Excluded accounts and program identifiers
   const EXCLUDED_ACCOUNTS = useMemo(() => new Set([
@@ -213,7 +243,7 @@ if (cyRef.current) {
   cyRef.current.layout({
     name: 'dagre',
     // @ts-ignore - dagre layout options are not fully typed
-    rankDir: 'LR',
+    rankDir: 'TB', // Top to bottom layout
     fit: true,
     padding: 50
   }).run();
@@ -411,6 +441,243 @@ return result;
     currentHistoryIndex,
     queueAccountFetch
   ]);
+
+  // Address tracking functionality with rate limiting and AI filtering
+  const startAddressTracking = useCallback(async (address: string) => {
+    if (trackedAddress === address && isTrackingMode) return;
+    
+    // Stop previous tracking
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+    }
+    
+    // Clear previous tracked transactions
+    trackedTransactionsRef.current.clear();
+    
+    setTrackedAddress(address);
+    setIsTrackingMode(true);
+    
+    // Highlight the tracked address
+    if (cyRef.current) {
+      const addressNode = cyRef.current.getElementById(address);
+      if (addressNode.length > 0) {
+        addressNode.addClass('tracked-address');
+      }
+    }
+    
+    // Initialize tracking statistics
+    setTrackingStats({
+      totalTransactions: 0,
+      splTransfers: 0,
+      filteredSplTransfers: 0,
+      topVolumeByAddress: [],
+      topVolumeByToken: [],
+      lastUpdate: Date.now(),
+      isTracking: true,
+      trackedAddress: address
+    });
+    
+    // Initial fetch of SPL transfers
+    try {
+      const response = await fetch(`/api/account-transfers/${address}?limit=50`);
+      if (response.ok) {
+        const data = await response.json();
+        const transfers = data.data || [];
+        
+        // Filter and analyze with AI
+        if (transfers.length > 0) {
+          const filterResponse = await fetch('/api/filter-transactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ transactions: transfers })
+          });
+          
+          if (filterResponse.ok) {
+            const filterData = await filterResponse.json();
+            const filteredTransfers = filterData.filteredTransactions || transfers;
+            
+            // Update statistics
+            updateTrackingStats(transfers, filteredTransfers);
+            
+            // Add filtered transfers to graph
+            addTransfersToGraph(filteredTransfers, address);
+          }
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to fetch initial SPL transfers:', error);
+    }
+    
+    // Start real-time polling (every 5 seconds)
+    trackingIntervalRef.current = setInterval(async () => {
+      try {
+        const response = await fetch(`/api/account-transfers/${address}?limit=10`);
+        if (response.ok) {
+          const data = await response.json();
+          const newTransfers = data.data || [];
+          
+          // Filter out transfers we've already processed
+          const unseenTransfers = newTransfers.filter(transfer => 
+            !trackedTransactionsRef.current.has(transfer.txId)
+          );
+          
+          if (unseenTransfers.length > 0) {
+            // Apply AI filtering
+            const filterResponse = await fetch('/api/filter-transactions', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ transactions: unseenTransfers })
+            });
+            
+            if (filterResponse.ok) {
+              const filterData = await filterResponse.json();
+              const filteredTransfers = filterData.filteredTransactions || unseenTransfers;
+              
+              // Check rate limit
+              if (trackedTransactionsRef.current.size >= MAX_TRACKED_TRANSACTIONS) {
+                // Remove oldest transactions from graph and tracking
+                const sortedTxIds = Array.from(trackedTransactionsRef.current).slice(0, 10);
+                sortedTxIds.forEach(txId => {
+                  cyRef.current?.remove(`#${txId}`);
+                  trackedTransactionsRef.current.delete(txId);
+                });
+              }
+              
+              // Update statistics
+              updateTrackingStats(unseenTransfers, filteredTransfers);
+              
+              // Add new filtered transfers to graph
+              addTransfersToGraph(filteredTransfers, address);
+              
+              // Mark as processed
+              unseenTransfers.forEach(transfer => {
+                trackedTransactionsRef.current.add(transfer.txId);
+              });
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to fetch real-time SPL transfers:', error);
+      }
+    }, 5000); // Poll every 5 seconds
+    
+  }, [trackedAddress, isTrackingMode]);
+
+  // Helper function to update tracking statistics
+  const updateTrackingStats = useCallback((allTransfers: any[], filteredTransfers: any[]) => {
+    setTrackingStats(prev => {
+      if (!prev) return null;
+
+      // Calculate volume by address and token
+      const volumeByAddress = new Map<string, { volume: number; tokenSymbol: string }>();
+      const volumeByToken = new Map<string, { volume: number; transactionCount: number }>();
+
+      filteredTransfers.forEach(transfer => {
+        const amount = parseFloat(transfer.tokenAmount || '0');
+        
+        // Volume by address
+        const key = transfer.from || transfer.to;
+        if (key) {
+          const existing = volumeByAddress.get(key) || { volume: 0, tokenSymbol: transfer.tokenSymbol };
+          volumeByAddress.set(key, {
+            volume: existing.volume + amount,
+            tokenSymbol: transfer.tokenSymbol
+          });
+        }
+        
+        // Volume by token
+        const tokenKey = transfer.tokenSymbol;
+        if (tokenKey) {
+          const existing = volumeByToken.get(tokenKey) || { volume: 0, transactionCount: 0 };
+          volumeByToken.set(tokenKey, {
+            volume: existing.volume + amount,
+            transactionCount: existing.transactionCount + 1
+          });
+        }
+      });
+
+      // Convert to sorted arrays
+      const topVolumeByAddress = Array.from(volumeByAddress.entries())
+        .map(([address, data]) => ({ address, ...data }))
+        .sort((a, b) => b.volume - a.volume);
+
+      const topVolumeByToken = Array.from(volumeByToken.entries())
+        .map(([token, data]) => ({ token, ...data }))
+        .sort((a, b) => b.volume - a.volume);
+
+      return {
+        ...prev,
+        totalTransactions: prev.totalTransactions + allTransfers.length,
+        splTransfers: prev.splTransfers + allTransfers.length,
+        filteredSplTransfers: prev.filteredSplTransfers + filteredTransfers.length,
+        topVolumeByAddress,
+        topVolumeByToken,
+        lastUpdate: Date.now()
+      };
+    });
+  }, []);
+
+  // Helper function to add transfers to graph
+  const addTransfersToGraph = useCallback((transfers: any[], trackedAddress: string) => {
+    if (!cyRef.current) return;
+
+    transfers.forEach(transfer => {
+      const txId = transfer.txId;
+      
+      // Add transaction node if it doesn't exist
+      if (!cyRef.current!.getElementById(txId).length) {
+        cyRef.current!.add({
+          data: {
+            id: txId,
+            label: `${transfer.tokenSymbol}: ${parseFloat(transfer.tokenAmount).toFixed(2)}`,
+            type: 'spl-transfer',
+            amount: transfer.tokenAmount,
+            token: transfer.tokenSymbol
+          },
+          classes: 'transaction spl-transfer new-transaction'
+        });
+        
+        // Add edge connecting to tracked address
+        cyRef.current!.add({
+          data: {
+            id: `${trackedAddress}-${txId}`,
+            source: trackedAddress,
+            target: txId,
+            type: 'realtime'
+          },
+          classes: 'realtime-edge'
+        });
+      }
+    });
+    
+    // Re-run layout for new elements
+    if (cyRef.current && transfers.length > 0) {
+      cyRef.current.layout({
+        name: 'dagre',
+        rankDir: 'TB',
+        fit: false,
+        padding: 50
+      }).run();
+    }
+  }, []);
+
+  // Stop tracking function
+  const stopAddressTracking = useCallback(() => {
+    if (trackingIntervalRef.current) {
+      clearInterval(trackingIntervalRef.current);
+      trackingIntervalRef.current = null;
+    }
+    
+    setTrackedAddress(null);
+    setIsTrackingMode(false);
+    setTrackingStats(null);
+    trackedTransactionsRef.current.clear();
+    
+    // Remove tracked address highlighting
+    if (cyRef.current) {
+      cyRef.current.$('.tracked-address').removeClass('tracked-address');
+    }
+  }, []);
   
   // Set up graph interaction handlers
   const setupGraphInteractionsCallback = useCallback((cy: cytoscape.Core) => {
@@ -419,9 +686,10 @@ return result;
       containerRef,
       focusSignatureRef,
       focusOnTransaction,
-      setViewportState
+      setViewportState,
+      startAddressTracking // Pass address tracking callback
     );
-  }, [focusOnTransaction]);
+  }, [focusOnTransaction, startAddressTracking]);
 
   // Initialize graph with improved error handling and state management
   useEffect(() => {
@@ -489,7 +757,7 @@ isInitialized.current = true;
                 cyRef.current.layout({
   name: 'dagre',
   // @ts-ignore - dagre layout options are not fully typed
-  rankDir: 'LR',
+  rankDir: 'TB', // Top to bottom layout
   fit: true,
   padding: 50
 }).run();
@@ -548,7 +816,7 @@ cyRef.current.zoom(0.5);
                 cyRef.current.layout({
                   name: 'dagre',
                   // @ts-ignore - dagre layout options are not fully typed
-                  rankDir: 'LR',
+                  rankDir: 'TB', // Top to bottom layout
                   fit: true,
                   padding: 50
                 }).run();
@@ -739,6 +1007,78 @@ cyRef.current.zoom(0.5);
     }
   }, []);
 
+  // Fullscreen functionality
+  const toggleFullscreen = useCallback(async () => {
+    if (!containerRef.current) return;
+    
+    try {
+      if (!isFullscreen) {
+        if (containerRef.current.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        } else if ((containerRef.current as any).webkitRequestFullscreen) {
+          await (containerRef.current as any).webkitRequestFullscreen();
+        } else if ((containerRef.current as any).mozRequestFullScreen) {
+          await (containerRef.current as any).mozRequestFullScreen();
+        } else if ((containerRef.current as any).msRequestFullscreen) {
+          await (containerRef.current as any).msRequestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        } else if ((document as any).webkitExitFullscreen) {
+          await (document as any).webkitExitFullscreen();
+        } else if ((document as any).mozCancelFullScreen) {
+          await (document as any).mozCancelFullScreen();
+        } else if ((document as any).msExitFullscreen) {
+          await (document as any).msExitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error('Error toggling fullscreen:', err);
+    }
+  }, [isFullscreen]);
+
+  // Handle fullscreen change events
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      const isCurrentlyFullscreen = !!(
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).mozFullScreenElement ||
+        (document as any).msFullscreenElement
+      );
+      setIsFullscreen(isCurrentlyFullscreen);
+      
+      // Resize graph when entering/exiting fullscreen
+      if (cyRef.current) {
+        setTimeout(() => {
+          resizeGraphCallback();
+        }, 100);
+      }
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+    document.addEventListener('mozfullscreenchange', handleFullscreenChange);
+    document.addEventListener('MSFullscreenChange', handleFullscreenChange);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullscreenChange);
+      document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('mozfullscreenchange', handleFullscreenChange);
+      document.removeEventListener('MSFullscreenChange', handleFullscreenChange);
+    };
+  }, [resizeGraphCallback]);
+
+  // Cleanup tracking on unmount
+  useEffect(() => {
+    return () => {
+      if (trackingIntervalRef.current) {
+        clearInterval(trackingIntervalRef.current);
+      }
+    };
+  }, []);
+
   // Update internal state when props change - FIXED to prevent circular updates
   useEffect(() => {
     const isProgrammaticNavigation = sessionStorage.getItem('programmatic_nav') === 'true';
@@ -761,7 +1101,7 @@ cyRef.current.zoom(0.5);
   }, [initialSignature, currentSignature, focusOnTransaction]);
 
   return (
-    <div className="transaction-graph-wrapper relative w-full h-full transition-all flex flex-col">
+    <div className={`transaction-graph-wrapper relative w-full h-full transition-all flex flex-col ${isFullscreen ? 'bg-background' : ''}`}>
       {error && (
         <div className={`fixed bottom-4 left-4 z-20 ${error.severity === 'error' ? 'bg-destructive/10 border-destructive text-destructive' : 'bg-warning/10 border-warning text-warning'} border p-4 rounded-md max-w-md shadow-lg`}>
           <p className="text-sm">{error.message}</p>
@@ -790,15 +1130,21 @@ cyRef.current.zoom(0.5);
         </div>
       )}
 
+      {/* Address tracking statistics panel */}
+      <TrackingStatsPanel 
+        stats={trackingStats}
+        onStopTracking={stopAddressTracking}
+      />
+
       <div 
         ref={containerRef}
-        className="cytoscape-container w-full bg-muted/50 rounded-lg border border-border overflow-hidden"
+        className={`cytoscape-container w-full bg-muted/50 rounded-lg border border-border overflow-hidden ${isFullscreen ? 'rounded-none border-none bg-background' : ''}`}
         style={{ 
           width: '100%', 
-          height: '100%', // Further increased height for better visibility
+          height: isFullscreen ? '100vh' : '100%', // Full viewport height in fullscreen
           position: 'relative',
           overflow: 'hidden',
-          margin: '0 auto', // Center the container
+          margin: isFullscreen ? '0' : '0 auto', // Remove margin in fullscreen
         }}
       />
 
@@ -830,6 +1176,30 @@ cyRef.current.zoom(0.5);
             <path d="M5 12h14"></path>
             <path d="M12 5l7 7-7 7"></path>
           </svg>
+        </button>
+        
+        {/* Fullscreen button */}
+        <button 
+          className="p-1.5 hover:bg-primary/10 rounded-md transition-colors"
+          onClick={toggleFullscreen}
+          title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+          aria-label={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+        >
+          {isFullscreen ? (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3v3a2 2 0 0 1-2 2H3"></path>
+              <path d="M21 8h-3a2 2 0 0 1-2-2V3"></path>
+              <path d="M3 16h3a2 2 0 0 1 2 2v3"></path>
+              <path d="M16 21v-3a2 2 0 0 1 2-2h3"></path>
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 7V5a2 2 0 0 1 2-2h2"></path>
+              <path d="M17 3h2a2 2 0 0 1 2 2v2"></path>
+              <path d="M21 17v2a2 2 0 0 1-2 2h-2"></path>
+              <path d="M7 21H5a2 2 0 0 1-2-2v-2"></path>
+            </svg>
+          )}
         </button>
         
         {/* Cloud view button */}

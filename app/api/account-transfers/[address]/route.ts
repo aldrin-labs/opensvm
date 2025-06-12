@@ -34,6 +34,18 @@ async function fetchTransactionBatch(
   const transfers: Transfer[] = [];
   const startTime = Date.now();
   
+  // Known spam/analytics addresses to filter out
+  const SPAM_ADDRESSES = new Set([
+    'FetTyW8xAYfd33x4GMHoE7hTuEdWLj1fNnhJuyVMUGGa',
+    'WaLLeTaS7qTaSnKFTYJNGAeu7VzoLMUV9QCMfKxFsgt', 
+    'RecipienTEKQQQQQQQQQQQQQQQQQQQQQQQQQQFrThs',
+    'ComputeBudget111111111111111111111111111111',
+    // Add other known spam/bot addresses
+    '11111111111111111111111111111112', // System program
+    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // Token program
+    'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL' // Associated Token program
+  ]);
+  
   // Process in small batches of 10 transactions to avoid connection overload
   const BATCH_SIZE = 10;
   const batches = [];
@@ -78,6 +90,16 @@ async function fetchTransactionBatch(
               }
 
               const amount = Math.abs(delta / 1e9);
+              
+              // Skip if this is a spam address
+              if (SPAM_ADDRESSES.has(account) || SPAM_ADDRESSES.has(firstAccount)) {
+                continue;
+              }
+              
+              // Skip dust transactions (less than 0.001 SOL)
+              if (amount < 0.001) {
+                continue;
+              }
 
               txTransfers.push({
                 txId: signature,
