@@ -1,4 +1,6 @@
 import type { Metadata } from 'next';
+import { notFound } from 'next/navigation';
+import { isValidSolanaAddress } from '@/lib/utils';
 import TokenDetails from '@/components/TokenDetails';
 
 interface PageProps {
@@ -19,5 +21,12 @@ export default async function TokenPage({
   params,
 }: PageProps) {
   const resolvedParams = await params;
-  return <TokenDetails mint={resolvedParams.mint} />;
+  const { mint } = resolvedParams;
+
+  // Validate mint address format
+  if (!mint || !isValidSolanaAddress(mint)) {
+    notFound();
+  }
+
+  return <TokenDetails mint={mint} />;
 }
