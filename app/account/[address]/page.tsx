@@ -1,6 +1,8 @@
 import { getConnection } from '@/lib/solana-connection';
 import { PublicKey } from '@solana/web3.js';
+import { notFound } from 'next/navigation';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
+import { isValidSolanaAddress } from '@/lib/utils';
 import AccountInfo from '@/components/AccountInfo';
 import AccountTabs from './tabs';
 
@@ -61,69 +63,52 @@ export default async function AccountPage({ params, searchParams }: PageProps) {
   const { tab } = resolvedSearchParams;
   const activeTab = tab || 'tokens';
   
+  // Basic validation
+  if (!rawAddress) {
+    notFound();
+  }
+
+  // Clean up the address
+  let address = rawAddress;
   try {
-    // Basic validation
-    if (!rawAddress) {
-      throw new Error('Address is required');
-    }
+    address = decodeURIComponent(rawAddress);
+  } catch (e) {
+    // Address was likely already decoded
+  }
+  address = address.trim();
 
-    // Clean up the address
-    let address = rawAddress;
-    try {
-      address = decodeURIComponent(rawAddress);
-    } catch (e) {
-      // Address was likely already decoded
-    }
-    address = address.trim();
+  // Validate address format before proceeding
+  if (!isValidSolanaAddress(address)) {
+    notFound();
+  }
 
-    // Basic format validation
-    if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(address)) {
-      throw new Error('Invalid characters in address. Solana addresses can only contain base58 characters.');
-    }
-
-    if (address.length < 32 || address.length > 44) {
-      throw new Error('Invalid address length. Solana addresses must be between 32 and 44 characters.');
-    }
-
+  try {
     // Fetch account info
-    try {
-      const accountInfo = await getAccountData(address);
+    const accountInfo = await getAccountData(address);
 
-      return (
-        <div className="container mx-auto px-4 py-8">
-          <AccountInfo
-            address={accountInfo.address}
-            isSystemProgram={accountInfo.isSystemProgram}
-            parsedOwner={accountInfo.parsedOwner}
-          />
-          <AccountTabs
-            address={accountInfo.address}
-            solBalance={accountInfo.solBalance}
-            tokenBalances={accountInfo.tokenBalances}
-            activeTab={activeTab as string}
-          />
-        </div>
-      );
-    } catch (error) {
-      console.error('Error fetching account info:', error);
-      return (
-        <div className="container mx-auto px-4 py-8">
-          <div className="rounded-lg border border-red-500 bg-red-50 p-4">
-            <h2 className="text-xl font-semibold text-red-700">Error</h2>
-            <p className="text-red-600">Account not found or invalid address format</p>
-            <p className="mt-2 text-sm text-red-500">Please check the address and try again</p>
-          </div>
-        </div>
-      );
-    }
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <AccountInfo
+          address={accountInfo.address}
+          isSystemProgram={accountInfo.isSystemProgram}
+          parsedOwner={accountInfo.parsedOwner}
+        />
+        <AccountTabs
+          address={accountInfo.address}
+          solBalance={accountInfo.solBalance}
+          tokenBalances={accountInfo.tokenBalances}
+          activeTab={activeTab as string}
+        />
+      </div>
+    );
   } catch (error) {
-    console.error('Error in account page:', error);
+    console.error('Error fetching account info:', error);
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="rounded-lg border border-red-500 bg-red-50 p-4">
           <h2 className="text-xl font-semibold text-red-700">Error</h2>
-          <p className="text-red-600">{error instanceof Error ? error.message : 'Invalid address format'}</p>
-          <p className="mt-2 text-sm text-red-500">Please provide a valid Solana address</p>
+          <p className="text-red-600">Account not found or invalid address format</p>
+          <p className="mt-2 text-sm text-red-500">Please check the address and try again</p>
         </div>
       </div>
     );

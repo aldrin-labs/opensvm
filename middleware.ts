@@ -46,6 +46,24 @@ const getQueryParam = (params: URLSearchParams, ...keys: string[]): string => {
   return value || '';
 };
 
+// Validation helper functions
+const isValidBase58 = (str: string): boolean => {
+  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(str);
+};
+
+const isValidTransactionSignature = (signature: string): boolean => {
+  return signature && signature.length === 88 && isValidBase58(signature);
+};
+
+const isValidSolanaAddress = (address: string): boolean => {
+  return address && address.length >= 32 && address.length <= 44 && isValidBase58(address);
+};
+
+const isValidSlot = (slot: string): boolean => {
+  const slotNumber = parseInt(slot, 10);
+  return !isNaN(slotNumber) && slotNumber >= 0 && Number.isInteger(slotNumber);
+};
+
 // Regex patterns for paths that should be handled by middleware
 const STATIC_ASSET_REGEX = /\.(jpe?g|png|svg|gif|ico|webp|mp4|webm|woff2?|ttf|eot)$/i;
 
@@ -147,24 +165,50 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/blocks', request.url));
   }
 
-  // Handle legacy URL redirects
+  // Handle legacy URL redirects with validation
   if (pathname.startsWith('/tx/') && pathname.includes('?')) {
     // Convert query param style to path style: /tx?sig=abc123 -> /tx/abc123
     const txSignature = getQueryParam(url.searchParams, 'sig', 'signature');
-    if (txSignature) {
+    if (txSignature && isValidTransactionSignature(txSignature)) {
       const newUrl = new URL(`/tx/${txSignature}`, request.url);
       return NextResponse.redirect(newUrl);
     }
   }
 
-  // Handle block redirects
+  // Handle block redirects with validation
   if (pathname.startsWith('/block') && pathname.includes('?')) {
     // Convert query param style to path style: /block?slot=123 -> /block/123
     const slot = getQueryParam(url.searchParams, 'slot');
-    if (slot) {
-      // The slot is a string since we checked it's not empty above
+    if (slot && isValidSlot(slot)) {
       const newUrl = new URL(`/block/${slot}`, request.url);
       return NextResponse.redirect(newUrl);
+    }
+  }
+
+  // Validate dynamic route parameters and redirect to 404 if invalid
+  const pathSegments = pathname.split('/').filter(Boolean);
+  
+  if (pathSegments.length === 2) {
+    const [type, param] = pathSegments;
+    
+    switch (type) {
+      case 'tx':
+        if (!isValidTransactionSignature(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
+      case 'account':
+      case 'token':
+      case 'program':
+        if (!isValidSolanaAddress(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
+      case 'block':
+        if (!isValidSlot(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
     }
   }
 
