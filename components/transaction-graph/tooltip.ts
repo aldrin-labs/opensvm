@@ -1,0 +1,235 @@
+'use client';
+
+import * as echarts from 'echarts';
+import { GraphNode, GraphLink } from './types';
+
+// Cache for tooltip content to avoid redundant DOM operations
+const tooltipContentCache = new Map<string, string>();
+
+// Track if tooltip is currently visible to avoid unnecessary DOM operations
+let tooltipVisible = false;
+// Cache the tooltip element to avoid repeated DOM lookups
+let tooltipCache: HTMLElement | null = null;
+// Track the last element ID to avoid updating tooltip for the same element
+let lastElementId = '';
+
+// Throttle function to limit tooltip updates
+const throttle = <T extends (...args: any[]) => void>(func: T, limit: number): T => {
+  // Initialize variables with default values
+  let inThrottle = false;
+  let lastFunc: ReturnType<typeof setTimeout> | null = null;
+  let lastRan = 0;
+  
+  // Use function expression instead of arrow function to avoid 'this' aliasing issues
+  const throttled = function(this: any, ...args: Parameters<T>) {
+    const now = Date.now();
+    
+    if (!inThrottle) {
+      func.apply(this, args);
+      lastRan = now;
+      inThrottle = true;
+      
+      setTimeout(() => {
+        inThrottle = false;
+      }, limit);
+    } else {
+      if (lastFunc) {
+        clearTimeout(lastFunc);
+      }
+      
+      lastFunc = setTimeout(() => {
+        if ((now - lastRan) >= limit) {
+          func.apply(this, args);
+          lastRan = now;
+        }
+      }, limit - (now - lastRan));
+    }
+  };
+  
+  return throttled as T;
+};
+
+/**
+ * Create a tooltip element for displaying node/edge details
+ * @returns HTML element for tooltip
+ */
+export const createTooltip = (): HTMLElement => {
+  // Use cached tooltip if available
+  if (tooltipCache) return tooltipCache;
+  
+  // Check if tooltip already exists in DOM
+  let tooltip = document.getElementById('graph-tooltip');
+  
+  if (!tooltip) {
+    tooltip = document.createElement('div');
+    tooltip.id = 'graph-tooltip';
+    tooltip.style.position = 'absolute';
+    tooltip.style.zIndex = '10';
+    tooltip.style.backgroundColor = 'rgba(0, 0, 0, 0.8)';
+    tooltip.style.color = 'white';
+    tooltip.style.padding = '8px 12px';
+    tooltip.style.borderRadius = '4px';
+    tooltip.style.fontSize = '12px';
+    tooltip.style.pointerEvents = 'none';
+    tooltip.style.opacity = '0';
+    tooltip.style.transition = 'opacity 0.15s ease-in-out'; // Faster transition
+    tooltip.style.maxWidth = '250px'; // Reduced from 300px
+    tooltip.style.boxShadow = '0 2px 4px rgba(0, 0, 0, 0.1)'; // Lighter shadow
+    document.body.appendChild(tooltip);
+  }
+  
+  // Cache the tooltip element
+  tooltipCache = tooltip;
+  
+  return tooltip;
+};
+
+/**
+ * Generate tooltip content based on element type
+ * @param params ECharts event parameters
+ * @returns HTML content string
+ */
+export const generateTooltipContent = (params: any): string => {
+  // Use element ID as cache key
+  const cacheKey = params.data.id || params.name;
+  
+  // Return cached content if available
+  if (tooltipContentCache.has(cacheKey)) {
+    return tooltipContentCache.get(cacheKey)!;
+  }
+  
+  let content = '';
+  
+  if (params.dataType === 'node') {
+    const data = params.data;
+    const type = data.data?.type;
+    
+    if (type === 'transaction') {
+      // Simplified transaction tooltip
+      content = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Transaction</div>
+        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${data.data.fullSignature || data.id}</div>
+        ${data.data.timestamp ? `<div style="margin-top: 4px;">Time: ${data.data.formattedTime}</div>` : ''}
+        ${data.data.success !== undefined ? `<div style="margin-top: 4px;">Status: ${data.data.success ? 'Success' : 'Error'}</div>` : ''}
+        <div style="margin-top: 8px; font-size: 10px;">Click to expand</div>
+      `;
+    } else if (type === 'account') {
+      // Simplified account tooltip
+      content = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Account</div>
+        <div style="word-break: break-all; max-height: 40px; overflow: hidden; text-overflow: ellipsis;">${data.data.fullAddress || data.id}</div>
+        <div style="margin-top: 8px; font-size: 10px;">Click to explore transactions</div>
+      `;
+    }
+  } else if (params.dataType === 'edge') {
+    const data = params.data;
+    const type = data.data?.type;
+    
+    if (type === 'transfer') {
+      // Simplified transfer tooltip
+      content = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Token Transfer</div>
+        <div>Amount: ${data.data.label}</div>
+        <div style="margin-top: 4px;">From: ${data.data.source}</div>
+        <div>To: ${data.data.target}</div>
+      `;
+    } else {
+      // Simplified connection tooltip
+      content = `
+        <div style="font-weight: bold; margin-bottom: 4px;">Connection</div>
+        <div>From: ${data.source}</div>
+        <div>To: ${data.target}</div>
+      `;
+    }
+  }
+  
+  // Cache the content
+  tooltipContentCache.set(cacheKey, content);
+  
+  return content;
+};
+
+/**
+ * Show tooltip with element details - throttled for performance
+ */
+export const showTooltip = throttle(
+  (
+    event: MouseEvent,
+    params: any,
+    containerRef: React.RefObject<HTMLDivElement>
+  ): void => {
+    const elementId = params.data?.id || params.name;
+    
+    // Skip if showing tooltip for the same element
+    if (tooltipVisible && elementId === lastElementId) return;
+    
+    lastElementId = elementId;
+    
+    const containerRect = containerRef.current?.getBoundingClientRect();
+    if (!containerRect) return;
+    
+    const tooltip = createTooltip();
+    
+    // Position tooltip near the mouse but not directly under it
+    const x = event.clientX - containerRect.left + 10;
+    const y = event.clientY - containerRect.top - 10;
+    
+    // Generate tooltip content
+    const content = generateTooltipContent(params);
+    
+    // Only update DOM if content changed
+    if (tooltip.innerHTML !== content) {
+      tooltip.innerHTML = content;
+    }
+    
+    // Update position
+    tooltip.style.left = `${x}px`;
+    tooltip.style.top = `${y}px`;
+    
+    // Show tooltip if not already visible
+    if (!tooltipVisible) {
+      tooltip.style.opacity = '1';
+      tooltipVisible = true;
+    }
+  },
+  50 // Throttle to 50ms for better performance
+);
+
+/**
+ * Hide tooltip - throttled for performance
+ */
+export const hideTooltip = throttle(
+  (): void => {
+    if (!tooltipVisible) return;
+    
+    const tooltip = tooltipCache || document.getElementById('graph-tooltip');
+    if (tooltip) {
+      tooltip.style.opacity = '0';
+      tooltipVisible = false;
+      lastElementId = '';
+    }
+  },
+  50 // Throttle to 50ms for better performance
+);
+
+/**
+ * Clear tooltip cache when graph is reset
+ */
+export const clearTooltipCache = (): void => {
+  tooltipContentCache.clear();
+  tooltipVisible = false;
+  lastElementId = '';
+};
+
+/**
+ * Clean up function to remove tooltip when component unmounts
+ */
+export const cleanupTooltip = (): void => {
+  const tooltip = document.getElementById('graph-tooltip');
+  if (tooltip && tooltip.parentNode) {
+    tooltip.parentNode.removeChild(tooltip);
+    tooltipCache = null;
+    tooltipVisible = false;
+    lastElementId = '';
+  }
+};

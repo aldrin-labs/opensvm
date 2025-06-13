@@ -1,5 +1,5 @@
 'use client';
 
-// Re-export the modular TransactionGraph component
-export { default } from './transaction-graph/TransactionGraph';
+import TransactionGraphWrapper from './transaction-graph/TransactionGraphWrapper';
+export default TransactionGraphWrapper;
 export * from './transaction-graph/types';
