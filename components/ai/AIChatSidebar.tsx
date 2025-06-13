@@ -3,6 +3,7 @@
 import { FC, ReactNode } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { AIChat } from './AIChat';
 
 interface AIChatSidebarProps {
   isOpen: boolean;
@@ -38,7 +39,7 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
       }}
       aria-hidden={!isOpen}
     >
-      <div style={{ padding: '1rem' }}>
+      <div style={{ padding: '1rem', height: '100%', display: 'flex', flexDirection: 'column' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
           <h2 style={{ fontWeight: 'bold' }}>AI Assistant</h2>
           {onClose && (
@@ -52,7 +53,12 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
             </Button>
           )}
         </div>
-        <div>AI Chat Sidebar</div>
+        <div style={{ flex: 1, overflow: 'hidden' }}>
+          <AIChat 
+            className="h-full" 
+            initialContext="I'm here to help you with Solana validator performance information. What would you like to know?"
+          />
+        </div>
       </div>
     </div>
   );
