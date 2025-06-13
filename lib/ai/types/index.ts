@@ -1,6 +1,6 @@
 import { Connection } from '@solana/web3.js';
 
-export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'utility';
+export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'utility' | 'solana-ai';
 
 export type ToolType = 
     | 'fetch_transaction'
