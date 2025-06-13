@@ -12,6 +12,7 @@ export const tabs: Tab[] = [
   { id: 'transfers', label: 'Transfers' },
   { id: 'nfts', label: 'NFTs' },
   { id: 'programs', label: 'Programs' },
+  { id: 'search', label: 'Search Results' },
 ];
 
 interface Props {
