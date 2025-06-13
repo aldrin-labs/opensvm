@@ -37,22 +37,25 @@ export default function SearchBar() {
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
         
-      switch (data.type) {
-        case 'token':
-          console.log('Redirecting to token page:', query);
-          window.location.href = `/token/${query.trim()}`;
-          break;
-        case 'program':
-          console.log('Redirecting to program page:', query);
-          window.location.href = `/program/${query.trim()}`;
-          break;
-        case 'account':
-          console.log('Redirecting to account page:', query);
-          window.location.href = `/account/${query.trim()}`;
-          break;
-        default:
-          window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
-      }
+        // Include network in URL if available
+        const networkParam = data.network ? `?network=${data.network}` : '';
+        
+        switch (data.type) {
+          case 'token':
+            console.log('Redirecting to token page:', query, 'Network:', data.network || 'default');
+            window.location.href = `/token/${query.trim()}${networkParam}`;
+            break;
+          case 'program':
+            console.log('Redirecting to program page:', query, 'Network:', data.network || 'default');
+            window.location.href = `/program/${query.trim()}${networkParam}`;
+            break;
+          case 'account':
+            console.log('Redirecting to account page:', query, 'Network:', data.network || 'default');
+            window.location.href = `/account/${query.trim()}${networkParam}`;
+            break;
+          default:
+            window.location.href = `/search?q=${encodeURIComponent(query.trim())}`;
+        }
       } else {
         // If no specific match, use the search page
         router.push(`/search?q=${encodeURIComponent(trimmedQuery)}`);

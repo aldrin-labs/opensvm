@@ -107,15 +107,18 @@ export default function AutocompleteSearchBar() {
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
         
+        // Include network in URL if available
+        const networkParam = data.network ? `?network=${data.network}` : '';
+        
         switch (data.type) {
           case 'token':
-            window.location.href = `/token/${trimmedQuery}`;
+            window.location.href = `/token/${trimmedQuery}${networkParam}`;
             break;
           case 'program':
-            window.location.href = `/program/${trimmedQuery}`;
+            window.location.href = `/program/${trimmedQuery}${networkParam}`;
             break;
           case 'account':
-            window.location.href = `/account/${trimmedQuery}`;
+            window.location.href = `/account/${trimmedQuery}${networkParam}`;
             break;
           default:
             // Build search URL with filters
@@ -281,14 +284,37 @@ export default function AutocompleteSearchBar() {
                 key={index}
                 type="button"
                 onClick={() => {
-                  setQuery(suggestion.value);
-                  setShowSuggestions(false);
-                  handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                  // If it's a transaction suggestion, just use the value
+                  if (suggestion.type === 'transaction') {
+                    setQuery(suggestion.value);
+                    setShowSuggestions(false);
+                    window.location.href = `/tx/${suggestion.value}${suggestion.network ? `?network=${suggestion.network}` : ''}`;
+                  } 
+                  // If it's a token or program suggestion, include the network
+                  else if (suggestion.type === 'token') {
+                    setQuery(suggestion.value);
+                    setShowSuggestions(false);
+                    window.location.href = `/token/${suggestion.value}${suggestion.network ? `?network=${suggestion.network}` : ''}`;
+                  }
+                  else if (suggestion.type === 'program') {
+                    setQuery(suggestion.value);
+                    setShowSuggestions(false);
+                    window.location.href = `/program/${suggestion.value}${suggestion.network ? `?network=${suggestion.network}` : ''}`;
+                  }
+                  // Otherwise, use the regular search
+                  else {
+                    setQuery(suggestion.value);
+                    setShowSuggestions(false);
+                    handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                  }
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
               >
                 <span className="text-xs text-gray-500 uppercase">{suggestion.type}</span>
                 <span className="flex-1 truncate">{suggestion.label || suggestion.value}</span>
+                {suggestion.network && (
+                  <span className="text-xs bg-gray-100 px-2 py-1 rounded">{suggestion.network}</span>
+                )}
               </button>
             ))}
           </div>
