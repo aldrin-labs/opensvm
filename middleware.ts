@@ -46,23 +46,13 @@ const getQueryParam = (params: URLSearchParams, ...keys: string[]): string => {
   return value || '';
 };
 
-// Validation helper functions
-const isValidBase58 = (str: string): boolean => {
-  return /^[1-9A-HJ-NP-Za-km-z]+$/.test(str);
-};
-
-const isValidTransactionSignature = (signature: string): boolean => {
-  return signature && signature.length === 88 && isValidBase58(signature);
-};
-
-const isValidSolanaAddress = (address: string): boolean => {
-  return address && address.length >= 32 && address.length <= 44 && isValidBase58(address);
-};
-
-const isValidSlot = (slot: string): boolean => {
-  const slotNumber = parseInt(slot, 10);
-  return !isNaN(slotNumber) && slotNumber >= 0 && Number.isInteger(slotNumber);
-};
+// Import shared validation functions
+import {
+  isValidTransactionSignature,
+  isValidSolanaAddress,
+  isValidSlot,
+  containsSecurityThreats,
+} from '@/lib/validators';
 
 // Regex patterns for paths that should be handled by middleware
 const STATIC_ASSET_REGEX = /\.(jpe?g|png|svg|gif|ico|webp|mp4|webm|woff2?|ttf|eot)$/i;
@@ -190,6 +180,11 @@ export function middleware(request: NextRequest) {
   
   if (pathSegments.length === 2) {
     const [type, param] = pathSegments;
+    
+    // Check for security threats in parameters
+    if (containsSecurityThreats(param)) {
+      return NextResponse.redirect(new URL('/404', request.url));
+    }
     
     switch (type) {
       case 'tx':

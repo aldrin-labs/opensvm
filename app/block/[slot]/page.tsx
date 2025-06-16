@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import BlockDetails from '@/components/BlockDetails';
+import { isValidSlot } from '@/lib/validators';
 
 interface Props {
   params: Promise<{ slot: string }>;
@@ -8,14 +9,8 @@ interface Props {
 export default async function BlockPage({ params }: Props) {
   const { slot } = await params;
 
-  // Validate slot parameter
-  if (!slot) {
-    notFound();
-  }
-
-  // Validate that slot is a positive integer
-  const slotNumber = parseInt(slot, 10);
-  if (isNaN(slotNumber) || slotNumber < 0 || !Number.isInteger(slotNumber)) {
+  // Validate slot parameter using shared validation
+  if (!slot || !isValidSlot(slot)) {
     notFound();
   }
 

@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation';
-import { isValidSolanaAddress } from '@/lib/utils';
+import { isValidProgramAddress } from '@/lib/validators';
 import ProgramView from './components/program-view';
 
 interface ProgramData {
@@ -46,7 +46,7 @@ export default async function ProgramPage({ params }: Props) {
   const { address } = await params;
 
   // Validate address format
-  if (!address || !isValidSolanaAddress(address)) {
+  if (!address || !isValidProgramAddress(address)) {
     notFound();
   }
 

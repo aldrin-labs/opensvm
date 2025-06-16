@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { isValidSolanaAddress } from '@/lib/utils';
+import { isValidSolanaAddress } from '@/lib/validators';
 
 interface AccountLinkProps {
   address: string;

@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { isValidTransactionSignature } from '@/lib/utils';
+import { isValidTransactionSignature } from '@/lib/validators';
 
 interface TransactionLinkProps {
   signature: string;

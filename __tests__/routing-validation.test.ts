@@ -1,4 +1,9 @@
-import { isValidTransactionSignature, isValidSolanaAddress } from '@/lib/utils';
+import { 
+  isValidTransactionSignature, 
+  isValidSolanaAddress,
+  isValidSlot,
+  containsSecurityThreats,
+} from '@/lib/validators';
 
 describe('Routing Parameter Validation', () => {
   describe('Transaction Signature Validation', () => {
@@ -66,27 +71,71 @@ describe('Routing Parameter Validation', () => {
 
   describe('Slot Number Validation', () => {
     test('should validate positive integers as valid slots', () => {
-      expect(Number.isInteger(parseInt('123456', 10))).toBe(true);
-      expect(parseInt('123456', 10) >= 0).toBe(true);
-      
-      expect(Number.isInteger(parseInt('0', 10))).toBe(true);
-      expect(parseInt('0', 10) >= 0).toBe(true);
+      expect(isValidSlot('123456')).toBe(true);
+      expect(isValidSlot('0')).toBe(true);
+      expect(isValidSlot('999999999')).toBe(true);
     });
 
     test('should reject invalid slot numbers', () => {
       // Negative numbers
-      expect(parseInt('-123', 10) >= 0).toBe(false);
+      expect(isValidSlot('-123')).toBe(false);
       
-      // Non-integers
-      expect(Number.isInteger(parseInt('123.456', 10))).toBe(true); // parseInt truncates, but we need to check the original
-      expect('123.456'.includes('.')).toBe(true);
+      // Decimal numbers (this was the main issue!)
+      expect(isValidSlot('123.456')).toBe(false);
+      expect(isValidSlot('0.5')).toBe(false);
       
       // Non-numeric strings
-      expect(isNaN(parseInt('abc123', 10))).toBe(true);
-      expect(isNaN(parseInt('', 10))).toBe(true);
+      expect(isValidSlot('abc123')).toBe(false);
+      expect(isValidSlot('')).toBe(false);
+      expect(isValidSlot('slot')).toBe(false);
       
       // Special characters
-      expect(isNaN(parseInt('12!@#', 10))).toBe(true);
+      expect(isValidSlot('12!@#')).toBe(false);
+      expect(isValidSlot('12_34')).toBe(false);
+      expect(isValidSlot('12,34')).toBe(false);
+      
+      // Whitespace
+      expect(isValidSlot(' 123 ')).toBe(false);
+      expect(isValidSlot('123 ')).toBe(false);
+      expect(isValidSlot(' 123')).toBe(false);
+      
+      // Null/undefined
+      expect(isValidSlot(null as any)).toBe(false);
+      expect(isValidSlot(undefined as any)).toBe(false);
+    });
+  });
+
+  describe('Security Threat Detection', () => {
+    test('should detect SQL injection attempts', () => {
+      expect(containsSecurityThreats("'; DROP TABLE users; --")).toBe(true);
+      expect(containsSecurityThreats("' OR 1=1 --")).toBe(true);
+      expect(containsSecurityThreats("/* comment */")).toBe(true);
+    });
+
+    test('should detect XSS attempts', () => {
+      expect(containsSecurityThreats('<script>alert("xss")</script>')).toBe(true);
+      expect(containsSecurityThreats('<img onload="alert(1)">')).toBe(true);
+      expect(containsSecurityThreats('<div onclick="evil()">')).toBe(true);
+    });
+
+    test('should detect path traversal attempts', () => {
+      expect(containsSecurityThreats('../../../etc/passwd')).toBe(true);
+      expect(containsSecurityThreats('..\\..\\windows\\system32')).toBe(true);
+      expect(containsSecurityThreats('..%2f..%2fetc%2fpasswd')).toBe(true);
+    });
+
+    test('should detect command injection attempts', () => {
+      expect(containsSecurityThreats('address; rm -rf /')).toBe(true);
+      expect(containsSecurityThreats('address && whoami')).toBe(true);
+      expect(containsSecurityThreats('address | cat /etc/passwd')).toBe(true);
+      expect(containsSecurityThreats('address`whoami`')).toBe(true);
+      expect(containsSecurityThreats('address$(whoami)')).toBe(true);
+    });
+
+    test('should allow valid blockchain parameters', () => {
+      expect(containsSecurityThreats('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')).toBe(false);
+      expect(containsSecurityThreats('3Eq21vXNB5s86c62bVuUfTeaMif1N2kUqRPBmGRJhyTA5E233pZy4kEz3Z7c9E8UwGRZpBPZ')).toBe(false);
+      expect(containsSecurityThreats('123456')).toBe(false);
     });
   });
 
@@ -97,19 +146,9 @@ describe('Routing Parameter Validation', () => {
       const decoded = decodeURIComponent(encoded);
       expect(isValidSolanaAddress(decoded)).toBe(true);
       
-      // Whitespace trimming
+      // Note: We don't auto-trim in validators - this should be done in route handlers
+      expect(isValidSolanaAddress('  TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA  ')).toBe(false);
       expect(isValidSolanaAddress('  TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA  '.trim())).toBe(true);
-    });
-
-    test('should handle potential injection attempts', () => {
-      // SQL injection-like patterns
-      expect(isValidSolanaAddress("'; DROP TABLE users; --")).toBe(false);
-      
-      // Script injection patterns
-      expect(isValidSolanaAddress('<script>alert("xss")</script>')).toBe(false);
-      
-      // Path traversal patterns
-      expect(isValidSolanaAddress('../../../etc/passwd')).toBe(false);
     });
   });
 });

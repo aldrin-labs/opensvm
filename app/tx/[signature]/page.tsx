@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation';
 import TransactionContent from './TransactionContent';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { isValidTransactionSignature } from '@/lib/utils';
+import { isValidTransactionSignature } from '@/lib/validators';
 
 interface Props {
   params: Promise<{ signature: string }>;

@@ -2,7 +2,7 @@ import { getConnection } from '@/lib/solana-connection';
 import { PublicKey } from '@solana/web3.js';
 import { notFound } from 'next/navigation';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
-import { isValidSolanaAddress } from '@/lib/utils';
+import { isValidSolanaAddress } from '@/lib/validators';
 import AccountInfo from '@/components/AccountInfo';
 import AccountTabs from './tabs';
 
