@@ -73,7 +73,7 @@ export const containsSecurityThreats = (input: string): boolean => {
     // SQL injection patterns
     /('|\\'|;\s*--|;\s*\/\*)/i,
     // XSS patterns
-    /<script[^>]*>.*?<\/script>/i,
+    /<script[^>]*>.*?<\/script\s*[^>]*>/i,
     /<[^>]*on\w+\s*=/i,
     // Path traversal patterns
     /\.\.\/|\.\.\\|\.\.\%2f|\.\.\%5c/i,
