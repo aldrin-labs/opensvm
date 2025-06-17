@@ -40,7 +40,7 @@ export const isValidSlot = (slot: string): boolean => {
   
   // Additional check for reasonable slot bounds
   const slotNumber = parseInt(slot, 10);
-  return slotNumber >= 0 && slotNumber <= Number.MAX_SAFE_INTEGER;
+  return slotNumber >= 0 && slotNumber <= 9007199254740991; // MAX_SAFE_INTEGER value
 };
 
 /**
@@ -71,7 +71,7 @@ export const containsSecurityThreats = (input: string): boolean => {
   // Check for common injection patterns
   const dangerousPatterns = [
     // SQL injection patterns
-    /('|(\\')|(;\s*--)|(;\s*\/\*)/i,
+    /('|\\'|;\s*--|;\s*\/\*)/i,
     // XSS patterns
     /<script[^>]*>.*?<\/script>/i,
     /<[^>]*on\w+\s*=/i,
