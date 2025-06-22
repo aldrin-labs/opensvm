@@ -1,4 +1,5 @@
 import { CopyButton } from './CopyButton';
+import AccountExplorerLinks from './AccountExplorerLinks';
 
 interface AccountInfoProps {
   address: string;
@@ -40,6 +41,7 @@ export default function AccountInfo({ address, isSystemProgram, parsedOwner }: A
             <AddressDisplay address={parsedOwner} label="Owner" />
           )}
         </div>
+        <AccountExplorerLinks address={address} />
       </div>
     </div>
   );

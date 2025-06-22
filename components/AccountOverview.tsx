@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 import { type TokenAccount } from '@/lib/solana';
+import PortfolioPieChart from './PortfolioPieChart';
 
 interface Props {
   address: string;
@@ -132,6 +133,11 @@ export default function AccountOverview({
               <div className="text-sm">{isSystemProgram ? 'System Program' : 'User Account'}</div>
             </div>
           )}
+
+          <div>
+            <div className="text-sm text-neutral-400 mb-2">Portfolio Breakdown</div>
+            <PortfolioPieChart solBalance={solBalance} tokenBalances={tokenAccounts.map(t => ({ mint: t.mint, balance: t.uiAmount || 0 }))} />
+          </div>
         </div>
       </div>
     </div>
