@@ -24,7 +24,7 @@
     "@debridge-finance/solana-transaction-parser": "^3.2.1",
     "@flipsidecrypto/sdk": "^2.1.0",
     "@mlc-ai/web-llm": "^0.2.78",
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "@netlify/plugin-nextjs": "^5.9.4",
     "@qdrant/js-client-rest": "^1.13.0",
     "@radix-ui/react-dropdown-menu": "^2.1.4",
