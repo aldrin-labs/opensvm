@@ -1,22 +1,5 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Disable static optimization to prevent SSR issues with event handlers
-  experimental: {
-    // Disable static generation for all pages
-    isrMemoryCacheSize: 0,
-    // Enable modern optimizations
-    optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-select',
-      '@radix-ui/react-tabs'
-    ],
-    // Enable server actions with increased limit
-    serverActions: {
-      bodySizeLimit: '2mb'
-    }
-  },
   typescript: {
     // Use an alternate config for type checking to ignore test-related files
     tsconfigPath: 'tsconfig.json',

@@ -88,8 +88,7 @@
     "whatwg-url": "^5.0.0",
     "xstate": "^5.19.2",
     "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.23.0",
-    "dompurify": "^3.2.6"
+    "zod-to-json-schema": "^3.23.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.50.1",
