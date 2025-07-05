@@ -32,19 +32,8 @@ export class SolanaAgentKitCapability extends BaseCapability {
 
   constructor(connection: Connection) {
     super(connection);
-    try {
-      // We'll initialize the actual SDK in a production environment
-      // const { SolanaAgentKit } = require('@sendaifun/solana-agent-kit');
-      // @ts-ignore - Using dynamic import in a production environment
-      // this.solanaAgentKit = new SolanaAgentKit({ connection });
-      
-      // Create a self-contained mock implementation that doesn't rely on this.solanaAgentKit methods
-      // For now, we'll use a mock implementation
-      this.solanaAgentKit = this.createMockSolanaAgentKit();
-    } catch (error) {
-      console.error('Failed to initialize Solana Agent Kit:', error);
-      this.solanaAgentKit = this.createMockSolanaAgentKit();
-    }
+    // Using mock implementation for development
+    this.solanaAgentKit = this.createMockSolanaAgentKit();
   }
   
   private createMockSolanaAgentKit() {

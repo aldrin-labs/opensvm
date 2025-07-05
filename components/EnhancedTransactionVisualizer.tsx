@@ -1,7 +1,8 @@
 'use client';
 
+import React from 'react';
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useMemo, useCallback } from 'react';
 import * as d3 from 'd3';
 
 interface ParsedInstruction {
@@ -49,8 +50,74 @@ function isValidAccount(account: any): account is TransactionAccount {
   return account && typeof account === 'object' && 'pubkey' in account && 'signer' in account;
 }
 
-export default function EnhancedTransactionVisualizer({ tx }: EnhancedTransactionVisualizerProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
+// Memoize the component to prevent unnecessary re-renders
+const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisualizerProps) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const simulationRef = useRef<d3.Simulation<Node, undefined> | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+
+  // Memoize helper functions
+  const getNodeRadius = useCallback((node: Node): number => {
+    switch (node.type) {
+      case 'instruction': return 15;
+      case 'program': return 12;
+      case 'signer': return 10;
+      default: return 8;
+    }
+  }, []);
+
+  const getNodeColor = useCallback((node: Node): string => {
+    switch (node.type) {
+      case 'instruction': return '#FF9800';
+      case 'program': return '#2196F3';
+      case 'signer': return '#4CAF50';
+      default: return '#9E9E9E';
+    }
+  }, []);
+
+  const getNodeLabel = useCallback((node: Node): string => {
+    if (node.type === 'instruction') {
+      return `IX ${node.id.split('-')[1]}`;
+    }
+    return `${node.id.slice(0, 4)}...`;
+  }, []);
+
+  const getNodeTooltip = useCallback((node: Node): string => {
+    switch (node.type) {
+      case 'instruction': {
+        const instruction = node.data;
+        if (isParsedInstruction(instruction)) {
+          return `Instruction ${node.id.split('-')[1]}: ${instruction.program}`;
+        } else {
+          return `Instruction ${node.id.split('-')[1]}: ${instruction.programId.toString().slice(0, 8)}...`;
+        }
+      }
+      case 'program':
+        return `Program: ${node.id}`;
+      case 'signer':
+        return `Signer: ${node.id}`;
+      default:
+        return `Account: ${node.id}`;
+    }
+  }, []);
+
+  // Memoize drag functions to prevent recreation on each render
+  const dragstarted = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+    if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
+    event.subject.fx = event.subject.x;
+    event.subject.fy = event.subject.y;
+  }, []);
+
+  const dragged = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+    event.subject.fx = event.x;
+    event.subject.fy = event.y;
+  }, []);
+
+  const dragended = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+    if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0);
+    event.subject.fx = null;
+    event.subject.fy = null;
+  }, []);
 
   useEffect(() => {
     if (!svgRef.current) return;
@@ -141,12 +208,26 @@ export default function EnhancedTransactionVisualizer({ tx }: EnhancedTransactio
       .attr('d', 'M0,-5L10,0L0,5')
       .attr('fill', '#666');
 
-    // Create force simulation
+    // Create force simulation with optimized parameters for top-to-bottom layout
     const simulation = d3.forceSimulation<Node>(nodes)
-      .force('link', d3.forceLink<Node, Link>(links).id(d => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('x', d3.forceX())
-      .force('y', d3.forceY());
+      .force('link', d3.forceLink<Node, Link>(links).id(d => d.id).distance(80))
+      .force('charge', d3.forceManyBody().strength(-150))
+      .force('center', d3.forceCenter(0, 0))
+      // Add vertical positioning bias for top-to-bottom flow
+      .force('y', d3.forceY(d => {
+        // Position instructions at top, programs in middle, accounts at bottom
+        if (d.type === 'instruction') return -height/4;
+        if (d.type === 'program') return 0;
+        return height/4;
+      }).strength(0.3))
+      .force('x', d3.forceX().strength(0.1)) // Weak horizontal centering
+      .force('collision', d3.forceCollide().radius(d => getNodeRadius(d) + 8))
+      // Reduce alpha decay for faster stabilization
+      .alphaDecay(0.05)
+      .alphaMin(0.001);
+
+    // Store simulation in ref to ensure proper cleanup
+    simulationRef.current = simulation;
 
     // Draw links
     const link = svg.append('g')
@@ -197,76 +278,37 @@ export default function EnhancedTransactionVisualizer({ tx }: EnhancedTransactio
         .attr('transform', (d: any) => `translate(${d.x || 0},${d.y || 0})`);
     });
 
-    // Drag functions
-    function dragstarted(event: d3.D3DragEvent<SVGGElement, Node, Node>) {
-      if (!event.active) simulation.alphaTarget(0.3).restart();
-      event.subject.fx = event.subject.x;
-      event.subject.fy = event.subject.y;
-    }
-
-    function dragged(event: d3.D3DragEvent<SVGGElement, Node, Node>) {
-      event.subject.fx = event.x;
-      event.subject.fy = event.y;
-    }
-
-    function dragended(event: d3.D3DragEvent<SVGGElement, Node, Node>) {
-      if (!event.active) simulation.alphaTarget(0);
-      event.subject.fx = null;
-      event.subject.fy = null;
-    }
-
-    // Helper functions
-    function getNodeRadius(node: Node): number {
-      switch (node.type) {
-        case 'instruction': return 15;
-        case 'program': return 12;
-        case 'signer': return 10;
-        default: return 8;
-      }
-    }
-
-    function getNodeColor(node: Node): string {
-      switch (node.type) {
-        case 'instruction': return '#FF9800';
-        case 'program': return '#2196F3';
-        case 'signer': return '#4CAF50';
-        default: return '#9E9E9E';
-      }
-    }
-
-    function getNodeLabel(node: Node): string {
-      if (node.type === 'instruction') {
-        return `IX ${node.id.split('-')[1]}`;
-      }
-      return `${node.id.slice(0, 4)}...`;
-    }
-
-    function getNodeTooltip(node: Node): string {
-      switch (node.type) {
-        case 'instruction': {
-          const ix = node.data as InstructionWithAccounts;
-          return `Instruction ${node.id.split('-')[1]}\nProgram: ${
-            isParsedInstruction(ix) ? ix.program : ix.programId.toString()
-          }`;
-        }
-        case 'program':
-          return `Program: ${node.id}`;
-        case 'signer':
-          return `Signer: ${node.id}`;
-        default:
-          return `Account: ${node.id}`;
-      }
-    }
-
-    // Cleanup
+    // Cleanup function to prevent memory leaks
     return () => {
-      simulation.stop();
+      // Stop and cleanup D3 simulation
+      if (simulationRef.current) {
+        simulationRef.current.stop();
+        simulationRef.current = null;
+      }
+      
+      // Clear all SVG content and event listeners
+      if (svgRef.current) {
+        const svg = d3.select(svgRef.current);
+        svg.selectAll('*').remove();
+        svg.on('.drag', null);
+      }
     };
-  }, [tx]);
+  }, [tx, dragstarted, dragged, dragended, getNodeColor, getNodeLabel, getNodeRadius, getNodeTooltip]);
 
   return (
     <div className="w-full h-[600px] bg-neutral-900 rounded-lg overflow-hidden">
-      <svg ref={svgRef} className="w-full h-full" />
+      <canvas 
+        ref={canvasRef} 
+        className="w-full h-full" 
+        style={{ 
+          willChange: 'transform',
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden'
+        }} 
+      />
     </div>
   );
-}
+};
+
+// Export memoized component to prevent unnecessary re-renders
+export default React.memo(EnhancedTransactionVisualizer);

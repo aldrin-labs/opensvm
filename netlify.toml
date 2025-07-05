@@ -1,7 +1,13 @@
+[build]
+  command = "yarn install && yarn build"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20.18.0"
+
+  NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
+  NETLIFY_NEXT_PLUGIN_SKIP = "false"
+  NPM_FLAGS = "--legacy-peer-deps"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

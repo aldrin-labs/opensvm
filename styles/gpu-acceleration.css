@@ -1,0 +1,152 @@
+/* GPU-accelerated styles for transaction graph components */
+
+/* Force GPU layer creation for graph containers */
+.cytoscape-container {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  contain: layout style paint;
+  content-visibility: auto;
+}
+
+/* GPU acceleration for canvas elements */
+.gpu-accelerated-canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+}
+
+/* Enhanced transaction visualization styles */
+.enhanced-transaction-visualizer {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+}
+
+.enhanced-transaction-visualizer canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+}
+
+/* GPU-accelerated force graph container */
+.gpu-force-graph {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  contain: layout style paint;
+}
+
+.gpu-force-graph canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* Cytoscape-specific GPU optimizations */
+.cytoscape-container canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+}
+
+/* Tracking stats panel GPU acceleration */
+.tracking-stats-panel {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Fullscreen GPU optimizations */
+.fullscreen-graph {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  perspective: 1000px;
+  contain: layout style paint;
+}
+
+.fullscreen-graph canvas {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  image-rendering: optimizeSpeed;
+  image-rendering: -webkit-optimize-contrast;
+}
+
+/* Animation performance optimizations */
+.graph-animation {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* GPU-accelerated hover effects */
+.gpu-hover {
+  will-change: transform;
+  transform: translateZ(0);
+  transition: transform 0.1s ease-out;
+}
+
+.gpu-hover:hover {
+  transform: translateZ(0) scale(1.05);
+}
+
+/* Performance optimizations for node interactions */
+.graph-node {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+.graph-edge {
+  will-change: transform;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* GPU particle effects */
+.gpu-particles {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+  pointer-events: none;
+}
+
+/* High DPI display optimizations */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+  .gpu-accelerated-canvas {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+  
+  .cytoscape-container canvas {
+    image-rendering: -webkit-optimize-contrast;
+  }
+}
+
+/* Reduce motion for accessibility while maintaining GPU acceleration */
+@media (prefers-reduced-motion: reduce) {
+  .graph-animation {
+    transition: none;
+    animation: none;
+  }
+  
+  .gpu-hover {
+    transition: none;
+  }
+  
+  .gpu-hover:hover {
+    transform: translateZ(0);
+  }
+}

@@ -34,14 +34,14 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
     // Run layout only on the subgraph but preserve existing positions
     subgraph.layout(<DagreLayoutOptions>{
       name: 'dagre' as any,
-      rankDir: 'LR',
+      rankDir: 'TB', // Top to bottom layout
       ranker: 'tight-tree',
-      rankSep: 100,
-      nodeSep: 80,
-      edgeSep: 50,
+      rankSep: 80, // Reduced for incremental layout
+      nodeSep: 60, // Reduced for incremental layout
+      edgeSep: 40,
       nodeDimensionsIncludeLabels: true,
-      padding: 50,
-      spacingFactor: 2.0,
+      padding: 40,
+      spacingFactor: 1.5, // Reduced for tighter layout
       animate: false,
       animationDuration: 300,
       fit: false,
@@ -61,11 +61,11 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
       name: 'dagre' as any,
       rankDir: 'TB', // Top to bottom layout
       ranker: 'tight-tree',
-      rankSep: 200,
-      nodeSep: 200,
-      edgeSep: 80,
-      padding: 100,
-      spacingFactor: 3.0,
+      rankSep: 150, // Reduced for better vertical spacing
+      nodeSep: 100, // Reduced for better vertical spacing
+      edgeSep: 60,
+      padding: 80,
+      spacingFactor: 2.0, // Reduced for tighter layout
       animate: false,
       animationDuration: 300,
       fit: false,
@@ -85,13 +85,13 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
 export const runLayout = (cy: cytoscape.Core): void => {
   cy.layout(<DagreLayoutOptions>{
     name: 'dagre' as any,
-    rankDir: 'LR', // Left to right layout
+    rankDir: 'TB', // Top to bottom layout
     ranker: 'network-simplex',
-    rankSep: 200,
-    nodeSep: 200,
-    edgeSep: 80,
-    padding: 100,
-    spacingFactor: 1.5,
+    rankSep: 150, // Reduced for better vertical spacing
+    nodeSep: 100, // Reduced for better vertical spacing
+    edgeSep: 60,
+    padding: 80,
+    spacingFactor: 1.2, // Reduced for tighter layout
     animate: false,
     animationDuration: 500,
     fit: true,
@@ -168,6 +168,24 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     }
   },
   {
+    selector: 'node.new-transaction',
+    css: {
+      'background-color': '#10b981',
+      'border-width': 3,
+      'border-color': '#34d399',
+      'box-shadow': '0 0 20px rgba(16, 185, 129, 0.6)',
+    }
+  },
+  {
+    selector: 'node.tracked-address',
+    css: {
+      'background-color': '#8b5cf6',
+      'border-width': 3,
+      'border-color': '#a78bfa',
+      'box-shadow': '0 0 20px rgba(139, 92, 246, 0.6)',
+    }
+  },
+  {
     selector: 'node.highlighted',
     css: {
       'border-width': 4,
@@ -222,6 +240,19 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'text-background-padding': '2px',
     }
   },
+  {
+    selector: 'edge.realtime-edge',
+    css: {
+      'width': 3,
+      'line-color': '#10b981',
+      'target-arrow-color': '#34d399',
+      'line-style': 'dashed',
+      'opacity': 0.8,
+      'animation-name': 'pulse',
+      'animation-duration': '2s',
+      'animation-iteration-count': 'infinite',
+    }
+  },
   { 
     selector: 'edge.highlighted',
     css: {
@@ -254,26 +285,51 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
 ];
 
 /**
- * Initialize a Cytoscape instance with default settings
+ * Initialize a Cytoscape instance with GPU acceleration
  * @param container HTML element to contain the graph
  * @returns Cytoscape instance
  */
 export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
+  // Add GPU acceleration hints to the container
+  container.style.willChange = 'transform';
+  container.style.transform = 'translateZ(0)'; // Force hardware acceleration
+  
   return cytoscape({
     container: container,
     style: createGraphStyle(),
     layout: <DagreLayoutOptions>{
       name: 'dagre' as any,
-      rankDir: 'LR',
+      rankDir: 'TB', // Top to bottom layout
       ranker: 'network-simplex',
-      rankSep: 200,
-      nodeSep: 200,
-      edgeSep: 100,
-      padding: 80,
-      spacingFactor: 2.5
+      rankSep: 150, // Reduced for better vertical spacing
+      nodeSep: 100, // Reduced for better vertical spacing
+      edgeSep: 80,
+      padding: 60,
+      spacingFactor: 1.8 // Reduced for tighter layout
     },
     minZoom: 0.2,
     maxZoom: 3,
     wheelSensitivity: 1.0, // Using default value for consistent zoom behavior across different mice
+    // Enable GPU acceleration through renderer options
+    renderer: {
+      name: 'canvas', // Use canvas renderer with GPU acceleration
+      showFps: false,
+      textureOnViewport: false,
+      hideEdgesOnViewport: false,
+      hideLabelsOnViewport: false,
+      // Enable hardware acceleration
+      motionBlur: false,
+      pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
+    } as any,
+    // Performance optimizations
+    styleEnabled: true,
+    hideEdgesOnViewport: false,
+    hideLabelsOnViewport: false,
+    textureOnViewport: false,
+    motionBlur: false,
+    // Enable batching for better performance
+    autoungrabify: false,
+    autolock: false,
+    autounselectify: false,
   });
 };

@@ -1,9 +1,10 @@
 'use client';
 
 import cytoscape from 'cytoscape';
-import { debounce } from '@/lib/utils';
+import { debounce, throttle } from '@/lib/utils';
 import { ViewportState } from '@/lib/graph-state-cache';
 import { runLayout } from './layout';
+import { gpuThrottle, optimizeCytoscapeContainer } from './gpu-utils';
 
 /**
  * Focus on a specific transaction in the graph
@@ -20,7 +21,7 @@ import { runLayout } from './layout';
  * @param incrementalLoad Whether to incrementally load connected nodes
  * @param preserveViewport Whether to preserve viewport position
  */
-export const focusOnTransaction = async (
+export async function focusOnTransaction(
   signature: string,
   cyRef: React.MutableRefObject<cytoscape.Core | null>,
   focusSignatureRef: React.MutableRefObject<string>,
@@ -33,7 +34,7 @@ export const focusOnTransaction = async (
   clientSideNavigation = true,
   incrementalLoad = false,
   preserveViewport = true
-): Promise<void> => {
+): Promise<void> {
   const cy = cyRef.current;
   if (!cy) return;
   
@@ -148,19 +149,64 @@ export const focusOnTransaction = async (
  * @param focusSignatureRef Reference to currently focused signature
  * @param focusOnTransaction Function to focus on a transaction
  * @param setViewportState Function to update viewport state
+ * @param onAddressTrack Optional callback for address tracking
  */
 export const setupGraphInteractions = (
   cy: cytoscape.Core,
   containerRef: React.RefObject<HTMLDivElement>,
   focusSignatureRef: React.MutableRefObject<string>,
   focusOnTransaction: (signature: string, incrementalLoad: boolean) => void,
-  setViewportState: (state: ViewportState) => void
+  setViewportState: (state: ViewportState) => void,
+  onAddressTrack?: (address: string) => void
 ): void => {
   // Add active state styling
   cy.style().selector(':active').style({ 'opacity': 0.7 }).update();
   
-  // Remove any existing event listeners
-  cy.off('tap');
+  // Remove any existing event listeners to prevent memory leaks
+  cy.off('tap mouseover mouseout pan zoom');
+  
+  // Apply GPU acceleration to container
+  if (containerRef.current) {
+    optimizeCytoscapeContainer(containerRef.current);
+  }
+  
+  // GPU-accelerated throttle hover effects for better performance
+  const throttledHoverIn = gpuThrottle((event) => {
+    const ele = event.target;
+    
+    if (ele.isNode() && ele.data('type') === 'transaction') {
+      containerRef.current?.style.setProperty('cursor', 'pointer');
+      ele.addClass('hover');
+      ele.connectedEdges().addClass('hover').connectedNodes().addClass('hover');
+    }
+    
+    if (ele.isNode() && ele.data('type') === 'account') {
+      containerRef.current?.style.setProperty('cursor', 'pointer');
+      ele.addClass('hover');
+      ele.connectedEdges().addClass('hover');
+    }
+    
+    if (ele.isEdge()) {
+      ele.addClass('hover');
+      ele.connectedNodes().addClass('hover');
+    }
+  }, 60); // 60fps for smooth GPU-accelerated interactions
+
+  const throttledHoverOut = gpuThrottle(() => {
+    cy.elements().removeClass('hover');
+    containerRef.current?.style.removeProperty('cursor');
+  }, 60); // 60fps for smooth GPU-accelerated interactions
+
+  // Debounce viewport state updates for better performance
+  const updateViewportState = debounce(() => {
+    if (cy) {
+      const viewport = cy.viewport();
+      setViewportState({
+        zoom: viewport.zoom,
+        pan: viewport.pan
+      });
+    }
+  }, 250); // 250ms delay to reduce overhead from frequent pan/zoom events
   
   // Add click handler for all nodes (transactions and accounts)
   cy.on('tap', 'node', (event) => {
@@ -184,36 +230,22 @@ export const setupGraphInteractions = (
       focusOnTransaction(signature, true);
     }
     else if (nodeType === 'account') {
-      // For account nodes, just highlight them and their connections
+      // For account nodes, start address tracking on click
+      const address = signature; // In this case, the ID is the address
+      
+      // Highlight the account and its connections
       node.connectedEdges().addClass('highlighted').connectedNodes().addClass('highlighted');
+      
+      // Trigger address tracking if callback is provided
+      if (onAddressTrack) {
+        onAddressTrack(address);
+      }
     }
   });
   
-  // Add hover effects for nodes and edges
-  cy.on('mouseover', 'node, edge', (event) => {
-    const ele = event.target;
-    
-    if (ele.isNode() && ele.data('type') === 'transaction') {
-      containerRef.current?.style.setProperty('cursor', 'pointer');
-    }
-    
-    if (ele.isNode() && ele.data('type') === 'transaction') {
-      ele.addClass('hover');
-      ele.connectedEdges().addClass('hover').connectedNodes().addClass('hover');
-    }
-    
-    if (ele.isNode() && ele.data('type') === 'account') {
-      containerRef.current?.style.setProperty('cursor', 'pointer');
-      ele.addClass('hover');
-      ele.connectedEdges().addClass('hover');
-    }
-  });
-  
-  // Remove hover effects when mouse leaves
-  cy.on('mouseout', 'node, edge', () => {
-    cy.elements().removeClass('hover');
-    containerRef.current?.style.removeProperty('cursor');
-  });
+  // Add throttled hover effects for better performance
+  cy.on('mouseover', 'node, edge', throttledHoverIn);
+  cy.on('mouseout', 'node, edge', throttledHoverOut);
 
   // Add click handler for edges
   cy.on('tap', 'edge', (event) => {
@@ -240,13 +272,8 @@ export const setupGraphInteractions = (
     }
   });
   
-  // Track viewport changes
-  cy.on('viewport', debounce(() => {
-    setViewportState({
-      zoom: cy.zoom(),
-      pan: cy.pan()
-    });
-  }, 100));
+  // Track viewport changes with debounced updates for performance
+  cy.on('pan zoom', updateViewportState);
 };
 
 /**

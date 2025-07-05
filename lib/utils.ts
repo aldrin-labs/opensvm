@@ -73,6 +73,23 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 /**
+ * Creates a throttled function that only invokes func at most once per every wait milliseconds
+ */
+export function throttle<Args extends unknown[]>(
+  func: (...args: Args) => void, 
+  delay: number
+): (...args: Args) => void {
+  let lastTime = 0;
+  return (...args: Args) => {
+    const now = Date.now();
+    if (now - lastTime >= delay) {
+      lastTime = now;
+      func(...args);
+    }
+  };
+}
+
+/**
  * Converts lamports to SOL
  */
 export const lamportsToSol = (lamports: number): number => {

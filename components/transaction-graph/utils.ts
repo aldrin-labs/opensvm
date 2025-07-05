@@ -106,3 +106,30 @@ export const createTransactionFilter = (
     }
   };
 };
+
+/**
+ * Debug logging utility that respects environment variables
+ * @param message The debug message to log
+ * @param data Optional data to log with the message
+ */
+export const debugLog = (message: string, ...data: any[]): void => {
+  // Check for environment-based debug toggle
+  const isDebugEnabled = 
+    process.env.NODE_ENV === 'development' || 
+    process.env.NEXT_PUBLIC_DEBUG_TRANSACTION_GRAPH === 'true' ||
+    (typeof window !== 'undefined' && window.localStorage?.getItem('debug-transaction-graph') === 'true');
+  
+  if (isDebugEnabled) {
+    console.log(`[TransactionGraph] ${message}`, ...data);
+  }
+};
+
+/**
+ * Error logging utility for production environments
+ * @param message The error message to log
+ * @param error Optional error object
+ * @param data Optional additional data
+ */
+export const errorLog = (message: string, error?: any, ...data: any[]): void => {
+  console.error(`[TransactionGraph] ${message}`, error, ...data);
+};

@@ -26,8 +26,8 @@ const nextConfig = {
   },
   // Environment variables that should be available to the client
   env: {
-    OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST,
-    OPENSVM_RPC_LIST_2: process.env.OPENSVM_RPC_LIST_2
+    OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST || '',
+    OPENSVM_RPC_LIST_2: process.env.OPENSVM_RPC_LIST_2 || ''
   },
   // Image optimization
   images: {
@@ -39,20 +39,9 @@ const nextConfig = {
       },
     ],
   },
-  // Experimental features
+  // Experimental features (safe subset for Next.js 14)
   experimental: {
-    // Enable modern optimizations
-    optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-select',
-      '@radix-ui/react-tabs'
-    ],
-    // Enable server actions with increased limit
-    serverActions: {
-      bodySizeLimit: '2mb'
-    }
+    // Server actions are enabled by default in Next.js 14+
   },
   // Enable React strict mode
   reactStrictMode: false,
@@ -62,6 +51,24 @@ const nextConfig = {
   // This ensures animation classes used by interactive components
   // are included in production builds
   webpack: (config, { dev, isServer }) => {
+    // Resolve Three.js to a single instance to prevent multiple imports
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      'three': 'three',
+      'three/examples/jsm/controls/OrbitControls': 'three/examples/jsm/controls/OrbitControls',
+      'three/examples/jsm/controls/OrbitControls.js': 'three/examples/jsm/controls/OrbitControls.js'
+    };
+    
+    // Configure externals to prevent multiple Three.js instances
+    if (!isServer) {
+      config.resolve.fallback = {
+        ...config.resolve.fallback,
+        fs: false,
+        path: false,
+        os: false
+      };
+    }
+    
     // Only apply optimizations in production builds
     if (!dev && !isServer) {
       //config.optimization.splitChunks.cacheGroups = { ...config.optimization.splitChunks.cacheGroups };

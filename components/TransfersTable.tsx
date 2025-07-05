@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { formatNumber, truncateMiddle } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/tooltip';
 import { useRouter, usePathname } from 'next/navigation';
-import { PinIcon } from 'lucide-react';
+import { PinIcon, Search, X, Filter } from 'lucide-react';
 import { useCallback as useStableCallback } from 'react';
 import Link from 'next/link';
 
@@ -22,6 +22,10 @@ export function TransfersTable({ address }: TransfersTableProps) {
   const [sortField, setSortField] = useState<keyof Transfer>('timestamp');
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [pinnedRowIds, setPinnedRowIds] = useState<Set<string>>(new Set());
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [tokenFilter, setTokenFilter] = useState<string>('all');
+  const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -33,6 +37,18 @@ export function TransfersTable({ address }: TransfersTableProps) {
     
     // Use router.push with scroll: false to prevent page reload
     router.push(`/account/${targetAddress}?tab=transactions`, { 
+      scroll: false 
+    });
+  }, [router]);
+
+  // Handle transaction hash clicks
+  const handleTransactionClick = useStableCallback((e: React.MouseEvent<HTMLAnchorElement>, signature: string) => {
+    if (!signature) return;
+    
+    e.preventDefault();
+    
+    // Navigate to transaction page
+    router.push(`/tx/${signature}`, { 
       scroll: false 
     });
   }, [router]);
@@ -154,7 +170,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
           <div className="truncate font-mono text-xs" data-test="from">
             <Link
               href={row.from ? `/account/${row.from}?tab=transactions` : '#'}
-              className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+              className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.from || '')}
               data-address={row.from || ''}
             >
@@ -174,7 +190,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
           <div className="truncate font-mono text-xs" data-test="to">
             <Link
               href={row.to ? `/account/${row.to}?tab=transactions` : '#'}
-              className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+              className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.to || '')}
               data-address={row.to || ''}
             >
@@ -195,7 +211,8 @@ export function TransfersTable({ address }: TransfersTableProps) {
             {row.signature ? (
               <Link
                 href={`/tx/${row.signature}`}
-                className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+                onClick={(e) => handleTransactionClick(e, row.signature || '')}
+                className="hover:underline hover:text-primary text-primary/80 transition-colors"
                 prefetch={false}
                 data-signature={row.signature}
               >
@@ -208,13 +225,49 @@ export function TransfersTable({ address }: TransfersTableProps) {
         </Tooltip>
       )
     }
-  ], [handleAddressClick]);
+  ], [handleAddressClick, handleTransactionClick]);
 
 
   const sortedTransfers = useMemo(() => {
     if (!transfers.length) return [];
 
-    const sorted = [...transfers].sort((a, b) => {
+    // First filter by search term
+    let filtered = transfers;
+    if (searchTerm.trim()) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filtered = transfers.filter(transfer => 
+        transfer.from?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.to?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.tokenSymbol?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.token?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.signature?.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+
+    // Filter by type
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(transfer => transfer.type === typeFilter);
+    }
+
+    // Filter by token
+    if (tokenFilter !== 'all') {
+      filtered = filtered.filter(transfer => 
+        (transfer.tokenSymbol || transfer.token || 'SOL') === tokenFilter
+      );
+    }
+
+    // Filter by amount range
+    if (amountFilter.min || amountFilter.max) {
+      filtered = filtered.filter(transfer => {
+        const amount = transfer.amount || 0;
+        const min = amountFilter.min ? parseFloat(amountFilter.min) : -Infinity;
+        const max = amountFilter.max ? parseFloat(amountFilter.max) : Infinity;
+        return amount >= min && amount <= max;
+      });
+    }
+
+    // Then sort the filtered results
+    const sorted = [...filtered].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
@@ -241,7 +294,18 @@ export function TransfersTable({ address }: TransfersTableProps) {
     });
     
     return sorted;
-  }, [transfers, sortField, sortDirection]);
+  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter]);
+
+  // Get unique values for filter dropdowns
+  const uniqueTypes = useMemo(() => {
+    const types = [...new Set(transfers.map(t => t.type || 'transfer'))];
+    return types.sort();
+  }, [transfers]);
+
+  const uniqueTokens = useMemo(() => {
+    const tokens = [...new Set(transfers.map(t => t.tokenSymbol || t.token || 'SOL'))];
+    return tokens.sort();
+  }, [transfers]);
 
   // Row identity function for selection
   const getRowId = useCallback((row: Transfer) => row.signature || '', []);
@@ -263,8 +327,8 @@ export function TransfersTable({ address }: TransfersTableProps) {
   }, [pinnedRowIds, handlePinRow]);
   if (error) {
     return (
-      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg" role="alert" aria-live="assertive">
-        <p className="text-red-600 dark:text-red-400">{error}</p>
+      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg" role="alert" aria-live="assertive">
+        <p className="text-destructive">{error}</p>
       </div>
     );
   }
@@ -281,6 +345,108 @@ export function TransfersTable({ address }: TransfersTableProps) {
           )}
         </h2>
       </div>
+
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        {/* Search Input */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <Search className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search transfers by address, token symbol, or signature..."
+            className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-wrap gap-4">
+          {/* Type Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Types</option>
+              {uniqueTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Token Filter */}
+          <div className="flex items-center gap-2">
+            <select
+              value={tokenFilter}
+              onChange={(e) => setTokenFilter(e.target.value)}
+              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Tokens</option>
+              {uniqueTokens.map(token => (
+                <option key={token} value={token}>{token}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Amount Range Filter */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="Min Amount"
+              value={amountFilter.min}
+              onChange={(e) => setAmountFilter(prev => ({ ...prev, min: e.target.value }))}
+              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <span className="text-muted-foreground">-</span>
+            <input
+              type="number"
+              placeholder="Max Amount"
+              value={amountFilter.max}
+              onChange={(e) => setAmountFilter(prev => ({ ...prev, max: e.target.value }))}
+              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
+          {/* Clear Filters */}
+          {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm) && (
+            <button
+              onClick={() => {
+                setTypeFilter('all');
+                setTokenFilter('all');
+                setAmountFilter({ min: '', max: '' });
+                setSearchTerm('');
+              }}
+              className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search Results Count */}
+      {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max) && (
+        <div className="text-sm text-muted-foreground">
+          Found {sortedTransfers.length} transfers
+          {searchTerm && ` matching "${searchTerm}"`}
+          {typeFilter !== 'all' && ` of type "${typeFilter}"`}
+          {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
+          {(amountFilter.min || amountFilter.max) && ` within amount range`}
+        </div>
+      )}
 
       <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
         <VTableWrapper

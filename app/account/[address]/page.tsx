@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
 import { isValidSolanaAddress } from '@/lib/validators';
 import AccountInfo from '@/components/AccountInfo';
+import AccountOverview from '@/components/AccountOverview';
 import AccountTabs from './tabs';
 
 interface AccountData {
@@ -15,6 +16,7 @@ interface AccountData {
     mint: string;
     balance: number;
   }[];
+  tokenAccounts: any[]; // For AccountOverview component compatibility
 }
 
 async function getAccountData(address: string): Promise<AccountData> {
@@ -33,12 +35,20 @@ async function getAccountData(address: string): Promise<AccountData> {
       balance: account.account.data.parsed.info.tokenAmount.uiAmount,
     }));
 
+    // Convert token balances to token accounts format for AccountOverview
+    const tokenAccountsForOverview = tokenAccounts.value.map(account => ({
+      mint: account.account.data.parsed.info.mint,
+      uiAmount: account.account.data.parsed.info.tokenAmount.uiAmount,
+      symbol: 'UNK', // Default symbol - would be fetched from token registry in real app
+    }));
+
     return {
       address,
       isSystemProgram: !accountInfo?.owner || accountInfo.owner.equals(PublicKey.default),
       parsedOwner: accountInfo?.owner?.toBase58() || PublicKey.default.toBase58(),
       solBalance: balance / 1e9,
       tokenBalances,
+      tokenAccounts: tokenAccountsForOverview,
     };
   } catch (error) {
     console.error('Error fetching account info:', error);
@@ -48,6 +58,7 @@ async function getAccountData(address: string): Promise<AccountData> {
       parsedOwner: PublicKey.default.toBase58(),
       solBalance: 0,
       tokenBalances: [],
+      tokenAccounts: [],
     };
   }
 }
@@ -86,31 +97,41 @@ export default async function AccountPage({ params, searchParams }: PageProps) {
     // Fetch account info
     const accountInfo = await getAccountData(address);
 
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <AccountInfo
-          address={accountInfo.address}
-          isSystemProgram={accountInfo.isSystemProgram}
-          parsedOwner={accountInfo.parsedOwner}
-        />
-        <AccountTabs
-          address={accountInfo.address}
-          solBalance={accountInfo.solBalance}
-          tokenBalances={accountInfo.tokenBalances}
-          activeTab={activeTab as string}
-        />
-      </div>
-    );
-  } catch (error) {
-    console.error('Error fetching account info:', error);
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="rounded-lg border border-red-500 bg-red-50 p-4">
-          <h2 className="text-xl font-semibold text-red-700">Error</h2>
-          <p className="text-red-600">Account not found or invalid address format</p>
-          <p className="mt-2 text-sm text-red-500">Please check the address and try again</p>
+
+      return (
+        <div className="container mx-auto px-4 py-8">
+          <AccountInfo
+            address={accountInfo.address}
+            isSystemProgram={accountInfo.isSystemProgram}
+            parsedOwner={accountInfo.parsedOwner}
+          />
+          <div className="mt-6">
+            <AccountOverview
+              address={accountInfo.address}
+              solBalance={accountInfo.solBalance}
+              tokenAccounts={accountInfo.tokenAccounts}
+              isSystemProgram={accountInfo.isSystemProgram}
+              parsedOwner={accountInfo.parsedOwner}
+            />
+          </div>
+          <AccountTabs
+            address={accountInfo.address}
+            solBalance={accountInfo.solBalance}
+            tokenBalances={accountInfo.tokenBalances}
+            activeTab={activeTab as string}
+          />
         </div>
-      </div>
-    );
-  }
+      );
+    } catch (error) {
+      console.error('Error fetching account info:', error);
+      return (
+        <div className="container mx-auto px-4 py-8">
+          <div className="rounded-lg border border-red-500 bg-red-50 p-4">
+            <h2 className="text-xl font-semibold text-red-700">Error</h2>
+            <p className="text-red-600">Account not found or invalid address format</p>
+            <p className="mt-2 text-sm text-red-500">Please check the address and try again</p>
+          </div>
+        </div>
+      );
+    }
 }

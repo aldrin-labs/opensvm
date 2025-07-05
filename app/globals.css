@@ -151,6 +151,52 @@
     --input: 20 5.9% 90%;
     --ring: 24 5.4% 63.9%;
   }
+
+  .theme-dos-blue {
+    --background: 240 100% 20%;
+    --foreground: 60 100% 90%;
+    --card: 240 100% 20%;
+    --card-foreground: 60 100% 90%;
+    --popover: 240 100% 20%;
+    --popover-foreground: 60 100% 90%;
+    --primary: 60 100% 70%;
+    --primary-foreground: 240 100% 20%;
+    --secondary: 240 100% 25%;
+    --secondary-foreground: 60 100% 90%;
+    --muted: 240 100% 25%;
+    --muted-foreground: 60 50% 70%;
+    --accent: 60 100% 70%;
+    --accent-foreground: 240 100% 20%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 60 100% 90%;
+    --border: 240 100% 30%;
+    --input: 240 100% 25%;
+    --ring: 60 100% 70%;
+    --radius: 0px;
+  }
+
+  .theme-solarized {
+    --background: 192 81% 14%;
+    --foreground: 180 7% 60%;
+    --card: 192 81% 14%;
+    --card-foreground: 180 7% 60%;
+    --popover: 192 81% 14%;
+    --popover-foreground: 180 7% 60%;
+    --primary: 196 13% 60%;
+    --primary-foreground: 192 81% 14%;
+    --secondary: 192 81% 18%;
+    --secondary-foreground: 180 7% 60%;
+    --muted: 192 81% 18%;
+    --muted-foreground: 194 14% 40%;
+    --accent: 196 13% 60%;
+    --accent-foreground: 192 81% 14%;
+    --destructive: 0 100% 67%;
+    --destructive-foreground: 180 7% 60%;
+    --border: 194 14% 40%;
+    --input: 192 81% 18%;
+    --ring: 196 13% 60%;
+    --radius: 0.25rem;
+  }
 }
 
 @layer base {

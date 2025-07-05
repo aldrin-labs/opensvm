@@ -27,18 +27,8 @@ export class SonicCapability extends BaseCapability {
 
   constructor(connection: Connection) {
     super(connection);
-    try {
-      // We'll initialize the actual Sonic SDK in a production environment
-      // const { Sonic } = require('@sendaifun/sonic-agent-kit');
-      // @ts-ignore - Using dynamic import in a production environment
-      // this.sonic = new Sonic({ connection });
-      
-      // For now, we'll use a mock implementation
-      this.sonic = this.createMockSonic();
-    } catch (error) {
-      console.error('Failed to initialize Sonic:', error);
-      this.sonic = this.createMockSonic();
-    }
+    // Using mock implementation for development
+    this.sonic = this.createMockSonic();
   }
   
   private createMockSonic() {

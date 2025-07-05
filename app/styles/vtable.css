@@ -1,4 +1,4 @@
-/* VTable Styles */
+/* VTable Container Styles - Only for positioning, not styling the table itself */
 .vtable-container {
   position: relative;
   width: 100%;
@@ -13,68 +13,6 @@
   height: 100%;
   cursor: pointer;
   position: relative;
-}
-
-/* Base table styles */
-.vtable .vc-table {
-  width: 100%;
-  height: 100%;
-  border-collapse: collapse;
-  background: transparent;
-}
-
-/* Header styling */
-.vtable .vc-table-header {
-  position: sticky;
-  top: 0;
-  z-index: 2;
-  background-color: var(--background);
-}
-
-.vtable .vc-table-header-cell {
-  padding: 12px 16px;
-  font-weight: 600;
-  text-align: left;
-  border-bottom: 1px solid rgba(200, 200, 200, 0.2);
-  background-color: var(--secondary-background, rgba(0, 0, 0, 0.02));
-  transition: background-color 0.2s ease;
-}
-
-/* Cell styling */
-.vtable .vc-table-cell {
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(200, 200, 200, 0.1);
-  transition: background-color 0.2s ease;
-}
-
-.vtable-cell {
-  display: flex;
-  align-items: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  min-height: 24px;
-  line-height: 1.5;
-}
-
-/* Row styling */
-.vtable .vc-table-row {
-  transition: background-color 0.2s ease;
-}
-
-.vtable .vc-table-row:hover {
-  background-color: var(--row-hover-background, rgba(0, 0, 0, 0.02));
-}
-
-/* Hover and selected row styling */
-.vtable-row-selected {
-  background-color: rgba(59, 130, 246, 0.1) !important;
-  border-color: rgba(59, 130, 246, 0.4);
-}
-
-.vtable-row-pinned {
-  background-color: rgba(250, 204, 21, 0.1) !important;
-  border-color: rgba(250, 204, 21, 0.4);
 }
 
 /* Floating pin button */
@@ -98,22 +36,24 @@
   }
 }
 
-/* Link styling within cells */
-.vtable a, .vtable [data-href] {
-  color: rgb(59, 130, 246);
-  text-decoration: none;
-  transition: color 0.2s ease-in-out;
-}
-
-.vtable a:hover, .vtable [data-href]:hover {
-  color: rgb(37, 99, 235);
-  text-decoration: underline;
-}
-
 /* Loading state */
 .vtable-loading {
-  opacity: 0.6;
-  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--muted-foreground);
+  font-size: 0.9em;
+}
+
+/* Error state */
+.vtable-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--destructive);
+  font-size: 0.9em;
 }
 
 /* Empty state */
@@ -124,28 +64,4 @@
   height: 200px;
   color: var(--muted-foreground);
   font-size: 0.9em;
-}
-
-/* Dark mode adjustments */
-@media (prefers-color-scheme: dark) {
-  .vtable-row-selected {
-    background-color: rgba(59, 130, 246, 0.2) !important;
-  }
-  
-  .vtable-row-pinned {
-    background-color: rgba(250, 204, 21, 0.2) !important;
-  }
-  
-  .vtable .vc-table-header-cell {
-    border-bottom: 1px solid rgba(100, 100, 100, 0.3);
-    background-color: var(--secondary-background, rgba(255, 255, 255, 0.02));
-  }
-  
-  .vtable .vc-table-cell {
-    border-bottom: 1px solid rgba(100, 100, 100, 0.2);
-  }
-
-  .vtable .vc-table-row:hover {
-    background-color: var(--row-hover-background, rgba(255, 255, 255, 0.02));
-  }
 }
