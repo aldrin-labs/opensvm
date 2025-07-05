@@ -1,9 +1,4 @@
-'use client';
-
-export const dynamic = 'force-dynamic'
-
 import Link from 'next/link';
-import { Home, Search, ArrowLeft } from 'lucide-react';
 
 export default function NotFound() {
   return (
@@ -33,7 +28,6 @@ export default function NotFound() {
             href="/"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
           >
-            <Home className="w-4 h-4" />
             Go Home
           </Link>
           
@@ -41,17 +35,8 @@ export default function NotFound() {
             href="/search"
             className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-border rounded hover:bg-muted transition-colors"
           >
-            <Search className="w-4 h-4" />
             Search
           </Link>
-          
-          <button
-            onClick={() => window.history.back()}
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-border rounded hover:bg-muted transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Go Back
-          </button>
         </div>
 
         <div className="mt-8 pt-6 border-t border-border">

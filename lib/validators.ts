@@ -1,4 +1,3 @@
-import DOMPurify from 'dompurify';
 /**
  * Shared validation functions for routing parameters
  * Prevents code duplication across middleware and route components
@@ -63,28 +62,26 @@ export const isValidMintAddress = (address: string): boolean => {
 /**
  * Checks for potential security threats in input strings
  * Rejects strings containing common injection patterns
+ * Server-safe version that doesn't rely on DOMPurify
  */
 export const containsSecurityThreats = (input: string): boolean => {
   if (!input || typeof input !== 'string') {
     return false;
   }
 
-  // Use DOMPurify to sanitize the input
-  const sanitizedInput = DOMPurify.sanitize(input);
-
   // Check for common injection patterns
   const dangerousPatterns = [
     // SQL injection patterns
     /('|\\'|;\s*--|;\s*\/\*)/i,
-    // XSS patterns (already sanitized by DOMPurify)
-    // Removed script tag regex; replaced with DOMPurify sanitization.
+    // XSS patterns - basic script tag detection
+    /<script[^>]*>.*?<\/script>/gi,
     // Path traversal patterns
     /\.\.\/|\.\.\\|\.\.\%2f|\.\.\%5c/i,
     // Command injection patterns
     /[;&|`$(){}[\]]/,
   ];
 
-  return dangerousPatterns.some(pattern => pattern.test(sanitizedInput));
+  return dangerousPatterns.some(pattern => pattern.test(input));
 };
 
 /**
