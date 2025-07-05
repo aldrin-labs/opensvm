@@ -8,8 +8,8 @@ import { Suspense } from 'react';
 import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
 
 // Dynamic import of Providers to prevent SSR issues
-import dynamic from 'next/dynamic';
-const Providers = dynamic(() => import('./providers').then(mod => mod.Providers), {
+import dynamicImport from 'next/dynamic';
+const Providers = dynamicImport(() => import('./providers').then(mod => mod.Providers), {
   loading: () => <div className="min-h-screen bg-background" />
 });
 
