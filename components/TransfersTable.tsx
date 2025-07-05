@@ -5,9 +5,9 @@ import { useTransfers } from '@/app/account/[address]/components/shared/hooks';
 import type { Transfer } from '@/app/account/[address]/components/shared/types';
 import { VTableWrapper } from '@/components/vtable';
 import { Button } from '@/components/ui/button';
-import { formatNumber, truncateMiddle } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { PinIcon } from 'lucide-react';
 import { useCallback as useStableCallback } from 'react';
 import Link from 'next/link';
@@ -22,6 +22,8 @@ export function TransfersTable({ address }: TransfersTableProps) {
   const [sortField, setSortField] = useState<keyof Transfer>('timestamp');
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [pinnedRowIds, setPinnedRowIds] = useState<Set<string>>(new Set());
+
+  const [filterText, setFilterText] = useState('');
 
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
@@ -39,7 +41,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
 
   // Map API data to the expected Transfer format
   const transfers = useMemo(() => {
-    return rawTransfers.map(item => {
+    const mapped = rawTransfers.map(item => {
       // Handle different field names between API and component
       return {
         signature: item.signature || '',
@@ -54,7 +56,17 @@ export function TransfersTable({ address }: TransfersTableProps) {
         ...(item as any) // Keep any other fields that might be present
       };
     });
-  }, [rawTransfers]);
+
+    if (!filterText) return mapped;
+
+    const lower = filterText.toLowerCase();
+    return mapped.filter(t =>
+      t.from.toLowerCase().includes(lower) ||
+      t.to.toLowerCase().includes(lower) ||
+      t.tokenSymbol.toLowerCase().includes(lower) ||
+      t.signature.toLowerCase().includes(lower)
+    );
+  }, [rawTransfers, filterText]);
 
   // Handle row selection
   const handleRowSelect = useCallback((rowId: string) => {
@@ -280,6 +292,14 @@ export function TransfersTable({ address }: TransfersTableProps) {
             </span>
           )}
         </h2>
+        <input
+          type="text"
+          value={filterText}
+          onChange={e => setFilterText(e.target.value)}
+          placeholder="Filter"
+          aria-label="Filter transfers"
+          className="border rounded px-2 py-1 text-sm bg-background"
+        />
       </div>
 
       <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
