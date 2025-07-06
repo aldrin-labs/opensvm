@@ -21,7 +21,7 @@ const securityHeaders = {
   'X-Frame-Options': 'SAMEORIGIN',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), autoplay=(self)',
 };
 
 // Legacy path redirects
@@ -77,7 +77,7 @@ export function middleware(request: NextRequest) {
   // Add Content Security Policy for enhanced security
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com; object-src 'self' data:;"
+    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com; frame-src 'self' https://*.netlify.com https://*.netlify.app; object-src 'self' data:;"
   );
 
   // Handle API rate limiting
