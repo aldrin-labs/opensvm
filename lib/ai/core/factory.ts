@@ -8,6 +8,7 @@ import { WalletCapability } from '../capabilities/wallet';
 import type { AgentConfig } from '../types';
 import { SonicCapability } from '../capabilities/sonic';
 import { SolanaAgentKitCapability } from '../capabilities/solana-agent-kit';
+import { SolanaAIAgentCapability } from '../capabilities/solana-ai-agent';
 
 const DEFAULT_SYSTEM_PROMPT = `I am an AI assistant specialized in analyzing Solana blockchain data.
 I can help you understand transactions, account activities, and network performance. 
@@ -23,6 +24,8 @@ Some things I can help with:
 - Finding paths between wallets by tracking token transfers
 - Interacting with Sonic protocols
 - Trading tokens, launching new tokens, and other Solana operations
+- Opening perpetual trades and getting funding rates
+- Getting real-time token prices and wallet balances
 
 For network performance queries:
 - Use analyzeNetworkLoad to get current TPS and load metrics
@@ -38,6 +41,7 @@ export interface AgentOptions {
   temperature?: number;
   enableSonicKit?: boolean;
   enableSolanaAgentKit?: boolean;
+  enableSolanaAIAgent?: boolean;
   enableWalletPathFinding?: boolean;
 }
 
@@ -59,6 +63,11 @@ export function createSolanaAgent(
   
   if (options.enableSolanaAgentKit !== false) {
     capabilities.push(new SolanaAgentKitCapability(connection));
+  }
+  
+  // Add Solana AI Agent capability
+  if (options.enableSolanaAIAgent !== false) {
+    capabilities.push(new SolanaAIAgentCapability(connection));
   }
   
   // Add wallet path finding capability
