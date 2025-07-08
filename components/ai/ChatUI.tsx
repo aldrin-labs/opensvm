@@ -1,3 +1,5 @@
+'use client';
+
 import { Loader, Mic, Send, Trash2 } from 'lucide-react';
 import type { Message, Note, AgentAction } from '@/lib/ai/types';
 import ReactMarkdown from 'react-markdown';

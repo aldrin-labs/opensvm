@@ -1,11 +1,18 @@
-'use client';
-
-import { useParams } from 'next/navigation';
+import { notFound } from 'next/navigation';
 import BlockDetails from '@/components/BlockDetails';
+import { isValidSlot } from '@/lib/validators';
 
-export default function BlockPage() {
-  const params = useParams();
-  const slot = params?.slot as string;
+interface Props {
+  params: Promise<{ slot: string }>;
+}
+
+export default async function BlockPage({ params }: Props) {
+  const { slot } = await params;
+
+  // Validate slot parameter using shared validation
+  if (!slot || !isValidSlot(slot)) {
+    notFound();
+  }
 
   return (
     <div className="container mx-auto p-6">

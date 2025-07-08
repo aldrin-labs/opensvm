@@ -21,7 +21,7 @@ const securityHeaders = {
   'X-Frame-Options': 'SAMEORIGIN',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'origin-when-cross-origin',
-  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=(), autoplay=(self)',
 };
 
 // Legacy path redirects
@@ -46,6 +46,14 @@ const getQueryParam = (params: URLSearchParams, ...keys: string[]): string => {
   return value || '';
 };
 
+// Import shared validation functions
+import {
+  isValidTransactionSignature,
+  isValidSolanaAddress,
+  isValidSlot,
+  containsSecurityThreats,
+} from '@/lib/validators';
+
 // Regex patterns for paths that should be handled by middleware
 const STATIC_ASSET_REGEX = /\.(jpe?g|png|svg|gif|ico|webp|mp4|webm|woff2?|ttf|eot)$/i;
 
@@ -69,7 +77,7 @@ export function middleware(request: NextRequest) {
   // Add Content Security Policy for enhanced security
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com; object-src 'self' data:;"
+    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com; frame-src 'self' https://*.netlify.com https://*.netlify.app; object-src 'self' data:;"
   );
 
   // Handle API rate limiting
@@ -147,24 +155,55 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/blocks', request.url));
   }
 
-  // Handle legacy URL redirects
+  // Handle legacy URL redirects with validation
   if (pathname.startsWith('/tx/') && pathname.includes('?')) {
     // Convert query param style to path style: /tx?sig=abc123 -> /tx/abc123
     const txSignature = getQueryParam(url.searchParams, 'sig', 'signature');
-    if (txSignature) {
+    if (txSignature && isValidTransactionSignature(txSignature)) {
       const newUrl = new URL(`/tx/${txSignature}`, request.url);
       return NextResponse.redirect(newUrl);
     }
   }
 
-  // Handle block redirects
+  // Handle block redirects with validation
   if (pathname.startsWith('/block') && pathname.includes('?')) {
     // Convert query param style to path style: /block?slot=123 -> /block/123
     const slot = getQueryParam(url.searchParams, 'slot');
-    if (slot) {
-      // The slot is a string since we checked it's not empty above
+    if (slot && isValidSlot(slot)) {
       const newUrl = new URL(`/block/${slot}`, request.url);
       return NextResponse.redirect(newUrl);
+    }
+  }
+
+  // Validate dynamic route parameters and redirect to 404 if invalid
+  const pathSegments = pathname.split('/').filter(Boolean);
+  
+  if (pathSegments.length === 2) {
+    const [type, param] = pathSegments;
+    
+    // Check for security threats in parameters
+    if (containsSecurityThreats(param)) {
+      return NextResponse.redirect(new URL('/404', request.url));
+    }
+    
+    switch (type) {
+      case 'tx':
+        if (!isValidTransactionSignature(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
+      case 'account':
+      case 'token':
+      case 'program':
+        if (!isValidSolanaAddress(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
+      case 'block':
+        if (!isValidSlot(param)) {
+          return NextResponse.redirect(new URL('/404', request.url));
+        }
+        break;
     }
   }
 

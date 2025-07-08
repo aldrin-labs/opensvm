@@ -1,3 +1,5 @@
+'use client';
+
 import Image from "next/image";
 import type { FC } from "react";
 import InputArea from "./InputArea";

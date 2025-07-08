@@ -1,8 +1,5 @@
-'use client';
-
-import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { notFound } from 'next/navigation';
+import { isValidProgramAddress } from '@/lib/validators';
 import ProgramView from './components/program-view';
 
 interface ProgramData {
@@ -28,78 +25,51 @@ interface ProgramResponse {
   serializedAccountInfo: SerializedAccountInfo;
 }
 
-export default function ProgramPage() {
-  const params = useParams();
-  const address = params?.address as string;
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [programData, setProgramData] = useState<ProgramData | null>(null);
-  const [serializedAccountInfo, setSerializedAccountInfo] = useState<SerializedAccountInfo | null>(null);
+interface Props {
+  params: Promise<{ address: string }>;
+}
 
-  useEffect(() => {
-    const fetchProgramData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
-
-        const response = await fetch(`/api/program/${encodeURIComponent(address)}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error || 'Failed to fetch program data');
-        }
-
-        const data: ProgramResponse = await response.json();
-        setProgramData(data.programData);
-        setSerializedAccountInfo(data.serializedAccountInfo);
-      } catch (err) {
-        console.error('Error fetching program:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load program');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    if (address) {
-      fetchProgramData();
-    }
-  }, [address]);
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <LoadingSpinner />
-      </div>
-    );
+async function fetchProgramData(address: string): Promise<ProgramResponse> {
+  const response = await fetch(`${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/api/program/${encodeURIComponent(address)}`, {
+    cache: 'no-store'
+  });
+  
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({ error: 'Failed to fetch program data' }));
+    throw new Error(errorData.error || 'Failed to fetch program data');
   }
 
-  if (error) {
+  return response.json();
+}
+
+export default async function ProgramPage({ params }: Props) {
+  const { address } = await params;
+
+  // Validate address format
+  if (!address || !isValidProgramAddress(address)) {
+    notFound();
+  }
+
+  try {
+    const data = await fetchProgramData(address);
+    
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <ProgramView 
+          programData={data.programData}
+          serializedAccountInfo={data.serializedAccountInfo}
+        />
+      </div>
+    );
+  } catch (error) {
+    console.error('Error fetching program:', error);
     return (
       <div className="container mx-auto px-4 py-8">
         <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
           <h2 className="text-lg font-semibold text-red-500 mb-2">Error Loading Program</h2>
-          <p className="text-red-400">{error}</p>
+          <p className="text-red-400">{error instanceof Error ? error.message : 'Failed to load program'}</p>
         </div>
       </div>
     );
   }
-
-  if (!programData || !serializedAccountInfo) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-lg p-4">
-          <h2 className="text-lg font-semibold text-yellow-500 mb-2">No Program Data</h2>
-          <p className="text-yellow-400">Program data not found or not available.</p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="container mx-auto px-4 py-8">
-      <ProgramView 
-        programData={programData}
-        serializedAccountInfo={serializedAccountInfo}
-      />
-    </div>
-  );
 }

@@ -1,10 +1,17 @@
+export const dynamic = 'force-dynamic'
+export const runtime = 'nodejs'
+
 import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
-import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-// Import Navbar directly
-import { NavbarInteractive } from '@/components/NavbarInteractive';
+import ClientLayoutWrapper from '@/components/ClientLayoutWrapper';
+
+// Dynamic import of Providers to prevent SSR issues
+import dynamicImport from 'next/dynamic';
+const Providers = dynamicImport(() => import('./providers').then(mod => mod.Providers), {
+  loading: () => <div className="min-h-screen bg-background" />
+});
 
 // Load fonts with preload
 const inter = Inter({
@@ -19,11 +26,6 @@ const jetbrains = JetBrains_Mono({
   display: 'swap',
   variable: '--font-jetbrains',
   preload: true,
-});
-
-// Dynamic imports with loading fallbacks and error boundary
-const Providers = dynamic(() => import('./providers').then(mod => mod.Providers), {
-  loading: () => <div className="min-h-screen bg-background" />
 });
 
 export const metadata: Metadata = {
@@ -92,10 +94,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <Providers>
           <Suspense fallback={<div className="min-h-screen bg-background" />}>
-            <NavbarInteractive />
-            <main className="flex-1 pt-14">
+            <ClientLayoutWrapper>
               {children}
-            </main>
+            </ClientLayoutWrapper>
           </Suspense>
         </Providers>
       </body>
