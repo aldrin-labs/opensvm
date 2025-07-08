@@ -1,9 +1,36 @@
+/**
+ * Global search interface component
+ * 
+ * Provides multi-type search functionality for Solana blockchain data including
+ * transactions, accounts, blocks, and programs. Implements intelligent query
+ * detection and routing to appropriate detail pages.
+ * 
+ * @see docs/architecture/components.md#ui-components
+ * @see docs/architecture/system-overview.md#user-interface-layer
+ * @see docs/architecture/data-flow.md#user-request-flow
+ */
+
 'use client';
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { isValidTransactionSignature, isValidSolanaAddress } from '@/lib/utils';
 
+/**
+ * SearchBar component provides global search functionality
+ * 
+ * Features:
+ * - Multi-type query detection (transactions, accounts, blocks, programs)
+ * - Intelligent routing based on query format
+ * - Loading state management
+ * - Input validation and error handling
+ * 
+ * Supported query types:
+ * - Transaction signatures (88 characters, Base58)
+ * - Account addresses (32-44 characters, Base58)
+ * - Block numbers (numeric)
+ * - Program addresses (valid Solana addresses)
+ */
 export default function SearchBar() {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);

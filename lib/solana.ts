@@ -1,3 +1,14 @@
+/**
+ * Solana blockchain integration library
+ * 
+ * This module provides core functionality for interacting with the Solana blockchain,
+ * including account management, transaction parsing, and data retrieval.
+ * 
+ * @see docs/architecture/system-overview.md#blockchain-integration-layer
+ * @see docs/architecture/adr/001-vector-database-selection.md
+ * @see docs/architecture/components.md#data-layer
+ */
+
 import {
   Connection,
   PublicKey,
