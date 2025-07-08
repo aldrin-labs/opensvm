@@ -39,32 +39,70 @@ export async function checkSVMAIAccess(walletAddress: string): Promise<{
 
     const connection = await getConnection();
     const walletPubkey = new PublicKey(walletAddress);
-    const svmaiMint = new PublicKey(SVMAI_MINT_ADDRESS);
     
     console.log(`[Token Gating] Getting token accounts for wallet: ${walletPubkey.toString()}`);
     console.log(`[Token Gating] Connection endpoint: ${connection.rpcEndpoint || 'unknown'}`);
+    console.log(`[Token Gating] Target mint: ${SVMAI_MINT_ADDRESS}`);
     
-    // Method 1: Try getParsedTokenAccountsByOwner
     let totalBalance = 0;
+    
+    // Method 1: Fetch ALL token accounts and search for SVMAI token
+    // This is more robust than using mint filter which may not work with all RPC endpoints
     try {
-      console.log(`[Token Gating] Attempting getParsedTokenAccountsByOwner...`);
+      console.log(`[Token Gating] Method 1: Fetching ALL token accounts for wallet...`);
       const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
         walletPubkey,
-        { mint: svmaiMint }
+        { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
       );
 
-      console.log(`[Token Gating] Found ${tokenAccounts.value.length} token accounts`);
+      console.log(`[Token Gating] Found ${tokenAccounts.value.length} total token accounts`);
       
-      // Sum up balances from all token accounts
+      // Search through all token accounts to find SVMAI tokens
       for (const tokenAccount of tokenAccounts.value) {
         const accountInfo = tokenAccount.account.data.parsed.info;
-        console.log(`[Token Gating] Token account details:`, {
-          mint: accountInfo.mint,
-          tokenAmount: accountInfo.tokenAmount
-        });
+        console.log(`[Token Gating] Checking token account - mint: ${accountInfo.mint}`);
         
-        // Double check the mint address and use exact string comparison
+        // Check if this token account holds SVMAI tokens
         if (accountInfo.mint === SVMAI_MINT_ADDRESS) {
+          const uiAmount = accountInfo.tokenAmount.uiAmount;
+          const amount = accountInfo.tokenAmount.amount;
+          const decimals = accountInfo.tokenAmount.decimals;
+          
+          console.log(`[Token Gating] ✓ SVMAI token account found!`, {
+            mint: accountInfo.mint,
+            tokenAmount: accountInfo.tokenAmount
+          });
+          
+          // Use uiAmount if available, otherwise calculate from amount and decimals
+          if (uiAmount !== null && uiAmount !== undefined) {
+            totalBalance += parseFloat(uiAmount);
+          } else if (amount && decimals !== undefined) {
+            totalBalance += parseFloat(amount) / Math.pow(10, decimals);
+          }
+          
+          console.log(`[Token Gating] Added to balance: uiAmount=${uiAmount}, amount=${amount}, decimals=${decimals}`);
+        }
+      }
+    } catch (parseError) {
+      console.warn(`[Token Gating] Method 1 failed:`, parseError);
+      
+      // Method 2: Fallback to mint-filtered approach (original method)
+      try {
+        console.log(`[Token Gating] Method 2: Trying mint-filtered approach...`);
+        const tokenAccounts = await connection.getParsedTokenAccountsByOwner(
+          walletPubkey,
+          { mint: new PublicKey(SVMAI_MINT_ADDRESS) }
+        );
+        
+        console.log(`[Token Gating] Found ${tokenAccounts.value.length} SVMAI token accounts`);
+        
+        for (const tokenAccount of tokenAccounts.value) {
+          const accountInfo = tokenAccount.account.data.parsed.info;
+          console.log(`[Token Gating] Token account details:`, {
+            mint: accountInfo.mint,
+            tokenAmount: accountInfo.tokenAmount
+          });
+          
           const uiAmount = accountInfo.tokenAmount.uiAmount;
           const amount = accountInfo.tokenAmount.amount;
           const decimals = accountInfo.tokenAmount.decimals;
@@ -76,43 +114,43 @@ export async function checkSVMAIAccess(walletAddress: string): Promise<{
             totalBalance += parseFloat(amount) / Math.pow(10, decimals);
           }
           
-          console.log(`[Token Gating] Token account found: mint=${accountInfo.mint}, uiAmount=${uiAmount}, amount=${amount}, decimals=${decimals}`);
+          console.log(`[Token Gating] Method 2 found balance: ${uiAmount}`);
         }
-      }
-    } catch (parseError) {
-      console.warn(`[Token Gating] getParsedTokenAccountsByOwner failed:`, parseError);
-      
-      // Method 2: Fallback to getTokenAccountsByOwner (unparsed)
-      try {
-        console.log(`[Token Gating] Trying fallback method getTokenAccountsByOwner`);
-        const tokenAccounts = await connection.getTokenAccountsByOwner(
-          walletPubkey,
-          { mint: svmaiMint }
-        );
+      } catch (mintFilterError) {
+        console.warn(`[Token Gating] Method 2 failed:`, mintFilterError);
         
-        console.log(`[Token Gating] Found ${tokenAccounts.value.length} token accounts (unparsed)`);
-        
-        for (const tokenAccount of tokenAccounts.value) {
-          const accountInfo = await connection.getParsedAccountInfo(tokenAccount.pubkey);
-          if (accountInfo.value?.data && 'parsed' in accountInfo.value.data) {
-            const parsedInfo = accountInfo.value.data.parsed.info;
-            if (parsedInfo.mint === SVMAI_MINT_ADDRESS) {
-              const uiAmount = parsedInfo.tokenAmount.uiAmount;
-              if (uiAmount !== null && uiAmount !== undefined) {
-                totalBalance += parseFloat(uiAmount);
+        // Method 3: Fallback to unparsed token accounts
+        try {
+          console.log(`[Token Gating] Method 3: Trying unparsed token accounts...`);
+          const tokenAccounts = await connection.getTokenAccountsByOwner(
+            walletPubkey,
+            { programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') }
+          );
+          
+          console.log(`[Token Gating] Found ${tokenAccounts.value.length} unparsed token accounts`);
+          
+          for (const tokenAccount of tokenAccounts.value) {
+            const accountInfo = await connection.getParsedAccountInfo(tokenAccount.pubkey);
+            if (accountInfo.value?.data && 'parsed' in accountInfo.value.data) {
+              const parsedInfo = accountInfo.value.data.parsed.info;
+              if (parsedInfo.mint === SVMAI_MINT_ADDRESS) {
+                const uiAmount = parsedInfo.tokenAmount.uiAmount;
+                if (uiAmount !== null && uiAmount !== undefined) {
+                  totalBalance += parseFloat(uiAmount);
+                }
+                console.log(`[Token Gating] Method 3 found balance: ${uiAmount}`);
               }
-              console.log(`[Token Gating] Fallback method found balance: ${uiAmount}`);
             }
           }
+        } catch (unparsedError) {
+          console.error(`[Token Gating] All methods failed:`, unparsedError);
+          // Instead of throwing, continue with balance 0 and provide detailed error
+          return {
+            hasAccess: false,
+            balance: 0,
+            error: `Failed to fetch token balance: ${unparsedError.message}`
+          };
         }
-      } catch (fallbackError) {
-        console.error(`[Token Gating] Both methods failed:`, fallbackError);
-        // Instead of throwing, continue with balance 0 and provide detailed error
-        return {
-          hasAccess: false,
-          balance: 0,
-          error: `Failed to fetch token balance: ${fallbackError.message}`
-        };
       }
     }
     
