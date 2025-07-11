@@ -23,10 +23,13 @@ NEXT_PUBLIC_BYPASS_TOKEN_GATING=false
 ```
 
 ### 3. Token Balance Detection Methods
-The system uses two fallback methods to detect $SVMAI balances:
+The system uses three robust fallback methods to detect $SVMAI balances:
 
-1. **Primary Method**: `getParsedTokenAccountsByOwner()` - Gets parsed token account data
-2. **Fallback Method**: `getTokenAccountsByOwner()` + `getParsedAccountInfo()` - Manual parsing if primary fails
+1. **Primary Method**: Fetch ALL token accounts with `getParsedTokenAccountsByOwner()` using Token Program ID, then search for SVMAI mint
+2. **Fallback Method 1**: Use mint-filtered `getParsedTokenAccountsByOwner()` with specific SVMAI mint address
+3. **Fallback Method 2**: Fetch unparsed accounts with `getTokenAccountsByOwner()` + manual `getParsedAccountInfo()` parsing
+
+This approach is more robust as it doesn't rely on RPC endpoints supporting mint filtering correctly.
 
 ### 4. Debug Logging
 Enable detailed logging by checking the browser console and server logs when testing token detection.
