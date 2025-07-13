@@ -475,7 +475,7 @@ export async function addAccountToGraph(
       }
     }
     
-    return { cy: cyRef?.current!, address, newElements: new Set() };
+    return { cy: cyRef?.current || null as any, address, newElements: new Set() };
   }
 
   // Get cy instance and verify it exists
@@ -1140,7 +1140,7 @@ export async function addAccountToGraph(
       }
     }
     
-    return { cy: cyRef?.current!, address, newElements: new Set() };
+    return { cy: cyRef?.current || null as any, address, newElements: new Set() };
   }
 };
 

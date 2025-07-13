@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Fix for Netlify build issue with missing package-lock.json
+# Fixed build script for Netlify
 echo "Starting build fix script..."
 
 # Check if package-lock.json exists
@@ -27,5 +27,12 @@ else
   echo "package-lock.json already exists"
 fi
 
-# Run the optimized build
-npm run build:optimized
+# Install dependencies if node_modules doesn't exist or is incomplete
+if [ ! -d "node_modules" ] || [ ! -f "node_modules/.package-lock.json" ]; then
+  echo "Installing dependencies..."
+  npm ci --prefer-offline --no-audit --no-fund
+fi
+
+# Run the standard Next.js build
+echo "Running Next.js build..."
+npm run build
