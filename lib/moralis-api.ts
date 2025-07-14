@@ -512,6 +512,78 @@ export async function getComprehensiveBlockchainData(query: string, network: Sol
 }
 
 /**
+ * Get top tokens by market cap
+ * @param limit Number of tokens to return (default: 100)
+ * @param network The Solana network (mainnet or devnet)
+ * @returns Top tokens by market cap
+ */
+export async function getTopTokens(limit: number = 100, network: SolanaNetwork = DEFAULT_NETWORK) {
+  return makeApiRequest(`/market-data/{network}/top-tokens`, { limit }, network);
+}
+
+/**
+ * Get top token gainers (24h price change)
+ * @param limit Number of tokens to return (default: 50)
+ * @param network The Solana network (mainnet or devnet)
+ * @returns Top gaining tokens
+ */
+export async function getTopGainers(limit: number = 50, network: SolanaNetwork = DEFAULT_NETWORK) {
+  return makeApiRequest(`/market-data/{network}/gainers`, { limit }, network);
+}
+
+/**
+ * Get newly listed tokens
+ * @param limit Number of tokens to return (default: 50)
+ * @param daysBack Number of days back to look for new listings (default: 7)
+ * @param network The Solana network (mainnet or devnet)
+ * @returns Newly listed tokens
+ */
+export async function getNewListings(limit: number = 50, daysBack: number = 7, network: SolanaNetwork = DEFAULT_NETWORK) {
+  return makeApiRequest(`/market-data/{network}/new-listings`, { limit, days_back: daysBack }, network);
+}
+
+/**
+ * Get trending tokens based on trading volume and social activity
+ * @param limit Number of tokens to return (default: 50)
+ * @param timeframe Timeframe for trending data ('1h', '24h', '7d')
+ * @param network The Solana network (mainnet or devnet)
+ * @returns Trending tokens
+ */
+export async function getTrendingTokens(
+  limit: number = 50, 
+  timeframe: '1h' | '24h' | '7d' = '24h',
+  network: SolanaNetwork = DEFAULT_NETWORK
+) {
+  return makeApiRequest(`/market-data/{network}/trending`, { limit, timeframe }, network);
+}
+
+/**
+ * Get comprehensive token market data with pagination
+ * @param params Parameters including pagination and sorting
+ * @param network The Solana network (mainnet or devnet)
+ * @returns Token market data
+ */
+export async function getTokenMarketData(
+  params: {
+    limit?: number;
+    cursor?: string;
+    sort_by?: 'market_cap' | 'volume' | 'price_change_24h' | 'created_at';
+    sort_order?: 'asc' | 'desc';
+    min_market_cap?: number;
+    min_volume?: number;
+  } = {},
+  network: SolanaNetwork = DEFAULT_NETWORK
+) {
+  const defaultParams = {
+    limit: 100,
+    sort_by: 'market_cap',
+    sort_order: 'desc',
+    ...params
+  };
+  return makeApiRequest(`/market-data/{network}/tokens`, defaultParams, network);
+}
+
+/**
  * Clear the API cache
  */
 export function clearCache() {
@@ -540,6 +612,11 @@ const MoralisAPI = {
   getNFTCollectionStats,
   getNFTCollectionItems,
   getComprehensiveBlockchainData,
+  getTopTokens,
+  getTopGainers,
+  getNewListings,
+  getTrendingTokens,
+  getTokenMarketData,
   clearCache
 };
 
