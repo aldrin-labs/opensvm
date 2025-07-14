@@ -85,7 +85,7 @@ export const CustomScrollbar = forwardRef<HTMLDivElement, CustomScrollbarProps>(
         <div
           ref={trackRef}
           className={cn(
-            "absolute right-0 top-0 bottom-0 w-3 cursor-pointer z-[250]",
+            "absolute right-1 top-0 bottom-0 w-3 cursor-pointer z-[250]",
             "scrollbar-track",
             "transition-opacity duration-200",
             isDragging ? "opacity-100" : "opacity-60 hover:opacity-100"
