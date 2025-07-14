@@ -219,9 +219,13 @@ export async function getUserHistory(
   } = {}
 ): Promise<{ history: UserHistoryEntry[]; total: number }> {
   try {
-
-    
     const { limit = 100, offset = 0, pageType } = options;
+    
+    // Debug logging
+    const redactedWallet = walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : '(all users)';
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`getUserHistory called for: ${redactedWallet}, limit: ${limit}, offset: ${offset}`);
+    }
     
     // Build filter
     const filter: any = {
@@ -234,6 +238,13 @@ export async function getUserHistory(
         key: 'walletAddress',
         match: { value: walletAddress }
       });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Added wallet filter for: ${redactedWallet}`);
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No wallet filter - fetching from all users');
+      }
     }
     
     if (pageType) {
@@ -266,6 +277,19 @@ export async function getUserHistory(
     const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
     
     const history = result.map(point => point.payload as unknown as UserHistoryEntry);
+    
+    // Debug logging for results
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`getUserHistory results: ${history.length} entries retrieved out of ${countResult.count} total`);
+      if (history.length > 0) {
+        const uniqueWallets = [...new Set(history.map(h => h.walletAddress))];
+        console.log(`Unique wallets in results: ${uniqueWallets.length}`);
+        uniqueWallets.slice(0, 5).forEach(w => {
+          const count = history.filter(h => h.walletAddress === w).length;
+          console.log(`  ${w.slice(0, 4)}...${w.slice(-4)}: ${count} entries`);
+        });
+      }
+    }
     
     // Sort by timestamp (newest first)
     history.sort((a, b) => b.timestamp - a.timestamp);
