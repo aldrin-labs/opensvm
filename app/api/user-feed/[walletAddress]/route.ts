@@ -11,6 +11,7 @@ import {
   checkQdrantHealth,
   getUserHistory
 } from '@/lib/qdrant';
+import { SSEManager } from '@/lib/sse-manager';
 
 // Feed event interface
 interface FeedEvent {
@@ -91,64 +92,42 @@ async function getRealFeedEvents(
       }
     );
     
-    // Convert history entries to feed events
-    const events: (FeedEvent | null)[] = history.map((entry) => {
-      // Extract event data from history entry
-      const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
-      
-      // Apply feed type filtering
-      if (type === 'following') {
-        // For 'following' feed, only include events from followed users
-        if (!followingAddresses.includes(entry.walletAddress)) {
-          return null;
-        }
-      } else if (type === 'for-you') {
-        // For 'for-you' feed, show recent activity from recommended users (most active today)
-        // Include events from today or events with some engagement, but prioritize recent activity
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        const isFromToday = entry.timestamp >= todayStart;
-        const hasEngagement = entry.metadata?.likes && entry.metadata.likes > 0;
+    // Convert history entries to feed events with improved filtering pipeline
+    // Step 1: Filter nulls during conversion
+    const events = history
+      .map((entry) => {
+        // Extract event data from history entry
+        const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
         
-        // Include if: recent activity from today OR has some engagement OR is from profile owner
-        if (!isFromToday && !hasEngagement && entry.walletAddress !== walletAddress) {
-          return null;
-        }
-      }
-      
-      // Get profile data for the user
-      const userName = entry.metadata?.userName || `User ${entry.walletAddress.slice(0, 6)}`;
-      const userAvatar = entry.metadata?.userAvatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.walletAddress}`;
-      
-      return {
-        id: entry.id,
-        eventType,
-        timestamp: entry.timestamp,
-        userAddress: entry.walletAddress,
-        userName,
-        userAvatar,
-        content: entry.pageTitle || entry.path || 'Performed an action',
-        targetAddress: entry.metadata?.targetAddress,
-        targetId: entry.metadata?.targetId,
-        metadata: entry.metadata,
-        likes: entry.metadata?.likes || 0,
-        hasLiked: currentUserWallet ? entry.metadata?.likedBy?.includes(currentUserWallet) : false
-      };
-    }).filter(Boolean); // Remove null entries
-    
-    // Filter out null values
-    const nonNullEvents: FeedEvent[] = events.filter((event): event is FeedEvent => event !== null);
-    
-    // Apply filters
-    let filteredEvents = nonNullEvents;
-    
-    // Filter by event types if specified
+        // Get profile data for the user
+        const userName = entry.metadata?.userName || `User ${entry.walletAddress.slice(0, 6)}`;
+        const userAvatar = entry.metadata?.userAvatar || `https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.walletAddress}`;
+        
+        return {
+          id: entry.id,
+          eventType,
+          timestamp: entry.timestamp,
+          userAddress: entry.walletAddress,
+          userName,
+          userAvatar,
+          content: entry.pageTitle || entry.path || 'Performed an action',
+          targetAddress: entry.metadata?.targetAddress,
+          targetId: entry.metadata?.targetId,
+          metadata: entry.metadata,
+          likes: entry.metadata?.likes || 0,
+          hasLiked: currentUserWallet ? entry.metadata?.likedBy?.includes(currentUserWallet) : false
+        } as FeedEvent;
+      });
+
+    // Step 2: Filter by event types if specified
+    let filteredEvents = events;
     if (eventTypes.length > 0) {
       filteredEvents = filteredEvents.filter(event =>
         eventTypes.includes(event.eventType)
       );
     }
-    
-    // Filter by date range
+
+    // Step 3: Filter by date range
     if (dateRange !== 'all') {
       const now = Date.now();
       let timeThreshold = now;
@@ -162,6 +141,38 @@ async function getRealFeedEvents(
       }
       
       filteredEvents = filteredEvents.filter(event => event.timestamp >= timeThreshold);
+    }
+
+    // Step 4: Apply feed type filtering (more inclusive than before)
+    if (type === 'following') {
+      // For 'following' feed, only include events from followed users
+      filteredEvents = filteredEvents.filter(event =>
+        followingAddresses.includes(event.userAddress)
+      );
+    } else if (type === 'for-you') {
+      // For 'for-you' feed, show content more inclusively:
+      // - Always include events from the profile owner
+      // - Include recent activity from today
+      // - Include events with any engagement (not just 2+ likes)
+      // - Include some recent activity from active users (more discovery-friendly)
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      const recentThreshold = Date.now() - (2 * 24 * 60 * 60 * 1000); // Last 2 days
+      
+      filteredEvents = filteredEvents.filter(event => {
+        // Always include events from the profile owner
+        if (event.userAddress === walletAddress) return true;
+        
+        // Include events from today
+        if (event.timestamp >= todayStart) return true;
+        
+        // Include events with any engagement (likes, comments, etc.)
+        if (event.likes > 0) return true;
+        
+        // Include some recent activity for better discovery
+        if (event.timestamp >= recentThreshold) return true;
+        
+        return false;
+      });
     }
     
     // Sort based on sortOrder with special handling for for-you feed
@@ -190,10 +201,32 @@ async function getRealFeedEvents(
     // Limit to requested number
     const finalEvents = filteredEvents.slice(0, limit);
     
-    // Add some debug logging
-    console.log(`Feed API: ${type} feed for ${walletAddress}, found ${finalEvents.length} events out of ${history.length} total history entries`);
-    if (type === 'following') {
-      console.log(`Following ${followingAddresses.length} users`);
+    // Add some debug logging with privacy protection
+    const redactedWallet = `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`;
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Feed API: ${type} feed for ${redactedWallet}, found ${finalEvents.length} events out of ${history.length} total history entries`);
+      if (type === 'following') {
+        console.log(`Following ${followingAddresses.length} users`);
+      }
+    }
+
+    // Broadcast feed updates via SSE for real-time functionality
+    if (finalEvents.length > 0) {
+      try {
+        const sseManager = SSEManager.getInstance();
+        sseManager.broadcastFeedEvent({
+          feedType: type,
+          walletAddress: redactedWallet,
+          events: finalEvents.slice(0, 5), // Only broadcast first 5 events to avoid overwhelming clients
+          totalCount: finalEvents.length,
+          timestamp: Date.now()
+        });
+      } catch (error) {
+        // Silently continue if SSE broadcast fails
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('Failed to broadcast feed update via SSE:', error);
+        }
+      }
     }
     
     return finalEvents;
@@ -205,10 +238,10 @@ async function getRealFeedEvents(
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ walletAddress: string }> }
+  context: { params: Promise<{ walletAddress: string }> }
 ) {
   try {
-    const { walletAddress } = await params;
+    const { walletAddress } = await context.params;
     
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
@@ -219,6 +252,17 @@ export async function GET(
     // Get feed type from query params
     const url = new URL(_request.url);
     const feedType = (url.searchParams.get('type') || 'for-you') as 'for-you' | 'following';
+    const realtime = url.searchParams.get('realtime') === 'true';
+    
+    // If real-time mode is requested, return SSE endpoint information
+    if (realtime) {
+      return NextResponse.json({ 
+        message: 'Real-time feed updates available via SSE',
+        sseEndpoint: `/api/sse-feed?clientId=${Date.now()}&walletAddress=${encodeURIComponent(validatedAddress)}&feedType=${feedType}`,
+        pollingEndpoint: _request.url.replace('realtime=true', ''),
+        instructions: 'Connect to the SSE endpoint for real-time updates, or use the polling endpoint for traditional API calls'
+      });
+    }
     
     // Check Qdrant health
     const isHealthy = await checkQdrantHealth();

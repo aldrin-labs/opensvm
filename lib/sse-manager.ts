@@ -61,7 +61,28 @@ export class SSEManager {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
 
-    for (const [id, connection] of this.connections) {
+    for (const [id, connection] of Array.from(this.connections.entries())) {
+      if (!connection.connected) {
+        this.connections.delete(id);
+        continue;
+      }
+
+      try {
+        connection.controller.enqueue(data);
+        connection.lastActivity = Date.now();
+      } catch (error) {
+        // Connection failed, remove it
+        this.removeConnection(id);
+      }
+    }
+  }
+
+  public broadcastFeedEvent(feedEvent: any): void {
+    const message = `data: ${JSON.stringify({ type: 'feed_event', data: feedEvent, timestamp: Date.now() })}\n\n`;
+    const encoder = new TextEncoder();
+    const data = encoder.encode(message);
+
+    for (const [id, connection] of Array.from(this.connections.entries())) {
       if (!connection.connected) {
         this.connections.delete(id);
         continue;
@@ -82,7 +103,7 @@ export class SSEManager {
     const encoder = new TextEncoder();
     const data = encoder.encode(message);
 
-    for (const [id, connection] of this.connections) {
+    for (const [id, connection] of Array.from(this.connections.entries())) {
       if (!connection.connected) {
         this.connections.delete(id);
         continue;
@@ -130,7 +151,7 @@ export class SSEManager {
     const now = Date.now();
     const staleThreshold = 5 * 60 * 1000; // 5 minutes
 
-    for (const [id, connection] of this.connections) {
+    for (const [id, connection] of Array.from(this.connections.entries())) {
       if (now - connection.lastActivity > staleThreshold) {
         this.removeConnection(id);
       }
