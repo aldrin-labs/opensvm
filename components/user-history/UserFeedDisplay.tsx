@@ -94,6 +94,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
 
   // User experience preferences
   const [groupByTime, setGroupByTime] = useState(true);
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
   // Custom hook for intersection observer (for infinite scrolling)
   useEffect(() => {
@@ -465,6 +466,84 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     return groups;
   }, [filteredEvents, groupByTime]);
 
+  // Group consecutive events from the same user for stacking
+  const stackedEvents = useMemo(() => {
+    const stacked: Array<{ 
+      id: string;
+      isGroup: boolean; 
+      events: FeedEvent[];
+      groupKey: string;
+      primaryEvent: FeedEvent;
+    }> = [];
+    
+    let currentGroup: FeedEvent[] = [];
+    let lastUserAddress = '';
+    
+    // Sort events by timestamp first (newest first)
+    const sortedEvents = [...filteredEvents].sort((a, b) => b.timestamp - a.timestamp);
+    
+    for (let i = 0; i < sortedEvents.length; i++) {
+      const event = sortedEvents[i];
+      
+      // Check if this event should be grouped with the previous ones
+      if (event.userAddress === lastUserAddress && currentGroup.length > 0) {
+        currentGroup.push(event);
+      } else {
+        // Process the previous group if it exists
+        if (currentGroup.length > 0) {
+          if (currentGroup.length === 1) {
+            // Single event, add as-is
+            stacked.push({
+              id: currentGroup[0].id,
+              isGroup: false,
+              events: currentGroup,
+              groupKey: currentGroup[0].id,
+              primaryEvent: currentGroup[0]
+            });
+          } else {
+            // Multiple events from same user, create a group
+            const groupKey = `group-${currentGroup[0].userAddress}-${currentGroup[0].timestamp}`;
+            stacked.push({
+              id: groupKey,
+              isGroup: true,
+              events: currentGroup,
+              groupKey,
+              primaryEvent: currentGroup[0] // Most recent event as primary
+            });
+          }
+        }
+        
+        // Start new group
+        currentGroup = [event];
+        lastUserAddress = event.userAddress;
+      }
+    }
+    
+    // Process the last group
+    if (currentGroup.length > 0) {
+      if (currentGroup.length === 1) {
+        stacked.push({
+          id: currentGroup[0].id,
+          isGroup: false,
+          events: currentGroup,
+          groupKey: currentGroup[0].id,
+          primaryEvent: currentGroup[0]
+        });
+      } else {
+        const groupKey = `group-${currentGroup[0].userAddress}-${currentGroup[0].timestamp}`;
+        stacked.push({
+          id: groupKey,
+          isGroup: true,
+          events: currentGroup,
+          groupKey,
+          primaryEvent: currentGroup[0]
+        });
+      }
+    }
+    
+    return stacked;
+  }, [filteredEvents]);
+
   // Handle like action
   const handleLike = async (eventId: string) => {
     try {
@@ -546,6 +625,19 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     } catch (err) {
       console.error('Error liking/unliking event:', err);
     }
+  };
+
+  // Toggle group expansion
+  const toggleGroupExpansion = (groupKey: string) => {
+    setExpandedGroups(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(groupKey)) {
+        newSet.delete(groupKey);
+      } else {
+        newSet.add(groupKey);
+      }
+      return newSet;
+    });
   };
 
   // Format timestamp
@@ -696,6 +788,173 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     </div>
   );
 
+  // Render grouped event card with expand/collapse functionality  
+  const GroupedEventCard = ({ 
+    groupData, 
+    isExpanded, 
+    onToggle 
+  }: { 
+    groupData: { 
+      id: string;
+      isGroup: boolean; 
+      events: FeedEvent[];
+      groupKey: string;
+      primaryEvent: FeedEvent;
+    };
+    isExpanded: boolean;
+    onToggle: () => void;
+  }) => {
+    const { events, primaryEvent } = groupData;
+    const additionalCount = events.length - 1;
+
+    return (
+      <div className="border rounded-lg bg-card">
+        {/* Primary event with group indicator */}
+        <div 
+          className={`flex gap-3 p-4 hover:bg-accent/5 transition-colors cursor-pointer ${
+            isExpanded ? 'border-b' : ''
+          }`}
+          onClick={onToggle}
+        >
+          <Avatar className="h-10 w-10 flex-shrink-0">
+            <AvatarImage src={primaryEvent.userAvatar} />
+            <AvatarFallback className="bg-primary/10 text-primary">
+              {primaryEvent.userName?.[0] || (primaryEvent.userAddress ? formatWalletAddress(primaryEvent.userAddress)[0] : '?')}
+            </AvatarFallback>
+          </Avatar>
+          
+          <div className="flex-1 space-y-1">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-1 flex-wrap">
+                <span className="font-medium">
+                  {primaryEvent.userName || (primaryEvent.userAddress ? formatWalletAddress(primaryEvent.userAddress) : 'Unknown User')}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  • {formatTimestamp(primaryEvent.timestamp)}
+                </span>
+                <span className="ml-1">{getEventIcon(primaryEvent.eventType)}</span>
+                <Badge variant="outline" className="text-xs ml-1 px-1 py-0">
+                  {primaryEvent.eventType}
+                </Badge>
+                {additionalCount > 0 && (
+                  <Badge variant="secondary" className="text-xs ml-2 px-2 py-0">
+                    +{additionalCount} more
+                  </Badge>
+                )}
+              </div>
+              <ChevronDown 
+                className={`h-4 w-4 text-muted-foreground transition-transform ${
+                  isExpanded ? 'rotate-180' : ''
+                }`} 
+              />
+            </div>
+            
+            <p className="text-sm">{primaryEvent.content}</p>
+            
+            {/* Rich content for transaction events */}
+            {primaryEvent.eventType === 'transaction' && primaryEvent.metadata?.amount && (
+              <div className="mt-2 p-2 rounded-md bg-muted/50">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <Coins className="h-4 w-4 text-yellow-500" />
+                    <span className="font-medium">{primaryEvent.metadata.amount} SOL</span>
+                  </div>
+                  {primaryEvent.metadata?.txId && (
+                    <Button variant="outline" size="sm" className="h-7 text-xs">
+                      View Transaction
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-center gap-4 pt-1">
+              <Button 
+                variant="ghost" 
+                size="sm"
+                className={`flex items-center gap-1 p-1 h-auto ${primaryEvent.hasLiked ? 'text-red-500' : 'text-muted-foreground'}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleLike(primaryEvent.id);
+                }}
+              >
+                <Heart className={`h-4 w-4 ${primaryEvent.hasLiked ? 'fill-current' : ''}`} />
+                <span className="text-xs">{primaryEvent.likes}</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Expanded events in tree structure */}
+        {isExpanded && additionalCount > 0 && (
+          <div className="px-4 pb-4">
+            <div className="ml-12 space-y-3 pt-3">
+              {events.slice(1).map((event, index) => (
+                <div 
+                  key={event.id} 
+                  className="flex gap-3 p-3 rounded-md bg-muted/20 border-l-2 border-primary/20"
+                >
+                  <Avatar className="h-8 w-8 flex-shrink-0">
+                    <AvatarImage src={event.userAvatar} />
+                    <AvatarFallback className="bg-primary/10 text-primary text-xs">
+                      {event.userName?.[0] || (event.userAddress ? formatWalletAddress(event.userAddress)[0] : '?')}
+                    </AvatarFallback>
+                  </Avatar>
+                  
+                  <div className="flex-1 space-y-1">
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-muted-foreground">
+                        {formatTimestamp(event.timestamp)}
+                      </span>
+                      <span className="ml-1">{getEventIcon(event.eventType)}</span>
+                      <Badge variant="outline" className="text-xs ml-1 px-1 py-0">
+                        {event.eventType}
+                      </Badge>
+                    </div>
+                    
+                    <p className="text-sm">{event.content}</p>
+                    
+                    {/* Rich content for transaction events */}
+                    {event.eventType === 'transaction' && event.metadata?.amount && (
+                      <div className="mt-2 p-2 rounded-md bg-muted/30">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Coins className="h-3 w-3 text-yellow-500" />
+                            <span className="text-sm font-medium">{event.metadata.amount} SOL</span>
+                          </div>
+                          {event.metadata?.txId && (
+                            <Button variant="outline" size="sm" className="h-6 text-xs">
+                              View
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4 pt-1">
+                      <Button 
+                        variant="ghost" 
+                        size="sm"
+                        className={`flex items-center gap-1 p-1 h-auto ${event.hasLiked ? 'text-red-500' : 'text-muted-foreground'}`}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleLike(event.id);
+                        }}
+                      >
+                        <Heart className={`h-3 w-3 ${event.hasLiked ? 'fill-current' : ''}`} />
+                        <span className="text-xs">{event.likes}</span>
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   // Loading state
   if (loading && events.length === 0) {
     return (
@@ -767,7 +1026,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               onClick={() => setGroupByTime(!groupByTime)}
             >
               <Clock className="h-4 w-4 mr-2" />
-              {groupByTime ? 'Show as List' : 'Group by Time'}
+              {groupByTime ? 'Timestamp View' : 'Time Groups'}
             </Button>
             <div className="flex items-center gap-1">
               <Button
@@ -1039,10 +1298,23 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   )
                 )
               ) : (
-                // Non-grouped events
-                filteredEvents.map(event => (
-                  <EventCard key={event.id} event={event} />
-                ))
+                // Stacked events (grouped by user when consecutive)
+                stackedEvents.map(groupData => {
+                  if (groupData.isGroup) {
+                    return (
+                      <GroupedEventCard
+                        key={groupData.groupKey}
+                        groupData={groupData}
+                        isExpanded={expandedGroups.has(groupData.groupKey)}
+                        onToggle={() => toggleGroupExpansion(groupData.groupKey)}
+                      />
+                    );
+                  } else {
+                    return (
+                      <EventCard key={groupData.id} event={groupData.primaryEvent} />
+                    );
+                  }
+                })
               )}
               
               {/* Infinite scroll loader */}

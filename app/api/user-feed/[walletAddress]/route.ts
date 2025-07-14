@@ -176,35 +176,16 @@ async function getRealFeedEvents(
       }
     }
     
-    // Sort based on sortOrder with special handling for for-you feed
+    // Sort based on sortOrder - prioritize timestamp for both feed types
     if (sortOrder === 'popular') {
-      filteredEvents.sort((a, b) => b.likes - a.likes);
+      filteredEvents.sort((a, b) => {
+        // For popular sorting, prioritize likes but break ties with timestamp
+        if (a.likes !== b.likes) return b.likes - a.likes;
+        return b.timestamp - a.timestamp;
+      });
     } else {
-      // Default to newest, but for 'for-you' feed, prioritize content from other users
-      if (type === 'for-you') {
-        const todayStart = new Date().setHours(0, 0, 0, 0);
-        filteredEvents.sort((a, b) => {
-          // First, prioritize content from other users over profile owner's content
-          const aIsFromOthers = a.userAddress !== walletAddress;
-          const bIsFromOthers = b.userAddress !== walletAddress;
-          
-          if (aIsFromOthers && !bIsFromOthers) return -1;
-          if (!aIsFromOthers && bIsFromOthers) return 1;
-          
-          // Within same user category, prioritize events from today
-          const aIsFromToday = a.timestamp >= todayStart;
-          const bIsFromToday = b.timestamp >= todayStart;
-          
-          if (aIsFromToday && !bIsFromToday) return -1;
-          if (!aIsFromToday && bIsFromToday) return 1;
-          
-          // Finally, sort by engagement (likes) and then timestamp
-          if (a.likes !== b.likes) return b.likes - a.likes;
-          return b.timestamp - a.timestamp;
-        });
-      } else {
-        filteredEvents.sort((a, b) => b.timestamp - a.timestamp);
-      }
+      // Default to newest first - sort primarily by timestamp (newest first)
+      filteredEvents.sort((a, b) => b.timestamp - a.timestamp);
     }
     
     // Limit to requested number
