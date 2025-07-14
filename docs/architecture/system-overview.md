@@ -151,6 +151,32 @@ The API infrastructure handles all external requests and provides a consistent i
 - Robust error handling
 - Consistent response formatting
 
+### 5. $SVMAI Tokenomics System
+
+The tokenomics system manages the native $SVMAI token economics, implementing a tiered pricing model for AI services and token-gated social features.
+
+**Key Components:**
+- **Token Balance Verification**: Real-time token balance checking and tier assignment
+- **Payment Processing**: Automated token deduction and transaction processing
+- **Tier Management**: Dynamic tier assignment based on token holdings
+- **Access Control**: Token-gated feature access implementation
+- **Burn Mechanism**: Token burning for deflationary economics
+
+**Features:**
+- Tiered pricing for AI assistant services (1-200 tokens per prompt)
+- Social feature access gating (100k+ token requirement)
+- Real-time balance monitoring and tier adjustments
+- Secure payment processing and token burns
+- User-friendly tier visualization and cost calculation
+
+**Pricing Structure:**
+- **Platinum Tier** (1M+ tokens): 1 $SVMAI per AI prompt
+- **Gold Tier** (100k+ tokens): 10 $SVMAI per AI prompt  
+- **Silver Tier** (< 100k tokens): 100 $SVMAI per AI prompt
+- **Guest Users** (0 tokens): 200 $SVMAI per AI prompt
+
+*For detailed tokenomics information, see [Tokenomics Documentation](./tokenomics.md) and [ADR-005: $SVMAI Tokenomics Model](./adr/005-svmai-tokenomics-model.md).*
+
 ## Data Flow Architecture
 
 ### Request Flow

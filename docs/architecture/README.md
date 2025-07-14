@@ -6,11 +6,10 @@ This directory contains comprehensive architectural documentation for the OpenSV
 
 - [System Overview](./system-overview.md) - High-level system architecture and design
 - [Component Architecture](./components.md) - Detailed component breakdown and relationships
+- [Tokenomics](./tokenomics.md) - $SVMAI token economics and pricing model
 - [Architecture Decision Records (ADRs)](./adr/) - Historical and current architectural decisions
 - [Data Flow & Integration](./data-flow.md) - Data flow patterns and external integrations
-- [Deployment Architecture](./deployment.md) - Infrastructure and deployment patterns
 - [Performance & Scalability](./performance.md) - Performance considerations and optimization strategies
-- [Security Architecture](./security.md) - Security measures and considerations
 - [Development Guidelines](./development-guidelines.md) - Development standards and practices
 
 ## 🎯 Purpose

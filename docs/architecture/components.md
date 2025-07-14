@@ -25,7 +25,8 @@ OpenSVM Components
 │   ├── Network Monitoring
 │   ├── Account Management
 │   ├── Token Analytics
-│   └── AI Assistant
+│   ├── AI Assistant
+│   └── Tokenomics System
 ├── Data Display Components
 │   ├── Tables
 │   ├── Charts
@@ -251,6 +252,67 @@ interface SearchBarProps {
 - Light/dark mode toggle
 - Theme persistence
 - System preference synchronization
+
+### 6. AI Assistant & Tokenomics Components
+
+#### AIAssistant.tsx
+**Purpose**: AI-powered blockchain analysis and query assistant
+**Location**: `components/ai/`
+**Architecture Reference**: [AI Integration System](./system-overview.md#svmai-tokenomics-system)
+
+```typescript
+/**
+ * AI Assistant component with integrated tokenomics
+ * 
+ * @see docs/architecture/tokenomics.md
+ * @see docs/architecture/adr/005-svmai-tokenomics-model.md
+ */
+export interface AIAssistantProps {
+  userTier: TokenTier;
+  tokenBalance: number;
+  onPromptSubmit: (prompt: string) => Promise<void>;
+}
+```
+
+**Key Features**:
+- Natural language blockchain queries
+- Real-time token balance verification
+- Tiered pricing display and calculation
+- Payment processing integration
+- Context-aware blockchain analysis
+
+#### TokenomicsDisplay.tsx
+**Purpose**: User tier status and token balance visualization
+**Location**: `components/tokenomics/`
+
+**Key Features**:
+- Real-time tier status display
+- Token balance monitoring
+- Cost calculator for AI services
+- Upgrade prompts and benefit explanations
+- Payment transaction history
+
+#### PaymentProcessor.tsx
+**Purpose**: Handles token payments for AI services
+**Location**: `components/tokenomics/`
+**Architecture Reference**: [Tokenomics Documentation](./tokenomics.md#payment-processing)
+
+**Key Features**:
+- Secure token deduction processing
+- Transaction validation and confirmation
+- Error handling and retry logic
+- Payment history tracking
+- Real-time balance updates
+
+#### SocialGate.tsx
+**Purpose**: Token-gated social feature access control
+**Location**: `components/social/`
+
+**Key Features**:
+- 100k+ token requirement enforcement
+- Social feature access validation
+- Graceful degradation for insufficient tokens
+- Community participation tracking
 
 ## Component Relationships
 

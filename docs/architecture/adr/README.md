@@ -18,8 +18,7 @@ Each ADR follows this structure:
 - [ADR-002: Frontend Framework Choice](./002-frontend-framework-choice.md)
 - [ADR-003: Testing Strategy](./003-testing-strategy.md)
 - [ADR-004: Data Visualization Library](./004-data-visualization-library.md)
-- [ADR-005: State Management Approach](./005-state-management-approach.md)
-- [ADR-006: API Architecture](./006-api-architecture.md)
+- [ADR-005: $SVMAI Tokenomics Model](./005-svmai-tokenomics-model.md)
 
 ## Creating New ADRs
 
