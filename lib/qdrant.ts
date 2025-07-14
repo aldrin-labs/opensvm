@@ -225,13 +225,16 @@ export async function getUserHistory(
     
     // Build filter
     const filter: any = {
-      must: [
-        {
-          key: 'walletAddress',
-          match: { value: walletAddress }
-        }
-      ]
+      must: []
     };
+    
+    // Only filter by wallet address if one is provided
+    if (walletAddress && walletAddress.trim() !== '') {
+      filter.must.push({
+        key: 'walletAddress',
+        match: { value: walletAddress }
+      });
+    }
     
     if (pageType) {
       filter.must.push({
@@ -240,19 +243,27 @@ export async function getUserHistory(
       });
     }
     
-    // Search with filter
-    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, {
+    // If no filters are specified, remove the filter entirely to get all entries
+    const searchParams: any = {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
-      filter,
       limit,
       offset,
       with_payload: true
-    });
+    };
+    
+    if (filter.must.length > 0) {
+      searchParams.filter = filter;
+    }
+    
+    // Search with or without filter
+    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, searchParams);
     
     // Get total count
-    const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, {
-      filter
-    });
+    const countParams: any = {};
+    if (filter.must.length > 0) {
+      countParams.filter = filter;
+    }
+    const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
     
     const history = result.map(point => point.payload as unknown as UserHistoryEntry);
     
