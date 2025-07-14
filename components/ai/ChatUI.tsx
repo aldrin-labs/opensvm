@@ -49,7 +49,7 @@ export function ChatUI({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
-  
+
   // State for new message tracking
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
@@ -67,10 +67,10 @@ export function ChatUI({
   const handleScroll = useCallback((scrollTop: number, scrollHeight: number, clientHeight: number) => {
     const threshold = 50;
     const isAtBottom = scrollTop + clientHeight >= scrollHeight - threshold;
-    
+
     setIsScrolledUp(!isAtBottom);
     setShouldAutoScroll(isAtBottom);
-    
+
     // Clear new message count when scrolling to bottom
     if (isAtBottom && newMessageCount > 0) {
       setNewMessageCount(0);
@@ -88,11 +88,11 @@ export function ChatUI({
   useEffect(() => {
     const currentMessageCount = messages.length;
     const previousCount = lastMessageCountRef.current;
-    
+
     if (currentMessageCount > previousCount && isScrolledUp) {
       setNewMessageCount(prev => prev + (currentMessageCount - previousCount));
     }
-    
+
     lastMessageCountRef.current = currentMessageCount;
   }, [messages.length, isScrolledUp]);
 
@@ -103,7 +103,7 @@ export function ChatUI({
     }
   }, [messages, shouldAutoScroll, scrollToBottom]);
 
-  
+
 
 
   // Scroll to bottom when agent actions change
@@ -220,9 +220,8 @@ export function ChatUI({
                       aria-label={`${message.role === 'user' ? 'Your message' : 'AI response'}`}
                       tabIndex={0}
                     >
-                      <div className={`px-4 py-2 rounded-lg max-w-[80%] text-[12px] ${
-                        message.role === 'user' ? 'bg-black text-white border border-white/20' : 'bg-black text-white border border-white/20'
-                      }`}>
+                      <div className={`px-4 py-2 rounded-lg max-w-[80%] text-[12px] ${message.role === 'user' ? 'bg-black text-white border border-white/20' : 'bg-black text-white border border-white/20'
+                        }`}>
                         <div className="prose prose-invert max-w-none [&_p]:text-[12px] [&_li]:text-[12px] [&_h1]:text-[16px] [&_h2]:text-[15px] [&_h3]:text-[14px] [&_h4]:text-[13px] [&_h5]:text-[12px]">
                           <ReactMarkdown
                             remarkPlugins={[remarkGfm]}
@@ -254,7 +253,7 @@ export function ChatUI({
                       </div>
                     </article>
                   ))}
-                  
+
                   {/* Processing indicator */}
                   {isProcessing && (
                     <div
@@ -267,7 +266,7 @@ export function ChatUI({
                       </div>
                     </div>
                   )}
-                  
+
                   {/* Agent actions section */}
                   {agentActions.length > 0 && activeTab === 'agent' && (
                     <div
@@ -306,19 +305,17 @@ export function ChatUI({
                         {agentActions.map((action) => (
                           <div
                             key={action.id}
-                            className={`flex items-center gap-2 text-[12px] p-2 rounded transition-colors ${
-                              action.status === 'in_progress' ? 'bg-white/5' : 'hover:bg-white/5'
-                            }`}
+                            className={`flex items-center gap-2 text-[12px] p-2 rounded transition-colors ${action.status === 'in_progress' ? 'bg-white/5' : 'hover:bg-white/5'
+                              }`}
                             role="listitem"
                             aria-label={`Action: ${action.description}, Status: ${action.status}`}
                           >
                             <div
-                              className={`w-2 h-2 rounded-full ${
-                                action.status === 'completed' ? 'bg-green-500' :
-                                action.status === 'failed' ? 'bg-red-500' :
-                                action.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' :
-                                'bg-yellow-500'
-                              }`}
+                              className={`w-2 h-2 rounded-full ${action.status === 'completed' ? 'bg-green-500' :
+                                  action.status === 'failed' ? 'bg-red-500' :
+                                    action.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' :
+                                      'bg-yellow-500'
+                                }`}
                               aria-hidden="true"
                             />
                             <div className="flex-1 min-w-0">
@@ -366,16 +363,16 @@ export function ChatUI({
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       const announcement = `${lastMessage.role === 'user' ? 'You' : 'AI Assistant'} said: ${lastMessage.content.substring(0, 100)}`;
-      
+
       // Create temporary live region for announcement
       const liveRegion = document.createElement('div');
       liveRegion.setAttribute('role', 'status');
       liveRegion.setAttribute('aria-live', 'polite');
       liveRegion.className = 'sr-only';
       liveRegion.textContent = announcement;
-      
+
       document.body.appendChild(liveRegion);
-      
+
       // Remove after announcement
       setTimeout(() => {
         document.body.removeChild(liveRegion);
@@ -393,7 +390,7 @@ export function ChatUI({
         console.error('Error in Enter key submission:', error);
       }
     }
-    
+
     // Additional keyboard shortcuts
     if (e.ctrlKey || e.metaKey) {
       switch (e.key) {
@@ -407,34 +404,32 @@ export function ChatUI({
   };
 
   return (
-    <div className={`chat-main-container relative h-full ${variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col overflow-hidden`}>
+    <div className={`chat-main-container relative ${variant === 'sidebar' ? 'h-full' : variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col ${variant === 'sidebar' ? '' : 'overflow-hidden'}`}>
       {/* Skip navigation link */}
       <a href="#chat-input" className="skip-link absolute top-0 left-0 bg-black text-white p-2 -translate-y-full focus:translate-y-0 transition-transform">
         Skip to chat input
       </a>
-      
+
       {variant !== 'sidebar' && <VantaBackground />}
-      
+
       <div
         className={`chat-flex-container flex flex-col flex-1 min-h-0 relative z-10 ${className}`}
         role="region"
         aria-label="AI Chat Interface"
       >
-        <div className={`flex-1 min-h-0 ${
-          variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'
-        }`}>
+        <div className={`flex-1 min-h-0 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'
+          }`}>
           {renderContent()}
         </div>
-        
+
         {/* Input area with accessibility */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
             onSubmit(e);
           }}
-          className={`chat-input-area p-4 border-t border-white/20 flex-shrink-0 ${
-            variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'
-          }`}
+          className={`chat-input-area p-4 border-t border-white/20 flex-shrink-0 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'
+            }`}
           role="form"
           aria-label="Send a message"
         >
@@ -466,7 +461,7 @@ export function ChatUI({
             <div id="input-help" className="sr-only">
               Press Enter to send, Shift+Enter for new line
             </div>
-            
+
             <button
               onClick={onVoiceRecord}
               disabled={isRecording}
@@ -478,7 +473,7 @@ export function ChatUI({
             >
               {isRecording ? <Loader className="animate-spin" size={20} /> : <Mic size={20} />}
             </button>
-            
+
             <button
               type="submit"
               aria-label="Send message"

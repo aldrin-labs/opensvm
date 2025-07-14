@@ -2,12 +2,15 @@
 
 /* Hide native scrollbars */
 .scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
 }
 
 .scrollbar-hide::-webkit-scrollbar {
-  display: none;  /* Chrome, Safari, Opera */
+  display: none;
+  /* Chrome, Safari, Opera */
 }
 
 /* Scrollbar Track */
@@ -17,10 +20,6 @@
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
-}
-.scrollbar-track {
-  background: rgba(255,0,0,0.2) !important;
-  border: 2px solid red !important;
 }
 
 .scrollbar-track-bg {
@@ -91,11 +90,11 @@
   .scrollbar-track {
     width: 4px;
   }
-  
+
   .scrollbar-thumb:hover {
     transform: scaleX(2);
   }
-  
+
   .scrollbar-track-bg {
     border-radius: 2px;
   }
@@ -106,11 +105,11 @@
   .scrollbar-track {
     opacity: 0.7;
   }
-  
+
   .scrollbar-track:active {
     opacity: 1;
   }
-  
+
   .scrollbar-thumb-inner {
     background: var(--scrollbar-thumb-mobile-color, rgba(255, 255, 255, 0.4));
   }
@@ -121,7 +120,7 @@
   .scrollbar-track-bg {
     background: var(--scrollbar-track-high-contrast, rgba(255, 255, 255, 0.8));
   }
-  
+
   .scrollbar-thumb-inner {
     background: var(--scrollbar-thumb-high-contrast, rgba(0, 0, 0, 0.8));
     border: 2px solid var(--scrollbar-thumb-border-high-contrast, rgba(255, 255, 255, 1));
@@ -130,6 +129,7 @@
 
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
+
   .scrollbar-track,
   .scrollbar-thumb,
   .scrollbar-thumb-inner,
@@ -189,7 +189,7 @@
     font-size: 12px;
     padding: 8px 12px;
   }
-  
+
   .new-message-badge-icon,
   .new-message-badge-arrow {
     width: 14px;
@@ -202,11 +202,11 @@
   .new-message-badge {
     transition: none !important;
   }
-  
+
   .new-message-badge-pulse {
     animation: none !important;
   }
-  
+
   .new-message-badge-icon,
   .new-message-badge-arrow {
     transition: none !important;
