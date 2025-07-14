@@ -188,7 +188,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {(stats.pageTypeDistribution && Array.isArray(stats.pageTypeDistribution) && stats.pageTypeDistribution.length > 0) ? (
+          {(stats?.pageTypeDistribution && Array.isArray(stats.pageTypeDistribution) && stats.pageTypeDistribution.length > 0) ? (
             stats.pageTypeDistribution.map((type, index) => {
               // Additional safety check for type object
               if (!type || typeof type !== 'object' || !type.type) {

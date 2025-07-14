@@ -50,7 +50,7 @@ export async function GET(
     const { walletAddress } = await context.params;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -101,7 +101,7 @@ export async function POST(
     const { walletAddress } = await context.params;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -170,7 +170,7 @@ export async function DELETE(
     const walletAddress = params.walletAddress;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
