@@ -60,7 +60,7 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
             fontWeight: '500'
           },
           formatCell: (value: string, row: TokenMarketData) => {
-            return `${value}\n${row.symbol.toUpperCase()}`;
+            return `${value || ''}\n${(row?.symbol || '').toUpperCase()}`;
           }
         },
         {
@@ -88,16 +88,8 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
               textAlign: 'right'
             },
             formatCell: (value: number, row: TokenGainerData) => {
-              const changePercent = row.priceChangePercentage24h || 0;
-              const color = changePercent >= 0 ? '#22c55e' : '#ef4444';
-              return `${formatCurrency(value)}\n${formatPercentage(changePercent)}`;
-            },
-            style: (value: number, row: TokenGainerData) => {
-              const changePercent = row.priceChangePercentage24h || 0;
-              return {
-                textAlign: 'right',
-                color: changePercent >= 0 ? '#22c55e' : '#ef4444'
-              };
+              const changePercent = row?.priceChangePercentage24h || 0;
+              return `${formatCurrency(value || 0)}\n${formatPercentage(changePercent)}`;
             }
           }
         );
@@ -109,7 +101,7 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
             width: 120,
             showSort: true,
             formatCell: (value: string, row: NewTokenData) => {
-              const daysOld = row.daysOld || 0;
+              const daysOld = row?.daysOld || 0;
               return daysOld === 0 ? 'Today' : `${daysOld}d ago`;
             }
           }
@@ -125,13 +117,7 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
               textAlign: 'right'
             },
             formatCell: (value: number) => {
-              return formatPercentage(value);
-            },
-            style: (value: number) => {
-              return {
-                textAlign: 'right',
-                color: value >= 0 ? '#22c55e' : '#ef4444'
-              };
+              return formatPercentage(value || 0);
             }
           }
         );
