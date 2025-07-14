@@ -76,10 +76,22 @@ export async function GET(request: NextRequest) {
             // Extract event data from history entry
             const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
             
-            // For 'following' feed, filter to only include events from followed users
-            if (feedType === 'following' && followingList &&
-                !followingList.some(f => f.targetAddress === entry.walletAddress)) {
-              return null;
+            // Apply feed type filtering
+            if (feedType === 'following') {
+              // For 'following' feed, only include events from followed users
+              if (!followingList.some(f => f.targetAddress === entry.walletAddress)) {
+                return null;
+              }
+            } else if (feedType === 'for-you') {
+              // For 'for-you' feed, show recent activity from today or content with engagement
+              const todayStart = new Date().setHours(0, 0, 0, 0);
+              const isFromToday = entry.timestamp >= todayStart;
+              const hasEngagement = entry.metadata?.likes && entry.metadata.likes > 0;
+              
+              // Include if: recent activity from today OR has some engagement OR is from profile owner
+              if (!isFromToday && !hasEngagement && entry.walletAddress !== walletAddress) {
+                return null;
+              }
             }
             
             // Prepare user data for the event

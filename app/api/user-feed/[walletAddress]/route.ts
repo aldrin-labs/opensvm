@@ -223,59 +223,8 @@ export async function GET(
     // Check Qdrant health
     const isHealthy = await checkQdrantHealth();
     if (!isHealthy) {
-      // Return mock data for testing when Qdrant is not available
-      console.log('Qdrant not available, returning mock feed data for testing');
-      
-      const mockEvents: FeedEvent[] = [
-        {
-          id: 'mock-1',
-          eventType: 'transaction',
-          timestamp: Date.now() - 1000 * 60 * 30, // 30 minutes ago
-          userAddress: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-          userName: 'Active User 1',
-          userAvatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user1',
-          content: 'Completed a DeFi transaction on Jupiter',
-          targetAddress: validatedAddress,
-          metadata: { amount: '1.5', token: 'SOL' },
-          likes: 3,
-          hasLiked: false
-        },
-        {
-          id: 'mock-2',
-          eventType: 'visit',
-          timestamp: Date.now() - 1000 * 60 * 45, // 45 minutes ago
-          userAddress: '8xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-          userName: 'Active User 2',
-          userAvatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user2',
-          content: 'Explored token analytics page',
-          targetAddress: validatedAddress,
-          metadata: {},
-          likes: 1,
-          hasLiked: false
-        },
-        {
-          id: 'mock-3',
-          eventType: 'like',
-          timestamp: Date.now() - 1000 * 60 * 60, // 1 hour ago
-          userAddress: '9xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
-          userName: 'Active User 3',
-          userAvatar: 'https://api.dicebear.com/7.x/adventurer/svg?seed=user3',
-          content: 'Liked a user profile',
-          targetAddress: validatedAddress,
-          metadata: {},
-          likes: 5,
-          hasLiked: false
-        }
-      ];
-      
-      // Filter by feed type for mock data
-      let filteredMockEvents = mockEvents;
-      if (feedType === 'following') {
-        // For following feed, show empty for demo since user likely follows no one
-        filteredMockEvents = [];
-      }
-      
-      return NextResponse.json({ events: filteredMockEvents });
+      console.log('Qdrant not available, returning empty feed');
+      return NextResponse.json({ events: [] });
     }
 
     
