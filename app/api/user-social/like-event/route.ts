@@ -12,6 +12,7 @@ import {
 } from '@/lib/qdrant';
 import { generateId } from '@/lib/user-history-utils';
 import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
+import { SSEManager } from '@/lib/sse-manager';
 
 // Event Like entry interface
 interface EventLikeEntry {
@@ -109,6 +110,16 @@ export async function POST(request: NextRequest) {
     
     // Save updated event back to database
     await storeHistoryEntry(eventEntry);
+    
+    // Broadcast feed event for real-time updates
+    const sseManager = SSEManager.getInstance();
+    sseManager.broadcastFeedEvent({
+      type: 'like_event',
+      walletAddress: auth.walletAddress,
+      eventId,
+      newLikeCount: eventEntry.metadata.likes,
+      timestamp: Date.now()
+    });
     
     // Return success response
     return NextResponse.json({

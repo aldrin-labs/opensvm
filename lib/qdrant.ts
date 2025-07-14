@@ -219,19 +219,33 @@ export async function getUserHistory(
   } = {}
 ): Promise<{ history: UserHistoryEntry[]; total: number }> {
   try {
-
-    
     const { limit = 100, offset = 0, pageType } = options;
+    
+    // Debug logging
+    const displayWallet = walletAddress || '(all users)';
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`getUserHistory called for: ${displayWallet}, limit: ${limit}, offset: ${offset}`);
+    }
     
     // Build filter
     const filter: any = {
-      must: [
-        {
-          key: 'walletAddress',
-          match: { value: walletAddress }
-        }
-      ]
+      must: []
     };
+    
+    // Only filter by wallet address if one is provided
+    if (walletAddress && walletAddress.trim() !== '') {
+      filter.must.push({
+        key: 'walletAddress',
+        match: { value: walletAddress }
+      });
+      if (process.env.NODE_ENV === 'development') {
+        console.log(`Added wallet filter for: ${displayWallet}`);
+      }
+    } else {
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No wallet filter - fetching from all users');
+      }
+    }
     
     if (pageType) {
       filter.must.push({
@@ -240,24 +254,71 @@ export async function getUserHistory(
       });
     }
     
-    // Search with filter
-    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, {
+    // If no filters are specified, remove the filter entirely to get all entries
+    const searchParams: any = {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
-      filter,
       limit,
       offset,
       with_payload: true
-    });
+    };
+    
+    if (filter.must.length > 0) {
+      searchParams.filter = filter;
+    }
+    
+    // Use scroll instead of search to get results ordered by timestamp
+    // Scroll API allows us to get results in insertion order and we can sort by timestamp
+    const scrollParams: any = {
+      limit,
+      offset,
+      with_payload: true,
+      order_by: {
+        key: 'timestamp',
+        direction: 'desc' // Most recent first
+      }
+    };
+    
+    if (filter.must.length > 0) {
+      scrollParams.filter = filter;
+    }
+    
+    // Use scroll API to get properly ordered results
+    const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
     
     // Get total count
-    const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, {
-      filter
-    });
+    const countParams: any = {};
+    if (filter.must.length > 0) {
+      countParams.filter = filter;
+    }
+    const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
     
-    const history = result.map(point => point.payload as unknown as UserHistoryEntry);
+    // Scroll API returns { points: [...] } instead of direct array
+    const points = result.points || result;
+    const history = points.map(point => point.payload as unknown as UserHistoryEntry);
     
-    // Sort by timestamp (newest first)
-    history.sort((a, b) => b.timestamp - a.timestamp);
+    // Debug logging for results
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`getUserHistory results: ${history.length} entries retrieved out of ${countResult.count} total`);
+      if (history.length > 0) {
+        const uniqueWallets = [...new Set(history.map(h => h.walletAddress))];
+        console.log(`Unique wallets in results: ${uniqueWallets.length}`);
+        uniqueWallets.slice(0, 5).forEach(w => {
+          const count = history.filter(h => h.walletAddress === w).length;
+          console.log(`  ${w}: ${count} entries`);
+        });
+        
+        // Show timestamp information for debugging
+        console.log('Sample entries with timestamps:');
+        history.slice(0, 5).forEach((entry, i) => {
+          const date = new Date(entry.timestamp);
+          const hoursAgo = Math.round((Date.now() - entry.timestamp) / (1000 * 60 * 60));
+          console.log(`  ${i + 1}. ${entry.walletAddress} - ${entry.pageType} - ${date.toISOString()} (${hoursAgo}h ago)`);
+        });
+      }
+    }
+    
+    // Data is already sorted by timestamp via order_by in the query
+    // No need to sort again as scroll API with order_by returns pre-sorted results
     
     return {
       history,

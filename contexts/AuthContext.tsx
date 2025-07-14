@@ -12,9 +12,11 @@ interface AuthContextType {
   walletAddress: string | null;
   loading: boolean;
   error: string | null;
+  userCancelled: boolean;
   login: (walletAddress: string, signMessage: (message: string) => Promise<string>) => Promise<void>;
   logout: () => Promise<void>;
   refreshSession: () => Promise<void>;
+  clearCancellation: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -24,6 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [walletAddress, setWalletAddress] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [userCancelled, setUserCancelled] = useState(false);
 
   // Check session status
   const refreshSession = useCallback(async () => {
@@ -57,6 +60,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  // Clear cancellation state (called when user explicitly clicks connect)
+  const clearCancellation = useCallback(() => {
+    setUserCancelled(false);
+    setError(null);
   }, []);
 
   // Sign-once login function
@@ -110,7 +119,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       
     } catch (err) {
       console.error('Login failed:', err);
-      setError(err instanceof Error ? err.message : 'Login failed');
+      
+      // Check if this was a user cancellation (common cancellation patterns)
+      const errorMessage = err instanceof Error ? err.message : String(err);
+      const isCancellation = errorMessage.toLowerCase().includes('user rejected') ||
+                            errorMessage.toLowerCase().includes('user denied') ||
+                            errorMessage.toLowerCase().includes('user cancelled') ||
+                            errorMessage.toLowerCase().includes('user canceled') ||
+                            errorMessage.toLowerCase().includes('rejected by user') ||
+                            errorMessage.toLowerCase().includes('transaction rejected');
+      
+      if (isCancellation) {
+        setUserCancelled(true);
+        setError(null); // Don't show error for user cancellation
+      } else {
+        setError(errorMessage || 'Login failed');
+      }
+      
       setIsAuthenticated(false);
       setWalletAddress(null);
       throw err;
@@ -132,6 +157,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsAuthenticated(false);
       setWalletAddress(null);
       setError(null);
+      setUserCancelled(false);
     } catch (err) {
       console.error('Logout failed:', err);
       setError('Logout failed');
@@ -150,9 +176,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     walletAddress,
     loading,
     error,
+    userCancelled,
     login,
     logout,
-    refreshSession
+    refreshSession,
+    clearCancellation
   };
 
   return (
@@ -173,6 +201,6 @@ export function useAuthContext() {
 
 // Simple hook for getting current user info (no auth required)
 export function useCurrentUser() {
-  const { isAuthenticated, walletAddress, loading } = useAuthContext();
-  return { isAuthenticated, walletAddress, loading };
+  const { isAuthenticated, walletAddress, loading, userCancelled } = useAuthContext();
+  return { isAuthenticated, walletAddress, loading, userCancelled };
 }

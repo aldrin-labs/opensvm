@@ -64,7 +64,7 @@ export interface UserProfile {
   isPublic: boolean;
   createdAt: number;
   lastActive: number;
-  stats: UserHistoryStats;
+  stats?: UserHistoryStats;
   socialStats: UserSocialStats;
   history: UserHistoryEntry[];
 }

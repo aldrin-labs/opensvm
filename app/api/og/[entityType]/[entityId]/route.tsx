@@ -115,7 +115,7 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
           displayName: profile.displayName,
           followers: profile.socialStats.followers,
           pageViews: profile.socialStats.profileViews,
-          totalVisits: profile.stats.totalVisits
+          totalVisits: profile.stats?.totalVisits || 0
         };
       }
       

@@ -9,7 +9,7 @@ interface WalletButtonProps {}
 
 export const WalletButton: React.FC<WalletButtonProps> = () => {
   const { connected, connecting, disconnect, select, wallets, publicKey, signMessage } = useWallet();
-  const { isAuthenticated, login, logout, loading: authLoading } = useAuthContext();
+  const { isAuthenticated, login, logout, loading: authLoading, userCancelled, clearCancellation } = useAuthContext();
   const [mounted, setMounted] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
 
@@ -17,10 +17,10 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
     setMounted(true);
   }, []);
 
-  // Auto-authenticate when wallet connects
+  // Auto-authenticate when wallet connects (but not if user cancelled)
   useEffect(() => {
     const authenticate = async () => {
-      if (connected && publicKey && !isAuthenticated && !authLoading && signMessage) {
+      if (connected && publicKey && !isAuthenticated && !authLoading && !userCancelled && signMessage) {
         try {
           const walletAddress = publicKey.toBase58();
           // Create a sign message function that returns base64 string
@@ -44,9 +44,12 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
     };
 
     authenticate();
-  }, [connected, publicKey, isAuthenticated, authLoading, signMessage, login]);
+  }, [connected, publicKey, isAuthenticated, authLoading, userCancelled, signMessage, login]);
 
   const handleConnect = async () => {
+    // Clear any previous cancellation state when user explicitly connects
+    clearCancellation();
+    
     // Find Phantom wallet from available wallets
     const phantomWallet = wallets.find(wallet => wallet.adapter.name === 'Phantom');
     
@@ -73,10 +76,12 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
       }
       // Then disconnect wallet
       await disconnect();
+      // Clear cancellation state 
+      clearCancellation();
     } catch (error) {
       console.error('Failed to disconnect:', error);
     }
-  }, [disconnect, logout, isAuthenticated]);
+  }, [disconnect, logout, isAuthenticated, clearCancellation]);
 
   if (!mounted) {
     return (

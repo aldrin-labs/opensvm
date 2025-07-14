@@ -5,6 +5,7 @@
 
 import { UserHistoryEntry, UserProfile, UserHistoryStats } from '@/types/user-history';
 import { calculateStats, validateWalletAddress } from '@/lib/user-history-utils';
+import { SSEManager } from '@/lib/sse-manager';
 
 const STORAGE_KEY = 'opensvm_user_history';
 const PROFILE_KEY = 'opensvm_user_profiles';
@@ -29,6 +30,21 @@ export class UserHistoryService {
         `${STORAGE_KEY}_${validatedAddress}`,
         JSON.stringify(updatedHistory)
       );
+      
+      // Broadcast feed event for real-time updates
+      const sseManager = SSEManager.getInstance();
+      sseManager.broadcastFeedEvent({
+        type: 'new_entry',
+        walletAddress: validatedAddress,
+        entry: {
+          id: entry.id,
+          pageType: entry.pageType,
+          pageTitle: entry.pageTitle,
+          path: entry.path,
+          timestamp: entry.timestamp,
+          metadata: entry.metadata
+        }
+      });
       
       // Update user profile with recalculated stats
       this.updateUserProfile(validatedAddress, updatedHistory);

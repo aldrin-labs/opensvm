@@ -13,6 +13,7 @@ import {
   deleteUserHistory,
   checkQdrantHealth 
 } from '@/lib/qdrant';
+import { SSEManager } from '@/lib/sse-manager';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest, walletAddress: string): Promise<{ isValid: boolean; session?: any }> {
@@ -50,7 +51,7 @@ export async function GET(
     const { walletAddress } = await context.params;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -101,7 +102,7 @@ export async function POST(
     const { walletAddress } = await context.params;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -142,6 +143,21 @@ export async function POST(
     // Store in Qdrant
     await storeHistoryEntry(entry);
 
+    // Broadcast feed event for real-time updates
+    const sseManager = SSEManager.getInstance();
+    sseManager.broadcastFeedEvent({
+      type: 'new_entry',
+      walletAddress: validatedAddress,
+      entry: {
+        id: entry.id,
+        pageType: entry.pageType,
+        pageTitle: entry.pageTitle,
+        path: entry.path,
+        timestamp: entry.timestamp,
+        metadata: entry.metadata
+      }
+    });
+
     // Get updated total count
     const result = await getUserHistory(validatedAddress, { limit: 1 });
 
@@ -170,7 +186,7 @@ export async function DELETE(
     const walletAddress = params.walletAddress;
 
     // Authentication check
-    const authResult = isValidRequest(request, walletAddress);
+    const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
