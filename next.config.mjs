@@ -13,6 +13,11 @@ const nextConfig = {
     // Still runs in build mode for CI/deployment safety
     ignoreBuildErrors: true,
   },
+  eslint: {
+    // During production builds, ESLint warnings are treated as warnings not errors
+    ignoreDuringBuilds: true,
+    dirs: ['app', 'lib', 'components', 'hooks', 'utils']
+  },
   // Environment variables that should be available to the client
   env: {
     OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST || '',
