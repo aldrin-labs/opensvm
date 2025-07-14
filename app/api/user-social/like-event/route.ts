@@ -115,7 +115,7 @@ export async function POST(request: NextRequest) {
     const sseManager = SSEManager.getInstance();
     sseManager.broadcastFeedEvent({
       type: 'like_event',
-      walletAddress: `${auth.walletAddress.slice(0, 4)}...${auth.walletAddress.slice(-4)}`, // Redacted for privacy
+      walletAddress: auth.walletAddress,
       eventId,
       newLikeCount: eventEntry.metadata.likes,
       timestamp: Date.now()

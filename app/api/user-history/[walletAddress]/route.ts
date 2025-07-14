@@ -147,7 +147,7 @@ export async function POST(
     const sseManager = SSEManager.getInstance();
     sseManager.broadcastFeedEvent({
       type: 'new_entry',
-      walletAddress: `${validatedAddress.slice(0, 4)}...${validatedAddress.slice(-4)}`, // Redacted for privacy
+      walletAddress: validatedAddress,
       entry: {
         id: entry.id,
         pageType: entry.pageType,

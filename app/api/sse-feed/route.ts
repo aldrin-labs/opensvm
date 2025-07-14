@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
               data: { 
                 clientId, 
                 feedType, 
-                walletAddress: `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`,
+                walletAddress: walletAddress,
                 connected: true
               },
               timestamp: Date.now()

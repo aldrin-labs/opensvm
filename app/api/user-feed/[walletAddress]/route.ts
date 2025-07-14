@@ -171,7 +171,7 @@ async function getRealFeedEvents(
         // Show sample filtered events
         console.log('Sample filtered events:');
         filteredEvents.slice(0, 3).forEach((event, i) => {
-          console.log(`  ${i + 1}. ${event.userAddress.slice(0, 4)}...${event.userAddress.slice(-4)} - ${event.eventType} - ${new Date(event.timestamp).toISOString()}`);
+          console.log(`  ${i + 1}. ${event.userAddress} - ${event.eventType} - ${new Date(event.timestamp).toISOString()}`);
         });
       }
     }
@@ -191,10 +191,9 @@ async function getRealFeedEvents(
     // Limit to requested number
     const finalEvents = filteredEvents.slice(0, limit);
     
-    // Add some debug logging with privacy protection
-    const redactedWallet = `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`;
+    // Add some debug logging 
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Feed API: ${type} feed for ${redactedWallet}`);
+      console.log(`Feed API: ${type} feed for ${walletAddress}`);
       console.log(`Raw history entries: ${history.length}`);
       console.log(`After event type filter: ${filteredEvents.length}`);
       
@@ -202,7 +201,7 @@ async function getRealFeedEvents(
       if (history.length > 0) {
         console.log('Sample raw entries:');
         history.slice(0, 3).forEach((entry, i) => {
-          console.log(`  ${i + 1}. ${entry.walletAddress.slice(0, 4)}...${entry.walletAddress.slice(-4)} - ${entry.pageType} - ${new Date(entry.timestamp).toISOString()}`);
+          console.log(`  ${i + 1}. ${entry.walletAddress} - ${entry.pageType} - ${new Date(entry.timestamp).toISOString()}`);
         });
       }
     }
@@ -213,7 +212,7 @@ async function getRealFeedEvents(
         const sseManager = SSEManager.getInstance();
         sseManager.broadcastFeedEvent({
           feedType: type,
-          walletAddress: redactedWallet,
+          walletAddress: walletAddress,
           events: finalEvents.slice(0, 5), // Only broadcast first 5 events to avoid overwhelming clients
           totalCount: finalEvents.length,
           timestamp: Date.now()

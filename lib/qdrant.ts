@@ -222,9 +222,9 @@ export async function getUserHistory(
     const { limit = 100, offset = 0, pageType } = options;
     
     // Debug logging
-    const redactedWallet = walletAddress ? `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}` : '(all users)';
+    const displayWallet = walletAddress || '(all users)';
     if (process.env.NODE_ENV === 'development') {
-      console.log(`getUserHistory called for: ${redactedWallet}, limit: ${limit}, offset: ${offset}`);
+      console.log(`getUserHistory called for: ${displayWallet}, limit: ${limit}, offset: ${offset}`);
     }
     
     // Build filter
@@ -239,7 +239,7 @@ export async function getUserHistory(
         match: { value: walletAddress }
       });
       if (process.env.NODE_ENV === 'development') {
-        console.log(`Added wallet filter for: ${redactedWallet}`);
+        console.log(`Added wallet filter for: ${displayWallet}`);
       }
     } else {
       if (process.env.NODE_ENV === 'development') {
@@ -304,7 +304,7 @@ export async function getUserHistory(
         console.log(`Unique wallets in results: ${uniqueWallets.length}`);
         uniqueWallets.slice(0, 5).forEach(w => {
           const count = history.filter(h => h.walletAddress === w).length;
-          console.log(`  ${w.slice(0, 4)}...${w.slice(-4)}: ${count} entries`);
+          console.log(`  ${w}: ${count} entries`);
         });
         
         // Show timestamp information for debugging
@@ -312,7 +312,7 @@ export async function getUserHistory(
         history.slice(0, 5).forEach((entry, i) => {
           const date = new Date(entry.timestamp);
           const hoursAgo = Math.round((Date.now() - entry.timestamp) / (1000 * 60 * 60));
-          console.log(`  ${i + 1}. ${entry.walletAddress.slice(0, 4)}...${entry.walletAddress.slice(-4)} - ${entry.pageType} - ${date.toISOString()} (${hoursAgo}h ago)`);
+          console.log(`  ${i + 1}. ${entry.walletAddress} - ${entry.pageType} - ${date.toISOString()} (${hoursAgo}h ago)`);
         });
       }
     }
