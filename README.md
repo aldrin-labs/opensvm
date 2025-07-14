@@ -70,10 +70,53 @@ bun run start
 
 For more detailed documentation, see:
 
-- [Architecture](./docs/ARCHITECTURE.md) - System architecture and components
+- [Architecture Documentation](./docs/architecture/) - **📚 Comprehensive architectural documentation**
+  - [System Overview](./docs/architecture/system-overview.md) - High-level system architecture
+  - [Component Architecture](./docs/architecture/components.md) - Component breakdown and relationships
+  - [Architecture Decision Records](./docs/architecture/adr/) - Architectural decisions and rationale
+  - [Contributing Guide](./docs/architecture/CONTRIBUTING.md) - How to maintain architecture docs
 - [Features](./docs/FEATURES.md) - Detailed feature descriptions
 - [API Reference](./docs/API.md) - API endpoints and usage
 - [Development Guide](./docs/DEVELOPMENT.md) - Development setup and guidelines
+
+### 🏗️ Architecture Overview
+
+OpenSVM is built with a modular, scalable architecture:
+
+```mermaid
+graph TB
+    subgraph "Frontend Layer"
+        UI[Next.js App]
+        COMPONENTS[React Components]
+        VISUALIZATIONS[D3.js Visualizations]
+    end
+    
+    subgraph "API Layer"
+        ROUTES[API Routes]
+        MIDDLEWARE[Middleware]
+        CACHE[Caching]
+    end
+    
+    subgraph "Data Layer"
+        SOLANA[Solana Integration]
+        VECTOR[Vector Database]
+        AI[AI Services]
+    end
+    
+    UI --> ROUTES
+    ROUTES --> SOLANA
+    ROUTES --> VECTOR
+    ROUTES --> AI
+```
+
+**Key Architectural Principles:**
+- **Modularity**: Clear separation of concerns with well-defined interfaces
+- **Performance**: Optimized for fast response times and efficient resource usage
+- **Scalability**: Designed for horizontal scaling and growth
+- **Maintainability**: Comprehensive documentation and testing
+- **Security**: Security-first design with proper access controls
+
+For detailed architectural information, see our [Architecture Documentation](./docs/architecture/).
 
 ## License
 

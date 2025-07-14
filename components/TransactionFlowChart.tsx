@@ -1,3 +1,14 @@
+/**
+ * Interactive transaction flow visualization component using D3.js
+ * 
+ * This component renders a force-directed graph visualization of Solana transactions,
+ * showing relationships between accounts, programs, and signers.
+ * 
+ * @see docs/architecture/components.md#transaction-components
+ * @see docs/architecture/adr/002-frontend-framework-choice.md
+ * @see docs/architecture/system-overview.md#data-visualization-system
+ */
+
 'use client';
 
 import type { DetailedTransactionInfo } from '@/lib/solana';
@@ -21,6 +32,18 @@ interface Link {
   target: string | Node;
 }
 
+/**
+ * TransactionFlowChart renders interactive transaction flow visualizations
+ * 
+ * Features:
+ * - Force-directed graph layout using D3.js
+ * - Interactive node dragging and zooming
+ * - Color-coded node types (signer, account, program)
+ * - Dynamic relationship visualization
+ * 
+ * @param tx - Detailed transaction information from Solana RPC
+ * @returns React component with SVG-based transaction visualization
+ */
 export default function TransactionFlowChart({ tx }: TransactionFlowChartProps) {
   const svgRef = useRef<SVGSVGElement>(null);
 
