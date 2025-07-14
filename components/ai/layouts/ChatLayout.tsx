@@ -23,11 +23,11 @@ export interface ChatLayoutProps {
   onExpand?: () => void;
 }
 
-export function ChatLayout({ 
-  children, 
-  variant, 
-  isOpen, 
-  className = '', 
+export function ChatLayout({
+  children,
+  variant,
+  isOpen,
+  className = '',
   onWidthChange,
   onResizeStart,
   onResizeEnd,
@@ -42,7 +42,7 @@ export function ChatLayout({
   onHelp,
   onExpand,
 }: ChatLayoutProps) {
-  const [width, setWidth] = useState(() => 
+  const [width, setWidth] = useState(() =>
     typeof window !== 'undefined' ? (window.innerWidth < 640 ? window.innerWidth : 480) : 480
   );
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -55,10 +55,10 @@ export function ChatLayout({
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
-    
+
     const deltaX = lastX.current - e.clientX;
     lastX.current = e.clientX;
-    
+
     requestAnimationFrame(() => {
       const newWidth = Math.min(800, Math.max(300, (sidebarRef.current?.offsetWidth || 0) + deltaX));
       setWidth(newWidth);
@@ -154,7 +154,7 @@ export function ChatLayout({
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
             Skip to chat input
           </a>
-          
+
           <div className="w-full max-w-2xl h-[80vh] max-h-[600px] flex flex-col overflow-hidden">
             {children}
           </div>
@@ -179,14 +179,16 @@ export function ChatLayout({
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
             Skip to chat input
           </a>
-          
+
           <div
             className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/10 active:bg-white/20 ${isExpanded ? 'hidden' : ''}`}
             onMouseDown={handleMouseDown}
             aria-hidden="true"
           />
-          <div className="h-full w-full overflow-hidden flex flex-col pr-3" style={{ boxSizing: 'border-box' }}>
-            <div className="flex h-[40px] border-b border-white/20 flex-shrink-0" role="navigation">
+          {/* Main content container with proper flex layout */}
+          <div className="h-full w-full flex flex-col" style={{ boxSizing: 'border-box' }}>
+            {/* Header with tabs and buttons */}
+            <div className="flex h-[40px] border-b border-white/20 flex-shrink-0 relative" role="navigation">
               <div className="flex items-center" role="tablist">
                 <button
                   onClick={() => onTabChange?.('agent')}
@@ -219,7 +221,7 @@ export function ChatLayout({
                   KNOWLEDGE
                 </button>
               </div>
-              <div className="flex items-center ml-auto px-2 gap-3">
+              <div className="flex items-center ml-auto pl-2 pr-4 gap-1">
                 <button
                   onClick={handleExpand}
                   className="hidden sm:block p-2 text-white hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
@@ -245,17 +247,83 @@ export function ChatLayout({
                 >
                   <Plus size={16} />
                 </button>
+                <div className="relative">
+                  <button
+                    className="p-2 text-white hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                    title="More"
+                    onClick={() => setIsMenuOpen(!isMenuOpen)}
+                    aria-label="More options"
+                    aria-expanded={isMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <MoreHorizontal size={16} />
+                  </button>
+                  {/* Dropdown menu positioned properly to avoid clipping */}
+                  <div
+                    ref={menuRef}
+                    className={`absolute right-0 top-full mt-1 w-48 bg-black border border-white/20 rounded-lg shadow-lg overflow-hidden transition-all duration-200 z-[300] ${isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
+                      }`}
+                    style={{
+                      maxWidth: 'calc(100vw - 20px)',
+                      transform: isMenuOpen ? 'translateX(calc(-100% + 40px))' : 'translateX(calc(-100% + 40px)) translateY(-8px)'
+                    }}
+                    role="menu"
+                    aria-label="More options menu"
+                    aria-hidden={!isMenuOpen}
+                  >
+                    <div className="py-1">
+                      <button
+                        onClick={onReset}
+                        className="block sm:hidden w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <RotateCcw size={16} />
+                        Reset
+                      </button>
+                      <button
+                        onClick={onNewChat}
+                        className="block sm:hidden w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <Plus size={16} />
+                        New Chat
+                      </button>
+                      <button
+                        onClick={handleOpenSettings}
+                        className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <Settings size={16} />
+                        Settings
+                      </button>
+                      <button
+                        onClick={handleHelp}
+                        className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <HelpCircle size={16} />
+                        Help
+                      </button>
+                      <button
+                        onClick={handleExport}
+                        className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <Download size={16} />
+                        Export Chat
+                      </button>
+                      <button
+                        onClick={handleShare}
+                        className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                        role="menuitem"
+                      >
+                        <Share2 size={16} />
+                        Share
+                      </button>
+                    </div>
+                  </div>
+                </div>
                 <button
-                  className="p-2 text-white hover:bg-white/10 rounded-sm relative transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  title="More"
-                  onClick={() => setIsMenuOpen(!isMenuOpen)}
-                  aria-label="More options"
-                  aria-expanded={isMenuOpen}
-                  aria-haspopup="menu"
-                >
-                  <MoreHorizontal size={16} />
-                </button>
-<button
                   className="p-2 text-white hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
                   onClick={onClose}
                   title="Close"
@@ -265,67 +333,8 @@ export function ChatLayout({
                 </button>
               </div>
             </div>
-            <div
-              ref={menuRef}
-              className={`absolute right-2 top-[40px] w-48 bg-black border border-white/20 rounded-lg shadow-lg overflow-hidden transition-all duration-200 z-[300] ${
-                isMenuOpen ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-2 pointer-events-none'
-              }`}
-              role="menu"
-              aria-label="More options menu"
-              aria-hidden={!isMenuOpen}
-            >
-              <div className="py-1">
-                <button
-                  onClick={onReset}
-                  className="block sm:hidden w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <RotateCcw size={16} />
-                  Reset
-                </button>
-                <button
-                  onClick={onReset}
-                  className="block sm:hidden w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <Plus size={16} />
-                  New Chat
-                </button>
-                <button
-                  onClick={handleOpenSettings}
-                  className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <Settings size={16} />
-                  Settings
-                </button>
-                <button
-                  onClick={handleHelp}
-                  className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <HelpCircle size={16} />
-                  Help
-                </button>
-                <button
-                  onClick={handleExport}
-                  className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <Download size={16} />
-                  Export Chat
-                </button>
-                <button
-                  onClick={handleShare}
-                  className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                  role="menuitem"
-                >
-                  <Share2 size={16} />
-                  Share
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 min-h-0 overflow-hidden bg-black">
+            {/* Main content area with proper flex and overflow handling */}
+            <div className="flex-1 min-h-0 bg-black">
               {children}
             </div>
           </div>
@@ -345,7 +354,7 @@ export function ChatLayout({
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
             Skip to chat input
           </a>
-          
+
           {children}
         </div>
       );
