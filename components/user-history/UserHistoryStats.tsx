@@ -54,6 +54,18 @@ const pageTypeColors = {
 };
 
 export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
+  // Add safety check for stats object
+  if (!stats) {
+    return (
+      <Card>
+        <CardContent className="p-6">
+          <div className="text-center text-muted-foreground">
+            <p>No statistics available</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
@@ -72,15 +84,17 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
 
   const getAverageVisitsPerDay = () => {
     const daysActive = getDaysActive();
-    return daysActive > 0 ? (stats.totalVisits / daysActive).toFixed(1) : '0';
+    return daysActive > 0 ? ((stats.totalVisits || 0) / daysActive).toFixed(1) : '0';
   };
 
   const getMaxDailyVisits = () => {
-    return Math.max(...stats.dailyActivity.map(d => d.visits), 0);
+    const dailyActivity = stats.dailyActivity || [];
+    return Math.max(...dailyActivity.map(d => d.visits), 0);
   };
 
   const getRecentActivity = () => {
-    const last7Days = stats.dailyActivity.slice(-7);
+    const dailyActivity = stats.dailyActivity || [];
+    const last7Days = dailyActivity.slice(-7);
     return last7Days.reduce((sum, day) => sum + day.visits, 0);
   };
 
@@ -121,7 +135,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
             <div className="mt-4 text-xs text-muted-foreground">
-              Based on {stats.totalVisits} total visits
+              Based on {(stats.totalVisits || 0)} total visits
             </div>
           </CardContent>
         </Card>
@@ -218,15 +232,16 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
             Daily Activity Timeline
           </CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Your browsing activity over the last {Math.min(stats.dailyActivity.length, 30)} days
+            Your browsing activity over the last {Math.min((stats.dailyActivity || []).length, 30)} days
           </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* Activity Chart */}
             <div className="h-32 flex items-end justify-between gap-1">
-              {stats.dailyActivity.slice(-30).map((day, index) => {
-                const maxVisits = Math.max(...stats.dailyActivity.map(d => d.visits));
+              {(stats.dailyActivity || []).slice(-30).map((day, index) => {
+                const dailyActivity = stats.dailyActivity || [];
+                const maxVisits = Math.max(...dailyActivity.map(d => d.visits), 1);
                 const height = maxVisits > 0 ? (day.visits / maxVisits) * 100 : 0;
                 
                 return (
@@ -243,8 +258,8 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
             {/* Date Labels */}
             <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500">
               <span>
-                {stats.dailyActivity.length > 0 && formatDate(
-                  new Date(stats.dailyActivity[Math.max(0, stats.dailyActivity.length - 30)].date).getTime()
+                {(stats.dailyActivity || []).length > 0 && formatDate(
+                  new Date((stats.dailyActivity || [])[Math.max(0, (stats.dailyActivity || []).length - 30)].date).getTime()
                 )}
               </span>
               <span>Today</span>
@@ -279,9 +294,10 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               date.setDate(date.getDate() - (48 - i));
               const dateStr = date.toISOString().split('T')[0];
               
-              const dayData = stats.dailyActivity.find(d => d.date === dateStr);
+              const dayData = (stats.dailyActivity || []).find(d => d.date === dateStr);
               const visits = dayData?.visits || 0;
-              const maxVisits = Math.max(...stats.dailyActivity.map(d => d.visits));
+              const dailyActivity = stats.dailyActivity || [];
+              const maxVisits = Math.max(...dailyActivity.map(d => d.visits), 1);
               
               let intensity = 0;
               if (visits > 0) {

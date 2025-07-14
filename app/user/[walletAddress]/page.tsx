@@ -625,8 +625,20 @@ export default function UserProfilePage() {
               </Card>
             ) : (
               <>
-                <UserHistoryStats stats={profile.stats} />
-                <UserActivityCalendar history={profile.history} />
+                {profile.stats ? (
+                  <>
+                    <UserHistoryStats stats={profile.stats} />
+                    <UserActivityCalendar history={profile.history} />
+                  </>
+                ) : (
+                  <Card>
+                    <CardContent className="p-6">
+                      <div className="text-center text-muted-foreground">
+                        <p>No statistics available</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </>
             )}
           </TabsContent>
