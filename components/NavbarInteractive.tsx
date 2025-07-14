@@ -13,7 +13,7 @@ import {
 import { SettingsMenu } from './SettingsMenu';
 import { WalletButton } from './WalletButton';
 import { X, User } from 'lucide-react';
-import { AIChatSidebar } from './ai/AIChatSidebar';
+
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useWallet } from '@solana/wallet-adapter-react';
 
@@ -23,11 +23,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
   const router = useRouter();
   const isMobile = useMediaQuery('(max-width: 768px)');
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(400);
-  const [isResizing, setIsResizing] = useState(false);
+
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [contentPadding, setContentPadding] = useState<string>('0px');
+
   const [currentTime, setCurrentTime] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
   const { connected, publicKey } = useWallet();
@@ -74,14 +72,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
     };
   }, []);
 
-  // Adjust main content padding when AI sidebar is open
-  useEffect(() => {
-    if (isAIChatOpen) {
-      setContentPadding(`${sidebarWidth}px`);
-    } else {
-      setContentPadding('0px');
-    }
-  }, [isAIChatOpen, sidebarWidth]);
+
 
   // Dropdown icon component - DRY pattern
   const DropdownIcon = () => (
@@ -103,19 +94,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
     }
   };
 
-  const handleWidthChange = (newWidth: number) => {
-    setSidebarWidth(newWidth);
-  };
 
-  const handleResizeStart = () => {
-    setIsResizing(true);
-    document.body.style.cursor = 'col-resize';
-  };
-
-  const handleResizeEnd = () => {
-    setIsResizing(false);
-    document.body.style.cursor = 'default';
-  };
 
   // Focus trap for keyboard navigation in mobile menu
   const handleTabKey = (e: React.KeyboardEvent) => {
@@ -348,7 +327,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
             <Button 
               size="sm" 
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"
-              onClick={() => setIsAIChatOpen(true)}
+              onClick={() => router.push('/chat')}
               aria-label="Open AI Assistant"
             >
               AI Assistant
@@ -654,7 +633,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
               <Button 
                 className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 flex-1"
                 onClick={() => {
-                  setIsAIChatOpen(true);
+                  router.push('/chat');
                   setIsMobileMenuOpen(false);
                 }}
               >
@@ -665,15 +644,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
         </div>
       </div>
 
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onWidthChange={handleWidthChange}
-        onResizeStart={handleResizeStart}
-        onResizeEnd={handleResizeEnd}
-        initialWidth={sidebarWidth}
-      />
+
     </>
   );
 };

@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
 // Import Navbar directly
 import { NavbarInteractive } from '@/components/NavbarInteractive';
+import { FloatingAIButton } from '@/components/FloatingAIButton';
 
 // Load fonts with preload
 const inter = Inter({
@@ -107,6 +108,7 @@ export default function RootLayout({
             <main className="flex-1 pt-14">
               {children}
             </main>
+            <FloatingAIButton />
           </Suspense>
         </Providers>
       </body>
