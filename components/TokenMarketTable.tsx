@@ -1,8 +1,5 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import * as VTable from '@visactor/vtable';
-import type { ListTableConstructorOptions, ColumnDefine } from '@visactor/vtable';
 import type { TokenMarketData, TokenGainerData, NewTokenData } from '@/types/token-market';
 import { formatNumber, formatCurrency, formatPercentage } from '@/utils/format';
 
@@ -14,225 +11,6 @@ interface TokenMarketTableProps {
 }
 
 export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading }: TokenMarketTableProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const tableInstanceRef = useRef<any>(null);
-
-  useEffect(() => {
-    if (!containerRef.current || !tokens.length || isLoading) return undefined;
-
-    const getColumns = (): ColumnDefine[] => {
-      const baseColumns: ColumnDefine[] = [
-        {
-          field: 'rank',
-          title: '#',
-          width: 50,
-          cellType: 'text',
-          style: {
-            textAlign: 'center',
-            fontWeight: 'bold',
-            color: 'var(--muted-foreground)'
-          }
-        },
-        {
-          field: 'icon',
-          title: '',
-          width: 40,
-          cellType: 'image',
-          style: {
-            padding: [2, 2, 2, 2]
-          },
-          formatCell: (value: string | undefined) => ({
-            src: value || '/images/token-default.png',
-            width: 24,
-            height: 24,
-            shape: 'circle',
-            style: {
-              border: '1px solid var(--border)'
-            }
-          })
-        },
-        {
-          field: 'name',
-          title: 'Token',
-          width: 200,
-          showSort: true,
-          style: {
-            fontWeight: '500'
-          },
-          formatCell: (value: string, row: TokenMarketData) => {
-            return `${value || ''}\n${(row?.symbol || '').toUpperCase()}`;
-          }
-        },
-        {
-          field: 'price',
-          title: 'Price',
-          width: 120,
-          showSort: true,
-          style: {
-            textAlign: 'right'
-          },
-          formatCell: (value: number) => {
-            return value ? formatCurrency(value) : '-';
-          }
-        }
-      ];
-
-      if (type === 'gainers') {
-        baseColumns.push(
-          {
-            field: 'priceChange24h',
-            title: '24h Change',
-            width: 120,
-            showSort: true,
-            style: {
-              textAlign: 'right'
-            },
-            formatCell: (value: number, row: TokenGainerData) => {
-              const changePercent = row?.priceChangePercentage24h || 0;
-              return `${formatCurrency(value || 0)}\n${formatPercentage(changePercent)}`;
-            }
-          }
-        );
-      } else if (type === 'new') {
-        baseColumns.push(
-          {
-            field: 'createdAt',
-            title: 'Listed',
-            width: 120,
-            showSort: true,
-            formatCell: (value: string, row: NewTokenData) => {
-              const daysOld = row?.daysOld || 0;
-              return daysOld === 0 ? 'Today' : `${daysOld}d ago`;
-            }
-          }
-        );
-      } else {
-        baseColumns.push(
-          {
-            field: 'priceChangePercentage24h',
-            title: '24h %',
-            width: 100,
-            showSort: true,
-            style: {
-              textAlign: 'right'
-            },
-            formatCell: (value: number) => {
-              return formatPercentage(value || 0);
-            }
-          }
-        );
-      }
-
-      baseColumns.push(
-        {
-          field: 'marketCap',
-          title: 'Market Cap',
-          width: 120,
-          showSort: true,
-          style: {
-            textAlign: 'right'
-          },
-          formatCell: (value: number) => {
-            return value ? formatCurrency(value, true) : '-';
-          }
-        },
-        {
-          field: 'volume24h',
-          title: '24h Volume',
-          width: 120,
-          showSort: true,
-          style: {
-            textAlign: 'right'
-          },
-          formatCell: (value: number) => {
-            return value ? formatCurrency(value, true) : '-';
-          }
-        }
-      );
-
-      return baseColumns;
-    };
-
-    // Create VTable instance
-    const option: ListTableConstructorOptions = {
-      records: tokens.map((token, index) => ({ ...token, rank: index + 1 })),
-      columns: getColumns(),
-      widthMode: 'standard' as const,
-      heightMode: 'standard' as const,
-      defaultRowHeight: 50,
-      hover: {
-        highlightMode: 'row' as const,
-        disableHover: false
-      },
-      theme: VTable.themes.DEFAULT.extends({
-        defaultStyle: {
-          hover: {
-            cellBgColor: 'var(--muted)',
-            inlineRowBgColor: 'var(--muted)'
-          },
-          borderLineWidth: 1,
-          borderColor: 'var(--border)',
-          color: 'var(--foreground)',
-          bgColor: 'var(--background)',
-          fontSize: 14,
-          fontFamily: 'inherit'
-        },
-        headerStyle: {
-          bgColor: 'var(--muted)',
-          color: 'var(--foreground)',
-          fontWeight: 600,
-          fontSize: 14,
-          borderLineWidth: 1,
-          borderColor: 'var(--border)'
-        },
-        frameStyle: {
-          borderColor: 'var(--border)',
-          borderLineWidth: 1
-        },
-        underlayBackgroundColor: 'var(--background)'
-      })
-    };
-
-    // Initialize table
-    if (containerRef.current) {
-      tableInstanceRef.current = new VTable.ListTable({
-        ...option,
-        container: containerRef.current,
-        defaultRowHeight: 50,
-        defaultHeaderRowHeight: 45,
-        widthMode: 'standard' as const,
-        heightMode: 'standard' as const
-      });
-
-      // Add click handler
-      tableInstanceRef.current.on('click_cell', (args: any) => {
-        const rowData = tokens[args.row];
-        if (rowData) {
-          onTokenClick(rowData.address);
-        }
-      });
-
-      // Handle resize
-      const resizeObserver = new ResizeObserver(() => {
-        if (containerRef.current && tableInstanceRef.current) {
-          const rect = containerRef.current.getBoundingClientRect();
-          tableInstanceRef.current.resize(rect.width, rect.height);
-        }
-      });
-
-      resizeObserver.observe(containerRef.current);
-
-      // Cleanup
-      return () => {
-        resizeObserver.disconnect();
-        if (tableInstanceRef.current) {
-          tableInstanceRef.current.dispose();
-        }
-      };
-    }
-    return undefined;
-  }, [tokens, type, onTokenClick, isLoading]);
-
   if (isLoading) {
     return (
       <div className="w-full border border-border rounded-lg overflow-hidden bg-background">
@@ -254,14 +32,131 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
     );
   }
 
+  const getPriceChangeColor = (value: number) => {
+    if (value > 0) return 'text-green-500';
+    if (value < 0) return 'text-red-500';
+    return 'text-muted-foreground';
+  };
+
   return (
-    <div 
-      ref={containerRef} 
-      className="w-full border border-border rounded-lg overflow-hidden bg-background"
-      style={{ 
-        height: Math.min(tokens.length * 50 + 45, 600), // 50px per row + header, max 600px
-        minHeight: 200 // Minimum height
-      }}
-    />
+    <div className="w-full border border-border rounded-lg overflow-hidden bg-background">
+      <div className="overflow-x-auto">
+        <table className="min-w-full">
+          <thead>
+            <tr className="border-b border-border bg-muted/50">
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                #
+              </th>
+              <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                Token
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                Price
+              </th>
+              {type === 'gainers' && (
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                  24h Change
+                </th>
+              )}
+              {type === 'new' && (
+                <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
+                  Listed
+                </th>
+              )}
+              {type === 'all' && (
+                <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                  24h %
+                </th>
+              )}
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                Market Cap
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-muted-foreground">
+                24h Volume
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+            {tokens.map((token, index) => (
+              <tr 
+                key={token.address}
+                className="border-b border-border hover:bg-muted/50 cursor-pointer transition-colors"
+                onClick={() => onTokenClick(token.address)}
+              >
+                <td className="px-4 py-3">
+                  <div className="text-sm font-bold text-center text-muted-foreground">
+                    {index + 1}
+                  </div>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center overflow-hidden">
+                      {token.icon ? (
+                        <img 
+                          src={token.icon} 
+                          alt={token.name}
+                          className="w-6 h-6 rounded-full"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = 'none';
+                          }}
+                        />
+                      ) : (
+                        <div className="w-6 h-6 rounded-full bg-gradient-to-r from-blue-400 to-purple-500"></div>
+                      )}
+                    </div>
+                    <div>
+                      <div className="font-medium text-foreground">{token.name}</div>
+                      <div className="text-sm text-muted-foreground">{token.symbol?.toUpperCase()}</div>
+                    </div>
+                  </div>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span className="text-sm font-medium text-foreground">
+                    {token.price ? formatCurrency(token.price) : '-'}
+                  </span>
+                </td>
+                {type === 'gainers' && (
+                  <td className="px-4 py-3 text-right">
+                    <div className="space-y-1">
+                      <div className={`text-sm font-medium ${getPriceChangeColor((token as TokenGainerData).priceChange24h || 0)}`}>
+                        {formatCurrency((token as TokenGainerData).priceChange24h || 0)}
+                      </div>
+                      <div className={`text-xs ${getPriceChangeColor((token as TokenGainerData).priceChangePercentage24h || 0)}`}>
+                        {formatPercentage((token as TokenGainerData).priceChangePercentage24h || 0)}
+                      </div>
+                    </div>
+                  </td>
+                )}
+                {type === 'new' && (
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-foreground">
+                      {(token as NewTokenData).daysOld === 0 ? 'Today' : `${(token as NewTokenData).daysOld}d ago`}
+                    </span>
+                  </td>
+                )}
+                {type === 'all' && (
+                  <td className="px-4 py-3 text-right">
+                    <span className={`text-sm font-medium ${getPriceChangeColor(token.priceChangePercentage24h || 0)}`}>
+                      {formatPercentage(token.priceChangePercentage24h || 0)}
+                    </span>
+                  </td>
+                )}
+                <td className="px-4 py-3 text-right">
+                  <span className="text-sm text-foreground">
+                    {token.marketCap ? formatCurrency(token.marketCap, true) : '-'}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-right">
+                  <span className="text-sm text-foreground">
+                    {token.volume24h ? formatCurrency(token.volume24h, true) : '-'}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }
