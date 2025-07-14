@@ -266,8 +266,24 @@ export async function getUserHistory(
       searchParams.filter = filter;
     }
     
-    // Search with or without filter
-    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, searchParams);
+    // Use scroll instead of search to get results ordered by timestamp
+    // Scroll API allows us to get results in insertion order and we can sort by timestamp
+    const scrollParams: any = {
+      limit,
+      offset,
+      with_payload: true,
+      order_by: {
+        key: 'timestamp',
+        direction: 'desc' // Most recent first
+      }
+    };
+    
+    if (filter.must.length > 0) {
+      scrollParams.filter = filter;
+    }
+    
+    // Use scroll API to get properly ordered results
+    const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
     
     // Get total count
     const countParams: any = {};
@@ -276,7 +292,9 @@ export async function getUserHistory(
     }
     const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
     
-    const history = result.map(point => point.payload as unknown as UserHistoryEntry);
+    // Scroll API returns { points: [...] } instead of direct array
+    const points = result.points || result;
+    const history = points.map(point => point.payload as unknown as UserHistoryEntry);
     
     // Debug logging for results
     if (process.env.NODE_ENV === 'development') {
@@ -288,11 +306,19 @@ export async function getUserHistory(
           const count = history.filter(h => h.walletAddress === w).length;
           console.log(`  ${w.slice(0, 4)}...${w.slice(-4)}: ${count} entries`);
         });
+        
+        // Show timestamp information for debugging
+        console.log('Sample entries with timestamps:');
+        history.slice(0, 5).forEach((entry, i) => {
+          const date = new Date(entry.timestamp);
+          const hoursAgo = Math.round((Date.now() - entry.timestamp) / (1000 * 60 * 60));
+          console.log(`  ${i + 1}. ${entry.walletAddress.slice(0, 4)}...${entry.walletAddress.slice(-4)} - ${entry.pageType} - ${date.toISOString()} (${hoursAgo}h ago)`);
+        });
       }
     }
     
-    // Sort by timestamp (newest first)
-    history.sort((a, b) => b.timestamp - a.timestamp);
+    // Data is already sorted by timestamp via order_by in the query
+    // No need to sort again as scroll API with order_by returns pre-sorted results
     
     return {
       history,
