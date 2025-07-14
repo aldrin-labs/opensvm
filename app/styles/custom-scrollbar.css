@@ -1,0 +1,223 @@
+/* Custom Scrollbar Base Styles */
+
+/* Hide native scrollbars */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari, Opera */
+}
+
+/* Scrollbar Track */
+.scrollbar-track {
+  z-index: 10;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+}
+.scrollbar-track {
+  background: rgba(255,0,0,0.2) !important;
+  border: 2px solid red !important;
+}
+
+.scrollbar-track-bg {
+  background: var(--scrollbar-track-color, rgba(255, 255, 255, 0.1));
+  backdrop-filter: blur(4px);
+  transition: background-color 0.2s ease, backdrop-filter 0.2s ease;
+}
+
+.scrollbar-track:hover .scrollbar-track-bg {
+  background: var(--scrollbar-track-hover-color, rgba(255, 255, 255, 0.15));
+}
+
+/* Scrollbar Thumb */
+.scrollbar-thumb {
+  z-index: 11;
+  min-height: 30px;
+  transition: all 0.2s ease;
+}
+
+.scrollbar-thumb:hover {
+  transform: scaleX(1.2);
+}
+
+.scrollbar-thumb-inner {
+  background: var(--scrollbar-thumb-color, rgba(255, 255, 255, 0.3));
+  border: 1px solid var(--scrollbar-thumb-border-color, rgba(255, 255, 255, 0.1));
+  backdrop-filter: blur(8px);
+  transition: all 0.2s ease;
+  box-shadow: var(--scrollbar-thumb-shadow, 0 2px 8px rgba(0, 0, 0, 0.2));
+}
+
+.scrollbar-thumb:hover .scrollbar-thumb-inner {
+  background: var(--scrollbar-thumb-hover-color, rgba(255, 255, 255, 0.5));
+  border-color: var(--scrollbar-thumb-hover-border-color, rgba(255, 255, 255, 0.2));
+  box-shadow: var(--scrollbar-thumb-hover-shadow, 0 4px 12px rgba(0, 0, 0, 0.3));
+}
+
+.scrollbar-thumb-active .scrollbar-thumb-inner {
+  background: var(--scrollbar-thumb-active-color, rgba(255, 255, 255, 0.6));
+  border-color: var(--scrollbar-thumb-active-border-color, rgba(255, 255, 255, 0.3));
+  transform: scaleY(0.95);
+}
+
+/* Position Indicator */
+.scrollbar-position-indicator {
+  opacity: 0;
+  transition: opacity 0.2s ease;
+  pointer-events: none;
+}
+
+.scrollbar-track:hover .scrollbar-position-indicator {
+  opacity: 1;
+}
+
+.scrollbar-indicator-dot {
+  background: var(--scrollbar-indicator-color, rgba(255, 255, 255, 0.6));
+  box-shadow: 0 0 4px var(--scrollbar-indicator-glow, rgba(255, 255, 255, 0.3));
+}
+
+/* Focus Ring */
+.scrollbar-focus-ring {
+  border-color: var(--scrollbar-focus-color, rgba(255, 255, 255, 0.5));
+  box-shadow: 0 0 0 2px var(--scrollbar-focus-shadow, rgba(255, 255, 255, 0.2));
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .scrollbar-track {
+    width: 4px;
+  }
+  
+  .scrollbar-thumb:hover {
+    transform: scaleX(2);
+  }
+  
+  .scrollbar-track-bg {
+    border-radius: 2px;
+  }
+}
+
+/* Touch devices */
+@media (hover: none) and (pointer: coarse) {
+  .scrollbar-track {
+    opacity: 0.7;
+  }
+  
+  .scrollbar-track:active {
+    opacity: 1;
+  }
+  
+  .scrollbar-thumb-inner {
+    background: var(--scrollbar-thumb-mobile-color, rgba(255, 255, 255, 0.4));
+  }
+}
+
+/* High contrast mode */
+@media (prefers-contrast: high) {
+  .scrollbar-track-bg {
+    background: var(--scrollbar-track-high-contrast, rgba(255, 255, 255, 0.8));
+  }
+  
+  .scrollbar-thumb-inner {
+    background: var(--scrollbar-thumb-high-contrast, rgba(0, 0, 0, 0.8));
+    border: 2px solid var(--scrollbar-thumb-border-high-contrast, rgba(255, 255, 255, 1));
+  }
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .scrollbar-track,
+  .scrollbar-thumb,
+  .scrollbar-thumb-inner,
+  .scrollbar-track-bg,
+  .scrollbar-position-indicator {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* Print styles */
+@media print {
+  .scrollbar-track {
+    display: none;
+  }
+}
+
+/* New Message Badge Styles */
+.new-message-badge {
+  background: var(--new-message-badge-bg, rgba(0, 0, 0, 0.8));
+  border: 1px solid var(--new-message-badge-border, rgba(255, 255, 255, 0.2));
+  color: var(--new-message-badge-text, rgba(255, 255, 255, 0.9));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.new-message-badge:hover {
+  background: var(--new-message-badge-hover-bg, rgba(0, 0, 0, 0.9));
+  border-color: var(--new-message-badge-hover-border, rgba(255, 255, 255, 0.3));
+  color: var(--new-message-badge-hover-text, rgba(255, 255, 255, 1));
+}
+
+.new-message-badge:focus {
+  ring-color: var(--new-message-badge-focus-ring, rgba(255, 255, 255, 0.5));
+}
+
+.new-message-badge-icon {
+  color: var(--new-message-badge-icon-color, rgba(255, 255, 255, 0.8));
+}
+
+.new-message-badge-text {
+  color: var(--new-message-badge-text-color, rgba(255, 255, 255, 0.9));
+}
+
+.new-message-badge-arrow {
+  color: var(--new-message-badge-arrow-color, rgba(255, 255, 255, 0.7));
+}
+
+.new-message-badge-pulse {
+  background: var(--new-message-badge-pulse-color, rgba(255, 255, 255, 0.2));
+}
+
+/* Mobile adjustments for new message badge */
+@media (max-width: 768px) {
+  .new-message-badge {
+    bottom: 6px;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  
+  .new-message-badge-icon,
+  .new-message-badge-arrow {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* Reduced motion for new message badge */
+@media (prefers-reduced-motion: reduce) {
+  .new-message-badge {
+    transition: none !important;
+  }
+  
+  .new-message-badge-pulse {
+    animation: none !important;
+  }
+  
+  .new-message-badge-icon,
+  .new-message-badge-arrow {
+    transition: none !important;
+  }
+}
+
+/* High contrast mode for new message badge */
+@media (prefers-contrast: high) {
+  .new-message-badge {
+    background: var(--new-message-badge-high-contrast-bg, rgba(0, 0, 0, 1));
+    border: 2px solid var(--new-message-badge-high-contrast-border, rgba(255, 255, 255, 1));
+    color: var(--new-message-badge-high-contrast-text, rgba(255, 255, 255, 1));
+  }
+}

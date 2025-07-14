@@ -1,9 +1,31 @@
+/**
+ * Utility functions for OpenSVM application
+ * 
+ * This module provides common utility functions used throughout the application,
+ * including validation, formatting, and helper functions for Solana-specific operations.
+ * 
+ * @see docs/architecture/development-guidelines.md#utility-functions
+ * @see docs/architecture/components.md#shared-utilities
+ */
+
 import { PublicKey } from '@solana/web3.js';
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 /**
  * Validates that a string is a valid Solana public key
+ * 
+ * @param address - String to validate as Solana public key
+ * @returns Boolean indicating if the address is valid
+ * 
+ * @example
+ * ```typescript
+ * const isValid = isValidPublicKey('11111111111111111111111111111111');
+ * console.log(isValid); // true
+ * 
+ * const isInvalid = isValidPublicKey('invalid-address');
+ * console.log(isInvalid); // false
+ * ```
  */
 export const isValidPublicKey = (address: string): boolean => {
   try {
@@ -16,6 +38,21 @@ export const isValidPublicKey = (address: string): boolean => {
 
 /**
  * Combines class names using clsx and tailwind-merge
+ * 
+ * This function combines multiple class names and resolves conflicts using
+ * tailwind-merge, ensuring the most specific Tailwind classes take precedence.
+ * 
+ * @param inputs - Class values to combine
+ * @returns Combined and optimized class string
+ * 
+ * @example
+ * ```typescript
+ * const classes = cn(
+ *   'bg-blue-500 text-white',
+ *   isActive && 'bg-blue-700',
+ *   'hover:bg-blue-600'
+ * );
+ * ```
  */
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -69,6 +106,23 @@ export function debounce<T extends (...args: any[]) => any>(
       clearTimeout(timeout);
     }
     timeout = setTimeout(later, wait);
+  };
+}
+
+/**
+ * Creates a throttled function that only invokes func at most once per every wait milliseconds
+ */
+export function throttle<Args extends unknown[]>(
+  func: (...args: Args) => void, 
+  delay: number
+): (...args: Args) => void {
+  let lastTime = 0;
+  return (...args: Args) => {
+    const now = Date.now();
+    if (now - lastTime >= delay) {
+      lastTime = now;
+      func(...args);
+    }
   };
 }
 

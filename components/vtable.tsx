@@ -1,7 +1,137 @@
 import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { ListTable } from '@visactor/vtable';
-import '../app/styles/vtable.css';
+import * as VTable from '@visactor/vtable';
 import { useRouter, usePathname } from 'next/navigation';
+import { useTheme } from '@/lib/theme';
+
+type Theme = 'paper' | 'high-contrast' | 'dos-blue' | 'cyberpunk' | 'solarized';
+
+// Utility function to convert HSL to hex color
+function hslToHex(hsl: string): string {
+  const hslMatch = hsl.match(/hsl\((\d+(?:\.\d+)?),?\s*(\d+(?:\.\d+)?)%,?\s*(\d+(?:\.\d+)?)%\)/);
+  if (!hslMatch) {
+    // If it's already a hex color or other format, return as is
+    return hsl.startsWith('#') ? hsl : '#000000';
+  }
+
+  const h = parseFloat(hslMatch[1]) / 360;
+  const s = parseFloat(hslMatch[2]) / 100;
+  const l = parseFloat(hslMatch[3]) / 100;
+
+  const hue2rgb = (p: number, q: number, t: number) => {
+    if (t < 0) t += 1;
+    if (t > 1) t -= 1;
+    if (t < 1/6) return p + (q - p) * 6 * t;
+    if (t < 1/2) return q;
+    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+    return p;
+  };
+
+  let r, g, b;
+  if (s === 0) {
+    r = g = b = l; // achromatic
+  } else {
+    const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+    const p = 2 * l - q;
+    r = hue2rgb(p, q, h + 1/3);
+    g = hue2rgb(p, q, h);
+    b = hue2rgb(p, q, h - 1/3);
+  }
+
+  const toHex = (c: number) => {
+    const hex = Math.round(c * 255).toString(16);
+    return hex.length === 1 ? '0' + hex : hex;
+  };
+
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
+}
+
+// Get computed CSS variable value and convert to hex
+function getCSSVariableAsHex(variable: string): string {
+  if (typeof window === 'undefined') return '#000000';
+  
+  const computedStyle = getComputedStyle(document.documentElement);
+  const value = computedStyle.getPropertyValue(variable).trim();
+  
+  if (!value) return '#000000';
+  
+  // If it's HSL format (like "240 100% 20%"), convert to proper HSL string
+  if (value.includes('%')) {
+    const parts = value.split(/\s+/);
+    if (parts.length >= 3) {
+      const hslString = `hsl(${parts[0]}, ${parts[1]}, ${parts[2]})`;
+      return hslToHex(hslString);
+    }
+  }
+  
+  // If it's already hex or other format, return as is
+  return value.startsWith('#') ? value : '#000000';
+}
+
+// Create VTable theme from current CSS variables
+function createVTableThemeFromCSS(): any {
+  const background = getCSSVariableAsHex('--background');
+  const foreground = getCSSVariableAsHex('--foreground');
+  const muted = getCSSVariableAsHex('--muted');
+  const mutedForeground = getCSSVariableAsHex('--muted-foreground');
+  const border = getCSSVariableAsHex('--border');
+  const card = getCSSVariableAsHex('--card');
+
+  return {
+    defaultStyle: {
+      borderLineWidth: 1
+    },
+    headerStyle: {
+      bgColor: muted,
+      borderColor: border,
+      fontWeight: 'bold',
+      color: foreground,
+      fontSize: 14,
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif'
+    },
+    rowHeaderStyle: {
+      bgColor: muted,
+      borderColor: border,
+      borderLineWidth: 1,
+      fontWeight: 'normal',
+      color: foreground
+    },
+    cornerHeaderStyle: {
+      bgColor: muted,
+      fontWeight: 'bold',
+      color: foreground
+    },
+    bodyStyle: {
+      borderColor: border,
+      borderLineWidth: 1,
+      color: foreground,
+      fontSize: 14,
+      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      bgColor: (args: any) => {
+        if (args.row % 2 === 1) {
+          return muted;
+        }
+        return background;
+      }
+    }
+  };
+}
+
+// Register a single dynamic VTable theme that uses current CSS variables
+function registerDynamicVTableTheme() {
+  if (typeof window === 'undefined') return;
+  
+  const themeConfig = createVTableThemeFromCSS();
+  console.log('Registering dynamic VTable theme with config:', themeConfig);
+  
+  // Register/re-register the theme with current CSS values
+  VTable.register.theme('opensvm-dynamic', themeConfig);
+}
+
+// Get the dynamic theme name
+function getVTableThemeName(): string {
+  return 'opensvm-dynamic';
+}
 
 interface Column {
   field: string;
@@ -47,6 +177,7 @@ export function VTableWrapper({
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const { theme } = useTheme();
 
   // Client-side navigation handler
   const handleNavigation = useCallback((href: string) => {
@@ -63,6 +194,7 @@ export function VTableWrapper({
     }
   }, [onRowSelect, rowKey]);
 
+  // Register dynamic theme and set mounted state
   useEffect(() => {
     setMounted(true);
     return () => setMounted(false);
@@ -81,25 +213,44 @@ export function VTableWrapper({
           tableRef.current = null;
         }
 
-        // Process data to add selection state
-        const processedData = data.map(row => {
-          const rowId = rowKey(row);
-          const isSelected = selectedRowId === rowId;
-          const isPinned = pinnedRowIds.has(rowId);
+        // Clear the container to ensure fresh start
+        containerRef.current.innerHTML = '';
+        
+        // Register/update dynamic theme with current CSS values
+        registerDynamicVTableTheme();
+        
+        // Wait for the next frame to ensure DOM is updated
+        requestAnimationFrame(() => {
+          if (!containerRef.current) { return; }
           
-          return {
-            ...row,
-            __vtableRowId: rowId,
-            __isSelected: isSelected,
-            __isPinned: isPinned
-          };
-        });
+          // Process data to add selection state
+          const processedData = data.map(row => {
+            const rowId = rowKey(row);
+            const isSelected = selectedRowId === rowId;
+            const isPinned = pinnedRowIds.has(rowId);
+            
+            return {
+              ...row,
+              __vtableRowId: rowId,
+              __isSelected: isSelected,
+              __isPinned: isPinned
+            };
+          });
 
-        // Create new table with minimal config
-        const table = new ListTable({
-          container: containerRef.current,
-          records: processedData,
-          columns: columns.map(col => ({
+          // Get the dynamic theme name
+          const vtableThemeName = getVTableThemeName();
+          
+          console.log('Creating VTable with dynamic theme:', vtableThemeName, 'for OpenSVM theme:', theme);
+          
+          // Create table configuration with dynamic theme
+          const tableConfig = {
+            container: containerRef.current,
+            records: processedData,
+            theme: vtableThemeName, // Use the dynamic theme name
+            defaultRowHeight: 48,
+            defaultHeaderRowHeight: 48,
+            overscrollBehavior: 'none',
+            columns: columns.map(col => ({
             field: col.field,
             title: col.header || col.title,
             width: col.width || 150,
@@ -205,51 +356,56 @@ export function VTableWrapper({
               }
             }
           })),
-          defaultRowHeight: 48,
-          defaultHeaderRowHeight: 48,
-        });
+        };
 
-        if (onLoadMore) {
-          (table as any).on('scroll', (args: any) => {
-            const { scrollTop, scrollHeight, clientHeight } = args;
-            if (scrollHeight - scrollTop <= clientHeight * 1.5) {
-              onLoadMore();
-            }
-          });
-        }
-        
-        // Add click handler for cell interactions
-        (table as any).on('click_cell', (args: any) => {
-          // First check if we have a cell action (link click)
-          const cellValue = args.value ?? {};
-          const cellAction = cellValue.action || args.cellActionOption?.action;
-          
-          if (typeof cellAction === 'function') {
-            cellAction();
-            return; // Don't trigger row selection if we clicked a link
+          // Create the table with the configuration
+          const table = new ListTable(tableConfig);
+
+          // Log theme application for debugging
+          console.log('VTable created successfully with dynamic theme:', vtableThemeName, 'Table instance:', table);
+
+          if (onLoadMore) {
+            (table as any).on('scroll', (args: any) => {
+              const { scrollTop, scrollHeight, clientHeight } = args;
+              if (scrollHeight - scrollTop <= clientHeight * 1.5) {
+                onLoadMore();
+              }
+            });
           }
           
-          // If no cell action, handle row selection
-          if (onRowSelect) {
-            const rowData = args.cellKey?.rowKey ? 
-              processedData.find(r => r.__vtableRowId === args.cellKey.rowKey) : 
-              null;
+          // Add click handler for cell interactions
+          (table as any).on('click_cell', (args: any) => {
+            // First check if we have a cell action (link click)
+            const cellValue = args.value ?? {};
+            const cellAction = cellValue.action || args.cellActionOption?.action;
             
-            if (rowData) {
-              handleRowClick(rowData, args);
+            if (typeof cellAction === 'function') {
+              cellAction();
+              return; // Don't trigger row selection if we clicked a link
             }
-          }
-        });
-
-        if (onSort) {
-          // Use any to bypass type checking for now
-          (table as any).on('sortClick', (args: any) => {
-            const { field, order } = args;
-            onSort(field, order);
+            
+            // If no cell action, handle row selection
+            if (onRowSelect) {
+              const rowData = args.cellKey?.rowKey ? 
+                processedData.find(r => r.__vtableRowId === args.cellKey.rowKey) : 
+                null;
+              
+              if (rowData) {
+                handleRowClick(rowData, args);
+              }
+            }
           });
-        }
 
-        tableRef.current = table;
+          if (onSort) {
+            // Use any to bypass type checking for now
+            (table as any).on('sortClick', (args: any) => {
+              const { field, order } = args;
+              onSort(field, order);
+            });
+          }
+
+          tableRef.current = table;
+        });
       } catch (err) {
         console.error('Failed to initialize table:', err);
       }
@@ -270,7 +426,7 @@ export function VTableWrapper({
         }
       }
     };
-  }, [columns, data, mounted, onLoadMore, onSort, handleNavigation, selectedRowId, pinnedRowIds, rowKey, onRowSelect, handleRowClick]);
+  }, [columns, data, mounted, onLoadMore, onSort, handleNavigation, selectedRowId, pinnedRowIds, rowKey, onRowSelect, handleRowClick, theme]);
 
   if (error) {
     return (
@@ -310,12 +466,13 @@ export function VTableWrapper({
   };
 
   return (
-    <div className="vtable-container relative" style={{ height: '100%' }}>
+    <div className="vtable-container relative" style={{ height: '100%' }} key={`vtable-${theme}`}>
       <div 
         className="vtable" 
         ref={containerRef} 
         style={{ width: '100%', height: '100%' }}
         data-selected-row={selectedRowId || ''}
+        data-theme={theme}
       />
       
       {renderFloatingButton()}

@@ -65,6 +65,19 @@ export class SolanaAgent {
     const capability = this.config.capabilities.find(cap => cap.canHandle(message));
     
     if (!capability) {
+      // If no capability found, try to parse it as a direct query and generate actions
+      const queryLower = message.content.toLowerCase();
+      if (queryLower.includes('tps') || queryLower.includes('transactions per second')) {
+        // Generate action for TPS query
+        const actionPlan = '[ACTION]network.analyzeNetworkLoad:Get current TPS and network load metrics[/ACTION]';
+        const actions = this.extractActionsFromResponse(actionPlan);
+        
+        if (actions.length > 0) {
+          const results = await this.executeActions(actions);
+          return this.createResponse('network' as CapabilityType, results);
+        }
+      }
+      
       return this.createErrorResponse('I apologize, but I\'m not sure how to handle that request.');
     }
 

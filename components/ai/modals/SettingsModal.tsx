@@ -53,15 +53,6 @@ export function SettingsModal({ isOpen, onClose }: SettingsModalProps) {
         <div className="p-4 space-y-4">
           {/* RPC Endpoint */}
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-white">RPC Endpoint</label>
-            <input
-              type="text"
-              value={localSettings.rpcEndpoint}
-              onChange={(e) => setLocalSettings(prev => ({ ...prev, rpcEndpoint: e.target.value }))}
-              placeholder="https://api.mainnet-beta.solana.com"
-              className="w-full bg-black text-white text-sm px-3 py-2 rounded-lg border border-white/20 focus:outline-none focus:border-white/40"
-            />
-            <p className="text-xs text-white/50">The Solana RPC endpoint to use for blockchain interactions</p>
           </div>
 
           {/* Theme */}

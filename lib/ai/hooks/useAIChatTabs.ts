@@ -57,8 +57,28 @@ const formatActionResponse = (response: Message, action: AgentAction): Message =
     }
   }
 
+  // Check if the response contains the actual content we want
+  if (response?.content && !response.content.includes('I apologize')) {
+    return response;
+  }
+
   // Standard action response formatting
   if (response?.metadata?.data) {
+    // Check if data is an array of results
+    if (Array.isArray(response.metadata.data)) {
+      const results = response.metadata.data;
+      for (const result of results) {
+        if (result?.result?.result && result.tool === 'analyzeNetworkLoad') {
+          const data = result.result.result;
+          return {
+            role: 'assistant',
+            content: `The current TPS is ${data.averageTps} (${data.tpsRange}). Peak TPS: ${data.maxTps}. Network load is ${data.load} (${data.loadDescription}).`,
+            metadata: response.metadata
+          };
+        }
+      }
+    }
+    
     return {
       role: 'assistant',
       content: `Action completed: ${action.description}\n\`\`\`json\n${JSON.stringify(response.metadata.data, null, 2)}\n\`\`\``,
@@ -179,7 +199,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                   results.push({
                     action,
                     response: {
-                      role: 'assistant',
+                      role: 'assistant' as const,
                       content: 'Path finding complete.',
                       metadata: {
                         type: 'account' as const,
@@ -249,7 +269,27 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
         // Add results to messages
         for (const result of results) {
           if (result.status === 'completed' && result.response) {
-            setAgentMessages(prev => [...prev, formatActionResponse(result.response, result.action)]);
+            // Check if this is the "I apologize" message and we have actual data
+            if (result.response.content?.includes('I apologize') && result.response.metadata?.data) {
+              // Extract the actual data from the response
+              const data = result.response.metadata.data;
+              
+              // Look for TPS data in the results
+              if (Array.isArray(data)) {
+                for (const item of data) {
+                  if (item?.result?.result && item.tool === 'analyzeNetworkLoad') {
+                    const tpsData = item.result.result;
+                    setAgentMessages(prev => [...prev, {
+                      role: 'assistant' as const,
+                      content: `The current TPS is ${tpsData.averageTps} (${tpsData.tpsRange}). Peak TPS: ${tpsData.maxTps}. Network load is ${tpsData.load} (${tpsData.loadDescription}).`
+                    }]);
+                    continue;
+                  }
+                }
+              }
+            } else {
+              setAgentMessages(prev => [...prev, formatActionResponse(result.response, result.action)]);
+            }
           } else if (result.status === 'failed') {
             setAgentMessages(prev => [...prev, {
               role: 'assistant',

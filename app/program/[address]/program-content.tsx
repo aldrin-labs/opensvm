@@ -2,6 +2,7 @@
 
 import DisassemblyView from './disassembly-view';
 import JsonTree from '@/components/JsonTree';
+import { ShareButton } from '@/components/ShareButton';
 
 interface ProgramData {
   address: string;
@@ -59,7 +60,10 @@ export default function ProgramContent({ programData, serializedAccountInfo }: P
     <div>
       {/* Program Info Section */}
       <div className="bg-black/20 p-4 mb-6 rounded-lg border border-white/10">
-        <h2 className="text-lg font-semibold mb-4">Program Information</h2>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-lg font-semibold">Program Information</h2>
+          <ShareButton entityType="program" entityId={programData.address} />
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <p className="text-gray-400">Address:</p>

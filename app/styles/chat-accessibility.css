@@ -1,0 +1,208 @@
+/* ChatUI and ChatLayout accessibility and cross-browser compatibility styles */
+
+/* Screen reader only content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* Skip links for keyboard navigation */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #000;
+  color: white;
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+  z-index: 9999;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Main chat container with browser compatibility */
+.chat-main-container {
+  /* Standard height */
+  height: 100vh;
+  
+  /* iOS Safari safe area */
+  height: -webkit-fill-available;
+  
+  /* Dynamic viewport height for mobile */
+  height: 100dvh;
+  
+  /* Ensure proper containment */
+  position: relative;
+  overflow: hidden;
+  
+  /* Flex layout */
+  display: flex;
+  flex-direction: column;
+  
+  /* Contain layout reflows */
+  contain: layout size;
+}
+
+/* Flex container fixes for Safari */
+.chat-flex-container {
+  flex: 1 1 auto;
+  min-height: 0;
+  
+  /* Safari flex fix */
+  height: 0;
+  
+  /* Firefox fix */
+  overflow: hidden;
+  
+  /* Ensure proper flex behavior */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Messages scrollable area */
+.chat-messages-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: scroll !important; /* Force scrollbar visibility */
+  overflow-x: hidden;
+  
+  /* Smooth scrolling with fallback */
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  
+  /* Prevent margin collapse */
+  padding: 1px 0;
+  
+  /* Firefox scrollbar fix */
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(255, 255, 255, 0.3) rgba(255, 255, 255, 0.1) !important;
+}
+
+/* Webkit scrollbar styling - more prominent */
+.chat-messages-scroll::-webkit-scrollbar {
+  width: 8px !important; /* Wider scrollbar */
+  display: block !important;
+}
+  
+.chat-messages-scroll::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 4px !important;
+}
+  
+.chat-messages-scroll::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3) !important;
+  border-radius: 4px !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  min-height: 40px !important;
+}
+
+.chat-messages-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5) !important;
+}
+
+/* Ensure scrollbars are visible on hover too */
+.chat-messages-scroll:hover {
+  overflow-y: scroll !important;
+}
+
+/* Microsoft Edge and IE scrollbar - make it consistent */
+@supports (-ms-overflow-style: none) {
+  .chat-messages-scroll {
+    -ms-overflow-style: auto !important;
+  }
+}
+
+/* Input area constraints */
+.chat-input-area {
+  flex: 0 0 auto;
+  min-height: min-content;
+  
+  /* Prevent shrinking */
+  flex-shrink: 0;
+  
+  /* Ensure it stays at bottom */
+  margin-top: auto;
+}
+
+/* Focus visible indicators */
+.chat-messages-scroll:focus-visible,
+.chat-input:focus-visible,
+button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .chat-container {
+    border: 1px solid;
+  }
+  
+  .message-container {
+    border: 1px solid;
+  }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Mobile-specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* iOS specific */
+  .chat-main-container {
+    height: -webkit-fill-available;
+  }
+}
+
+/* Firefox-specific fixes */
+@-moz-document url-prefix() {
+  .chat-flex-container {
+    height: 100%;
+  }
+}
+
+/* Edge and IE11 fallbacks */
+@supports (-ms-ime-align: auto) {
+  .chat-main-container {
+    height: 100vh;
+  }
+}
+
+/* Tab navigation animation fix */
+[role="tab"]:focus {
+  outline: none;
+}
+
+[role="tab"]:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+/* For visibility of focused interactive elements */
+a:focus-visible,
+button:focus-visible,
+[role="button"]:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+  box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.3);
+}

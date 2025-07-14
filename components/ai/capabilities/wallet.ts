@@ -1,8 +1,5 @@
-import { PublicKey, Connection } from '@solana/web3.js';
-import { CapabilityType, Message, Tool, ToolParams, ExecutionMode } from '../types';
-import { walletPathFindingAction } from '../actions';
+import { CapabilityType, Message, ToolParams, ExecutionMode } from '../types';
 import { BaseCapability } from './base';
-import { isValidSolanaAddress } from '@/lib/utils';
 
 /**
  * Tools for wallet-related operations

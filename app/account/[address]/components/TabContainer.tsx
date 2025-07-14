@@ -8,9 +8,9 @@ import PlaceholderTab from './PlaceholderTab';
 
 export const tabs = [
   { id: 'tokens', label: 'Tokens' },
-  { id: 'transfers', label: 'Transfers' },
-  { id: 'nfts', label: 'NFTs' },
-  { id: 'programs', label: 'Programs' },
+  { id: 'sol-transfers', label: 'SOL Transfers' },
+  { id: 'token-transfers', label: 'Token Transfers' },
+  { id: 'all-transfers', label: 'All Transfers' },
 ];
 
 interface Props {
@@ -49,10 +49,22 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
     switch (activeTab) {
       case 'tokens':
         return <TokensTab solBalance={solBalance} tokenBalances={tokenBalances} />;
-      case 'transfers':
+      case 'sol-transfers':
         return (
           <div className="w-full">
-            <TransfersTab address={address} />
+            <TransfersTab address={address} transferType="SOL" />
+          </div>
+        );
+      case 'token-transfers':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transferType="TOKEN" />
+          </div>
+        );
+      case 'all-transfers':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transferType="ALL" />
           </div>
         );
       default:

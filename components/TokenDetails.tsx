@@ -6,6 +6,7 @@ import { formatNumber } from '@/lib/utils';
 import { Stack } from 'rinlab';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
+import { ShareButton } from '@/components/ShareButton';
 
 interface TokenData {
   metadata?: {
@@ -65,25 +66,33 @@ export default function TokenDetails({ mint }: Props) {
       {/* Token Overview */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-4">
-            {data.metadata?.image && (
-              <Image 
-                src={data.metadata.image} 
-                alt={data.metadata.name || 'Token'} 
-                width={48}
-                height={48}
-                className="rounded-full"
-              />
-            )}
-            <div>
-              <h1 className="text-2xl font-bold">
-                {data.metadata?.name || 'Unknown Token'}
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                {data.metadata?.symbol || mint}
-              </p>
-            </div>
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="flex items-center gap-4">
+              {data.metadata?.image && (
+                <Image
+                  src={data.metadata.image}
+                  alt={data.metadata.name || 'Token'}
+                  width={48}
+                  height={48}
+                  className="rounded-full"
+                />
+              )}
+              <div>
+                <h1 className="text-2xl font-bold">
+                  {data.metadata?.name || 'Unknown Token'}
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  {data.metadata?.symbol || mint}
+                </p>
+              </div>
+            </CardTitle>
+            <ShareButton
+              entityType="token"
+              entityId={mint}
+              variant="outline"
+              size="sm"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 
 export const PaperThemeDemo = () => {
   const [sliderValue1, setSliderValue1] = useState(1000000);

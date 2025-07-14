@@ -24,6 +24,7 @@ export default function EnhancedSearchBar() {
   const router = useRouter();
   const suggestionsRef = useRef<HTMLDivElement>(null);
   const settingsRef = useRef<HTMLDivElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
     // Close suggestions and settings on outside click
@@ -42,16 +43,33 @@ export default function EnhancedSearchBar() {
 
   useEffect(() => {
     const fetchSuggestions = async () => {
-      if (query.length < 3 || searchSettings.networks.length === 0) {
+      if (searchSettings.networks.length === 0) {
         setSuggestions([]);
         return;
       }
 
       try {
-        // Fetch suggestions based on the query and selected networks
-        const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&networks=${searchSettings.networks.join(',')}`);
-        if (!response.ok) { throw new Error('Failed to fetch suggestions'); }
+        let response;
+        
+        if (query.length === 0) {
+          // Fetch empty state suggestions (recent prompts, latest items, popular searches)
+          console.log('Fetching empty state suggestions...');
+          response = await fetch(`/api/search/suggestions/empty-state?networks=${searchSettings.networks.join(',')}`);
+        } else if (query.length < 3) {
+          // For very short queries, just clear suggestions
+          setSuggestions([]);
+          return;
+        } else {
+          // Fetch suggestions based on the query and selected networks
+          response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&networks=${searchSettings.networks.join(',')}`);
+        }
+        
+        if (!response.ok) {
+          throw new Error(`Failed to fetch suggestions: ${response.status} ${response.statusText}`);
+        }
+        
         const data = await response.json();
+        console.log('Suggestions fetched:', data);
         setSuggestions(data);
       } catch (error) {
         console.error('Error fetching suggestions:', error);
@@ -59,53 +77,60 @@ export default function EnhancedSearchBar() {
       }
     };
 
-    const debounceTimeout = setTimeout(fetchSuggestions, 300);
+    const debounceTimeout = setTimeout(fetchSuggestions, query.length === 0 ? 0 : 300);
     return () => clearTimeout(debounceTimeout);
   }, [query, searchSettings.networks]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmedQuery = query.trim();
+  const handleSubmitValue = async (value: string) => {
+    const trimmedQuery = value.trim();
     if (!trimmedQuery || isLoading) {
       return;
     }
     
     try {
       setIsLoading(true);
+      console.log("Processing search value:", trimmedQuery);
       
       // Check if query is a block number
       if (/^\d+$/.test(trimmedQuery)) {
+        console.log("Detected block number, navigating to block page");
         router.push(`/block/${trimmedQuery}`);
         return;
       }
       
       // Check if query is a transaction signature
       if (isValidTransactionSignature(trimmedQuery)) {
-        window.location.href = `/tx/${trimmedQuery}`;
+        console.log("Detected transaction signature, navigating to tx page");
+        router.push(`/tx/${trimmedQuery}`);
         return;
       }
       
       // Check if query is a valid Solana address
       if (isValidSolanaAddress(trimmedQuery)) {
+        console.log("Detected Solana address, checking account type");
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
+        console.log("Account type response:", data);
         
         switch (data.type) {
           case 'token':
-            window.location.href = `/token/${trimmedQuery}`;
+            console.log("Navigating to token page");
+            router.push(`/token/${trimmedQuery}`);
             break;
           case 'program':
-            window.location.href = `/program/${trimmedQuery}`;
+            console.log("Navigating to program page");
+            router.push(`/program/${trimmedQuery}`);
             break;
           case 'account':
-            window.location.href = `/account/${trimmedQuery}`;
+            console.log("Navigating to account page");
+            router.push(`/account/${trimmedQuery}`);
             break;
           default:
-            // Build search URL with settings
+            console.log("Unknown account type, using search page");
             buildAndNavigateToSearchUrl(trimmedQuery);
         }
       } else {
-        // Use search page with settings
+        console.log("Using general search page");
         buildAndNavigateToSearchUrl(trimmedQuery);
       }
     } catch (error) {
@@ -114,6 +139,11 @@ export default function EnhancedSearchBar() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await handleSubmitValue(query);
   };
 
   const buildAndNavigateToSearchUrl = (query: string) => {
@@ -153,6 +183,7 @@ export default function EnhancedSearchBar() {
       searchUrl += `&max=${searchSettings.maxAmount}`;
     }
     
+    console.log("Navigating to search URL:", searchUrl);
     router.push(searchUrl);
   };
 
@@ -204,11 +235,12 @@ export default function EnhancedSearchBar() {
 
   const clearSearch = () => {
     setQuery('');
+    setShowSuggestions(false);
   };
 
   return (
-    <div className="w-full">
-      <form onSubmit={handleSubmit} className="relative flex flex-col w-full gap-4">
+    <div className="w-full max-w-3xl mx-auto">
+      <form ref={formRef} onSubmit={handleSubmit} className="relative flex flex-col w-full gap-4">
         <div className="relative flex w-full">
           <SearchInput 
             query={query}
@@ -217,6 +249,7 @@ export default function EnhancedSearchBar() {
             setShowSettings={setShowSettings}
             setShowSuggestions={setShowSuggestions}
             clearSearch={clearSearch}
+            isSearching={isLoading}
           />
           <SearchButton isLoading={isLoading} />
         </div>
@@ -240,6 +273,8 @@ export default function EnhancedSearchBar() {
           setQuery={setQuery}
           setShowSuggestions={setShowSuggestions}
           handleSubmit={handleSubmit}
+          onSubmitValue={handleSubmitValue}
+          isLoading={query.length >= 3 && suggestions.length === 0}
         />
       </form>
     </div>

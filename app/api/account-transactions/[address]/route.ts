@@ -124,7 +124,7 @@ export async function GET(
           signature: sigInfo.signature,
           timestamp: sigInfo.blockTime ? sigInfo.blockTime * 1000 : Date.now(),
           slot: sigInfo.slot,
-          err: sigInfo.err || error.message,
+          err: sigInfo.err || (error instanceof Error ? error.message : String(error)),
           success: false,
           accounts: [],
           transfers: [],

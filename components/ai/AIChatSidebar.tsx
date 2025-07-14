@@ -1,8 +1,16 @@
 'use client';
 
-import { FC, ReactNode } from 'react';
+import { FC, useState, useEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Connection } from '@solana/web3.js';
+import { createSolanaAgent } from '@/components/ai/core/factory';
+import { useAIChatTabs } from '@/components/ai/hooks/useAIChatTabs';
+import { Chat } from './Chat';
+
+const connection = new Connection(
+  process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com'
+);
 
 interface AIChatSidebarProps {
   isOpen: boolean;
@@ -19,41 +27,94 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
   onWidthChange,
   onResizeStart,
   onResizeEnd,
-  initialWidth = 400
-}): ReactNode => {
+  initialWidth = 480
+}) => {
+  const [agent] = useState(() => createSolanaAgent(connection));
+  const {
+    activeTab,
+    setActiveTab,
+    messages,
+    input,
+    isProcessing,
+    setInput,
+    handleSubmit,
+    handleNewChat,
+    notes,
+    agentActions,
+    clearNotes,
+    resetEverything,
+    retryAction,
+    startRecording,
+    isRecording
+  } = useAIChatTabs({ agent });
+
+  const [width, setWidth] = useState(initialWidth);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const isResizing = useRef(false);
+  const lastX = useRef(0);
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing.current) return;
+    
+    const deltaX = lastX.current - e.clientX;
+    lastX.current = e.clientX;
+    
+    const newWidth = Math.min(800, Math.max(300, width + deltaX));
+    setWidth(newWidth);
+    onWidthChange?.(newWidth);
+  };
+
+  const handleMouseUp = () => {
+    if (isResizing.current) {
+      isResizing.current = false;
+      document.body.style.cursor = 'default';
+      document.body.classList.remove('select-none');
+      onResizeEnd?.();
+    }
+  };
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    isResizing.current = true;
+    lastX.current = e.clientX;
+    document.body.style.cursor = 'ew-resize';
+    document.body.classList.add('select-none');
+    onResizeStart?.();
+  };
+
+  useEffect(() => {
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [width]);
+
   return (
-    <div 
-      data-testid="ai-chat-sidebar" 
-      className={isOpen ? 'visible' : 'hidden'}
-      style={{ 
-        position: 'fixed',
-        top: 0,
-        right: 0,
-        height: '100%',
-        width: `${initialWidth}px`,
-        zIndex: 50,
-        background: 'var(--background)',
-        borderLeft: '1px solid var(--border)',
-        boxShadow: 'var(--shadow-lg)'
-      }}
-      aria-hidden={!isOpen}
-    >
-      <div style={{ padding: '1rem' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-          <h2 style={{ fontWeight: 'bold' }}>AI Assistant</h2>
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="Close AI chat"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
-        <div>AI Chat Sidebar</div>
-      </div>
-    </div>
+    <Chat
+      variant="sidebar"
+      isOpen={isOpen}
+      onClose={onClose}
+      onWidthChange={onWidthChange}
+      onResizeStart={onResizeStart}
+      onResizeEnd={onResizeEnd}
+      activeTab={activeTab}
+      onTabChange={setActiveTab}
+      onReset={resetEverything}
+      onNewChat={handleNewChat}
+      messages={messages}
+      input={input}
+      isProcessing={isProcessing}
+      onInputChange={setInput}
+      onSubmit={handleSubmit}
+      notes={notes}
+      onClearNotes={clearNotes}
+      agentActions={agentActions}
+      onRetryAction={retryAction}
+      onVoiceRecord={startRecording}
+      isRecording={isRecording}
+    />
   );
 };

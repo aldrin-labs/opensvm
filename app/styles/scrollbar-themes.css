@@ -1,0 +1,280 @@
+/* Theme-Adaptive Scrollbar Variables */
+
+/* Default Theme */
+:root {
+  --scrollbar-track-color: rgba(255, 255, 255, 0.1);
+  --scrollbar-track-hover-color: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-color: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-hover-color: rgba(255, 255, 255, 0.5);
+  --scrollbar-thumb-active-color: rgba(255, 255, 255, 0.6);
+  --scrollbar-thumb-border-color: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover-border-color: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-active-border-color: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --scrollbar-indicator-color: rgba(255, 255, 255, 0.6);
+  --scrollbar-indicator-glow: rgba(255, 255, 255, 0.3);
+  --scrollbar-focus-color: rgba(255, 255, 255, 0.5);
+  --scrollbar-focus-shadow: rgba(255, 255, 255, 0.2);
+  --scrollbar-thumb-mobile-color: rgba(255, 255, 255, 0.4);
+  --scrollbar-track-high-contrast: rgba(255, 255, 255, 0.8);
+  --scrollbar-thumb-high-contrast: rgba(0, 0, 0, 0.8);
+  --scrollbar-thumb-border-high-contrast: rgba(255, 255, 255, 1);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(0, 0, 0, 0.8);
+  --new-message-badge-hover-bg: rgba(0, 0, 0, 0.9);
+  --new-message-badge-border: rgba(255, 255, 255, 0.2);
+  --new-message-badge-hover-border: rgba(255, 255, 255, 0.3);
+  --new-message-badge-text: rgba(255, 255, 255, 0.9);
+  --new-message-badge-hover-text: rgba(255, 255, 255, 1);
+  --new-message-badge-focus-ring: rgba(255, 255, 255, 0.5);
+  --new-message-badge-icon-color: rgba(255, 255, 255, 0.8);
+  --new-message-badge-text-color: rgba(255, 255, 255, 0.9);
+  --new-message-badge-arrow-color: rgba(255, 255, 255, 0.7);
+  --new-message-badge-pulse-color: rgba(255, 255, 255, 0.2);
+  --new-message-badge-high-contrast-bg: rgba(0, 0, 0, 1);
+  --new-message-badge-high-contrast-border: rgba(255, 255, 255, 1);
+  --new-message-badge-high-contrast-text: rgba(255, 255, 255, 1);
+}
+
+/* High Contrast Theme */
+.theme-high-contrast {
+  --scrollbar-track-color: rgba(255, 255, 255, 0.2);
+  --scrollbar-track-hover-color: rgba(255, 255, 255, 0.3);
+  --scrollbar-thumb-color: rgba(120, 255, 120, 0.8);
+  --scrollbar-thumb-hover-color: rgba(120, 255, 120, 1);
+  --scrollbar-thumb-active-color: rgba(100, 255, 100, 1);
+  --scrollbar-thumb-border-color: rgba(120, 255, 120, 0.4);
+  --scrollbar-thumb-hover-border-color: rgba(120, 255, 120, 0.6);
+  --scrollbar-thumb-active-border-color: rgba(120, 255, 120, 0.8);
+  --scrollbar-thumb-shadow: 0 0 8px rgba(120, 255, 120, 0.5);
+  --scrollbar-thumb-hover-shadow: 0 0 12px rgba(120, 255, 120, 0.7);
+  --scrollbar-indicator-color: rgba(120, 255, 120, 0.9);
+  --scrollbar-indicator-glow: rgba(120, 255, 120, 0.6);
+  --scrollbar-focus-color: rgba(120, 255, 120, 0.8);
+  --scrollbar-focus-shadow: rgba(120, 255, 120, 0.4);
+  --scrollbar-thumb-mobile-color: rgba(120, 255, 120, 0.7);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(0, 0, 0, 0.9);
+  --new-message-badge-hover-bg: rgba(0, 0, 0, 1);
+  --new-message-badge-border: rgba(120, 255, 120, 0.8);
+  --new-message-badge-hover-border: rgba(120, 255, 120, 1);
+  --new-message-badge-text: rgba(120, 255, 120, 1);
+  --new-message-badge-hover-text: rgba(120, 255, 120, 1);
+  --new-message-badge-focus-ring: rgba(120, 255, 120, 0.8);
+  --new-message-badge-icon-color: rgba(120, 255, 120, 0.9);
+  --new-message-badge-text-color: rgba(120, 255, 120, 1);
+  --new-message-badge-arrow-color: rgba(120, 255, 120, 0.8);
+  --new-message-badge-pulse-color: rgba(120, 255, 120, 0.3);
+}
+
+/* DOS Theme */
+.theme-dos {
+  --scrollbar-track-color: rgba(0, 255, 255, 0.15);
+  --scrollbar-track-hover-color: rgba(0, 255, 255, 0.25);
+  --scrollbar-thumb-color: rgba(0, 255, 255, 0.6);
+  --scrollbar-thumb-hover-color: rgba(0, 255, 255, 0.8);
+  --scrollbar-thumb-active-color: rgba(0, 255, 255, 1);
+  --scrollbar-thumb-border-color: rgba(0, 255, 255, 0.3);
+  --scrollbar-thumb-hover-border-color: rgba(0, 255, 255, 0.5);
+  --scrollbar-thumb-active-border-color: rgba(0, 255, 255, 0.7);
+  --scrollbar-thumb-shadow: 0 0 8px rgba(0, 255, 255, 0.4);
+  --scrollbar-thumb-hover-shadow: 0 0 12px rgba(0, 255, 255, 0.6);
+  --scrollbar-indicator-color: rgba(0, 255, 255, 0.9);
+  --scrollbar-indicator-glow: rgba(0, 255, 255, 0.5);
+  --scrollbar-focus-color: rgba(0, 255, 255, 0.8);
+  --scrollbar-focus-shadow: rgba(0, 255, 255, 0.3);
+  --scrollbar-thumb-mobile-color: rgba(0, 255, 255, 0.7);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(0, 0, 139, 0.9);
+  --new-message-badge-hover-bg: rgba(0, 0, 139, 1);
+  --new-message-badge-border: rgba(0, 255, 255, 0.8);
+  --new-message-badge-hover-border: rgba(0, 255, 255, 1);
+  --new-message-badge-text: rgba(0, 255, 255, 1);
+  --new-message-badge-hover-text: rgba(0, 255, 255, 1);
+  --new-message-badge-focus-ring: rgba(0, 255, 255, 0.8);
+  --new-message-badge-icon-color: rgba(0, 255, 255, 0.9);
+  --new-message-badge-text-color: rgba(0, 255, 255, 1);
+  --new-message-badge-arrow-color: rgba(0, 255, 255, 0.8);
+  --new-message-badge-pulse-color: rgba(0, 255, 255, 0.3);
+}
+
+/* Cyberpunk Theme */
+.theme-cyberpunk {
+  --scrollbar-track-color: rgba(255, 20, 147, 0.15);
+  --scrollbar-track-hover-color: rgba(255, 20, 147, 0.25);
+  --scrollbar-thumb-color: linear-gradient(45deg, rgba(255, 20, 147, 0.7), rgba(138, 43, 226, 0.7));
+  --scrollbar-thumb-hover-color: linear-gradient(45deg, rgba(255, 20, 147, 0.9), rgba(138, 43, 226, 0.9));
+  --scrollbar-thumb-active-color: linear-gradient(45deg, rgba(255, 20, 147, 1), rgba(138, 43, 226, 1));
+  --scrollbar-thumb-border-color: rgba(255, 20, 147, 0.4);
+  --scrollbar-thumb-hover-border-color: rgba(255, 20, 147, 0.6);
+  --scrollbar-thumb-active-border-color: rgba(255, 20, 147, 0.8);
+  --scrollbar-thumb-shadow: 0 0 12px rgba(255, 20, 147, 0.6), 0 0 24px rgba(138, 43, 226, 0.4);
+  --scrollbar-thumb-hover-shadow: 0 0 16px rgba(255, 20, 147, 0.8), 0 0 32px rgba(138, 43, 226, 0.6);
+  --scrollbar-indicator-color: rgba(255, 20, 147, 1);
+  --scrollbar-indicator-glow: rgba(255, 20, 147, 0.7);
+  --scrollbar-focus-color: rgba(255, 20, 147, 0.9);
+  --scrollbar-focus-shadow: rgba(255, 20, 147, 0.5);
+  --scrollbar-thumb-mobile-color: rgba(255, 20, 147, 0.8);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(30, 0, 30, 0.9);
+  --new-message-badge-hover-bg: rgba(30, 0, 30, 1);
+  --new-message-badge-border: rgba(255, 20, 147, 0.8);
+  --new-message-badge-hover-border: rgba(255, 20, 147, 1);
+  --new-message-badge-text: rgba(255, 20, 147, 1);
+  --new-message-badge-hover-text: rgba(255, 20, 147, 1);
+  --new-message-badge-focus-ring: rgba(255, 20, 147, 0.8);
+  --new-message-badge-icon-color: rgba(255, 20, 147, 0.9);
+  --new-message-badge-text-color: rgba(255, 20, 147, 1);
+  --new-message-badge-arrow-color: rgba(138, 43, 226, 0.9);
+  --new-message-badge-pulse-color: rgba(255, 20, 147, 0.4);
+}
+
+/* Paper Theme */
+.theme-paper {
+  --scrollbar-track-color: rgba(139, 69, 19, 0.1);
+  --scrollbar-track-hover-color: rgba(139, 69, 19, 0.15);
+  --scrollbar-thumb-color: rgba(139, 69, 19, 0.4);
+  --scrollbar-thumb-hover-color: rgba(139, 69, 19, 0.6);
+  --scrollbar-thumb-active-color: rgba(139, 69, 19, 0.8);
+  --scrollbar-thumb-border-color: rgba(139, 69, 19, 0.2);
+  --scrollbar-thumb-hover-border-color: rgba(139, 69, 19, 0.3);
+  --scrollbar-thumb-active-border-color: rgba(139, 69, 19, 0.4);
+  --scrollbar-thumb-shadow: 0 2px 6px rgba(139, 69, 19, 0.3);
+  --scrollbar-thumb-hover-shadow: 0 3px 9px rgba(139, 69, 19, 0.4);
+  --scrollbar-indicator-color: rgba(139, 69, 19, 0.7);
+  --scrollbar-indicator-glow: rgba(139, 69, 19, 0.3);
+  --scrollbar-focus-color: rgba(139, 69, 19, 0.6);
+  --scrollbar-focus-shadow: rgba(139, 69, 19, 0.2);
+  --scrollbar-thumb-mobile-color: rgba(139, 69, 19, 0.5);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(245, 245, 220, 0.95);
+  --new-message-badge-hover-bg: rgba(245, 245, 220, 1);
+  --new-message-badge-border: rgba(139, 69, 19, 0.6);
+  --new-message-badge-hover-border: rgba(139, 69, 19, 0.8);
+  --new-message-badge-text: rgba(139, 69, 19, 0.9);
+  --new-message-badge-hover-text: rgba(139, 69, 19, 1);
+  --new-message-badge-focus-ring: rgba(139, 69, 19, 0.6);
+  --new-message-badge-icon-color: rgba(139, 69, 19, 0.8);
+  --new-message-badge-text-color: rgba(139, 69, 19, 0.9);
+  --new-message-badge-arrow-color: rgba(139, 69, 19, 0.7);
+  --new-message-badge-pulse-color: rgba(139, 69, 19, 0.2);
+}
+
+/* DOS Blue Theme */
+.theme-dos-blue {
+  --scrollbar-track-color: rgba(255, 255, 0, 0.15);
+  --scrollbar-track-hover-color: rgba(255, 255, 0, 0.25);
+  --scrollbar-thumb-color: rgba(255, 255, 0, 0.7);
+  --scrollbar-thumb-hover-color: rgba(255, 255, 0, 0.9);
+  --scrollbar-thumb-active-color: rgba(255, 255, 0, 1);
+  --scrollbar-thumb-border-color: rgba(255, 255, 0, 0.3);
+  --scrollbar-thumb-hover-border-color: rgba(255, 255, 0, 0.5);
+  --scrollbar-thumb-active-border-color: rgba(255, 255, 0, 0.7);
+  --scrollbar-thumb-shadow: 0 0 8px rgba(255, 255, 0, 0.5);
+  --scrollbar-thumb-hover-shadow: 0 0 12px rgba(255, 255, 0, 0.7);
+  --scrollbar-indicator-color: rgba(255, 255, 0, 1);
+  --scrollbar-indicator-glow: rgba(255, 255, 0, 0.6);
+  --scrollbar-focus-color: rgba(255, 255, 0, 0.8);
+  --scrollbar-focus-shadow: rgba(255, 255, 0, 0.4);
+  --scrollbar-thumb-mobile-color: rgba(255, 255, 0, 0.8);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(0, 0, 139, 0.9);
+  --new-message-badge-hover-bg: rgba(0, 0, 139, 1);
+  --new-message-badge-border: rgba(255, 255, 0, 0.8);
+  --new-message-badge-hover-border: rgba(255, 255, 0, 1);
+  --new-message-badge-text: rgba(255, 255, 0, 1);
+  --new-message-badge-hover-text: rgba(255, 255, 0, 1);
+  --new-message-badge-focus-ring: rgba(255, 255, 0, 0.8);
+  --new-message-badge-icon-color: rgba(255, 255, 0, 0.9);
+  --new-message-badge-text-color: rgba(255, 255, 0, 1);
+  --new-message-badge-arrow-color: rgba(255, 255, 0, 0.8);
+  --new-message-badge-pulse-color: rgba(255, 255, 0, 0.3);
+}
+
+/* Solarized Theme */
+.theme-solarized {
+  --scrollbar-track-color: rgba(147, 161, 161, 0.15);
+  --scrollbar-track-hover-color: rgba(147, 161, 161, 0.25);
+  --scrollbar-thumb-color: rgba(147, 161, 161, 0.5);
+  --scrollbar-thumb-hover-color: rgba(147, 161, 161, 0.7);
+  --scrollbar-thumb-active-color: rgba(147, 161, 161, 0.9);
+  --scrollbar-thumb-border-color: rgba(147, 161, 161, 0.2);
+  --scrollbar-thumb-hover-border-color: rgba(147, 161, 161, 0.3);
+  --scrollbar-thumb-active-border-color: rgba(147, 161, 161, 0.4);
+  --scrollbar-thumb-shadow: 0 2px 8px rgba(0, 43, 54, 0.3);
+  --scrollbar-thumb-hover-shadow: 0 4px 12px rgba(0, 43, 54, 0.4);
+  --scrollbar-indicator-color: rgba(147, 161, 161, 0.8);
+  --scrollbar-indicator-glow: rgba(147, 161, 161, 0.4);
+  --scrollbar-focus-color: rgba(147, 161, 161, 0.7);
+  --scrollbar-focus-shadow: rgba(147, 161, 161, 0.3);
+  --scrollbar-thumb-mobile-color: rgba(147, 161, 161, 0.6);
+  
+  /* New Message Badge */
+  --new-message-badge-bg: rgba(0, 43, 54, 0.9);
+  --new-message-badge-hover-bg: rgba(0, 43, 54, 1);
+  --new-message-badge-border: rgba(147, 161, 161, 0.6);
+  --new-message-badge-hover-border: rgba(147, 161, 161, 0.8);
+  --new-message-badge-text: rgba(147, 161, 161, 0.9);
+  --new-message-badge-hover-text: rgba(147, 161, 161, 1);
+  --new-message-badge-focus-ring: rgba(147, 161, 161, 0.7);
+  --new-message-badge-icon-color: rgba(147, 161, 161, 0.8);
+  --new-message-badge-text-color: rgba(147, 161, 161, 0.9);
+  --new-message-badge-arrow-color: rgba(147, 161, 161, 0.7);
+  --new-message-badge-pulse-color: rgba(147, 161, 161, 0.2);
+}
+
+/* Special gradient background for cyberpunk theme */
+.theme-cyberpunk .scrollbar-thumb-inner {
+  background: linear-gradient(45deg, 
+    rgba(255, 20, 147, 0.7) 0%, 
+    rgba(138, 43, 226, 0.7) 100%
+  ) !important;
+}
+
+.theme-cyberpunk .scrollbar-thumb:hover .scrollbar-thumb-inner {
+  background: linear-gradient(45deg, 
+    rgba(255, 20, 147, 0.9) 0%, 
+    rgba(138, 43, 226, 0.9) 100%
+  ) !important;
+}
+
+.theme-cyberpunk .scrollbar-thumb-active .scrollbar-thumb-inner {
+  background: linear-gradient(45deg, 
+    rgba(255, 20, 147, 1) 0%, 
+    rgba(138, 43, 226, 1) 100%
+  ) !important;
+}
+
+/* Animation for cyberpunk theme */
+.theme-cyberpunk .scrollbar-thumb-inner {
+  animation: cyberpunk-pulse 2s ease-in-out infinite alternate;
+}
+
+@keyframes cyberpunk-pulse {
+  0% {
+    box-shadow: 
+      0 0 5px rgba(255, 20, 147, 0.5),
+      0 0 10px rgba(255, 20, 147, 0.3),
+      0 0 15px rgba(138, 43, 226, 0.2);
+  }
+  100% {
+    box-shadow: 
+      0 0 8px rgba(255, 20, 147, 0.7),
+      0 0 16px rgba(255, 20, 147, 0.5),
+      0 0 24px rgba(138, 43, 226, 0.4);
+  }
+}
+
+/* Disable animations for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .theme-cyberpunk .scrollbar-thumb-inner {
+    animation: none;
+  }
+}

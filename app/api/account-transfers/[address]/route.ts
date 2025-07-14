@@ -2,6 +2,18 @@ import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana-connection';
 import { isValidSolanaAddress } from '@/lib/utils';
+import { 
+  MIN_TRANSFER_SOL, 
+  TRANSACTION_BATCH_SIZE, 
+  MAX_SIGNATURES_LIMIT, 
+  MAX_RETRIES, 
+  INITIAL_BACKOFF_MS, 
+  BATCH_DELAY_MS,
+  MAX_TRANSFER_COUNT,
+  isSpamAddress,
+  isAboveDustThreshold,
+  MIN_WALLET_ADDRESS_LENGTH
+} from '@/lib/transaction-constants';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,19 +46,18 @@ async function fetchTransactionBatch(
   const transfers: Transfer[] = [];
   const startTime = Date.now();
   
-  // Process in small batches of 10 transactions to avoid connection overload
-  const BATCH_SIZE = 10;
+  // Process in small batches to avoid connection overload
   const batches = [];
   
-  for (let i = 0; i < signatures.length; i += BATCH_SIZE) {
-    batches.push(signatures.slice(i, i + BATCH_SIZE));
+  for (let i = 0; i < signatures.length; i += TRANSACTION_BATCH_SIZE) {
+    batches.push(signatures.slice(i, i + TRANSACTION_BATCH_SIZE));
   }
   
   for (const batch of batches) {
     const batchResults = await Promise.all(
       batch.map(async (signature) => {
-        let retries = 3;
-        let backoff = 1000; // Start with 1s backoff
+        let retries = MAX_RETRIES;
+        let backoff = INITIAL_BACKOFF_MS;
         
         while (retries > 0) {
           try {
@@ -78,6 +89,16 @@ async function fetchTransactionBatch(
               }
 
               const amount = Math.abs(delta / 1e9);
+              
+              // Skip if this is a spam address
+              if (isSpamAddress(account) || isSpamAddress(firstAccount)) {
+                continue;
+              }
+              
+              // Skip dust transactions
+              if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) {
+                continue;
+              }
 
               txTransfers.push({
                 txId: signature,
@@ -116,7 +137,7 @@ async function fetchTransactionBatch(
     
     // Small delay between batches to avoid rate limiting
     if (batches.length > 1) {
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
     }
   }
 
@@ -139,7 +160,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const offset = parseInt(searchParams.get('offset') || '0');
     // Limit batch size to improve performance
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 50);
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), MAX_SIGNATURES_LIMIT);
 
     // Validate address
     if (!isValidSolanaAddress(address)) {
@@ -159,39 +180,24 @@ export async function GET(
     // Fetch signatures with proper pagination
     console.log(`Fetching signatures for ${address} (offset: ${offset}, limit: ${limit})`);
     
-    // Create a unique identifier for the "before" signature if offset > 0
-    let beforeSignature = undefined;
-    if (offset > 0) {
-      try {
-        // Try to get the signature at the previous page boundary
-        const prevPageSignature = await connection.getSignaturesForAddress(
-          pubkey,
-          { limit: 1, until: undefined, before: undefined }
-        );
-        
-        // If we found a valid signature and offset is greater than 0, use it as the "before" parameter
-        if (prevPageSignature.length > 0 && offset > 0) {
-          beforeSignature = prevPageSignature[0].signature;
-          console.log(`Using pagination signature: ${beforeSignature.substring(0, 10)}...`);
-        }
-      } catch (paginationError) {
-        console.warn('Failed to get pagination signature:', paginationError);
-        // Continue without pagination if this fails
-      }
-    }
+    // For proper pagination, we need to track the last signature from the previous page
+    // The offset-based pagination requires getting a beforeSignature from URL params
+    // since Solana doesn't support direct offset pagination
+    const beforeSignature = searchParams.get('beforeSignature');
     
     const signatures = await connection.getSignaturesForAddress(
       pubkey,
       {
         limit,
-        before: beforeSignature
+        before: beforeSignature || undefined
       }
     );
 
     if (signatures.length === 0) {
       return NextResponse.json({
         data: [],
-        hasMore: false
+        hasMore: false,
+        nextPageSignature: null
       }, { headers: corsHeaders });
     }
 
@@ -205,10 +211,31 @@ export async function GET(
 
     console.log(`Total transfers found: ${transfers.length}`);
 
+    // Sort by volume (amount) and limit to top transfers only
+    const filteredAndSortedTransfers = transfers
+      .filter(transfer => {
+        const amount = parseFloat(transfer.tokenAmount);
+        // Only include significant transfers and filter out potential trading/DEX activity
+        // Simple heuristic: transfers between user wallets typically have cleaner amounts
+        return isAboveDustThreshold(amount, MIN_TRANSFER_SOL) && 
+               transfer.from !== transfer.to && // Prevent self-transfers
+               transfer.from.length >= MIN_WALLET_ADDRESS_LENGTH && 
+               transfer.to.length >= MIN_WALLET_ADDRESS_LENGTH; // Ensure full wallet addresses
+      })
+      .sort((a, b) => parseFloat(b.tokenAmount) - parseFloat(a.tokenAmount))
+      .slice(0, MAX_TRANSFER_COUNT); // Limit to top transfers by volume
+
+    console.log(`Filtered to top ${filteredAndSortedTransfers.length} transfers by volume`);
+
+    // Get the last signature for pagination
+    const nextPageSignature = signatures.length > 0 ? signatures[signatures.length - 1].signature : null;
+
     return NextResponse.json({
-      data: transfers,
+      data: filteredAndSortedTransfers,
       hasMore: signatures.length === limit,
-      total: transfers.length
+      total: filteredAndSortedTransfers.length,
+      originalTotal: transfers.length,
+      nextPageSignature
     }, { headers: corsHeaders });
 
   } catch (error) {

@@ -97,6 +97,7 @@ export function Chat({
         onRetryAction={onRetryAction}
         onVoiceRecord={onVoiceRecord}
         isRecording={isRecording}
+        variant={variant}
       />
     </ChatLayout>
   );

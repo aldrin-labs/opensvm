@@ -1,0 +1,150 @@
+npm warn using --force Recommended protections disabled.
+  ▲ Next.js 14.2.30
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully
+   Skipping validation of types
+   Linting ...
+
+./components/EnhancedTransactionVisualizer.tsx
+296:6  Warning: React Hook useEffect has missing dependencies: 'dragended', 'dragged', 'dragstarted', 'getNodeColor', 'getNodeLabel', 'getNodeRadius', and 'getNodeTooltip'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/NetworkCharts.tsx
+89:6  Warning: React Hook useCallback has an unnecessary dependency: 'networkId'. Either exclude it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/search/AIResponsePanel.tsx
+61:6  Warning: React Hook useCallback has a missing dependency: 'generateAIResponse'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+./components/transaction-graph/TransactionGraph.tsx
+649:6  Warning: React Hook useCallback has an unnecessary dependency: 'queueAccountFetch'. Either exclude it or remove the dependency array.  react-hooks/exhaustive-deps
+807:6  Warning: React Hook useEffect has a missing dependency: 'setupGraphInteractionsCallback'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+1102:6  Warning: React Hook useEffect has a missing dependency: 'updateGPUGraphData'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+1218:43  Warning: The ref value 'trackingIntervalRef.current' will likely have changed by the time this effect cleanup function runs. If this ref points to a node rendered by React, copy 'trackingIntervalRef.current' to a variable inside the effect, and use that variable in the cleanup function.  react-hooks/exhaustive-deps
+
+./components/transaction-graph/gpu-utils.ts
+295:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+./lib/moralis-api.ts
+521:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+./lib/openrouter-api.ts
+397:1  Warning: Assign object to a variable before exporting as module default  import/no-anonymous-default-export
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/basic-features/eslint#disabling-rules
+   Collecting page data ...
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+Warning: Missing required environment variables. The similar questions feature will be disabled.
+bigint: Failed to load bindings, pure JS will be used (try npm run rebuild?)
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+   Generating static pages (0/42) ...
+   Generating static pages (10/42) 
+Warning: Missing required environment variables. The similar questions feature will be disabled.
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+No OPENSVM_RPC_LIST environment variables found, using fallback endpoints
+Initialized OpenSVM connection pool with 1 endpoints
+   Generating static pages (20/42) 
+   Generating static pages (31/42) 
+ ✓ Generating static pages (42/42)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                    Size     First Load JS
+┌ ○ /                                          3.57 kB         264 kB
+├ ○ /_not-found                                921 B          88.8 kB
+├ ƒ /account/[address]                         1.33 kB         623 kB
+├ ○ /admin                                     193 B          88.1 kB
+├ ○ /analytics                                 193 B          88.1 kB
+├ ○ /analytics/defi                            193 B          88.1 kB
+├ ○ /analytics/tokens                          193 B          88.1 kB
+├ ƒ /api/account-stats/[address]               0 B                0 B
+├ ƒ /api/account-token-stats/[address]/[mint]  0 B                0 B
+├ ƒ /api/account-transactions/[address]        0 B                0 B
+├ ƒ /api/account-transfers/[address]           0 B                0 B
+├ ƒ /api/ai-response                           0 B                0 B
+├ ƒ /api/analyze                               0 B                0 B
+├ ƒ /api/analyze-transaction                   0 B                0 B
+├ ƒ /api/block                                 0 B                0 B
+├ ƒ /api/blocks/[slot]                         0 B                0 B
+├ ƒ /api/chat                                  0 B                0 B
+├ ƒ /api/check-account-type                    0 B                0 B
+├ ƒ /api/check-token                           0 B                0 B
+├ ○ /api/favicon                               0 B                0 B
+├ ƒ /api/filter-transactions                   0 B                0 B
+├ ƒ /api/getAnswer                             0 B                0 B
+├ ƒ /api/getSimilarQuestions                   0 B                0 B
+├ ○ /api/getSources                            0 B                0 B
+├ ○ /api/nft-collections                       0 B                0 B
+├ ○ /api/nft-collections/new                   0 B                0 B
+├ ○ /api/nft-collections/trending              0 B                0 B
+├ ƒ /api/nfts/collections                      0 B                0 B
+├ ƒ /api/og                                    0 B                0 B
+├ ƒ /api/program/[address]                     0 B                0 B
+├ ƒ /api/proxy/rpc/[id]                        0 B                0 B
+├ ○ /api/qdrant/init                           0 B                0 B
+├ ƒ /api/search/accounts                       0 B                0 B
+├ ƒ /api/search/filtered                       0 B                0 B
+├ ƒ /api/search/suggestions                    0 B                0 B
+├ ƒ /api/solana-proxy                          0 B                0 B
+├ ƒ /api/solana-proxy/[transaction]            0 B                0 B
+├ ƒ /api/solana-rpc                            0 B                0 B
+├ ƒ /api/test-transaction                      0 B                0 B
+├ ƒ /api/token-stats/[account]/[mint]          0 B                0 B
+├ ƒ /api/token/[mint]                          0 B                0 B
+├ ƒ /api/transaction                           0 B                0 B
+├ ƒ /api/transaction/[signature]               0 B                0 B
+├ ƒ /api/wallet-path-finding                   0 B                0 B
+├ ƒ /block/[slot]                              2.24 kB         196 kB
+├ ƒ /block/[slot]/opengraph-image              0 B                0 B
+├ ○ /blocks                                    193 B          88.1 kB
+├ ○ /docs                                      344 B            97 kB
+├ ƒ /docs/[slug]                               193 B          88.1 kB
+├ ○ /networks                                  5.22 kB         263 kB
+├ ○ /nfts                                      1.16 kB        94.4 kB
+├ ○ /nfts/new                                  1.32 kB        94.6 kB
+├ ○ /nfts/trending                             1.33 kB        94.6 kB
+├ ƒ /program/[address]                         4.14 kB          92 kB
+├ ƒ /program/[address]/opengraph-image         0 B                0 B
+├ ○ /programs                                  193 B          88.1 kB
+├ ○ /search                                    5.3 kB          199 kB
+├ ○ /slots                                     193 B          88.1 kB
+├ ○ /solana                                    1.29 kB         172 kB
+├ ○ /test                                      2.34 kB         515 kB
+├ ○ /test/transfers                            580 B           622 kB
+├ ƒ /token/[mint]                              5.03 kB         192 kB
+├ ƒ /token/[mint]/opengraph-image              0 B                0 B
+├ ○ /tokens                                    193 B          88.1 kB
+├ ○ /tokens/gainers                            193 B          88.1 kB
+├ ○ /tokens/new                                193 B          88.1 kB
+├ ○ /tx                                        193 B          88.1 kB
+├ ƒ /tx/[signature]                            7 kB            194 kB
+├ ƒ /tx/[signature]/graph                      193 B          88.1 kB
+├ ƒ /tx/[signature]/opengraph-image            0 B                0 B
+└ ○ /ui-showcase                               2.03 kB        89.9 kB
++ First Load JS shared by all                  87.9 kB
+  ├ chunks/2117-584465a5aff22556.js            31.8 kB
+  ├ chunks/fd9d1056-3c569dc6c2ec2d6e.js        53.7 kB
+  └ other shared chunks (total)                2.41 kB
+
+
+ƒ Middleware                                   27.7 kB
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

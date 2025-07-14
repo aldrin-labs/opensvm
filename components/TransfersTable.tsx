@@ -1,60 +1,202 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { useTransfers } from '@/app/account/[address]/components/shared/hooks';
 import type { Transfer } from '@/app/account/[address]/components/shared/types';
 import { VTableWrapper } from '@/components/vtable';
 import { Button } from '@/components/ui/button';
-import { formatNumber, truncateMiddle } from '@/lib/utils';
+import { formatNumber } from '@/lib/utils';
 import { Tooltip } from '@/components/ui/tooltip';
-import { useRouter, usePathname } from 'next/navigation';
-import { PinIcon } from 'lucide-react';
-import { useCallback as useStableCallback } from 'react';
+import { useRouter } from 'next/navigation';
+import { PinIcon, Search, X, Filter } from 'lucide-react';
 import Link from 'next/link';
+import {
+  getCachedTransfers,
+  storeTransferEntry,
+  markTransfersCached,
+  isSolanaOnlyTransaction,
+  type TransferEntry
+} from '@/lib/qdrant';
 
 interface TransfersTableProps {
   address: string;
+  transferType?: 'SOL' | 'TOKEN' | 'ALL';
 }
 
-export function TransfersTable({ address }: TransfersTableProps) {
+export function TransfersTable({ address, transferType = 'ALL' }: TransfersTableProps) {
   const { transfers: rawTransfers, loading, error, hasMore, loadMore, totalCount } = useTransfers(address);
   const router = useRouter();
   const [sortField, setSortField] = useState<keyof Transfer>('timestamp');
   const [selectedRowId, setSelectedRowId] = useState<string | null>(null);
   const [pinnedRowIds, setPinnedRowIds] = useState<Set<string>>(new Set());
-
+  const [searchTerm, setSearchTerm] = useState('');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [tokenFilter, setTokenFilter] = useState<string>('all');
+  const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // New state for caching and Solana filtering
+  const [useCachedData, setUseCachedData] = useState(false);
+  const [cachedTransfers, setCachedTransfers] = useState<TransferEntry[]>([]);
+  const [cachingInProgress, setCachingInProgress] = useState(false);
+  const [solanaOnlyFilter, setSolanaOnlyFilter] = useState(true);
+
+  // Load cached data and sync timestamp on component mount
+  useEffect(() => {
+    const loadCachedData = async () => {
+      try {
+        const [cached] = await Promise.all([
+          getCachedTransfers(address, {
+            solanaOnly: solanaOnlyFilter,
+            transferType: transferType
+          })
+        ]);
+        
+        setCachedTransfers(cached.transfers);
+        
+        // Use cached data if available
+        if (cached.transfers.length > 0) {
+          setUseCachedData(true);
+        }
+      } catch (error) {
+        console.error('Error loading cached data:', error);
+      }
+    };
+    
+    loadCachedData();
+  }, [address, transferType, solanaOnlyFilter]);
+
+  // Cache new transfers when they arrive
+  useEffect(() => {
+    const cacheNewTransfers = async () => {
+      if (rawTransfers.length === 0 || cachingInProgress) return;
+      
+      setCachingInProgress(true);
+      try {
+        const transferEntries: TransferEntry[] = rawTransfers.map(transfer => ({
+          id: `${address}-${transfer.signature}-${Date.now()}`,
+          walletAddress: address,
+          signature: transfer.signature || '',
+          timestamp: new Date(transfer.timestamp || '').getTime(),
+          type: transfer.type || 'transfer',
+          amount: transfer.amount || 0,
+          token: transfer.tokenSymbol || transfer.token || 'SOL',
+          tokenSymbol: transfer.tokenSymbol,
+          tokenName: transfer.tokenName,
+          from: transfer.from || '',
+          to: transfer.to || '',
+          mint: transfer.mint,
+          usdValue: transfer.usdValue,
+          isSolanaOnly: isSolanaOnlyTransaction(transfer),
+          cached: true,
+          lastUpdated: Date.now()
+        }));
+        
+        // Store each transfer
+        for (const entry of transferEntries) {
+          await storeTransferEntry(entry);
+        }
+        
+        // Mark as cached
+        const signatures = transferEntries.map(t => t.signature).filter(Boolean);
+        if (signatures.length > 0) {
+          await markTransfersCached(signatures, address);
+        }
+        
+        // Update cached transfers state
+        setCachedTransfers(prev => {
+          const newTransfers = [...transferEntries, ...prev];
+          // Remove duplicates by signature
+          const unique = newTransfers.reduce((acc, current) => {
+            const existing = acc.find(t => t.signature === current.signature);
+            if (!existing) {
+              acc.push(current);
+            }
+            return acc;
+          }, [] as TransferEntry[]);
+          return unique.sort((a, b) => b.timestamp - a.timestamp);
+        });
+        
+      } catch (error) {
+        console.error('Error caching transfers:', error);
+      } finally {
+        setCachingInProgress(false);
+      }
+    };
+    
+    cacheNewTransfers();
+  }, [rawTransfers, address, cachingInProgress]);
 
   // Handle client-side navigation to account/transaction pages
-  const handleAddressClick = useStableCallback((e: React.MouseEvent<HTMLAnchorElement>, targetAddress: string) => {
+  const handleAddressClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetAddress: string) => {
     if (!targetAddress) return;
     
     e.preventDefault();
     
     // Use router.push with scroll: false to prevent page reload
-    router.push(`/account/${targetAddress}?tab=transactions`, { 
+    router.push(`/account/${targetAddress}?tab=transactions`, {
+      scroll: false
+    });
+  }, [router]);
+
+  // Handle transaction hash clicks
+  const handleTransactionClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, signature: string) => {
+    if (!signature) return;
+    
+    e.preventDefault();
+    
+    // Navigate to transaction page
+    router.push(`/tx/${signature}`, { 
       scroll: false 
     });
   }, [router]);
 
-  // Map API data to the expected Transfer format
+  // Map API data to the expected Transfer format, with option to use cached data
   const transfers = useMemo(() => {
-    return rawTransfers.map(item => {
-      // Handle different field names between API and component
-      return {
-        signature: item.signature || '',
-        timestamp: item.timestamp || '',
-        type: item.type || 'transfer',
-        amount: item.amount || 0,
-        token: item.tokenSymbol || 'SOL',
-        tokenSymbol: item.tokenSymbol || 'SOL',
-        from: item.from || '',
-        to: item.to || '',
-        tokenName: item.tokenName || 'Solana', // Default for SOL
-        ...(item as any) // Keep any other fields that might be present
-      };
+    const sourceData = useCachedData ? cachedTransfers : rawTransfers;
+    
+    return sourceData.map(item => {
+      // Handle both TransferEntry and raw transfer formats
+      if ('walletAddress' in item) {
+        // This is a cached TransferEntry
+        const cachedItem = item as TransferEntry;
+        return {
+          signature: cachedItem.signature || '',
+          timestamp: new Date(cachedItem.timestamp).toISOString(),
+          type: cachedItem.type || 'transfer',
+          amount: cachedItem.amount || 0,
+          token: cachedItem.tokenSymbol || cachedItem.token || 'SOL',
+          tokenSymbol: cachedItem.tokenSymbol || cachedItem.token || 'SOL',
+          from: cachedItem.from || '',
+          to: cachedItem.to || '',
+          tokenName: cachedItem.tokenName || (cachedItem.token === 'SOL' ? 'Solana' : cachedItem.token),
+          usdValue: cachedItem.usdValue,
+          mint: cachedItem.mint,
+          isSolanaOnly: cachedItem.isSolanaOnly,
+          cached: cachedItem.cached
+        };
+      } else {
+        // This is a raw transfer from API
+        const rawItem = item as any;
+        return {
+          signature: rawItem.signature || '',
+          timestamp: rawItem.timestamp || '',
+          type: rawItem.type || 'transfer',
+          amount: rawItem.amount || 0,
+          token: rawItem.tokenSymbol || 'SOL',
+          tokenSymbol: rawItem.tokenSymbol || 'SOL',
+          from: rawItem.from || '',
+          to: rawItem.to || '',
+          tokenName: rawItem.tokenName || 'Solana',
+          usdValue: rawItem.usdValue,
+          mint: rawItem.mint,
+          isSolanaOnly: isSolanaOnlyTransaction(rawItem),
+          cached: false,
+          ...(rawItem as any)
+        };
+      }
     });
-  }, [rawTransfers]);
+  }, [rawTransfers, cachedTransfers, useCachedData]);
 
   // Handle row selection
   const handleRowSelect = useCallback((rowId: string) => {
@@ -154,7 +296,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
           <div className="truncate font-mono text-xs" data-test="from">
             <Link
               href={row.from ? `/account/${row.from}?tab=transactions` : '#'}
-              className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+              className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.from || '')}
               data-address={row.from || ''}
             >
@@ -174,7 +316,7 @@ export function TransfersTable({ address }: TransfersTableProps) {
           <div className="truncate font-mono text-xs" data-test="to">
             <Link
               href={row.to ? `/account/${row.to}?tab=transactions` : '#'}
-              className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+              className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.to || '')}
               data-address={row.to || ''}
             >
@@ -195,7 +337,8 @@ export function TransfersTable({ address }: TransfersTableProps) {
             {row.signature ? (
               <Link
                 href={`/tx/${row.signature}`}
-                className="hover:underline hover:text-blue-400 text-blue-500 transition-colors"
+                onClick={(e) => handleTransactionClick(e, row.signature || '')}
+                className="hover:underline hover:text-primary text-primary/80 transition-colors"
                 prefetch={false}
                 data-signature={row.signature}
               >
@@ -208,13 +351,65 @@ export function TransfersTable({ address }: TransfersTableProps) {
         </Tooltip>
       )
     }
-  ], [handleAddressClick]);
+  ], [handleAddressClick, handleTransactionClick]);
 
 
   const sortedTransfers = useMemo(() => {
     if (!transfers.length) return [];
 
-    const sorted = [...transfers].sort((a, b) => {
+    // First filter by transfer type (SOL, TOKEN, ALL)
+    let filtered = transfers;
+    if (transferType === 'SOL') {
+      filtered = transfers.filter(transfer =>
+        (transfer.tokenSymbol || transfer.token || 'SOL') === 'SOL'
+      );
+    } else if (transferType === 'TOKEN') {
+      filtered = transfers.filter(transfer =>
+        (transfer.tokenSymbol || transfer.token || 'SOL') !== 'SOL'
+      );
+    }
+
+    // Filter by search term
+    if (searchTerm.trim()) {
+      const lowerSearchTerm = searchTerm.toLowerCase();
+      filtered = filtered.filter(transfer =>
+        transfer.from?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.to?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.tokenSymbol?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.token?.toLowerCase().includes(lowerSearchTerm) ||
+        transfer.signature?.toLowerCase().includes(lowerSearchTerm)
+      );
+    }
+
+    // Filter by type
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(transfer => transfer.type === typeFilter);
+    }
+
+    // Filter by token (only show this filter for ALL transfers)
+    if (tokenFilter !== 'all' && transferType === 'ALL') {
+      filtered = filtered.filter(transfer =>
+        (transfer.tokenSymbol || transfer.token || 'SOL') === tokenFilter
+      );
+    }
+
+    // Filter by amount range
+    if (amountFilter.min || amountFilter.max) {
+      filtered = filtered.filter(transfer => {
+        const amount = transfer.amount || 0;
+        const min = amountFilter.min ? parseFloat(amountFilter.min) : -Infinity;
+        const max = amountFilter.max ? parseFloat(amountFilter.max) : Infinity;
+        return amount >= min && amount <= max;
+      });
+    }
+
+    // Filter for Solana-only transactions (exclude cross-chain/bridge txns)
+    if (solanaOnlyFilter) {
+      filtered = filtered.filter(transfer => isSolanaOnlyTransaction(transfer));
+    }
+
+    // Then sort the filtered results
+    const sorted = [...filtered].sort((a, b) => {
       const aValue = a[sortField];
       const bValue = b[sortField];
 
@@ -241,7 +436,18 @@ export function TransfersTable({ address }: TransfersTableProps) {
     });
     
     return sorted;
-  }, [transfers, sortField, sortDirection]);
+  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transferType, solanaOnlyFilter]);
+
+  // Get unique values for filter dropdowns
+  const uniqueTypes = useMemo(() => {
+    const types = [...new Set(transfers.map(t => t.type || 'transfer'))];
+    return types.sort();
+  }, [transfers]);
+
+  const uniqueTokens = useMemo(() => {
+    const tokens = [...new Set(transfers.map(t => t.tokenSymbol || t.token || 'SOL'))];
+    return tokens.sort();
+  }, [transfers]);
 
   // Row identity function for selection
   const getRowId = useCallback((row: Transfer) => row.signature || '', []);
@@ -263,8 +469,8 @@ export function TransfersTable({ address }: TransfersTableProps) {
   }, [pinnedRowIds, handlePinRow]);
   if (error) {
     return (
-      <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg" role="alert" aria-live="assertive">
-        <p className="text-red-600 dark:text-red-400">{error}</p>
+      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg" role="alert" aria-live="assertive">
+        <p className="text-destructive">{error}</p>
       </div>
     );
   }
@@ -273,14 +479,136 @@ export function TransfersTable({ address }: TransfersTableProps) {
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold" id="transfers-heading">
-          Transfers
+          {transferType === 'SOL' ? 'SOL Transfers' :
+           transferType === 'TOKEN' ? 'Token Transfers' :
+           'All Transfers'}
           {totalCount !== undefined && (
             <span className="ml-2 text-sm text-muted-foreground">
-              ({totalCount.toLocaleString()})
+              ({sortedTransfers.length.toLocaleString()} of {totalCount.toLocaleString()})
             </span>
           )}
         </h2>
       </div>
+
+      {/* Search and Filters */}
+      <div className="space-y-4">
+        {/* Search Input */}
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+            <Search className="h-4 w-4 text-muted-foreground" />
+          </div>
+          <input
+            type="text"
+            placeholder="Search transfers by address, token symbol, or signature..."
+            className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+
+        {/* Filters Row */}
+        <div className="flex flex-wrap gap-4">
+          {/* Type Filter */}
+          <div className="flex items-center gap-2">
+            <Filter className="h-4 w-4 text-muted-foreground" />
+            <select
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Types</option>
+              {uniqueTypes.map(type => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Token Filter - only show for 'ALL' transfer type */}
+          {transferType === 'ALL' && (
+            <div className="flex items-center gap-2">
+              <select
+                value={tokenFilter}
+                onChange={(e) => setTokenFilter(e.target.value)}
+                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              >
+                <option value="all">All Tokens</option>
+                {uniqueTokens.map(token => (
+                  <option key={token} value={token}>{token}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Amount Range Filter */}
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="Min Amount"
+              value={amountFilter.min}
+              onChange={(e) => setAmountFilter(prev => ({ ...prev, min: e.target.value }))}
+              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+            <span className="text-muted-foreground">-</span>
+            <input
+              type="number"
+              placeholder="Max Amount"
+              value={amountFilter.max}
+              onChange={(e) => setAmountFilter(prev => ({ ...prev, max: e.target.value }))}
+              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            />
+          </div>
+
+          {/* Solana Only Filter */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSolanaOnlyFilter(!solanaOnlyFilter)}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
+                solanaOnlyFilter
+                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
+            >
+              Solana Only
+            </button>
+          </div>
+
+          {/* Clear Filters */}
+          {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm || solanaOnlyFilter) && (
+            <button
+              onClick={() => {
+                setTypeFilter('all');
+                setTokenFilter('all');
+                setAmountFilter({ min: '', max: '' });
+                setSearchTerm('');
+                setSolanaOnlyFilter(false);
+              }}
+              className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Search Results Count */}
+      {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || solanaOnlyFilter) && (
+        <div className="text-sm text-muted-foreground">
+          Found {sortedTransfers.length} transfers
+          {searchTerm && ` matching "${searchTerm}"`}
+          {typeFilter !== 'all' && ` of type "${typeFilter}"`}
+          {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
+          {(amountFilter.min || amountFilter.max) && ` within amount range`}
+          {solanaOnlyFilter && ` (Solana-only)`}
+        </div>
+      )}
 
       <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
         <VTableWrapper

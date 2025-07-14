@@ -1,14 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { isValidSolanaAddress } from '@/lib/utils';
 import { WalletPathCache } from '@/lib/wallet-path-cache';
-
-interface WalletTransfer {
-  txId: string;
-  from: string;
-  to: string;
-}
 
 interface WalletPathFindingProps {
   walletA: string;

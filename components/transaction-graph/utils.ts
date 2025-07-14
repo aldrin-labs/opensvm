@@ -1,108 +1,190 @@
-'use client';
-
 /**
- * Convert lamports to SOL
- * @param lamports Amount in lamports
- * @returns Amount in SOL
+ * Transaction Graph Utilities
+ * Common utility functions for transaction graph components
  */
-export const lamportsToSol = (lamports: number): number => lamports / 1_000_000_000;
 
-/**
- * Format SOL amount with + or - prefix
- * @param lamports Amount in lamports
- * @returns Formatted SOL string
- */
-export const formatSolChange = (lamports: number): string => {
-  const sol = lamportsToSol(lamports);
-  return sol > 0 ? `+${sol.toFixed(4)} SOL` : `${sol.toFixed(4)} SOL`;
-};
+import cytoscape from 'cytoscape';
+import { debugLog, errorLog } from '@/lib/debug-logger';
 
-/**
- * Get short version of address or signature
- * @param str String to shorten
- * @param length Number of characters to keep at start and end
- * @returns Shortened string
- */
-export const shortenString = (str: string, length = 4): string => {
-  if (!str) return '';
-  return `${str.slice(0, length)}...${str.slice(-length)}`;
-};
+export { debugLog, errorLog };
 
-/**
- * Format timestamp to locale string
- * @param timestamp Unix timestamp
- * @returns Formatted date string
- */
-export const formatTimestamp = (timestamp: number): string => {
-  return new Date(timestamp).toLocaleString();
-};
+// Export the logger functions for backward compatibility
+export function resizeGraph(cy: cytoscape.Core): void {
+  if (!cy) return;
+  
+  try {
+    cy.resize();
+    cy.fit();
+  } catch (error) {
+    errorLog('Error resizing graph:', error);
+  }
+}
 
-/**
- * Create a function to check if an address should be excluded from the graph
- * @param excludedAccounts Set of accounts to exclude
- * @param excludedProgramSubstrings Array of substrings to exclude
- * @returns Function that checks if an address should be excluded
- */
-export const createAddressFilter = (
-  excludedAccounts: Set<string>,
-  excludedProgramSubstrings: string[]
-) => {
-  /**
-   * Check if an address should be excluded from the graph
-   * @param address Address to check
-   * @returns True if address should be excluded
-   */
-  return (address: string): boolean => {
-    // Check for direct matches with excluded accounts
-    // Add safety check to ensure excludedAccounts is defined before calling .has()
-    if (excludedAccounts && excludedAccounts.has(address)) {
-      return true;
-    }
+export async function fetchTransactionData(signature: string): Promise<any> {
+  try {
+    debugLog('Fetching transaction data for:', signature);
     
-    // Check for substring matches with program identifiers
-    // Add safety check to ensure excludedProgramSubstrings is defined
-    for (const substring of (excludedProgramSubstrings || [])) {
-      if (address.includes(substring)) {
-        return true;
+    const response = await fetch(`/api/transaction/${signature}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
       }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch transaction: ${response.status} ${response.statusText}`);
     }
+
+    const data = await response.json();
+    debugLog('Transaction data fetched successfully');
+    return data;
     
-    return false;
+  } catch (error) {
+    errorLog('Error fetching transaction data:', error);
+    throw error;
+  }
+}
+
+export async function fetchAccountTransactions(address: string): Promise<any[]> {
+  try {
+    debugLog('Fetching account transactions for:', address);
+    
+    const response = await fetch(`/api/account-transactions/${address}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to fetch account transactions: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    debugLog('Account transactions fetched successfully');
+    return data.transactions || [];
+    
+  } catch (error) {
+    errorLog('Error fetching account transactions:', error);
+    throw error;
+  }
+}
+
+export function debounce<T extends (...args: any[]) => any>(
+  func: T,
+  wait: number
+): (...args: Parameters<T>) => void {
+  let timeout: NodeJS.Timeout;
+  
+  return (...args: Parameters<T>) => {
+    clearTimeout(timeout);
+    timeout = setTimeout(() => func(...args), wait);
   };
-};
+}
 
-/**
- * Create a function to check if a transaction should be included based on accounts involved
- * @param shouldExcludeAddress Function that checks if an address should be excluded
- * @returns Function that checks if a transaction should be included
- */
-export const createTransactionFilter = (
-  shouldExcludeAddress: (address: string) => boolean
-) => {
-  /**
-   * Check if a transaction should be included based on accounts involved
-   * @param accounts Array of accounts in the transaction
-   * @returns True if transaction should be included, false otherwise
-   */
-  return (accounts: {pubkey: string}[] | any): boolean => {
-    // Type guard: Check if accounts is an array 
-    if (!Array.isArray(accounts)) {
-      // Log the issue for debugging
-      console.warn('Transaction filter received non-array accounts:', accounts);
-      // Default to including the transaction as the safer option
-      return true;
-    }
-
-    // Type guard: Check if it's an empty array
-    if (accounts.length === 0) {
-      return true;
-    }
-
-    try {
-      return !accounts.some(acc => acc && typeof acc === 'object' && 'pubkey' in acc && shouldExcludeAddress(acc.pubkey));
-    } catch (error) {
-      console.error('Error in transaction filter:', error, 'accounts:', accounts);
-      return true; // Include by default on error
+export function throttle<T extends (...args: any[]) => any>(
+  func: T,
+  limit: number
+): (...args: Parameters<T>) => void {
+  let inThrottle: boolean;
+  
+  return (...args: Parameters<T>) => {
+    if (!inThrottle) {
+      func(...args);
+      inThrottle = true;
+      setTimeout(() => inThrottle = false, limit);
     }
   };
-};
+}
+
+export function generateNodeId(type: string, identifier: string): string {
+  return `${type}:${identifier}`;
+}
+
+export function parseNodeId(nodeId: string): { type: string; identifier: string } | null {
+  const [type, identifier] = nodeId.split(':');
+  if (!type || !identifier) return null;
+  return { type, identifier };
+}
+
+export function formatAddress(address: string, length: number = 8): string {
+  if (!address || address.length <= length) return address;
+  const start = Math.floor(length / 2);
+  const end = length - start;
+  return `${address.substring(0, start)}...${address.substring(address.length - end)}`;
+}
+
+export function formatTransactionSignature(signature: string, length: number = 8): string {
+  return formatAddress(signature, length);
+}
+
+export function getNodeColor(nodeType: string, status?: string): string {
+  switch (nodeType) {
+    case 'transaction':
+      return status === 'success' ? '#10b981' : '#ef4444';
+    case 'account':
+      return '#8b5cf6';
+    case 'program':
+      return '#f59e0b';
+    default:
+      return '#6b7280';
+  }
+}
+
+export function getEdgeColor(edgeType: string): string {
+  switch (edgeType) {
+    case 'account_interaction':
+      return '#6b7280';
+    case 'token_transfer':
+      return '#10b981';
+    case 'program_call':
+      return '#f59e0b';
+    default:
+      return '#9ca3af';
+  }
+}
+
+export function calculateNodeSize(nodeType: string, data?: any): number {
+  const baseSizes = {
+    transaction: 20,
+    account: 15,
+    program: 18,
+    token: 16
+  };
+  
+  let size = baseSizes[nodeType as keyof typeof baseSizes] || 15;
+  
+  // Adjust size based on data if available
+  if (data) {
+    if (nodeType === 'account' && data.balance) {
+      size += Math.min(data.balance / 1000000, 10); // Max +10 for high balance
+    }
+    if (nodeType === 'transaction' && data.fee) {
+      size += Math.min(data.fee * 100, 5); // Max +5 for high fee
+    }
+  }
+  
+  return Math.round(size);
+}
+
+export function isValidSolanaAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') return false;
+  
+  // Basic Solana address validation
+  if (address.length < 32 || address.length > 44) return false;
+  
+  // Check for valid base58 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  return base58Regex.test(address);
+}
+
+export function isValidTransactionSignature(signature: string): boolean {
+  if (!signature || typeof signature !== 'string') return false;
+  
+  // Solana transaction signatures are 88 characters long
+  if (signature.length !== 88) return false;
+  
+  // Check for valid base58 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  return base58Regex.test(signature);
+}

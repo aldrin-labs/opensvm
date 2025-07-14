@@ -18,7 +18,7 @@ export async function OPTIONS() {
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
 ) {
   // Return a Gone (410) status to indicate this endpoint is deprecated
   // and should not be used anymore

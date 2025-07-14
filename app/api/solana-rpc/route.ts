@@ -1,3 +1,15 @@
+/**
+ * Solana RPC proxy API endpoint
+ * 
+ * This endpoint provides a proxy to Solana RPC nodes with caching and retry logic.
+ * It abstracts the complexity of direct RPC communication and provides consistent
+ * error handling and performance optimization.
+ * 
+ * @see docs/architecture/system-overview.md#api-infrastructure
+ * @see docs/architecture/system-overview.md#blockchain-integration-layer
+ * @see docs/architecture/data-flow.md#blockchain-integration
+ */
+
 import { NextRequest, NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection';
 
@@ -62,8 +74,9 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
+  let body: any;
   try {
-    const body = await request.json();
+    body = await request.json();
     
     // Try to get from cache first
     const cacheKey = getCacheKey(body.method, body.params);
@@ -190,4 +203,3 @@ export async function POST(request: NextRequest) {
     }, { status });
   }
 }
-

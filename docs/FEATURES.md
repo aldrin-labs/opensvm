@@ -113,7 +113,7 @@ The wallet path finding feature discovers connections between wallets through to
 
 ### AI Assistant
 
-The AI assistant provides natural language interaction with blockchain data.
+The AI assistant provides natural language interaction with blockchain data and real-time security monitoring.
 
 **Features:**
 - Ask questions about transactions, blocks, accounts, and tokens
@@ -121,11 +121,40 @@ The AI assistant provides natural language interaction with blockchain data.
 - Request analysis of transaction patterns
 - Receive guidance on using the explorer
 - Interactive chat interface
+- AI-driven anomaly detection and security alerts
+- Real-time blockchain threat monitoring
 
 **Usage:**
 - Click the AI Assistant button on any page
 - Type natural language questions or requests
 - Receive AI-generated responses with relevant blockchain data
+- Monitor security alerts and anomaly notifications
+
+### Real-Time Monitoring
+
+The real-time monitoring system provides live blockchain event streaming with AI-powered anomaly detection.
+
+**Features:**
+- Live blockchain event streaming (transactions, blocks, account changes)
+- AI-driven anomaly detection for suspicious activities
+- Real-time security alerts and notifications
+- Customizable detection patterns and thresholds
+- Historical anomaly statistics and reporting
+- Interactive monitoring dashboard
+
+**Usage:**
+- Navigate to `/monitoring` to access the live monitoring dashboard
+- View real-time events as they occur on the Solana blockchain
+- Monitor anomaly alerts for potential security issues
+- Configure detection sensitivity and alert preferences
+- Export anomaly reports for further analysis
+
+**Anomaly Types Detected:**
+- High transaction failure rates
+- Suspicious fee spikes
+- Rapid transaction bursts from single addresses
+- Unusual program activity patterns
+- Network performance degradation
 
 ### Network Statistics
 

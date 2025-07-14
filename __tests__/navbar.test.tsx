@@ -1,4 +1,5 @@
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render } from '@testing-library/react';
+import { screen, fireEvent } from '@testing-library/dom';
 import { NavbarInteractive } from '@/components/NavbarInteractive';
 import { useRouter } from 'next/navigation';
 

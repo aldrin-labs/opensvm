@@ -16,7 +16,7 @@ class ProxyConnection extends Connection {
   private readonly maxConcurrentRequests = 12; // Increased from 8
   private readonly maxRetries = 12; // Increased from 8
   private activeRequests = 0;
-  private isClient: boolean;
+  private _isClient: boolean = false;
 
   constructor(endpoint: string, config?: ConnectionConfig) {
     // Determine if we're running in the client and prepare the endpoint
@@ -36,14 +36,14 @@ class ProxyConnection extends Connection {
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
       confirmTransactionInitialTimeout: 60000, // Decreased from 180000
-      wsEndpoint: null,
+      wsEndpoint: undefined,
       fetch: async (url, options) => {
         const headers = getRpcHeaders(endpoint);
         const maxRetries = 12; // Increased from 8
         let lastError;
 
     // Initialize after super() call
-    this.isClient = isClient;
+    this._isClient = isClient;
 
         for (let i = 0; i < maxRetries; i++) {
           try {
@@ -53,8 +53,6 @@ class ProxyConnection extends Connection {
             const response = await fetch(url, {
               ...options,
               headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
                 ...headers,
                 ...(options?.headers || {})
               },
@@ -70,7 +68,7 @@ class ProxyConnection extends Connection {
             lastError = new Error(`HTTP error! status: ${response.status}`);
           } catch (error) {
             lastError = error;
-            if (error.name === 'AbortError') {
+            if (error instanceof Error && error.name === 'AbortError') {
               console.warn('Request timed out, retrying...');
             }
           }
@@ -126,8 +124,6 @@ class ProxyConnection extends Connection {
       const response = await fetch(this.rpcEndpoint, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
           ...headers
         },
         body: JSON.stringify({
@@ -196,7 +192,7 @@ class ConnectionPool {
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
       confirmTransactionInitialTimeout: 60000, // Decreased from 180000
-      wsEndpoint: null
+      wsEndpoint: undefined
     };
 
     this.isOpenSvmMode = true;
@@ -212,7 +208,11 @@ class ConnectionPool {
     this.connections = endpoints
       .filter(url => !this.failedEndpoints.has(url))
       .map(url => new ProxyConnection(url, this.config));
-    console.log('Initialized OpenSVM connection pool with', this.connections.length, 'endpoints');
+    
+    // Only log during development or when explicitly needed
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_RPC) {
+      console.log('Initialized OpenSVM connection pool with', this.connections.length, 'endpoints');
+    }
   }
 
   public static getInstance(): ConnectionPool {
@@ -245,7 +245,7 @@ class ConnectionPool {
         console.warn(`Rate limit hit during health check for ${connection.rpcEndpoint}`);
         return true; // Don't fail just because of rate limit
       }
-      if (error.name === 'AbortError') {
+      if (error instanceof Error && error.name === 'AbortError') {
         console.warn(`Health check timed out for ${connection.rpcEndpoint}`);
         return false;
       }
@@ -255,7 +255,7 @@ class ConnectionPool {
   }
 
   private async findHealthyConnection(): Promise<ProxyConnection | null> {
-    const startIndex = this.currentIndex;
+    const _startIndex = this.currentIndex;
     let attempts = 0;
     const endpoints = getRpcEndpoints();
     

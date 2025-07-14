@@ -3,11 +3,12 @@
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import dynamic from 'next/dynamic';
 import { useRouter, usePathname } from 'next/navigation';
-import { useRef, Suspense, useEffect, useState, useCallback, useTransition, useMemo } from 'react';
+import { useRef, Suspense, useEffect, useState, useCallback, useTransition } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
 import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper'; 
 import { formatNumber } from '@/lib/utils';
+import { ShareButton } from '@/components/ShareButton';
 
 // Dynamically import components with no SSR and proper loading states
 // Using a ref for the tooltip positioning and timer
@@ -34,8 +35,19 @@ const TransactionAnalysis = dynamic(
   }
 );
 
+const TransactionGPTAnalysis = dynamic(
+  () => import('@/components/TransactionGPTAnalysis').catch(err => {
+    console.error('Failed to load TransactionGPTAnalysis:', err);
+    return () => <div>Error loading GPT analysis</div>;
+  }),
+  {
+    loading: () => <LoadingSpinner />,
+    ssr: false
+  }
+);
+
 const TransactionGraph = dynamic(
-  () => import('@/components/TransactionGraph').catch(err => {
+  () => import('@/components/transaction-graph/TransactionGraph').catch(err => {
     console.error('Failed to load TransactionGraph:', err);
     return () => <div>Error loading transaction graph</div>;
   }),
@@ -54,7 +66,6 @@ const AccountTooltip = ({
   children: React.ReactNode 
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
-  const [accountData, setAccountData] = useState(null);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
   
   // Timer ref for delayed hiding
@@ -121,18 +132,15 @@ const AccountTooltip = ({
 // Skip EnhancedTransactionVisualizer for now since it requires d3
 const TransactionOverview = ({ tx, signature, className = '' }: { tx: DetailedTransactionInfo; signature: string; className?: string }) => (
   <div className={`bg-background rounded-lg p-4 shadow-lg border border-border flex flex-col ${className}`}>
-    <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Overview</h2>
-    <div className="text-sm space-y-4 flex-grow">
-      <div className="break-all">
-        <span className="text-muted-foreground block mb-1">Signature</span>
-        <code className="bg-muted px-2 py-1 rounded text-foreground">{signature}</code>
-      </div>
-      <div>
-        <span className="text-muted-foreground block mb-1">Status</span>
-        <span className={tx?.success ? 'text-success font-medium' : 'text-destructive font-medium'}>
-          {tx?.success ? 'Success' : 'Failed'}
-        </span>
-      </div>
+    <div className="flex justify-between items-center mb-4">
+      <h2 className="text-xl font-semibold text-foreground">Transaction Overview</h2>
+      <ShareButton entityType="transaction" entityId={signature} />
+    </div>
+    <div className="text-sm space-y-4 flex-mb-4 grow">
+      <span className={tx?.success ? 'text-success font-medium' : 'text-destructive font-medium'}>
+        {tx?.success ? 'Success' : 'Failed'}
+      </span>
+    
       <div>
         <span className="text-muted-foreground block mb-1">Timestamp</span>
         <span className="text-foreground">
@@ -163,12 +171,14 @@ const TransactionOverview = ({ tx, signature, className = '' }: { tx: DetailedTr
                 {tx.details.solChanges.map((change, i) => (
                   <tr key={i} className={i % 2 === 0 ? 'bg-background' : 'bg-muted/20'}>
                     <td className="px-3 py-2">
-                      <Link 
-                        href={`/account/${tx.details.accounts[change.accountIndex]?.pubkey}`}
-                        className="text-primary hover:underline" 
+                      <Link
+                        href={`/account/${tx.details?.accounts[change.accountIndex]?.pubkey}`}
+                        className="text-primary hover:underline"
+                        target="_blank"
+                        rel="noopener noreferrer"
                       >
-                        <AccountTooltip account={tx.details.accounts[change.accountIndex]?.pubkey || ''}>
-                          {tx.details.accounts[change.accountIndex]?.pubkey.slice(0, 4)}...{tx.details.accounts[change.accountIndex]?.pubkey.slice(-4)}
+                        <AccountTooltip account={tx.details?.accounts[change.accountIndex]?.pubkey || ''}>
+                          {tx.details?.accounts[change.accountIndex]?.pubkey.slice(0, 4)}...{tx.details?.accounts[change.accountIndex]?.pubkey.slice(-4)}
                         </AccountTooltip>
                       </Link>
                     </td>
@@ -512,8 +522,6 @@ function ErrorDisplay({ error, signature }: { error: Error; signature: string })
 // Community Notes component
 function CommunityNotes({ signature }: { signature: string }) {
   const [notes, setNotes] = useState<any[]>([]);
-  const [newNote, setNewNote] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   
   // Mock notes for now - would be replaced with actual backend integration
   useEffect(() => {
@@ -522,23 +530,6 @@ function CommunityNotes({ signature }: { signature: string }) {
       { id: 2, text: "Executed during high network congestion period, explaining the higher than usual fees.", votes: 8, author: "0xabcd...ef01" }
     ]);
   }, [signature]);
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newNote.trim()) return;
-    
-    setIsSubmitting(true);
-    
-    // Mock submission - would normally be a fetch call
-    setTimeout(() => {
-      setNotes(prev => [
-        ...prev,
-        { id: Date.now(), text: newNote, votes: 0, author: "You" }
-      ]);
-      setNewNote('');
-      setIsSubmitting(false);
-    }, 500);
-  };
   
   return (
     <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
@@ -606,7 +597,6 @@ export default function TransactionContent({ signature }: { signature: string })
   const [transitionState, setTransitionState] = useState<'idle' | 'loading' | 'success'>('idle');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [preloadedAccounts, setPreloadedAccounts] = useState<string[]>([]);
   
   // Enhanced cache with Map for better performance and key management
   const transactionDataCache = useRef<Map<string, DetailedTransactionInfo>>(new Map());
@@ -643,7 +633,7 @@ export default function TransactionContent({ signature }: { signature: string })
     startTransition(() => {
       if (transactionDataCache.current.has(newSignature)) {
         const data = transactionDataCache.current.get(newSignature);
-        setTx(data);
+        setTx(data || null);
         if (data?.details?.accounts && data.details.accounts.length > 0) {
           setInitialAccount(data.details.accounts[0].pubkey);
         }
@@ -736,7 +726,7 @@ export default function TransactionContent({ signature }: { signature: string })
     };
 
     // Listen for popstate events (browser back/forward)
-    const handlePopState = (event: PopStateEvent) => {
+    const handlePopState = () => {
       // Skip if this is a programmatic navigation we initiated
       if (sessionStorage.getItem('programmatic_nav')) {
         return;
@@ -771,9 +761,6 @@ export default function TransactionContent({ signature }: { signature: string })
   useEffect(() => {
     if (!tx?.details?.accounts) return;
     
-    // Get a list of connected accounts from the current transaction
-    const accounts = tx.details.accounts.slice(0, 10); // Limit to first 3 for efficiency
-    
     // In the background, we could preload transactions for these accounts
     // This would be implemented as a low-priority background task
     // to improve perceived performance when clicking through transactions
@@ -786,7 +773,6 @@ export default function TransactionContent({ signature }: { signature: string })
     
     // Preload transactions for first 2 accounts to speed up future navigation
     const preloadAccounts = tx.details.accounts.slice(0, 2);
-    setPreloadedAccounts(preloadAccounts.map(account => account.pubkey).filter(Boolean));
     
     preloadAccounts.forEach(account => {
       if (!account.pubkey) return;
@@ -878,6 +864,15 @@ export default function TransactionContent({ signature }: { signature: string })
             </ErrorBoundaryWrapper>
           </div>
         </div>
+        
+        {/* GPT Analysis Section */}
+        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading GPT analysis</div>}>
+          <Suspense fallback={<div className="h-full min-h-[200px] flex items-center justify-center"><LoadingSpinner /></div>}>
+            <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
+              <TransactionGPTAnalysis tx={tx} />
+            </div>
+          </Suspense>
+        </ErrorBoundaryWrapper>
         
         {/* Community Notes Section */}
         <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading community notes</div>}>

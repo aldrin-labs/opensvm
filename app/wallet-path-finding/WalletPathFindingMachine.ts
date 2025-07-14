@@ -242,7 +242,7 @@ export const createWalletPathFindingMachine = () => {
                 // Create the target node
                 const targetNode: WalletNode = {
                   address: context.targetWallet,
-                  parent: context.currentWallet,
+                  parent: context.currentWallet || undefined,
                   transactionId: targetTransfer.txId,
                   depth: (context.currentWallet?.depth || 0) + 1
                 };
@@ -286,7 +286,7 @@ export const createWalletPathFindingMachine = () => {
                     // Create a new node for this wallet
                     const node: WalletNode = {
                       address: transfer.to,
-                      parent: context.currentWallet,
+                      parent: context.currentWallet || undefined,
                       transactionId: transfer.txId,
                       depth: (context.currentWallet?.depth || 0) + 1
                     };
@@ -307,7 +307,7 @@ export const createWalletPathFindingMachine = () => {
                     // Create a new node for this wallet
                     const node: WalletNode = {
                       address: transfer.from,
-                      parent: context.currentWallet,
+                      parent: context.currentWallet || undefined,
                       transactionId: transfer.txId,
                       depth: (context.currentWallet?.depth || 0) + 1
                     };

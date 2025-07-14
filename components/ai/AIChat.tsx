@@ -15,6 +15,7 @@ interface AIChatProps {
   onClose?: () => void;
   className?: string;
   showTabs?: boolean;
+  activeTab?: string;
   agent?: ReturnType<typeof createSolanaAgent>;
 }
 
@@ -23,6 +24,7 @@ export function AIChat({
   onClose,
   className = '',
   showTabs = false,
+  activeTab,
   agent = createSolanaAgent(connection)
 }: AIChatProps) {
   const {
@@ -48,6 +50,7 @@ export function AIChat({
       onNewChat={() => resetChat()}
       className={className}
       showTabs={showTabs}
+      activeTab={activeTab}
     />
   );
-} 
+}

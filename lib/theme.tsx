@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState } from 'react';
 
-type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized';
+type Theme = 'paper' | 'high-contrast' | 'dos-blue' | 'cyberpunk' | 'solarized';
 
 interface ThemeContextType {
   theme: Theme;
@@ -12,21 +12,21 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 function getSystemTheme(): Theme {
-  if (typeof window === 'undefined') return 'dos';
+  if (typeof window === 'undefined') return 'dos-blue';
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'high-contrast' : 'paper';
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>('paper');
+  const [theme, setTheme] = useState<Theme>('cyberpunk');
   const [mounted, setMounted] = useState(false);
 
   // Effect to initialize theme on client-side only
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme') as Theme;
-    // Reset to paper if no theme is saved or if the saved theme is the old default (dos)
-    if (!savedTheme || savedTheme === 'dos' || savedTheme === 'high-contrast') {
-      setTheme('paper');
-    } else if (['paper', 'high-contrast', 'cyberpunk', 'solarized'].includes(savedTheme)) {
+    // Reset to cyberpunk if no theme is saved or if the saved theme is the old default (dos)
+    if (!savedTheme) {
+      setTheme('cyberpunk');
+    } else if (['paper', 'high-contrast', 'dos-blue', 'cyberpunk', 'solarized'].includes(savedTheme)) {
       setTheme(savedTheme);
     }
     setMounted(true);
@@ -39,7 +39,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     document.documentElement.classList.remove(
       'theme-paper',
       'theme-high-contrast',
-      'theme-dos',
+      'theme-dos-blue',
       'theme-cyberpunk',
       'theme-solarized'
     );

@@ -232,6 +232,26 @@ export function debounce<Args extends unknown[]>(fn: (...args: Args) => void, de
   return debounced;
 }
 
+export function throttle<Args extends unknown[]>(fn: (...args: Args) => void, delay: number) {
+  let lastTime = 0;
+  let timeoutID: number | undefined;
+
+  return (...args: Args) => {
+    const now = Date.now();
+    
+    if (now - lastTime >= delay) {
+      lastTime = now;
+      fn(...args);
+    } else {
+      clearTimeout(timeoutID);
+      timeoutID = window.setTimeout(() => {
+        lastTime = Date.now();
+        fn(...args);
+      }, delay - (now - lastTime));
+    }
+  };
+}
+
 export function timeAgo(dateInput: Date | string | number): string {
   const date = new Date(dateInput);
   const now = new Date();

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import Link from 'next/link';
 import { Copy } from 'lucide-react';
+import { ShareButton } from '@/components/ShareButton';
 
 // Helper functions
 const copyToClipboard = async (text: string) => {
@@ -79,28 +80,35 @@ export default function BlockDetails({ slot }: { slot: string }) {
     <main className="container mx-auto p-4">
       <div className="flex flex-col gap-8">
         <div className="flex items-center justify-between">
-          <Link 
+          <Link
             href={`/block/${parseInt(slot) - 1}`}
             className="text-sm text-muted-foreground hover:text-foreground"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             ← Previous Block
           </Link>
-          <Link 
+          <Link
             href={`/block/${parseInt(slot) + 1}`}
             className="text-sm text-muted-foreground hover:text-foreground"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             Next Block →
           </Link>
         </div>
         <div>
-          <h1 className="text-2xl font-bold mb-2">
-            Block #{block?.slot?.toLocaleString() ?? 'Unknown'}
-            {block.blockTimeDelta && (
-              <span className="text-sm font-normal text-muted-foreground ml-2">
-                (+{block.blockTimeDelta.toFixed(2)}s)
-              </span>
-            )}
-          </h1>
+          <div className="flex justify-between items-center mb-2">
+            <h1 className="text-2xl font-bold">
+              Block #{block?.slot?.toLocaleString() ?? 'Unknown'}
+              {block.blockTimeDelta && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (+{block.blockTimeDelta.toFixed(2)}s)
+                </span>
+              )}
+            </h1>
+            <ShareButton entityType="block" entityId={slot} />
+          </div>
           <p className="text-muted-foreground">
             {block?.timestamp
               ? new Date(block.timestamp).toLocaleString()
@@ -116,7 +124,7 @@ export default function BlockDetails({ slot }: { slot: string }) {
               {block.programs.slice(0, 5).map(({ address, count, name }) => (
                 <div key={address} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Link href={`/program/${address}`} className="font-mono text-sm hover:underline">
+                    <Link href={`/program/${address}`} className="font-mono text-sm hover:underline" target="_blank" rel="noopener noreferrer">
                       {address}
                     </Link>
                     <button 
@@ -144,7 +152,7 @@ export default function BlockDetails({ slot }: { slot: string }) {
               {block.rewards.map((reward) => (
                 <div key={reward.pubkey} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Link href={`/account/${reward.pubkey}`} className="font-mono text-sm hover:underline">
+                    <Link href={`/account/${reward.pubkey}`} className="font-mono text-sm hover:underline" target="_blank" rel="noopener noreferrer">
                       {reward.pubkey}
                     </Link>
                     <button 
@@ -171,7 +179,7 @@ export default function BlockDetails({ slot }: { slot: string }) {
               {block.tokenTransfers.map(({ mint, symbol, amount }) => (
                 <div key={mint} className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <Link href={`/token/${mint}`} className="font-mono text-sm hover:underline">
+                    <Link href={`/token/${mint}`} className="font-mono text-sm hover:underline" target="_blank" rel="noopener noreferrer">
                       {symbol ?? mint}
                     </Link>
                     <button 

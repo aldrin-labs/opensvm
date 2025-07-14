@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
           const pathFindingMachine = createWalletPathFindingMachine();
           
           // Run the state machine
-          const service = interpret(pathFindingMachine);
+          const service = interpret(pathFindingMachine, { input: { wallet: sourceWallet } });
           
           // Setup state change handler
           service.subscribe((state) => {

@@ -8,7 +8,7 @@ import Link from 'next/link';
 
 // Dynamically import the TransactionGraph component
 const TransactionGraph = dynamic(
-  () => import('@/components/TransactionGraph').catch(err => {
+  () => import('@/components/transaction-graph/TransactionGraph').catch(err => {
     console.error('Failed to load TransactionGraph:', err);
     return () => <div>Error loading transaction graph</div>;
   }),

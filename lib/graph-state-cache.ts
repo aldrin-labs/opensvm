@@ -36,7 +36,6 @@ export interface SavedGraphState {
 }
 
 // Cache TTL in milliseconds (30 minutes)
-const CACHE_TTL = 30 * 60 * 1000;
 // Maximum number of transaction states to store in memory
 const MAX_MEMORY_CACHE_SIZE = 200000000;
 
@@ -57,46 +56,165 @@ export class GraphStateCache {
    */
   static saveState(state: GraphState, signature?: string): void {
     try {
+      // Validate state object before saving
+      if (!state || typeof state !== 'object') {
+        console.warn('Invalid state object provided to saveState');
+        return;
+      }
+
+      // Validate required properties
+      if (!state.focusedTransaction || typeof state.focusedTransaction !== 'string') {
+        console.warn('Invalid focusedTransaction in state');
+        return;
+      }
+
+      if (!Array.isArray(state.nodes) || !Array.isArray(state.edges)) {
+        console.warn('Invalid nodes or edges in state');
+        return;
+      }
+
       let enhancedState: EnhancedGraphState;
       if (signature) {
-        const existing = GraphStateCache.memoryCache.get(signature);
-        if (existing) {
-          // Merge the new state with the existing enhanced state without discarding expansion info
-          enhancedState = {
-            ...state,
-            expandedNodes: existing.expandedNodes,
-            expansionDepth: existing.expansionDepth,
-            expandedTimestamp: Date.now()
-          };
-        } else {
-          // Check if state already has enhanced properties (rarely provided), otherwise create new ones
-          if ((state as EnhancedGraphState).expandedNodes && (state as EnhancedGraphState).expansionDepth) {
-            enhancedState = { ...state } as EnhancedGraphState;
-            enhancedState.expandedTimestamp = Date.now();
-          } else {
+        try {
+          const existing = GraphStateCache.memoryCache.get(signature);
+          if (existing) {
+            // Merge the new state with the existing enhanced state without discarding expansion info
             enhancedState = {
               ...state,
-              expandedNodes: new Set<string>(),
-              expansionDepth: {},
+              expandedNodes: existing.expandedNodes || new Set<string>(),
+              expansionDepth: existing.expansionDepth || {},
               expandedTimestamp: Date.now()
             };
+          } else {
+            // Check if state already has enhanced properties (rarely provided), otherwise create new ones
+            if ((state as EnhancedGraphState).expandedNodes && (state as EnhancedGraphState).expansionDepth) {
+              enhancedState = { ...state } as EnhancedGraphState;
+              enhancedState.expandedTimestamp = Date.now();
+            } else {
+              enhancedState = {
+                ...state,
+                expandedNodes: new Set<string>(),
+                expansionDepth: {},
+                expandedTimestamp: Date.now()
+              };
+            }
+          }
+          
+          // Check memory usage before storing
+          const memorySize = this.estimateMemoryUsage(enhancedState);
+          if (memorySize > MAX_MEMORY_CACHE_SIZE / 100) { // Don't let single item exceed 1% of max
+            console.warn(`State object too large (${memorySize} bytes), skipping memory cache`);
+          } else {
+            GraphStateCache.memoryCache.set(signature, enhancedState);
+          }
+        } catch (memoryError) {
+          console.error('Error handling memory cache:', memoryError);
+        }
+      }
+
+      try {
+        const key = signature ? `${GRAPH_STATE_STORAGE_KEY}-${signature}` : GRAPH_STATE_STORAGE_KEY;
+        // When saving to local storage, include enhanced fields if available, converting Set to an array for serialization
+        let stateToStore: any = state;
+        if (signature && GraphStateCache.memoryCache.has(signature)) {
+          const data = GraphStateCache.memoryCache.get(signature)!;
+          stateToStore = {
+            ...data,
+            expandedNodes: Array.from(data.expandedNodes)
+          };
+        }
+        
+        const serialized = JSON.stringify(stateToStore);
+        // Check localStorage quota before saving
+        if (serialized.length > 5000000) { // 5MB limit check
+          console.warn('State too large for localStorage, truncating data');
+          // Save minimal state instead
+          const minimalState = {
+            focusedTransaction: state.focusedTransaction,
+            viewportState: state.viewportState,
+            timestamp: Date.now()
+          };
+          localStorage.setItem(key, JSON.stringify(minimalState));
+        } else {
+          localStorage.setItem(key, serialized);
+        }
+      } catch (storageError) {
+        console.error('Failed to save to localStorage:', storageError);
+        // Attempt cleanup if quota exceeded
+        if (storageError instanceof Error && storageError.name === 'QuotaExceededError') {
+          this.cleanupOldStates();
+          try {
+            // Retry with minimal state
+            const minimalState = {
+              focusedTransaction: state.focusedTransaction,
+              viewportState: state.viewportState,
+              timestamp: Date.now()
+            };
+            const key = signature ? `${GRAPH_STATE_STORAGE_KEY}-${signature}` : GRAPH_STATE_STORAGE_KEY;
+            localStorage.setItem(key, JSON.stringify(minimalState));
+          } catch (retryError) {
+            console.error('Failed to save even minimal state:', retryError);
           }
         }
-        GraphStateCache.memoryCache.set(signature, enhancedState);
       }
-      const key = signature ? `${GRAPH_STATE_STORAGE_KEY}-${signature}` : GRAPH_STATE_STORAGE_KEY;
-      // When saving to local storage, include enhanced fields if available, converting Set to an array for serialization
-      let stateToStore: any = state;
-      if (signature && GraphStateCache.memoryCache.has(signature)) {
-        const data = GraphStateCache.memoryCache.get(signature)!;
-        stateToStore = {
-          ...data,
-          expandedNodes: Array.from(data.expandedNodes)
-        };
-      }
-      localStorage.setItem(key, JSON.stringify(stateToStore));
     } catch (error) {
       console.error('Failed to save graph state:', error);
+      // Ensure we don't break the application flow
+    }
+  }
+
+  /**
+   * Estimate memory usage of a state object
+   */
+  private static estimateMemoryUsage(state: EnhancedGraphState): number {
+    try {
+      return JSON.stringify({
+        ...state,
+        expandedNodes: Array.from(state.expandedNodes)
+      }).length * 2; // Rough estimate: 2 bytes per character
+    } catch (error) {
+      console.error('Error estimating memory usage:', error);
+      return 0;
+    }
+  }
+
+  /**
+   * Clean up old states to free up localStorage space
+   */
+  private static cleanupOldStates(): void {
+    try {
+      const keysToRemove: string[] = [];
+      
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(GRAPH_STATE_STORAGE_KEY)) {
+          try {
+            const value = localStorage.getItem(key);
+            if (value) {
+              const state = JSON.parse(value);
+              // Remove states older than 7 days
+              if (state.timestamp && Date.now() - state.timestamp > 7 * 24 * 60 * 60 * 1000) {
+                keysToRemove.push(key);
+              }
+            }
+          } catch (parseError) {
+            // Remove corrupted states
+            keysToRemove.push(key);
+          }
+        }
+      }
+
+      keysToRemove.forEach(key => {
+        try {
+          localStorage.removeItem(key);
+        } catch (error) {
+          console.error(`Failed to remove key ${key}:`, error);
+        }
+      });
+
+      console.log(`Cleaned up ${keysToRemove.length} old graph states`);
+    } catch (error) {
+      console.error('Error during cleanup:', error);
     }
   }
 
@@ -105,30 +223,66 @@ export class GraphStateCache {
    * @param state - The graph state to save
    */
   static autoSave(state: GraphState): void {
-    if (state.focusedTransaction) {
-      // Throttle saves to prevent excessive writes
-      // Skip if no nodes or edges are provided
-      if (!state.nodes || !state.edges || (state.nodes.length === 0 && state.edges.length === 0)) {
+    try {
+      // Validate input state
+      if (!state || typeof state !== 'object') {
+        console.warn('Invalid state provided to autoSave');
         return;
       }
+
+      if (!state.focusedTransaction || typeof state.focusedTransaction !== 'string') {
+        console.warn('No focusedTransaction in state, skipping autoSave');
+        return;
+      }
+
+      // Validate nodes and edges arrays
+      if (!Array.isArray(state.nodes) || !Array.isArray(state.edges)) {
+        console.warn('Invalid nodes or edges in state, skipping autoSave');
+        return;
+      }
+
+      // Skip if no nodes or edges are provided
+      if (state.nodes.length === 0 && state.edges.length === 0) {
+        return;
+      }
+
       const signature = state.focusedTransaction;
-      const existing = GraphStateCache.memoryCache.get(signature);
+      let existing: EnhancedGraphState | undefined;
+      
+      try {
+        existing = GraphStateCache.memoryCache.get(signature);
+      } catch (cacheError) {
+        console.warn('Error accessing memory cache:', cacheError);
+      }
+
       const now = Date.now();
       
       // Only save if: No existing state OR significant changes detected
-      if (!existing || 
-          (now - (existing.expandedTimestamp || 0) > 2000) || 
-          (Math.abs(existing.nodes.length - state.nodes.length) > 3) ||
-          (existing.focusedTransaction !== state.focusedTransaction)) {
+      const shouldSave = !existing || 
+        (now - (existing.expandedTimestamp || 0) > 2000) || 
+        (Math.abs(existing.nodes.length - state.nodes.length) > 3) ||
+        (existing.focusedTransaction !== state.focusedTransaction);
+
+      if (shouldSave) {
+        try {
+          GraphStateCache.saveState(state, signature);
           
-        GraphStateCache.saveState(state, signature);
-        
-        // Also save as the latest state
-        GraphStateCache.saveState(state);
+          // Also save as the latest state
+          GraphStateCache.saveState(state);
+        } catch (saveError) {
+          console.error('Error saving state in autoSave:', saveError);
+        }
       }
       
       // Keep the cache size in check
-      GraphStateCache.trimMemoryCache();
+      try {
+        GraphStateCache.trimMemoryCache();
+      } catch (trimError) {
+        console.error('Error trimming memory cache:', trimError);
+      }
+    } catch (error) {
+      console.error('Error in autoSave:', error);
+      // Don't let autoSave errors break the application
     }
   }
 
@@ -189,36 +343,85 @@ export class GraphStateCache {
     try {
       // First check in-memory cache for faster access
       if (signature && GraphStateCache.memoryCache.has(signature)) {
-        const cached = GraphStateCache.memoryCache.get(signature);
-        // Update timestamp to mark as recently accessed
-        cached.expandedTimestamp = Date.now();
-        return cached;
+        try {
+          const cached = GraphStateCache.memoryCache.get(signature);
+          if (cached) {
+            // Update timestamp to mark as recently accessed
+            cached.expandedTimestamp = Date.now();
+            return cached;
+          }
+        } catch (cacheError) {
+          console.warn('Error accessing memory cache:', cacheError);
+        }
       }
       
       // If not in memory, load from local storage
       const key = signature ? `${GRAPH_STATE_STORAGE_KEY}-${signature}` : GRAPH_STATE_STORAGE_KEY;
-      const storedState = localStorage.getItem(key);
       
-      if (storedState) {
-        const parsedState = JSON.parse(storedState) as GraphState;
+      try {
+        const storedState = localStorage.getItem(key);
         
-        // Convert the parsed state to an EnhancedGraphState if loading by signature
-        if (signature && !((parsedState as EnhancedGraphState).expandedNodes instanceof Set)) {
-          // Handle conversion from array to Set for expandedNodes
-          const enhancedState: EnhancedGraphState = {
-            ...parsedState,
-            expandedNodes: new Set(Array.isArray((parsedState as any).expandedNodes) ? 
-              (parsedState as any).expandedNodes : []),
-            expansionDepth: (parsedState as any).expansionDepth || {},
-            expandedTimestamp: Date.now()
-          };
-          return enhancedState;
+        if (storedState) {
+          let parsedState: GraphState;
+          
+          try {
+            parsedState = JSON.parse(storedState) as GraphState;
+          } catch (parseError) {
+            console.error('Failed to parse stored state:', parseError);
+            // Remove corrupted state
+            localStorage.removeItem(key);
+            return null;
+          }
+
+          // Validate parsed state
+          if (!parsedState || typeof parsedState !== 'object') {
+            console.warn('Invalid stored state structure');
+            localStorage.removeItem(key);
+            return null;
+          }
+
+          // Validate required fields
+          if (!parsedState.focusedTransaction || !Array.isArray(parsedState.nodes) || !Array.isArray(parsedState.edges)) {
+            console.warn('Stored state missing required fields');
+            localStorage.removeItem(key);
+            return null;
+          }
+
+          // Convert the parsed state to an EnhancedGraphState if loading by signature
+          if (signature && !((parsedState as EnhancedGraphState).expandedNodes instanceof Set)) {
+            try {
+              // Handle conversion from array to Set for expandedNodes
+              const enhancedState: EnhancedGraphState = {
+                ...parsedState,
+                expandedNodes: new Set(Array.isArray((parsedState as any).expandedNodes) ? 
+                  (parsedState as any).expandedNodes : []),
+                expansionDepth: (parsedState as any).expansionDepth || {},
+                expandedTimestamp: Date.now()
+              };
+              
+              // Cache the enhanced state in memory for faster future access
+              GraphStateCache.memoryCache.set(signature, enhancedState);
+              
+              return enhancedState;
+            } catch (conversionError) {
+              console.error('Error converting to enhanced state:', conversionError);
+              return parsedState; // Return basic state as fallback
+            }
+          }
+          
+          return parsedState;
         }
-        return parsedState;
+      } catch (storageError) {
+        console.error('Error accessing localStorage:', storageError);
+        
+        // Check if storage is available
+        if (typeof Storage === 'undefined') {
+          console.warn('localStorage is not available');
+        }
       }
     } catch (error) {
       console.error('Failed to load graph state:', error);
-      }
+    }
     
     return null;
   }

@@ -18,7 +18,6 @@ interface SavedGraphMetadata {
 }
 
 export const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({
-  currentFocusedTransaction,
   onLoadState,
   onSaveCurrentState,
 }) => {

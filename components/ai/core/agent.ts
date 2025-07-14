@@ -9,6 +9,7 @@ import type {
   AgentCapability
 } from '../types';
 import { NETWORK_PERFORMANCE_KNOWLEDGE } from './knowledge';
+import { generateSecureActionId } from '@/lib/crypto-utils';
 
 export class SolanaAgent {
   private config: AgentConfig;
@@ -35,7 +36,7 @@ export class SolanaAgent {
       const type = actionContent.slice(0, firstColonIndex).trim();
       const description = actionContent.slice(firstColonIndex + 1).trim();
       return {
-        id: `action_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        id: generateSecureActionId(),
         type: type as AgentAction['type'],
         status: 'pending' as const,
         description

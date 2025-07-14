@@ -102,9 +102,15 @@ export class NetworkCapability extends BaseCapability {
 
             const networkLoad = this.calculateNetworkLoad(avgTps);
             const tpsRange = this.getTpsRange(avgTps);
+            const loadDescription = NETWORK_PERFORMANCE_KNOWLEDGE.networkLoad.ranges[networkLoad];
 
             return {
-              message: `Current TPS is ${Math.round(avgTps)} (${tpsRange}). Network load is ${networkLoad} (${NETWORK_PERFORMANCE_KNOWLEDGE.networkLoad.ranges[networkLoad]}).`
+              averageTps: Math.round(avgTps),
+              maxTps: Math.round(maxTps),
+              load: networkLoad,
+              loadDescription,
+              tpsRange,
+              message: `Current TPS is ${Math.round(avgTps)} (${tpsRange}). Network load is ${networkLoad} (${loadDescription}).`
             };
           });
         }

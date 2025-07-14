@@ -1,7 +1,16 @@
+[build]
+  command = "./fix-build.sh"
+  publish = ".next"
 
 [build.environment]
-  NODE_VERSION = "20"
+  NODE_VERSION = "22"
   NEXT_TELEMETRY_DISABLED = "1"
+  PUPPETEER_SKIP_DOWNLOAD = "true"
+  NETLIFY_NEXT_PLUGIN_SKIP = "false"
+  NPM_FLAGS = "--legacy-peer-deps"
+  # Build optimization flags
+  NODE_OPTIONS = "--max-old-space-size=4096"
+  ANALYZE = "false"
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

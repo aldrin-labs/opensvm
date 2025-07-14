@@ -497,13 +497,78 @@ Streaming responses use newline-delimited JSON objects.
 
 ## Websocket API
 
-In addition to REST endpoints, OpenSVM provides a WebSocket API for real-time updates:
+OpenSVM provides a WebSocket API for real-time updates and event streaming:
 
 ```
-wss://your-opensvm-instance.com/api/ws
+wss://your-opensvm-instance.com/api/stream
 ```
 
 Available channels:
 - `blocks` - Real-time block updates
-- `transactions` - Real-time transaction updates
+- `transactions` - Real-time transaction updates  
 - `network` - Real-time network statistics
+
+### Real-Time Event Streaming
+
+The WebSocket API supports real-time blockchain event streaming with built-in anomaly detection:
+
+```javascript
+// Example WebSocket connection
+const ws = new WebSocket('wss://your-opensvm-instance.com/api/stream?clientId=my-client');
+
+ws.onmessage = (event) => {
+  const blockchainEvent = JSON.parse(event.data);
+  console.log('Blockchain event:', blockchainEvent);
+};
+
+// Subscribe to specific event types
+fetch('/api/stream', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    action: 'subscribe',
+    clientId: 'my-client',
+    eventTypes: ['transaction', 'block']
+  })
+});
+```
+
+### Anomaly Detection API
+
+The anomaly detection system provides AI-driven monitoring for suspicious blockchain activities:
+
+```
+GET /api/anomaly?action=alerts
+GET /api/anomaly?action=stats
+POST /api/anomaly (for event analysis)
+```
+
+**Example: Get Recent Anomaly Alerts**
+```javascript
+const response = await fetch('/api/anomaly?action=alerts');
+const data = await response.json();
+console.log('Recent alerts:', data.data.alerts);
+```
+
+**Example: Analyze Event for Anomalies**
+```javascript
+const event = {
+  type: 'transaction',
+  timestamp: Date.now(),
+  data: {
+    signature: 'abc123...',
+    fee: 50000, // High fee - might trigger anomaly
+    logs: ['Program log: success'],
+    err: null
+  }
+};
+
+const response = await fetch('/api/anomaly', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ action: 'analyze', event })
+});
+
+const result = await response.json();
+console.log('Anomalies detected:', result.data.alerts);
+```

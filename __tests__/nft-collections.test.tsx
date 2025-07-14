@@ -1,9 +1,7 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import NFTsPage from '@/app/nfts/page';
 import { act } from 'react-dom/test-utils';
 
-// Helper to flush promises
-const flushPromises = () => new Promise(resolve => setTimeout(resolve, 0));
 
 // Mock fetch
 global.fetch = jest.fn();

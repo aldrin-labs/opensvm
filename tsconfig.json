@@ -9,7 +9,7 @@
       "@/*": ["./*"],
     },
     "skipLibCheck": true,
-    "strict": false,
+    "strict": true,
     "target": "ES2020",
     "lib": [
       "dom",
@@ -26,9 +26,9 @@
         "name": "next"
       }
     ],
-    "noImplicitAny": false,
-    "noUnusedLocals": false,
-    "noUnusedParameters": false,
+    "noImplicitAny": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": false,
     "noImplicitReturns": false,
     "noUncheckedIndexedAccess": false,

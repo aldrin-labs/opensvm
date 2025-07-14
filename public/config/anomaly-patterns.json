@@ -1,0 +1,212 @@
+{
+  "version": "1.1.0",
+  "lastUpdated": "2024-07-07T00:00:00Z",
+  "patterns": [
+    {
+      "id": "critical_fee_spike",
+      "name": "Critical Fee Spike",
+      "description": "Transaction fees extremely higher than average (10x+)",
+      "severity": "critical",
+      "category": "financial",
+      "enabled": true,
+      "threshold": 10.0,
+      "conditions": [
+        {
+          "type": "fee_spike",
+          "operator": "gte",
+          "value": 10.0,
+          "field": "fee"
+        }
+      ],
+      "metadata": {
+        "tags": ["fees", "economics", "critical"],
+        "mlWeight": 2.0,
+        "confidence": 0.95,
+        "timeWindowMs": 180000
+      }
+    },
+    {
+      "id": "high_fee_spike",
+      "name": "High Fee Spike",
+      "description": "Transaction fees significantly higher than average (5x+)",
+      "severity": "high",
+      "category": "financial",
+      "enabled": true,
+      "threshold": 5.0,
+      "conditions": [
+        {
+          "type": "fee_spike",
+          "operator": "gte",
+          "value": 5.0,
+          "field": "fee"
+        }
+      ],
+      "metadata": {
+        "tags": ["fees", "economics"],
+        "mlWeight": 1.5,
+        "confidence": 0.85,
+        "timeWindowMs": 300000
+      }
+    },
+    {
+      "id": "transaction_failure_burst",
+      "name": "Transaction Failure Burst",
+      "description": "High rate of transaction failures detected",
+      "severity": "critical",
+      "category": "security",
+      "enabled": true,
+      "threshold": 0.3,
+      "conditions": [
+        {
+          "type": "failure_rate",
+          "operator": "gt",
+          "value": 0.3
+        }
+      ],
+      "metadata": {
+        "tags": ["failures", "security"],
+        "mlWeight": 1.8,
+        "confidence": 0.9,
+        "timeWindowMs": 60000
+      }
+    },
+    {
+      "id": "massive_transaction_burst",
+      "name": "Massive Transaction Burst",
+      "description": "Extremely high number of transactions from single address (100+)",
+      "severity": "high",
+      "category": "behavior",
+      "enabled": true,
+      "threshold": 100,
+      "conditions": [
+        {
+          "type": "transaction_burst",
+          "operator": "gte",
+          "value": 100,
+          "field": "transactionCount"
+        }
+      ],
+      "metadata": {
+        "tags": ["volume", "behavior", "burst"],
+        "mlWeight": 1.3,
+        "confidence": 0.8,
+        "timeWindowMs": 120000
+      }
+    },
+    {
+      "id": "rapid_transaction_burst",
+      "name": "Rapid Transaction Burst",
+      "description": "High number of transactions from single address (50+)",
+      "severity": "medium",
+      "category": "behavior",
+      "enabled": true,
+      "threshold": 50,
+      "conditions": [
+        {
+          "type": "transaction_burst",
+          "operator": "gte",
+          "value": 50,
+          "field": "transactionCount"
+        }
+      ],
+      "metadata": {
+        "tags": ["volume", "behavior"],
+        "mlWeight": 1.0,
+        "confidence": 0.7,
+        "timeWindowMs": 180000
+      }
+    },
+    {
+      "id": "whale_token_transfer",
+      "name": "Whale Token Transfer",
+      "description": "Extremely large token transfer detected (10M+)",
+      "severity": "critical",
+      "category": "financial",
+      "enabled": true,
+      "threshold": 10000000,
+      "conditions": [
+        {
+          "type": "large_transfer",
+          "operator": "gte",
+          "value": 10000000,
+          "field": "amount"
+        }
+      ],
+      "metadata": {
+        "tags": ["transfers", "finance", "whale"],
+        "mlWeight": 1.5,
+        "confidence": 0.9,
+        "timeWindowMs": 1800000
+      }
+    },
+    {
+      "id": "large_token_transfer",
+      "name": "Large Token Transfer",
+      "description": "Large token transfer detected (1M+)",
+      "severity": "high",
+      "category": "financial",
+      "enabled": true,
+      "threshold": 1000000,
+      "conditions": [
+        {
+          "type": "large_transfer",
+          "operator": "gte",
+          "value": 1000000,
+          "field": "amount"
+        }
+      ],
+      "metadata": {
+        "tags": ["transfers", "finance"],
+        "mlWeight": 1.1,
+        "confidence": 0.85,
+        "timeWindowMs": 3600000
+      }
+    },
+    {
+      "id": "unusual_program_activity",
+      "name": "Unusual Program Activity",
+      "description": "Activity from unknown or unusual program",
+      "severity": "medium",
+      "category": "security",
+      "enabled": false,
+      "threshold": 1,
+      "conditions": [
+        {
+          "type": "unusual_program",
+          "operator": "eq",
+          "value": true,
+          "field": "isUnknownProgram"
+        }
+      ],
+      "metadata": {
+        "tags": ["programs", "security"],
+        "mlWeight": 0.8,
+        "confidence": 0.6,
+        "timeWindowMs": 600000
+      }
+    },
+    {
+      "id": "mev_sandwich_attack",
+      "name": "MEV Sandwich Attack",
+      "description": "Potential MEV sandwich attack pattern detected",
+      "severity": "high",
+      "category": "security",
+      "enabled": true,
+      "threshold": 3,
+      "conditions": [
+        {
+          "type": "rapid_trades",
+          "operator": "gte",
+          "value": 3,
+          "field": "consecutiveTradeCount"
+        }
+      ],
+      "metadata": {
+        "tags": ["mev", "attacks", "defi"],
+        "mlWeight": 1.4,
+        "confidence": 0.75,
+        "timeWindowMs": 30000
+      }
+    }
+  ]
+}

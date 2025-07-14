@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,9 @@ import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
+import { SearchSuggestions } from '@/components/search/SearchSuggestions';
+import { SearchSuggestion } from '@/components/search/types';
+import { debounce } from '@/lib/utils';
 
 interface Block {
   slot: number;
@@ -46,6 +49,10 @@ export default function HomePage() {
   const [sidebarWidth, setSidebarWidth] = useState(400);
   const [isResizing, setIsResizing] = useState(false);
   const [networkData, setNetworkData] = useState<NetworkData[]>([]);
+  const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -117,10 +124,59 @@ export default function HomePage() {
     };
   }, []);
 
+  // Fetch suggestions function
+  const fetchSuggestions = async (query: string) => {
+    if (!query.trim() || query.length < 2) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
+    }
+
+    setSuggestionsLoading(true);
+    try {
+      const response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(Array.isArray(data) ? data : []);
+        setShowSuggestions(true);
+      } else {
+        setSuggestions([]);
+        setShowSuggestions(false);
+      }
+    } catch (error) {
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([]);
+      setShowSuggestions(false);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  };
+
+  // Debounced version of fetchSuggestions
+  const debouncedFetchSuggestions = debounce(fetchSuggestions, 300);
+
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (!searchQuery) return;
+    setShowSuggestions(false);
     router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    debouncedFetchSuggestions(value);
+  };
+
+  const handleInputFocus = () => {
+    if (searchQuery.length >= 2) {
+      setShowSuggestions(true);
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Delay hiding suggestions to allow for clicks
+    setTimeout(() => setShowSuggestions(false), 150);
   };
 
   const handleBlockSelect = async (block: Block) => {
@@ -180,16 +236,33 @@ export default function HomePage() {
                 type="text"
                 placeholder="Search transactions, blocks, programs and tokens..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={handleInputChange}
+                onFocus={handleInputFocus}
+                onBlur={handleInputBlur}
                 className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
               />
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Button 
+              <Button
                 type="submit"
                 className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
               >
                 Search
               </Button>
+              
+              <SearchSuggestions
+                showSuggestions={showSuggestions}
+                suggestions={suggestions}
+                suggestionsRef={suggestionsRef}
+                setQuery={setSearchQuery}
+                setShowSuggestions={setShowSuggestions}
+                handleSubmit={handleSearch}
+                onSubmitValue={(value) => {
+                  setSearchQuery(value);
+                  setShowSuggestions(false);
+                  router.push(`/search?q=${encodeURIComponent(value)}`);
+                }}
+                isLoading={suggestionsLoading}
+              />
             </form>
           </div>
 

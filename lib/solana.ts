@@ -1,3 +1,14 @@
+/**
+ * Solana blockchain integration library
+ * 
+ * This module provides core functionality for interacting with the Solana blockchain,
+ * including account management, transaction parsing, and data retrieval.
+ * 
+ * @see docs/architecture/system-overview.md#blockchain-integration-layer
+ * @see docs/architecture/adr/001-vector-database-selection.md
+ * @see docs/architecture/components.md#data-layer
+ */
+
 import {
   Connection,
   PublicKey,
@@ -164,9 +175,7 @@ export type DetailedTransactionInfo = BaseTransactionInfo & {
 export function validateSolanaAddress(address: string): PublicKey {
   try {
     const pubkey = new PublicKey(address);
-    if (!PublicKey.isOnCurve(pubkey.toBytes())) {
-      throw new Error('Invalid Solana address: not on ed25519 curve');
-    }
+    // Remove isOnCurve check as it rejects valid PDAs and other off-curve addresses
     return pubkey;
   } catch (error) {
     throw new Error('Invalid Solana address');
@@ -476,5 +485,135 @@ export async function getTransactionDetails(signature: string): Promise<Detailed
   } catch (error) {
     console.error('Error fetching transaction details:', error);
     throw new Error('Failed to fetch transaction details');
+  }
+}
+
+// Get recent transactions for a given address
+export async function getRecentTransactions(address: string, limit: number = 100): Promise<{
+  signature: string;
+  timestamp: string;
+  from: string;
+  to: string;
+  amount: number;
+  tokenSymbol?: string;
+  type: string;
+  status: 'success' | 'failed';
+}[]> {
+  try {
+    const connection = await getProxyConnection();
+    const publicKey = new PublicKey(address);
+    
+    // Get signatures for the address
+    const signatures = await connection.getSignaturesForAddress(publicKey, {
+      limit: Math.min(limit, 1000) // Solana RPC limit
+    });
+
+    // Fetch transaction details for each signature
+    const transactions = await Promise.all(
+      signatures.slice(0, limit).map(async (sig) => {
+        try {
+          const tx = await connection.getParsedTransaction(sig.signature, {
+            maxSupportedTransactionVersion: 0,
+            commitment: 'confirmed'
+          });
+
+          if (!tx || !tx.meta) {
+            return null;
+          }
+
+          const timestamp = new Date((sig.blockTime || Date.now() / 1000) * 1000).toISOString();
+          const status: 'success' | 'failed' = tx.meta.err === null ? 'success' : 'failed';
+          
+          // Parse transaction for transfer details
+          let from = '';
+          let to = '';
+          let amount = 0;
+          let tokenSymbol = 'SOL';
+          let type = 'transfer';
+
+          // Check for SOL transfers in pre/post balances
+          const accountKeys = tx.transaction.message.accountKeys || [];
+          if (tx.meta.preBalances && tx.meta.postBalances) {
+            for (let i = 0; i < accountKeys.length; i++) {
+              const preBalance = tx.meta.preBalances[i] || 0;
+              const postBalance = tx.meta.postBalances[i] || 0;
+              const balanceChange = postBalance - preBalance;
+              
+              if (Math.abs(balanceChange) > 0) {
+                const accountAddress = accountKeys[i]?.pubkey?.toString() || '';
+                
+                if (balanceChange < 0) {
+                  // This account sent SOL
+                  from = accountAddress;
+                  amount = Math.abs(balanceChange) / 1e9;
+                } else if (balanceChange > 0 && accountAddress === address) {
+                  // This account received SOL
+                  to = accountAddress;
+                  if (amount === 0) amount = balanceChange / 1e9;
+                }
+              }
+            }
+          }
+
+          // Check for token transfers in instructions
+          const instructions = tx.transaction.message.instructions || [];
+          for (const instruction of instructions) {
+            if ('parsed' in instruction && instruction.parsed?.type === 'transfer') {
+              const info = instruction.parsed.info;
+              if (info) {
+                from = info.source || from;
+                to = info.destination || to;
+                amount = parseFloat(info.amount || '0') / 1e9;
+                type = 'transfer';
+              }
+            } else if ('parsed' in instruction && instruction.parsed?.type === 'transferChecked') {
+              const info = instruction.parsed.info;
+              if (info) {
+                from = info.source || from;
+                to = info.destination || to;
+                amount = parseFloat(info.tokenAmount?.amount || '0') / Math.pow(10, info.tokenAmount?.decimals || 9);
+                tokenSymbol = info.mint ? 'TOKEN' : tokenSymbol;
+                type = 'transfer';
+              }
+            }
+          }
+
+          // If we still don't have from/to, use first and last account keys as fallbacks
+          if (!from && accountKeys.length > 0) {
+            from = accountKeys[0]?.pubkey?.toString() || '';
+          }
+          if (!to && accountKeys.length > 1) {
+            to = accountKeys[accountKeys.length - 1]?.pubkey?.toString() || '';
+          }
+
+          // Determine transaction type based on address involvement
+          if (from === address) {
+            type = 'send';
+          } else if (to === address) {
+            type = 'receive';
+          }
+
+          return {
+            signature: sig.signature,
+            timestamp,
+            from,
+            to,
+            amount,
+            tokenSymbol,
+            type,
+            status
+          };
+        } catch (error) {
+          console.warn(`Failed to parse transaction ${sig.signature}:`, error);
+          return null;
+        }
+      })
+    );
+
+    // Filter out null transactions and return
+    return transactions.filter((tx): tx is NonNullable<typeof tx> => tx !== null);
+  } catch (error) {
+    console.error('Error fetching recent transactions:', error);
+    throw new Error(`Failed to fetch transactions for ${address}`);
   }
 }

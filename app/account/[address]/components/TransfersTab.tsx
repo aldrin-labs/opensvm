@@ -5,12 +5,13 @@ import { TransfersTable } from '@/components/TransfersTable';
 
 interface Props {
   address: string;
+  transferType?: 'SOL' | 'TOKEN' | 'ALL';
 }
 
-function TransfersTabComponent({ address }: Props) {
+function TransfersTabComponent({ address, transferType = 'ALL' }: Props) {
   return (
     <div className="w-full h-full">
-      <TransfersTable key={address} address={address} />
+      <TransfersTable key={`${address}-${transferType}`} address={address} transferType={transferType} />
     </div>
   );
 }

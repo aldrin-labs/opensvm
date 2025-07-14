@@ -9,9 +9,9 @@ export interface Tab {
 
 export const tabs: Tab[] = [
   { id: 'tokens', label: 'Tokens' },
-  { id: 'transfers', label: 'Transfers' },
-  { id: 'nfts', label: 'NFTs' },
-  { id: 'programs', label: 'Programs' },
+  { id: 'sol-transfers', label: 'SOL Transfers' },
+  { id: 'token-transfers', label: 'Token Transfers' },
+  { id: 'all-transfers', label: 'All Transfers' },
 ];
 
 interface Props {

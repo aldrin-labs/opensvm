@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import type { Message, Note, AgentAction } from '../types';
 import { SolanaAgent } from '../core/agent';
 import { SOLANA_RPC_KNOWLEDGE, PUMPFUN_KNOWLEDGE } from '../core/knowledge';
 import { executeAction } from '../actions';
+import { UserHistoryService } from '@/lib/user-history';
+import { useWallet } from '@solana/wallet-adapter-react';
 
 interface UseAIChatTabsProps {
   agent: SolanaAgent;
@@ -50,7 +52,7 @@ const formatActionResponse = (response: Message, action: AgentAction): Message =
     const { actionName, params } = response.metadata.data.result;
     if (actionName === 'wallet_path_finding') {
       return {
-        role: 'assistant',
+        role: 'assistant' as const,
         content: `I'll find the path between wallet ${params.walletA} and ${params.walletB} by tracking token transfers...`,
         metadata: response.metadata
       };
@@ -60,7 +62,7 @@ const formatActionResponse = (response: Message, action: AgentAction): Message =
   // Standard action response formatting
   if (response?.metadata?.data) {
     return {
-      role: 'assistant',
+      role: 'assistant' as const,
       content: `Action completed: ${action.description}\n\`\`\`json\n${JSON.stringify(response.metadata.data, null, 2)}\n\`\`\``,
       metadata: response.metadata
     };
@@ -69,6 +71,7 @@ const formatActionResponse = (response: Message, action: AgentAction): Message =
 };
 
 export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
+  const { publicKey } = useWallet();
   const [activeTab, setActiveTab] = useState('agent');
   const [agentMessages, setAgentMessages] = useState<Message[]>([{
     role: 'assistant',
@@ -97,6 +100,31 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
   const [agentActions, setAgentActions] = useState<AgentAction[]>([]);
   const [isRecording, setIsRecording] = useState(false);
 
+  // Save message to user history
+  const saveToHistory = (message: Message, tabType: 'agent' | 'assistant' | 'notes') => {
+    if (!publicKey) return;
+    
+    try {
+      UserHistoryService.addHistoryEntry({
+        id: `ai-chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        walletAddress: publicKey.toString(),
+        timestamp: Date.now(),
+        path: '/ai-chat',
+        pageType: 'ai-chat',
+        pageTitle: `AI Chat - ${tabType}`,
+        metadata: {
+          aiChatMessage: {
+            role: message.role as 'user' | 'assistant' | 'agent',
+            content: message.content,
+            tabType
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error saving to history:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || isProcessing) return;
@@ -111,6 +139,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
 
     if (activeTab === 'agent') {
       setAgentMessages(prev => [...prev, userMessage]);
+      saveToHistory(userMessage, 'agent');
 
       try {
         // First get the plan with actions
@@ -125,15 +154,18 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
           // Try direct execution if no actions were generated
           const response = await agent.processMessage(userMessage);
           setAgentMessages(prev => [...prev, response]);
+          saveToHistory(response, 'agent');
           setIsProcessing(false);
           return;
         }
 
         // Add the plan to messages
-        setAgentMessages(prev => [...prev, {
-          role: 'assistant',
+        const planMessage = {
+          role: 'assistant' as const,
           content: `**I will execute these actions:**\n${actions.map((action, i) => `${i + 1}. ${action.description}`).join('\n')}`
-        }]);
+        };
+        setAgentMessages(prev => [...prev, planMessage]);
+        saveToHistory(planMessage, 'agent');
 
         // Execute each action in sequence
         const results = [];
@@ -179,7 +211,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                   results.push({
                     action,
                     response: {
-                      role: 'assistant',
+                      role: 'assistant' as const,
                       content: 'Path finding complete.',
                       metadata: {
                         type: 'account' as const,
@@ -249,41 +281,53 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
         // Add results to messages
         for (const result of results) {
           if (result.status === 'completed' && result.response) {
-            setAgentMessages(prev => [...prev, formatActionResponse(result.response, result.action)]);
+            const formattedResponse = formatActionResponse(result.response, result.action);
+            setAgentMessages(prev => [...prev, formattedResponse]);
+            saveToHistory(formattedResponse, 'agent');
           } else if (result.status === 'failed') {
-            setAgentMessages(prev => [...prev, {
-              role: 'assistant',
+            const errorMessage = {
+              role: 'assistant' as const,
               content: `**Error executing action:** ${result.action.description}\n${result.error}`
-            }]);
+            };
+            setAgentMessages(prev => [...prev, errorMessage]);
+            saveToHistory(errorMessage, 'agent');
           }
         }
 
         // Add summary message
         const successCount = results.filter(r => r.status === 'completed').length;
         const failureCount = results.filter(r => r.status === 'failed').length;
-        setAgentMessages(prev => [...prev, {
-          role: 'assistant',
+        const summaryMessage = {
+          role: 'assistant' as const,
           content: `**Execution Summary:**\n- ${successCount} action${successCount !== 1 ? 's' : ''} completed successfully\n- ${failureCount} action${failureCount !== 1 ? 's' : ''} failed${failureCount > 0 ? '\n\nYou can retry failed actions using the retry button.' : ''}`
-        }]);
+        };
+        setAgentMessages(prev => [...prev, summaryMessage]);
+        saveToHistory(summaryMessage, 'agent');
 
       } catch (error) {
         console.error('Error in agent execution:', error);
-        setAgentMessages(prev => [...prev, {
-          role: 'assistant',
+        const errorMessage = {
+          role: 'assistant' as const,
           content: `**Error:** ${error instanceof Error ? error.message : String(error)}. Please try again with more specific information.`
-        }]);
+        };
+        setAgentMessages(prev => [...prev, errorMessage]);
+        saveToHistory(errorMessage, 'agent');
       }
     } else if (activeTab === 'assistant') {
       setAssistantMessages(prev => [...prev, userMessage]);
+      saveToHistory(userMessage, 'assistant');
       try {
         const response = await agent.processMessage(userMessage);
         setAssistantMessages(prev => [...prev, response]);
+        saveToHistory(response, 'assistant');
       } catch (error) {
         console.error('Error processing message:', error);
-        setAssistantMessages(prev => [...prev, {
-          role: 'assistant',
+        const errorMessage = {
+          role: 'assistant' as const,
           content: 'I encountered an error while processing your request. Please try again.'
-        }]);
+        };
+        setAssistantMessages(prev => [...prev, errorMessage]);
+        saveToHistory(errorMessage, 'assistant');
       }
     } else if (activeTab === 'notes') {
       const newNote: Note = {

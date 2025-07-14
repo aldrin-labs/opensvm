@@ -1,4 +1,5 @@
 import { CopyButton } from './CopyButton';
+import { ShareButton } from './ShareButton';
 
 interface AccountInfoProps {
   address: string;
@@ -24,7 +25,10 @@ export default function AccountInfo({ address, isSystemProgram, parsedOwner }: A
   return (
     <div className="grid grid-cols-1 gap-4 p-4 bg-background rounded-lg border">
       <div className="flex flex-col gap-2">
-        <h2 className="text-xl font-bold">Account Info</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-xl font-bold">Account Info</h2>
+          <ShareButton entityType="account" entityId={address} />
+        </div>
         
         <div className="flex flex-col gap-4">
           <AddressDisplay address={address} label="Address" />

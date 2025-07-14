@@ -31,7 +31,15 @@ const list1 = parseRpcList(process.env.OPENSVM_RPC_LIST);
 const list2 = parseRpcList(process.env.OPENSVM_RPC_LIST_2);
 
 // Combine all RPC endpoints
-const opensvmRpcEndpoints = [...list1, ...list2];
+let opensvmRpcEndpoints = [...list1, ...list2];
+
+// Fallback endpoints if no environment variables are set
+if (opensvmRpcEndpoints.length === 0) {
+  console.warn('No OPENSVM_RPC_LIST environment variables found, using fallback endpoints');
+  opensvmRpcEndpoints = [
+    'https://solana-mainnet.core.chainstack.com/263c9f53f4e4cdb897c0edc4a64cd007'
+  ];
+}
 
 // Export functions used by other parts of the application
 export function getRpcEndpoints() {
