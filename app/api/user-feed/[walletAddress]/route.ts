@@ -150,29 +150,38 @@ async function getRealFeedEvents(
         followingAddresses.includes(event.userAddress)
       );
     } else if (type === 'for-you') {
-      // For 'for-you' feed, show recommended content from ALL users:
-      // - Prioritize recent activity from other users (not the profile owner)
-      // - Include events with engagement from any user
-      // - Include some recent activity from active users for discovery
-      // - Optionally include some profile owner content, but not exclusively
-      const todayStart = new Date().setHours(0, 0, 0, 0);
-      const recentThreshold = Date.now() - (2 * 24 * 60 * 60 * 1000); // Last 2 days
+      // For 'for-you' feed, show content from ALL users with more inclusive filtering
+      // Make filter more inclusive to debug what data is available
+      const weekAgoThreshold = Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
       
       filteredEvents = filteredEvents.filter(event => {
-        // Include recent activity from today (from any user)
-        if (event.timestamp >= todayStart) return true;
+        // Include any recent activity from the last week
+        if (event.timestamp >= weekAgoThreshold) return true;
         
-        // Include events with any engagement (likes, comments, etc.) from any user
+        // Include events with any engagement (likes, comments, etc.)
         if (event.likes > 0) return true;
         
-        // Include recent activity from active users for better discovery
-        if (event.timestamp >= recentThreshold) return true;
-        
-        // Include some profile owner activity, but limit it to avoid dominance
-        if (event.userAddress === walletAddress && event.timestamp >= recentThreshold) return true;
+        // Include any activity from other users (not the profile owner) regardless of age for discovery
+        if (event.userAddress !== walletAddress) return true;
         
         return false;
       });
+    }
+    
+    // Debug logging after filtering
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`After ${type} feed filtering: ${filteredEvents.length} events`);
+      if (type === 'for-you' && filteredEvents.length > 0) {
+        const fromOthers = filteredEvents.filter(e => e.userAddress !== walletAddress).length;
+        const fromOwner = filteredEvents.filter(e => e.userAddress === walletAddress).length;
+        console.log(`For-you feed breakdown: ${fromOthers} from other users, ${fromOwner} from profile owner`);
+        
+        // Show sample filtered events
+        console.log('Sample filtered events:');
+        filteredEvents.slice(0, 3).forEach((event, i) => {
+          console.log(`  ${i + 1}. ${event.userAddress.slice(0, 4)}...${event.userAddress.slice(-4)} - ${event.eventType} - ${new Date(event.timestamp).toISOString()}`);
+        });
+      }
     }
     
     // Sort based on sortOrder with special handling for for-you feed
@@ -212,13 +221,16 @@ async function getRealFeedEvents(
     // Add some debug logging with privacy protection
     const redactedWallet = `${walletAddress.slice(0, 4)}...${walletAddress.slice(-4)}`;
     if (process.env.NODE_ENV === 'development') {
-      console.log(`Feed API: ${type} feed for ${redactedWallet}, found ${finalEvents.length} events out of ${history.length} total history entries`);
-      if (type === 'following') {
-        console.log(`Following ${followingAddresses.length} users`);
-      } else if (type === 'for-you') {
-        const fromOthers = finalEvents.filter(e => e.userAddress !== walletAddress).length;
-        const fromOwner = finalEvents.filter(e => e.userAddress === walletAddress).length;
-        console.log(`For-you feed: ${fromOthers} events from other users, ${fromOwner} events from profile owner`);
+      console.log(`Feed API: ${type} feed for ${redactedWallet}`);
+      console.log(`Raw history entries: ${history.length}`);
+      console.log(`After event type filter: ${filteredEvents.length}`);
+      
+      // Log first few entries for debugging
+      if (history.length > 0) {
+        console.log('Sample raw entries:');
+        history.slice(0, 3).forEach((entry, i) => {
+          console.log(`  ${i + 1}. ${entry.walletAddress.slice(0, 4)}...${entry.walletAddress.slice(-4)} - ${entry.pageType} - ${new Date(entry.timestamp).toISOString()}`);
+        });
       }
     }
 
