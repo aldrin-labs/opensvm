@@ -174,7 +174,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {stats.pageTypeDistribution.map((type, index) => {
+          {stats.pageTypeDistribution?.map((type, index) => {
             const Icon = pageTypeIcons[type.type as keyof typeof pageTypeIcons] || Globe;
             const colorClass = pageTypeColors[type.type as keyof typeof pageTypeColors] || pageTypeColors.other;
             
@@ -201,7 +201,12 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
                 />
               </div>
             );
-          })}
+          })} 
+          {(!stats.pageTypeDistribution || stats.pageTypeDistribution.length === 0) && (
+            <div className="text-center py-4 text-muted-foreground">
+              <p>No page type data available</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

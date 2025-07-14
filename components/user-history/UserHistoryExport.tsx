@@ -85,7 +85,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
       ['First Visit', new Date(profile.stats.firstVisit).toISOString(), 'Date and time of first visit'],
       ['Last Visit', new Date(profile.stats.lastVisit).toISOString(), 'Date and time of last visit'],
       ['Days Active', profile.stats.dailyActivity.length, 'Number of days with activity'],
-      ...profile.stats.pageTypeDistribution.map(type => [
+      ...(profile.stats.pageTypeDistribution || []).map(type => [
         `${type.type} Pages`,
         type.count,
         `Number of ${type.type} pages visited (${type.percentage.toFixed(1)}%)`
@@ -268,7 +268,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-500">
               File includes: {profile.history.length} history entries, 
-              {profile.stats.pageTypeDistribution.length} page types, 
+              {(profile.stats.pageTypeDistribution || []).length} page types, 
               {profile.stats.dailyActivity.length} days of activity
             </div>
           </div>
