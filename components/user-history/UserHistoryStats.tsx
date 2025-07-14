@@ -26,7 +26,7 @@ import {
 } from 'lucide-react';
 
 interface UserHistoryStatsProps {
-  stats: UserHistoryStats;
+  stats?: UserHistoryStats;
 }
 
 const pageTypeIcons = {
@@ -75,7 +75,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
   };
 
   const getDaysActive = () => {
-    if (!stats || !stats.firstVisit) return 0;
+    if (!stats || !stats?.firstVisit) return 0;
     const today = new Date();
     const firstVisit = new Date(stats.firstVisit);
     const timeDiff = today.getTime() - firstVisit.getTime();
@@ -135,7 +135,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               <TrendingUp className="h-8 w-8 text-green-600" />
             </div>
             <div className="mt-4 text-xs text-muted-foreground">
-              Based on {(stats.totalVisits || 0)} total visits
+              Based on {(stats?.totalVisits || 0)} total visits
             </div>
           </CardContent>
         </Card>
