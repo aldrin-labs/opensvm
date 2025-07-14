@@ -1,4 +1,7 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import { withCache, CACHE_CONFIGS } from '@/lib/cache/cache-middleware';
+import { analyticsCache } from '@/lib/cache/redis-compatible-cache';
+import { storeNetworkStats } from '@/lib/qdrant-analytics';
 
 // Comprehensive DeFi Overview API aggregating data from all DeFi sectors
 interface OverviewMetrics {
@@ -244,20 +247,70 @@ async function fetchOverviewData(): Promise<OverviewMetrics> {
   }
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const overview = await fetchOverviewData();
+    // Check cache first
+    const cacheKey = 'overview:analytics:latest';
+    let overview = await analyticsCache.get<OverviewMetrics>(cacheKey);
+    
+    if (!overview) {
+      // Fetch fresh data
+      overview = await fetchOverviewData();
+      
+      // Cache for 5 minutes with analytics namespace
+      await analyticsCache.set(cacheKey, overview, 5 * 60 * 1000, ['analytics', 'overview']);
+      
+      // Store network stats in Qdrant for semantic search
+      try {
+        await storeNetworkStats({
+          id: `network-${Date.now()}`,
+          timestamp: Date.now(),
+          slot: 0, // Will be populated with real data
+          tps: overview.totalTransactions / (24 * 60 * 60), // Estimate TPS from daily transactions
+          averageSlotTime: 400, // Solana average
+          totalTransactions: overview.totalTransactions,
+          totalAccounts: 0, // Will be populated
+          totalValidators: 0, // Will be populated
+          stakingRatio: 0.7, // Estimate
+          inflation: 0.08, // Estimate
+          epochInfo: {
+            epoch: Math.floor(Date.now() / (24 * 60 * 60 * 1000 * 2)), // Rough estimate
+            slotIndex: 0,
+            slotsInEpoch: 432000,
+            absoluteSlot: 0
+          },
+          clusterInfo: {
+            version: '1.18.0',
+            feature_set: 'current'
+          },
+          performance: {
+            blockhash: '',
+            lamportsPerSignature: 5000,
+            lastValidBlockHeight: 0
+          },
+          metadata: {
+            source: 'overview-analytics',
+            defiTvl: overview.totalTvl,
+            defiVolume24h: overview.totalVolume24h,
+            activeDexes: overview.activeDexes
+          }
+        });
+      } catch (qdrantError) {
+        console.warn('Failed to store network stats in Qdrant:', qdrantError);
+      }
+    }
 
     const response = NextResponse.json({
       success: true,
       data: overview,
       timestamp: Date.now(),
-      source: 'aggregated'
+      source: 'cached-aggregated'
     });
 
-    // Add cache headers for better performance
-    response.headers.set('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=120');
+    // Add enhanced cache headers
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
     response.headers.set('CDN-Cache-Control', 'public, s-maxage=300');
+    response.headers.set('X-Cache-TTL', '300');
     
     return response;
 

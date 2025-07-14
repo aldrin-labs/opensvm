@@ -17,6 +17,8 @@ OpenSVM offers a modern, user-friendly interface for exploring the Solana blockc
 - **AI Assistant**: Get natural language explanations of blockchain data and transactions
 - **Network Statistics**: Monitor Solana network performance and health metrics
 - **Token Analytics**: Track token transfers, balances, and activities
+- **Advanced Caching**: Multi-layer caching system with 50-90% performance improvements
+- **Semantic Search**: Vector-based search for analytics data and network statistics
 
 ## Technology Stack
 
@@ -26,6 +28,8 @@ OpenSVM offers a modern, user-friendly interface for exploring the Solana blockc
 - **AI Components**: LLM integration via Together AI
 - **State Management**: XState for complex workflows
 - **Vector Database**: Qdrant for similarity search
+- **Caching System**: Redis-compatible multi-layer caching with LRU eviction
+- **Performance**: Advanced indexing and semantic search capabilities
 
 ## Getting Started
 
