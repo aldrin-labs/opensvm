@@ -440,7 +440,7 @@ export default function UserProfilePage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Total Visits</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {profile.stats.totalVisits.toLocaleString()}
+                    {profile?.stats?.totalVisits?.toLocaleString() || '0'}
                   </p>
                 </div>
                 <Activity className="h-8 w-8 text-primary" />
@@ -496,7 +496,7 @@ export default function UserProfilePage() {
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Days Active</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {profile.stats.dailyActivity.length}
+                    {profile?.stats?.dailyActivity?.length || 0}
                   </p>
                 </div>
                 <Calendar className="h-8 w-8 text-orange-600" />
