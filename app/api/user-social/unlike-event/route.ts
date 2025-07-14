@@ -10,6 +10,7 @@ import {
   getUserHistory,
   storeHistoryEntry
 } from '@/lib/qdrant';
+import { SSEManager } from '@/lib/sse-manager';
 
 // Authentication check using session validation
 function isValidRequest(_request: NextRequest): { isValid: boolean; walletAddress?: string } {
@@ -77,6 +78,16 @@ export async function POST(request: NextRequest) {
     
     // Save updated event back to database
     await storeHistoryEntry(eventEntry);
+    
+    // Broadcast feed event for real-time updates
+    const sseManager = SSEManager.getInstance();
+    sseManager.broadcastFeedEvent({
+      type: 'unlike_event',
+      walletAddress: `${auth.walletAddress.slice(0, 4)}...${auth.walletAddress.slice(-4)}`, // Redacted for privacy
+      eventId,
+      newLikeCount: eventEntry.metadata.likes,
+      timestamp: Date.now()
+    });
     
     // Return success response
     return NextResponse.json({

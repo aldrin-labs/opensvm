@@ -13,6 +13,7 @@ import {
   deleteUserHistory,
   checkQdrantHealth 
 } from '@/lib/qdrant';
+import { SSEManager } from '@/lib/sse-manager';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest, walletAddress: string): Promise<{ isValid: boolean; session?: any }> {
@@ -141,6 +142,21 @@ export async function POST(
 
     // Store in Qdrant
     await storeHistoryEntry(entry);
+
+    // Broadcast feed event for real-time updates
+    const sseManager = SSEManager.getInstance();
+    sseManager.broadcastFeedEvent({
+      type: 'new_entry',
+      walletAddress: `${validatedAddress.slice(0, 4)}...${validatedAddress.slice(-4)}`, // Redacted for privacy
+      entry: {
+        id: entry.id,
+        pageType: entry.pageType,
+        pageTitle: entry.pageTitle,
+        path: entry.path,
+        timestamp: entry.timestamp,
+        metadata: entry.metadata
+      }
+    });
 
     // Get updated total count
     const result = await getUserHistory(validatedAddress, { limit: 1 });
