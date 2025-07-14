@@ -143,28 +143,20 @@ async function getRealFeedEvents(
       filteredEvents = filteredEvents.filter(event => event.timestamp >= timeThreshold);
     }
 
-    // Step 4: Apply feed type filtering (more inclusive than before)
+    // Step 4: Apply feed type filtering (TEMPORARILY REMOVE ALL FILTERING FOR DEBUG)
     if (type === 'following') {
       // For 'following' feed, only include events from followed users
       filteredEvents = filteredEvents.filter(event =>
         followingAddresses.includes(event.userAddress)
       );
     } else if (type === 'for-you') {
-      // For 'for-you' feed, show content from ALL users with more inclusive filtering
-      // Make filter more inclusive to debug what data is available
-      const weekAgoThreshold = Date.now() - (7 * 24 * 60 * 60 * 1000); // Last 7 days
+      // TEMPORARILY: Show ALL events without any filtering to debug
+      // filteredEvents = filteredEvents; // Keep everything
       
+      // Actually, let's just make sure we're not filtering out everything
+      // Only filter out if the event is invalid
       filteredEvents = filteredEvents.filter(event => {
-        // Include any recent activity from the last week
-        if (event.timestamp >= weekAgoThreshold) return true;
-        
-        // Include events with any engagement (likes, comments, etc.)
-        if (event.likes > 0) return true;
-        
-        // Include any activity from other users (not the profile owner) regardless of age for discovery
-        if (event.userAddress !== walletAddress) return true;
-        
-        return false;
+        return event && event.userAddress && event.timestamp;
       });
     }
     
