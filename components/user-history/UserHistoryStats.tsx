@@ -75,7 +75,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
   };
 
   const getDaysActive = () => {
-    if (!stats.firstVisit) return 0;
+    if (!stats || !stats.firstVisit) return 0;
     const today = new Date();
     const firstVisit = new Date(stats.firstVisit);
     const timeDiff = today.getTime() - firstVisit.getTime();
@@ -84,18 +84,18 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
 
   const getAverageVisitsPerDay = () => {
     const daysActive = getDaysActive();
-    return daysActive > 0 ? ((stats.totalVisits || 0) / daysActive).toFixed(1) : '0';
+    return daysActive > 0 ? ((stats?.totalVisits || 0) / daysActive).toFixed(1) : '0';
   };
 
   const getMaxDailyVisits = () => {
-    const dailyActivity = stats.dailyActivity || [];
-    return Math.max(...dailyActivity.map(d => d.visits), 0);
+    if (!stats?.dailyActivity || !Array.isArray(stats.dailyActivity)) return 0;
+    return Math.max(...stats.dailyActivity.map(d => d?.visits || 0), 0);
   };
 
   const getRecentActivity = () => {
-    const dailyActivity = stats.dailyActivity || [];
-    const last7Days = dailyActivity.slice(-7);
-    return last7Days.reduce((sum, day) => sum + day.visits, 0);
+    if (!stats?.dailyActivity || !Array.isArray(stats.dailyActivity)) return 0;
+    const last7Days = stats.dailyActivity.slice(-7);
+    return last7Days.reduce((sum, day) => sum + (day?.visits || 0), 0);
   };
 
   return (
@@ -116,7 +116,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               <Calendar className="h-8 w-8 text-blue-600" />
             </div>
             <div className="mt-4 text-xs text-muted-foreground">
-              Since {formatDate(stats.firstVisit)}
+              Since {stats?.firstVisit ? formatDate(stats.firstVisit) : 'N/A'}
             </div>
           </CardContent>
         </Card>
@@ -188,35 +188,41 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          {stats.pageTypeDistribution?.map((type, index) => {
-            const Icon = pageTypeIcons[type.type as keyof typeof pageTypeIcons] || Globe;
-            const colorClass = pageTypeColors[type.type as keyof typeof pageTypeColors] || pageTypeColors.other;
-            
-            return (
-              <div key={type.type} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Icon className="h-4 w-4" />
-                    <span className="font-medium capitalize">{type.type}</span>
-                    <Badge variant="outline" className="text-xs">
-                      {type.count}
-                    </Badge>
+          {(stats.pageTypeDistribution && Array.isArray(stats.pageTypeDistribution) && stats.pageTypeDistribution.length > 0) ? (
+            stats.pageTypeDistribution.map((type, index) => {
+              // Additional safety check for type object
+              if (!type || typeof type !== 'object' || !type.type) {
+                return null;
+              }
+              
+              const Icon = pageTypeIcons[type.type as keyof typeof pageTypeIcons] || Globe;
+              const colorClass = pageTypeColors[type.type as keyof typeof pageTypeColors] || pageTypeColors.other;
+              
+              return (
+                <div key={`${type.type}-${index}`} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4" />
+                      <span className="font-medium capitalize">{type.type}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {type.count || 0}
+                      </Badge>
+                    </div>
+                    <span className="text-sm text-gray-600 dark:text-gray-400">
+                      {(type.percentage || 0).toFixed(1)}%
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-600 dark:text-gray-400">
-                    {type.percentage.toFixed(1)}%
-                  </span>
+                  <Progress
+                    value={type.percentage || 0}
+                    className="h-2"
+                    style={{
+                      '--progress-background': `${colorClass.replace('bg-', '')}`
+                    } as any}
+                  />
                 </div>
-                <Progress
-                  value={type.percentage}
-                  className="h-2"
-                  style={{
-                    '--progress-background': `${colorClass.replace('bg-', '')}`
-                  } as any}
-                />
-              </div>
-            );
-          })} 
-          {(!stats.pageTypeDistribution || stats.pageTypeDistribution.length === 0) && (
+              );
+            }).filter(Boolean)
+          ) : (
             <div className="text-center py-4 text-muted-foreground">
               <p>No page type data available</p>
             </div>
@@ -232,35 +238,38 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
             Daily Activity Timeline
           </CardTitle>
           <p className="text-sm text-gray-600 dark:text-gray-400">
-            Your browsing activity over the last {Math.min((stats.dailyActivity || []).length, 30)} days
+            Your browsing activity over the last {Math.min((stats?.dailyActivity && Array.isArray(stats.dailyActivity) ? stats.dailyActivity.length : 0), 30)} days
           </p>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             {/* Activity Chart */}
             <div className="h-32 flex items-end justify-between gap-1">
-              {(stats.dailyActivity || []).slice(-30).map((day, index) => {
-                const dailyActivity = stats.dailyActivity || [];
-                const maxVisits = Math.max(...dailyActivity.map(d => d.visits), 1);
-                const height = maxVisits > 0 ? (day.visits / maxVisits) * 100 : 0;
+              {(stats?.dailyActivity && Array.isArray(stats.dailyActivity) ? stats.dailyActivity.slice(-30) : []).map((day, index) => {
+                if (!day || typeof day !== 'object') return null;
+                
+                const dailyActivity = stats?.dailyActivity || [];
+                const maxVisits = Math.max(...dailyActivity.map(d => d?.visits || 0), 1);
+                const visits = day.visits || 0;
+                const height = maxVisits > 0 ? (visits / maxVisits) * 100 : 0;
                 
                 return (
                   <div
-                    key={day.date}
+                    key={day.date || index}
                     className="flex-1 bg-blue-500 rounded-t-sm transition-all hover:bg-blue-600"
                     style={{ height: `${height}%` }}
-                    title={`${day.date}: ${day.visits} visits`}
+                    title={`${day.date || 'Unknown'}: ${visits} visits`}
                   />
                 );
-              })}
+              }).filter(Boolean)}
             </div>
             
             {/* Date Labels */}
             <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500">
               <span>
-                {(stats.dailyActivity || []).length > 0 && formatDate(
-                  new Date((stats.dailyActivity || [])[Math.max(0, (stats.dailyActivity || []).length - 30)].date).getTime()
-                )}
+                {(stats?.dailyActivity && Array.isArray(stats.dailyActivity) && stats.dailyActivity.length > 0) ? formatDate(
+                  new Date(stats.dailyActivity[Math.max(0, stats.dailyActivity.length - 30)]?.date || Date.now()).getTime()
+                ) : 'No data'}
               </span>
               <span>Today</span>
             </div>
@@ -294,10 +303,11 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               date.setDate(date.getDate() - (48 - i));
               const dateStr = date.toISOString().split('T')[0];
               
-              const dayData = (stats.dailyActivity || []).find(d => d.date === dateStr);
+              const dayData = (stats?.dailyActivity && Array.isArray(stats.dailyActivity)) ? 
+                stats.dailyActivity.find(d => d?.date === dateStr) : undefined;
               const visits = dayData?.visits || 0;
-              const dailyActivity = stats.dailyActivity || [];
-              const maxVisits = Math.max(...dailyActivity.map(d => d.visits), 1);
+              const dailyActivity = (stats?.dailyActivity && Array.isArray(stats.dailyActivity)) ? stats.dailyActivity : [];
+              const maxVisits = Math.max(...dailyActivity.map(d => d?.visits || 0), 1);
               
               let intensity = 0;
               if (visits > 0) {
