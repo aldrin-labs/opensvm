@@ -150,26 +150,26 @@ async function getRealFeedEvents(
         followingAddresses.includes(event.userAddress)
       );
     } else if (type === 'for-you') {
-      // For 'for-you' feed, show content more inclusively:
-      // - Always include events from the profile owner
-      // - Include recent activity from today
-      // - Include events with any engagement (not just 2+ likes)
-      // - Include some recent activity from active users (more discovery-friendly)
+      // For 'for-you' feed, show recommended content from ALL users:
+      // - Prioritize recent activity from other users (not the profile owner)
+      // - Include events with engagement from any user
+      // - Include some recent activity from active users for discovery
+      // - Optionally include some profile owner content, but not exclusively
       const todayStart = new Date().setHours(0, 0, 0, 0);
       const recentThreshold = Date.now() - (2 * 24 * 60 * 60 * 1000); // Last 2 days
       
       filteredEvents = filteredEvents.filter(event => {
-        // Always include events from the profile owner
-        if (event.userAddress === walletAddress) return true;
-        
-        // Include events from today
+        // Include recent activity from today (from any user)
         if (event.timestamp >= todayStart) return true;
         
-        // Include events with any engagement (likes, comments, etc.)
+        // Include events with any engagement (likes, comments, etc.) from any user
         if (event.likes > 0) return true;
         
-        // Include some recent activity for better discovery
+        // Include recent activity from active users for better discovery
         if (event.timestamp >= recentThreshold) return true;
+        
+        // Include some profile owner activity, but limit it to avoid dominance
+        if (event.userAddress === walletAddress && event.timestamp >= recentThreshold) return true;
         
         return false;
       });
@@ -179,18 +179,26 @@ async function getRealFeedEvents(
     if (sortOrder === 'popular') {
       filteredEvents.sort((a, b) => b.likes - a.likes);
     } else {
-      // Default to newest, but for 'for-you' feed, prioritize recent activity from today
+      // Default to newest, but for 'for-you' feed, prioritize content from other users
       if (type === 'for-you') {
         const todayStart = new Date().setHours(0, 0, 0, 0);
         filteredEvents.sort((a, b) => {
-          // Prioritize events from today
+          // First, prioritize content from other users over profile owner's content
+          const aIsFromOthers = a.userAddress !== walletAddress;
+          const bIsFromOthers = b.userAddress !== walletAddress;
+          
+          if (aIsFromOthers && !bIsFromOthers) return -1;
+          if (!aIsFromOthers && bIsFromOthers) return 1;
+          
+          // Within same user category, prioritize events from today
           const aIsFromToday = a.timestamp >= todayStart;
           const bIsFromToday = b.timestamp >= todayStart;
           
           if (aIsFromToday && !bIsFromToday) return -1;
           if (!aIsFromToday && bIsFromToday) return 1;
           
-          // Within same day category, sort by timestamp
+          // Finally, sort by engagement (likes) and then timestamp
+          if (a.likes !== b.likes) return b.likes - a.likes;
           return b.timestamp - a.timestamp;
         });
       } else {
@@ -207,6 +215,10 @@ async function getRealFeedEvents(
       console.log(`Feed API: ${type} feed for ${redactedWallet}, found ${finalEvents.length} events out of ${history.length} total history entries`);
       if (type === 'following') {
         console.log(`Following ${followingAddresses.length} users`);
+      } else if (type === 'for-you') {
+        const fromOthers = finalEvents.filter(e => e.userAddress !== walletAddress).length;
+        const fromOwner = finalEvents.filter(e => e.userAddress === walletAddress).length;
+        console.log(`For-you feed: ${fromOthers} events from other users, ${fromOwner} events from profile owner`);
       }
     }
 
