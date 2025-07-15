@@ -78,6 +78,25 @@ For more detailed documentation, see:
 - [Features](./docs/FEATURES.md) - Detailed feature descriptions
 - [API Reference](./docs/API.md) - API endpoints and usage
 - [Development Guide](./docs/DEVELOPMENT.md) - Development setup and guidelines
+- [Dependency Audit 2025](./docs/dependency-audit-2025.md) - Security vulnerability audit and upgrades
+- [Dependency Upgrade Guidelines](./docs/dependency-upgrade-guidelines.md) - Best practices for dependency management
+
+## Recent Security Updates
+
+**January 2025**: Major security dependency upgrades completed:
+- ESLint 8.57.1 → 9.28.0 (addresses unsupported version vulnerabilities)
+- Puppeteer 19.11.1 → 24.10.0 (resolves known security issues)
+- Playwright 1.50.1 → 1.53.0 (latest security fixes)
+- Replaced deprecated critters with beasties for CSS optimization
+- Updated ESLint configuration to flat config format for enhanced security
+
+See [dependency audit report](./docs/dependency-audit-2025.md) for complete details.
+
+## Development Documentation
+
+- **[ESLint Configuration](./docs/eslint-configuration.md)** - Detailed explanation of linting rules and migration strategy
+- **[Dependency Management Action Plan](./docs/dependency-management-action-plan.md)** - Ongoing dependency maintenance strategy
+- **[Dependency Upgrade Guidelines](./docs/dependency-upgrade-guidelines.md)** - Best practices for future upgrades
 
 ### 🏗️ Architecture Overview
 
