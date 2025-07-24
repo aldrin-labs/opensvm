@@ -23,7 +23,7 @@ interface AccountData {
 
 async function getAccountData(address: string): Promise<AccountData> {
   const connection = await getConnection();
-  
+
   try {
     const pubkey = validateSolanaAddress(address);
     const accountInfo = await getSolanaAccountInfo(address);
@@ -82,9 +82,9 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         const { address: rawAddress } = await params;
         const resolvedSearchParams = await searchParams;
         const { tab } = resolvedSearchParams;
-        
+
         setActiveTab(tab as string || 'tokens');
-        
+
         // Basic validation
         if (!rawAddress) {
           throw new Error('Address is required');
@@ -108,11 +108,11 @@ export default function AccountPage({ params, searchParams }: PageProps) {
           throw new Error('Invalid address length. Solana addresses must be between 32 and 44 characters.');
         }
 
-        
+
         // Fetch account info
         const accountData = await getAccountData(cleanAddress);
         setAccountInfo(accountData);
-        
+
       } catch (err) {
         console.error('Error initializing account page:', err);
         setError(err instanceof Error ? err.message : 'Unknown error occurred');
@@ -160,39 +160,39 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   }
 
   return (
-        <div className="container mx-auto px-4 py-8">
-          <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-            {/* Main Content - Left Side */}
-            <div className="xl:col-span-3 space-y-6">
-              <AccountInfo
-                address={accountInfo.address}
-                isSystemProgram={accountInfo.isSystemProgram}
-                parsedOwner={accountInfo.parsedOwner}
-              />
-              
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <AccountOverview
-                  address={accountInfo.address}
-                  solBalance={accountInfo.solBalance}
-                  tokenAccounts={accountInfo.tokenAccounts}
-                  isSystemProgram={accountInfo.isSystemProgram}
-                  parsedOwner={accountInfo.parsedOwner}
-                />
-                
-                {/* Transaction Graph Explorer */}
-                <TransactionGraph address={accountInfo.address} />
-              </div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Main Content - Left Side */}
+        <div className="xl:col-span-3 space-y-6">
+          <AccountInfo
+            address={accountInfo.address}
+            isSystemProgram={accountInfo.isSystemProgram}
+            parsedOwner={accountInfo.parsedOwner}
+          />
 
-              <AccountTabs
-                address={accountInfo.address}
-                solBalance={accountInfo.solBalance}
-                tokenBalances={accountInfo.tokenBalances}
-                activeTab={activeTab as string}
-              />
-            </div>
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <AccountOverview
+              address={accountInfo.address}
+              solBalance={accountInfo.solBalance}
+              tokenAccounts={accountInfo.tokenAccounts}
+              isSystemProgram={accountInfo.isSystemProgram}
+              parsedOwner={accountInfo.parsedOwner}
+            />
 
-            {/* Sidebar - Right Side */}
-           {/* <div className="xl:col-span-1 space-y-6">
+            {/* Transaction Graph Explorer */}
+            <TransactionGraph address={accountInfo.address} />
+          </div>
+
+          <AccountTabs
+            address={accountInfo.address}
+            solBalance={accountInfo.solBalance}
+            tokenBalances={accountInfo.tokenBalances}
+            activeTab={activeTab as string}
+          />
+        </div>
+
+        {/* Sidebar - Right Side */}
+        {/* <div className="xl:col-span-1 space-y-6">
               <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 p-4">
                 <div className="text-center">
                   <h4 className="font-semibold text-sm mb-2">🚀 OpenSVM Premium</h4>
@@ -304,7 +304,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
                 </div>
               </div>
             </div> */}
-          </div>
-        </div>
-      );
+      </div>
+    </div>
+  );
 }
