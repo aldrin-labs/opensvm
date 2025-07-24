@@ -192,8 +192,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
             </div>
 
             {/* Sidebar - Right Side */}
-            <div className="xl:col-span-1 space-y-6">
-              {/* Ad Banner 1 */}
+           {/* <div className="xl:col-span-1 space-y-6">
               <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 p-4">
                 <div className="text-center">
                   <h4 className="font-semibold text-sm mb-2">🚀 OpenSVM Premium</h4>
@@ -222,7 +221,6 @@ export default function AccountPage({ params, searchParams }: PageProps) {
                 </div>
               </div>
 
-              {/* Ad Banner 2 */}
               <div className="rounded-lg border bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900 p-4">
                 <div className="text-center">
                   <h4 className="font-semibold text-sm mb-2">📊 Portfolio Tracker</h4>
@@ -250,8 +248,6 @@ export default function AccountPage({ params, searchParams }: PageProps) {
                   </button>
                 </div>
               </div>
-
-              {/* Ad Banner 3 */}
               <div className="rounded-lg border bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950 dark:to-violet-900 p-4">
                 <div className="text-center">
                   <h4 className="font-semibold text-sm mb-2">⚡ DeFi Alerts</h4>
@@ -280,7 +276,6 @@ export default function AccountPage({ params, searchParams }: PageProps) {
                 </div>
               </div>
 
-              {/* Ad Banner 4 */}
               <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-950 dark:to-red-900 p-4">
                 <div className="text-center">
                   <h4 className="font-semibold text-sm mb-2">🔥 Hot Tokens</h4>
@@ -308,7 +303,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
                   </button>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </div>
       );
