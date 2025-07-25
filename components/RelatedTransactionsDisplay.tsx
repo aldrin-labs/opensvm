@@ -603,7 +603,7 @@ const RelatedTransactionsDisplay: React.FC<RelatedTransactionsDisplayProps> = ({
                               className="font-mono text-sm text-primary hover:text-primary/80 transition-colors truncate"
                               title={tx.signature}
                             >
-                              {tx.signature.substring(0, 16)}...{tx.signature.substring(-8)}
+                              {tx.signature.substring(0, 16)}...{tx.signature.slice(-8)}
                             </Link>
                             
                             <button
