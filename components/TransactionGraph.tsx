@@ -608,7 +608,13 @@ const TransactionGraph: React.FC<TransactionGraphProps> = ({
     >
       {/* Screen reader description */}
       <div id="graph-description" className="sr-only">
-        Interactive transaction graph visualization. Use arrow keys to navigate between nodes, Enter to select, and Escape to exit fullscreen or close settings.
+        Interactive transaction graph visualization. Use the following keyboard shortcuts:
+        - Arrow keys: Navigate between nodes.
+        - Enter: Select a node or edge.
+        - Escape: Exit fullscreen mode or close settings.
+        - Plus (+) or Minus (-): Zoom in and out.
+        - Tab: Move focus between interactive elements like controls and the graph.
+        - Spacebar: Toggle play/pause for animations (if applicable).
         {filteredGraph && (
           <>
             {' '}Graph contains {filteredGraph.nodes.length} nodes including accounts, programs, and tokens, 
