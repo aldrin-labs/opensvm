@@ -18,7 +18,7 @@ import {
   TokenBalance
 } from '@solana/web3.js';
 import { getConnection } from './solana-connection';
-import { instructionParserService, type ParsedInstructionInfo } from './instruction-parser-service';
+import { instructionParserService } from './instruction-parser-service';
 import { transactionMetadataEnricher, type TransactionMetadataEnrichment } from './transaction-metadata-enricher';
 
 // Enhanced transaction data types
@@ -181,7 +181,7 @@ export class EnhancedTransactionFetcher {
     const enhancedData: EnhancedTransactionData = {
       signature,
       slot: tx.slot,
-      blockTime: tx.blockTime,
+      blockTime: tx.blockTime || null,
       meta: {
         err: tx.meta?.err || null,
         fee: tx.meta?.fee || 0,
@@ -342,18 +342,32 @@ export class EnhancedTransactionFetcher {
     );
 
     // Use instruction parser service for comprehensive analysis
-    const accounts = instruction.accounts.map(acc => acc.toString());
-    const parsed = 'parsed' in instruction ? instruction.parsed : undefined;
+    // Handle different instruction types safely
+    let accounts: string[] = [];
+    let data: string = '';
+    let parsed: any = undefined;
+    
+    if ('accounts' in instruction && instruction.accounts) {
+      accounts = instruction.accounts.map((acc: any) => acc.toString());
+    }
+    
+    if ('data' in instruction && instruction.data) {
+      data = instruction.data;
+    }
+    
+    if ('parsed' in instruction) {
+      parsed = instruction.parsed;
+    }
     
     const parsedInfo = await instructionParserService.parseInstruction(
       programId,
       accounts,
-      instruction.data,
+      data,
       parsed
     );
 
     // Build enhanced account info with roles from parser
-    const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey, i) => {
+    const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey: string, i: number) => {
       const roleInfo = parsedInfo.accounts[i];
       return {
         pubkey: accountPubkey,
@@ -371,9 +385,9 @@ export class EnhancedTransactionFetcher {
       description: parsedInfo.description,
       accounts: enhancedAccounts,
       data: {
-        raw: instruction.data,
+        raw: data,
         parsed,
-        discriminator: this.extractDiscriminator(instruction.data)
+        discriminator: this.extractDiscriminator(data)
       },
       innerInstructions: [],
       logs: instructionLogs
@@ -445,13 +459,36 @@ export class EnhancedTransactionFetcher {
    * Enhance instructions with additional metadata
    */
   private enhanceInstructions(tx: ParsedTransactionWithMeta): EnhancedInstruction[] {
-    return tx.transaction.message.instructions.map(ix => ({
-      programId: ix.programId.toString(),
-      accounts: ix.accounts.map(acc => acc.toString()),
-      data: ix.data,
-      parsed: 'parsed' in ix ? ix.parsed : undefined,
-      stackHeight: ix.stackHeight
-    }));
+    return tx.transaction.message.instructions.map(ix => {
+      let accounts: string[] = [];
+      let data: string = '';
+      let parsed: any = undefined;
+      let stackHeight: number | undefined = undefined;
+      
+      if ('accounts' in ix && ix.accounts) {
+        accounts = ix.accounts.map((acc: any) => acc.toString());
+      }
+      
+      if ('data' in ix && ix.data) {
+        data = ix.data;
+      }
+      
+      if ('parsed' in ix) {
+        parsed = ix.parsed;
+      }
+      
+      if ('stackHeight' in ix && typeof ix.stackHeight === 'number') {
+        stackHeight = ix.stackHeight;
+      }
+      
+      return {
+        programId: ix.programId.toString(),
+        accounts,
+        data,
+        parsed,
+        stackHeight
+      };
+    });
   }
 
   /**
