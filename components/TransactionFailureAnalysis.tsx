@@ -527,7 +527,10 @@ function RecoveryPanel({
                 </div>
                 
                 {recommendation.shouldRetry && (
-                  <div className="ml-7 space-y-2 text-sm">
+                  <div 
+                    id={`retry-details-${index}`} 
+                    className="ml-7 space-y-2 text-sm"
+                  >
                     <div>
                       <strong>Strategy:</strong> {recommendation.retryStrategy.replace(/_/g, ' ')}
                     </div>
