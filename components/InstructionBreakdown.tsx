@@ -290,7 +290,6 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                     #{instruction.index + 1}
                   </span>
                 </div>
-                
                 <InstructionTooltip instruction={instruction}>
                   <div className="flex items-center space-x-2">
                     <span className="font-semibold text-foreground hover:text-primary transition-colors">
@@ -302,9 +301,8 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                     {getRiskIcon(instruction.riskLevel)}
                   </div>
                 </InstructionTooltip>
-              </div>
-
-              <div className="flex items-center space-x-3">
+              </button>
+              <div className="flex items-center space-x-3 mt-2">
                 <div className="flex items-center space-x-2 text-sm text-muted-foreground">
                   <span className="capitalize">{instruction.instructionType}</span>
                   {instruction.computeUnits && (
@@ -313,7 +311,6 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                     </span>
                   )}
                 </div>
-                
                 <InstructionActions
                   instruction={instruction}
                   transactionSignature={transaction.signature}
@@ -530,7 +527,6 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
           </div>
         ))}
       </div>
-
       {/* Instruction Detail Modal */}
       {selectedInstruction && (
         <InstructionDetailModal

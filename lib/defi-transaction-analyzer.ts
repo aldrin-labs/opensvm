@@ -126,8 +126,8 @@ export interface MarketContext {
   recommendedActions: string[];
   warnings: string[];
 }
-/
-/ DeFi Protocol Registry
+
+// DeFi Protocol Registry
 const DEFI_PROTOCOLS: Record<string, DeFiProtocol> = {
   // DEX Protocols
   'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB': {
@@ -608,8 +608,9 @@ class DeFiTransactionAnalyzer {
       default:
         return `${actionType.replace('_', ' ')} on ${protocol.name}`;
     }
-  }  pri
-vate async getActionMetrics(
+  }
+
+  private async getActionMetrics(
     actionType: DeFiAction['type'],
     instruction: ParsedInstruction,
     protocol: DeFiProtocol
