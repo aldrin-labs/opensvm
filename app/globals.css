@@ -23,6 +23,9 @@
 /* Import Scrollbar Theme styles */
 @import './styles/scrollbar-themes.css';
 
+/* Import Accessibility and Mobile styles */
+@import '../styles/accessibility.css';
+
 /* Optimize font loading for LCP */
 @font-face {
   font-family: 'Berkeley Mono';

@@ -9,6 +9,30 @@ import Link from 'next/link';
 import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper'; 
 import { formatNumber } from '@/lib/utils';
 import { ShareButton } from '@/components/ShareButton';
+import InstructionBreakdown from '@/components/InstructionBreakdown';
+import AccountChangesDisplay from '@/components/AccountChangesDisplay';
+import AITransactionExplanation from '@/components/AITransactionExplanation';
+import TransactionFailureAnalysis from '@/components/TransactionFailureAnalysis';
+import RelatedTransactionsDisplay from '@/components/RelatedTransactionsDisplay';
+import TransactionMetricsDisplay from '@/components/TransactionMetricsDisplay';
+import { useTransactionFailureAnalysis } from '@/hooks/useTransactionFailureAnalysis';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { 
+  Activity, 
+  BarChart3, 
+  Brain, 
+  Bug, 
+  FileText, 
+  GitBranch, 
+  MessageSquare, 
+  Network, 
+  Settings,
+  TrendingUp,
+  Users,
+  Zap
+} from 'lucide-react';
 
 // Dynamically import components with no SSR and proper loading states
 // Using a ref for the tooltip positioning and timer
@@ -588,6 +612,23 @@ function LoadingState({ signature }: { signature: string }) {
   );
 }
 
+// Transaction Failure Analysis Wrapper Component
+function TransactionFailureAnalysisWrapper({ signature }: { signature: string }) {
+  const { analysis, isLoading, error, retry } = useTransactionFailureAnalysis({
+    signature,
+    autoAnalyze: true
+  });
+
+  return (
+    <TransactionFailureAnalysis
+      signature={signature}
+      analysis={analysis}
+      isLoading={isLoading}
+      onRetryAnalysis={retry}
+    />
+  );
+}
+
 export default function TransactionContent({ signature }: { signature: string }) {
   const [tx, setTx] = useState<DetailedTransactionInfo | null>(null);
   const [error, setError] = useState<Error | null>(null);
@@ -809,74 +850,217 @@ export default function TransactionContent({ signature }: { signature: string })
           </div>
         )}
         
-        {/* Transaction Overview and Graph in responsive grid layout */}
-        <div className="transaction-content-grid min-h-[400px] lg:min-h-[500px] transition-all duration-300 ease-in-out">
-          <div className="transaction-overview-card h-full">
-            <TransactionOverview tx={tx} signature={signature} className="h-full" />
+        {/* Transaction Overview Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <TransactionOverview tx={tx} signature={currentSignature} className="h-full" />
           </div>
-          <div className="transaction-graph-card h-full">
-            <ErrorBoundaryWrapper 
-              fallback={<div className="bg-background rounded-lg p-4 shadow-lg border border-border h-full flex items-center justify-center text-destructive">Error loading transaction graph</div>}
-            >
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
-                <div className="bg-background rounded-lg p-4 shadow-lg border border-border h-full flex flex-col">
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Graph</h2>
-                <div className="transaction-graph-container flex-1 relative min-h-[400px]">
-                  <TransactionGraph
-                    initialSignature={currentSignature} 
-                    initialAccount={initialAccount || ''}
-                    onTransactionSelect={handleTransactionSelect}
-                    clientSideNavigation={true}
-                    height="100%" 
-                    width="100%"
-                    maxDepth={3}
-                  /> 
+          <div className="lg:col-span-2">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Transaction Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 mb-4">
+                  <Badge variant={tx.success ? "default" : "destructive"} className="text-sm">
+                    {tx.success ? "Success" : "Failed"}
+                  </Badge>
+                  <Badge variant="outline">
+                    Slot: {tx.slot?.toLocaleString()}
+                  </Badge>
+                  <Badge variant="outline">
+                    Type: {tx.type}
+                  </Badge>
                 </div>
+                <div className="text-sm text-muted-foreground">
+                  <p>Processed at: {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'Unknown'}</p>
+                  <p>Instructions: {tx.details?.instructions?.length || 0}</p>
+                  <p>Accounts: {tx.details?.accounts?.length || 0}</p>
                 </div>
-                
-              </Suspense>
-            </ErrorBoundaryWrapper>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Bottom section: Transaction Details and Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          <div className="h-full min-h-[300px]">
-            <ErrorBoundaryWrapper fallback={<div>Error loading transaction details</div>}>
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
-                <div className="bg-background rounded-lg p-4 md:p-5 shadow-lg border border-border h-full">
-                  <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Details</h2>
-                  <TransactionNodeDetails tx={tx} />
-                </div>
-              </Suspense>
-            </ErrorBoundaryWrapper>
-          </div>
+        {/* Enhanced Tabbed Interface */}
+        <Card className="w-full">
+          <Tabs defaultValue="overview" className="w-full">
+            <CardHeader className="pb-3">
+              <TabsList className="grid w-full grid-cols-8">
+                <TabsTrigger value="overview" className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="instructions" className="flex items-center gap-1">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Instructions</span>
+                </TabsTrigger>
+                <TabsTrigger value="accounts" className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Accounts</span>
+                </TabsTrigger>
+                <TabsTrigger value="graph" className="flex items-center gap-1">
+                  <Network className="h-4 w-4" />
+                  <span className="hidden sm:inline">Graph</span>
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="flex items-center gap-1">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">AI Analysis</span>
+                </TabsTrigger>
+                <TabsTrigger value="metrics" className="flex items-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Metrics</span>
+                </TabsTrigger>
+                <TabsTrigger value="related" className="flex items-center gap-1">
+                  <GitBranch className="h-4 w-4" />
+                  <span className="hidden sm:inline">Related</span>
+                </TabsTrigger>
+                {!tx.success && (
+                  <TabsTrigger value="failure" className="flex items-center gap-1">
+                    <Bug className="h-4 w-4" />
+                    <span className="hidden sm:inline">Failure</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </CardHeader>
 
-          {/* Transaction Analysis */}
-          <div className="h-full min-h-[300px]">
-            <ErrorBoundaryWrapper fallback={<div>Error loading transaction analysis</div>}>
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}> 
-                <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border h-full">
-                  <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Analysis</h2>
-                  <TransactionAnalysis tx={tx} />
+            <CardContent className="pt-0">
+              <TabsContent value="overview" className="mt-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading transaction details</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Transaction Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionNodeDetails tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+
+                  <ErrorBoundaryWrapper fallback={<div>Error loading transaction analysis</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Analysis Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionAnalysis tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
                 </div>
-              </Suspense>
-            </ErrorBoundaryWrapper>
-          </div>
-        </div>
-        
-        {/* GPT Analysis Section */}
-        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading GPT analysis</div>}>
-          <Suspense fallback={<div className="h-full min-h-[200px] flex items-center justify-center"><LoadingSpinner /></div>}>
-            <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
-              <TransactionGPTAnalysis tx={tx} />
-            </div>
-          </Suspense>
-        </ErrorBoundaryWrapper>
-        
-        {/* Community Notes Section */}
-        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading community notes</div>}>
-          <CommunityNotes signature={signature} />
+              </TabsContent>
+
+              <TabsContent value="instructions" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading instruction breakdown</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <InstructionBreakdown 
+                      transaction={tx}
+                      onInstructionClick={(instruction, index) => {
+                        console.log('Instruction clicked:', instruction, index);
+                      }}
+                    />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="accounts" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading account changes</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <AccountChangesDisplay transaction={tx} />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="graph" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading transaction graph</div>}>
+                  <Suspense fallback={<div className="h-[500px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <div className="h-[500px] relative border rounded-lg">
+                      <TransactionGraph
+                        initialSignature={currentSignature} 
+                        initialAccount={initialAccount || ''}
+                        onTransactionSelect={handleTransactionSelect}
+                        clientSideNavigation={true}
+                        height="100%" 
+                        width="100%"
+                        maxDepth={3}
+                      />
+                    </div>
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="ai" className="mt-0">
+                <div className="space-y-6">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading AI explanation</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <AITransactionExplanation 
+                        transaction={tx} 
+                        detailLevel="detailed"
+                        onFeedback={(feedback, explanation) => {
+                          console.log('AI feedback received:', feedback, explanation.confidence);
+                        }}
+                      />
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+
+                  <ErrorBoundaryWrapper fallback={<div>Error loading GPT analysis</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Advanced AI Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionGPTAnalysis tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="metrics" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading transaction metrics</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <TransactionMetricsDisplay transaction={tx} />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="related" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading related transactions</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <RelatedTransactionsDisplay 
+                      transaction={tx}
+                      onTransactionClick={handleTransactionSelect}
+                    />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              {!tx.success && (
+                <TabsContent value="failure" className="mt-0">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading failure analysis</div>}>
+                    <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <TransactionFailureAnalysisWrapper signature={currentSignature} />
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+                </TabsContent>
+              )}
+            </CardContent>
+          </Tabs>
+        </Card>
+
+        {/* Community Section */}
+        <ErrorBoundaryWrapper fallback={<div>Error loading community notes</div>}>
+          <CommunityNotes signature={currentSignature} />
         </ErrorBoundaryWrapper>
       </div>
     </ErrorBoundaryWrapper>

@@ -1,0 +1,922 @@
+/* High Contrast Mode Styles */
+.high-contrast-mode {
+  /* Base colors */
+  --background: #000000;
+  --foreground: #ffffff;
+  --primary: #ffff00;
+  --primary-foreground: #000000;
+  --secondary: #00ffff;
+  --secondary-foreground: #000000;
+  --muted: #808080;
+  --muted-foreground: #ffffff;
+  --accent: #ff00ff;
+  --accent-foreground: #000000;
+  --destructive: #ff0000;
+  --destructive-foreground: #ffffff;
+  --border: #ffffff;
+  --input: #ffffff;
+  --ring: #ffff00;
+  --success: #00ff00;
+  --warning: #ffff00;
+}
+
+/* High contrast specific overrides */
+.high-contrast-mode * {
+  border-color: #ffffff !important;
+  outline-color: #ffff00 !important;
+}
+
+.high-contrast-mode button {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode button:hover {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+.high-contrast-mode button:focus {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast-mode a {
+  color: #00ffff !important;
+  text-decoration: underline !important;
+}
+
+.high-contrast-mode a:hover {
+  color: #ffff00 !important;
+}
+
+.high-contrast-mode a:focus {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* Transaction Graph High Contrast */
+.high-contrast-mode .transaction-graph {
+  background-color: #000000 !important;
+}
+
+.high-contrast-mode .transaction-graph .node {
+  stroke: #ffffff !important;
+  stroke-width: 3px !important;
+}
+
+.high-contrast-mode .transaction-graph .node.account {
+  fill: #00ffff !important;
+}
+
+.high-contrast-mode .transaction-graph .node.program {
+  fill: #ff00ff !important;
+}
+
+.high-contrast-mode .transaction-graph .node.token {
+  fill: #00ff00 !important;
+}
+
+.high-contrast-mode .transaction-graph .node.transaction {
+  fill: #ffff00 !important;
+}
+
+.high-contrast-mode .transaction-graph .edge {
+  stroke: #ffffff !important;
+  stroke-width: 2px !important;
+}
+
+.high-contrast-mode .transaction-graph .edge.transfer {
+  stroke: #00ff00 !important;
+}
+
+.high-contrast-mode .transaction-graph .edge.instruction {
+  stroke: #00ffff !important;
+}
+
+.high-contrast-mode .transaction-graph .node-label,
+.high-contrast-mode .transaction-graph .edge-label {
+  fill: #ffffff !important;
+  font-weight: bold !important;
+  font-size: 14px !important;
+}
+
+/* Instruction Breakdown High Contrast */
+.high-contrast-mode .instruction-item {
+  border: 2px solid #ffffff !important;
+  background-color: #000000 !important;
+}
+
+.high-contrast-mode .instruction-item.expanded {
+  background-color: #1a1a1a !important;
+}
+
+.high-contrast-mode .instruction-header {
+  background-color: #333333 !important;
+  border-bottom: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode .risk-low {
+  color: #00ff00 !important;
+}
+
+.high-contrast-mode .risk-medium {
+  color: #ffff00 !important;
+}
+
+.high-contrast-mode .risk-high {
+  color: #ff0000 !important;
+}
+
+.high-contrast-mode .category-badge {
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 2px solid #ffffff !important;
+}
+
+/* Account Changes High Contrast */
+.high-contrast-mode .account-change-item {
+  border: 2px solid #ffffff !important;
+  background-color: #000000 !important;
+}
+
+.high-contrast-mode .balance-increase {
+  color: #00ff00 !important;
+  font-weight: bold !important;
+}
+
+.high-contrast-mode .balance-decrease {
+  color: #ff0000 !important;
+  font-weight: bold !important;
+}
+
+.high-contrast-mode .balance-neutral {
+  color: #ffffff !important;
+}
+
+.high-contrast-mode .token-change {
+  border: 1px solid #ffffff !important;
+  background-color: #1a1a1a !important;
+}
+
+/* Screen Reader Only Content */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Focus Indicators */
+.focus-visible {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* Touch-friendly styles for mobile */
+@media (hover: none) and (pointer: coarse) {
+  button,
+  [role="button"],
+  a,
+  input,
+  select,
+  textarea {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px;
+  }
+
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+}
+
+/* Reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .transaction-graph .node,
+  .transaction-graph .edge {
+    transition: none !important;
+  }
+}
+
+/* High contrast focus indicators */
+.high-contrast-mode *:focus {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+.high-contrast-mode *:focus-visible {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* Skip links */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: #000000;
+  color: #ffffff;
+  padding: 8px;
+  text-decoration: none;
+  border: 2px solid #ffffff;
+  z-index: 1000;
+}
+
+.skip-link:focus {
+  top: 6px;
+}
+
+/* Keyboard navigation indicators */
+.keyboard-navigation .focusable-element:focus {
+  outline: 2px solid #0066cc;
+  outline-offset: 2px;
+}
+
+.high-contrast-mode .keyboard-navigation .focusable-element:focus {
+  outline: 3px solid #ffff00 !important;
+  outline-offset: 2px !important;
+}
+
+/* Loading states accessibility */
+.loading-spinner[aria-busy="true"] {
+  position: relative;
+}
+
+.loading-spinner[aria-busy="true"]::after {
+  content: "Loading...";
+  position: absolute;
+  left: -9999px;
+}
+
+/* Error states accessibility */
+.error-message[role="alert"] {
+  border: 2px solid #ff0000;
+  padding: 12px;
+  background-color: #ffe6e6;
+  color: #cc0000;
+}
+
+.high-contrast-mode .error-message[role="alert"] {
+  background-color: #000000 !important;
+  color: #ff0000 !important;
+  border: 2px solid #ff0000 !important;
+}
+
+/* Success states accessibility */
+.success-message[role="status"] {
+  border: 2px solid #00cc00;
+  padding: 12px;
+  background-color: #e6ffe6;
+  color: #006600;
+}
+
+.high-contrast-mode .success-message[role="status"] {
+  background-color: #000000 !important;
+  color: #00ff00 !important;
+  border: 2px solid #00ff00 !important;
+}
+
+/* Table accessibility */
+.accessible-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.accessible-table th,
+.accessible-table td {
+  border: 1px solid #ccc;
+  padding: 8px;
+  text-align: left;
+}
+
+.accessible-table th {
+  background-color: #f5f5f5;
+  font-weight: bold;
+}
+
+.high-contrast-mode .accessible-table th,
+.high-contrast-mode .accessible-table td {
+  border: 2px solid #ffffff !important;
+}
+
+.high-contrast-mode .accessible-table th {
+  background-color: #333333 !important;
+  color: #ffffff !important;
+}
+
+/* Modal accessibility */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.modal-content {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: white;
+  border: 2px solid #ccc;
+  border-radius: 4px;
+  padding: 20px;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
+  z-index: 1001;
+}
+
+.high-contrast-mode .modal-content {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 3px solid #ffffff !important;
+}
+
+/* Tooltip accessibility */
+.tooltip {
+  position: relative;
+  display: inline-block;
+}
+
+.tooltip .tooltip-content {
+  visibility: hidden;
+  width: 200px;
+  background-color: #333;
+  color: #fff;
+  text-align: center;
+  border-radius: 4px;
+  padding: 8px;
+  position: absolute;
+  z-index: 1;
+  bottom: 125%;
+  left: 50%;
+  margin-left: -100px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+
+.tooltip:hover .tooltip-content,
+.tooltip:focus .tooltip-content {
+  visibility: visible;
+  opacity: 1;
+}
+
+.high-contrast-mode .tooltip .tooltip-content {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border: 2px solid #ffffff !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tooltip .tooltip-content {
+    transition: none !important;
+  }
+}
+
+/* Mobile Optimization Styles */
+
+/* Base mobile styles */
+@media (max-width: 768px) {
+  /* Transaction Graph Mobile Optimizations */
+  .transaction-graph {
+    min-height: 300px;
+    max-height: 60vh;
+  }
+
+  .transaction-graph .controls {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .transaction-graph .control-group {
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+
+  .transaction-graph .control-button {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px;
+    font-size: 16px;
+  }
+
+  .transaction-graph .settings-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 1000;
+    background: rgba(0, 0, 0, 0.5);
+    padding: 20px;
+    overflow-y: auto;
+  }
+
+  .transaction-graph .settings-content {
+    background: var(--background);
+    border-radius: 12px;
+    padding: 24px;
+    max-width: none;
+    margin: auto;
+  }
+
+  /* Mobile graph nodes and edges */
+  .transaction-graph .node {
+    r: 8px; /* Larger nodes on mobile */
+    stroke-width: 2px;
+  }
+
+  .transaction-graph .edge {
+    stroke-width: 2px; /* Thicker edges on mobile */
+  }
+
+  .transaction-graph .node-label {
+    font-size: 12px;
+    font-weight: 600;
+  }
+
+  .transaction-graph .edge-label {
+    font-size: 10px;
+  }
+
+  /* Hide complex labels on small screens */
+  .transaction-graph .complex-label {
+    display: none;
+  }
+}
+
+/* Instruction Breakdown Mobile Optimizations */
+@media (max-width: 768px) {
+  .instruction-breakdown {
+    padding: 16px;
+  }
+
+  .instruction-item {
+    margin-bottom: 12px;
+  }
+
+  .instruction-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .instruction-header .main-info {
+    width: 100%;
+  }
+
+  .instruction-header .actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .instruction-details {
+    padding: 16px;
+  }
+
+  .instruction-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+
+  .instruction-accounts,
+  .instruction-parameters {
+    max-height: 300px;
+    overflow-y: auto;
+  }
+
+  .account-item,
+  .parameter-item {
+    padding: 12px;
+    border-radius: 8px;
+  }
+
+  .account-address {
+    font-size: 12px;
+    word-break: break-all;
+  }
+
+  .parameter-value {
+    font-size: 12px;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+}
+
+/* Account Changes Mobile Optimizations */
+@media (max-width: 768px) {
+  .account-changes {
+    padding: 16px;
+  }
+
+  .account-changes-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .account-changes-stats {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+  }
+
+  .account-changes-filters {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .account-change-item {
+    padding: 16px;
+  }
+
+  .account-change-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .account-change-summary {
+    width: 100%;
+  }
+
+  .account-change-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .account-change-details {
+    margin-top: 16px;
+    margin-left: 0;
+  }
+
+  .balance-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .balance-item {
+    text-align: center;
+    padding: 12px;
+  }
+
+  .token-changes {
+    gap: 12px;
+  }
+
+  .token-change-item {
+    padding: 12px;
+  }
+
+  .token-change-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .token-address {
+    font-size: 10px;
+    word-break: break-all;
+  }
+}
+
+/* Touch-friendly interactions */
+@media (hover: none) and (pointer: coarse) {
+  .touch-active {
+    background-color: rgba(0, 0, 0, 0.1);
+    transform: scale(0.98);
+  }
+
+  .button-touch {
+    min-height: 44px;
+    min-width: 44px;
+    padding: 12px;
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .interactive-element {
+    min-height: 44px;
+    padding: 12px;
+    touch-action: manipulation;
+  }
+
+  /* Larger tap targets for small elements */
+  .small-button {
+    min-height: 44px;
+    min-width: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* Swipe indicators */
+  .swipeable {
+    position: relative;
+  }
+
+  .swipeable::after {
+    content: '';
+    position: absolute;
+    right: 8px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 4px;
+    height: 20px;
+    background: var(--muted-foreground);
+    border-radius: 2px;
+    opacity: 0.3;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 768px) and (max-width: 1024px) {
+  .transaction-graph {
+    min-height: 400px;
+    max-height: 70vh;
+  }
+
+  .instruction-breakdown,
+  .account-changes {
+    padding: 24px;
+  }
+
+  .instruction-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .account-changes-stats {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  .balance-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+/* Landscape mobile optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .transaction-graph {
+    max-height: 80vh;
+  }
+
+  .modal-mobile {
+    padding: 12px;
+  }
+
+  .modal-content-mobile {
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+}
+
+/* High DPI mobile displays */
+@media (max-width: 768px) and (-webkit-min-device-pixel-ratio: 2) {
+  .transaction-graph .node {
+    stroke-width: 1px;
+  }
+
+  .transaction-graph .edge {
+    stroke-width: 1px;
+  }
+
+  .instruction-item,
+  .account-change-item {
+    border-width: 1px;
+  }
+}
+
+/* Dark mode mobile adjustments */
+@media (max-width: 768px) and (prefers-color-scheme: dark) {
+  .transaction-graph {
+    background-color: #0a0a0a;
+  }
+
+  .instruction-item,
+  .account-change-item {
+    background-color: #1a1a1a;
+    border-color: #333;
+  }
+
+  .modal-mobile {
+    background-color: rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Reduced motion on mobile */
+@media (max-width: 768px) and (prefers-reduced-motion: reduce) {
+  .transaction-graph .node,
+  .transaction-graph .edge {
+    transition: none !important;
+  }
+
+  .instruction-item,
+  .account-change-item {
+    transition: none !important;
+  }
+
+  .touch-active {
+    transform: none !important;
+  }
+}
+
+/* Mobile modal styles */
+.modal-mobile {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1000;
+  background: rgba(0, 0, 0, 0.5);
+  padding: 16px;
+  overflow-y: auto;
+}
+
+.modal-content-mobile {
+  background: var(--background);
+  border-radius: 12px;
+  padding: 20px;
+  margin: auto;
+  max-width: none;
+  width: 100%;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal-header-mobile {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-body-mobile {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.modal-footer-mobile {
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+/* Mobile table card layout */
+.table-card-mobile {
+  display: block;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 12px;
+  background: var(--background);
+}
+
+.table-card-header {
+  font-weight: 600;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.table-card-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--muted);
+}
+
+.table-card-row:last-child {
+  border-bottom: none;
+}
+
+.table-card-label {
+  font-weight: 500;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+.table-card-value {
+  font-family: monospace;
+  font-size: 14px;
+  text-align: right;
+  max-width: 60%;
+  word-break: break-all;
+}
+
+/* Mobile navigation helpers */
+.mobile-nav-hint {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--background);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 12px;
+  color: var(--muted-foreground);
+  z-index: 100;
+  opacity: 0.8;
+}
+
+/* Mobile loading states */
+.loading-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 40px 20px;
+}
+
+.loading-spinner-mobile {
+  width: 40px;
+  height: 40px;
+  border: 3px solid var(--muted);
+  border-top: 3px solid var(--primary);
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+.loading-text-mobile {
+  margin-top: 16px;
+  font-size: 16px;
+  color: var(--muted-foreground);
+  text-align: center;
+}
+
+/* Mobile error states */
+.error-mobile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.error-icon-mobile {
+  width: 48px;
+  height: 48px;
+  color: var(--destructive);
+  margin-bottom: 16px;
+}
+
+.error-title-mobile {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--foreground);
+  margin-bottom: 8px;
+}
+
+.error-message-mobile {
+  font-size: 14px;
+  color: var(--muted-foreground);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+
+.error-button-mobile {
+  min-height: 44px;
+  padding: 12px 24px;
+  font-size: 16px;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

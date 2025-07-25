@@ -16,7 +16,8 @@ agent_notes/vtable_study
 # next.js
 /.next/
 /out/
-
+.kiro/
+test*.js
 # production
 /build
 
