@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import cytoscape from 'cytoscape';
 import { ViewportState } from '@/lib/graph-state-cache';
@@ -38,7 +38,7 @@ export function useViewportNavigation({
   const focusSignatureRef = useRef<string>('');
 
   // Update viewport state with debouncing for performance
-  const updateViewportState = useCallback(debounce(() => {
+  const updateViewportState = useMemo(() => debounce(() => {
     const cy = cyRef.current;
     if (!cy) return;
 
@@ -59,7 +59,7 @@ export function useViewportNavigation({
     } catch (error) {
       console.error('Error updating viewport state:', error);
     }
-  }, 250), [cyRef, setViewportState, currentSignature]); // 250ms delay to reduce overhead from frequent pan/zoom events
+  }, 250), [setViewportState, cyRef]); // Include setViewportState and cyRef in dependencies
 
   // Handle node click with proper navigation
   const handleNodeClick = useCallback((address: string, _loadingKey: string) => {

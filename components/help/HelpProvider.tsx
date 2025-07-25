@@ -9,8 +9,7 @@ import {
   instructionAnalysisTour, 
   accountChangesTour,
   getTourById,
-  isTourCompleted,
-  resetTourStatus
+  isTourCompleted
 } from '@/lib/help/transaction-tours';
 
 interface HelpContextType {
@@ -59,6 +58,32 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
     accountChangesTour
   ];
 
+  // Move trackHelpInteraction above all useCallback hooks that depend on it
+  const trackHelpInteraction = useCallback((type: string, id: string, data?: any) => {
+    // Track help interactions for analytics
+    const event = {
+      type,
+      id,
+      timestamp: Date.now(),
+      data
+    };
+
+    // Store in localStorage for now (could be sent to analytics service)
+    const interactions = JSON.parse(localStorage.getItem('help-interactions') || '[]');
+    interactions.push(event);
+    // Keep only last 100 interactions
+    if (interactions.length > 100) {
+      interactions.splice(0, interactions.length - 100);
+    }
+    localStorage.setItem('help-interactions', JSON.stringify(interactions));
+    // Log for development
+    if (process.env.NODE_ENV === 'development') {
+      // eslint-disable-next-line no-console
+      console.log('Help interaction:', event);
+    }
+  }, []);
+  // ...existing code...
+
   // Load settings from localStorage
   useEffect(() => {
     const savedHelpHints = localStorage.getItem('help-hints-enabled');
@@ -100,24 +125,24 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
       setActiveTour(tour);
       trackHelpInteraction('tour_started', tourId);
     }
-  }, []);
+  }, [trackHelpInteraction]);
 
   const stopTour = useCallback(() => {
     if (activeTour) {
       trackHelpInteraction('tour_stopped', activeTour.id);
     }
     setActiveTour(null);
-  }, [activeTour]);
+  }, [activeTour, trackHelpInteraction]);
 
   const openHelpPanel = useCallback(() => {
     setIsHelpPanelOpen(true);
     trackHelpInteraction('help_panel_opened', 'main');
-  }, []);
+  }, [trackHelpInteraction]);
 
   const closeHelpPanel = useCallback(() => {
     setIsHelpPanelOpen(false);
     trackHelpInteraction('help_panel_closed', 'main');
-  }, []);
+  }, [trackHelpInteraction]);
 
   const toggleHelpPanel = useCallback(() => {
     if (isHelpPanelOpen) {
@@ -127,29 +152,7 @@ export const HelpProvider: React.FC<HelpProviderProps> = ({ children }) => {
     }
   }, [isHelpPanelOpen, openHelpPanel, closeHelpPanel]);
 
-  const trackHelpInteraction = useCallback((type: string, id: string, data?: any) => {
-    // Track help interactions for analytics
-    const event = {
-      type,
-      id,
-      timestamp: Date.now(),
-      data
-    };
-
-    // Store in localStorage for now (could be sent to analytics service)
-    const interactions = JSON.parse(localStorage.getItem('help-interactions') || '[]');
-    interactions.push(event);
-    
-    // Keep only last 100 interactions
-    if (interactions.length > 100) {
-      interactions.splice(0, interactions.length - 100);
-    }
-    
-    localStorage.setItem('help-interactions', JSON.stringify(interactions));
-
-    // Log for development
-    console.log('Help interaction:', event);
-  }, []);
+  // ...existing code...
 
   // Auto-start tours for new users
   useEffect(() => {

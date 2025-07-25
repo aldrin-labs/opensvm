@@ -932,3 +932,8 @@ export class InstructionParserService {
 
 // Export singleton instance
 export const instructionParserService = new InstructionParserService();
+
+// Export utility functions
+export function parseInstructions(transaction: any) {
+  return instructionParserService.categorizeInstructions(transaction);
+}

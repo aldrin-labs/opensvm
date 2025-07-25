@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   NetworkIcon,
   FilterIcon,
@@ -94,12 +94,7 @@ const RelatedTransactionsDisplay: React.FC<RelatedTransactionsDisplayProps> = ({
     sortOrder: 'desc'
   });
 
-  // Load related transactions on component mount
-  useEffect(() => {
-    loadRelatedTransactions();
-  }, [transaction.signature, maxResults, timeWindowHours, minRelevanceScore]);
-
-  const loadRelatedTransactions = async () => {
+  const loadRelatedTransactions = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -122,7 +117,12 @@ const RelatedTransactionsDisplay: React.FC<RelatedTransactionsDisplayProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [transaction.signature, maxResults, timeWindowHours, minRelevanceScore]);
+
+  // Load related transactions on component mount
+  useEffect(() => {
+    loadRelatedTransactions();
+  }, [loadRelatedTransactions]);
 
   // Filter and sort transactions based on current filters
   const filteredTransactions = useMemo(() => {

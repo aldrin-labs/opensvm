@@ -1212,6 +1212,11 @@ export function getDefaultMetricsConfig(): MetricsCalculatorConfig {
   return { ...DEFAULT_CONFIG };
 }
 
+// Export main calculation function
+export function calculateTransactionMetrics(transaction: any) {
+  return transactionMetricsCalculator.calculateMetrics(transaction);
+}
+
 // Utility functions for formatting metrics
 export function formatMetricsScore(score: number): string {
   return `${score.toFixed(1)}/100`;

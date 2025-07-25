@@ -96,35 +96,6 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [groupByTime, setGroupByTime] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Custom hook for intersection observer (for infinite scrolling)
-  useEffect(() => {
-    if (!loaderRef.current || !hasMore || loading || events.length === 0) {
-      return;
-    }
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            loadMoreEvents();
-          }
-        });
-      },
-      {
-        rootMargin: '0px',
-        threshold: 0.1,
-      }
-    );
-
-    observer.observe(loaderRef.current);
-
-    return () => {
-      if (loaderRef.current) {
-        observer.unobserve(loaderRef.current);
-      }
-    };
-  }, [loaderRef, hasMore, loading, events.length]);
-
   // Function to fetch feed data with caching
   const fetchFeed = useCallback(async (feedType: 'for-you' | 'following', reset = true) => {
     try {
@@ -206,16 +177,92 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       setLoading(false);
       loadingMore.current = false;
     }
-  }, [walletAddress, page, filters]);
+  }, [walletAddress, page, filters, searchQuery]);
 
   // Load more events for infinite scrolling
-  async function loadMoreEvents() {
+  const loadMoreEvents = useCallback(async () => {
     if (loading || !hasMore || loadingMore.current) return;
     
     loadingMore.current = true;
     setPage(prevPage => prevPage + 1);
     await fetchFeed(activeTab, false);
-  }
+  }, [loading, hasMore, activeTab, fetchFeed]);
+
+  // Check if an event should be shown based on current filters
+  const shouldShowEvent = useCallback((event: FeedEvent): boolean => {
+    // Validate event has required fields
+    if (!event || !event.eventType || typeof event.timestamp !== 'number') {
+      console.error('Invalid event in shouldShowEvent:', event);
+      return false;
+    }
+    
+    // Check event type filter
+    if (!filters.eventTypes.includes(event.eventType)) {
+      return false;
+    }
+    
+    // Check date range filter
+    const now = Date.now();
+    const eventDate = event.timestamp;
+    
+    if (filters.dateRange === 'today') {
+      const todayStart = new Date().setHours(0, 0, 0, 0);
+      if (eventDate < todayStart) return false;
+    } else if (filters.dateRange === 'week') {
+      const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+      if (eventDate < weekStart) return false;
+    } else if (filters.dateRange === 'month') {
+      const monthStart = now - 30 * 24 * 60 * 60 * 1000;
+      if (eventDate < monthStart) return false;
+    }
+    
+    // Check search query
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      
+      // Ensure we always return a boolean by checking each condition separately
+      const contentMatch = event.content ? event.content.toLowerCase().includes(query) : false;
+      const userNameMatch = event.userName ? event.userName.toLowerCase().includes(query) : false;
+      const eventTypeMatch = event.eventType ? event.eventType.toLowerCase().includes(query) : false;
+      const addressMatch = event.userAddress ? event.userAddress.toLowerCase().includes(query) : false;
+      
+      return contentMatch || userNameMatch || eventTypeMatch || addressMatch;
+    }
+    
+    return true;
+  }, [filters, searchQuery]);
+
+  // Custom hook for intersection observer (for infinite scrolling)
+  useEffect(() => {
+    if (!loaderRef.current || !hasMore || loading || events.length === 0) {
+      return;
+    }
+
+    // Capture loaderRef for cleanup
+    const loaderElement = loaderRef.current;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            loadMoreEvents();
+          }
+        });
+      },
+      {
+        rootMargin: '0px',
+        threshold: 0.1,
+      }
+    );
+
+    observer.observe(loaderElement);
+
+    return () => {
+      if (loaderElement) {
+        observer.unobserve(loaderElement);
+      }
+    };
+  }, [hasMore, loading, events.length, loadMoreEvents]);
 
   // Initialize SSE connection for real-time updates
   useEffect(() => {
@@ -365,7 +412,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         eventSource.close();
       }
     };
-  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes]);
+  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, connectionStatus, eventSource, filters.sortOrder, shouldShowEvent]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -382,54 +429,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     setSearchQuery('');
   };
 
-  // Check if an event should be shown based on current filters
-  const shouldShowEvent = (event: FeedEvent): boolean => {
-    // Validate event has required fields
-    if (!event || !event.eventType || typeof event.timestamp !== 'number') {
-      console.error('Invalid event in shouldShowEvent:', event);
-      return false;
-    }
-    
-    // Check event type filter
-    if (!filters.eventTypes.includes(event.eventType)) {
-      return false;
-    }
-    
-    // Check date range filter
-    const now = Date.now();
-    const eventDate = event.timestamp;
-    
-    if (filters.dateRange === 'today') {
-      const todayStart = new Date().setHours(0, 0, 0, 0);
-      if (eventDate < todayStart) return false;
-    } else if (filters.dateRange === 'week') {
-      const weekStart = now - 7 * 24 * 60 * 60 * 1000;
-      if (eventDate < weekStart) return false;
-    } else if (filters.dateRange === 'month') {
-      const monthStart = now - 30 * 24 * 60 * 60 * 1000;
-      if (eventDate < monthStart) return false;
-    }
-    
-    // Check search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      
-      // Ensure we always return a boolean by checking each condition separately
-      const contentMatch = event.content ? event.content.toLowerCase().includes(query) : false;
-      const userNameMatch = event.userName ? event.userName.toLowerCase().includes(query) : false;
-      const eventTypeMatch = event.eventType ? event.eventType.toLowerCase().includes(query) : false;
-      const addressMatch = event.userAddress ? event.userAddress.toLowerCase().includes(query) : false;
-      
-      return contentMatch || userNameMatch || eventTypeMatch || addressMatch;
-    }
-    
-    return true;
-  };
-
   // Filter events based on current filters and search query
   const filteredEvents = useMemo(() => {
     return events.filter(shouldShowEvent);
-  }, [events, filters, searchQuery]);
+  }, [events, shouldShowEvent]);
 
   // Group events by time period
   const groupedEvents = useMemo(() => {

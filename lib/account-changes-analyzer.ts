@@ -598,6 +598,11 @@ class AccountChangesAnalyzer {
 // Export singleton instance
 export const accountChangesAnalyzer = new AccountChangesAnalyzer();
 
+// Export main analysis function
+export function analyzeAccountChanges(transaction: any) {
+  return accountChangesAnalyzer.analyzeTransaction(transaction);
+}
+
 // Export utility functions
 export function formatSolAmount(lamports: number): string {
   return (lamports / 1e9).toFixed(9) + ' SOL';

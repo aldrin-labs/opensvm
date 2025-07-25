@@ -1038,6 +1038,7 @@ function TransactionGraph({
     fetchAccountTransactionsWithError,
     runLayoutOptimized,
     maxDepth,
+    logger,
     checkForSplTransfers,
     updateGPUGraphData
   ]);
@@ -1245,11 +1246,7 @@ function TransactionGraph({
       pendingFetchesRef.current.delete(loadingKey);
     }
   }, [
-    viewportState,
-    expandTransactionGraph,
     onTransactionSelect,
-    router,
-    clientSideNavigation,
     isNavigatingHistory,
     currentHistoryIndex,
     currentSignature
@@ -1427,7 +1424,7 @@ function TransactionGraph({
         }
       };
     }
-  }, [useGPUGraph, updateGPUGraphData]);
+  }, [useGPUGraph, updateGPUGraphData, logger]);
 
   // Progress monitoring with force updates to prevent 0% stuck state
   useEffect(() => {
@@ -1456,7 +1453,7 @@ function TransactionGraph({
       clearTimeout(progressTimeout);
       clearTimeout(completionTimeout);
     };
-  }, [loadingProgress, loading]);
+  }, [loadingProgress, loading, logger]);
 
   // Handle initial signature loading with enhanced race condition protection
   useEffect(() => {
@@ -1646,7 +1643,7 @@ function TransactionGraph({
     };
 
     loadInitialSignature();
-  }, [initialSignature, focusOnTransaction, queueAccountFetch, runLayoutOptimized, updateGPUGraphData, processAccountFetchQueue]);
+  }, [initialSignature, focusOnTransaction, queueAccountFetch, runLayoutOptimized, updateGPUGraphData, processAccountFetchQueue, currentSignature, logger]);
 
   // Handle initial account loading with enhanced race condition protection  
   useEffect(() => {
@@ -1756,7 +1753,7 @@ function TransactionGraph({
         cleanup.then(cleanupFn => cleanupFn && cleanupFn());
       }
     };
-  }, [initialAccount, queueAccountFetch, runLayoutOptimized]);
+  }, [initialAccount, queueAccountFetch, runLayoutOptimized, currentSignature, logger]);
 
   // Cleanup tracking on unmount
   useEffect(() => {

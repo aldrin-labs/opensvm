@@ -60,6 +60,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const isMountedRef = useRef(true);
+  const connectRef = useRef<() => void>();
 
   // First authenticate with the streaming API
   const authenticate = useCallback(async (): Promise<string | null> => {
@@ -197,7 +198,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current++;
-              connect();
+              connectRef.current?.();
             }
           }, delay);
         } else if (isMountedRef.current) {
@@ -208,7 +209,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current = 0; // Reset for final attempt
-              connect();
+              connectRef.current?.();
             }
           }, 5 * 60 * 1000); // 5 minutes
         }
@@ -320,6 +321,9 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
       setConnectionStatus('error');
     }
   }, [startMonitoring, createSSEConnection]);
+
+  // Update the ref to avoid circular dependency
+  connectRef.current = connect;
 
   const disconnect = useCallback(() => {
     console.log(`[SSE] Disconnecting client ${clientId}...`);

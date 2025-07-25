@@ -526,6 +526,11 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
 // Export singleton instance
 export const aiTransactionAnalyzer = new AITransactionAnalyzer();
 
+// Export main analysis function
+export function analyzeTransactionWithAI(transaction: any, options?: any) {
+  return aiTransactionAnalyzer.analyzeTransaction(transaction, options);
+}
+
 // Export utility functions
 export function formatConfidenceLevel(confidence: number): string {
   if (confidence >= 0.9) return 'Very High';

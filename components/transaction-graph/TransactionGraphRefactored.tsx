@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { debounce } from '@/lib/utils';
 import { TrackingStatsPanel } from './TrackingStatsPanel';
 import { TransactionGraphClouds } from '../TransactionGraphClouds';
@@ -131,7 +131,7 @@ export default function TransactionGraph({
   };
 
   // Enhanced fetch function
-  const fetchData = async (signature: string, account: string | null = null) => {
+  const fetchData = useCallback(async (signature: string, account: string | null = null) => {
     if (!signature) return;
 
     setIsLoading(true);
@@ -188,7 +188,9 @@ export default function TransactionGraph({
     } finally {
       setIsLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, runLayout, updateGPUGraphData]); 
+  // Note: processTransactionData and runLayoutWithProgress are stable functions defined after this useCallback
 
   // Define a transaction data interface
   interface TransactionData {
@@ -272,11 +274,25 @@ export default function TransactionGraph({
       try {
         await initializeGraph(containerRef.current!, onTransactionSelect);
         
+        // Define fetchData locally to avoid dependency issues
+        const localFetchData = async (signature: string, account: string | null = null) => {
+          if (signature) {
+            await fetchData(signature, account);
+          }
+        };
+
+        // Define fetchAccountData locally to avoid dependency issues
+        const localFetchAccountData = async (account: string) => {
+          if (account) {
+            await fetchAccountData(account);
+          }
+        };
+        
         // Load initial data
         if (initialSignature) {
-          await fetchData(initialSignature, initialAccount);
+          await localFetchData(initialSignature, initialAccount);
         } else if (initialAccount) {
-          await fetchAccountData(initialAccount);
+          await localFetchAccountData(initialAccount);
         }
       } catch (error) {
         errorLog('Graph initialization failed:', error);
@@ -285,10 +301,11 @@ export default function TransactionGraph({
     };
 
     initAsync();
-  }, [initialSignature, initialAccount, onTransactionSelect]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialSignature, initialAccount, onTransactionSelect, containerRef, initializeGraph, isInitialized]);
 
   // Fetch account data
-  const fetchAccountData = async (account: string) => {
+  const fetchAccountData = useCallback(async (account: string) => {
     if (!account) return;
 
     setIsLoading(true);
@@ -345,7 +362,9 @@ export default function TransactionGraph({
     } finally {
       setIsLoading(false);
     }
-  };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, updateGPUGraphData, runLayoutWithProgress]); 
+  // Note: processAccountTransactions is a stable function defined after this useCallback
 
   // Define a more specific type for transactions
   interface AccountTransaction {
@@ -435,13 +454,16 @@ export default function TransactionGraph({
 
   // Cleanup on unmount
   useEffect(() => {
+    // Capture timeoutIds ref for cleanup
+    const timeoutIdsCurrent = timeoutIds.current;
+    
     return () => {
-      timeoutIds.current.forEach(id => clearTimeout(id));
+      timeoutIdsCurrent.forEach(id => clearTimeout(id));
       cleanupLayout();
       cleanupGraph();
       stopTrackingAddress();
     };
-  }, []);
+  }, [cleanupGraph, cleanupLayout, stopTrackingAddress]);
 
   // Handle window resize
   useEffect(() => {
@@ -453,7 +475,7 @@ export default function TransactionGraph({
 
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
-  }, []);
+  }, [cyRef]);
 
   // Render
   return (

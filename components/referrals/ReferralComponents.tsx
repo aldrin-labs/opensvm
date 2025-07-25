@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Copy, Link as LinkIcon, CheckCircle, WifiOff, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -13,14 +13,14 @@ export function ReferralLinkSection({ walletAddress }: { walletAddress: string }
   const [copySuccess, setCopySuccess] = useState<string | null>(null);
   
   // Simple toast replacement since useToast is not available
-  const toast = {
+  const toast = useMemo(() => ({
     success: (message: string) => {
       console.log('Success:', message);
       setCopySuccess(message);
       setTimeout(() => setCopySuccess(null), 3000);
     },
     error: (message: string) => console.error('Error:', message)
-  };
+  }), []);
 
   // Check for online/offline status
   useEffect(() => {
@@ -90,7 +90,7 @@ export function ReferralLinkSection({ walletAddress }: { walletAddress: string }
     if (walletAddress && !isOffline) {
       generateReferralLink();
     }
-  }, [walletAddress, isOffline]);
+  }, [walletAddress, isOffline, referralLink, toast]);
 
   const handleCopyLink = async () => {
     try {

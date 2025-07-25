@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   InfoIcon, 
   HelpCircleIcon, 
@@ -86,10 +86,10 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
     announceToScreenReader(`Definition opened: ${term}`);
   };
 
-  const hideTooltip = () => {
+  const hideTooltip = useCallback(() => {
     setIsVisible(false);
     announceToScreenReader('Definition closed');
-  };
+  }, [announceToScreenReader]);
 
   const copyExample = async (example: string, index: number) => {
     try {
@@ -168,7 +168,7 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isVisible, isTouchDevice]);
+  }, [isVisible, isTouchDevice, hideTooltip]);
 
   return (
     <span className={`relative inline-block ${className}`}>

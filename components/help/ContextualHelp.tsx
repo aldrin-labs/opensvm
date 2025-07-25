@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   HelpCircleIcon, 
   XIcon, 
@@ -97,10 +97,10 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
     announceToScreenReader(`Help opened: ${content.title}`);
   };
 
-  const hideHelp = () => {
+  const hideHelp = useCallback(() => {
     setIsVisible(false);
     announceToScreenReader('Help closed');
-  };
+  }, [announceToScreenReader]);
 
   const toggleHelp = () => {
     if (isVisible) {
@@ -191,7 +191,7 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [isVisible, trigger]);
+  }, [isVisible, trigger, hideHelp]);
 
   return (
     <div className={`relative inline-block ${className}`}>

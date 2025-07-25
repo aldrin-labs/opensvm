@@ -1301,6 +1301,11 @@ class RelatedTransactionFinder {
 // Export singleton instance
 export const relatedTransactionFinder = new RelatedTransactionFinder();
 
+// Export main finder function
+export function findRelatedTransactions(query: any) {
+  return relatedTransactionFinder.findRelated(query);
+}
+
 // Export utility functions
 export function formatRelationshipType(type: RelationshipType): string {
   const formatted = type.replace(/_/g, ' ');

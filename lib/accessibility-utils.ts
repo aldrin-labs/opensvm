@@ -264,6 +264,7 @@ export function useKeyboardNavigation(
 
     container.addEventListener('keydown', handleKeyDown);
     return () => container.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [handleKeyDown]);
 }
 

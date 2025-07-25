@@ -134,8 +134,9 @@ const TransactionMetricsDisplay: React.FC<TransactionMetricsDisplayProps> = ({
         </div>
       </div>
     );
-  }  retu
-rn (
+  }
+
+  return (
     <div className={`bg-background rounded-lg border border-border ${className}`}>
       {/* Header */}
       <div className="p-6 border-b border-border">

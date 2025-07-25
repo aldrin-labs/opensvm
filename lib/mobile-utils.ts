@@ -391,6 +391,7 @@ export class MobileEventUtils {
   static addTouchFeedback(element: HTMLElement): void {
     element.style.touchAction = 'manipulation';
     element.style.userSelect = 'none';
+    // @ts-ignore: webkitTapHighlightColor is supported in some browsers
     element.style.webkitTapHighlightColor = 'transparent';
     
     const addActiveClass = () => element.classList.add('touch-active');
@@ -402,7 +403,7 @@ export class MobileEventUtils {
   }
 }
 
-export default {
+const mobileUtils = {
   TouchGestureUtils,
   MobileViewportUtils,
   MobileComponentUtils,
@@ -411,3 +412,5 @@ export default {
   MobileModalUtils,
   MobileEventUtils
 };
+
+export default mobileUtils;

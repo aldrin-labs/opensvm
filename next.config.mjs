@@ -1,4 +1,15 @@
 /** @type {import('next').NextConfig} */
+
+// Patch console.warn globally to suppress bigint warnings
+const originalWarn = console.warn;
+console.warn = (...args) => {
+  const message = args.join(' ');
+  if (message.includes('bigint: Failed to load bindings')) {
+    return; // Suppress this specific warning
+  }
+  originalWarn.apply(console, args);
+};
+
 const nextConfig = {
   // Enable bundle analyzer when ANALYZE=true
   ...(process.env.ANALYZE === 'true' && {
@@ -72,6 +83,14 @@ const nextConfig = {
         path: false,
         os: false
       };
+    }
+
+    // Handle native modules properly
+    config.externals = config.externals || [];
+    if (isServer) {
+      config.externals.push({
+        'bigint_buffer': 'commonjs bigint_buffer',
+      });
     }
     
     // Only apply optimizations in production builds

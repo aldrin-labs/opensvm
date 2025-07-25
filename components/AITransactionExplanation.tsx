@@ -59,11 +59,6 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
   const [feedbackGiven, setFeedbackGiven] = useState<'positive' | 'negative' | null>(null);
   const [regenerating, setRegenerating] = useState(false);
 
-  // Load explanation on mount
-  useEffect(() => {
-    loadExplanation();
-  }, [transaction.signature, detailLevel]);
-
   const loadExplanation = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -95,6 +90,11 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
       setLoading(false);
     }
   }, [transaction, detailLevel]);
+
+  // Load explanation on mount
+  useEffect(() => {
+    loadExplanation();
+  }, [transaction.signature, detailLevel, loadExplanation]);
 
   const regenerateExplanation = async () => {
     setRegenerating(true);

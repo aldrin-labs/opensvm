@@ -209,6 +209,18 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
     announceToScreenReader(`Step ${stepIndex + 1} of ${config.steps.length}: ${step.title}`);
   }, [config.steps, highlightTarget, executeStepAction, announceToScreenReader]);
 
+  // Complete tour
+  const completeTour = useCallback(() => {
+    setCompletedSteps(prev => new Set([...prev, currentStep.id]));
+    announceToScreenReader('Tour completed successfully');
+    
+    if (config.onComplete) {
+      config.onComplete();
+    }
+    
+    onClose();
+  }, [currentStep.id, config, onClose, announceToScreenReader]);
+
   // Navigate to next step
   const nextStep = useCallback(() => {
     if (currentStep.validation && !currentStep.validation()) {
@@ -224,7 +236,7 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
     } else {
       goToStep(currentStepIndex + 1);
     }
-  }, [currentStep, isLastStep, currentStepIndex, goToStep]);
+  }, [currentStep, isLastStep, currentStepIndex, goToStep, completeTour, announceToScreenReader]);
 
   // Navigate to previous step
   const previousStep = useCallback(() => {
@@ -232,18 +244,6 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       goToStep(currentStepIndex - 1);
     }
   }, [isFirstStep, currentStepIndex, goToStep]);
-
-  // Complete tour
-  const completeTour = useCallback(() => {
-    setCompletedSteps(prev => new Set([...prev, currentStep.id]));
-    announceToScreenReader('Tour completed successfully');
-    
-    if (config.onComplete) {
-      config.onComplete();
-    }
-    
-    onClose();
-  }, [currentStep.id, config, onClose, announceToScreenReader]);
 
   // Skip tour
   const skipTour = useCallback(() => {

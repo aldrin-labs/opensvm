@@ -1603,3 +1603,8 @@ export const transactionFailureAnalyzer = new TransactionFailureAnalyzer();
 export function createFailureAnalyzer(config?: Partial<FailureAnalyzerConfig>): TransactionFailureAnalyzer {
   return new TransactionFailureAnalyzer(config);
 }
+
+// Export the main analysis function
+export function analyzeTransactionFailure(transaction: any) {
+  return transactionFailureAnalyzer.analyzeFailure(transaction);
+}

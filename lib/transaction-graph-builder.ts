@@ -180,8 +180,9 @@ const EDGE_COLORS = {
   account_closure: '#EF4444', // Red
   delegation: '#EC4899', // Pink
   approval: '#84CC16' // Lime
-};expor
-t class TransactionGraphBuilder {
+};
+
+export class TransactionGraphBuilder {
   private options: GraphBuilderOptions;
   private nodeMap: Map<string, GraphNode> = new Map();
   private edgeMap: Map<string, GraphEdge> = new Map();
@@ -1032,8 +1033,9 @@ t class TransactionGraphBuilder {
     this.nodeMap.clear();
     this.edgeMap.clear();
     this.nodeImportanceCache.clear();
-  }  // Mo
-ck methods for external data (to be implemented with actual data sources)
+  }
+
+  // Mock methods for external data (to be implemented with actual data sources)
   private async getAccountInfo(address: string): Promise<any> {
     // Mock implementation - replace with actual Solana RPC calls
     return {

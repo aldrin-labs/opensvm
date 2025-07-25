@@ -131,3 +131,12 @@ export function clearTransactionCache(): void {
 export function getTransactionCacheStats() {
   return transactionCache.getStats();
 }
+
+// Export cache helpers object
+export const cacheHelpers = {
+  get: getCachedTransaction,
+  set: setCachedTransaction,
+  remove: removeCachedTransaction,
+  clear: clearTransactionCache,
+  stats: getTransactionCacheStats
+};

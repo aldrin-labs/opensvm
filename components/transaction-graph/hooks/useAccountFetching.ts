@@ -71,7 +71,7 @@ export function useAccountFetching({
     );
     
     debugLog(`📊 [QUEUE] Queue status - Length: ${fetchQueueRef.current.length}, Total accounts: ${totalAccounts}`);
-  }, [processAccountFetchQueue, totalAccounts]);
+  }, [processAccountFetchQueue, totalAccounts, setTotalAccounts]);
 
   return {
     queueAccountFetch,
