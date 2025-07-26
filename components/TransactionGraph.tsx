@@ -1,4 +1,4 @@
 'use client';
-// Using real TransactionGraph now that we fixed the build issues
+// Main export of TransactionGraph component
 export { default } from './transaction-graph/TransactionGraph';
 

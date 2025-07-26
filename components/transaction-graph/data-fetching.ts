@@ -10,7 +10,7 @@ const formatTimestamp = (timestamp: number) => new Date(timestamp * 1000).toLoca
 const formatSolChange = (change: number) => `${change > 0 ? '+' : ''}${change.toFixed(6)} SOL`;
 import { runIncrementalLayout } from './layout';
 // import { GraphStateCache } from '@/lib/graph-state-cache'; // Commented out missing import
-// import { checkForSplTransfers } from './spl-check'; // Temporarily disabled for debugging
+import { checkForSplTransfers } from './spl-check';
 
 /**
  * Fetch transaction data with caching
@@ -413,8 +413,6 @@ export async function addAccountToGraph(
   let effectiveMaxDepth = maxDepth;
 
   // Only check SPL transfers for initial accounts (depth 0) and only once per session
-  // Temporarily disabled for debugging
-  /*
   if (depth === 0) {
     try {
       const hasSplTransfers = await checkForSplTransfers(address);
@@ -429,7 +427,6 @@ export async function addAccountToGraph(
       effectiveMaxDepth = maxDepth; // Use default on error
     }
   }
-  */
 
   // Stop if we've reached the maximum depth
   if (depth >= effectiveMaxDepth) {

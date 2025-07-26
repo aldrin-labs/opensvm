@@ -22,7 +22,7 @@ import {
   useCloudView,
   useLayoutManager,
   // useGraphInitialization, // Temporarily disabled for debugging
-  // useNavigationHistory // Temporarily disabled for debugging
+  useNavigationHistory
 } from './hooks';
 
 // Constants
@@ -128,8 +128,7 @@ export default function TransactionGraph({
   const [expandedNodesCount, setExpandedNodesCount] = useState<number>(0);
   const [totalAccountsToLoad, setTotalAccountsToLoad] = useState<number>(0);
 
-  // Navigation history - temporarily disabled for debugging
-  /*
+  // Navigation history
   const {
     navigationHistory,
     currentHistoryIndex,
@@ -158,14 +157,6 @@ export default function TransactionGraph({
       }
     }
   });
-  */
-
-  // Temporary stub values
-  const canGoBack = false;
-  const canGoForward = false;
-  const navigateBack = () => { };
-  const navigateForward = () => { };
-  const addToHistory = () => { };
 
   // Enhanced layout function
   const runLayoutWithProgress = async (layoutType: string = 'dagre', forceRun: boolean = false) => {
@@ -344,7 +335,7 @@ export default function TransactionGraph({
         // Wrap onTransactionSelect to add to navigation history
         const wrappedOnTransactionSelect = (signature: string) => {
           // Use callback that gets fresh value to avoid stale closure
-          // addToHistory(signature); // Temporarily disabled for debugging
+          addToHistory(signature); // addToHistory already handles navigation check internally
           onTransactionSelect(signature);
         };
 

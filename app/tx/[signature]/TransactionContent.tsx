@@ -19,8 +19,6 @@ const AITransactionExplanation = dynamic(
   () => import('@/components/AITransactionExplanation'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
-// Temporarily commented out to debug clientReferenceManifest issue
-/*
 const TransactionFailureAnalysisWrapper = dynamic(
   () => import('@/components/TransactionFailureAnalysis').then(mod => {
     const TransactionFailureAnalysisComponent = mod.default;
@@ -41,7 +39,6 @@ const TransactionFailureAnalysisWrapper = dynamic(
   }),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
-*/
 const RelatedTransactionsDisplay = dynamic(
   () => import('@/components/RelatedTransactionsDisplay'),
   { loading: () => <LoadingSpinner />, ssr: false }
@@ -1074,7 +1071,6 @@ export default function TransactionContent({ signature }: { signature: string })
                 </ErrorBoundaryWrapper>
               </TabsContent>
 
-              {/* Temporarily disabled - TransactionFailureAnalysisWrapper is commented out
               {!tx.success && (
                 <TabsContent value="failure" className="mt-0">
                   <ErrorBoundaryWrapper fallback={<div>Error loading failure analysis</div>}>
@@ -1084,7 +1080,6 @@ export default function TransactionContent({ signature }: { signature: string })
                   </ErrorBoundaryWrapper>
                 </TabsContent>
               )}
-              */}
             </CardContent>
           </Tabs>
         </Card>
