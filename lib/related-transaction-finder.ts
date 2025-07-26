@@ -32,7 +32,7 @@ export interface TransactionRelationship {
   confidence: number; // 0-1 scale
 }
 
-export type RelationshipType = 
+export type RelationshipType =
   | 'account_sequence'      // Same accounts used in sequence
   | 'program_pattern'       // Same programs used
   | 'token_flow'           // Token transfers between related accounts
@@ -112,14 +112,14 @@ class RelatedTransactionFinder {
    */
   async findRelatedTransactions(query: RelatedTransactionQuery): Promise<RelatedTransactionResult> {
     const startTime = Date.now();
-    
+
     try {
       // Check cache first using the new caching system
       const cachedResult = await transactionAnalysisCache.getCachedRelatedTransactions(
         query.signature,
         query
       );
-      
+
       if (cachedResult) {
         console.log(`Using cached related transactions for ${query.signature}`);
         return cachedResult;
@@ -133,20 +133,20 @@ class RelatedTransactionFinder {
 
       // Find related transactions using multiple strategies
       const relatedTransactions = await this.discoverRelatedTransactions(sourceTransaction, query);
-      
+
       // Sort by relevance score
       relatedTransactions.sort((a, b) => b.relevanceScore - a.relevanceScore);
-      
+
       // Limit results
       const maxResults = query.maxResults || 20;
       const limitedResults = relatedTransactions.slice(0, maxResults);
-      
+
       // Generate insights
       const insights = this.generateTransactionInsights(sourceTransaction, limitedResults);
-      
+
       // Create relationship summary
       const relationshipSummary = this.createRelationshipSummary(limitedResults);
-      
+
       const result: RelatedTransactionResult = {
         sourceTransaction: query.signature,
         relatedTransactions: limitedResults,
@@ -162,7 +162,7 @@ class RelatedTransactionFinder {
         result,
         query
       );
-      
+
       return result;
 
     } catch (error) {
@@ -234,7 +234,7 @@ class RelatedTransactionFinder {
       if (candidate.signature === sourceTransaction.signature) continue;
 
       const sharedAccounts = this.findSharedAccounts(sourceAccounts, this.extractAccounts(candidate));
-      
+
       if (sharedAccounts.length > 0) {
         const relationship = this.analyzeAccountRelationship(
           sourceTransaction,
@@ -283,7 +283,7 @@ class RelatedTransactionFinder {
       if (candidate.signature === sourceTransaction.signature) continue;
 
       const sharedPrograms = this.findSharedPrograms(sourcePrograms, this.extractPrograms(candidate));
-      
+
       if (sharedPrograms.length > 0) {
         const relationship = this.analyzeProgramRelationship(
           sourceTransaction,
@@ -358,7 +358,7 @@ class RelatedTransactionFinder {
   ): Promise<RelatedTransaction[]> {
     const related: RelatedTransaction[] = [];
     const sourceTokenTransfers = this.extractTokenTransfers(sourceTransaction);
-    
+
     if (sourceTokenTransfers.length === 0) return related;
 
     const timeWindow = (query.timeWindowHours || 24) * 60 * 60 * 1000;
@@ -409,7 +409,7 @@ class RelatedTransactionFinder {
   ): Promise<RelatedTransaction[]> {
     const related: RelatedTransaction[] = [];
     const sourcePrograms = this.extractPrograms(sourceTransaction);
-    
+
     // Known DeFi program IDs
     const defiPrograms = [
       'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB', // Jupiter
@@ -522,22 +522,22 @@ class RelatedTransactionFinder {
   ): TransactionRelationship {
     const sourceAccounts = this.extractAccounts(source);
     const candidateAccounts = this.extractAccounts(candidate);
-    
+
     const sharedRatio = sharedAccounts.length / Math.max(sourceAccounts.length, candidateAccounts.length);
     const timeDistance = Math.abs((source.blockTime || 0) - (candidate.blockTime || 0));
-    
+
     let strength: 'weak' | 'medium' | 'strong' = 'weak';
     let confidence = sharedRatio * 0.7;
-    
+
     // Boost confidence for recent transactions
     if (timeDistance < 60 * 60 * 1000) { // 1 hour
       confidence += 0.2;
     }
-    
+
     // Determine strength
     if (sharedRatio > 0.7) strength = 'strong';
     else if (sharedRatio > 0.3) strength = 'medium';
-    
+
     return {
       type: 'account_sequence',
       strength,
@@ -563,22 +563,22 @@ class RelatedTransactionFinder {
   ): TransactionRelationship {
     const sourcePrograms = this.extractPrograms(source);
     const candidatePrograms = this.extractPrograms(candidate);
-    
+
     const sharedRatio = sharedPrograms.length / Math.max(sourcePrograms.length, candidatePrograms.length);
     const timeDistance = Math.abs((source.blockTime || 0) - (candidate.blockTime || 0));
-    
+
     let strength: 'weak' | 'medium' | 'strong' = 'weak';
     let confidence = sharedRatio * 0.6;
-    
+
     // Boost confidence for exact program matches
     if (sharedRatio === 1.0) {
       confidence += 0.3;
     }
-    
+
     // Determine strength
     if (sharedRatio > 0.8) strength = 'strong';
     else if (sharedRatio > 0.4) strength = 'medium';
-    
+
     return {
       type: 'program_pattern',
       strength,
@@ -603,10 +603,10 @@ class RelatedTransactionFinder {
   ): TransactionRelationship {
     const timeDistance = Math.abs((source.blockTime || 0) - (candidate.blockTime || 0));
     const slotDistance = Math.abs(source.slot - candidate.slot);
-    
+
     let strength: 'weak' | 'medium' | 'strong' = 'weak';
     let confidence = 0.1;
-    
+
     // Very close in time (same block or adjacent)
     if (slotDistance <= 1) {
       strength = 'strong';
@@ -621,7 +621,7 @@ class RelatedTransactionFinder {
       strength = 'weak';
       confidence = 0.3;
     }
-    
+
     return {
       type: 'temporal_cluster',
       strength,
@@ -648,10 +648,10 @@ class RelatedTransactionFinder {
   ): TransactionRelationship {
     const sharedTokens = this.findSharedTokens(sourceTokens, candidateTokens);
     const flowConnections = this.findTokenFlowConnections(sourceTokens, candidateTokens);
-    
+
     let strength: 'weak' | 'medium' | 'strong' = 'weak';
     let confidence = 0.1;
-    
+
     // Direct token flow (output of source becomes input of candidate)
     if (flowConnections.length > 0) {
       strength = 'strong';
@@ -660,11 +660,11 @@ class RelatedTransactionFinder {
       strength = 'medium';
       confidence = 0.5;
     }
-    
+
     return {
       type: 'token_flow',
       strength,
-      description: flowConnections.length > 0 
+      description: flowConnections.length > 0
         ? `Direct token flow connection with ${flowConnections.length} token${flowConnections.length !== 1 ? 's' : ''}`
         : `Involves ${sharedTokens.length} of the same token${sharedTokens.length !== 1 ? 's' : ''}`,
       sharedElements: {
@@ -687,7 +687,7 @@ class RelatedTransactionFinder {
     sharedDeFiPrograms: string[]
   ): TransactionRelationship {
     const confidence = 0.6 + (sharedDeFiPrograms.length * 0.1);
-    
+
     return {
       type: 'defi_protocol',
       strength: sharedDeFiPrograms.length > 1 ? 'strong' : 'medium',
@@ -713,13 +713,13 @@ class RelatedTransactionFinder {
   ): TransactionRelationship {
     const sourceIndex = allCandidates.findIndex(t => t.signature === source.signature);
     const candidateIndex = allCandidates.findIndex(t => t.signature === candidate.signature);
-    
+
     const isSequential = Math.abs(sourceIndex - candidateIndex) === 1;
     const timeDistance = Math.abs((source.blockTime || 0) - (candidate.blockTime || 0));
-    
+
     let confidence = 0.1;
     let strength: 'weak' | 'medium' | 'strong' = 'weak';
-    
+
     if (isSequential && timeDistance < 5 * 60 * 1000) { // 5 minutes
       confidence = 0.7;
       strength = 'strong';
@@ -727,7 +727,7 @@ class RelatedTransactionFinder {
       confidence = 0.4;
       strength = 'medium';
     }
-    
+
     return {
       type: 'multi_step',
       strength,
@@ -747,37 +747,37 @@ class RelatedTransactionFinder {
    */
   private extractAccounts(transaction: DetailedTransactionInfo): string[] {
     const accounts = new Set<string>();
-    
+
     // Add accounts from transaction message
     transaction.transaction.message.accountKeys.forEach(account => {
       accounts.add(account.pubkey.toString());
     });
-    
+
     // Add accounts from parsed instructions
     transaction.parsedInstructions?.forEach(instruction => {
       instruction.accounts?.forEach(account => {
         accounts.add(account);
       });
     });
-    
+
     return Array.from(accounts);
   }
 
   private extractPrograms(transaction: DetailedTransactionInfo): string[] {
     const programs = new Set<string>();
-    
+
     transaction.parsedInstructions?.forEach(instruction => {
       if (instruction.programId) {
         programs.add(instruction.programId);
       }
     });
-    
+
     return Array.from(programs);
   }
 
   private extractTokenTransfers(transaction: DetailedTransactionInfo): TokenTransfer[] {
     const transfers: TokenTransfer[] = [];
-    
+
     // Extract from account changes
     transaction.accountChanges?.forEach(change => {
       change.tokenChanges?.forEach(tokenChange => {
@@ -791,7 +791,7 @@ class RelatedTransactionFinder {
         });
       });
     });
-    
+
     return transfers;
   }
 
@@ -811,17 +811,17 @@ class RelatedTransactionFinder {
 
   private findTokenFlowConnections(sourceTokens: TokenTransfer[], candidateTokens: TokenTransfer[]): string[] {
     const connections: string[] = [];
-    
+
     for (const sourceToken of sourceTokens) {
       for (const candidateToken of candidateTokens) {
         // Check if output of source becomes input of candidate
-        if (sourceToken.mint === candidateToken.mint && 
-            sourceToken.to === candidateToken.from) {
+        if (sourceToken.mint === candidateToken.mint &&
+          sourceToken.to === candidateToken.from) {
           connections.push(sourceToken.mint);
         }
       }
     }
-    
+
     return connections;
   }
 
@@ -842,12 +842,12 @@ class RelatedTransactionFinder {
     const programs = this.extractPrograms(transaction);
     const accounts = this.extractAccounts(transaction);
     const instructionCount = transaction.parsedInstructions?.length || 0;
-    
+
     if (programs.length > 0) {
       const programNames = programs.map(p => this.getProgramName(p)).join(', ');
       return `${instructionCount} instruction${instructionCount !== 1 ? 's' : ''} using ${programNames}`;
     }
-    
+
     return `Transaction with ${instructionCount} instruction${instructionCount !== 1 ? 's' : ''} affecting ${accounts.length} account${accounts.length !== 1 ? 's' : ''}`;
   }
 
@@ -856,11 +856,11 @@ class RelatedTransactionFinder {
     relatedTransactions: RelatedTransaction[]
   ): TransactionInsight[] {
     const insights: TransactionInsight[] = [];
-    
+
     // Pattern insights
     const relationshipTypes = relatedTransactions.map(t => t.relationship.type);
     const typeCount = this.countRelationshipTypes(relationshipTypes);
-    
+
     if (typeCount.defi_protocol > 2) {
       insights.push({
         type: 'pattern',
@@ -872,7 +872,7 @@ class RelatedTransactionFinder {
           .map(t => t.signature)
       });
     }
-    
+
     if (typeCount.multi_step > 1) {
       insights.push({
         type: 'pattern',
@@ -884,12 +884,12 @@ class RelatedTransactionFinder {
           .map(t => t.signature)
       });
     }
-    
+
     // Anomaly insights
-    const highValueTransactions = relatedTransactions.filter(t => 
+    const highValueTransactions = relatedTransactions.filter(t =>
       t.tokenTransfers?.some(transfer => (transfer.usdValue || 0) > 10000)
     );
-    
+
     if (highValueTransactions.length > 0) {
       insights.push({
         type: 'anomaly',
@@ -899,12 +899,12 @@ class RelatedTransactionFinder {
         relatedTransactions: highValueTransactions.map(t => t.signature)
       });
     }
-    
+
     // Opportunity insights
-    const arbitragePatterns = relatedTransactions.filter(t => 
+    const arbitragePatterns = relatedTransactions.filter(t =>
       t.relationship.type === 'token_flow' && t.relationship.strength === 'strong'
     );
-    
+
     if (arbitragePatterns.length > 1) {
       insights.push({
         type: 'opportunity',
@@ -914,12 +914,12 @@ class RelatedTransactionFinder {
         relatedTransactions: arbitragePatterns.map(t => t.signature)
       });
     }
-    
+
     // Warning insights
-    const temporalClusters = relatedTransactions.filter(t => 
+    const temporalClusters = relatedTransactions.filter(t =>
       t.relationship.type === 'temporal_cluster' && t.relationship.sharedElements.timeWindow < 60
     );
-    
+
     if (temporalClusters.length > 5) {
       insights.push({
         type: 'warning',
@@ -929,36 +929,36 @@ class RelatedTransactionFinder {
         relatedTransactions: temporalClusters.map(t => t.signature)
       });
     }
-    
+
     return insights;
   }
 
   private createRelationshipSummary(relatedTransactions: RelatedTransaction[]): { [key in RelationshipType]?: number } {
     const summary: { [key in RelationshipType]?: number } = {};
-    
+
     for (const transaction of relatedTransactions) {
       const type = transaction.relationship.type;
       summary[type] = (summary[type] || 0) + 1;
     }
-    
+
     return summary;
   }
 
   private countRelationshipTypes(types: RelationshipType[]): { [key in RelationshipType]: number } {
     const count = {} as { [key in RelationshipType]: number };
-    
+
     // Initialize all types to 0
     const allTypes: RelationshipType[] = [
       'account_sequence', 'program_pattern', 'token_flow', 'temporal_cluster',
       'defi_protocol', 'multi_step', 'arbitrage_pattern', 'batch_operation',
       'wallet_activity', 'contract_interaction'
     ];
-    
+
     allTypes.forEach(type => count[type] = 0);
-    
+
     // Count occurrences
     types.forEach(type => count[type]++);
-    
+
     return count;
   }
 
@@ -967,7 +967,7 @@ class RelatedTransactionFinder {
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) return `${days} day${days !== 1 ? 's' : ''}`;
     if (hours > 0) return `${hours} hour${hours !== 1 ? 's' : ''}`;
     if (minutes > 0) return `${minutes} minute${minutes !== 1 ? 's' : ''}`;
@@ -981,7 +981,7 @@ class RelatedTransactionFinder {
       'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 'USDT',
       'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 'mSOL'
     };
-    
+
     return knownTokens[mint] || 'UNKNOWN';
   }
 
@@ -995,7 +995,7 @@ class RelatedTransactionFinder {
       '11111111111111111111111111111111': 'System Program',
       'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': 'SPL Token'
     };
-    
+
     return knownPrograms[programId] || `Program ${programId.substring(0, 8)}...`;
   }
 
@@ -1006,13 +1006,13 @@ class RelatedTransactionFinder {
       'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB': 1, // USDT
       'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So': 95 // mSOL
     };
-    
+
     const price = prices[mint];
     if (!price) return undefined;
-    
-    const decimals = mint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' || 
-                    mint === 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' ? 6 : 9;
-    
+
+    const decimals = mint === 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' ||
+      mint === 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' ? 6 : 9;
+
     return (amount / Math.pow(10, decimals)) * price;
   }
 
@@ -1062,11 +1062,11 @@ class RelatedTransactionFinder {
   ): DetailedTransactionInfo[] {
     const transactions: DetailedTransactionInfo[] = [];
     const count = Math.min(Math.floor(Math.random() * 10) + 3, 15); // 3-15 transactions
-    
+
     for (let i = 0; i < count; i++) {
       const timeOffset = (Math.random() - 0.5) * timeWindow;
       const mockTime = (baseTime || Date.now()) + timeOffset;
-      
+
       transactions.push({
         signature: `mock-${searchType}-${i}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         slot: Math.floor(Math.random() * 1000000) + 100000,
@@ -1081,17 +1081,17 @@ class RelatedTransactionFinder {
         } as any
       });
     }
-    
+
     return transactions;
   }
 
   private generateMockInstructions(searchCriteria: string[], searchType: string): any[] {
     const instructions = [];
     const count = Math.floor(Math.random() * 3) + 1; // 1-3 instructions
-    
+
     for (let i = 0; i < count; i++) {
       let programId = '11111111111111111111111111111111'; // Default system program
-      
+
       if (searchType === 'programs' && searchCriteria.length > 0) {
         programId = searchCriteria[Math.floor(Math.random() * searchCriteria.length)];
       } else if (searchType === 'accounts' || searchType === 'tokens') {
@@ -1103,7 +1103,7 @@ class RelatedTransactionFinder {
         ];
         programId = defiPrograms[Math.floor(Math.random() * defiPrograms.length)];
       }
-      
+
       instructions.push({
         programId,
         parsed: {
@@ -1115,52 +1115,52 @@ class RelatedTransactionFinder {
         accounts: this.generateMockAccountsForInstruction(searchCriteria, searchType)
       });
     }
-    
+
     return instructions;
   }
 
   private generateMockAccountKeys(searchCriteria: string[], searchType: string): any[] {
     const accounts = [];
     const count = Math.floor(Math.random() * 5) + 3; // 3-7 accounts
-    
+
     // Include search criteria accounts if relevant
     if (searchType === 'accounts') {
       searchCriteria.forEach(account => {
         accounts.push({ pubkey: { toString: () => account } });
       });
     }
-    
+
     // Add random accounts
     for (let i = accounts.length; i < count; i++) {
       accounts.push({
         pubkey: { toString: () => this.generateRandomAddress() }
       });
     }
-    
+
     return accounts;
   }
 
   private generateMockAccountsForInstruction(searchCriteria: string[], searchType: string): string[] {
     const accounts = [];
     const count = Math.floor(Math.random() * 4) + 2; // 2-5 accounts
-    
+
     // Include some search criteria if relevant
     if (searchType === 'accounts' && searchCriteria.length > 0) {
       accounts.push(searchCriteria[0]);
     }
-    
+
     // Add random accounts
     for (let i = accounts.length; i < count; i++) {
       accounts.push(this.generateRandomAddress());
     }
-    
+
     return accounts;
   }
 
   private generateMockAccountChanges(): any[] {
     const changes = [];
     const count = Math.floor(Math.random() * 3) + 1; // 1-3 account changes
-    
+
     for (let i = 0; i < count; i++) {
       changes.push({
         account: this.generateRandomAddress(),
@@ -1168,27 +1168,27 @@ class RelatedTransactionFinder {
         tokenChanges: this.generateMockTokenChanges()
       });
     }
-    
+
     return changes;
   }
 
   private generateMockTokenChanges(): any[] {
     const changes = [];
     const count = Math.floor(Math.random() * 3); // 0-2 token changes
-    
+
     const tokens = [
       'So11111111111111111111111111111111111111112', // SOL
       'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
       'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' // USDT
     ];
-    
+
     for (let i = 0; i < count; i++) {
       changes.push({
         mint: tokens[Math.floor(Math.random() * tokens.length)],
         change: (Math.random() - 0.5) * 1000000000 // Random change
       });
     }
-    
+
     return changes;
   }
 
@@ -1210,14 +1210,14 @@ class RelatedTransactionFinder {
     if (this.transactionCache.has(signature)) {
       return this.transactionCache.get(signature)!;
     }
-    
+
     // Check mock database
     if (this.mockDB[signature]) {
       const transaction = this.mockDB[signature];
       this.transactionCache.set(signature, transaction);
       return transaction;
     }
-    
+
     // In production, this would fetch from blockchain
     return null;
   }
@@ -1263,7 +1263,7 @@ class RelatedTransactionFinder {
         }
       } as any
     };
-    
+
     this.mockDB['sample-transaction-signature-123'] = sampleTransaction;
   }
 
@@ -1273,7 +1273,7 @@ class RelatedTransactionFinder {
   public async getRelationshipTypes(): Promise<RelationshipType[]> {
     return [
       'account_sequence',
-      'program_pattern', 
+      'program_pattern',
       'token_flow',
       'temporal_cluster',
       'defi_protocol',
@@ -1303,7 +1303,7 @@ export const relatedTransactionFinder = new RelatedTransactionFinder();
 
 // Export main finder function
 export function findRelatedTransactions(query: any) {
-  return relatedTransactionFinder.findRelated(query);
+  return relatedTransactionFinder.findRelatedTransactions(query);
 }
 
 // Export utility functions
@@ -1325,17 +1325,17 @@ export function getRelationshipIcon(type: RelationshipType): string {
     wallet_activity: '👛',
     contract_interaction: '📜'
   };
-  
+
   return icons[type] || '🔍';
 }
 
 export function getStrengthColor(strength: 'weak' | 'medium' | 'strong'): string {
   const colors = {
     weak: 'text-gray-600 dark:text-gray-400',
-    medium: 'text-yellow-600 dark:text-yellow-400', 
+    medium: 'text-yellow-600 dark:text-yellow-400',
     strong: 'text-green-600 dark:text-green-400'
   };
-  
+
   return colors[strength];
 }
 
