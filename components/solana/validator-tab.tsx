@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertTriangle, Server, TrendingUp, TrendingDown, MapPin, Users, Zap, Shield } from 'lucide-react';
+import { TrendingCarousel } from './trending-carousel';
 
 interface ValidatorData {
   validators: Array<{
@@ -271,6 +272,14 @@ export function ValidatorTab() {
           </div>
         </div>
       </div>
+
+      {/* Trending Validators Carousel */}
+      <TrendingCarousel 
+        onValidatorClick={(voteAccount) => {
+          // TODO: Implement scroll to validator in table or highlight
+          console.log('Clicked trending validator:', voteAccount);
+        }}
+      />
 
       {/* Tab Navigation */}
       <div className="bg-background border rounded-lg shadow">
