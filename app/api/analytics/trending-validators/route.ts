@@ -19,9 +19,12 @@ interface TrendingValidator {
 
 interface BoostPurchase {
   voteAccount: string;
-  amount: number; // SOL amount paid for boost
+  burnAmount: number; // $SVMAI amount burned
+  totalBurned: number; // Total $SVMAI burned for this validator
   purchaseTime: number;
-  duration: number; // hours
+  burnSignature: string;
+  burnerWallet: string;
+  duration: number; // hours (always 24)
 }
 
 // Cache keys
@@ -57,9 +60,12 @@ const calculateTrendingScore = (validator: any, depositVolume: number, boost?: B
     score += (validator.uptimePercent / 100) * 200;
   }
   
-  // Boost multiplier
+  // Boost multiplier based on total burned $SVMAI
   if (boost && boost.purchaseTime + (boost.duration * 3600000) > Date.now()) {
-    score *= (1 + boost.amount / 100); // Boost amount acts as multiplier
+    // More aggressive multiplier for burned tokens
+    // 1000 $SVMAI = 1.5x, 5000 $SVMAI = 2.5x, 10000 $SVMAI = 4x, etc.
+    const multiplier = 1 + (boost.totalBurned / 2000); // Every 2000 $SVMAI adds 1x
+    score *= multiplier;
   }
   
   return Math.round(score);
@@ -104,7 +110,7 @@ export async function GET() {
           activatedStake: validator.activatedStake,
           depositVolume24h: depositVolume,
           boostEndTime: boost ? boost.purchaseTime + (boost.duration * 3600000) : undefined,
-          boostAmount: boost?.amount,
+          boostAmount: boost?.totalBurned,
           trendingScore,
           trendingReason: boost && boost.purchaseTime + (boost.duration * 3600000) > Date.now() ? 'boost' : 'volume',
           rank: 0 // Will be set after sorting
@@ -138,39 +144,59 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { voteAccount, amount, duration = 24 } = await request.json();
+    const { voteAccount, burnAmount, burnSignature, burnerWallet } = await request.json();
     
-    if (!voteAccount || !amount || amount < 1) {
+    if (!voteAccount || !burnAmount || !burnSignature || !burnerWallet) {
       return NextResponse.json({
         success: false,
-        error: 'Invalid boost parameters'
+        error: 'Missing required parameters'
       }, { status: 400 });
     }
 
+    if (burnAmount < 1000) {
+      return NextResponse.json({
+        success: false,
+        error: 'Minimum burn amount is 1000 $SVMAI'
+      }, { status: 400 });
+    }
+
+    // TODO: Verify burn transaction on-chain using burnSignature
+    // For now, we trust the frontend verification
+    
     // Get current boosts
     const currentBoosts = memoryCache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];
     
     // Check if there's an existing boost for this validator
     const existingBoostIndex = currentBoosts.findIndex(b => b.voteAccount === voteAccount);
     
-    const newBoost: BoostPurchase = {
-      voteAccount,
-      amount,
-      purchaseTime: Date.now(),
-      duration
-    };
-
-    // Replace existing boost or add new one
+    let totalBurned = burnAmount;
+    
     if (existingBoostIndex >= 0) {
-      // Only allow if new boost amount is higher
-      if (amount <= currentBoosts[existingBoostIndex].amount) {
-        return NextResponse.json({
-          success: false,
-          error: 'Boost amount must be higher than current boost'
-        }, { status: 400 });
-      }
-      currentBoosts[existingBoostIndex] = newBoost;
+      // Add to existing boost - amounts stack up and timer resets
+      const existingBoost = currentBoosts[existingBoostIndex];
+      totalBurned = existingBoost.totalBurned + burnAmount;
+      
+      // Update existing boost with new totals and reset timer
+      currentBoosts[existingBoostIndex] = {
+        voteAccount,
+        burnAmount,
+        totalBurned,
+        purchaseTime: Date.now(), // Reset timer to 24h
+        burnSignature,
+        burnerWallet,
+        duration: 24
+      };
     } else {
+      // Create new boost
+      const newBoost: BoostPurchase = {
+        voteAccount,
+        burnAmount,
+        totalBurned,
+        purchaseTime: Date.now(),
+        burnSignature,
+        burnerWallet,
+        duration: 24
+      };
       currentBoosts.push(newBoost);
     }
 
@@ -188,13 +214,14 @@ export async function POST(request: Request) {
     return NextResponse.json({
       success: true,
       data: {
-        boost: newBoost,
-        message: 'Boost purchased successfully'
+        burnAmount,
+        totalBurned,
+        message: `Successfully burned ${burnAmount} $SVMAI. Total burned for this validator: ${totalBurned} $SVMAI. Timer reset to 24 hours.`
       }
     });
 
   } catch (error) {
-    console.error('Error purchasing boost:', error);
+    console.error('Error processing burn:', error);
     return NextResponse.json({
       success: false,
       error: error instanceof Error ? error.message : 'Unknown error'

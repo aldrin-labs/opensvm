@@ -2,6 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRight } from 'lucide-react';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { createBurnInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -16,21 +19,84 @@ interface TrendingValidator {
   rank: number;
 }
 
+import { TOKEN_MINTS, TOKEN_DECIMALS, MIN_BURN_AMOUNTS } from '@/lib/config/tokens';
+
+// Solana connection
+const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+const connection = new Connection(SOLANA_RPC_URL);
+
 interface TrendingCarouselProps {
   onValidatorClick?: (voteAccount: string) => void;
 }
 
 export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
+  const { publicKey, sendTransaction, connected } = useWallet();
   const [trendingValidators, setTrendingValidators] = useState<TrendingValidator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showBoostModal, setShowBoostModal] = useState(false);
   const [selectedValidator, setSelectedValidator] = useState<TrendingValidator | null>(null);
-  const [boostAmount, setBoostAmount] = useState<number>(10);
-  const [boostDuration, setBoostDuration] = useState<number>(24);
+  const [burnAmount, setBurnAmount] = useState<number>(MIN_BURN_AMOUNTS.SVMAI);
+  const [isProcessingBurn, setIsProcessingBurn] = useState(false);
+  const [userSvmaiBalance, setUserSvmaiBalance] = useState<number>(0);
 
   const itemsPerView = 3; // Show 3 trending validators at once
+
+  // Fetch user's SVMAI token balance
+  const fetchSvmaiBalance = async () => {
+    if (!publicKey || !connected) {
+      setUserSvmaiBalance(0);
+      return;
+    }
+
+    try {
+      const tokenAccount = await getAssociatedTokenAddress(
+        TOKEN_MINTS.SVMAI,
+        publicKey
+      );
+      
+      const accountInfo = await connection.getTokenAccountBalance(tokenAccount);
+      if (accountInfo.value) {
+        setUserSvmaiBalance(Number(accountInfo.value.amount) / Math.pow(10, accountInfo.value.decimals));
+      } else {
+        setUserSvmaiBalance(0);
+      }
+    } catch (error) {
+      console.error('Error fetching SVMAI balance:', error);
+      setUserSvmaiBalance(0);
+    }
+  };
+
+  // Create burn transaction for SVMAI tokens
+  const createBurnTransaction = async (amount: number): Promise<Transaction> => {
+    if (!publicKey) throw new Error('Wallet not connected');
+
+    const tokenAccount = await getAssociatedTokenAddress(
+      TOKEN_MINTS.SVMAI,
+      publicKey
+    );
+
+    const decimals = TOKEN_DECIMALS.SVMAI;
+    const burnAmountLamports = amount * Math.pow(10, decimals);
+
+    const transaction = new Transaction();
+    
+    const burnInstruction = createBurnInstruction(
+      tokenAccount,
+      TOKEN_MINTS.SVMAI,
+      publicKey,
+      burnAmountLamports
+    );
+
+    transaction.add(burnInstruction);
+    
+    const { blockhash } = await connection.getLatestBlockhash();
+    transaction.recentBlockhash = blockhash;
+    transaction.feePayer = publicKey;
+
+    return transaction;
+  };
 
   const fetchTrendingValidators = async () => {
     try {
@@ -53,10 +119,14 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   useEffect(() => {
     fetchTrendingValidators();
+    fetchSvmaiBalance();
     // Refresh every 2 minutes
-    const interval = setInterval(fetchTrendingValidators, 120000);
+    const interval = setInterval(() => {
+      fetchTrendingValidators();
+      fetchSvmaiBalance();
+    }, 120000);
     return () => clearInterval(interval);
-  }, []);
+  }, [publicKey, connected]);
 
   const formatSOL = (lamports: number) => {
     const sol = lamports / 1e9;
@@ -91,9 +161,34 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   };
 
   const handleBoostPurchase = async () => {
-    if (!selectedValidator) return;
+    if (!selectedValidator || !publicKey || !connected) {
+      alert('Please connect your wallet first');
+      return;
+    }
+
+    if (burnAmount < MIN_BURN_AMOUNTS.SVMAI) {
+      alert(`Minimum burn amount is ${MIN_BURN_AMOUNTS.SVMAI} $SVMAI`);
+      return;
+    }
+
+    if (burnAmount > userSvmaiBalance) {
+      alert(`Insufficient $SVMAI balance. You have ${userSvmaiBalance.toFixed(2)} $SVMAI`);
+      return;
+    }
+
+    setIsProcessingBurn(true);
 
     try {
+      // Create burn transaction
+      const burnTransaction = await createBurnTransaction(burnAmount);
+      
+      // Send transaction through Phantom wallet
+      const signature = await sendTransaction(burnTransaction, connection);
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature, 'confirmed');
+      
+      // Submit boost to backend with burn proof
       const response = await fetch('/api/analytics/trending-validators', {
         method: 'POST',
         headers: {
@@ -101,8 +196,9 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         },
         body: JSON.stringify({
           voteAccount: selectedValidator.voteAccount,
-          amount: boostAmount,
-          duration: boostDuration
+          burnAmount: burnAmount,
+          burnSignature: signature,
+          burnerWallet: publicKey.toString()
         })
       });
 
@@ -111,14 +207,19 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       if (result.success) {
         setShowBoostModal(false);
         setSelectedValidator(null);
-        // Refresh trending data
+        setBurnAmount(MIN_BURN_AMOUNTS.SVMAI);
+        // Refresh data
         fetchTrendingValidators();
-        alert('Boost purchased successfully! Your validator will appear in trending shortly.');
+        fetchSvmaiBalance();
+        alert(`🔥 Successfully burned ${burnAmount} $SVMAI! Boost activated for 24 hours.`);
       } else {
         alert(`Error: ${result.error}`);
       }
     } catch (err) {
-      alert(`Error purchasing boost: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      console.error('Burn transaction failed:', err);
+      alert(`Transaction failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessingBurn(false);
     }
   };
 
@@ -247,17 +348,17 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
               </div>
 
               <div className="mt-3 pt-3 border-t">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setSelectedValidator(validator);
-                    setShowBoostModal(true);
-                  }}
-                  className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <ArrowUpRight className="h-3 w-3 mr-1" />
-                  Buy Boost
-                </button>
+                                 <button
+                   onClick={(e) => {
+                     e.stopPropagation();
+                     setSelectedValidator(validator);
+                     setShowBoostModal(true);
+                   }}
+                   className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
+                 >
+                   <Flame className="h-3 w-3 mr-1" />
+                   Burn $SVMAI
+                 </button>
               </div>
             </div>
           ))}
@@ -286,10 +387,14 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-background border rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Purchase Trending Boost</h3>
+              <div className="flex items-center">
+                <Flame className="h-5 w-5 text-orange-500 mr-2" />
+                <h3 className="text-lg font-semibold">Burn $SVMAI for Boost</h3>
+              </div>
               <button
                 onClick={() => setShowBoostModal(false)}
                 className="text-muted-foreground hover:text-foreground"
+                disabled={isProcessingBurn}
               >
                 ×
               </button>
@@ -302,56 +407,80 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 <p className="text-xs text-muted-foreground truncate">{selectedValidator.voteAccount}</p>
               </div>
 
+              {!connected && (
+                <div className="bg-orange-500/10 border border-orange-200 dark:border-orange-800 rounded-md p-3">
+                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                    Please connect your Phantom wallet to burn $SVMAI tokens.
+                  </p>
+                </div>
+              )}
+
+              {connected && (
+                <div className="bg-muted/50 p-3 rounded-md">
+                  <p className="text-sm">
+                    <strong>Your $SVMAI Balance:</strong> {userSvmaiBalance.toFixed(2)} $SVMAI
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Connected wallet: {publicKey?.toString().slice(0, 8)}...{publicKey?.toString().slice(-8)}
+                  </p>
+                </div>
+              )}
+
               <div>
-                <label className="text-sm font-medium mb-2 block">Boost Amount (SOL)</label>
+                <label className="text-sm font-medium mb-2 block">Burn Amount ($SVMAI)</label>
                 <input
                   type="number"
-                  min="1"
-                  max="1000"
-                  value={boostAmount}
-                  onChange={(e) => setBoostAmount(Number(e.target.value))}
+                  min={MIN_BURN_AMOUNTS.SVMAI}
+                  max={userSvmaiBalance}
+                  value={burnAmount}
+                  onChange={(e) => setBurnAmount(Number(e.target.value))}
                   className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                  disabled={!connected || isProcessingBurn}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Higher amounts increase your trending score multiplier
+                  Minimum: {MIN_BURN_AMOUNTS.SVMAI} $SVMAI. Higher amounts increase trending score multiplier.
                 </p>
               </div>
 
-              <div>
-                <label className="text-sm font-medium mb-2 block">Duration (hours)</label>
-                <select
-                  value={boostDuration}
-                  onChange={(e) => setBoostDuration(Number(e.target.value))}
-                  className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
-                >
-                  <option value={24}>24 hours</option>
-                  <option value={48}>48 hours</option>
-                  <option value={72}>72 hours</option>
-                  <option value={168}>1 week</option>
-                </select>
-              </div>
-
-              <div className="bg-muted/50 p-3 rounded-md">
-                <p className="text-sm">
-                  <strong>Total Cost:</strong> {boostAmount} SOL for {boostDuration} hours
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Your validator will appear in trending until someone outbids you or the duration expires.
-                </p>
+              <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200 dark:border-orange-800 rounded-md p-3">
+                <div className="flex items-start space-x-2">
+                  <Flame className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="text-sm font-medium">Burn {burnAmount.toLocaleString()} $SVMAI</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      • Boost lasts 24 hours or until someone adds more
+                      • Anyone can add to your boost (amounts stack up)
+                      • Timer resets to 24h when someone adds to the boost
+                      • Tokens will be permanently burned (destroyed)
+                    </p>
+                  </div>
+                </div>
               </div>
 
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowBoostModal(false)}
                   className="flex-1 py-2 px-4 border rounded-md hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-ring"
+                  disabled={isProcessingBurn}
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleBoostPurchase}
-                  className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring"
+                  className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled={!connected || isProcessingBurn || burnAmount < MIN_BURN_AMOUNTS.SVMAI || burnAmount > userSvmaiBalance}
                 >
-                  Purchase Boost
+                  {isProcessingBurn ? (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                      Burning...
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center">
+                      <Flame className="h-4 w-4 mr-2" />
+                      Burn $SVMAI
+                    </div>
+                  )}
                 </button>
               </div>
             </div>
