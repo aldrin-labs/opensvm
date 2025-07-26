@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram, Keypair } from '@solana/web3.js';
 import * as web3 from '@solana/web3.js';
-import { getAssociatedTokenAddress } from '@solana/spl-token';
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_DECIMALS } from '@/lib/config/tokens';
 import { Zap, TrendingDown, Lock, AlertCircle, Loader2, CheckCircle, Calculator } from 'lucide-react';
 
@@ -38,15 +38,15 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   // Check if user meets SVMAI requirement
   const meetsRequirement = userSvmaiBalance >= REQUIRED_SVMAI_BALANCE;
 
-  // Calculate expected returns
+  // Calculate expected returns with compound interest
   const calculateExpectedReturns = (amount: number, days: number): { gross: number; net: number; earnings: number } => {
     if (!amount || amount <= 0) return { gross: 0, net: 0, earnings: 0 };
     
-    // Convert APY to daily rate
-    const dailyRate = apy / 365 / 100;
+    // Convert APY to daily rate for compound interest
+    const dailyRate = Math.pow(1 + apy / 100, 1 / 365) - 1;
     
-    // Calculate gross returns (before commission)
-    const grossReturns = amount * (1 + dailyRate * days);
+    // Calculate gross returns with compound interest
+    const grossReturns = amount * Math.pow(1 + dailyRate, days);
     const grossEarnings = grossReturns - amount;
     
     // Calculate commission
@@ -109,24 +109,21 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       const stakeAccountInfos = await connection.getParsedProgramAccounts(
         StakeProgram.programId,
         {
-          filters: [
-            {
-              memcmp: {
-                offset: 12, // Authorized staker offset
-                bytes: publicKey.toBase58(),
-              },
-            },
-          ],
+          commitment: 'confirmed'
         }
       );
 
       let totalStaked = 0;
       const validatorStakeAccounts: PublicKey[] = [];
 
+      // Filter accounts where user is the authorized staker
       for (const account of stakeAccountInfos) {
         const data = account.account.data as any;
-        if (data.parsed?.info?.stake?.delegation?.voter === validatorVoteAccount) {
-          totalStaked += data.parsed.info.stake.delegation.stake / LAMPORTS_PER_SOL;
+        if (data.parsed?.type === 'delegated' && 
+            data.parsed?.info?.meta?.authorized?.staker === publicKey.toBase58() &&
+            data.parsed?.info?.stake?.delegation?.voter === validatorVoteAccount) {
+          const stakeAmount = Number(data.parsed.info.stake.delegation.stake || 0);
+          totalStaked += stakeAmount / LAMPORTS_PER_SOL;
           validatorStakeAccounts.push(account.pubkey);
         }
       }
@@ -166,19 +163,32 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     setSuccess('');
 
     try {
+      // Verify validator is active
+      const voteAccounts = await connection.getVoteAccounts();
+      const isValidValidator = voteAccounts.current.some(v => v.votePubkey === validatorVoteAccount) ||
+                              voteAccounts.delinquent.some(v => v.votePubkey === validatorVoteAccount);
+      
+      if (!isValidValidator) {
+        throw new Error('Invalid or inactive validator');
+      }
+
       // Create a new stake account keypair
       const stakeAccount = web3.Keypair.generate();
 
-      const lamports = amount * LAMPORTS_PER_SOL;
+      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+      
+      // Get minimum rent exemption for stake account
+      const rentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
+      const totalLamports = lamports + rentExemption;
 
       // Create transaction
       const transaction = new Transaction();
 
-      // Create and initialize stake account
+      // Create and initialize stake account with rent exemption
       const createAccountInstruction = SystemProgram.createAccount({
         fromPubkey: publicKey,
         newAccountPubkey: stakeAccount.publicKey,
-        lamports,
+        lamports: totalLamports,
         space: StakeProgram.space,
         programId: StakeProgram.programId,
       });
@@ -208,10 +218,16 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // Send transaction
       const signature = await sendTransaction(transaction, connection);
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      // Wait for confirmation with timeout
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+      }, 'confirmed');
 
-      setSuccess(`Successfully staked ${amount} SOL to ${validatorName}`);
+      const actualStakedAmount = lamports / LAMPORTS_PER_SOL;
+      setSuccess(`Successfully staked ${actualStakedAmount.toFixed(4)} SOL to ${validatorName}`);
       setShowStakeModal(false);
       setStakeAmount('');
 
@@ -278,8 +294,13 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // Send transaction
       const signature = await sendTransaction(transaction, connection);
       
-      // Wait for confirmation
-      await connection.confirmTransaction(signature, 'confirmed');
+      // Wait for confirmation with timeout
+      const latestBlockhash = await connection.getLatestBlockhash();
+      await connection.confirmTransaction({
+        signature,
+        blockhash: latestBlockhash.blockhash,
+        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+      }, 'confirmed');
 
       setSuccess(`Successfully initiated unstaking. Funds will be available after cooldown period.`);
       setShowUnstakeModal(false);
@@ -296,13 +317,24 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     }
   };
 
+  // Fetch all balances together
+  const fetchAllBalances = async () => {
+    if (!connected || !publicKey) return;
+    
+    try {
+      await Promise.all([
+        fetchSvmaiBalance(),
+        fetchSolBalance(),
+        fetchStakedAmount()
+      ]);
+    } catch (error) {
+      console.error('Error fetching balances:', error);
+    }
+  };
+
   // Fetch balances on mount and wallet change
   useEffect(() => {
-    if (connected && publicKey) {
-      fetchSvmaiBalance();
-      fetchSolBalance();
-      fetchStakedAmount();
-    }
+    fetchAllBalances();
   }, [connected, publicKey]);
 
   // Clear messages after 5 seconds

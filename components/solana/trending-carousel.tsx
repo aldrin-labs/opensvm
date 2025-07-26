@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRight } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
-import { createBurnInstruction, getAssociatedTokenAddress, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -58,7 +58,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       
       const accountInfo = await connection.getTokenAccountBalance(tokenAccount);
       if (accountInfo.value) {
-        setUserSvmaiBalance(Number(accountInfo.value.amount) / Math.pow(10, accountInfo.value.decimals));
+        // Use consistent decimals from config
+        setUserSvmaiBalance(Number(accountInfo.value.amount) / Math.pow(10, TOKEN_DECIMALS.SVMAI));
       } else {
         setUserSvmaiBalance(0);
       }
@@ -86,11 +87,25 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       publicKey
     );
 
+    // Check if token account exists
+    const tokenAccountInfo = await connection.getAccountInfo(tokenAccount);
+    
+    const transaction = new Transaction();
+    
+    // Create token account if it doesn't exist
+    if (!tokenAccountInfo) {
+      const createATAInstruction = createAssociatedTokenAccountInstruction(
+        publicKey, // payer
+        tokenAccount, // ata
+        publicKey, // owner
+        TOKEN_MINTS.SVMAI // mint
+      );
+      transaction.add(createATAInstruction);
+    }
+
     const decimals = TOKEN_DECIMALS.SVMAI;
     // Use BigInt to handle large numbers accurately
     const burnAmountLamports = BigInt(Math.floor(amount * Math.pow(10, decimals)));
-
-    const transaction = new Transaction();
     
     const burnInstruction = createBurnInstruction(
       tokenAccount,
