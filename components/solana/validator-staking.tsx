@@ -6,18 +6,19 @@ import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, L
 import * as web3 from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_DECIMALS } from '@/lib/config/tokens';
-import { Zap, TrendingDown, Lock, AlertCircle, Loader2, CheckCircle } from 'lucide-react';
+import { Zap, TrendingDown, Lock, AlertCircle, Loader2, CheckCircle, Calculator } from 'lucide-react';
 
 interface ValidatorStakingProps {
   validatorVoteAccount: string;
   validatorName: string;
   commission?: number;
+  apy?: number;
 }
 
 const REQUIRED_SVMAI_BALANCE = 100000; // 100k SVMAI requirement
 const MIN_STAKE_AMOUNT = 0.1; // Minimum 0.1 SOL to stake
 
-export function ValidatorStaking({ validatorVoteAccount, validatorName, commission = 0 }: ValidatorStakingProps) {
+export function ValidatorStaking({ validatorVoteAccount, validatorName, commission = 0, apy = 7.5 }: ValidatorStakingProps) {
   const { publicKey, connected, sendTransaction } = useWallet();
   const [userSvmaiBalance, setUserSvmaiBalance] = useState<number>(0);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
@@ -36,6 +37,31 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
   // Check if user meets SVMAI requirement
   const meetsRequirement = userSvmaiBalance >= REQUIRED_SVMAI_BALANCE;
+
+  // Calculate expected returns
+  const calculateExpectedReturns = (amount: number, days: number): { gross: number; net: number; earnings: number } => {
+    if (!amount || amount <= 0) return { gross: 0, net: 0, earnings: 0 };
+    
+    // Convert APY to daily rate
+    const dailyRate = apy / 365 / 100;
+    
+    // Calculate gross returns (before commission)
+    const grossReturns = amount * (1 + dailyRate * days);
+    const grossEarnings = grossReturns - amount;
+    
+    // Calculate commission
+    const commissionAmount = grossEarnings * (commission / 100);
+    
+    // Calculate net returns (after commission)
+    const netEarnings = grossEarnings - commissionAmount;
+    const netReturns = amount + netEarnings;
+    
+    return {
+      gross: grossReturns,
+      net: netReturns,
+      earnings: netEarnings
+    };
+  };
 
   // Fetch user's SVMAI balance
   const fetchSvmaiBalance = async () => {
@@ -389,6 +415,57 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
                 Minimum: {MIN_STAKE_AMOUNT} SOL
               </p>
             </div>
+
+            {/* Expected Returns */}
+            {stakeAmount && parseFloat(stakeAmount) > 0 && (
+              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 transition-all duration-300">
+                <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2 flex items-center">
+                  <Calculator className="h-4 w-4 mr-1.5" />
+                  Expected Returns
+                </h4>
+                <div className="flex justify-between text-xs mb-2 pb-2 border-b border-green-200 dark:border-green-800">
+                  <span className="text-green-700 dark:text-green-300">Effective APY:</span>
+                  <span className="font-medium text-green-900 dark:text-green-100">
+                    {(apy * (1 - commission / 100)).toFixed(2)}% (after {commission}% commission)
+                  </span>
+                </div>
+                <div className="space-y-1.5">
+                  {[
+                    { days: 7, label: '7 days' },
+                    { days: 30, label: '30 days' },
+                    { days: 90, label: '90 days' },
+                    { days: 180, label: '180 days' },
+                    { days: 365, label: '1 year' }
+                  ].map(({ days, label }) => {
+                    const returns = calculateExpectedReturns(parseFloat(stakeAmount), days);
+                    return (
+                      <div key={days} className="flex justify-between text-xs">
+                        <span className="text-green-700 dark:text-green-300">{label}:</span>
+                        <div className="text-right">
+                          <span className="font-medium text-green-900 dark:text-green-100">
+                            +{returns.earnings.toFixed(4)} SOL
+                          </span>
+                          <span className="text-green-600 dark:text-green-400 ml-1">
+                            ({((returns.earnings / parseFloat(stakeAmount)) * 100).toFixed(2)}%)
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800">
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    * Estimates based on current APY of {apy}%
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    * Actual returns may vary based on network performance
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    * Commission of {commission}% is deducted from rewards
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Important Info */}
             <div className="bg-muted/50 rounded-lg p-3 mb-4">

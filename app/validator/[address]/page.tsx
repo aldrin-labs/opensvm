@@ -180,6 +180,7 @@ export default function ValidatorProfilePage() {
             validatorVoteAccount={validatorData.voteAccount}
             validatorName={validatorData.name}
             commission={validatorData.commission}
+            apy={validatorData.apy}
           />
         </div>
       </div>
