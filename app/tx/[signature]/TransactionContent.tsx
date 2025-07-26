@@ -19,6 +19,8 @@ const AITransactionExplanation = dynamic(
   () => import('@/components/AITransactionExplanation'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
+// Temporarily commented out to debug clientReferenceManifest issue
+/*
 const TransactionFailureAnalysisWrapper = dynamic(
   () => import('@/components/TransactionFailureAnalysis').then(mod => {
     const TransactionFailureAnalysisComponent = mod.default;
@@ -39,6 +41,7 @@ const TransactionFailureAnalysisWrapper = dynamic(
   }),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
+*/
 const RelatedTransactionsDisplay = dynamic(
   () => import('@/components/RelatedTransactionsDisplay'),
   { loading: () => <LoadingSpinner />, ssr: false }
@@ -47,6 +50,7 @@ const TransactionMetricsDisplay = dynamic(
   () => import('@/components/TransactionMetricsDisplay'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
+// Using simple version for debugging clientReferenceManifest issue  
 import TransactionGraph from '@/components/TransactionGraph';
 import { useTransactionFailureAnalysis } from '@/hooks/useTransactionFailureAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';

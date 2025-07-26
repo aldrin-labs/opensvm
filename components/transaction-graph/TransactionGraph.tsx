@@ -21,8 +21,8 @@ import {
   useGPUForceGraph,
   useCloudView,
   useLayoutManager,
-  useGraphInitialization,
-  useNavigationHistory
+  // useGraphInitialization, // Temporarily disabled for debugging
+  // useNavigationHistory // Temporarily disabled for debugging
 } from './hooks';
 
 // Constants
@@ -97,6 +97,8 @@ export default function TransactionGraph({
     debouncedLayout: _debouncedLayout,
     cleanupLayout
   } = useLayoutManager();
+  // Graph initialization hook - temporarily disabled for debugging
+  /*
   const {
     cyRef,
     isInitialized,
@@ -105,6 +107,14 @@ export default function TransactionGraph({
     cleanupGraph,
     isGraphReady
   } = useGraphInitialization();
+  */
+
+  // Temporary stub values
+  const cyRef = useRef(null);
+  const isInitialized = false;
+  const initializeGraph = () => { };
+  const cleanupGraph = () => { };
+  const isGraphReady = true;
 
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -118,7 +128,8 @@ export default function TransactionGraph({
   const [expandedNodesCount, setExpandedNodesCount] = useState<number>(0);
   const [totalAccountsToLoad, setTotalAccountsToLoad] = useState<number>(0);
 
-  // Navigation history
+  // Navigation history - temporarily disabled for debugging
+  /*
   const {
     navigationHistory,
     currentHistoryIndex,
@@ -147,6 +158,14 @@ export default function TransactionGraph({
       }
     }
   });
+  */
+
+  // Temporary stub values
+  const canGoBack = false;
+  const canGoForward = false;
+  const navigateBack = () => { };
+  const navigateForward = () => { };
+  const addToHistory = () => { };
 
   // Enhanced layout function
   const runLayoutWithProgress = async (layoutType: string = 'dagre', forceRun: boolean = false) => {
@@ -325,7 +344,7 @@ export default function TransactionGraph({
         // Wrap onTransactionSelect to add to navigation history
         const wrappedOnTransactionSelect = (signature: string) => {
           // Use callback that gets fresh value to avoid stale closure
-          addToHistory(signature); // addToHistory already handles navigation check internally
+          // addToHistory(signature); // Temporarily disabled for debugging
           onTransactionSelect(signature);
         };
 

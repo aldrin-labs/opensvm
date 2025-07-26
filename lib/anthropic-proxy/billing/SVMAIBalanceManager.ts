@@ -1,4 +1,4 @@
-import { UserBalance, DepositTransaction } from '../types/ProxyTypes';
+import { UserBalance } from '../types/ProxyTypes';
 import { BalanceStorage } from '../storage/BalanceStorage';
 
 /**
@@ -277,3 +277,4 @@ export class SVMAIBalanceManager {
     }
   }
 }
+
