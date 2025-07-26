@@ -34,7 +34,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   const [tokenFilter, setTokenFilter] = useState<string>('all');
   const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // New state for caching and Solana filtering
   const [useCachedData, setUseCachedData] = useState(false);
   const [cachedTransfers, setCachedTransfers] = useState<TransferEntry[]>([]);
@@ -51,9 +51,9 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
             transferType: transferType
           })
         ]);
-        
+
         setCachedTransfers(cached.transfers);
-        
+
         // Use cached data if available
         if (cached.transfers.length > 0) {
           setUseCachedData(true);
@@ -62,7 +62,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
         console.error('Error loading cached data:', error);
       }
     };
-    
+
     loadCachedData();
   }, [address, transferType, solanaOnlyFilter]);
 
@@ -70,7 +70,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   useEffect(() => {
     const cacheNewTransfers = async () => {
       if (rawTransfers.length === 0 || cachingInProgress) return;
-      
+
       setCachingInProgress(true);
       try {
         const transferEntries: TransferEntry[] = rawTransfers.map(transfer => ({
@@ -91,18 +91,18 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           cached: true,
           lastUpdated: Date.now()
         }));
-        
+
         // Store each transfer
         for (const entry of transferEntries) {
           await storeTransferEntry(entry);
         }
-        
+
         // Mark as cached
         const signatures = transferEntries.map(t => t.signature).filter(Boolean);
         if (signatures.length > 0) {
           await markTransfersCached(signatures, address);
         }
-        
+
         // Update cached transfers state
         setCachedTransfers(prev => {
           const newTransfers = [...transferEntries, ...prev];
@@ -116,23 +116,23 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           }, [] as TransferEntry[]);
           return unique.sort((a, b) => b.timestamp - a.timestamp);
         });
-        
+
       } catch (error) {
         console.error('Error caching transfers:', error);
       } finally {
         setCachingInProgress(false);
       }
     };
-    
+
     cacheNewTransfers();
   }, [rawTransfers, address, cachingInProgress]);
 
   // Handle client-side navigation to account/transaction pages
   const handleAddressClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetAddress: string) => {
     if (!targetAddress) return;
-    
+
     e.preventDefault();
-    
+
     // Use router.push with scroll: false to prevent page reload
     router.push(`/account/${targetAddress}?tab=transactions`, {
       scroll: false
@@ -142,19 +142,19 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   // Handle transaction hash clicks
   const handleTransactionClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, signature: string) => {
     if (!signature) return;
-    
+
     e.preventDefault();
-    
+
     // Navigate to transaction page
-    router.push(`/tx/${signature}`, { 
-      scroll: false 
+    router.push(`/tx/${signature}`, {
+      scroll: false
     });
   }, [router]);
 
   // Map API data to the expected Transfer format, with option to use cached data
   const transfers = useMemo(() => {
     const sourceData = useCachedData ? cachedTransfers : rawTransfers;
-    
+
     return sourceData.map(item => {
       // Handle both TransferEntry and raw transfer formats
       if ('walletAddress' in item) {
@@ -202,7 +202,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   const handleRowSelect = useCallback((rowId: string) => {
     setSelectedRowId(prevId => prevId === rowId ? null : rowId);
   }, []);
-  
+
   // Handle row pinning
   const handlePinRow = useCallback((rowId: string) => {
     setPinnedRowIds(prevIds => {
@@ -224,7 +224,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
       setSortDirection('desc');
       return;
     }
-    
+
     setSortField(field as keyof Transfer);
     setSortDirection(direction);
   };
@@ -240,7 +240,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
         if (isNaN(date.getTime())) {
           return <div className="whitespace-nowrap" data-test="timestamp">-</div>;
         }
-        
+
         return (
           <div className="whitespace-nowrap" data-test="timestamp">
             <time dateTime={date.toISOString()}>{date.toLocaleDateString() || '-'} {date.toLocaleTimeString() || '-'}</time>
@@ -301,7 +301,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
               data-address={row.from || ''}
             >
               {row.from}
-            </Link> 
+            </Link>
           </div>
         </Tooltip>
       )
@@ -423,8 +423,8 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           const bDate = new Date(bValue).getTime();
           return sortDirection === 'asc' ? aDate - bDate : bDate - aDate;
         }
-        return sortDirection === 'asc' 
-          ? aValue.localeCompare(bValue) 
+        return sortDirection === 'asc'
+          ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
 
@@ -434,7 +434,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
 
       return 0;
     });
-    
+
     return sorted;
   }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transferType, solanaOnlyFilter]);
 
@@ -455,7 +455,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   // Pin button UI
   const renderPinButton = useCallback((rowId: string) => {
     const isPinned = pinnedRowIds.has(rowId);
-    
+
     return (
       <Button
         variant="ghost"
@@ -480,8 +480,8 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold" id="transfers-heading">
           {transferType === 'SOL' ? 'SOL Transfers' :
-           transferType === 'TOKEN' ? 'Token Transfers' :
-           'All Transfers'}
+            transferType === 'TOKEN' ? 'Token Transfers' :
+              'All Transfers'}
           {totalCount !== undefined && (
             <span className="ml-2 text-sm text-muted-foreground">
               ({sortedTransfers.length.toLocaleString()} of {totalCount.toLocaleString()})
@@ -570,11 +570,10 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           <div className="flex items-center gap-2">
             <button
               onClick={() => setSolanaOnlyFilter(!solanaOnlyFilter)}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                solanaOnlyFilter
-                  ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+              className={`px-3 py-1 text-sm rounded-lg transition-colors ${solanaOnlyFilter
+                ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                }`}
             >
               Solana Only
             </button>
@@ -610,7 +609,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
         </div>
       )}
 
-      <div className="border border-border rounded-lg overflow-hidden h-[500px]" role="region" aria-labelledby="transfers-heading" aria-live="polite">
+      <div className="border border-border rounded-lg overflow-hidden h-[600px] bg-card/50" role="region" aria-labelledby="transfers-heading" aria-live="polite">
         <VTableWrapper
           columns={columns}
           data={sortedTransfers}
@@ -621,20 +620,22 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           onRowSelect={handleRowSelect}
           renderRowAction={renderPinButton}
           pinnedRowIds={pinnedRowIds}
+          onLoadMore={loadMore}
+          infiniteScroll={true}
+          virtualScrolling={true}
+          maxRows={1000000}
+          initialLoadSize={10000}
+          scrollThreshold={300}
+          responsive={true}
           aria-busy={loading ? 'true' : 'false'}
         />
       </div>
 
-      {hasMore && (
-        <div className="flex justify-center mt-4">
-          <Button
-            onClick={loadMore}
-            disabled={loading}
-            variant="outline"
-            className="w-full md:w-auto hover:bg-primary/10"
-          >
-            {loading ? 'Loading...' : 'Load More'}
-          </Button>
+      {/* Load More button hidden when using infinite scroll in VTable */}
+
+      {!hasMore && sortedTransfers.length > 0 && (
+        <div className="text-center mt-4 text-sm text-muted-foreground">
+          All {sortedTransfers.length.toLocaleString()} transfers loaded
         </div>
       )}
     </div>

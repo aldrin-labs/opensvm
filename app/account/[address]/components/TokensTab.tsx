@@ -58,7 +58,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       // Mock additional data - in real app this would come from token registry and APIs
       const mockPrice = Math.random() * 100;
       const mockChange = (Math.random() - 0.5) * 20;
-      
+
       return {
         mint: token.mint,
         balance: token.balance,
@@ -105,7 +105,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
@@ -258,7 +258,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         <h2 className="text-xl font-semibold text-foreground">
           Tokens ({filteredTokens.length})
         </h2>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowZeroBalance(!showZeroBalance)}
@@ -267,7 +267,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
             {showZeroBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showZeroBalance ? 'Hide Zero Balance' : 'Show Zero Balance'}
           </button>
-          
+
           <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <ArrowUpDown className="w-4 h-4" />
             Sorted by {sortField} ({sortDirection})
@@ -275,13 +275,18 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         </div>
       </div>
 
-      <div className="w-full border border-border rounded-lg h-[600px] bg-card/50 tokens-vtable-container overflow-hidden">
+      <div className="w-full border border-border rounded-lg h-[700px] bg-card/50 tokens-vtable-container overflow-hidden">
         <VTableWrapper
           columns={fluidColumns}
           data={sortedTokens}
           rowKey={getRowId}
           loading={false}
           onSort={handleSort}
+          virtualScrolling={true}
+          maxRows={100000}
+          initialLoadSize={5000}
+          responsive={true}
+          minColumnWidth={120}
         />
       </div>
 
