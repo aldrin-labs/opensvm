@@ -1,11 +1,11 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { 
+import {
   queueAccountFetch as queueAccountFetchUtil,
-  processAccountFetchQueue as processAccountFetchQueueUtil,
-  debugLog
-} from '../';
+  processAccountFetchQueue as processAccountFetchQueueUtil
+} from '../data-fetching';
+import { debugLog } from '../utils';
 
 interface UseAccountFetchingProps {
   fetchAndProcessAccount: (address: string, depth: number, parentSignature: string | null, signal: AbortSignal) => Promise<void>;
@@ -51,12 +51,12 @@ export function useAccountFetching({
   // Queue an account for fetching
   const queueAccountFetch = useCallback((address: string, depth = 0, parentSignature: string | null = null) => {
     debugLog(`📝 [QUEUE] Attempting to queue account: ${address}, depth: ${depth}, parent: ${parentSignature}`);
-    
+
     if (!address || loadedAccountsRef.current.has(address) || pendingFetchesRef.current.has(`${address}:${depth}`)) {
       debugLog(`⏭️ [QUEUE] Skipping ${address}: already loaded or pending`);
       return;
     }
-    
+
     debugLog(`✅ [QUEUE] Queuing account ${address} for processing`);
     queueAccountFetchUtil(
       address,
@@ -69,7 +69,7 @@ export function useAccountFetching({
       processAccountFetchQueue,
       isProcessingQueueRef
     );
-    
+
     debugLog(`📊 [QUEUE] Queue status - Length: ${fetchQueueRef.current.length}, Total accounts: ${totalAccounts}`);
   }, [processAccountFetchQueue, totalAccounts, setTotalAccounts]);
 
