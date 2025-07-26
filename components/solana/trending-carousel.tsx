@@ -62,9 +62,18 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       } else {
         setUserSvmaiBalance(0);
       }
-    } catch (error) {
-      console.error('Error fetching SVMAI balance:', error);
-      setUserSvmaiBalance(0);
+    } catch (error: any) {
+      // Check if error is due to missing token account
+      if (error.message?.includes('could not find account') || 
+          error.message?.includes('Invalid param') ||
+          error.code === -32602) {
+        // User doesn't have a token account for SVMAI
+        console.log('User does not have SVMAI token account');
+        setUserSvmaiBalance(0);
+      } else {
+        console.error('Error fetching SVMAI balance:', error);
+        setUserSvmaiBalance(0);
+      }
     }
   };
 
@@ -78,7 +87,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
     );
 
     const decimals = TOKEN_DECIMALS.SVMAI;
-    const burnAmountLamports = amount * Math.pow(10, decimals);
+    // Use BigInt to handle large numbers accurately
+    const burnAmountLamports = BigInt(Math.floor(amount * Math.pow(10, decimals)));
 
     const transaction = new Transaction();
     
