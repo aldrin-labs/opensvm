@@ -132,7 +132,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center">
+          <div className="w-8 h-8 rounded-full bg-muted/80 border border-border flex items-center justify-center">
             <span className="text-xs font-bold text-foreground">{row.symbol?.slice(0, 2) || 'T'}</span>
           </div>
           <div>
@@ -185,7 +185,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         const change = row.change24h || 0;
         const isPositive = change >= 0;
         return (
-          <div className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+          <div className={`flex items-center gap-1 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="font-mono">{change.toFixed(2)}%</span>
           </div>
@@ -253,7 +253,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
   const getRowId = useCallback((row: TokenInfo) => row.mint, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-background text-foreground">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-semibold text-foreground">
           Tokens ({filteredTokens.length})
@@ -262,7 +262,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowZeroBalance(!showZeroBalance)}
-            className="flex items-center gap-2 px-3 py-1 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors text-sm"
+            className="flex items-center gap-2 px-3 py-1 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors text-sm"
           >
             {showZeroBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showZeroBalance ? 'Hide Zero Balance' : 'Show Zero Balance'}
@@ -275,7 +275,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         </div>
       </div>
 
-      <div className="w-full border border-border rounded-lg h-[600px]">
+      <div className="w-full border border-border rounded-lg h-[600px] bg-card/50 tokens-vtable-container overflow-hidden">
         <VTableWrapper
           columns={fluidColumns}
           data={sortedTokens}

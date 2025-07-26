@@ -63,6 +63,15 @@ function getCSSVariableAsHex(variable: string): string {
     }
   }
   
+  // If it's space-separated values (like "240 100 20"), assume HSL without %
+  if (value.includes(' ') && !value.includes('#') && !value.includes('rgb')) {
+    const parts = value.split(/\s+/);
+    if (parts.length >= 3) {
+      const hslString = `hsl(${parts[0]}, ${parts[1]}%, ${parts[2]}%)`;
+      return hslToHex(hslString);
+    }
+  }
+  
   // If it's already hex or other format, return as is
   return value.startsWith('#') ? value : '#000000';
 }
@@ -76,9 +85,12 @@ function createVTableThemeFromCSS(): any {
   const border = getCSSVariableAsHex('--border');
   // const card = getCSSVariableAsHex('--card'); // unused
 
+  console.log('VTable theme colors:', { background, foreground, muted, border });
+
   return {
     defaultStyle: {
-      borderLineWidth: 1
+      borderLineWidth: 1,
+      bgColor: background // Force default background
     },
     headerStyle: {
       bgColor: muted,
@@ -107,11 +119,21 @@ function createVTableThemeFromCSS(): any {
       fontSize: 14,
       fontFamily: 'ui-sans-serif, system-ui, sans-serif',
       bgColor: (args: any) => {
+        // Force alternating row colors to use theme background
         if (args.row % 2 === 1) {
           return muted;
         }
         return background;
       }
+    },
+    // Add containerStyle to force overall background
+    containerStyle: {
+      bgColor: background
+    },
+    // Force frame styles
+    frameStyle: {
+      bgColor: background,
+      borderColor: border
     }
   };
 }
@@ -258,6 +280,8 @@ export function VTableWrapper({
             defaultRowHeight: 48,
             defaultHeaderRowHeight: 48,
             overscrollBehavior: 'none',
+            // Force background color in the table configuration
+            bgColor: getCSSVariableAsHex('--background'),
             // Removing explicit width to allow responsive auto-sizing
             // width: containerRef.current.clientWidth,
             columns: colsConfig.map(col => ({
@@ -372,6 +396,75 @@ export function VTableWrapper({
           // Casting to any to satisfy ListTableConstructorOptions typings
           const table = new ListTable(tableConfig as any);
 
+          // Force background color after table creation
+          setTimeout(() => {
+            if (containerRef.current) {
+              const canvasElements = containerRef.current.querySelectorAll('canvas');
+              const bgColor = getCSSVariableAsHex('--background');
+              console.log('Forcing VTable background color to:', bgColor);
+              
+              canvasElements.forEach(canvas => {
+                canvas.style.background = bgColor;
+                canvas.style.backgroundColor = bgColor;
+                // Also set it as an attribute to prevent VTable from overriding
+                canvas.setAttribute('data-bg-color', bgColor);
+              });
+              
+              // Also set container background
+              const vtableElement = containerRef.current.querySelector('.vtable');
+              if (vtableElement) {
+                (vtableElement as HTMLElement).style.background = bgColor;
+                (vtableElement as HTMLElement).style.backgroundColor = bgColor;
+              }
+
+              // Set up a MutationObserver to watch for canvas changes
+              const observer = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                  if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                      if (node.nodeType === Node.ELEMENT_NODE) {
+                        const element = node as Element;
+                        if (element.tagName === 'CANVAS') {
+                          (element as HTMLCanvasElement).style.background = bgColor;
+                          (element as HTMLCanvasElement).style.backgroundColor = bgColor;
+                        }
+                        // Also check for canvas children
+                        const canvases = element.querySelectorAll('canvas');
+                        canvases.forEach(canvas => {
+                          canvas.style.background = bgColor;
+                          canvas.style.backgroundColor = bgColor;
+                        });
+                      }
+                    });
+                  }
+                });
+              });
+
+              observer.observe(containerRef.current, {
+                childList: true,
+                subtree: true
+              });
+
+              // Clean up observer when component unmounts
+              return () => observer.disconnect();
+            }
+          }, 50);
+
+          // Also set up a periodic check to ensure background stays correct
+          const intervalId = setInterval(() => {
+            if (containerRef.current) {
+              const canvasElements = containerRef.current.querySelectorAll('canvas');
+              const bgColor = getCSSVariableAsHex('--background');
+              canvasElements.forEach(canvas => {
+                if (canvas.style.backgroundColor !== bgColor) {
+                  console.log('VTable background was reset, forcing it back to:', bgColor);
+                  canvas.style.background = bgColor;
+                  canvas.style.backgroundColor = bgColor;
+                }
+              });
+            }
+          }, 500); // Check every 500ms
+
           // Add click handler for copy on single click
           (table as any).on('click_cell', (args: any) => {
             try {
@@ -452,6 +545,88 @@ export function VTableWrapper({
           }
 
           tableRef.current = table;
+
+          // Store cleanup functions
+          let bgCheckInterval: NodeJS.Timeout | null = null;
+          let bgObserver: MutationObserver | null = null;
+
+          // Force background color after table creation
+          setTimeout(() => {
+            if (containerRef.current) {
+              const canvasElements = containerRef.current.querySelectorAll('canvas');
+              const bgColor = getCSSVariableAsHex('--background');
+              console.log('Forcing VTable background color to:', bgColor);
+              
+              canvasElements.forEach(canvas => {
+                canvas.style.background = bgColor;
+                canvas.style.backgroundColor = bgColor;
+                // Also set it as an attribute to prevent VTable from overriding
+                canvas.setAttribute('data-bg-color', bgColor);
+              });
+              
+              // Also set container background
+              const vtableElement = containerRef.current.querySelector('.vtable');
+              if (vtableElement) {
+                (vtableElement as HTMLElement).style.background = bgColor;
+                (vtableElement as HTMLElement).style.backgroundColor = bgColor;
+              }
+
+              // Set up a MutationObserver to watch for canvas changes
+              bgObserver = new MutationObserver((mutations) => {
+                mutations.forEach((mutation) => {
+                  if (mutation.type === 'childList') {
+                    mutation.addedNodes.forEach((node) => {
+                      if (node.nodeType === Node.ELEMENT_NODE) {
+                        const element = node as Element;
+                        if (element.tagName === 'CANVAS') {
+                          (element as HTMLCanvasElement).style.background = bgColor;
+                          (element as HTMLCanvasElement).style.backgroundColor = bgColor;
+                        }
+                        // Also check for canvas children
+                        const canvases = element.querySelectorAll('canvas');
+                        canvases.forEach(canvas => {
+                          canvas.style.background = bgColor;
+                          canvas.style.backgroundColor = bgColor;
+                        });
+                      }
+                    });
+                  }
+                });
+              });
+
+              bgObserver.observe(containerRef.current, {
+                childList: true,
+                subtree: true
+              });
+            }
+          }, 50);
+
+          // Also set up a periodic check to ensure background stays correct
+          bgCheckInterval = setInterval(() => {
+            if (containerRef.current) {
+              const canvasElements = containerRef.current.querySelectorAll('canvas');
+              const bgColor = getCSSVariableAsHex('--background');
+              canvasElements.forEach(canvas => {
+                if (canvas.style.backgroundColor !== bgColor) {
+                  console.log('VTable background was reset, forcing it back to:', bgColor);
+                  canvas.style.background = bgColor;
+                  canvas.style.backgroundColor = bgColor;
+                }
+              });
+            }
+          }, 500); // Check every 500ms
+
+          // Store cleanup functions on the table ref for later cleanup
+          (table as any).__cleanupBgFunctions = () => {
+            if (bgCheckInterval) {
+              clearInterval(bgCheckInterval);
+              bgCheckInterval = null;
+            }
+            if (bgObserver) {
+              bgObserver.disconnect();
+              bgObserver = null;
+            }
+          };
         });
       } catch (err) {
         console.error('Failed to initialize table:', err);
@@ -469,6 +644,10 @@ export function VTableWrapper({
       window.removeEventListener('resize', initTable);
       if (tableRef.current) {
         try {
+          // Clean up background forcing functions
+          if ((tableRef.current as any).__cleanupBgFunctions) {
+            (tableRef.current as any).__cleanupBgFunctions();
+          }
           tableRef.current.dispose();
           tableRef.current = null;
         } catch (err) {

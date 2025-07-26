@@ -65,3 +65,77 @@
   color: var(--muted-foreground);
   font-size: 0.9em;
 }
+
+/* Force VTable to respect theme colors - override any hardcoded backgrounds */
+.vtable-container .vtable {
+  background: var(--background) !important;
+}
+
+.vtable-container .vtable canvas {
+  background: var(--background) !important;
+}
+
+/* Override VTable's internal styling to respect theme */
+.vtable-container [role="grid"],
+.vtable-container [role="gridcell"],
+.vtable-container [role="columnheader"],
+.vtable-container [role="row"] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Ensure borders respect theme */
+.vtable-container .vtable * {
+  border-color: var(--border) !important;
+}
+
+/* Special handling for tokens tab */
+.tokens-vtable-container .vtable,
+.tokens-vtable-container .vtable canvas {
+  background: hsl(var(--card)) !important;
+}
+
+/* More aggressive overrides for all VTable elements */
+.vtable-container canvas,
+.vtable-container .vtable-body,
+.vtable-container .vtable-header,
+.vtable-container .vtable-cell,
+.vtable-container div[style*="background"],
+.vtable-container div[style*="backgroundColor"] {
+  background: var(--background) !important;
+  background-color: var(--background) !important;
+}
+
+/* Cyberpunk theme specific overrides */
+[data-theme="cyberpunk"] .vtable-container .vtable,
+[data-theme="cyberpunk"] .vtable-container canvas,
+[data-theme="cyberpunk"] .tokens-vtable-container .vtable,
+[data-theme="cyberpunk"] .tokens-vtable-container canvas {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Override any inline styles that might be set by VTable */
+.vtable-container * {
+  background: inherit !important;
+}
+
+.vtable-container .vtable > * {
+  background: var(--background) !important;
+}
+
+/* Ultra-specific overrides for VTable canvas elements */
+.vtable-container canvas[style],
+.tokens-vtable-container canvas[style] {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Target any div elements within VTable that might have inline styles */
+.vtable-container div[style*="background"],
+.vtable-container div[style*="backgroundColor"],
+.tokens-vtable-container div[style*="background"],
+.tokens-vtable-container div[style*="backgroundColor"] {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}

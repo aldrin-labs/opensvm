@@ -1,4 +1,4 @@
 'use client';
-// Temporarily using stub to fix clientReferenceManifest issue
-export { default } from './TransactionGraphStub';
+// Using real TransactionGraph now that we fixed the build issues
+export { default } from './transaction-graph/TransactionGraph';
 
