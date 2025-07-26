@@ -1074,6 +1074,7 @@ export default function TransactionContent({ signature }: { signature: string })
                 </ErrorBoundaryWrapper>
               </TabsContent>
 
+              {/* Temporarily disabled - TransactionFailureAnalysisWrapper is commented out
               {!tx.success && (
                 <TabsContent value="failure" className="mt-0">
                   <ErrorBoundaryWrapper fallback={<div>Error loading failure analysis</div>}>
@@ -1083,6 +1084,7 @@ export default function TransactionContent({ signature }: { signature: string })
                   </ErrorBoundaryWrapper>
                 </TabsContent>
               )}
+              */}
             </CardContent>
           </Tabs>
         </Card>
