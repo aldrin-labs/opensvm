@@ -226,7 +226,7 @@ export async function GET(
             efficiency: metrics.computeEfficiency
           },
           performance: {
-            score: metrics.performanceScore,
+            score: metrics.performance.scalability.scalabilityScore,
             recommendations: metrics.recommendations
           }
         };

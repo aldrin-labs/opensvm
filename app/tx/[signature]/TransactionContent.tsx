@@ -1,7 +1,6 @@
 'use client';
 
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import dynamic from 'next/dynamic';
 import { useRouter, usePathname } from 'next/navigation';
 import { useRef, Suspense, useEffect, useState, useCallback, useTransition } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
@@ -10,15 +9,51 @@ import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper';
 import { formatNumber } from '@/lib/utils';
 import { ShareButton } from '@/components/ShareButton';
 import InstructionBreakdown from '@/components/InstructionBreakdown';
-import AccountChangesDisplay from '@/components/AccountChangesDisplay';
-import AITransactionExplanation from '@/components/AITransactionExplanation';
-import TransactionFailureAnalysis from '@/components/TransactionFailureAnalysis';
-import RelatedTransactionsDisplay from '@/components/RelatedTransactionsDisplay';
-import TransactionMetricsDisplay from '@/components/TransactionMetricsDisplay';
+// Dynamically load heavy analytics components to optimize initial load
+import dynamic from 'next/dynamic';
+const AccountChangesDisplay = dynamic(
+  () => import('@/components/AccountChangesDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const AITransactionExplanation = dynamic(
+  () => import('@/components/AITransactionExplanation'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const TransactionFailureAnalysisWrapper = dynamic(
+  () => import('@/components/TransactionFailureAnalysis').then(mod => {
+    const TransactionFailureAnalysisComponent = mod.default;
+    
+    // This wrapper component correctly uses the hook and passes props.
+    const Wrapper = ({ signature }: { signature: string }) => {
+      const { analysis, isLoading, retry } = useTransactionFailureAnalysis({ signature, autoAnalyze: true });
+      return (
+        <TransactionFailureAnalysisComponent
+          signature={signature}
+          analysis={analysis || undefined}
+          isLoading={isLoading}
+          onRetryAnalysis={retry}
+        />
+      );
+    };
+    return { default: Wrapper };
+  }),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const RelatedTransactionsDisplay = dynamic(
+  () => import('@/components/RelatedTransactionsDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const TransactionMetricsDisplay = dynamic(
+  () => import('@/components/TransactionMetricsDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+import TransactionGraph from '@/components/transaction-graph/TransactionGraph';
 import { useTransactionFailureAnalysis } from '@/hooks/useTransactionFailureAnalysis';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
 import { 
   Activity, 
   BarChart3, 
@@ -29,9 +64,7 @@ import {
   MessageSquare, 
   Network, 
   Settings,
-  TrendingUp,
   Users,
-  Zap
 } from 'lucide-react';
 
 // Dynamically import components with no SSR and proper loading states
@@ -66,17 +99,6 @@ const TransactionGPTAnalysis = dynamic(
   }),
   {
     loading: () => <LoadingSpinner />,
-    ssr: false
-  }
-);
-
-const TransactionGraph = dynamic(
-  () => import('@/components/transaction-graph/TransactionGraph').catch(err => {
-    console.error('Failed to load TransactionGraph:', err);
-    return () => <div>Error loading transaction graph</div>;
-  }),
-  {
-    loading: () => <div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>,
     ssr: false
   }
 );
@@ -545,15 +567,34 @@ function ErrorDisplay({ error, signature }: { error: Error; signature: string })
 
 // Community Notes component
 function CommunityNotes({ signature }: { signature: string }) {
+  const { isAuthenticated } = useAuthContext();
   const [notes, setNotes] = useState<any[]>([]);
   
-  // Mock notes for now - would be replaced with actual backend integration
   useEffect(() => {
-    setNotes([
-      { id: 1, text: "This transaction appears to be a token swap operation through Jupiter Exchange.", votes: 12, author: "0x1234...5678" },
-      { id: 2, text: "Executed during high network congestion period, explaining the higher than usual fees.", votes: 8, author: "0xabcd...ef01" }
-    ]);
-  }, [signature]);
+    // Only load notes for authenticated users
+    if (isAuthenticated) {
+      // In production, this would fetch from backend API
+      setNotes([]);
+    }
+  }, [signature, isAuthenticated]);
+  
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Community Notes</h2>
+        <div className="py-8 text-center">
+          <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-4">Connect wallet to be able to view and add community notes</p>
+          <Button variant="outline" onClick={() => {
+            // This would trigger wallet connection
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+          }}>
+            Connect Wallet
+          </Button>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
@@ -571,10 +612,11 @@ function CommunityNotes({ signature }: { signature: string }) {
             </div>
           ))
         ) : (
-          <div className="py-4 text-center text-muted-foreground">No community notes yet. Be the first to add one!</div>
+          <div className="py-4 text-center text-muted-foreground">
+            <MessageSquare className="mx-auto h-8 w-8 mb-2" />
+            <p>No community notes yet. Be the first to add one!</p>
+          </div>
         )}
-
-        {notes.length === 0 && <p className="text-muted-foreground">No community notes yet. Be the first to add one!</p>}
       </div>
     </div>
   );
@@ -612,22 +654,7 @@ function LoadingState({ signature }: { signature: string }) {
   );
 }
 
-// Transaction Failure Analysis Wrapper Component
-function TransactionFailureAnalysisWrapper({ signature }: { signature: string }) {
-  const { analysis, isLoading, error, retry } = useTransactionFailureAnalysis({
-    signature,
-    autoAnalyze: true
-  });
-
-  return (
-    <TransactionFailureAnalysis
-      signature={signature}
-      analysis={analysis}
-      isLoading={isLoading}
-      onRetryAnalysis={retry}
-    />
-  );
-}
+// Removed local TransactionFailureAnalysisWrapper function to resolve duplicate declaration error
 
 export default function TransactionContent({ signature }: { signature: string }) {
   const [tx, setTx] = useState<DetailedTransactionInfo | null>(null);
@@ -926,7 +953,6 @@ export default function TransactionContent({ signature }: { signature: string })
                 )}
               </TabsList>
             </CardHeader>
-
             <CardContent className="pt-0">
               <TabsContent value="overview" className="mt-0">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1039,7 +1065,6 @@ export default function TransactionContent({ signature }: { signature: string })
                   <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
                     <RelatedTransactionsDisplay 
                       transaction={tx}
-                      onTransactionClick={handleTransactionSelect}
                     />
                   </Suspense>
                 </ErrorBoundaryWrapper>

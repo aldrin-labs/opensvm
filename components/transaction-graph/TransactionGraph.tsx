@@ -1424,7 +1424,7 @@ function TransactionGraph({
         }
       };
     }
-  }, [useGPUGraph, updateGPUGraphData, logger]);
+  }, [useGPUGraph]);
 
   // Progress monitoring with force updates to prevent 0% stuck state
   useEffect(() => {

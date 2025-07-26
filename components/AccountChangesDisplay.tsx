@@ -2,16 +2,12 @@
 
 import React, { useState, useMemo, useRef } from 'react';
 import { 
-  FocusManager, 
-  ScreenReaderUtils, 
   useKeyboardNavigation, 
-  useAccessibility,
-  KEYBOARD_KEYS 
+  useAccessibility
 } from '@/lib/accessibility-utils';
 import { 
   useMobileDetection, 
-  useSwipeGestures,
-  MobileComponentUtils 
+  useSwipeGestures
 } from '@/lib/mobile-utils';
 import { 
   ChevronDownIcon, 
@@ -55,13 +51,15 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   const [showOnlyChanged, setShowOnlyChanged] = useState(true);
   const [selectedChangeType, setSelectedChangeType] = useState<'all' | 'sol' | 'token'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
+  const [analysis, setAnalysis] = useState<AccountChangesAnalysis | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
   // Accessibility hooks
-  const { highContrast, announceToScreenReader, isTouchDevice } = useAccessibility();
+  const { highContrast, announceToScreenReader } = useAccessibility();
   const containerRef = useRef<HTMLDivElement>(null);
   
   // Mobile detection
-  const { isMobile, isTablet, viewportSize } = useMobileDetection();
+  const { isMobile } = useMobileDetection();
   
   // Swipe gestures for mobile navigation
   useSwipeGestures(containerRef, {
@@ -86,9 +84,31 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
     roving: true
   });
 
-  // Analyze account changes
-  const analysis = useMemo(() => {
-    return accountChangesAnalyzer.analyzeTransaction(transaction);
+  // Load account changes analysis
+  React.useEffect(() => {
+    let isMounted = true;
+    
+    const loadAnalysis = async () => {
+      try {
+        setIsLoading(true);
+        const result = await accountChangesAnalyzer.analyzeTransaction(transaction);
+        if (isMounted) {
+          setAnalysis(result);
+        }
+      } catch (error) {
+        console.error('Failed to analyze transaction:', error);
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    
+    loadAnalysis();
+    
+    return () => {
+      isMounted = false;
+    };
   }, [transaction]);
 
   const accountChanges = useMemo(() => {
@@ -149,6 +169,26 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
         return <InfoIcon className="w-5 h-5 text-gray-500" />;
     }
   };
+
+  // Show loading state while analysis is being computed
+  if (isLoading || !analysis) {
+    return (
+      <div 
+        className={`bg-background rounded-lg border border-border ${className} ${highContrast ? 'high-contrast-mode' : ''}`}
+        role="region"
+        aria-labelledby="account-changes-heading"
+      >
+        <div className="p-6">
+          <div className="flex items-center space-x-3">
+            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+            <h2 className="text-xl font-semibold text-foreground">
+              Analyzing Account Changes...
+            </h2>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

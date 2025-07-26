@@ -21,7 +21,8 @@
     "test:e2e:ui": "playwright test --ui",
     "dev:test": "NODE_ENV=test next dev",
     "build:test": "NODE_ENV=test next build",
-    "postinstall": "node scripts/patch-bigint-buffer.js"
+    "postinstall": "node scripts/patch-bigint-buffer.js",
+    "fix-qdrant": "node scripts/fix-qdrant-cache.js"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.30.1",

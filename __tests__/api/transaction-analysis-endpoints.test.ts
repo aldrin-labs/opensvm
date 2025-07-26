@@ -9,4 +9,391 @@ import { POST as batchPOST } from '@/app/api/transaction/batch/route';
 // Mock dependencies
 jest.mock('@/lib/solana', () => ({
   getTransactionDetails: jest.fn()
-}));\n\njest.mock('@/lib/instruction-parser-service', () => ({\n  parseInstructions: jest.fn()\n}));\n\njest.mock('@/lib/account-changes-analyzer', () => ({\n  analyzeAccountChanges: jest.fn()\n}));\n\njest.mock('@/lib/transaction-metrics-calculator', () => ({\n  calculateTransactionMetrics: jest.fn()\n}));\n\njest.mock('@/lib/transaction-failure-analyzer', () => ({\n  analyzeTransactionFailure: jest.fn()\n}));\n\njest.mock('@/lib/related-transaction-finder', () => ({\n  findRelatedTransactions: jest.fn()\n}));\n\njest.mock('@/lib/relationship-strength-scorer', () => ({\n  scoreRelationshipStrength: jest.fn()\n}));\n\njest.mock('@/lib/ai-transaction-analyzer', () => ({\n  analyzeTransactionWithAI: jest.fn()\n}));\n\njest.mock('@/lib/transaction-cache', () => ({\n  cacheHelpers: {\n    getTransaction: jest.fn(),\n    setTransaction: jest.fn(),\n    getRelatedTransactions: jest.fn(),\n    setRelatedTransactions: jest.fn(),\n    getAIExplanation: jest.fn(),\n    setAIExplanation: jest.fn(),\n    getMetrics: jest.fn(),\n    setMetrics: jest.fn()\n  }\n}));\n\nconst mockTransaction = {\n  signature: '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW',\n  slot: 123456789,\n  blockTime: 1703123456,\n  meta: {\n    err: null,\n    fee: 5000,\n    computeUnitsConsumed: 150\n  },\n  transaction: {\n    message: {\n      instructions: [{\n        programIdIndex: 0,\n        accounts: [1, 2],\n        data: 'test'\n      }],\n      accountKeys: [\n        '11111111111111111111111111111111',\n        '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',\n        '8WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWN'\n      ]\n    }\n  }\n};\n\nconst validSignature = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW';\n\ndescribe('Transaction Analysis Endpoints', () => {\n  beforeEach(() => {\n    jest.clearAllMocks();\n  });\n\n  describe('Analysis Endpoint', () => {\n    it('should return transaction analysis for valid signature', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { parseInstructions } = require('@/lib/instruction-parser-service');\n      const { analyzeAccountChanges } = require('@/lib/account-changes-analyzer');\n      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      parseInstructions.mockResolvedValue([{\n        programId: '11111111111111111111111111111111',\n        programName: 'System Program',\n        instructionType: 'transfer',\n        description: 'Transfer SOL'\n      }]);\n      analyzeAccountChanges.mockResolvedValue({\n        changes: [{\n          account: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',\n          type: 'balance_change',\n          balanceChange: -1000000,\n          significance: 'high'\n        }]\n      });\n      calculateTransactionMetrics.mockResolvedValue({\n        totalFee: 5000,\n        feeBreakdown: { baseFee: 5000, priorityFee: 0 },\n        computeUnitsUsed: 150,\n        computeUnitsRequested: 200000,\n        computeEfficiency: 0.075,\n        performanceScore: 85,\n        recommendations: ['Test recommendation']\n      });\n      cacheHelpers.getTransaction.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);\n      const response = await analysisGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.signature).toBe(validSignature);\n      expect(data.data.analysis.instructions).toBeDefined();\n      expect(data.data.analysis.accountChanges).toBeDefined();\n      expect(data.data.analysis.metrics).toBeDefined();\n    });\n\n    it('should return 400 for invalid signature', async () => {\n      const request = new NextRequest('http://localhost/api/transaction/invalid/analysis');\n      const response = await analysisGET(request, { params: { signature: 'invalid' } });\n      const data = await response.json();\n\n      expect(response.status).toBe(400);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('INVALID_SIGNATURE');\n    });\n\n    it('should return 404 for non-existent transaction', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n      \n      getTransactionDetails.mockResolvedValue(null);\n      cacheHelpers.getTransaction.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);\n      const response = await analysisGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(404);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('TRANSACTION_NOT_FOUND');\n    });\n\n    it('should return cached data when available', async () => {\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n      \n      const cachedData = {\n        ...mockTransaction,\n        analysis: {\n          instructions: { parsed: [], summary: { totalInstructions: 0, programsInvolved: [], instructionTypes: {} } }\n        }\n      };\n      cacheHelpers.getTransaction.mockReturnValue(cachedData);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);\n      const response = await analysisGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.cached).toBe(true);\n    });\n  });\n\n  describe('Related Transactions Endpoint', () => {\n    it('should return related transactions for valid signature', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { findRelatedTransactions } = require('@/lib/related-transaction-finder');\n      const { scoreRelationshipStrength } = require('@/lib/relationship-strength-scorer');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      findRelatedTransactions.mockResolvedValue([{\n        transaction: { ...mockTransaction, signature: 'related-signature' },\n        relationshipType: 'account_overlap'\n      }]);\n      scoreRelationshipStrength.mockResolvedValue({\n        score: 0.85,\n        explanation: 'Shares accounts',\n        details: { sharedAccounts: ['test-account'] }\n      });\n      cacheHelpers.getRelatedTransactions.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/related`);\n      const response = await relatedGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.relatedTransactions).toHaveLength(1);\n      expect(data.data.relatedTransactions[0].relationship.score).toBe(0.85);\n    });\n  });\n\n  describe('AI Explanation Endpoint', () => {\n    it('should return AI explanation for valid signature', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      analyzeTransactionWithAI.mockResolvedValue({\n        summary: 'This is a SOL transfer transaction',\n        mainAction: 'Transfer SOL',\n        secondaryEffects: ['Balance changes'],\n        riskLevel: 'low',\n        recommendations: ['Transaction looks good']\n      });\n      cacheHelpers.getAIExplanation.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);\n      const response = await explainGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.explanation.summary).toBe('This is a SOL transfer transaction');\n      expect(data.data.explanation.mainAction).toBe('Transfer SOL');\n    });\n\n    it('should handle different explanation levels', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      analyzeTransactionWithAI.mockResolvedValue({\n        summary: 'Advanced explanation',\n        mainAction: 'Transfer SOL',\n        secondaryEffects: [],\n        technicalDetails: { programsUsed: [] },\n        relatedConcepts: []\n      });\n      cacheHelpers.getAIExplanation.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain?level=advanced&focus=technical`);\n      const response = await explainGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.metadata.level).toBe('advanced');\n      expect(data.data.metadata.focus).toBe('technical');\n    });\n  });\n\n  describe('Metrics Endpoint', () => {\n    it('should return transaction metrics for valid signature', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      calculateTransactionMetrics.mockResolvedValue({\n        totalFee: 5000,\n        feeBreakdown: { baseFee: 5000, priorityFee: 0 },\n        computeUnitsUsed: 150,\n        computeUnitsRequested: 200000,\n        computeEfficiency: 0.075,\n        performanceScore: 85,\n        recommendations: ['Optimize compute units']\n      });\n      cacheHelpers.getMetrics.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/metrics`);\n      const response = await metricsGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.metrics.fees.total).toBe(5000);\n      expect(data.data.metrics.compute.efficiency).toBe(0.075);\n      expect(data.data.metrics.performance.score).toBe(85);\n    });\n  });\n\n  describe('Batch Processing Endpoint', () => {\n    it('should process multiple transactions in batch', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      cacheHelpers.getTransaction.mockReturnValue(null);\n\n      const requestBody = {\n        signatures: [validSignature, 'another-valid-signature'],\n        includeInstructions: false,\n        includeAccountChanges: false,\n        priority: 'medium'\n      };\n\n      const request = new NextRequest('http://localhost/api/transaction/batch', {\n        method: 'POST',\n        body: JSON.stringify(requestBody),\n        headers: { 'Content-Type': 'application/json' }\n      });\n\n      const response = await batchPOST(request);\n      const data = await response.json();\n\n      expect(response.status).toBe(200);\n      expect(data.success).toBe(true);\n      expect(data.data.transactions).toHaveLength(2);\n      expect(data.data.summary.total).toBe(2);\n    });\n\n    it('should validate batch request parameters', async () => {\n      const requestBody = {\n        signatures: [], // Empty array should fail validation\n        priority: 'invalid'\n      };\n\n      const request = new NextRequest('http://localhost/api/transaction/batch', {\n        method: 'POST',\n        body: JSON.stringify(requestBody),\n        headers: { 'Content-Type': 'application/json' }\n      });\n\n      const response = await batchPOST(request);\n      const data = await response.json();\n\n      expect(response.status).toBe(400);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('VALIDATION_ERROR');\n    });\n\n    it('should handle batch size limits', async () => {\n      const signatures = Array(51).fill(validSignature); // Exceeds max of 50\n      const requestBody = {\n        signatures,\n        priority: 'medium'\n      };\n\n      const request = new NextRequest('http://localhost/api/transaction/batch', {\n        method: 'POST',\n        body: JSON.stringify(requestBody),\n        headers: { 'Content-Type': 'application/json' }\n      });\n\n      const response = await batchPOST(request);\n      const data = await response.json();\n\n      expect(response.status).toBe(400);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('VALIDATION_ERROR');\n    });\n  });\n\n  describe('Error Handling', () => {\n    it('should handle service errors gracefully', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n      \n      getTransactionDetails.mockRejectedValue(new Error('Service unavailable'));\n      cacheHelpers.getTransaction.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);\n      const response = await analysisGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(500);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('ANALYSIS_ERROR');\n    });\n\n    it('should handle AI service rate limits', async () => {\n      const { getTransactionDetails } = require('@/lib/solana');\n      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');\n      const { cacheHelpers } = require('@/lib/transaction-cache');\n\n      getTransactionDetails.mockResolvedValue(mockTransaction);\n      analyzeTransactionWithAI.mockRejectedValue(new Error('rate limit exceeded'));\n      cacheHelpers.getAIExplanation.mockReturnValue(null);\n\n      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);\n      const response = await explainGET(request, { params: { signature: validSignature } });\n      const data = await response.json();\n\n      expect(response.status).toBe(429);\n      expect(data.success).toBe(false);\n      expect(data.error.code).toBe('RATE_LIMIT_EXCEEDED');\n    });\n  });\n});"
+}));
+
+jest.mock('@/lib/instruction-parser-service', () => ({
+  parseInstructions: jest.fn()
+}));
+
+jest.mock('@/lib/account-changes-analyzer', () => ({
+  analyzeAccountChanges: jest.fn()
+}));
+
+jest.mock('@/lib/transaction-metrics-calculator', () => ({
+  calculateTransactionMetrics: jest.fn()
+}));
+
+jest.mock('@/lib/transaction-failure-analyzer', () => ({
+  analyzeTransactionFailure: jest.fn()
+}));
+
+jest.mock('@/lib/related-transaction-finder', () => ({
+  findRelatedTransactions: jest.fn()
+}));
+
+jest.mock('@/lib/relationship-strength-scorer', () => ({
+  scoreRelationshipStrength: jest.fn()
+}));
+
+jest.mock('@/lib/ai-transaction-analyzer', () => ({
+  analyzeTransactionWithAI: jest.fn()
+}));
+
+jest.mock('@/lib/transaction-cache', () => ({
+  cacheHelpers: {
+    getTransaction: jest.fn(),
+    setTransaction: jest.fn(),
+    getRelatedTransactions: jest.fn(),
+    setRelatedTransactions: jest.fn(),
+    getAIExplanation: jest.fn(),
+    setAIExplanation: jest.fn(),
+    getMetrics: jest.fn(),
+    setMetrics: jest.fn()
+  }
+}));
+
+const mockTransaction = {
+  signature: '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW',
+  slot: 123456789,
+  blockTime: 1703123456,
+  meta: {
+    err: null,
+    fee: 5000,
+    computeUnitsConsumed: 150
+  },
+  transaction: {
+    message: {
+      instructions: [{
+        programIdIndex: 0,
+        accounts: [1, 2],
+        data: 'test'
+      }],
+      accountKeys: [
+        '11111111111111111111111111111111',
+        '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+        '8WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWN'
+      ]
+    }
+  }
+};
+
+const validSignature = '5VERv8NMvzbJMEkV8xnrLkEaWRtSz9CosKDYjCJjBRnbJLgp8uirBgmQpjKhoR4tjF3ZpRzrFmBV6UjKdiSZkQUW';
+
+describe('Transaction Analysis Endpoints', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  describe('Analysis Endpoint', () => {
+    it('should return transaction analysis for valid signature', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { parseInstructions } = require('@/lib/instruction-parser-service');
+      const { analyzeAccountChanges } = require('@/lib/account-changes-analyzer');
+      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      parseInstructions.mockResolvedValue([{
+        programId: '11111111111111111111111111111111',
+        programName: 'System Program',
+        instructionType: 'transfer',
+        description: 'Transfer SOL'
+      }]);
+      analyzeAccountChanges.mockResolvedValue({
+        changes: [{
+          account: '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM',
+          type: 'balance_change',
+          balanceChange: -1000000,
+          significance: 'high'
+        }]
+      });
+      calculateTransactionMetrics.mockResolvedValue({
+        totalFee: 5000,
+        feeBreakdown: { baseFee: 5000, priorityFee: 0 },
+        computeUnitsUsed: 150,
+        computeUnitsRequested: 200000,
+        computeEfficiency: 0.075,
+        performanceScore: 85,
+        recommendations: ['Test recommendation']
+      });
+      cacheHelpers.getTransaction.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
+      const response = await analysisGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.signature).toBe(validSignature);
+      expect(data.data.analysis.instructions).toBeDefined();
+      expect(data.data.analysis.accountChanges).toBeDefined();
+      expect(data.data.analysis.metrics).toBeDefined();
+    });
+
+    it('should return 400 for invalid signature', async () => {
+      const request = new NextRequest('http://localhost/api/transaction/invalid/analysis');
+      const response = await analysisGET(request, { params: { signature: 'invalid' } });
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('INVALID_SIGNATURE');
+    });
+
+    it('should return 404 for non-existent transaction', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+      
+      getTransactionDetails.mockResolvedValue(null);
+      cacheHelpers.getTransaction.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
+      const response = await analysisGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(404);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('TRANSACTION_NOT_FOUND');
+    });
+
+    it('should return cached data when available', async () => {
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+      
+      const cachedData = {
+        ...mockTransaction,
+        analysis: {
+          instructions: { parsed: [], summary: { totalInstructions: 0, programsInvolved: [], instructionTypes: {} } }
+        }
+      };
+      cacheHelpers.getTransaction.mockReturnValue(cachedData);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
+      const response = await analysisGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.cached).toBe(true);
+    });
+  });
+
+  describe('Related Transactions Endpoint', () => {
+    it('should return related transactions for valid signature', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { findRelatedTransactions } = require('@/lib/related-transaction-finder');
+      const { scoreRelationshipStrength } = require('@/lib/relationship-strength-scorer');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      findRelatedTransactions.mockResolvedValue([{
+        transaction: { ...mockTransaction, signature: 'related-signature' },
+        relationshipType: 'account_overlap'
+      }]);
+      scoreRelationshipStrength.mockResolvedValue({
+        score: 0.85,
+        explanation: 'Shares accounts',
+        details: { sharedAccounts: ['test-account'] }
+      });
+      cacheHelpers.getRelatedTransactions.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/related`);
+      const response = await relatedGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.relatedTransactions).toHaveLength(1);
+      expect(data.data.relatedTransactions[0].relationship.score).toBe(0.85);
+    });
+  });
+
+  describe('AI Explanation Endpoint', () => {
+    it('should return AI explanation for valid signature', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      analyzeTransactionWithAI.mockResolvedValue({
+        summary: 'This is a SOL transfer transaction',
+        mainAction: 'Transfer SOL',
+        secondaryEffects: ['Balance changes'],
+        riskLevel: 'low',
+        recommendations: ['Transaction looks good']
+      });
+      cacheHelpers.getAIExplanation.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);
+      const response = await explainGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.explanation.summary).toBe('This is a SOL transfer transaction');
+      expect(data.data.explanation.mainAction).toBe('Transfer SOL');
+    });
+
+    it('should handle different explanation levels', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      analyzeTransactionWithAI.mockResolvedValue({
+        summary: 'Advanced explanation',
+        mainAction: 'Transfer SOL',
+        secondaryEffects: [],
+        technicalDetails: { programsUsed: [] },
+        relatedConcepts: []
+      });
+      cacheHelpers.getAIExplanation.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain?level=advanced&focus=technical`);
+      const response = await explainGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.metadata.level).toBe('advanced');
+      expect(data.data.metadata.focus).toBe('technical');
+    });
+  });
+
+  describe('Metrics Endpoint', () => {
+    it('should return transaction metrics for valid signature', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      calculateTransactionMetrics.mockResolvedValue({
+        totalFee: 5000,
+        feeBreakdown: { baseFee: 5000, priorityFee: 0 },
+        computeUnitsUsed: 150,
+        computeUnitsRequested: 200000,
+        computeEfficiency: 0.075,
+        performanceScore: 85,
+        recommendations: ['Optimize compute units']
+      });
+      cacheHelpers.getMetrics.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/metrics`);
+      const response = await metricsGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.metrics.fees.total).toBe(5000);
+      expect(data.data.metrics.compute.efficiency).toBe(0.075);
+      expect(data.data.metrics.performance.score).toBe(85);
+    });
+  });
+
+  describe('Batch Processing Endpoint', () => {
+    it('should process multiple transactions in batch', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      cacheHelpers.getTransaction.mockReturnValue(null);
+
+      const requestBody = {
+        signatures: [validSignature, 'another-valid-signature'],
+        includeInstructions: false,
+        includeAccountChanges: false,
+        priority: 'medium'
+      };
+
+      const request = new NextRequest('http://localhost/api/transaction/batch', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await batchPOST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(200);
+      expect(data.success).toBe(true);
+      expect(data.data.transactions).toHaveLength(2);
+      expect(data.data.summary.total).toBe(2);
+    });
+
+    it('should validate batch request parameters', async () => {
+      const requestBody = {
+        signatures: [], // Empty array should fail validation
+        priority: 'invalid'
+      };
+
+      const request = new NextRequest('http://localhost/api/transaction/batch', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await batchPOST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('VALIDATION_ERROR');
+    });
+
+    it('should handle batch size limits', async () => {
+      const signatures = Array(51).fill(validSignature); // Exceeds max of 50
+      const requestBody = {
+        signatures,
+        priority: 'medium'
+      };
+
+      const request = new NextRequest('http://localhost/api/transaction/batch', {
+        method: 'POST',
+        body: JSON.stringify(requestBody),
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      const response = await batchPOST(request);
+      const data = await response.json();
+
+      expect(response.status).toBe(400);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('VALIDATION_ERROR');
+    });
+  });
+
+  describe('Error Handling', () => {
+    it('should handle service errors gracefully', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+      
+      getTransactionDetails.mockRejectedValue(new Error('Service unavailable'));
+      cacheHelpers.getTransaction.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
+      const response = await analysisGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(500);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('ANALYSIS_ERROR');
+    });
+
+    it('should handle AI service rate limits', async () => {
+      const { getTransactionDetails } = require('@/lib/solana');
+      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
+      const { cacheHelpers } = require('@/lib/transaction-cache');
+
+      getTransactionDetails.mockResolvedValue(mockTransaction);
+      analyzeTransactionWithAI.mockRejectedValue(new Error('rate limit exceeded'));
+      cacheHelpers.getAIExplanation.mockReturnValue(null);
+
+      const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);
+      const response = await explainGET(request, { params: { signature: validSignature } });
+      const data = await response.json();
+
+      expect(response.status).toBe(429);
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('RATE_LIMIT_EXCEEDED');
+    });
+  });
+});

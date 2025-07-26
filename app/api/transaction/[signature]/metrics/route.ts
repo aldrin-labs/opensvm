@@ -186,7 +186,7 @@ export async function GET(
         })
       },
       performance: {
-        score: metricsResult.performanceScore,
+        score: metricsResult.performance.scalability.scalabilityScore,
         factors: {
           feeEfficiency: calculateFeeEfficiency(metricsResult),
           computeEfficiency: metricsResult.computeEfficiency,

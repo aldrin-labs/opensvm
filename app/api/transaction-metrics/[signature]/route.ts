@@ -191,7 +191,7 @@ export async function POST(
           impact: {
             feeChange: simulatedMetrics.feeAnalysis.totalFee - originalMetrics.feeAnalysis.totalFee,
             computeChange: simulatedMetrics.computeAnalysis.computeUnitsUsed - originalMetrics.computeAnalysis.computeUnitsUsed,
-            efficiencyChange: simulatedMetrics.efficiency.overallEfficiency - originalMetrics.efficiency.overallEfficiency,
+            efficiencyChange: simulatedMetrics.efficiency.overall - originalMetrics.efficiency.overall,
             gradeChange: {
               from: originalMetrics.grade,
               to: simulatedMetrics.grade,
@@ -218,12 +218,12 @@ export async function POST(
             similar: {
               averageFee: transactionMetrics.feeAnalysis.totalFee * (0.8 + Math.random() * 0.4),
               averageCompute: transactionMetrics.computeAnalysis.computeUnitsUsed * (0.9 + Math.random() * 0.2),
-              averageEfficiency: transactionMetrics.efficiency.overallEfficiency * (0.95 + Math.random() * 0.1)
+              averageEfficiency: transactionMetrics.efficiency.overall * (0.95 + Math.random() * 0.1)
             },
             category: {
               averageFee: transactionMetrics.feeAnalysis.totalFee * (0.7 + Math.random() * 0.6),
               averageCompute: transactionMetrics.computeAnalysis.computeUnitsUsed * (0.8 + Math.random() * 0.4),
-              averageEfficiency: transactionMetrics.efficiency.overallEfficiency * (0.9 + Math.random() * 0.2)
+              averageEfficiency: transactionMetrics.efficiency.overall * (0.9 + Math.random() * 0.2)
             }
           },
           ranking: {

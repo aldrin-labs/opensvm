@@ -9,6 +9,7 @@
  */
 
 import { qdrantClient } from './qdrant';
+// Qdrant cache calls should only run on the server side
 import type { TransactionExplanation } from './ai-transaction-analyzer';
 import type { AccountChangesAnalysis } from './account-changes-analyzer';
 import type { ParsedInstructionInfo } from './instruction-parser-service';
@@ -106,6 +107,8 @@ class TransactionAnalysisCache {
    * Initialize the cache collection in Qdrant
    */
   private async ensureCacheCollection(): Promise<void> {
+    // Skip in browser
+    if (typeof window !== 'undefined') return;
     try {
       const exists = await qdrantClient.getCollection(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS).catch(() => null);
       
@@ -119,15 +122,18 @@ class TransactionAnalysisCache {
         console.log('Created transaction analysis cache collection');
       }
 
-      // Ensure indexes exist
-      const indexes = ['cacheType', 'signature', 'programId', 'expiresAt'];
-      for (const field of indexes) {
+      // Ensure indexes exist with appropriate schema types
+      const indexFields = ['cacheType', 'signature', 'programId', 'discriminator', 'expiresAt'];
+      for (const field of indexFields) {
+        // Use 'float' for numeric fields, otherwise 'keyword'
+        const fieldSchema: 'keyword' | 'float' = field === 'expiresAt' ? 'float' : 'keyword';
         try {
           await qdrantClient.createPayloadIndex(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
             field_name: field,
-            field_schema: 'keyword'
+            field_schema: fieldSchema
           });
         } catch (error: any) {
+          // Ignore if index already exists
           if (!error?.message?.includes('already exists')) {
             console.warn(`Failed to create index for ${field}:`, error?.message);
           }
@@ -136,6 +142,32 @@ class TransactionAnalysisCache {
     } catch (error) {
       console.error('Error ensuring cache collection:', error);
     }
+  }
+
+  /**
+   * Generate a valid point ID for Qdrant (must be UUID or unsigned integer)
+   */
+  private generatePointId(content: string): string {
+    // Create a hash of the content and convert to a UUID-like format
+    let hash = 0;
+    for (let i = 0; i < content.length; i++) {
+      const char = content.charCodeAt(i);
+      hash = ((hash << 5) - hash) + char;
+      hash = hash & hash; // Convert to 32-bit integer
+    }
+    
+    // Convert hash to a positive number and format as UUID
+    const positiveHash = Math.abs(hash);
+    const hashStr = positiveHash.toString(16).padStart(8, '0');
+    
+    // Generate additional components to create a full UUID
+    const part1 = hashStr.slice(0, 8);
+    const part2 = (Math.abs(hash * 2) % 0xFFFF).toString(16).padStart(4, '0');
+    const part3 = (Math.abs(hash * 3) % 0xFFFF).toString(16).padStart(4, '0');
+    const part4 = (Math.abs(hash * 5) % 0xFFFF).toString(16).padStart(4, '0');
+    const part5 = (Math.abs(hash * 7) % 0xFFFFFFFFFF).toString(16).padStart(12, '0');
+    
+    return `${part1}-${part2}-${part3}-${part4}-${part5}`;
   }
 
   /**
@@ -162,6 +194,8 @@ class TransactionAnalysisCache {
     signature: string,
     instructions: ParsedInstructionInfo[]
   ): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -179,7 +213,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.PARSED_INSTRUCTIONS}_${signature}`,
+          id: this.generatePointId(`${CACHE_TYPES.PARSED_INSTRUCTIONS}_${signature}`),
           vector,
           payload: {
             ...cachedData,
@@ -197,6 +231,8 @@ class TransactionAnalysisCache {
    * Get cached parsed instructions for a transaction
    */
   async getCachedParsedInstructions(signature: string): Promise<ParsedInstructionInfo[] | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -237,6 +273,8 @@ class TransactionAnalysisCache {
     signature: string,
     analysis: AccountChangesAnalysis
   ): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -254,7 +292,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.ACCOUNT_CHANGES}_${signature}`,
+          id: this.generatePointId(`${CACHE_TYPES.ACCOUNT_CHANGES}_${signature}`),
           vector,
           payload: {
             ...cachedData,
@@ -272,6 +310,8 @@ class TransactionAnalysisCache {
    * Get cached account changes analysis for a transaction
    */
   async getCachedAccountChanges(signature: string): Promise<AccountChangesAnalysis | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -316,6 +356,8 @@ class TransactionAnalysisCache {
       focusAreas?: string[];
     }
   ): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -334,7 +376,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.AI_EXPLANATION}_${signature}_${optionsHash}`,
+          id: this.generatePointId(`${CACHE_TYPES.AI_EXPLANATION}_${signature}_${optionsHash}`),
           vector,
           payload: {
             ...cachedData,
@@ -359,6 +401,8 @@ class TransactionAnalysisCache {
       focusAreas?: string[];
     }
   ): Promise<TransactionExplanation | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -401,6 +445,8 @@ class TransactionAnalysisCache {
     result: RelatedTransactionResult,
     queryOptions?: any
   ): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -419,7 +465,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.RELATED_TRANSACTIONS}_${signature}_${queryHash}`,
+          id: this.generatePointId(`${CACHE_TYPES.RELATED_TRANSACTIONS}_${signature}_${queryHash}`),
           vector,
           payload: {
             ...cachedData,
@@ -440,6 +486,8 @@ class TransactionAnalysisCache {
     signature: string,
     queryOptions?: any
   ): Promise<RelatedTransactionResult | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -478,6 +526,8 @@ class TransactionAnalysisCache {
    * Cache program information
    */
   async cacheProgramInfo(programId: string, programInfo: any): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -488,7 +538,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.PROGRAM_INFO}_${programId}`,
+          id: this.generatePointId(`${CACHE_TYPES.PROGRAM_INFO}_${programId}`),
           vector,
           payload: {
             programId,
@@ -508,6 +558,8 @@ class TransactionAnalysisCache {
    * Get cached program information
    */
   async getCachedProgramInfo(programId: string): Promise<any | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -547,17 +599,20 @@ class TransactionAnalysisCache {
     discriminator: string,
     definition: any
   ): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
       const content = `${programId} ${discriminator} instruction_definition ${JSON.stringify(definition)}`;
       const vector = this.generateCacheEmbedding(content);
       const expiresAt = Date.now() + CACHE_TTL.PROGRAM_REGISTRY;
+      const pointId = this.generatePointId(`${CACHE_TYPES.INSTRUCTION_DEFINITION}_${programId}_${discriminator}`);
 
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.INSTRUCTION_DEFINITION}_${programId}_${discriminator}`,
+          id: pointId,
           vector,
           payload: {
             programId,
@@ -571,6 +626,13 @@ class TransactionAnalysisCache {
       });
     } catch (error) {
       console.error('Error caching instruction definition:', error);
+      console.error('Full error details:', {
+        message: (error as any)?.message,
+        status: (error as any)?.status,
+        statusText: (error as any)?.statusText,
+        data: (error as any)?.data,
+        headers: (error as any)?.headers
+      });
     }
   }
 
@@ -581,6 +643,8 @@ class TransactionAnalysisCache {
     programId: string,
     discriminator: string
   ): Promise<any | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -608,6 +672,13 @@ class TransactionAnalysisCache {
       return null;
     } catch (error) {
       console.error('Error getting cached instruction definition:', error);
+      console.error('Full error details:', {
+        message: (error as any)?.message,
+        status: (error as any)?.status,
+        statusText: (error as any)?.statusText,
+        data: (error as any)?.data,
+        headers: (error as any)?.headers
+      });
       this.missCount++;
       return null;
     }
@@ -617,6 +688,8 @@ class TransactionAnalysisCache {
    * Cache transaction metrics
    */
   async cacheTransactionMetrics(signature: string, metrics: any): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -633,7 +706,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.TRANSACTION_METRICS}_${signature}`,
+          id: this.generatePointId(`${CACHE_TYPES.TRANSACTION_METRICS}_${signature}`),
           vector,
           payload: {
             ...cachedData,
@@ -651,6 +724,8 @@ class TransactionAnalysisCache {
    * Get cached transaction metrics
    */
   async getCachedTransactionMetrics(signature: string): Promise<any | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -686,6 +761,8 @@ class TransactionAnalysisCache {
    * Cache DeFi analysis
    */
   async cacheDeFiAnalysis(signature: string, analysis: any): Promise<void> {
+    // Skip caching in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -702,7 +779,7 @@ class TransactionAnalysisCache {
       await qdrantClient.upsert(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS, {
         wait: true,
         points: [{
-          id: `${CACHE_TYPES.DEFI_ANALYSIS}_${signature}`,
+          id: this.generatePointId(`${CACHE_TYPES.DEFI_ANALYSIS}_${signature}`),
           vector,
           payload: {
             ...cachedData,
@@ -720,6 +797,8 @@ class TransactionAnalysisCache {
    * Get cached DeFi analysis
    */
   async getCachedDeFiAnalysis(signature: string): Promise<any | null> {
+    // Skip cache lookup in browser
+    if (typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       
@@ -755,6 +834,8 @@ class TransactionAnalysisCache {
    * Invalidate cache for a specific transaction
    */
   async invalidateTransaction(signature: string): Promise<void> {
+    // Skip invalidation in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       
@@ -776,6 +857,8 @@ class TransactionAnalysisCache {
    * Invalidate all cache entries
    */
   async invalidateAll(): Promise<void> {
+    // Skip invalidation in browser
+    if (typeof window !== 'undefined') return;
     try {
       await qdrantClient.deleteCollection(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS);
       await this.ensureCacheCollection();
@@ -790,6 +873,17 @@ class TransactionAnalysisCache {
    * Get cache statistics
    */
   async getCacheStatistics(): Promise<CacheStatistics> {
+    // Skip statistics in browser
+    if (typeof window !== 'undefined') {
+      return {
+        totalEntries: 0,
+        entriesByType: {},
+        memoryUsage: 0,
+        hitRate: 0,
+        oldestEntry: Date.now(),
+        newestEntry: Date.now(),
+      };
+    }
     try {
       await this.ensureCacheCollection();
       
@@ -833,6 +927,8 @@ class TransactionAnalysisCache {
    * Warm up cache with frequently accessed data
    */
   async warmUpCache(signatures: string[]): Promise<void> {
+    // Skip warm-up in browser
+    if (typeof window !== 'undefined') return;
     console.log(`Warming up cache for ${signatures.length} transactions`);
     // Implementation would pre-load frequently accessed transactions
   }
@@ -841,6 +937,8 @@ class TransactionAnalysisCache {
    * Clean up expired entries
    */
   async cleanupExpiredEntries(): Promise<void> {
+    // Skip cleanup in browser
+    if (typeof window !== 'undefined') return;
     try {
       await this.ensureCacheCollection();
       

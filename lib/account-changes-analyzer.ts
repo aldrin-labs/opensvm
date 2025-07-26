@@ -95,8 +95,12 @@ class AccountChangesAnalyzer {
    * Analyze all account changes in a transaction
    */
   public async analyzeTransaction(transaction: DetailedTransactionInfo): Promise<AccountChangesAnalysis> {
-    // Check cache first
-    const cachedAnalysis = await transactionAnalysisCache.getCachedAccountChanges(transaction.signature);
+    // Skip cache operations in browser - just do the analysis directly
+    let cachedAnalysis = null;
+    if (typeof window === 'undefined') {
+      // Check cache first (server-side only)
+      cachedAnalysis = await transactionAnalysisCache.getCachedAccountChanges(transaction.signature);
+    }
     
     if (cachedAnalysis) {
       console.log(`Using cached account changes analysis for transaction ${transaction.signature}`);
@@ -115,8 +119,10 @@ class AccountChangesAnalyzer {
       riskAssessment: this.assessRisk(accountChanges, transaction)
     };
 
-    // Cache the result
-    await transactionAnalysisCache.cacheAccountChanges(transaction.signature, analysis);
+    // Cache the result (server-side only)
+    if (typeof window === 'undefined') {
+      await transactionAnalysisCache.cacheAccountChanges(transaction.signature, analysis);
+    }
     
     return analysis;
   }
