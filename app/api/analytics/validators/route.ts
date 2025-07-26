@@ -212,22 +212,28 @@ export async function GET() {
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
     const totalNetworkStake = allValidators.reduce((sum, v) => sum + v.activatedStake, 0);
     
-    // Limit to top 50 validators by stake for performance
-    const topValidators = allValidators
-      .sort((a, b) => b.activatedStake - a.activatedStake)
-      .slice(0, 50);
+    // Sort all validators by stake (no limit - show full list)
+    const sortedValidators = allValidators
+      .sort((a, b) => b.activatedStake - a.activatedStake);
     
-    // Fetch geolocation data for validators (with rate limiting)
-    const validatorsWithGeo = await Promise.all(
-      topValidators.map(async (validator, index) => {
-        const clusterNode = clusterNodes.find(node => 
-          node.pubkey === validator.nodePubkey
-        );
-        
-        // Add delay between geolocation requests to respect rate limits
-        if (index > 0) {
-          await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONSTANTS.RATE_LIMITS.COOLDOWN_MS));
-        }
+    // Fetch geolocation data for validators (with aggressive rate limiting for large sets)
+    // Process validators in batches to avoid overwhelming geolocation services
+    const batchSize = 20;
+    const validatorsWithGeo = [];
+    
+    for (let i = 0; i < sortedValidators.length; i += batchSize) {
+      const batch = sortedValidators.slice(i, i + batchSize);
+      
+      const batchResults = await Promise.all(
+        batch.map(async (validator, batchIndex) => {
+          const clusterNode = clusterNodes.find(node => 
+            node.pubkey === validator.nodePubkey
+          );
+          
+          // Add small delay within batch to respect rate limits
+          if (batchIndex > 0) {
+            await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay
+          }
         
         // Get geolocation data for validator
         let geoData: GeolocationData = {
@@ -273,30 +279,38 @@ export async function GET() {
         const maxCredits = 440000; // Approximate max credits per epoch
         const uptimeDecimal = Math.min(currentEpochCredits / maxCredits, 1.0); // Keep as 0-1
         
-        return {
-          voteAccount: validator.votePubkey,
-          name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
-          commission: validator.commission,
-          activatedStake: validator.activatedStake,
-          lastVote: validator.lastVote,
-          // rootSlot: validator.rootSlot, // Property does not exist, remove
-          credits: totalCredits,
-          epochCredits: currentEpochCredits,
-          version: clusterNode?.version || 'Unknown',
-          status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
-          datacenter: geoData.datacenter,
-          country: geoData.country,
-          countryCode: geoData.countryCode,
-          region: geoData.region,
-          city: geoData.city,
-          isp: geoData.isp,
-          coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
-          apy: Math.round(apy * 100) / 100,
-          performanceScore: Math.round(performanceScore * 100) / 100,
-          uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
-        };
-      })
-    );
+          return {
+            voteAccount: validator.votePubkey,
+            name: `${geoData.city}, ${geoData.country}` || `Validator ${i + batchIndex + 1}`,
+            commission: validator.commission,
+            activatedStake: validator.activatedStake,
+            lastVote: validator.lastVote,
+            // rootSlot: validator.rootSlot, // Property does not exist, remove
+            credits: totalCredits,
+            epochCredits: currentEpochCredits,
+            version: clusterNode?.version || 'Unknown',
+            status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
+            datacenter: geoData.datacenter,
+            country: geoData.country,
+            countryCode: geoData.countryCode,
+            region: geoData.region,
+            city: geoData.city,
+            isp: geoData.isp,
+            coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
+            apy: Math.round(apy * 100) / 100,
+            performanceScore: Math.round(performanceScore * 100) / 100,
+            uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
+          };
+        })
+      );
+      
+      validatorsWithGeo.push(...batchResults);
+      
+      // Add delay between batches to avoid overwhelming geolocation services
+      if (i + batchSize < sortedValidators.length) {
+        await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONSTANTS.RATE_LIMITS.COOLDOWN_MS));
+      }
+    }
 
     // Calculate real network stats from Solana data
     const totalValidators = allValidators.length;
@@ -409,11 +423,29 @@ export async function GET() {
       issues
     };
 
+    // Process RPC nodes (cluster nodes that provide RPC but don't necessarily vote)
+    const rpcNodes = clusterNodes
+      .filter(node => node.rpc !== null) // Only nodes that provide RPC service
+      .map(node => ({
+        pubkey: node.pubkey,
+        gossip: node.gossip,
+        rpc: node.rpc,
+        tpu: node.tpu,
+        version: node.version
+      }));
+
+    // Update network stats to include RPC node count
+    const updatedNetworkStats = {
+      ...networkStats,
+      totalRpcNodes: rpcNodes.length
+    };
+
     return NextResponse.json({
       success: true,
       data: {
         validators: validatorsWithGeo,
-        networkStats,
+        rpcNodes,
+        networkStats: updatedNetworkStats,
         decentralization,
         health
       },
