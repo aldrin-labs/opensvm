@@ -238,8 +238,9 @@ export default function TransactionGraph({
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, runLayout, updateGPUGraphData]);
+  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, runLayout]);
   // Note: processTransactionData and runLayoutWithProgress are stable functions defined after this useCallback
+  // updateGPUGraphData intentionally omitted to prevent infinite loops
 
   // Define a transaction data interface
   interface TransactionData {
@@ -419,8 +420,9 @@ export default function TransactionGraph({
       setIsLoading(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, updateGPUGraphData, runLayoutWithProgress]);
+  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, runLayoutWithProgress]);
   // Note: processAccountTransactions is a stable function defined after this useCallback
+  // updateGPUGraphData intentionally omitted to prevent infinite loops
 
   // Define a more specific type for transactions
   interface AccountTransaction {
