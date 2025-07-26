@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram, Keypair } from '@solana/web3.js';
 import * as web3 from '@solana/web3.js';
@@ -318,7 +318,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   };
 
   // Fetch all balances together
-  const fetchAllBalances = async () => {
+  const fetchAllBalances = useCallback(async () => {
     if (!connected || !publicKey) return;
     
     try {
@@ -330,12 +330,12 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } catch (error) {
       console.error('Error fetching balances:', error);
     }
-  };
+  }, [connected, publicKey]);
 
   // Fetch balances on mount and wallet change
   useEffect(() => {
     fetchAllBalances();
-  }, [connected, publicKey]);
+  }, [fetchAllBalances]);
 
   // Clear messages after 5 seconds
   useEffect(() => {
