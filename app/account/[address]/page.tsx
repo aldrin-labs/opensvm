@@ -126,7 +126,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
   if (loading) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <p>Loading account information...</p>
@@ -137,7 +137,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
   if (error) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className="rounded-lg border border-red-500 bg-red-50 p-4">
           <h2 className="text-xl font-semibold text-red-700">Error</h2>
           <p className="text-red-600">{error}</p>
@@ -149,7 +149,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
   if (!accountInfo) {
     return (
-      <div className="container mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         <div className="rounded-lg border border-red-500 bg-red-50 p-4">
           <h2 className="text-xl font-semibold text-red-700">Error</h2>
           <p className="text-red-600">Account not found</p>
@@ -160,16 +160,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="w-full px-4 py-8">
       <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
         {/* Main Content - Left Side */}
-        <div className="xl:col-span-3 space-y-6">
-          <AccountInfo
-            address={accountInfo.address}
-            isSystemProgram={accountInfo.isSystemProgram}
-            parsedOwner={accountInfo.parsedOwner}
-          />
-
+        <div className="xl:col-span-2 space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <AccountOverview
               address={accountInfo.address}
@@ -178,132 +172,26 @@ export default function AccountPage({ params, searchParams }: PageProps) {
               isSystemProgram={accountInfo.isSystemProgram}
               parsedOwner={accountInfo.parsedOwner}
             />
-
-            {/* Transaction Graph Explorer */}
             <TransactionGraph address={accountInfo.address} />
           </div>
-
-          <AccountTabs
+        </div>
+        {/* Sidebar - Right Side: Account Info */}
+        <div className="xl:col-span-2 space-y-6">
+          <AccountInfo
             address={accountInfo.address}
-            solBalance={accountInfo.solBalance}
-            tokenBalances={accountInfo.tokenBalances}
-            activeTab={activeTab as string}
+            isSystemProgram={accountInfo.isSystemProgram}
+            parsedOwner={accountInfo.parsedOwner}
           />
         </div>
-
-        {/* Sidebar - Right Side */}
-        {/* <div className="xl:col-span-1 space-y-6">
-              <div className="rounded-lg border bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900 p-4">
-                <div className="text-center">
-                  <h4 className="font-semibold text-sm mb-2">🚀 OpenSVM Premium</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Get advanced analytics, real-time alerts, and more!</p>
-                  <button
-                    className="w-full bg-primary text-primary-foreground text-xs py-2 px-3 rounded-md hover:bg-primary/90 transition-colors"
-                    onClick={() => {
-                      // Track ad interaction
-                      import('@/lib/qdrant').then(({ storeAdInteraction }) => {
-                        storeAdInteraction({
-                          id: `ad-click-${Date.now()}-${Math.random()}`,
-                          adId: 'opensvm-premium',
-                          adType: 'sidebar-banner',
-                          walletAddress: accountInfo.address,
-                          action: 'click',
-                          timestamp: Date.now(),
-                          metadata: { campaign: 'premium-upgrade', position: 'sidebar-1' }
-                        }).catch(console.error);
-                      });
-                      // Navigate to upgrade page
-                      window.open('/upgrade', '_blank');
-                    }}
-                  >
-                    Upgrade Now
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-gradient-to-br from-green-50 to-emerald-100 dark:from-green-950 dark:to-emerald-900 p-4">
-                <div className="text-center">
-                  <h4 className="font-semibold text-sm mb-2">📊 Portfolio Tracker</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Track your Solana portfolio across all wallets</p>
-                  <button
-                    className="w-full bg-green-600 text-white text-xs py-2 px-3 rounded-md hover:bg-green-700 transition-colors"
-                    onClick={() => {
-                      // Track ad interaction
-                      import('@/lib/qdrant').then(({ storeAdInteraction }) => {
-                        storeAdInteraction({
-                          id: `ad-click-${Date.now()}-${Math.random()}`,
-                          adId: 'portfolio-tracker',
-                          adType: 'sidebar-banner',
-                          walletAddress: accountInfo.address,
-                          action: 'click',
-                          timestamp: Date.now(),
-                          metadata: { campaign: 'portfolio-free-trial', position: 'sidebar-2' }
-                        }).catch(console.error);
-                      });
-                      // Navigate to portfolio tracker
-                      window.open('/portfolio', '_blank');
-                    }}
-                  >
-                    Try Free
-                  </button>
-                </div>
-              </div>
-              <div className="rounded-lg border bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-950 dark:to-violet-900 p-4">
-                <div className="text-center">
-                  <h4 className="font-semibold text-sm mb-2">⚡ DeFi Alerts</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Get notified of large transactions and yield opportunities</p>
-                  <button
-                    className="w-full bg-purple-600 text-white text-xs py-2 px-3 rounded-md hover:bg-purple-700 transition-colors"
-                    onClick={() => {
-                      // Track ad interaction
-                      import('@/lib/qdrant').then(({ storeAdInteraction }) => {
-                        storeAdInteraction({
-                          id: `ad-click-${Date.now()}-${Math.random()}`,
-                          adId: 'defi-alerts',
-                          adType: 'sidebar-banner',
-                          walletAddress: accountInfo.address,
-                          action: 'click',
-                          timestamp: Date.now(),
-                          metadata: { campaign: 'alert-setup', position: 'sidebar-3' }
-                        }).catch(console.error);
-                      });
-                      // Navigate to alerts setup
-                      window.open('/alerts', '_blank');
-                    }}
-                  >
-                    Setup Alerts
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-lg border bg-gradient-to-br from-orange-50 to-red-100 dark:from-orange-950 dark:to-red-900 p-4">
-                <div className="text-center">
-                  <h4 className="font-semibold text-sm mb-2">🔥 Hot Tokens</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Discover trending tokens before they moon</p>
-                  <button
-                    className="w-full bg-orange-600 text-white text-xs py-2 px-3 rounded-md hover:bg-orange-700 transition-colors"
-                    onClick={() => {
-                      // Track ad interaction
-                      import('@/lib/qdrant').then(({ storeAdInteraction }) => {
-                        storeAdInteraction({
-                          id: `ad-click-${Date.now()}-${Math.random()}`,
-                          adId: 'hot-tokens',
-                          adType: 'sidebar-banner',
-                          walletAddress: accountInfo.address,
-                          action: 'click',
-                          timestamp: Date.now(),
-                          metadata: { campaign: 'trending-discovery', position: 'sidebar-4' }
-                        }).catch(console.error);
-                      });
-                      // Navigate to trending tokens
-                      window.open('/trending', '_blank');
-                    }}
-                  >
-                    View Trending
-                  </button>
-                </div>
-              </div>
-            </div> */}
+      </div>
+      {/* Full-width tabs and table */}
+      <div className="mt-6 w-full">
+        <AccountTabs
+          address={accountInfo.address}
+          solBalance={accountInfo.solBalance}
+          tokenBalances={accountInfo.tokenBalances}
+          activeTab={activeTab as string}
+        />
       </div>
     </div>
   );

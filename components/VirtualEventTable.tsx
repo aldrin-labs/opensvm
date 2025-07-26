@@ -169,7 +169,7 @@ export const VirtualEventTable = React.memo(function VirtualEventTable({
         cellType: 'text'
       }
     ];
-  }, [getThemeColors]);
+  }, []);
 
   // Ultra-optimized table initialization with minimal options
   const initializeTable = useCallback(() => {
@@ -277,6 +277,9 @@ export const VirtualEventTable = React.memo(function VirtualEventTable({
       themeCache.clear();
     }
     
+    // Capture containerRef for cleanup
+    const containerElement = containerRef.current;
+    
     // Use requestAnimationFrame to ensure DOM is ready
     const initTimer = requestAnimationFrame(() => {
       initializeTable();
@@ -292,7 +295,7 @@ export const VirtualEventTable = React.memo(function VirtualEventTable({
           tableInstanceRef.current = null; // Clear reference first to prevent race conditions
           
           // Only release if container still exists in DOM
-          if (containerRef.current && containerRef.current.isConnected) {
+          if (containerElement && containerElement.isConnected) {
             table.release();
           }
         } catch (error) {
@@ -306,45 +309,15 @@ export const VirtualEventTable = React.memo(function VirtualEventTable({
   }, [initializeTable]);
 
   // Ultra-throttled table data updates for maximum performance
-  const updateTableDataThrottled = useCallback(
-    (() => {
-      let timeoutId: NodeJS.Timeout | null = null;
-      let lastUpdateTime = 0;
-      
-      return () => {
-        const now = Date.now();
-        
-        // Prevent updates if too frequent
-        if (now - lastUpdateTime < 300) {
-          if (timeoutId) {
-            clearTimeout(timeoutId);
-          }
-          
-          timeoutId = setTimeout(() => {
-            if (tableInstanceRef.current && isTableReady) {
-              try {
-                tableInstanceRef.current.setRecords(tableData);
-                lastUpdateTime = Date.now();
-              } catch (error) {
-                // Silently handle update errors
-              }
-            }
-          }, 300 - (now - lastUpdateTime));
-          return;
-        }
-        
-        if (tableInstanceRef.current && isTableReady) {
-          try {
-            tableInstanceRef.current.setRecords(tableData);
-            lastUpdateTime = now;
-          } catch (error) {
-            // Silently handle update errors
-          }
-        }
-      };
-    })(),
-    [tableData, isTableReady]
-  );
+  const updateTableDataThrottled = useCallback(() => {
+    if (tableInstanceRef.current && isTableReady) {
+      try {
+        tableInstanceRef.current.setRecords(tableData);
+      } catch (error) {
+        // Silently handle update errors
+      }
+    }
+  }, [tableData, isTableReady]);
 
   // Update table data when events change (throttled)
   useEffect(() => {

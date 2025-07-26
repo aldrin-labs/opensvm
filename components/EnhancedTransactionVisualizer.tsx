@@ -126,8 +126,11 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
       return;
     }
 
+    // Capture the current ref value for cleanup
+    const svgElement = svgRef.current;
+
     // Clear previous content
-    d3.select(svgRef.current).selectAll('*').remove();
+    d3.select(svgElement).selectAll('*').remove();
 
     // Prepare data structures
     const nodes: Node[] = [];
@@ -190,7 +193,7 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
     // Setup SVG
     const width = 800;
     const height = 600;
-    const svg = d3.select(svgRef.current)
+    const svg = d3.select(svgElement)
       .attr('width', width)
       .attr('height', height)
       .attr('viewBox', [-width / 2, -height / 2, width, height]);
@@ -286,9 +289,9 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
         simulationRef.current = null;
       }
       
-      // Clear all SVG content and event listeners
-      if (svgRef.current) {
-        const svg = d3.select(svgRef.current);
+      // Clear all SVG content and event listeners using captured ref
+      if (svgElement) {
+        const svg = d3.select(svgElement);
         svg.selectAll('*').remove();
         svg.on('.drag', null);
       }

@@ -1,0 +1,21 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "jsx": "preserve",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./components/transaction-graph/types"]
+  },
+  "include": [
+    "components/transaction-graph/**/*.ts",
+    "components/transaction-graph/**/*.tsx",
+    "components/transaction-graph/types/*.d.ts",
+    "components/TransactionGraphClouds.tsx",
+    "lib/graph-state-cache.ts"
+  ]
+}

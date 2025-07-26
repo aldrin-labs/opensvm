@@ -3,6 +3,7 @@ import type { DetailedTransactionInfo } from '@/lib/solana';
 import { getConnection } from '@/lib/solana-connection';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
+import { enhancedTransactionFetcher, type EnhancedTransactionData } from '@/lib/enhanced-transaction-fetcher';
 
 const DEBUG = true; // Set to true to enable detailed logging
 
@@ -172,35 +173,22 @@ export async function GET(
       console.log(`[API] Using OpenSVM RPC connection to fetch transaction data`);
     }
 
-    // Fetch transaction with timeout
-    const tx = await Promise.race([
-      connection.getParsedTransaction(signature, {
-        maxSupportedTransactionVersion: 0,
-        commitment: 'confirmed'
-      }),
+    // Use enhanced transaction fetcher for comprehensive data
+    const enhancedTx = await Promise.race([
+      enhancedTransactionFetcher.fetchEnhancedTransaction(signature),
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error('RPC request timed out')), 15000); // Increase timeout to 15 seconds
       })
-    ]) as ParsedTransactionWithMeta | null;
+    ]) as EnhancedTransactionData;
 
     clearTimeout(timeoutId);
 
     if (DEBUG) {
-      console.log(`[API] Transaction data received: ${tx ? 'YES' : 'NO'}`);
-    }
-    if (!tx) {
-      console.error(`[API] Transaction not found for signature: ${signature}`);
-      return new Response(
-        JSON.stringify({ error: 'Transaction not found' }),
-        { 
-          status: 404,
-          headers: new Headers(defaultHeaders)
-        }
-      );
+      console.log(`[API] Enhanced transaction data received: ${enhancedTx ? 'YES' : 'NO'}`);
     }
 
-    // Transform and return the transaction data
-    const transactionInfo = transformTransactionData(signature, tx);
+    // Transform enhanced data to existing format for backward compatibility
+    const transactionInfo = transformEnhancedTransactionData(enhancedTx);
 
     if (DEBUG) {
       console.log(`[API] Successfully processed transaction data, returning to client`);
@@ -390,6 +378,79 @@ function transformTransactionData(signature: string, tx: ParsedTransactionWithMe
     }
   }
   
+  return transactionInfo;
+}
+
+// Helper function to transform enhanced transaction data to existing format
+function transformEnhancedTransactionData(enhancedTx: EnhancedTransactionData): DetailedTransactionInfo {
+  if (DEBUG) {
+    console.log(`[API] Transforming enhanced transaction data for UI presentation`);
+  }
+
+  const transactionInfo: DetailedTransactionInfo = {
+    signature: enhancedTx.signature,
+    timestamp: enhancedTx.blockTime ? enhancedTx.blockTime * 1000 : Date.now(),
+    slot: enhancedTx.slot,
+    success: enhancedTx.meta.err === null,
+    type: 'unknown',
+    details: {
+      instructions: enhancedTx.instructionData.map(ix => ({
+        program: ix.programName || '',
+        programId: ix.programId,
+        parsed: ix.data.parsed || {},
+        accounts: ix.accounts.map(acc => acc.pubkey),
+        data: ix.data.raw,
+        computeUnits: ix.computeUnits,
+        computeUnitsConsumed: ix.computeUnits
+      })),
+      accounts: enhancedTx.transaction.message.accountKeys.map(key => ({
+        pubkey: key.pubkey,
+        signer: key.signer,
+        writable: key.writable
+      })),
+      preBalances: enhancedTx.meta.preBalances,
+      postBalances: enhancedTx.meta.postBalances,
+      preTokenBalances: enhancedTx.meta.preTokenBalances,
+      postTokenBalances: enhancedTx.meta.postTokenBalances,
+      logs: enhancedTx.meta.logMessages,
+      innerInstructions: enhancedTx.instructionData.map(ix => ({
+        index: ix.index,
+        instructions: ix.innerInstructions.map(innerIx => ({
+          program: innerIx.programName || '',
+          programId: innerIx.programId,
+          parsed: innerIx.data.parsed || {},
+          accounts: innerIx.accounts.map(acc => acc.pubkey),
+          data: innerIx.data.raw,
+          computeUnits: innerIx.computeUnits,
+          computeUnitsConsumed: innerIx.computeUnits
+        }))
+      })),
+      tokenChanges: enhancedTx.accountStates.flatMap(account => 
+        account.tokenChanges.map(change => ({
+          mint: change.mint,
+          preAmount: change.uiAmountBefore || 0,
+          postAmount: change.uiAmountAfter || 0,
+          change: (change.uiAmountAfter || 0) - (change.uiAmountBefore || 0)
+        }))
+      ),
+      solChanges: enhancedTx.accountStates
+        .filter(account => account.lamportsDiff !== 0)
+        .map((account, index) => ({
+          accountIndex: index,
+          preBalance: 0, // Would need to calculate from account states
+          postBalance: account.lamportsDiff,
+          change: account.lamportsDiff
+        }))
+    }
+  };
+
+  // Determine transaction type based on token changes
+  if (enhancedTx.accountStates.some(account => account.tokenChanges.length > 0)) {
+    transactionInfo.type = 'token';
+  } else if (enhancedTx.accountStates.some(account => account.lamportsDiff !== 0)) {
+    transactionInfo.type = 'sol';
+  }
+
   return transactionInfo;
 }
 

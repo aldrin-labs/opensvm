@@ -25,7 +25,7 @@ module.exports = {
   },
   // Explicitly exclude canvas from transformation
   transformIgnorePatterns: [
-    "node_modules/(?!(uuid|@solana/web3.js|canvas)/)"
+    "node_modules/(?!(uuid|@solana/web3.js|@qdrant/js-client-rest|canvas)/)"
   ],
   // Prevent Jest from loading canvas module during tests
   modulePathIgnorePatterns: [

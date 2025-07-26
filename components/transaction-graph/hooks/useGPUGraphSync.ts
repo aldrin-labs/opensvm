@@ -85,6 +85,9 @@ export function useGPUGraphSync({
   useEffect(() => {
     if (!cyRef.current || !useGPUGraph) return;
 
+    // Capture cyRef for cleanup
+    const cyElement = cyRef.current;
+    
     debugLog('🔄 [GPU_LISTENER] Setting up GPU graph update listeners');
     
     // Set up listener for graph changes
@@ -94,14 +97,14 @@ export function useGPUGraphSync({
     };
     
     // Listen to more events to ensure updates
-    cyRef.current.on('add remove data position', updateHandler);
+    cyElement.on('add remove data position', updateHandler);
     
     // Initial update
     updateGPUGraphData();
     
     return () => {
-      if (cyRef.current) {
-        cyRef.current.removeListener('add remove data position', updateHandler);
+      if (cyElement) {
+        cyElement.removeListener('add remove data position', updateHandler);
       }
     };
   }, [cyRef, useGPUGraph, updateGPUGraphData]);

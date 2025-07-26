@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { UserHistoryEntry, UserHistoryStats } from '@/types/user-history';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,7 +34,8 @@ interface GraphPoint {
   title: string;
 }
 
-export function UserHistoryGraph({ history, stats, walletAddress }: UserHistoryGraphProps) {
+// 'stats' and 'walletAddress' are currently unused. Remove them to fix lint warning.
+export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
   const [isRealtime, setIsRealtime] = useState(false);
   const [currentPoints, setCurrentPoints] = useState<GraphPoint[]>([]);
   const [animationProgress, setAnimationProgress] = useState(0);
@@ -71,7 +72,7 @@ export function UserHistoryGraph({ history, stats, walletAddress }: UserHistoryG
   const graphPoints = Object.values(aggregatedPoints).sort((a, b) => a.timestamp - b.timestamp);
 
   // Draw the graph
-  const drawGraph = (points: GraphPoint[], progress: number = 1) => {
+  const drawGraph = useCallback((points: GraphPoint[], progress: number = 1) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -206,7 +207,7 @@ export function UserHistoryGraph({ history, stats, walletAddress }: UserHistoryG
       });
       ctx.fillText(label, x, height - padding + 20);
     }
-  };
+  }, [isRealtime]); // Include isRealtime dependency
 
   // Animation loop
   const animate = () => {
@@ -279,7 +280,7 @@ export function UserHistoryGraph({ history, stats, walletAddress }: UserHistoryG
       setCurrentPoints(graphPoints);
       drawGraph(graphPoints);
     }
-  }, [graphPoints]);
+  }, [graphPoints, drawGraph]);
 
   // Handle real-time data updates
   useEffect(() => {
@@ -288,7 +289,7 @@ export function UserHistoryGraph({ history, stats, walletAddress }: UserHistoryG
       setCurrentPoints(combinedPoints);
       drawGraph(combinedPoints);
     }
-  }, [realtimeData, isRealtime, graphPoints]);
+  }, [realtimeData, isRealtime, graphPoints, drawGraph]);
 
   // Cleanup on unmount
   useEffect(() => {

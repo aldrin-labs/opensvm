@@ -1,32 +1,42 @@
 'use client';
 
-export * from './types';
-export * from './utils';
-export * from './layout';
-export * from './data-fetching';
-export * from './interaction-handlers';
-export * from './gpu-utils';
-export * from './adaptive-rendering';
-export * from './hooks';
-export { TrackingStatsPanel } from './TrackingStatsPanel';
+// Main components
+export { default as TransactionGraph } from './TransactionGraph';
 export { default as GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
+export { TrackingStatsPanel } from './TrackingStatsPanel';
+export { TransactionGraphClouds } from './TransactionGraphClouds';
+export { default as TransactionGraphFilters } from './TransactionGraphFilters';
 
-// Re-export key utilities for backward compatibility
-export { 
-  resizeGraph, 
-  fetchTransactionData, 
+// Hooks
+export * from './hooks';
+
+// Utils
+export {
+  resizeGraph,
+  fetchTransactionData,
   fetchAccountTransactions,
-  debugLog,
   errorLog,
-  debounce,
-  throttle
+  debugLog
 } from './utils';
 
-// Re-export types
-export type { 
+export { checkForSplTransfers } from './spl-check';
+
+// Types
+export type {
   TransactionGraphProps,
+  GraphState,
+  SavedGraphState,
+  ViewportState,
   Transaction,
   AccountData,
-  ViewportState,
-  GraphState
+  FetchQueueItem,
+  GraphElementAddResult,
+  NavigationHistoryState
 } from './types';
+
+// GPU types
+export type {
+  GPUNode,
+  GPULink,
+  GPUGraphData
+} from './type-safe-utils';

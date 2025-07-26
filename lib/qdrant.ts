@@ -218,6 +218,11 @@ export async function getUserHistory(
     pageType?: string;
   } = {}
 ): Promise<{ history: UserHistoryEntry[]; total: number }> {
+  // Skip in browser - return empty result
+  if (typeof window !== 'undefined') {
+    return { history: [], total: 0 };
+  }
+  
   try {
     const { limit = 100, offset = 0, pageType } = options;
     
@@ -814,10 +819,13 @@ export interface TransferEntry {
  * Initialize transfers collection with proper indexing
  */
 async function ensureTransfersCollection() {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
   try {
-    const transfersExists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
+    const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
     
-    if (!transfersExists) {
+    if (!exists) {
       await qdrantClient.createCollection(COLLECTIONS.TRANSFERS, {
         vectors: {
           size: 384,
@@ -862,8 +870,10 @@ async function ensureTransfersCollection() {
  * Store transfer entry in Qdrant
  */
 export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+  
   try {
-
     await ensureTransfersCollection();
     
     // Generate embedding from transfer content
@@ -896,8 +906,12 @@ export async function getCachedTransfers(
     transferType?: 'SOL' | 'TOKEN' | 'ALL';
   } = {}
 ): Promise<{ transfers: TransferEntry[]; total: number }> {
+  // Skip in browser - return empty result
+  if (typeof window !== 'undefined') {
+    return { transfers: [], total: 0 };
+  }
+  
   try {
-
     await ensureTransfersCollection();
     
     const { limit = 100, offset = 0, solanaOnly = false, transferType = 'ALL' } = options;
@@ -1102,205 +1116,8 @@ export function isSolanaOnlyTransaction(transfer: any): boolean {
     'orca111111111111111111111111111111111111111', // Orca
     'MERLuDFBMmsHnszBSb5Q6pR9bxaENa8zD6zF8g5nKX', // Mercurial
     'SwaPp1ng11111111111111111111111111111111111', // Orca Swap (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)1n1n1n1n1n1n1n', // Saber (example, not real)
+    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
+    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
+    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
   ];
-  // Known cross-chain bridge programs (exclude these)
-  const bridgePrograms = [
-    'WormT3McKhFJ2RkiGpdw9GKvNCrB2aB54gb2uV9MfQC', // Wormhole
-    'A4hyUU7t5p2hqUikS2R7ZP5TiSezgHFMGz6HnGw4jDxm', // Portal Bridge
-    'C4Gvtsj4CJVhaNXSG1H4ZKk9mG6s7gvwC4Eo8cMGo7DT', // Allbridge
-  ];
-  
-  const programId = transfer.programId || '';
-  
-  // If it's a known bridge program, it's not Solana-only
-  if (bridgePrograms.includes(programId)) {
-    return false;
-  }
-  
-  // If it's a known Solana program, it's Solana-only
-  if (solanaPrograms.includes(programId)) {
-    return true;
-  }
-  
-  // Default to true for SOL transfers and unknown programs
-  return true;
-}
-
-/**
- * Store advertisement interaction data
- */
-export interface AdInteraction {
-  id: string;
-  walletAddress?: string;
-  adId: string;
-  adType: string;
-  action: 'view' | 'click' | 'conversion';
-  timestamp: number;
-  metadata?: Record<string, any>;
-}
-
-export async function storeAdInteraction(interaction: AdInteraction): Promise<void> {
-  try {
-
-    
-    // Use existing user_history collection for ad tracking
-    const textContent = `ad ${interaction.adType} ${interaction.action} ${interaction.adId}`;
-    const vector = generateSimpleEmbedding(textContent);
-    
-    await qdrantClient.upsert(COLLECTIONS.USER_HISTORY, {
-      wait: true,
-      points: [{
-        id: interaction.id,
-        vector,
-        payload: {
-          ...interaction,
-          pageType: 'ad_interaction'
-        } as any
-      }]
-    });
-  } catch (error) {
-    console.error('Error storing ad interaction:', error);
-    throw error;
-  }
-}
-
-/**
- * Get advertisement analytics
- */
-export async function getAdAnalytics(adId: string): Promise<{
-  views: number;
-  clicks: number;
-  conversions: number;
-  ctr: number;
-  conversionRate: number;
-}> {
-  try {
-
-    
-    const filter = {
-      must: [
-        { key: 'adId', match: { value: adId } },
-        { key: 'pageType', match: { value: 'ad_interaction' } }
-      ]
-    };
-    
-    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, {
-      vector: new Array(384).fill(0),
-      filter,
-      limit: 10000,
-      with_payload: true
-    });
-    
-    const interactions = result.map(point => point.payload as unknown as AdInteraction);
-    
-    const views = interactions.filter(i => i.action === 'view').length;
-    const clicks = interactions.filter(i => i.action === 'click').length;
-    const conversions = interactions.filter(i => i.action === 'conversion').length;
-    
-    const ctr = views > 0 ? (clicks / views) * 100 : 0;
-    const conversionRate = clicks > 0 ? (conversions / clicks) * 100 : 0;
-    
-    return {
-      views,
-      clicks,
-      conversions,
-      ctr,
-      conversionRate
-    };
-  } catch (error) {
-    console.error('Error getting ad analytics:', error);
-    return {
-      views: 0,
-      clicks: 0,
-      conversions: 0,
-      ctr: 0,
-      conversionRate: 0
-    };
-  }
 }

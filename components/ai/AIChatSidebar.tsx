@@ -1,6 +1,6 @@
 'use client';
 
-import { FC, useState, useEffect, useRef } from 'react';
+import { FC, useState, useEffect, useRef, useCallback } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Connection } from '@solana/web3.js';
@@ -53,7 +53,7 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
   const isResizing = useRef(false);
   const lastX = useRef(0);
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
     
     const deltaX = lastX.current - e.clientX;
@@ -62,16 +62,16 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
     const newWidth = Math.min(800, Math.max(300, width + deltaX));
     setWidth(newWidth);
     onWidthChange?.(newWidth);
-  };
+  }, [width, onWidthChange]);
 
-  const handleMouseUp = () => {
+  const handleMouseUp = useCallback(() => {
     if (isResizing.current) {
       isResizing.current = false;
       document.body.style.cursor = 'default';
       document.body.classList.remove('select-none');
       onResizeEnd?.();
     }
-  };
+  }, [onResizeEnd]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -90,7 +90,7 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [width]);
+  }, [width, handleMouseMove, handleMouseUp]);
 
   return (
     <Chat

@@ -83,6 +83,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
     onBlockchainEventRef.current = onBlockchainEvent;
     onErrorRef.current = onError;
   }, [onAlert, onStatusUpdate, onBlockchainEvent, onError]);
+  // If you have useEffect that uses connect/disconnect, add them to the dependency array as needed.
 
   const connect = useCallback(() => {
     // Safely close any existing connection first
@@ -295,7 +296,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
       isMountedRef.current = false;
       disconnect();
     };
-  }, [autoConnect]); // Remove connect/disconnect from dependencies to prevent infinite loops
+  }, [autoConnect, connect, disconnect]);
 
   return {
     alerts,

@@ -117,6 +117,9 @@ export const CustomScrollbar = forwardRef<HTMLDivElement, CustomScrollbarProps>(
             onMouseDown={handleThumbMouseDown}
             role="slider"
             aria-label="Drag to scroll"
+            aria-valuenow={Math.round(scrollPercentage * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
             tabIndex={0}
             onKeyDown={(e) => {
               // Allow keyboard interaction with thumb

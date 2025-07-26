@@ -73,29 +73,29 @@ export default function TransactionTable({ transactions, isLoading, hasMore, onL
       theme: VTable.themes.DEFAULT.extends({
         defaultStyle: {
           hover: {
-            cellBgColor: '#1e1e1e',
-            inlineRowBgColor: '#1e1e1e'
+            cellBgColor: 'hsl(var(--muted))',
+            inlineRowBgColor: 'hsl(var(--muted))'
           },
           borderLineWidth: 1,
-          borderColor: '#333333',
-          color: '#ffffff',
-          bgColor: '#000000',
+          borderColor: 'hsl(var(--border))',
+          color: 'hsl(var(--foreground))',
+          bgColor: 'hsl(var(--background))',
           fontSize: 14,
           fontFamily: 'inherit'
         },
         headerStyle: {
-          bgColor: '#000000',
-          color: '#ffffff',
+          bgColor: 'hsl(var(--muted))',
+          color: 'hsl(var(--foreground))',
           fontWeight: 500,
           fontSize: 14,
           borderLineWidth: 1,
-          borderColor: '#333333'
+          borderColor: 'hsl(var(--border))'
         },
         frameStyle: {
-          borderColor: '#333333',
+          borderColor: 'hsl(var(--border))',
           borderLineWidth: 1
         },
-        underlayBackgroundColor: '#000000'
+        underlayBackgroundColor: 'hsl(var(--background))'
       })
     };
 

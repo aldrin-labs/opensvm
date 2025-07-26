@@ -75,29 +75,29 @@ export default function TokenTable({ tokens, onTokenClick }: TokenTableProps) {
       theme: VTable.themes.DEFAULT.extends({
         defaultStyle: {
           hover: {
-            cellBgColor: 'var(--muted)',
-            inlineRowBgColor: 'var(--muted)'
+            cellBgColor: 'hsl(var(--muted))',
+            inlineRowBgColor: 'hsl(var(--muted))'
           },
           borderLineWidth: 1,
-          borderColor: 'var(--border)',
-          color: 'var(--foreground)',
-          bgColor: 'var(--background)',
+          borderColor: 'hsl(var(--border))',
+          color: 'hsl(var(--foreground))',
+          bgColor: 'hsl(var(--background))',
           fontSize: 14,
           fontFamily: 'inherit'
         },
         headerStyle: {
-          bgColor: 'var(--background)',
-          color: 'var(--muted-foreground)',
+          bgColor: 'hsl(var(--muted))',
+          color: 'hsl(var(--foreground))',
           fontWeight: 500,
           fontSize: 14,
           borderLineWidth: 1,
-          borderColor: 'var(--border)'
+          borderColor: 'hsl(var(--border))'
         },
         frameStyle: {
-          borderColor: 'var(--border)',
+          borderColor: 'hsl(var(--border))',
           borderLineWidth: 1
         },
-        underlayBackgroundColor: 'var(--background)'
+        underlayBackgroundColor: 'hsl(var(--background))'
       })
     };
 
