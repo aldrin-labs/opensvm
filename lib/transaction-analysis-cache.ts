@@ -9,6 +9,8 @@
  */
 
 import { qdrantClient } from './qdrant';
+// Disable Qdrant cache if server URL not set
+const DISABLE_QDRANT_CACHE = !process.env.QDRANT_SERVER;
 // Qdrant cache calls should only run on the server side
 import type { TransactionExplanation } from './ai-transaction-analyzer';
 import type { AccountChangesAnalysis } from './account-changes-analyzer';
@@ -107,8 +109,8 @@ class TransactionAnalysisCache {
    * Initialize the cache collection in Qdrant
    */
   private async ensureCacheCollection(): Promise<void> {
-    // Skip in browser
-    if (typeof window !== 'undefined') return;
+    // Skip if Qdrant not configured or in browser
+    if (DISABLE_QDRANT_CACHE || typeof window !== 'undefined') return;
     try {
       const exists = await qdrantClient.getCollection(CACHE_COLLECTIONS.TRANSACTION_ANALYSIS).catch(() => null);
       
@@ -310,8 +312,8 @@ class TransactionAnalysisCache {
    * Get cached account changes analysis for a transaction
    */
   async getCachedAccountChanges(signature: string): Promise<AccountChangesAnalysis | null> {
-    // Skip cache lookup in browser
-    if (typeof window !== 'undefined') return null;
+    // Skip cache lookup in browser or if Qdrant not configured
+    if (DISABLE_QDRANT_CACHE || typeof window !== 'undefined') return null;
     try {
       await this.ensureCacheCollection();
       

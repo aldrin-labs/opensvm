@@ -1,10 +1,9 @@
 import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { ListTable } from '@visactor/vtable';
 import * as VTable from '@visactor/vtable';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useTheme } from '@/lib/theme';
 
-type Theme = 'paper' | 'high-contrast' | 'dos-blue' | 'cyberpunk' | 'solarized';
 
 // Utility function to convert HSL to hex color
 function hslToHex(hsl: string): string {
@@ -73,9 +72,9 @@ function createVTableThemeFromCSS(): any {
   const background = getCSSVariableAsHex('--background');
   const foreground = getCSSVariableAsHex('--foreground');
   const muted = getCSSVariableAsHex('--muted');
-  const mutedForeground = getCSSVariableAsHex('--muted-foreground');
+  // const mutedForeground = getCSSVariableAsHex('--muted-foreground'); // unused
   const border = getCSSVariableAsHex('--border');
-  const card = getCSSVariableAsHex('--card');
+  // const card = getCSSVariableAsHex('--card'); // unused
 
   return {
     defaultStyle: {
@@ -157,6 +156,7 @@ interface VTableProps {
   rowKey?: (record: any) => string;
   pinnedRowIds?: Set<string>;
   onLoadMore?: () => void;
+  onCellContextMenu?: (value: any, record: any) => void; // New callback for right-click
 }
 
 export function VTableWrapper({
@@ -169,6 +169,7 @@ export function VTableWrapper({
   renderRowAction,
   rowKey = row => row.id,
   onSort,
+  onCellContextMenu, // Destructure new prop
   pinnedRowIds = new Set(),
   onLoadMore
 }: VTableProps): JSX.Element {
@@ -176,7 +177,7 @@ export function VTableWrapper({
   const tableRef = useRef<any>(null);
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
-  const pathname = usePathname();
+  // const pathname = usePathname(); // unused
   const { theme } = useTheme();
 
   // Client-side navigation handler
@@ -187,7 +188,7 @@ export function VTableWrapper({
   }, [router]);
 
   // Handle row click for selection
-  const handleRowClick = useCallback((rowData: any, e: any) => {
+  const handleRowClick = useCallback((rowData: any) => {
     if (onRowSelect && rowData) {
       const id = rowKey(rowData);
       onRowSelect(id);
@@ -237,30 +238,39 @@ export function VTableWrapper({
             };
           });
 
+          // Calculate dynamic column width to fill container
+          const totalWidth = containerRef.current.clientWidth;
+          const dynamicWidth = Math.floor(totalWidth / columns.length);
+          const colsConfig = columns.map(col => ({
+            ...col,
+            width: col.width ?? dynamicWidth
+          }));
           // Get the dynamic theme name
           const vtableThemeName = getVTableThemeName();
           
           console.log('Creating VTable with dynamic theme:', vtableThemeName, 'for OpenSVM theme:', theme);
-          
+
           // Create table configuration with dynamic theme
           const tableConfig = {
             container: containerRef.current,
             records: processedData,
-            theme: vtableThemeName, // Use the dynamic theme name
+            theme: vtableThemeName as any,
             defaultRowHeight: 48,
             defaultHeaderRowHeight: 48,
             overscrollBehavior: 'none',
-            columns: columns.map(col => ({
-            field: col.field,
-            title: col.header || col.title,
-            width: col.width || 150,
-            sortable: !!col.sortable, // Ensure boolean to fix TypeScript error
-            ...(col.align && { textAlign: col.align }),
-            render: (args: any) => {
-              try {
-                // Ensure the value is properly extracted from the row data
-                const cellValue = args.row[col.field];
-                
+            // Removing explicit width to allow responsive auto-sizing
+            // width: containerRef.current.clientWidth,
+            columns: colsConfig.map(col => ({
+              field: col.field,
+              title: col.header || col.title,
+              width: col.width,
+              sortable: !!col.sortable,
+              ...(col.align && { textAlign: col.align }),
+              render: (args: any) => {
+                try {
+                  // Ensure the value is properly extracted from the row data
+                  const cellValue = args.row[col.field];
+                  
               // Skip for internal fields used for selection/state
                 if (col.field.startsWith('__')) {
                   return '';
@@ -359,10 +369,47 @@ export function VTableWrapper({
         };
 
           // Create the table with the configuration
-          const table = new ListTable(tableConfig);
+          // Casting to any to satisfy ListTableConstructorOptions typings
+          const table = new ListTable(tableConfig as any);
 
-          // Log theme application for debugging
-          console.log('VTable created successfully with dynamic theme:', vtableThemeName, 'Table instance:', table);
+          // Add click handler for copy on single click
+          (table as any).on('click_cell', (args: any) => {
+            try {
+              const raw = args.value?.html ?? args.value;
+              const tmp = document.createElement('div');
+              tmp.innerHTML = raw;
+              const text = tmp.textContent || tmp.innerText || String(args.value);
+              if (text) navigator.clipboard.writeText(text);
+            } catch (_e) {
+              // ignore
+            }
+            // existing row selection
+            if (onRowSelect) {
+              const rowId = args.cellKey?.rowKey;
+              const record = data.find(r => rowKey(r) === rowId);
+              if (record) onRowSelect(rowId);
+            }
+          });
+
+          // Double click to open account or transaction
+          (table as any).on('dblclick_cell', (args: any) => {
+            const val = args.value?.text ?? args.value;
+            if (typeof val === 'string') {
+              let url: string | null = null;
+              if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(val)) url = `/account/${val}`;
+              else if (/^[A-Za-z0-9]{50,}$/.test(val)) url = `/tx/${val}`;
+              if (url) window.open(window.location.origin + url, '_blank');
+            }
+          });
+
+          // Right click for context menu callback
+          (table as any).on('contextmenu_cell', (args: any) => {
+            args.domEvent.preventDefault();
+            const rowId = args.cellKey?.rowKey;
+            const record = data.find(r => rowKey(r) === rowId);
+            const val = args.value?.text ?? args.value;
+            if (record && onCellContextMenu) onCellContextMenu(val, record);
+          });
 
           if (onLoadMore) {
             (table as any).on('scroll', (args: any) => {
@@ -391,7 +438,7 @@ export function VTableWrapper({
                 null;
               
               if (rowData) {
-                handleRowClick(rowData, args);
+                handleRowClick(rowData);
               }
             }
           });
@@ -413,10 +460,13 @@ export function VTableWrapper({
 
     // Initialize table with delay to ensure container is ready
     const timer = setTimeout(initTable, 100);
+    // Rebuild table on window resize to adjust column widths
+    window.addEventListener('resize', initTable);
 
     // Cleanup
     return () => {
       clearTimeout(timer);
+      window.removeEventListener('resize', initTable);
       if (tableRef.current) {
         try {
           tableRef.current.dispose();
@@ -426,7 +476,7 @@ export function VTableWrapper({
         }
       }
     };
-  }, [columns, data, mounted, onLoadMore, onSort, handleNavigation, selectedRowId, pinnedRowIds, rowKey, onRowSelect, handleRowClick, theme]);
+  }, [columns, data, mounted, onLoadMore, onSort, onRowSelect, rowKey, onCellContextMenu, theme]);
 
   if (error) {
     return (
@@ -466,14 +516,17 @@ export function VTableWrapper({
   };
 
   return (
-    <div className="vtable-container relative" style={{ height: '100%' }} key={`vtable-${theme}`}>
-      <div 
-        className="vtable" 
-        ref={containerRef} 
-        style={{ width: '100%', height: '100%' }}
-        data-selected-row={selectedRowId || ''}
-        data-theme={theme}
-      />
+    <div className="vtable-container relative" style={{ width: '100%', height: '100%' }} key={`vtable-${theme}`}>
+      {/* Table wrapper fills container; horizontal scroll only if necessary */}
+      <div className="w-full h-full">
+        <div
+          className="vtable w-full"
+          ref={containerRef}
+          style={{ width: '100%', height: '100%' }}
+           data-selected-row={selectedRowId || ''}
+           data-theme={theme}
+        />
+      </div>
       
       {renderFloatingButton()}
     </div>

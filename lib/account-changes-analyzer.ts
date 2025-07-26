@@ -6,7 +6,7 @@
  */
 
 import type { DetailedTransactionInfo } from './solana';
-import { transactionAnalysisCache } from './transaction-analysis-cache';
+// Import transactionAnalysisCache dynamically in server-only code to avoid bundling on client
 
 export interface AccountChange {
   accountIndex: number;
@@ -99,6 +99,7 @@ class AccountChangesAnalyzer {
     let cachedAnalysis = null;
     if (typeof window === 'undefined') {
       // Check cache first (server-side only)
+      const { transactionAnalysisCache } = await import('./transaction-analysis-cache');
       cachedAnalysis = await transactionAnalysisCache.getCachedAccountChanges(transaction.signature);
     }
     
@@ -121,6 +122,7 @@ class AccountChangesAnalyzer {
 
     // Cache the result (server-side only)
     if (typeof window === 'undefined') {
+      const { transactionAnalysisCache } = await import('./transaction-analysis-cache');
       await transactionAnalysisCache.cacheAccountChanges(transaction.signature, analysis);
     }
     

@@ -157,7 +157,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'price',
       title: 'Price',
-      width: 100,
+      width: 120,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
@@ -168,7 +168,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'value',
       title: 'Value',
-      width: 120,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
@@ -179,7 +179,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'change24h',
       title: '24h Change',
-      width: 100,
+      width: 120,
       sortable: true,
       render: (row: TokenInfo) => {
         const change = row.change24h || 0;
@@ -207,7 +207,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'firstTransferFrom',
       title: 'First Transfer',
-      width: 180,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-xs">
@@ -222,7 +222,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'lastTransferTo',
       title: 'Last Transfer',
-      width: 180,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-xs">
@@ -246,6 +246,9 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       )
     }
   ], []);
+
+  // Use fluid columns to allow VTable to stretch columns evenly across available width
+  const fluidColumns = useMemo(() => columns.map(col => ({ ...col, width: undefined })), [columns]);
 
   const getRowId = useCallback((row: TokenInfo) => row.mint, []);
 
@@ -272,9 +275,9 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         </div>
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden h-[600px]">
+      <div className="w-full border border-border rounded-lg h-[600px]">
         <VTableWrapper
-          columns={columns}
+          columns={fluidColumns}
           data={sortedTokens}
           rowKey={getRowId}
           loading={false}
