@@ -19,7 +19,7 @@ interface TrendingValidator {
   rank: number;
 }
 
-import { TOKEN_MINTS, TOKEN_DECIMALS, MIN_BURN_AMOUNTS } from '@/lib/config/tokens';
+import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 
 // Solana connection
 const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -60,8 +60,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       
       const accountInfo = await connection.getTokenAccountBalance(tokenAccount);
       if (accountInfo.value) {
-        // Use consistent decimals from config
-        setUserSvmaiBalance(Number(accountInfo.value.amount) / Math.pow(10, TOKEN_DECIMALS.SVMAI));
+        // Use precise multiplier instead of Math.pow
+        setUserSvmaiBalance(Number(accountInfo.value.amount) / TOKEN_MULTIPLIERS.SVMAI);
       } else {
         setUserSvmaiBalance(0);
       }
@@ -105,9 +105,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       transaction.add(createATAInstruction);
     }
 
-    const decimals = TOKEN_DECIMALS.SVMAI;
-    // Use BigInt to handle large numbers accurately
-    const burnAmountLamports = BigInt(Math.floor(amount * Math.pow(10, decimals)));
+    // Use BigInt and precise multiplier for accurate calculation
+    const burnAmountLamports = BigInt(Math.floor(amount * TOKEN_MULTIPLIERS.SVMAI));
     
     const burnInstruction = createBurnInstruction(
       tokenAccount,
@@ -210,6 +209,11 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
     if (burnAmount > userSvmaiBalance) {
       setModalError(`Insufficient $SVMAI balance. You have ${userSvmaiBalance.toFixed(2)} $SVMAI`);
+      return;
+    }
+
+    if (burnAmount > MAX_BURN_AMOUNTS.SVMAI) {
+      setModalError(`Maximum burn amount is ${MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI`);
       return;
     }
 

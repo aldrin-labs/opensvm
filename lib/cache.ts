@@ -5,14 +5,24 @@ type CacheEntry<T> = {
 
 class MemoryCache {
   private cache: Map<string, CacheEntry<any>>;
+  private maxSize: number;
 
-  constructor() {
+  constructor(maxSize: number = 10000) {
     this.cache = new Map();
+    this.maxSize = maxSize;
   }
 
   set<T>(key: string, value: T, ttlSeconds: number): void {
     const expiresAt = Date.now() + ttlSeconds * 1000;
     this.cache.set(key, { value, expiresAt });
+    
+    // Enforce size limit with LRU eviction
+    if (this.cache.size > this.maxSize) {
+      const firstKey = this.cache.keys().next().value;
+      if (firstKey) {
+        this.cache.delete(firstKey);
+      }
+    }
   }
 
   get<T>(key: string): T | null {

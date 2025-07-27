@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import { memoryCache } from '@/lib/cache';
-import { TOKEN_MINTS, TOKEN_DECIMALS } from '@/lib/config/tokens';
+import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
 
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -121,19 +121,39 @@ async function verifyBurnTransaction(
           // Extract burn amount (8 bytes starting at position 1)
           const amountBytes = data.slice(1, 9);
           const amount = Buffer.from(amountBytes).readBigUInt64LE();
-          burnAmount = Number(amount) / Math.pow(10, TOKEN_DECIMALS.SVMAI);
+          burnAmount = Number(amount) / TOKEN_MULTIPLIERS.SVMAI;
 
-          // Get the burner's account from the transaction
-          // In a burn instruction, the token account is typically the first account
+          // Get the token account and verify its owner
           if (ix.accounts && ix.accounts.length > 0) {
-            // We need to trace back to find the owner of the token account
-            // For now, we'll verify the transaction signer matches
-            const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
-              tx.transaction.message.header.numRequiredSignatures > idx
-            );
+            const tokenAccountIndex = ix.accounts[0];
+            const tokenAccountPubkey = tx.transaction.message.accountKeys[tokenAccountIndex];
             
-            if (signers.length > 0) {
-              burnerAccount = signers[0].toBase58();
+            // Get the token account info to verify owner
+            try {
+              const tokenAccountInfo = await connection.getAccountInfo(tokenAccountPubkey);
+              if (tokenAccountInfo && tokenAccountInfo.data.length >= 32) {
+                // Token account owner is at bytes 32-64
+                const ownerBytes = tokenAccountInfo.data.slice(32, 64);
+                const owner = new PublicKey(ownerBytes);
+                burnerAccount = owner.toBase58();
+              } else {
+                // Fallback to transaction signer if we can't get account info
+                const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
+                  tx.transaction.message.header.numRequiredSignatures > idx
+                );
+                if (signers.length > 0) {
+                  burnerAccount = signers[0].toBase58();
+                }
+              }
+            } catch (error) {
+              console.error('Error getting token account info:', error);
+              // Fallback to transaction signer
+              const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
+                tx.transaction.message.header.numRequiredSignatures > idx
+              );
+              if (signers.length > 0) {
+                burnerAccount = signers[0].toBase58();
+              }
             }
           }
 
@@ -172,7 +192,7 @@ async function verifyBurnTransaction(
       if (pre.mint === TOKEN_MINTS.SVMAI.toBase58() && post) {
         const preBal = Number(pre.uiTokenAmount.amount);
         const postBal = Number(post.uiTokenAmount.amount);
-        const burned = (preBal - postBal) / Math.pow(10, TOKEN_DECIMALS.SVMAI);
+        const burned = (preBal - postBal) / TOKEN_MULTIPLIERS.SVMAI;
         
         if (Math.abs(burned - expectedAmount) < tolerance) {
           mintVerified = true;
@@ -284,6 +304,13 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    if (burnAmount > MAX_BURN_AMOUNTS.SVMAI) {
+      return NextResponse.json({
+        success: false,
+        error: `Maximum burn amount is ${MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI`
+      }, { status: 400 });
+    }
+
     // Create connection for verification
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
 
@@ -302,31 +329,32 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Check if this signature has already been used
-    const usedSignatures = memoryCache.get<Set<string>>(USED_SIGNATURES_CACHE_KEY) || new Set();
-    if (usedSignatures.has(burnSignature)) {
-      return NextResponse.json({
-        success: false,
-        error: 'This burn transaction has already been used for a boost'
-      }, { status: 400 });
-    }
-
-    // Acquire mutex to prevent race conditions
+    // Acquire mutex to prevent race conditions FIRST
     const release = await boostMutex.acquire();
     
     try {
-      // Double-check signature hasn't been used (in case of race condition)
-      const usedSignaturesCheck = memoryCache.get<Set<string>>(USED_SIGNATURES_CACHE_KEY) || new Set();
-      if (usedSignaturesCheck.has(burnSignature)) {
+      // Check if this signature has already been used (inside mutex)
+      const usedSignatures = memoryCache.get<Set<string>>(USED_SIGNATURES_CACHE_KEY) || new Set();
+      if (usedSignatures.has(burnSignature)) {
         return NextResponse.json({
           success: false,
           error: 'This burn transaction has already been used for a boost'
         }, { status: 400 });
       }
 
-      // Add signature to used set
+      // Add signature to used set with safe TTL calculation
       usedSignatures.add(burnSignature);
-      memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, 30 * 24 * 60 * 60 * 1000); // Cache for 30 days
+      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60; // Calculate in seconds to avoid overflow
+      memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, THIRTY_DAYS_MS); // Cache for 30 days
+      
+      // Limit cache size to prevent memory exhaustion
+      if (usedSignatures.size > 10000) {
+        // Remove oldest 20% of entries (simple cleanup)
+        const entries = Array.from(usedSignatures);
+        const toRemove = entries.slice(0, Math.floor(entries.length * 0.2));
+        toRemove.forEach(sig => usedSignatures.delete(sig));
+        memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, THIRTY_DAYS_MS);
+      }
       
       // Get current boosts
       const currentBoosts = memoryCache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];

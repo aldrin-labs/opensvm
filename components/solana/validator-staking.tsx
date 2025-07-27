@@ -5,7 +5,7 @@ import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram, Keypair } from '@solana/web3.js';
 import * as web3 from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { TOKEN_MINTS, TOKEN_DECIMALS } from '@/lib/config/tokens';
+import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS } from '@/lib/config/tokens';
 import { Zap, TrendingDown, Lock, AlertCircle, Loader2, CheckCircle, Calculator } from 'lucide-react';
 
 interface ValidatorStakingProps {
@@ -76,7 +76,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
       const accountInfo = await connection.getTokenAccountBalance(tokenAccount);
       if (accountInfo.value) {
-        setUserSvmaiBalance(Number(accountInfo.value.amount) / Math.pow(10, TOKEN_DECIMALS.SVMAI));
+        // Use precise multiplier instead of Math.pow
+        setUserSvmaiBalance(Number(accountInfo.value.amount) / TOKEN_MULTIPLIERS.SVMAI);
       } else {
         setUserSvmaiBalance(0);
       }
@@ -106,22 +107,29 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     if (!publicKey || !connected) return;
 
     try {
-      // Get all stake accounts for the user
+      // Get stake accounts for the user with proper filtering
       const stakeAccountInfos = await connection.getParsedProgramAccounts(
         StakeProgram.programId,
         {
-          commitment: 'confirmed'
+          commitment: 'confirmed',
+          filters: [
+            {
+              memcmp: {
+                offset: 12, // Authorized staker offset in stake account
+                bytes: publicKey.toBase58(),
+              },
+            },
+          ],
         }
       );
 
       let totalStaked = 0;
       const validatorStakeAccounts: PublicKey[] = [];
 
-      // Filter accounts where user is the authorized staker
+      // Filter accounts for this specific validator
       for (const account of stakeAccountInfos) {
         const data = account.account.data as any;
         if (data.parsed?.type === 'delegated' && 
-            data.parsed?.info?.meta?.authorized?.staker === publicKey.toBase58() &&
             data.parsed?.info?.stake?.delegation?.voter === validatorVoteAccount) {
           const stakeAmount = Number(data.parsed.info.stake.delegation.stake || 0);
           totalStaked += stakeAmount / LAMPORTS_PER_SOL;
@@ -218,10 +226,16 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // The stake account needs to sign the transaction
       transaction.partialSign(stakeAccount);
 
-      // Get latest blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
+      // Get latest blockhash with longer validity
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
+
+      // Add a deadline check (transaction expires in ~60 seconds)
+      const currentBlockHeight = await connection.getBlockHeight();
+      if (lastValidBlockHeight - currentBlockHeight < 150) {
+        throw new Error('Network congestion detected. Please try again.');
+      }
 
       // Send transaction
       const signature = await sendTransaction(transaction, connection);
