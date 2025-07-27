@@ -40,6 +40,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   const [burnAmount, setBurnAmount] = useState<number>(MIN_BURN_AMOUNTS.SVMAI);
   const [isProcessingBurn, setIsProcessingBurn] = useState(false);
   const [userSvmaiBalance, setUserSvmaiBalance] = useState<number>(0);
+  const [modalError, setModalError] = useState<string>('');
+  const [modalSuccess, setModalSuccess] = useState<string>('');
 
   const itemsPerView = 3; // Show 3 trending validators at once
 
@@ -145,10 +147,17 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   useEffect(() => {
     fetchTrendingValidators();
     fetchSvmaiBalance();
-    // Refresh every 2 minutes
-    const interval = setInterval(() => {
-      fetchTrendingValidators();
-      fetchSvmaiBalance();
+    // Refresh every 2 minutes with error handling
+    const interval = setInterval(async () => {
+      try {
+        await fetchTrendingValidators();
+        if (connected && publicKey) {
+          await fetchSvmaiBalance();
+        }
+      } catch (error) {
+        console.error('Error in refresh interval:', error);
+        // Don't clear interval on error, just log it
+      }
     }, 120000);
     return () => clearInterval(interval);
   }, [publicKey, connected]);
@@ -186,18 +195,29 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   };
 
   const handleBoostPurchase = async () => {
+    setModalError('');
+    setModalSuccess('');
+
     if (!selectedValidator || !publicKey || !connected) {
-      alert('Please connect your wallet first');
+      setModalError('Please connect your wallet first');
       return;
     }
 
     if (burnAmount < MIN_BURN_AMOUNTS.SVMAI) {
-      alert(`Minimum burn amount is ${MIN_BURN_AMOUNTS.SVMAI} $SVMAI`);
+      setModalError(`Minimum burn amount is ${MIN_BURN_AMOUNTS.SVMAI} $SVMAI`);
       return;
     }
 
     if (burnAmount > userSvmaiBalance) {
-      alert(`Insufficient $SVMAI balance. You have ${userSvmaiBalance.toFixed(2)} $SVMAI`);
+      setModalError(`Insufficient $SVMAI balance. You have ${userSvmaiBalance.toFixed(2)} $SVMAI`);
+      return;
+    }
+
+    // Check SOL balance for token account creation if needed
+    const solBalance = await connection.getBalance(publicKey);
+    const rentExemption = await connection.getMinimumBalanceForRentExemption(165); // ATA size
+    if (solBalance < rentExemption) {
+      setModalError(`Insufficient SOL for transaction fees. Need at least ${(rentExemption / 1e9).toFixed(4)} SOL`);
       return;
     }
 
@@ -236,16 +256,22 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         // Refresh data
         fetchTrendingValidators();
         fetchSvmaiBalance();
-        alert(`🔥 Successfully burned ${burnAmount} $SVMAI! Boost activated for 24 hours.`);
-      } else {
-        alert(`Error: ${result.error}`);
+        setModalSuccess(`🔥 Successfully burned ${burnAmount} $SVMAI! Boost activated for 24 hours.`);
+        
+        // Close modal after delay
+        setTimeout(() => {
+          setShowBoostModal(false);
+          setModalSuccess('');
+        }, 2000);
+              } else {
+          setModalError(`Error: ${result.error}`);
+        }
+          } catch (err) {
+        console.error('Burn transaction failed:', err);
+        setModalError(`Transaction failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+      } finally {
+        setIsProcessingBurn(false);
       }
-    } catch (err) {
-      console.error('Burn transaction failed:', err);
-      alert(`Transaction failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-    } finally {
-      setIsProcessingBurn(false);
-    }
   };
 
   if (loading) {
@@ -374,11 +400,13 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
               <div className="mt-3 pt-3 border-t">
                                  <button
-                   onClick={(e) => {
-                     e.stopPropagation();
-                     setSelectedValidator(validator);
-                     setShowBoostModal(true);
-                   }}
+                                     onClick={(e) => {
+                    e.stopPropagation();
+                    setSelectedValidator(validator);
+                    setModalError('');
+                    setModalSuccess('');
+                    setShowBoostModal(true);
+                  }}
                    className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
                  >
                    <Flame className="h-3 w-3 mr-1" />
@@ -481,6 +509,18 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                   </div>
                 </div>
               </div>
+
+              {/* Error/Success Messages */}
+              {modalError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                  {modalError}
+                </div>
+              )}
+              {modalSuccess && (
+                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                  {modalSuccess}
+                </div>
+              )}
 
               <div className="flex gap-3">
                 <button

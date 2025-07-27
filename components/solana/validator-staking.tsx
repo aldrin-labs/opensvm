@@ -32,6 +32,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   const [error, setError] = useState<string>('');
   const [success, setSuccess] = useState<string>('');
   const [stakeAccounts, setStakeAccounts] = useState<PublicKey[]>([]);
+  const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
 
   const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
 
@@ -175,23 +176,30 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // Create a new stake account keypair
       const stakeAccount = web3.Keypair.generate();
 
-      const lamports = Math.floor(amount * LAMPORTS_PER_SOL);
+      // Use BigInt for precise lamports calculation
+      const lamports = BigInt(Math.floor(amount * LAMPORTS_PER_SOL));
       
       // Get minimum rent exemption for stake account
-      const rentExemption = await connection.getMinimumBalanceForRentExemption(StakeProgram.space);
+      const rentExemption = BigInt(await connection.getMinimumBalanceForRentExemption(StakeProgram.space));
       const totalLamports = lamports + rentExemption;
+
+      // Re-check SOL balance before proceeding (prevent race conditions)
+      const currentBalance = await connection.getBalance(publicKey);
+      if (Number(totalLamports) > currentBalance) {
+        throw new Error(`Insufficient SOL balance. Need ${(Number(totalLamports) / LAMPORTS_PER_SOL).toFixed(4)} SOL including rent`);
+      }
 
       // Create transaction
       const transaction = new Transaction();
 
-      // Create and initialize stake account with rent exemption
-      const createAccountInstruction = SystemProgram.createAccount({
-        fromPubkey: publicKey,
-        newAccountPubkey: stakeAccount.publicKey,
-        lamports: totalLamports,
-        space: StakeProgram.space,
-        programId: StakeProgram.programId,
-      });
+              // Create and initialize stake account with rent exemption
+        const createAccountInstruction = SystemProgram.createAccount({
+          fromPubkey: publicKey,
+          newAccountPubkey: stakeAccount.publicKey,
+          lamports: Number(totalLamports),
+          space: StakeProgram.space,
+          programId: StakeProgram.programId,
+        });
 
       const initializeInstruction = StakeProgram.initialize({
         stakePubkey: stakeAccount.publicKey,
@@ -226,13 +234,15 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
         lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
       }, 'confirmed');
 
-      const actualStakedAmount = lamports / LAMPORTS_PER_SOL;
-      setSuccess(`Successfully staked ${actualStakedAmount.toFixed(4)} SOL to ${validatorName}`);
+      const actualStakedAmount = Number(lamports) / LAMPORTS_PER_SOL;
+      // Sanitize validator name to prevent XSS
+      const sanitizedValidatorName = validatorName.replace(/[<>&"']/g, '');
+      setSuccess(`Successfully staked ${actualStakedAmount.toFixed(4)} SOL to ${sanitizedValidatorName}`);
       setShowStakeModal(false);
       setStakeAmount('');
 
-      // Refresh balances
-      await Promise.all([fetchSolBalance(), fetchStakedAmount()]);
+      // Refresh balances with loading indicator
+      await fetchAllBalances(true);
 
     } catch (error: any) {
       console.error('Staking error:', error);
@@ -306,8 +316,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       setShowUnstakeModal(false);
       setUnstakeAmount('');
 
-      // Refresh staked amount
-      await fetchStakedAmount();
+      // Refresh balances with loading indicator
+      await fetchAllBalances(true);
 
     } catch (error: any) {
       console.error('Unstaking error:', error);
@@ -318,8 +328,10 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   };
 
   // Fetch all balances together
-  const fetchAllBalances = useCallback(async () => {
+  const fetchAllBalances = useCallback(async (showLoading = false) => {
     if (!connected || !publicKey) return;
+    
+    if (showLoading) setIsRefreshingBalances(true);
     
     try {
       await Promise.all([
@@ -329,6 +341,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       ]);
     } catch (error) {
       console.error('Error fetching balances:', error);
+    } finally {
+      if (showLoading) setIsRefreshingBalances(false);
     }
   }, [connected, publicKey]);
 
@@ -420,9 +434,10 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">$SVMAI Balance:</span>
-                <span className={`font-medium ${meetsRequirement ? 'text-green-600' : 'text-amber-600'}`}>
+                <span className={`font-medium ${meetsRequirement ? 'text-green-600' : 'text-amber-600'} flex items-center`}>
                   {userSvmaiBalance.toLocaleString()} $SVMAI
                   {meetsRequirement && <CheckCircle className="inline h-3 w-3 ml-1" />}
+                  {isRefreshingBalances && <Loader2 className="inline h-3 w-3 ml-1 animate-spin" />}
                 </span>
               </div>
             </div>
@@ -457,9 +472,14 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
                 </h4>
                 <div className="flex justify-between text-xs mb-2 pb-2 border-b border-green-200 dark:border-green-800">
                   <span className="text-green-700 dark:text-green-300">Effective APY:</span>
-                  <span className="font-medium text-green-900 dark:text-green-100">
-                    {(apy * (1 - commission / 100)).toFixed(2)}% (after {commission}% commission)
-                  </span>
+                  <div className="text-right">
+                    <span className={`font-medium ${commission >= 90 ? 'text-red-600' : 'text-green-900 dark:text-green-100'}`}>
+                      {(apy * (1 - commission / 100)).toFixed(2)}% (after {commission}% commission)
+                    </span>
+                    {commission >= 90 && (
+                      <div className="text-xs text-red-500 mt-0.5">⚠️ Very high commission</div>
+                    )}
+                  </div>
                 </div>
                 <div className="space-y-1.5">
                   {[
