@@ -3,7 +3,7 @@ import { SettingsProvider } from '@/lib/settings';
 import { ThemeProvider } from '@/lib/theme';
 import { SolanaProvider } from '@/app/providers/SolanaProvider';
 import { WalletProvider } from '@solana/wallet-adapter-react';
-import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
+import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { SearchPopup } from '@/components/SearchPopup';
 import { HistoryTrackingProvider } from '@/components/HistoryTrackingProvider';
 import { AuthProvider } from '@/contexts/AuthContext';

@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ExternalLink, TrendingUp, TrendingDown, Zap, Shield, DollarSign, Activity, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { ShareButton } from '@/components/ShareButton';
+import { ValidatorStaking } from '@/components/solana/validator-staking';
 
 interface ValidatorProfile {
   voteAccount: string;
@@ -98,10 +99,7 @@ export default function ValidatorProfilePage() {
     return `${value.toFixed(2)}%`;
   };
 
-  const handleStakeAction = (action: 'stake' | 'unstake') => {
-    // This would integrate with wallet connection and staking functionality
-    alert(`${action} functionality would be implemented here with wallet integration`);
-  };
+
 
   if (loading) {
     return (
@@ -178,21 +176,27 @@ export default function ValidatorProfilePage() {
             </p>
           </div>
           
-          <div className="flex space-x-3">
-            <button
-              onClick={() => handleStakeAction('stake')}
-              className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium flex items-center"
-            >
-              <Zap className="h-4 w-4 mr-2" />
-              Stake SOL
-            </button>
-            <button
-              onClick={() => handleStakeAction('unstake')}
-              className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-lg font-medium flex items-center"
-            >
-              <TrendingDown className="h-4 w-4 mr-2" />
-              Unstake
-            </button>
+          <ValidatorStaking
+            validatorVoteAccount={validatorData.voteAccount}
+            validatorName={validatorData.name}
+            commission={validatorData.commission}
+            apy={validatorData.apy}
+          />
+        </div>
+      </div>
+
+      {/* SVMAI Requirement Info */}
+      <div className="mb-6 p-4 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+        <div className="flex items-start">
+          <Shield className="h-5 w-5 text-blue-600 dark:text-blue-400 mr-3 mt-0.5" />
+          <div>
+            <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
+              Staking Requirements
+            </h3>
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              To stake or unstake SOL with validators, you must hold at least 100,000 $SVMAI tokens. 
+              This requirement ensures committed participation in the ecosystem and helps prevent spam.
+            </p>
           </div>
         </div>
       </div>
