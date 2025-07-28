@@ -232,12 +232,7 @@ export async function GET(
     
     return new Response(
       JSON.stringify({ 
-        error: message,
-        details: error instanceof Error ? {
-          name: error.name,
-          message: error.message,
-          stack: error.stack
-        } : error
+        error: message
       }),
       { 
         status,
