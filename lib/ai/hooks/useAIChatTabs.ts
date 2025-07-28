@@ -78,7 +78,7 @@ const formatActionResponse = (response: Message, action: AgentAction): Message =
         }
       }
     }
-    
+
     return {
       role: 'assistant',
       content: `Action completed: ${action.description}\n\`\`\`json\n${JSON.stringify(response.metadata.data, null, 2)}\n\`\`\``,
@@ -140,7 +140,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
         });
 
         const actions = extractActionsFromResponse(planResponse.content);
-        
+
         if (actions.length === 0) {
           // Try direct execution if no actions were generated
           const response = await agent.processMessage(userMessage);
@@ -167,14 +167,14 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
               // Extract wallet addresses from the description
               const walletAddressRegex = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g;
               const walletAddresses = action.description.match(walletAddressRegex) || [];
-              
+
               if (walletAddresses.length >= 2) {
                 // Add response indicating the action is being processed
                 setAgentMessages(prev => [...prev, {
                   role: 'assistant',
                   content: `Finding path between wallets ${walletAddresses[0]} and ${walletAddresses[1]}...`
                 }]);
-                
+
                 try {
                   // Execute the custom action
                   const customResult = await executeAction('wallet_path_finding', {
@@ -195,7 +195,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                       }]);
                     }
                   });
-                  
+
                   results.push({
                     action,
                     response: {
@@ -215,10 +215,10 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                     status: 'failed' as const
                   });
                 }
-                
+
                 // Update action status
-                setAgentActions(prev => 
-                  prev.map(a => a.id === action.id 
+                setAgentActions(prev =>
+                  prev.map(a => a.id === action.id
                     ? { ...a, status: 'completed' as const }
                     : a
                   )
@@ -241,8 +241,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
             });
 
             // Update action status
-            setAgentActions(prev => 
-              prev.map(a => a.id === action.id 
+            setAgentActions(prev =>
+              prev.map(a => a.id === action.id
                 ? { ...a, status: 'completed' as const }
                 : a
               )
@@ -257,8 +257,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
             });
 
             // Update action status
-            setAgentActions(prev => 
-              prev.map(a => a.id === action.id 
+            setAgentActions(prev =>
+              prev.map(a => a.id === action.id
                 ? { ...a, status: 'failed' as const, error: error instanceof Error ? error.message : String(error) }
                 : a
               )
@@ -273,7 +273,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
             if (result.response.content?.includes('I apologize') && result.response.metadata?.data) {
               // Extract the actual data from the response
               const data = result.response.metadata.data;
-              
+
               // Look for TPS data in the results
               if (Array.isArray(data)) {
                 for (const item of data) {
@@ -359,6 +359,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
 
   const startRecording = () => {
     try {
+      if (typeof window === 'undefined') return;
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = 'en-US';
       recognition.interimResults = false;
@@ -455,8 +456,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
 
     try {
       // Update action status to in_progress
-      setAgentActions(prev => prev.map(a => 
-        a.id === actionId 
+      setAgentActions(prev => prev.map(a =>
+        a.id === actionId
           ? { ...a, status: 'in_progress' as const, error: undefined }
           : a
       ));
@@ -465,13 +466,13 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
       if (action.type === 'wallet_path_finding') {
         const walletAddressRegex = /\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g;
         const walletAddresses = action.description.match(walletAddressRegex) || [];
-        
+
         if (walletAddresses.length >= 2) {
           setAgentMessages(prev => [...prev, {
             role: 'assistant',
             content: `Retrying path finding between wallets ${walletAddresses[0]} and ${walletAddresses[1]}...`
           }]);
-          
+
           try {
             const customResult = await executeAction('wallet_path_finding', {
               walletA: walletAddresses[0],
@@ -491,29 +492,29 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                 }]);
               }
             });
-            
+
             // Update action status to completed
-            setAgentActions(prev => prev.map(a => 
-              a.id === actionId 
+            setAgentActions(prev => prev.map(a =>
+              a.id === actionId
                 ? { ...a, status: 'completed' as const }
                 : a
             ));
-            
+
             return;
           } catch (error) {
             // Update action status to failed
             const errorMessage = error instanceof Error ? error.message : String(error);
-            setAgentActions(prev => prev.map(a => 
-              a.id === actionId 
+            setAgentActions(prev => prev.map(a =>
+              a.id === actionId
                 ? { ...a, status: 'failed' as const, error: errorMessage }
                 : a
             ));
-            
+
             setAgentMessages(prev => [...prev, {
               role: 'assistant',
               content: `**Error retrying path finding action:** ${errorMessage}`
             }]);
-            
+
             return;
           }
         }
@@ -526,8 +527,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
       });
 
       // Update action status to completed
-      setAgentActions(prev => prev.map(a => 
-        a.id === actionId 
+      setAgentActions(prev => prev.map(a =>
+        a.id === actionId
           ? { ...a, status: 'completed' as const }
           : a
       ));
@@ -538,8 +539,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
     } catch (error) {
       console.error('Error retrying action:', error);
       // Update action status to failed
-      setAgentActions(prev => prev.map(a => 
-        a.id === actionId 
+      setAgentActions(prev => prev.map(a =>
+        a.id === actionId
           ? { ...a, status: 'failed' as const, error: error instanceof Error ? error.message : String(error) }
           : a
       ));
@@ -550,8 +551,8 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
     }
   };
 
-  const messages = activeTab === 'agent' ? agentMessages : 
-                  activeTab === 'assistant' ? assistantMessages : [];
+  const messages = activeTab === 'agent' ? agentMessages :
+    activeTab === 'assistant' ? assistantMessages : [];
 
   return {
     activeTab,

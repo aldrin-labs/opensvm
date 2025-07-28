@@ -173,12 +173,14 @@ export default function UsageDashboard() {
             // TODO: Implement actual export functionality
             const csvData = generateCSVData();
             const blob = new Blob([csvData], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
+            const url = typeof window !== 'undefined' ? window.URL.createObjectURL(blob) : '';
             const a = document.createElement('a');
             a.href = url;
             a.download = `usage-data-${selectedPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
             a.click();
-            window.URL.revokeObjectURL(url);
+            if (typeof window !== 'undefined') {
+                window.URL.revokeObjectURL(url);
+            }
             toast.success('Usage data exported successfully!');
         } catch (error) {
             toast.error('Failed to export usage data');

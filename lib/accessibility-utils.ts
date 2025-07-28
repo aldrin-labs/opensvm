@@ -153,7 +153,7 @@ export class HighContrastUtils {
   static isHighContrastEnabled(): boolean {
     if (typeof window === 'undefined') return false;
     return localStorage.getItem(this.STORAGE_KEY) === 'true' ||
-           window.matchMedia('(prefers-contrast: high)').matches;
+      window.matchMedia('(prefers-contrast: high)').matches;
   }
 
   static enableHighContrast(): void {
@@ -273,8 +273,8 @@ export class TouchUtils {
   static readonly MIN_TOUCH_TARGET_SIZE = 44; // 44px minimum touch target
 
   static isTouchDevice(): boolean {
-    return typeof window !== 'undefined' && 
-           ('ontouchstart' in window || navigator.maxTouchPoints > 0);
+    return typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0);
   }
 
   static addTouchFriendlyProps(element: HTMLElement): void {
@@ -304,11 +304,11 @@ export class TouchUtils {
     button.textContent = text;
     button.onclick = onClick;
     button.className = `min-h-[44px] min-w-[44px] p-3 ${options.className || ''}`;
-    
+
     if (options.ariaLabel) {
       button.setAttribute('aria-label', options.ariaLabel);
     }
-    
+
     if (options.disabled) {
       button.disabled = true;
       button.setAttribute('aria-disabled', 'true');
@@ -342,10 +342,10 @@ export class ContrastUtils {
   static getContrastRatio(color1: string, color2: string): number {
     const luminance1 = this.getLuminance(color1);
     const luminance2 = this.getLuminance(color2);
-    
+
     const lighter = Math.max(luminance1, luminance2);
     const darker = Math.min(luminance1, luminance2);
-    
+
     return (lighter + 0.05) / (darker + 0.05);
   }
 
@@ -392,6 +392,8 @@ export function useAccessibility() {
     const handleMotionChange = () => setReducedMotion(MotionUtils.prefersReducedMotion());
 
     // Listen for system preference changes
+    if (typeof window === 'undefined') return () => { };
+
     const contrastQuery = window.matchMedia('(prefers-contrast: high)');
     const motionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 

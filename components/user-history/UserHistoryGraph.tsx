@@ -10,10 +10,10 @@ import { UserHistoryEntry, UserHistoryStats } from '@/types/user-history';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Activity, 
-  Play, 
-  Pause, 
+import {
+  Activity,
+  Play,
+  Pause,
   RotateCcw,
   Zap,
   TrendingUp,
@@ -88,9 +88,10 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     const rect = canvas.getBoundingClientRect();
     const width = rect.width;
     const height = rect.height;
-    canvas.width = width * window.devicePixelRatio;
-    canvas.height = height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    const dpr = typeof window !== 'undefined' ? window.devicePixelRatio : 1;
+    canvas.width = width * dpr;
+    canvas.height = height * dpr;
+    ctx.scale(dpr, dpr);
 
     // Calculate bounds
     const maxVisits = Math.max(...points.map(p => p.visits));
@@ -106,7 +107,7 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     // Draw grid
     ctx.strokeStyle = '#e5e7eb';
     ctx.lineWidth = 1;
-    
+
     // Horizontal grid lines
     for (let i = 0; i <= 5; i++) {
       const y = padding + (i * graphHeight) / 5;
@@ -137,24 +138,24 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     // Draw data points and line
     if (points.length > 0) {
       const visiblePoints = points.slice(0, Math.floor(points.length * progress));
-      
+
       if (visiblePoints.length > 1) {
         // Draw line
         ctx.strokeStyle = '#3b82f6';
         ctx.lineWidth = 3;
         ctx.beginPath();
-        
+
         visiblePoints.forEach((point, index) => {
           const x = padding + ((point.timestamp - minTime) / timeRange) * graphWidth;
           const y = height - padding - (point.visits / maxVisits) * graphHeight;
-          
+
           if (index === 0) {
             ctx.moveTo(x, y);
           } else {
             ctx.lineTo(x, y);
           }
         });
-        
+
         ctx.stroke();
       }
 
@@ -162,13 +163,13 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
       visiblePoints.forEach((point, index) => {
         const x = padding + ((point.timestamp - minTime) / timeRange) * graphWidth;
         const y = height - padding - (point.visits / maxVisits) * graphHeight;
-        
+
         // Point circle
         ctx.fillStyle = '#3b82f6';
         ctx.beginPath();
         ctx.arc(x, y, 4, 0, 2 * Math.PI);
         ctx.fill();
-        
+
         // Glow effect for active point
         if (index === visiblePoints.length - 1 && isRealtime) {
           ctx.shadowColor = '#3b82f6';
@@ -185,7 +186,7 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     ctx.fillStyle = '#6b7280';
     ctx.font = '12px sans-serif';
     ctx.textAlign = 'center';
-    
+
     // Y-axis labels
     for (let i = 0; i <= 5; i++) {
       const value = (maxVisits * (5 - i)) / 5;
@@ -193,15 +194,15 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
       ctx.textAlign = 'right';
       ctx.fillText(Math.round(value).toString(), padding - 10, y + 4);
     }
-    
+
     // X-axis labels
     ctx.textAlign = 'center';
     for (let i = 0; i <= 6; i++) {
       const time = minTime + (i * timeRange) / 6;
       const x = padding + (i * graphWidth) / 6;
       const date = new Date(time);
-      const label = date.toLocaleDateString('en-US', { 
-        month: 'short', 
+      const label = date.toLocaleDateString('en-US', {
+        month: 'short',
         day: 'numeric',
         hour: '2-digit'
       });
@@ -214,11 +215,11 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     setAnimationProgress(prev => {
       const newProgress = Math.min(1, prev + 0.02);
       drawGraph(currentPoints, newProgress);
-      
+
       if (newProgress < 1) {
         animationRef.current = requestAnimationFrame(animate);
       }
-      
+
       return newProgress;
     });
   };
@@ -228,10 +229,10 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     setIsRealtime(true);
     setCurrentPoints(graphPoints);
     setAnimationProgress(0);
-    
+
     // Start animation
     animationRef.current = requestAnimationFrame(animate);
-    
+
     // Simulate real-time data updates
     intervalRef.current = setInterval(() => {
       setRealtimeData(prev => {
@@ -242,7 +243,7 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
           path: '/simulated',
           title: 'Simulated Activity'
         };
-        
+
         return [...prev, newPoint].slice(-100); // Keep last 100 points
       });
     }, 2000);
@@ -265,7 +266,7 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
     setCurrentPoints([]);
     setAnimationProgress(0);
     setRealtimeData([]);
-    
+
     if (canvasRef.current) {
       const ctx = canvasRef.current.getContext('2d');
       if (ctx) {
@@ -367,7 +368,7 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
               className="w-full h-96 border border-gray-200 dark:border-gray-700 rounded-lg"
               style={{ width: '100%', height: '384px' }}
             />
-            
+
             {currentPoints.length === 0 && (
               <div className="absolute inset-0 flex items-center justify-center">
                 <div className="text-center">
