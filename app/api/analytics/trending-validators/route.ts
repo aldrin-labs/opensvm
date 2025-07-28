@@ -3,6 +3,7 @@ import { Connection, PublicKey } from '@solana/web3.js';
 import { memoryCache } from '@/lib/cache';
 import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
+import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
 
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
@@ -128,14 +129,21 @@ async function verifyBurnTransaction(
             const tokenAccountIndex = ix.accounts[0];
             const tokenAccountPubkey = tx.transaction.message.accountKeys[tokenAccountIndex];
             
-            // Get the token account info to verify owner
+            // Get the token account info to verify owner and mint
             try {
-              const tokenAccountInfo = await connection.getAccountInfo(tokenAccountPubkey);
-              if (tokenAccountInfo && tokenAccountInfo.data.length >= 32) {
-                // Token account owner is at bytes 32-64
-                const ownerBytes = tokenAccountInfo.data.slice(32, 64);
-                const owner = new PublicKey(ownerBytes);
-                burnerAccount = owner.toBase58();
+              const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
+              if (tokenAccountInfo.value && tokenAccountInfo.value.data && 'parsed' in tokenAccountInfo.value.data) {
+                const parsedData = tokenAccountInfo.value.data.parsed;
+                if (parsedData.type === 'account') {
+                  // Verify this is the correct token mint
+                  if (parsedData.info.mint !== TOKEN_MINTS.SVMAI.toBase58()) {
+                    return { valid: false, error: 'Burn transaction is for wrong token mint' };
+                  }
+                  // Get the owner from parsed data
+                  burnerAccount = parsedData.info.owner;
+                } else {
+                  throw new Error('Invalid token account type');
+                }
               } else {
                 // Fallback to transaction signer if we can't get account info
                 const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
@@ -215,8 +223,17 @@ async function verifyBurnTransaction(
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // Rate limiting
+    const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!generalRateLimiter.isAllowed(clientIP)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Rate limit exceeded. Please try again later.'
+      }, { status: 429 });
+    }
+
     // Check cache first
     const cached = memoryCache.get<TrendingValidator[]>(TRENDING_CACHE_KEY);
     if (cached) {
@@ -288,6 +305,15 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    // Rate limiting for burn operations
+    const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!burnRateLimiter.isAllowed(clientIP)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Rate limit exceeded for burn operations. Please try again later.'
+      }, { status: 429 });
+    }
+
     const { voteAccount, burnAmount, burnSignature, burnerWallet } = await request.json();
     
     if (!voteAccount || !burnAmount || !burnSignature || !burnerWallet) {
@@ -345,14 +371,15 @@ export async function POST(request: Request) {
       // Add signature to used set with safe TTL calculation
       usedSignatures.add(burnSignature);
       const THIRTY_DAYS_MS = 30 * 24 * 60 * 60; // Calculate in seconds to avoid overflow
-      memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, THIRTY_DAYS_MS); // Cache for 30 days
       
       // Limit cache size to prevent memory exhaustion
       if (usedSignatures.size > 10000) {
-        // Remove oldest 20% of entries (simple cleanup)
+        // Create a new set with recent signatures (last 5000)
         const entries = Array.from(usedSignatures);
-        const toRemove = entries.slice(0, Math.floor(entries.length * 0.2));
-        toRemove.forEach(sig => usedSignatures.delete(sig));
+        const recentEntries = entries.slice(-5000); // Keep the last 5000 entries
+        const newUsedSignatures = new Set(recentEntries);
+        memoryCache.set(USED_SIGNATURES_CACHE_KEY, newUsedSignatures, THIRTY_DAYS_MS);
+      } else {
         memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, THIRTY_DAYS_MS);
       }
       

@@ -14,10 +14,17 @@ class MemoryCache {
 
   set<T>(key: string, value: T, ttlSeconds: number): void {
     const expiresAt = Date.now() + ttlSeconds * 1000;
+    
+    // If key exists, delete it first to update position (LRU)
+    if (this.cache.has(key)) {
+      this.cache.delete(key);
+    }
+    
     this.cache.set(key, { value, expiresAt });
     
-    // Enforce size limit with LRU eviction
+    // Enforce size limit with proper LRU eviction
     if (this.cache.size > this.maxSize) {
+      // Delete the first (oldest) entry
       const firstKey = this.cache.keys().next().value;
       if (firstKey) {
         this.cache.delete(firstKey);
@@ -33,6 +40,10 @@ class MemoryCache {
       this.cache.delete(key);
       return null;
     }
+
+    // Move to end for LRU (delete and re-add)
+    this.cache.delete(key);
+    this.cache.set(key, entry);
 
     return entry.value;
   }

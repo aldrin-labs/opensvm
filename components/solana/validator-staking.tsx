@@ -20,6 +20,15 @@ const MIN_STAKE_AMOUNT = 0.1; // Minimum 0.1 SOL to stake
 
 export function ValidatorStaking({ validatorVoteAccount, validatorName, commission = 0, apy = 7.5 }: ValidatorStakingProps) {
   const { publicKey, connected, sendTransaction } = useWallet();
+  
+  // Validate validator vote account on mount
+  useEffect(() => {
+    try {
+      new PublicKey(validatorVoteAccount);
+    } catch (error) {
+      console.error('Invalid validator vote account:', validatorVoteAccount);
+    }
+  }, [validatorVoteAccount]);
   const [userSvmaiBalance, setUserSvmaiBalance] = useState<number>(0);
   const [userSolBalance, setUserSolBalance] = useState<number>(0);
   const [userStakedAmount, setUserStakedAmount] = useState<number>(0);
@@ -65,7 +74,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   };
 
   // Fetch user's SVMAI balance
-  const fetchSvmaiBalance = async () => {
+  const fetchSvmaiBalance = useCallback(async () => {
     if (!publicKey || !connected) return;
 
     try {
@@ -86,12 +95,13 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
         setUserSvmaiBalance(0);
       } else {
         console.error('Error fetching SVMAI balance:', error);
+        setUserSvmaiBalance(0);
       }
     }
-  };
+  }, [publicKey, connected]);
 
   // Fetch user's SOL balance
-  const fetchSolBalance = async () => {
+  const fetchSolBalance = useCallback(async () => {
     if (!publicKey || !connected) return;
 
     try {
@@ -100,10 +110,10 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } catch (error) {
       console.error('Error fetching SOL balance:', error);
     }
-  };
+  }, [publicKey, connected]);
 
   // Fetch user's staked amount with this validator
-  const fetchStakedAmount = async () => {
+  const fetchStakedAmount = useCallback(async () => {
     if (!publicKey || !connected) return;
 
     try {
@@ -142,7 +152,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } catch (error) {
       console.error('Error fetching staked amount:', error);
     }
-  };
+  }, [publicKey, connected, validatorVoteAccount]);
 
   // Create stake account and delegate to validator
   const handleStake = async () => {
@@ -240,12 +250,11 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // Send transaction
       const signature = await sendTransaction(transaction, connection);
       
-      // Wait for confirmation with timeout
-      const latestBlockhash = await connection.getLatestBlockhash();
+      // Wait for confirmation with timeout (reuse blockhash)
       await connection.confirmTransaction({
         signature,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        blockhash,
+        lastValidBlockHeight
       }, 'confirmed');
 
       const actualStakedAmount = Number(lamports) / LAMPORTS_PER_SOL;
@@ -311,19 +320,18 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       transaction.add(deactivateInstruction);
 
       // Get latest blockhash
-      const { blockhash } = await connection.getLatestBlockhash();
+      const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
       // Send transaction
       const signature = await sendTransaction(transaction, connection);
       
-      // Wait for confirmation with timeout
-      const latestBlockhash = await connection.getLatestBlockhash();
+      // Wait for confirmation with timeout (reuse blockhash)
       await connection.confirmTransaction({
         signature,
-        blockhash: latestBlockhash.blockhash,
-        lastValidBlockHeight: latestBlockhash.lastValidBlockHeight
+        blockhash,
+        lastValidBlockHeight
       }, 'confirmed');
 
       setSuccess(`Successfully initiated unstaking. Funds will be available after cooldown period.`);
@@ -358,7 +366,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } finally {
       if (showLoading) setIsRefreshingBalances(false);
     }
-  }, [connected, publicKey]);
+  }, [connected, publicKey, fetchSvmaiBalance, fetchSolBalance, fetchStakedAmount]);
 
   // Fetch balances on mount and wallet change
   useEffect(() => {

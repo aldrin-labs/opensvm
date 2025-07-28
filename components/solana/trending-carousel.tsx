@@ -105,8 +105,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       transaction.add(createATAInstruction);
     }
 
-    // Use BigInt and precise multiplier for accurate calculation
-    const burnAmountLamports = BigInt(Math.floor(amount * TOKEN_MULTIPLIERS.SVMAI));
+    // Use BigInt with proper precision for decimal amounts
+    const burnAmountLamports = BigInt(Math.round(amount * TOKEN_MULTIPLIERS.SVMAI));
     
     const burnInstruction = createBurnInstruction(
       tokenAccount,
