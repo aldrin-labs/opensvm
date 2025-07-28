@@ -316,8 +316,7 @@ export function ValidatorTab() {
           </div>
         </div>
 
-        {activeTab === 'validators' && (
-          <div>
+        <div>
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <div>
@@ -504,9 +503,9 @@ export function ValidatorTab() {
               </div>
             )}
           </div>
-        )}
+        </div>
 
-        {activeTab === 'rpc-nodes' && data.rpcNodes && (
+        <div>
           <div>
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
@@ -573,7 +572,7 @@ export function ValidatorTab() {
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Decentralization Metrics */}
@@ -644,8 +643,6 @@ export function ValidatorTab() {
           </div>
         </div>
       </div>
-    </div>
-    </div>
     </div>
   );
 }
