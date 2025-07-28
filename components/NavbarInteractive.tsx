@@ -211,6 +211,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
                 <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/programs'); }}>
                   Programs
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/validators'); }}>
+                  Validators
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
@@ -392,8 +395,8 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
         <div
           ref={menuRef}
           className={`fixed inset-0 bg-background/95 backdrop-blur-md md:hidden z-50 transition-all duration-300 ease-in-out w-full ${isMobileMenuOpen
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 -translate-y-full pointer-events-none'
+            ? 'opacity-100 translate-y-0'
+            : 'opacity-0 -translate-y-full pointer-events-none'
             }`}
           id="mobile-menu"
           data-testid="mobile-menu"
