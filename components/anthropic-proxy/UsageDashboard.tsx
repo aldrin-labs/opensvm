@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -143,9 +143,9 @@ export default function UsageDashboard() {
 
     useEffect(() => {
         loadUsageData();
-    }, [selectedPeriod]);
+    }, [selectedPeriod, loadUsageData]);
 
-    const loadUsageData = async () => {
+    const loadUsageData = useCallback(async () => {
         try {
             setLoading(true);
             const period = selectedPeriod === 'all_time' ? '' : selectedPeriod;
@@ -166,7 +166,7 @@ export default function UsageDashboard() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [selectedPeriod]);
 
     const exportUsageData = async () => {
         try {

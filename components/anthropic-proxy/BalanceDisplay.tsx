@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useSettings } from '@/lib/settings';
+import { SVMAIDepositModal } from './SVMAIDepositModal';
 
 interface BalanceData {
     balance: {
@@ -118,7 +119,7 @@ export default function BalanceDisplay() {
             const interval = setInterval(loadBalance, refreshInterval * 1000);
             return () => clearInterval(interval);
         }
-    }, [refreshInterval]);
+    }, []); // Remove refreshInterval dependency as it's constant
 
     const loadBalance = async () => {
         try {

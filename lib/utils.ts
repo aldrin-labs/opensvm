@@ -13,6 +13,36 @@ import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
 /**
+ * Validates that a string is a valid Solana transaction signature
+ * 
+ * @param signature - String to validate as Solana transaction signature
+ * @returns Boolean indicating if the signature is valid format
+ * 
+ * @example
+ * ```typescript
+ * const isValid = isValidSignature('5j7s1QjMGBfrfDpUXw2KZYN8YmK8HQVz1J4CfQHxZQQKZ1J4CfQHxZQQKZ1J4CfQHxZQQKZ1J4C');
+ * console.log(isValid); // true
+ * 
+ * const isInvalid = isValidSignature('invalid-signature');
+ * console.log(isInvalid); // false
+ * ```
+ */
+export const isValidSignature = (signature: string): boolean => {
+  if (!signature || typeof signature !== 'string') {
+    return false;
+  }
+
+  // Solana transaction signatures are 88 characters long and base58 encoded
+  if (signature.length !== 88) {
+    return false;
+  }
+
+  // Check if it contains only valid base58 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  return base58Regex.test(signature);
+};
+
+/**
  * Validates that a string is a valid Solana public key
  * 
  * @param address - String to validate as Solana public key
@@ -95,13 +125,13 @@ export function debounce<T extends (...args: any[]) => any>(
   wait: number
 ): (...args: Parameters<T>) => void {
   let timeout: ReturnType<typeof setTimeout> | null = null;
-  
-  return function(...args: Parameters<T>): void {
+
+  return function (...args: Parameters<T>): void {
     const later = () => {
       timeout = null;
       func(...args);
     };
-    
+
     if (timeout !== null) {
       clearTimeout(timeout);
     }
@@ -113,7 +143,7 @@ export function debounce<T extends (...args: any[]) => any>(
  * Creates a throttled function that only invokes func at most once per every wait milliseconds
  */
 export function throttle<Args extends unknown[]>(
-  func: (...args: Args) => void, 
+  func: (...args: Args) => void,
   delay: number
 ): (...args: Args) => void {
   let lastTime = 0;
@@ -160,11 +190,11 @@ export const isValidSolanaAddress = (address: string): boolean => {
  * Formats a number with thousands separators
  */
 export const formatNumber = (
-  num: number | null | undefined, 
+  num: number | null | undefined,
   options?: { minimumFractionDigits?: number; maximumFractionDigits?: number }
 ): string => {
   if (num === null || num === undefined) return '0';
-  
+
   return new Intl.NumberFormat('en-US', {
     minimumFractionDigits: options?.minimumFractionDigits || 0,
     maximumFractionDigits: options?.maximumFractionDigits || 2
