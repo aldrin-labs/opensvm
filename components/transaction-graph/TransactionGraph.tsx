@@ -113,7 +113,17 @@ export default function TransactionGraph({
   const cyRef = useRef(null);
   const isInitialized = false;
   const initializeGraph = () => { };
-  const cleanupGraph = () => { };
+  const cleanupGraph = useCallback(() => {
+    // Destroy cytoscape instance if it exists
+    if (cyRef.current) {
+      try {
+        (cyRef.current as any).destroy?.();
+      } catch (error) {
+        console.warn('Error destroying cytoscape instance:', error);
+      }
+      cyRef.current = null;
+    }
+  }, []);
   const isGraphReady = true;
 
   // State management

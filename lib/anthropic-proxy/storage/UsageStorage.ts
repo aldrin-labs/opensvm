@@ -38,12 +38,33 @@ export class UsageStorage {
      * Ensure usage collection exists.
      */
     async initialize(): Promise<void> {
-        const collections = await this.client.getCollections();
-        const exists = collections.collections.find(c => c.name === USAGE_COLLECTION);
-        if (!exists) {
-            await this.client.createCollection(USAGE_COLLECTION, {
-                vectors: { size: 1, distance: 'Cosine' }
-            });
+        // Skip initialization during build time or when Qdrant is not available
+        if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+            console.log('Skipping UsageStorage initialization during build');
+            return;
+        }
+
+        try {
+            const collections = await this.client.getCollections();
+            const exists = collections.collections.find(c => c.name === USAGE_COLLECTION);
+            if (!exists) {
+                await this.client.createCollection(USAGE_COLLECTION, {
+                    vectors: { size: 1, distance: 'Cosine' }
+                });
+            }
+        } catch (error) {
+            // Handle connection errors gracefully during build or when Qdrant is unavailable
+            if (error instanceof Error && (
+                error.message.includes('ECONNREFUSED') ||
+                error.message.includes('fetch failed') ||
+                error.message.includes('Connection refused')
+            )) {
+                console.warn('UsageStorage: Qdrant not available, skipping initialization:', error.message);
+                return;
+            }
+
+            console.error('Failed to initialize UsageStorage:', error);
+            throw error;
         }
     }
 

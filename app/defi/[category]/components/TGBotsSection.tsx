@@ -373,7 +373,7 @@ export default function TGBotsSection() {
   const filteredBots = bots
     .filter(bot => {
       const matchesSearch = bot.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                           bot.category.toLowerCase().includes(searchTerm.toLowerCase());
+        bot.category.toLowerCase().includes(searchTerm.toLowerCase());
       const matchesType = typeFilter === 'all' || bot.type === typeFilter;
       return matchesSearch && matchesType;
     })
@@ -410,7 +410,11 @@ export default function TGBotsSection() {
     return (
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => window.location.reload()}>
+        <Button onClick={() => {
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}>
           Retry
         </Button>
       </div>
@@ -510,12 +514,12 @@ export default function TGBotsSection() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {bot.description}
               </p>
-              
+
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 p-3 rounded-lg">
@@ -524,14 +528,13 @@ export default function TGBotsSection() {
                     Users
                   </div>
                   <p className="font-bold text-lg">{formatNumber(bot.users)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${
-                    bot.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-xs ${bot.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                    }`}>
                     {bot.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(bot.change24h).toFixed(1)}%
                   </div>
                 </div>
-                
+
                 {bot.volume24h > 0 && (
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -544,7 +547,7 @@ export default function TGBotsSection() {
                     </p>
                   </div>
                 )}
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Zap className="h-3 w-3" />
@@ -555,7 +558,7 @@ export default function TGBotsSection() {
                     Response: {bot.responseTime}ms
                   </p>
                 </div>
-                
+
                 {bot.avgReturn > 0 && (
                   <div className="bg-muted/50 p-3 rounded-lg">
                     <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
@@ -569,7 +572,7 @@ export default function TGBotsSection() {
                   </div>
                 )}
               </div>
-              
+
               {/* Pricing */}
               <div className="border-t pt-3">
                 <h4 className="font-medium text-sm mb-2">Pricing</h4>
@@ -588,7 +591,7 @@ export default function TGBotsSection() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Features */}
               <div>
                 <h4 className="font-medium text-sm mb-2">Features</h4>
@@ -600,7 +603,7 @@ export default function TGBotsSection() {
                   ))}
                 </div>
               </div>
-              
+
               {/* Supported DEXs */}
               {bot.supportedDEXs.length > 0 && (
                 <div>
@@ -619,7 +622,7 @@ export default function TGBotsSection() {
                   </div>
                 </div>
               )}
-              
+
               {/* Technical Details */}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center text-sm">
@@ -639,7 +642,7 @@ export default function TGBotsSection() {
                   </span>
                 </div>
               </div>
-              
+
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" className="flex-1">
@@ -653,7 +656,7 @@ export default function TGBotsSection() {
           </Card>
         ))}
       </div>
-      
+
       {filteredBots.length === 0 && (
         <div className="text-center py-20">
           <p className="text-muted-foreground">No bots found matching your search criteria.</p>

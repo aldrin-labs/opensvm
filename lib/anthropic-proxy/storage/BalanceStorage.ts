@@ -32,6 +32,12 @@ export class BalanceStorage {
    * Initialize collections
    */
   async initialize(): Promise<void> {
+    // Skip initialization during build time or when Qdrant is not available
+    if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+      console.log('Skipping BalanceStorage initialization during build');
+      return;
+    }
+
     try {
       const collections = await this.client.getCollections();
       const existingCollections = collections.collections.map(c => c.name);
@@ -56,6 +62,16 @@ export class BalanceStorage {
         });
       }
     } catch (error) {
+      // Handle connection errors gracefully during build or when Qdrant is unavailable
+      if (error instanceof Error && (
+        error.message.includes('ECONNREFUSED') || 
+        error.message.includes('fetch failed') ||
+        error.message.includes('Connection refused')
+      )) {
+        console.warn('BalanceStorage: Qdrant not available, skipping initialization:', error.message);
+        return;
+      }
+      
       console.error('Failed to initialize BalanceStorage:', error);
       throw error;
     }

@@ -41,7 +41,9 @@ const InstructionTooltip: React.FC<InstructionTooltipProps> = ({
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
@@ -91,13 +93,13 @@ const InstructionTooltip: React.FC<InstructionTooltipProps> = ({
   };
 
   return (
-    <div 
+    <div
       className="relative inline-block"
       onMouseEnter={() => setIsVisible(true)}
       onMouseLeave={() => setIsVisible(false)}
     >
       {children}
-      
+
       {isVisible && (
         <div className={getPositionClasses()}>
           <div className="bg-background border border-border rounded-lg shadow-lg p-4 backdrop-blur-sm">
@@ -252,12 +254,11 @@ const InstructionTooltip: React.FC<InstructionTooltipProps> = ({
             )}
 
             {/* Arrow pointer */}
-            <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${
-              position === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
-              position === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1 border-t border-l' :
-              position === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
-              'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
-            }`} />
+            <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${position === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
+                position === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1 border-t border-l' :
+                  position === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
+                    'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
+              }`} />
           </div>
         </div>
       )}

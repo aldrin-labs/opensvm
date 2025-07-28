@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
@@ -140,17 +140,7 @@ export default function BalanceDisplay({
         return 'text-destructive';
     };
 
-    useEffect(() => {
-        loadBalance();
-
-        // Set up auto-refresh
-        if (refreshInterval > 0) {
-            const interval = setInterval(loadBalance, refreshInterval * 1000);
-            return () => clearInterval(interval);
-        }
-    }, []); // Remove refreshInterval dependency as it's constant
-
-    const loadBalance = async () => {
+    const loadBalance = useCallback(async () => {
         try {
             const response = await fetch('/api/opensvm/balance', {
                 headers: {
@@ -170,7 +160,17 @@ export default function BalanceDisplay({
         } finally {
             setLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        loadBalance();
+
+        // Set up auto-refresh
+        if (refreshInterval > 0) {
+            const interval = setInterval(loadBalance, refreshInterval * 1000);
+            return () => clearInterval(interval);
+        }
+    }, [refreshInterval, loadBalance]);
 
     const refreshBalance = async () => {
         setRefreshing(true);

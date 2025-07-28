@@ -41,7 +41,11 @@ export class ErrorBoundary extends React.Component<Props, State> {
             </p>
             <div className="mt-6">
               <button
-                onClick={() => window.location.reload()}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.location.reload();
+                  }
+                }}
                 className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
               >
                 Try Again

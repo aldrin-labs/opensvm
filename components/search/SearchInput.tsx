@@ -29,31 +29,37 @@ export const SearchInput: React.FC<SearchInputProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Focus search input with / key when not already focused on an input
-      if (e.key === '/' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
+      if (e.key === '/' && typeof document !== 'undefined' && document.activeElement?.tagName !== 'INPUT' && document.activeElement?.tagName !== 'TEXTAREA') {
         e.preventDefault();
         inputRef.current?.focus();
       }
-      
+
       // Clear search with Escape key when input is focused
-      if (e.key === 'Escape' && document.activeElement === inputRef.current && query) {
+      if (e.key === 'Escape' && typeof document !== 'undefined' && document.activeElement === inputRef.current && query) {
         clearSearch();
       }
     };
-    
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', handleKeyDown);
+      }
+    };
   }, [clearSearch, query]);
 
   // Handle typing debounce for suggestions
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setQuery(value);
-    
+
     // Clear previous timeout
     if (typingTimeout) {
       clearTimeout(typingTimeout);
     }
-    
+
     // Set new timeout for showing suggestions
     const timeout = setTimeout(() => {
       // Always show suggestions when focused, regardless of value
@@ -63,7 +69,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
         setShowSuggestions(!!value);
       }
     }, 300);
-    
+
     setTypingTimeout(timeout);
   };
 
@@ -87,12 +93,11 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             setIsFocused(false);
           }}
           placeholder="Search by address, transaction, block or token"
-          className={`w-full h-12 rounded-l-md border ${
-            isFocused ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200 dark:border-gray-700'
-          } bg-white dark:bg-gray-900 px-4 text-base text-gray-900 dark:text-gray-100 focus:outline-none transition-colors duration-200`}
+          className={`w-full h-12 rounded-l-md border ${isFocused ? 'border-primary ring-1 ring-primary/30' : 'border-gray-200 dark:border-gray-700'
+            } bg-white dark:bg-gray-900 px-4 text-base text-gray-900 dark:text-gray-100 focus:outline-none transition-colors duration-200`}
           aria-label="Search input"
         />
-        
+
         {isSearching && (
           <div className="absolute right-[96px] top-1/2 -translate-y-1/2 flex items-center">
             <div className="flex space-x-1 mr-2">
@@ -102,7 +107,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
             </div>
           </div>
         )}
-        
+
         {query && !isSearching && (
           <button
             type="button"
@@ -116,13 +121,12 @@ export const SearchInput: React.FC<SearchInputProps> = ({
           </button>
         )}
       </div>
-      
+
       <button
         type="button"
         onClick={() => setShowSettings(!showSettings)}
-        className={`settings-toggle h-12 px-4 border border-r-0 ${
-          isFocused ? 'border-primary' : 'border-gray-200 dark:border-gray-700'
-        } bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center justify-center transition-colors ${showSettings ? 'text-primary' : ''}`}
+        className={`settings-toggle h-12 px-4 border border-r-0 ${isFocused ? 'border-primary' : 'border-gray-200 dark:border-gray-700'
+          } bg-white dark:bg-gray-900 text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 flex items-center justify-center transition-colors ${showSettings ? 'text-primary' : ''}`}
         aria-label="Customize Search"
         aria-expanded={showSettings}
       >
@@ -132,7 +136,7 @@ export const SearchInput: React.FC<SearchInputProps> = ({
           </svg>
         </div>
       </button>
-      
+
       {/* Keyboard shortcut hint */}
       <div className="absolute -bottom-6 right-0 text-xs text-gray-500 dark:text-gray-400 opacity-70">
         Press <kbd className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-xs">/</kbd> to focus

@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  XIcon, 
-  ChevronLeftIcon, 
-  ChevronRightIcon, 
+import {
+  XIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   PlayIcon,
   PauseIcon,
   SkipForwardIcon,
@@ -63,14 +63,14 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set());
   const [highlightedElement, setHighlightedElement] = useState<HTMLElement | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
-  
+
   const overlayRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const { announceToScreenReader, isTouchDevice } = useAccessibility();
   const { isMobile, isTablet } = useMobileDetection();
-  
+
   // Keyboard navigation
   useKeyboardNavigation(tooltipRef, {
     onEscape: onClose,
@@ -85,26 +85,26 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
 
   // Find and highlight target element
   const highlightTarget = useCallback((step: TourStep) => {
-    const element = document.querySelector(step.targetSelector) as HTMLElement;
+    const element = typeof document !== 'undefined' ? document.querySelector(step.targetSelector) as HTMLElement : null;
     if (!element) {
       console.warn(`Tour step "${step.id}": Target element not found: ${step.targetSelector}`);
       return null;
     }
 
     setHighlightedElement(element);
-    
+
     // Calculate tooltip position
     const rect = element.getBoundingClientRect();
     const padding = step.highlightPadding || 8;
-    
+
     let x = rect.left + rect.width / 2;
     let y = rect.bottom + padding;
-    
+
     // Adjust position based on step preference and available space
     const position = step.position || 'bottom';
-    const viewportWidth = window.innerWidth;
-    const viewportHeight = window.innerHeight;
-    
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+
     switch (position) {
       case 'top':
         y = rect.top - padding;
@@ -124,7 +124,7 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       default: // bottom
         y = rect.bottom + padding;
     }
-    
+
     // Ensure tooltip stays within viewport
     if (isMobile || isTablet) {
       x = Math.max(20, Math.min(x, viewportWidth - 320));
@@ -133,25 +133,25 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       x = Math.max(20, Math.min(x, viewportWidth - 400));
       y = Math.max(20, Math.min(y, viewportHeight - 300));
     }
-    
+
     setTooltipPosition({ x, y });
-    
+
     // Scroll element into view
     element.scrollIntoView({
       behavior: 'smooth',
       block: 'center',
       inline: 'center'
     });
-    
+
     return element;
   }, [isMobile, isTablet]);
 
   // Execute step action
   const executeStepAction = useCallback(async (step: TourStep, element: HTMLElement) => {
     if (!step.action) return;
-    
+
     const delay = step.actionDelay || 1000;
-    
+
     switch (step.action) {
       case 'click':
         setTimeout(() => {
@@ -159,7 +159,7 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
           announceToScreenReader(`Clicked ${step.title}`);
         }, delay);
         break;
-        
+
       case 'hover':
         setTimeout(() => {
           const event = new MouseEvent('mouseenter', { bubbles: true });
@@ -167,14 +167,14 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
           announceToScreenReader(`Hovered over ${step.title}`);
         }, delay);
         break;
-        
+
       case 'scroll':
         setTimeout(() => {
           element.scrollIntoView({ behavior: 'smooth', block: 'center' });
           announceToScreenReader(`Scrolled to ${step.title}`);
         }, delay);
         break;
-        
+
       case 'wait':
         setTimeout(() => {
           announceToScreenReader(`Waited at ${step.title}`);
@@ -186,26 +186,26 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   // Go to specific step
   const goToStep = useCallback(async (stepIndex: number) => {
     if (stepIndex < 0 || stepIndex >= config.steps.length) return;
-    
+
     const step = config.steps[stepIndex];
-    
+
     // Execute before step callback
     if (step.beforeStep) {
       await step.beforeStep();
     }
-    
+
     setCurrentStepIndex(stepIndex);
-    
+
     const element = highlightTarget(step);
     if (element) {
       await executeStepAction(step, element);
     }
-    
+
     // Execute after step callback
     if (step.afterStep) {
       await step.afterStep();
     }
-    
+
     announceToScreenReader(`Step ${stepIndex + 1} of ${config.steps.length}: ${step.title}`);
   }, [config.steps, highlightTarget, executeStepAction, announceToScreenReader]);
 
@@ -213,11 +213,11 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   const completeTour = useCallback(() => {
     setCompletedSteps(prev => new Set([...prev, currentStep.id]));
     announceToScreenReader('Tour completed successfully');
-    
+
     if (config.onComplete) {
       config.onComplete();
     }
-    
+
     onClose();
   }, [currentStep.id, config, onClose, announceToScreenReader]);
 
@@ -227,10 +227,10 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       announceToScreenReader('Please complete the current step before continuing');
       return;
     }
-    
+
     // Mark current step as completed
     setCompletedSteps(prev => new Set([...prev, currentStep.id]));
-    
+
     if (isLastStep) {
       completeTour();
     } else {
@@ -248,18 +248,18 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   // Skip tour
   const skipTour = useCallback(() => {
     announceToScreenReader('Tour skipped');
-    
+
     if (config.onSkip) {
       config.onSkip();
     }
-    
+
     onClose();
   }, [config, onClose, announceToScreenReader]);
 
   // Auto-play functionality
   const toggleAutoPlay = useCallback(() => {
     setIsPlaying(!isPlaying);
-    
+
     if (!isPlaying) {
       playIntervalRef.current = setInterval(() => {
         setCurrentStepIndex(prev => {
@@ -317,8 +317,14 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       }
     };
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
   }, [currentStep, highlightedElement, highlightTarget]);
 
   if (!isActive || !currentStep) {
@@ -346,9 +352,8 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
       {/* Tour Tooltip */}
       <div
         ref={tooltipRef}
-        className={`fixed z-50 bg-background border border-border rounded-lg shadow-xl ${
-          isMobile ? 'w-80 max-w-[90vw]' : 'w-96 max-w-md'
-        } ${className}`}
+        className={`fixed z-50 bg-background border border-border rounded-lg shadow-xl ${isMobile ? 'w-80 max-w-[90vw]' : 'w-96 max-w-md'
+          } ${className}`}
         style={{
           left: tooltipPosition.x - (isMobile ? 160 : 200),
           top: tooltipPosition.y,
@@ -482,13 +487,12 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
                 <button
                   key={step.id}
                   onClick={() => goToStep(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentStepIndex
-                      ? 'bg-primary'
-                      : completedSteps.has(step.id)
+                  className={`w-2 h-2 rounded-full transition-colors ${index === currentStepIndex
+                    ? 'bg-primary'
+                    : completedSteps.has(step.id)
                       ? 'bg-green-500'
                       : 'bg-muted'
-                  }`}
+                    }`}
                   aria-label={`Go to step ${index + 1}: ${step.title}`}
                 />
               ))}

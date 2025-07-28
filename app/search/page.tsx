@@ -39,13 +39,13 @@ function SearchResults() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('SVM');
-  
+
   // AI Response States
   const [aiResponse, setAiResponse] = useState<string>('');
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [isAiStreaming, setIsAiStreaming] = useState<boolean>(false);
   const [aiStreamComplete, setAiStreamComplete] = useState<boolean>(false);
-  const [aiSources, setAiSources] = useState<{title: string, url: string}[]>([]);
+  const [aiSources, setAiSources] = useState<{ title: string, url: string }[]>([]);
   const [showAiPanel, setShowAiPanel] = useState<boolean>(true);
   const [aiError, setAiError] = useState<string | null>(null);
 
@@ -61,20 +61,20 @@ function SearchResults() {
           router.push(`/block/${query}`);
           return;
         }
-        
+
         // Check if query is a transaction signature (88 chars)
         if (isValidTransactionSignature(query)) {
           router.push(`/tx/${query}`);
           return;
         }
-        
+
         // Check if query is a valid Solana address
         if (isValidSolanaAddress(query)) {
           try {
             // Check account type using API
             const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(query)}`);
             const data = await response.json();
-            
+
             switch (data.type) {
               case 'token':
                 console.log('Redirecting to token page:', query);
@@ -104,7 +104,7 @@ function SearchResults() {
 
     handleRedirect();
   }, [query, router]);
-  
+
   // Handle general search
   useEffect(() => {
     async function performSearch() {
@@ -121,11 +121,11 @@ function SearchResults() {
 
       try {
         setIsLoading(true);
-        
+
         // Build URL with filters
         let searchUrl = `/api/search?q=${encodeURIComponent(sanitizedQuery)}`;
-        const searchParams = new URLSearchParams(window.location.search);
-        
+        const searchParams = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
+
         // Add filters from URL if present
         if (searchParams.get('start')) searchUrl += `&start=${searchParams.get('start')}`;
         if (searchParams.get('end')) searchUrl += `&end=${searchParams.get('end')}`;
@@ -133,13 +133,13 @@ function SearchResults() {
         if (searchParams.get('status')) searchUrl += `&status=${searchParams.get('status')}`;
         if (searchParams.get('min')) searchUrl += `&min=${searchParams.get('min')}`;
         if (searchParams.get('max')) searchUrl += `&max=${searchParams.get('max')}`;
-        
+
         console.log('Fetching search results from:', searchUrl);
-        
+
         const response = await fetch(searchUrl);
         if (!response.ok) throw new Error('Failed to fetch results');
         const results = await response.json();
-        
+
         if (results.error) {
           setError(results.error);
           setSearchResults([]);
@@ -181,26 +181,26 @@ function SearchResults() {
 
     performSearch();
   }, [query]);
-  
+
   // Real AI Response Generation with Together AI
   useEffect(() => {
     if (!query) return;
-    
+
     // Only trigger AI response if we have search results or are still loading
     if (searchResults !== null && searchResults.length === 0) {
       setShowAiPanel(false);
       return;
     }
-    
+
     // Reset AI states
     setAiResponse('');
     setAiSources([]);
     setAiStreamComplete(false);
     setAiError(null);
-    
+
     // Set thinking state
     setIsAiThinking(true);
-    
+
     const fetchAiResponse = async () => {
       try {
         // Call the backend API with streaming
@@ -211,46 +211,46 @@ function SearchResults() {
           },
           body: JSON.stringify({ query }),
         });
-        
+
         if (!response.ok) {
           throw new Error(`API responded with status: ${response.status}`);
         }
-        
+
         // Process the streaming response
         const reader = response.body?.getReader();
         if (!reader) {
           throw new Error('Response body reader could not be created');
         }
-        
+
         // Transition from thinking to streaming
         setIsAiThinking(false);
         setIsAiStreaming(true);
-        
+
         // Read the stream
         const decoder = new TextDecoder();
         let buffer = '';
-        
+
         while (true) {
           const { done, value } = await reader.read();
           if (done) break;
-          
+
           // Decode the chunk and add to buffer
           buffer += decoder.decode(value, { stream: true });
-          
+
           // Process complete events in buffer
           const lines = buffer.split('\n\n');
           buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
-          
+
           for (const line of lines) {
             if (line.startsWith('data: ')) {
               try {
                 const data = JSON.parse(line.substring(6));
-                
+
                 // Handle text chunks
                 if (data.text) {
                   setAiResponse(prev => prev + data.text);
                 }
-                
+
                 // Handle sources
                 if (data.sources) {
                   setAiSources(data.sources);
@@ -263,13 +263,13 @@ function SearchResults() {
             }
           }
         }
-        
+
         // Ensure we mark streaming as complete if it hasn't been already
         if (isAiStreaming) {
           setIsAiStreaming(false);
           setAiStreamComplete(true);
         }
-        
+
       } catch (error) {
         console.error('Error fetching AI response:', error);
         setAiError('Failed to generate AI response. Please try again later.');
@@ -277,12 +277,12 @@ function SearchResults() {
         setIsAiStreaming(false);
       }
     };
-    
+
     // Start the fetch after a short delay to allow UI to update
     const timer = setTimeout(() => {
       fetchAiResponse();
     }, 500);
-    
+
     return () => {
       clearTimeout(timer);
       // Ensure we clean up any streaming state if component unmounts
@@ -350,9 +350,9 @@ function SearchResults() {
       <div className="mb-8">
         <EnhancedSearchBar />
       </div>
-      
+
       <h1 className="text-2xl font-bold mb-6">Search Results for "{query}"</h1>
-      
+
       {/* AI Response Panel */}
       {showAiPanel && (
         <Card className="mb-6 overflow-hidden animate-in fade-in-0 slide-in-from-top-2">
@@ -381,7 +381,7 @@ function SearchResults() {
                   )}
                 </div>
               )}
-              <button 
+              <button
                 onClick={() => setShowAiPanel(false)}
                 className="text-muted-foreground hover:text-foreground transition-colors duration-200"
                 aria-label="Close AI panel"
@@ -420,7 +420,7 @@ function SearchResults() {
                 <h4 className="text-sm font-medium mb-2">Sources:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiSources.map((source, index) => (
-                    <a 
+                    <a
                       key={index}
                       href={source.url}
                       target="_blank"
@@ -436,7 +436,7 @@ function SearchResults() {
           )}
         </Card>
       )}
-      
+
       {/* Results Controls */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full md:w-auto">
@@ -450,11 +450,11 @@ function SearchResults() {
             <option value="50">50 per page</option>
             <option value="100">100 per page</option>
           </select>
-          
+
           {/* Search Source Tabs - Updated for better visibility and accessibility */}
           <div className="overflow-x-auto w-full sm:w-auto" role="tablist" aria-label="Search sources">
             <div className="inline-flex border rounded-lg overflow-hidden shadow-sm min-w-full">
-              <button 
+              <button
                 className={`px-4 py-2 font-medium text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeTab === 'SVM' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted transition-colors duration-200'}`}
                 onClick={() => handleTabChange('SVM')}
                 role="tab"
@@ -465,7 +465,7 @@ function SearchResults() {
               >
                 SVM
               </button>
-              <button 
+              <button
                 className={`px-4 py-2 font-medium text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeTab === 'Telegram' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted transition-colors duration-200'}`}
                 onClick={() => handleTabChange('Telegram')}
                 role="tab"
@@ -476,7 +476,7 @@ function SearchResults() {
               >
                 Telegram
               </button>
-              <button 
+              <button
                 className={`px-4 py-2 font-medium text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeTab === 'DuckDuckGo' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted transition-colors duration-200'}`}
                 onClick={() => handleTabChange('DuckDuckGo')}
                 role="tab"
@@ -487,7 +487,7 @@ function SearchResults() {
               >
                 DuckDuckGo
               </button>
-              <button 
+              <button
                 className={`px-4 py-2 font-medium text-sm whitespace-nowrap focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 ${activeTab === 'X.com' ? 'bg-primary text-primary-foreground' : 'hover:bg-muted transition-colors duration-200'}`}
                 onClick={() => handleTabChange('X.com')}
                 role="tab"
@@ -523,15 +523,15 @@ function SearchResults() {
           </button>
         </div>
       </div>
-      
+
       {error && (
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6" role="alert">
           <p className="text-red-600 dark:text-red-400">{error}</p>
         </div>
       )}
-      
+
       {/* Search Results Table */}
-      <div 
+      <div
         id={`${activeTab.toLowerCase()}-results`}
         role="tabpanel"
         aria-labelledby={`${activeTab.toLowerCase()}-tab`}
@@ -543,7 +543,7 @@ function SearchResults() {
                 <thead className="bg-muted/50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('address')}
                         className="flex items-center hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         aria-label={`Sort by Address/ID ${searchState.sortField === 'address' ? (searchState.sortDirection === 'asc' ? 'ascending' : 'descending') : ''}`}
@@ -555,7 +555,7 @@ function SearchResults() {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('type')}
                         className="flex items-center hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         aria-label={`Sort by Type ${searchState.sortField === 'type' ? (searchState.sortDirection === 'asc' ? 'ascending' : 'descending') : ''}`}
@@ -567,7 +567,7 @@ function SearchResults() {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('timestamp')}
                         className="flex items-center hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         aria-label={`Sort by Date ${searchState.sortField === 'timestamp' ? (searchState.sortDirection === 'asc' ? 'ascending' : 'descending') : ''}`}
@@ -579,7 +579,7 @@ function SearchResults() {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('status')}
                         className="flex items-center hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         aria-label={`Sort by Status ${searchState.sortField === 'status' ? (searchState.sortDirection === 'asc' ? 'ascending' : 'descending') : ''}`}
@@ -591,7 +591,7 @@ function SearchResults() {
                       </button>
                     </th>
                     <th className="px-4 py-3 text-left text-sm font-medium text-muted-foreground">
-                      <button 
+                      <button
                         onClick={() => handleSort('balance')}
                         className="flex items-center hover:text-foreground transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
                         aria-label={`Sort by Amount/Balance ${searchState.sortField === 'balance' ? (searchState.sortDirection === 'asc' ? 'ascending' : 'descending') : ''}`}
@@ -606,8 +606,8 @@ function SearchResults() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {searchResults.map((result: SearchResult, index: number) => (
-                    <tr 
-                      key={index} 
+                    <tr
+                      key={index}
                       className="hover:bg-muted/50 transition-colors cursor-pointer"
                       onClick={() => setExpandedRow(expandedRow === result.address ? null : result.address)}
                       aria-expanded={expandedRow === result.address}
@@ -646,8 +646,8 @@ function SearchResults() {
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm">
-                        {result.balance !== undefined ? formatNumber(result.balance) : 
-                         result.amount !== undefined ? formatNumber(result.amount) : 'N/A'}
+                        {result.balance !== undefined ? formatNumber(result.balance) :
+                          result.amount !== undefined ? formatNumber(result.amount) : 'N/A'}
                       </td>
                     </tr>
                   ))}

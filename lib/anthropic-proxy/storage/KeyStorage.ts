@@ -21,6 +21,12 @@ export class KeyStorage {
    * Initialize the collection if it doesn't exist
    */
   async initialize(): Promise<void> {
+    // Skip initialization during build time or when Qdrant is not available
+    if (typeof window === 'undefined' && process.env.NODE_ENV !== 'production') {
+      console.log('Skipping KeyStorage initialization during build');
+      return;
+    }
+
     try {
       // Check if collection exists
       const collections = await this.client.getCollections();
@@ -36,6 +42,16 @@ export class KeyStorage {
         });
       }
     } catch (error) {
+      // Handle connection errors gracefully during build or when Qdrant is unavailable
+      if (error instanceof Error && (
+        error.message.includes('ECONNREFUSED') ||
+        error.message.includes('fetch failed') ||
+        error.message.includes('Connection refused')
+      )) {
+        console.warn('KeyStorage: Qdrant not available, skipping initialization:', error.message);
+        return;
+      }
+
       console.error('Failed to initialize KeyStorage:', error);
       throw error;
     }

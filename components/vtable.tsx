@@ -49,7 +49,7 @@ function hslToHex(hsl: string): string {
 function getCSSVariableAsHex(variable: string): string {
   if (typeof window === 'undefined') return '#000000';
 
-  const computedStyle = getComputedStyle(document.documentElement);
+  const computedStyle = typeof document !== 'undefined' ? getComputedStyle(document.documentElement) : null;
   const value = computedStyle.getPropertyValue(variable).trim();
 
   if (!value) {
@@ -165,7 +165,9 @@ function registerDynamicVTableTheme() {
   VTable.register.theme('opensvm-dynamic', themeConfig);
 
   // Also register theme variants for each OpenSVM theme
-  const currentTheme = document.documentElement.className.match(/theme-(\w+)/)?.[1] || 'cyberpunk';
+  const currentTheme = typeof document !== 'undefined' ?
+    document.documentElement.className.match(/theme-(\w+)/)?.[1] || 'cyberpunk' :
+    'cyberpunk';
   const themeSpecificName = `opensvm-${currentTheme}`;
   VTable.register.theme(themeSpecificName, themeConfig);
 }
@@ -541,18 +543,26 @@ export function VTableWrapper({
           (table as any).on('click_cell', (args: any) => {
             try {
               const raw = args.value?.html ?? args.value;
-              const tmp = document.createElement('div');
-              tmp.innerHTML = raw;
-              const text = tmp.textContent || tmp.innerText || String(args.value);
-              if (text) navigator.clipboard.writeText(text);
+              if (typeof document !== 'undefined' && typeof navigator !== 'undefined') {
+                const tmp = document.createElement('div');
+                tmp.innerHTML = raw;
+                const text = tmp.textContent || tmp.innerText || String(args.value);
+                if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
+                  navigator.clipboard.writeText(text);
+                }
+              }
             } catch (_e) {
               // ignore
             }
             // existing row selection
-            if (onRowSelect) {
-              const rowId = args.cellKey?.rowKey;
-              const record = data.find(r => rowKey(r) === rowId);
-              if (record) onRowSelect(rowId);
+            try {
+              if (onRowSelect) {
+                const rowId = args.cellKey?.rowKey;
+                const record = data.find(r => rowKey(r) === rowId);
+                if (record) onRowSelect(rowId);
+              }
+            } catch (_e) {
+              // ignore selection errors
             }
           });
 
@@ -563,7 +573,11 @@ export function VTableWrapper({
               let url: string | null = null;
               if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(val)) url = `/account/${val}`;
               else if (/^[A-Za-z0-9]{50,}$/.test(val)) url = `/tx/${val}`;
-              if (url) window.open(window.location.origin + url, '_blank');
+              if (url && typeof window !== 'undefined') {
+                if (typeof window !== 'undefined') {
+                  window.open(window.location.origin + url, '_blank');
+                }
+              }
             }
           });
 
@@ -742,12 +756,20 @@ export function VTableWrapper({
     }
 
     // Rebuild table on window resize as fallback
-    window.addEventListener('resize', initTable);
+    if (typeof window !== 'undefined') {
+      if (typeof window !== 'undefined') {
+        window.addEventListener('resize', initTable);
+      }
+    }
 
     // Cleanup
     return () => {
       clearTimeout(timer);
-      window.removeEventListener('resize', initTable);
+      if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined') {
+          window.removeEventListener('resize', initTable);
+        }
+      }
       if (resizeObserver) {
         resizeObserver.disconnect();
         resizeObserver = null;
@@ -765,7 +787,29 @@ export function VTableWrapper({
         }
       }
     };
-  }, [columns, data, mounted, onLoadMore, onSort, onRowSelect, rowKey, onCellContextMenu, theme]);
+  }, [
+    columns, 
+    data, 
+    mounted, 
+    onLoadMore, 
+    onSort, 
+    onRowSelect, 
+    rowKey, 
+    onCellContextMenu, 
+    theme,
+    autoResize,
+    handleNavigation,
+    handleRowClick,
+    infiniteScroll,
+    initialLoadSize,
+    maxRows,
+    minColumnWidth,
+    pinnedRowIds,
+    responsive,
+    scrollThreshold,
+    selectedRowId,
+    virtualScrolling
+  ]);
 
   if (error) {
     return (

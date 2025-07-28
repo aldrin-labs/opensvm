@@ -20,7 +20,7 @@ import { useAccessibilityMessenger } from '@/lib/accessibility-messaging';
 /**
  * Tooltip positioning options
  */
-export type TooltipPosition = 
+export type TooltipPosition =
   | 'top' | 'top-start' | 'top-end'
   | 'bottom' | 'bottom-start' | 'bottom-end'
   | 'left' | 'left-start' | 'left-end'
@@ -179,9 +179,9 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
    * Update viewport information
    */
   const updateViewportInfo = useCallback(() => {
-    const width = window.innerWidth;
-    const height = window.innerHeight;
-    
+    const width = typeof window !== 'undefined' ? window.innerWidth : 1024;
+    const height = typeof window !== 'undefined' ? window.innerHeight : 768;
+
     setViewportInfo({
       width,
       height,
@@ -198,9 +198,9 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
 
     const triggerRect = triggerRef.current.getBoundingClientRect();
     const { width: viewportWidth, height: viewportHeight, isMobile } = viewportInfo;
-    
+
     // Adjust max width for mobile
-    const maxWidth = isMobile && config.adaptToMobile 
+    const maxWidth = isMobile && config.adaptToMobile
       ? Math.min(config.maxWidth, viewportWidth - 32)
       : config.maxWidth;
 
@@ -239,7 +239,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
       case 'top-end':
         y = triggerRect.top - config.offset;
         x = position === 'top-start' ? triggerRect.left :
-            position === 'top-end' ? triggerRect.right - maxWidth :
+          position === 'top-end' ? triggerRect.right - maxWidth :
             triggerRect.left + triggerRect.width / 2 - maxWidth / 2;
         break;
 
@@ -248,7 +248,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
       case 'bottom-end':
         y = triggerRect.bottom + config.offset;
         x = position === 'bottom-start' ? triggerRect.left :
-            position === 'bottom-end' ? triggerRect.right - maxWidth :
+          position === 'bottom-end' ? triggerRect.right - maxWidth :
             triggerRect.left + triggerRect.width / 2 - maxWidth / 2;
         break;
 
@@ -257,7 +257,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
       case 'left-end':
         x = triggerRect.left - maxWidth - config.offset;
         y = position === 'left-start' ? triggerRect.top :
-            position === 'left-end' ? triggerRect.bottom - maxHeight :
+          position === 'left-end' ? triggerRect.bottom - maxHeight :
             triggerRect.top + triggerRect.height / 2 - maxHeight / 2;
         break;
 
@@ -266,7 +266,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
       case 'right-end':
         x = triggerRect.right + config.offset;
         y = position === 'right-start' ? triggerRect.top :
-            position === 'right-end' ? triggerRect.bottom - maxHeight :
+          position === 'right-end' ? triggerRect.bottom - maxHeight :
             triggerRect.top + triggerRect.height / 2 - maxHeight / 2;
         break;
     }
@@ -323,7 +323,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
     showTimeoutRef.current = setTimeout(() => {
       setIsOpen(true);
       onOpenChange?.(true);
-      
+
       if (config.trigger.includes('focus')) {
         accessibility.announce('Tooltip opened');
       }
@@ -403,8 +403,14 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
   // Update viewport info on mount and resize
   useEffect(() => {
     updateViewportInfo();
-    window.addEventListener('resize', updateViewportInfo);
-    return () => window.removeEventListener('resize', updateViewportInfo);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', updateViewportInfo);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', updateViewportInfo);
+      }
+    };
   }, [updateViewportInfo]);
 
   // Calculate position when tooltip should be shown
@@ -418,12 +424,16 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
   // Add/remove global event listeners
   useEffect(() => {
     if (shouldBeOpen) {
-      document.addEventListener('mousedown', handleOutsideClick);
-      document.addEventListener('keydown', handleEscapeKey);
-      
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleOutsideClick);
+        document.addEventListener('keydown', handleEscapeKey);
+      }
+
       return () => {
-        document.removeEventListener('mousedown', handleOutsideClick);
-        document.removeEventListener('keydown', handleEscapeKey);
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('mousedown', handleOutsideClick);
+          document.removeEventListener('keydown', handleEscapeKey);
+        }
       };
     }
   }, [shouldBeOpen, handleOutsideClick, handleEscapeKey]);
@@ -472,8 +482,8 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
                   'px-2 py-1 text-xs rounded transition-colors',
                   action.variant === 'primary' && 'bg-blue-500 text-white hover:bg-blue-600',
                   action.variant === 'danger' && 'bg-red-500 text-white hover:bg-red-600',
-                  (!action.variant || action.variant === 'secondary') && 
-                    'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
+                  (!action.variant || action.variant === 'secondary') &&
+                  'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
                 )}
               >
                 {action.label}
@@ -512,7 +522,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
         aria-hidden={!shouldBeOpen}
       >
         {renderContent()}
-        
+
         {config.showArrow && positionInfo.arrowPosition && (
           <div
             className={cn(
@@ -532,7 +542,7 @@ export const AdaptiveTooltip: React.FC<AdaptiveTooltipProps> = ({
       </div>
     );
 
-    return createPortal(tooltipElement, document.body);
+    return typeof document !== 'undefined' ? createPortal(tooltipElement, document.body) : null;
   };
 
   return (

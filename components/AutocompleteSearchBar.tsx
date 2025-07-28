@@ -40,8 +40,14 @@ export default function AutocompleteSearchBar() {
         setShowSuggestions(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -86,36 +92,44 @@ export default function AutocompleteSearchBar() {
     if (!trimmedQuery || isLoading) {
       return;
     }
-    
+
     try {
       setIsLoading(true);
-      
+
       // Check if query is a block number
       if (/^\d+$/.test(trimmedQuery)) {
         router.push(`/block/${trimmedQuery}`);
         return;
       }
-      
+
       // Check if query is a transaction signature
       if (isValidTransactionSignature(trimmedQuery)) {
-        window.location.href = `/tx/${trimmedQuery}`;
+        if (typeof window !== 'undefined') {
+          window.location.href = `/tx/${trimmedQuery}`;
+        }
         return;
       }
-      
+
       // Check if query is a valid Solana address
       if (isValidSolanaAddress(trimmedQuery)) {
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
-        
+
         switch (data.type) {
           case 'token':
-            window.location.href = `/token/${trimmedQuery}`;
+            if (typeof window !== 'undefined') {
+              window.location.href = `/token/${trimmedQuery}`;
+            }
             break;
           case 'program':
-            window.location.href = `/program/${trimmedQuery}`;
+            if (typeof window !== 'undefined') {
+              window.location.href = `/program/${trimmedQuery}`;
+            }
             break;
           case 'account':
-            window.location.href = `/account/${trimmedQuery}`;
+            if (typeof window !== 'undefined') {
+              window.location.href = `/account/${trimmedQuery}`;
+            }
             break;
           default:
             // Build search URL with filters
@@ -283,7 +297,7 @@ export default function AutocompleteSearchBar() {
                 onClick={() => {
                   setQuery(suggestion.value);
                   setShowSuggestions(false);
-                  handleSubmit({ preventDefault: () => {} } as React.FormEvent);
+                  handleSubmit({ preventDefault: () => { } } as React.FormEvent);
                 }}
                 className="w-full px-4 py-2 text-left hover:bg-gray-50 flex items-center gap-2"
               >

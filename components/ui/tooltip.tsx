@@ -16,14 +16,14 @@ export function Tooltip({ content, children, className = '' }: TooltipProps) {
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = (e.target as HTMLElement).getBoundingClientRect();
     setPosition({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY + 5
+      x: rect.left + (typeof window !== 'undefined' ? window.scrollX : 0),
+      y: rect.bottom + (typeof window !== 'undefined' ? window.scrollY : 0) + 5
     });
     setIsVisible(true);
   };
 
   return (
-    <div 
+    <div
       className={`relative inline-flex items-center ${className}`}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={() => setIsVisible(false)}

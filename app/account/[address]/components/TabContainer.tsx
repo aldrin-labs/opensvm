@@ -28,17 +28,21 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   // Save scroll position when tab changes
   const saveScrollPosition = useCallback(() => {
     if (contentRef.current) {
-      scrollPositions.current[activeTab] = window.scrollY;
+      if (typeof window !== 'undefined') {
+        scrollPositions.current[activeTab] = window.scrollY;
+      }
     }
   }, [activeTab]);
 
   // Restore scroll position for new tab
   const restoreScrollPosition = useCallback(() => {
     const savedPosition = scrollPositions.current[activeTab] || 0;
-    window.scrollTo({
-      top: savedPosition,
-      behavior: 'instant' // Prevent smooth scrolling during tab switch
-    });
+    if (typeof window !== 'undefined') {
+      window.scrollTo({
+        top: savedPosition,
+        behavior: 'instant' // Prevent smooth scrolling during tab switch
+      });
+    }
   }, [activeTab]);
 
   // Save scroll position before tab change

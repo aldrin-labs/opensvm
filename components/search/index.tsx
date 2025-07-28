@@ -32,13 +32,19 @@ export default function EnhancedSearchBar() {
       if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
         setShowSuggestions(false);
       }
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node) && 
-          !(event.target as HTMLElement).closest('.settings-toggle')) {
+      if (settingsRef.current && !settingsRef.current.contains(event.target as Node) &&
+        !(event.target as HTMLElement).closest('.settings-toggle')) {
         setShowSettings(false);
       }
     }
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -50,7 +56,7 @@ export default function EnhancedSearchBar() {
 
       try {
         let response;
-        
+
         if (query.length === 0) {
           // Fetch empty state suggestions (recent prompts, latest items, popular searches)
           console.log('Fetching empty state suggestions...');
@@ -63,11 +69,11 @@ export default function EnhancedSearchBar() {
           // Fetch suggestions based on the query and selected networks
           response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&networks=${searchSettings.networks.join(',')}`);
         }
-        
+
         if (!response.ok) {
           throw new Error(`Failed to fetch suggestions: ${response.status} ${response.statusText}`);
         }
-        
+
         const data = await response.json();
         console.log('Suggestions fetched:', data);
         setSuggestions(data);
@@ -86,32 +92,32 @@ export default function EnhancedSearchBar() {
     if (!trimmedQuery || isLoading) {
       return;
     }
-    
+
     try {
       setIsLoading(true);
       console.log("Processing search value:", trimmedQuery);
-      
+
       // Check if query is a block number
       if (/^\d+$/.test(trimmedQuery)) {
         console.log("Detected block number, navigating to block page");
         router.push(`/block/${trimmedQuery}`);
         return;
       }
-      
+
       // Check if query is a transaction signature
       if (isValidTransactionSignature(trimmedQuery)) {
         console.log("Detected transaction signature, navigating to tx page");
         router.push(`/tx/${trimmedQuery}`);
         return;
       }
-      
+
       // Check if query is a valid Solana address
       if (isValidSolanaAddress(trimmedQuery)) {
         console.log("Detected Solana address, checking account type");
         const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
         const data = await response.json();
         console.log("Account type response:", data);
-        
+
         switch (data.type) {
           case 'token':
             console.log("Navigating to token page");
@@ -148,12 +154,12 @@ export default function EnhancedSearchBar() {
 
   const buildAndNavigateToSearchUrl = (query: string) => {
     let searchUrl = `/search?q=${encodeURIComponent(query)}`;
-    
+
     // Add networks - ensure we have at least one network
     if (searchSettings.networks.length > 0) {
       searchUrl += `&networks=${searchSettings.networks.join(',')}`;
     }
-    
+
     // Add data types - only add if there are selected data types
     if (searchSettings.dataTypes.length > 0) {
       searchUrl += `&types=${searchSettings.dataTypes.join(',')}`;
@@ -161,20 +167,20 @@ export default function EnhancedSearchBar() {
       // Default to all data types if none selected
       searchUrl += `&types=transactions,blocks,programs,tokens`;
     }
-    
+
     // Add sort options
     searchUrl += `&sortBy=${searchSettings.sortBy}&sortOrder=${searchSettings.sortOrder}`;
-    
+
     // Add date range
     if (searchSettings.dateRange?.start && searchSettings.dateRange?.end) {
       searchUrl += `&start=${searchSettings.dateRange.start}&end=${searchSettings.dateRange.end}`;
     }
-    
+
     // Add status
     if (searchSettings.status) {
       searchUrl += `&status=${searchSettings.status}`;
     }
-    
+
     // Add amount range
     if (searchSettings.minAmount !== undefined) {
       searchUrl += `&min=${searchSettings.minAmount}`;
@@ -182,7 +188,7 @@ export default function EnhancedSearchBar() {
     if (searchSettings.maxAmount !== undefined) {
       searchUrl += `&max=${searchSettings.maxAmount}`;
     }
-    
+
     console.log("Navigating to search URL:", searchUrl);
     router.push(searchUrl);
   };
@@ -191,7 +197,7 @@ export default function EnhancedSearchBar() {
     setSearchSettings(prev => {
       const networks = [...prev.networks];
       const index = networks.indexOf(networkId);
-      
+
       if (index === -1) {
         // Add the network
         networks.push(networkId);
@@ -202,7 +208,7 @@ export default function EnhancedSearchBar() {
         // Don't allow removing the last network
         return prev;
       }
-      
+
       return {
         ...prev,
         networks
@@ -214,7 +220,7 @@ export default function EnhancedSearchBar() {
     setSearchSettings(prev => {
       const dataTypes = [...prev.dataTypes];
       const index = dataTypes.indexOf(dataType);
-      
+
       if (index === -1) {
         // Add the data type
         dataTypes.push(dataType);
@@ -225,7 +231,7 @@ export default function EnhancedSearchBar() {
         // Don't allow removing the last data type
         return prev;
       }
-      
+
       return {
         ...prev,
         dataTypes
@@ -242,7 +248,7 @@ export default function EnhancedSearchBar() {
     <div className="w-full max-w-3xl mx-auto">
       <form ref={formRef} onSubmit={handleSubmit} className="relative flex flex-col w-full gap-4">
         <div className="relative flex w-full">
-          <SearchInput 
+          <SearchInput
             query={query}
             setQuery={setQuery}
             showSettings={showSettings}
@@ -255,7 +261,7 @@ export default function EnhancedSearchBar() {
         </div>
 
         {/* Search Settings Panel */}
-        <SearchSettings 
+        <SearchSettings
           showSettings={showSettings}
           settingsRef={settingsRef}
           searchSettings={searchSettings}
@@ -266,7 +272,7 @@ export default function EnhancedSearchBar() {
         />
 
         {/* Autocomplete Suggestions */}
-        <SearchSuggestions 
+        <SearchSuggestions
           showSuggestions={showSuggestions}
           suggestions={suggestions}
           suggestionsRef={suggestionsRef}

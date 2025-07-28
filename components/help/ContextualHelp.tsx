@@ -1,11 +1,11 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  HelpCircleIcon, 
-  XIcon, 
-  BookOpenIcon, 
-  InfoIcon, 
+import {
+  HelpCircleIcon,
+  XIcon,
+  BookOpenIcon,
+  InfoIcon,
   AlertTriangleIcon,
   CheckCircleIcon,
   ExternalLinkIcon,
@@ -53,13 +53,13 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [actualPosition, setActualPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set());
-  
+
   const triggerRef = useRef<HTMLDivElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  
+
   const { announceToScreenReader, isTouchDevice } = useAccessibility();
   const { isMobile } = useMobileDetection();
-  
+
   // Keyboard navigation for the help content
   useKeyboardNavigation(tooltipRef, {
     onEscape: () => setIsVisible(false),
@@ -73,21 +73,21 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
     }
 
     const rect = triggerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+
     // Check available space
     const spaceAbove = rect.top;
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
-    
+
     // Prefer bottom, then top, then right, then left
     if (spaceBelow > 200) return 'bottom';
     if (spaceAbove > 200) return 'top';
     if (spaceRight > 300) return 'right';
     if (spaceLeft > 300) return 'left';
-    
+
     return 'bottom'; // fallback
   };
 
@@ -126,11 +126,10 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
   };
 
   const getTypeIcon = (type: HelpContent['type']) => {
-    const iconClass = `w-4 h-4 ${
-      iconSize === 'sm' ? 'w-3 h-3' : 
+    const iconClass = `w-4 h-4 ${iconSize === 'sm' ? 'w-3 h-3' :
       iconSize === 'lg' ? 'w-5 h-5' : 'w-4 h-4'
-    }`;
-    
+      }`;
+
     switch (type) {
       case 'info':
         return <InfoIcon className={`${iconClass} text-blue-500`} />;
@@ -148,7 +147,7 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
   const getPositionClasses = () => {
     const baseClasses = 'absolute z-50 bg-background border border-border rounded-lg shadow-lg backdrop-blur-sm';
     const width = isMobile ? 'w-80 max-w-[90vw]' : 'w-96 max-w-md';
-    
+
     switch (actualPosition) {
       case 'top':
         return `${baseClasses} ${width} bottom-full left-1/2 transform -translate-x-1/2 mb-2`;
@@ -188,8 +187,14 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
     };
 
     if (trigger === 'click') {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => {
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('mousedown', handleClickOutside);
+        }
+      };
     }
   }, [isVisible, trigger, hideHelp]);
 
@@ -197,9 +202,8 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
     <div className={`relative inline-block ${className}`}>
       <div
         ref={triggerRef}
-        className={`${trigger === 'click' ? 'cursor-pointer' : ''} ${
-          isTouchDevice ? 'min-h-[44px] min-w-[44px] flex items-center justify-center' : ''
-        }`}
+        className={`${trigger === 'click' ? 'cursor-pointer' : ''} ${isTouchDevice ? 'min-h-[44px] min-w-[44px] flex items-center justify-center' : ''
+          }`}
         onMouseEnter={trigger === 'hover' ? handleTriggerEvent : undefined}
         onMouseLeave={trigger === 'hover' ? handleTriggerEvent : undefined}
         onFocus={trigger === 'focus' ? handleTriggerEvent : undefined}
@@ -212,11 +216,10 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
       >
         {children || (
           showIcon && (
-            <HelpCircleIcon 
-              className={`${
-                iconSize === 'sm' ? 'w-4 h-4' : 
+            <HelpCircleIcon
+              className={`${iconSize === 'sm' ? 'w-4 h-4' :
                 iconSize === 'lg' ? 'w-6 h-6' : 'w-5 h-5'
-              } text-muted-foreground hover:text-foreground transition-colors`}
+                } text-muted-foreground hover:text-foreground transition-colors`}
             />
           )
         )}
@@ -272,7 +275,7 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
                   )}
                   <span>Related Topics</span>
                 </button>
-                
+
                 {expandedSections.has('related') && (
                   <div className="mt-2 ml-6 space-y-1">
                     {content.relatedTopics.map((topic, index) => (
@@ -299,7 +302,7 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
                   )}
                   <span>Learn More</span>
                 </button>
-                
+
                 {expandedSections.has('links') && (
                   <div className="mt-2 ml-6 space-y-2">
                     {content.externalLinks.map((link, index) => (
@@ -321,12 +324,11 @@ const ContextualHelp: React.FC<ContextualHelpProps> = ({
           </div>
 
           {/* Arrow pointer */}
-          <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${
-            actualPosition === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
+          <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${actualPosition === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
             actualPosition === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1 border-t border-l' :
-            actualPosition === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
-            'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
-          }`} />
+              actualPosition === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
+                'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
+            }`} />
         </div>
       )}
     </div>

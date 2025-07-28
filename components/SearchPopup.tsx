@@ -6,7 +6,7 @@ import EnhancedSearchBar from '@/components/search';
 export function SearchPopup() {
   const [isOpen, setIsOpen] = useState(false);
   const popupRef = useRef<HTMLDivElement>(null);
-  
+
   // Use a single keyboard shortcut hook to detect both Command+K and Ctrl+K
   useKeyboardShortcut('k', () => {
     setIsOpen(true);
@@ -20,8 +20,14 @@ export function SearchPopup() {
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('keydown', handleEscape);
+      }
+    };
   }, [isOpen]);
 
   // Close the popup when clicking outside
@@ -32,8 +38,14 @@ export function SearchPopup() {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    if (typeof document !== 'undefined') {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.removeEventListener('mousedown', handleClickOutside);
+      }
+    };
   }, [isOpen]);
 
   if (!isOpen) {
@@ -42,13 +54,13 @@ export function SearchPopup() {
 
   return (
     <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
-      <div 
+      <div
         ref={popupRef}
         className="bg-background border border-input rounded-lg shadow-lg w-full max-w-[600px] p-6 animate-in fade-in-0 zoom-in-95"
       >
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold text-foreground">Search</h3>
-          <button 
+          <button
             onClick={() => setIsOpen(false)}
             className="text-muted-foreground hover:text-foreground"
           >

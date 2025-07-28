@@ -21,7 +21,7 @@ export default function ShareLandingPage() {
       try {
         // Fetch actual share data from database
         const response = await fetch(`/api/share/${shareCode}`);
-        
+
         if (!response.ok) {
           if (response.status === 404) {
             setError('Share link not found or expired');
@@ -30,9 +30,9 @@ export default function ShareLandingPage() {
           }
           return;
         }
-        
+
         const shareData = await response.json();
-        
+
         // Build target URL based on actual entity data
         const targetUrls: Record<string, string> = {
           transaction: `/tx/${shareData.entityId}`,
@@ -40,18 +40,18 @@ export default function ShareLandingPage() {
           program: `/program/${shareData.entityId}`,
           user: `/user/${shareData.entityId}`
         };
-        
+
         const targetUrl = targetUrls[shareData.entityType] || '/';
-        
+
         // Add ref parameter to track the referral
-        const urlWithRef = new URL(targetUrl, window.location.origin);
+        const urlWithRef = typeof window !== 'undefined' ? new URL(targetUrl, window.location.origin) : new URL(targetUrl, 'http://localhost:3000');
         urlWithRef.searchParams.set('ref', shareCode);
-        
+
         // Redirect to the actual content with ref tracking
         setTimeout(() => {
           router.push(urlWithRef.pathname + urlWithRef.search);
         }, 1000);
-        
+
       } catch (error) {
         console.error('Error fetching share data:', error);
         setError('Failed to load shared content');
@@ -68,7 +68,7 @@ export default function ShareLandingPage() {
           <AlertCircle className="h-12 w-12 text-destructive mx-auto mb-4" />
           <h2 className="text-xl font-semibold mb-2">Share Not Found</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
-          <button 
+          <button
             onClick={() => router.push('/')}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >

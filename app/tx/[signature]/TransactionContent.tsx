@@ -520,7 +520,9 @@ function ErrorDisplay({ error, signature }: { error: Error; signature: string })
   const handleRetry = async () => {
     setRetrying(true);
     try {
-      window.location.reload();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch {
       setRetrying(false);
     }
@@ -588,7 +590,9 @@ function CommunityNotes({ signature }: { signature: string }) {
           <p className="text-muted-foreground mb-4">Connect wallet to be able to view and add community notes</p>
           <Button variant="outline" onClick={() => {
             // This would trigger wallet connection
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
           }}>
             Connect Wallet
           </Button>
@@ -706,8 +710,12 @@ export default function TransactionContent({ signature }: { signature: string })
         if (data?.details?.accounts && data.details.accounts.length > 0) {
           setInitialAccount(data.details.accounts[0].pubkey);
         }
-        document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (typeof document !== 'undefined') {
+          document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+        }
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         setTransitionState('success');
         return;
       }
@@ -721,7 +729,9 @@ export default function TransactionContent({ signature }: { signature: string })
           if (data?.details?.accounts && data.details.accounts.length > 0) {
             setInitialAccount(data.details.accounts[0].pubkey);
           }
-          document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+          if (typeof document !== 'undefined') {
+            document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+          }
           setTransitionState('success');
         })
         .catch(err => setError(err as Error))
@@ -733,6 +743,8 @@ export default function TransactionContent({ signature }: { signature: string })
   const initialRenderRef = useRef(true);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handlePopState = () => {
       const pathParts = window.location.pathname.split('/tx/');
       if (pathParts.length > 1) {
@@ -745,11 +757,15 @@ export default function TransactionContent({ signature }: { signature: string })
 
     window.addEventListener('popstate', handlePopState);
 
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+      }
+    };
   }, []);
 
   useEffect(() => {
-    const isProgrammaticNavigation = sessionStorage.getItem('programmatic_nav') === 'true';
+    const isProgrammaticNavigation = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('programmatic_nav') === 'true';
 
     if (initialRenderRef.current) {
       initialRenderRef.current = false;
@@ -758,7 +774,9 @@ export default function TransactionContent({ signature }: { signature: string })
       setCurrentSignature(signature);
     }
 
-    sessionStorage.removeItem('programmatic_nav');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('programmatic_nav');
+    }
   }, [signature]);
 
   // FIXED: Separate data fetching effect that triggers only when currentSignature changes
@@ -797,9 +815,11 @@ export default function TransactionContent({ signature }: { signature: string })
     // Listen for popstate events (browser back/forward)
     const handlePopState = () => {
       // Skip if this is a programmatic navigation we initiated
-      if (sessionStorage.getItem('programmatic_nav')) {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('programmatic_nav')) {
         return;
       }
+
+      if (typeof window === 'undefined') return;
 
       const pathParts = window.location.pathname.split('/tx/');
       if (pathParts.length > 1) {
@@ -813,7 +833,9 @@ export default function TransactionContent({ signature }: { signature: string })
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+    }
 
     // Only fetch if we have a valid signature
     if (currentSignature) {
@@ -821,7 +843,9 @@ export default function TransactionContent({ signature }: { signature: string })
     }
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+      }
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, [currentSignature]); // Only depend on our internal state, not the URL parameter

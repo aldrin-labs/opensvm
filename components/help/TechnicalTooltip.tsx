@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { 
-  InfoIcon, 
-  HelpCircleIcon, 
-  BookOpenIcon, 
+import {
+  InfoIcon,
+  HelpCircleIcon,
+  BookOpenIcon,
   AlertTriangleIcon,
   CheckCircleIcon,
   ZapIcon,
@@ -43,10 +43,10 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
   const [isVisible, setIsVisible] = useState(false);
   const [actualPosition, setActualPosition] = useState<'top' | 'bottom' | 'left' | 'right'>('top');
   const [copiedExample, setCopiedExample] = useState<number | null>(null);
-  
+
   const triggerRef = useRef<HTMLSpanElement>(null);
   const tooltipRef = useRef<HTMLDivElement>(null);
-  
+
   const { announceToScreenReader, isTouchDevice } = useAccessibility();
   const { isMobile } = useMobileDetection();
 
@@ -57,14 +57,14 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
     }
 
     const rect = triggerRef.current.getBoundingClientRect();
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 768;
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1024;
+
     const spaceAbove = rect.top;
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceLeft = rect.left;
     const spaceRight = viewportWidth - rect.right;
-    
+
     // Prefer top for mobile, bottom for desktop
     if (isMobile) {
       if (spaceAbove > 250) return 'top';
@@ -73,10 +73,10 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
       if (spaceBelow > 200) return 'bottom';
       if (spaceAbove > 200) return 'top';
     }
-    
+
     if (spaceRight > 350) return 'right';
     if (spaceLeft > 350) return 'left';
-    
+
     return 'bottom';
   };
 
@@ -93,7 +93,9 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
 
   const copyExample = async (example: string, index: number) => {
     try {
-      await navigator.clipboard.writeText(example);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(example);
+      }
       setCopiedExample(index);
       setTimeout(() => setCopiedExample(null), 2000);
       announceToScreenReader('Example copied to clipboard');
@@ -135,7 +137,7 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
   const getPositionClasses = () => {
     const baseClasses = 'absolute z-50 bg-background border border-border rounded-lg shadow-lg backdrop-blur-sm';
     const width = isMobile ? 'w-80 max-w-[90vw]' : 'w-96 max-w-md';
-    
+
     switch (actualPosition) {
       case 'top':
         return `${baseClasses} ${width} bottom-full left-1/2 transform -translate-x-1/2 mb-2`;
@@ -165,8 +167,14 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
     };
 
     if (isTouchDevice) {
-      document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      if (typeof document !== 'undefined') {
+        document.addEventListener('mousedown', handleClickOutside);
+      }
+      return () => {
+        if (typeof document !== 'undefined') {
+          document.removeEventListener('mousedown', handleClickOutside);
+        }
+      };
     }
   }, [isVisible, isTouchDevice, hideTooltip]);
 
@@ -174,9 +182,8 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
     <span className={`relative inline-block ${className}`}>
       <span
         ref={triggerRef}
-        className={`${
-          children ? '' : 'border-b border-dotted border-primary cursor-help'
-        } ${isTouchDevice ? 'cursor-pointer' : 'cursor-help'}`}
+        className={`${children ? '' : 'border-b border-dotted border-primary cursor-help'
+          } ${isTouchDevice ? 'cursor-pointer' : 'cursor-help'}`}
         onMouseEnter={!isTouchDevice ? showTooltip : undefined}
         onMouseLeave={!isTouchDevice ? hideTooltip : undefined}
         onClick={isTouchDevice ? (isVisible ? hideTooltip : showTooltip) : undefined}
@@ -283,12 +290,11 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
           </div>
 
           {/* Arrow pointer */}
-          <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${
-            actualPosition === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
+          <div className={`absolute w-2 h-2 bg-background border-border transform rotate-45 ${actualPosition === 'top' ? 'top-full left-1/2 -translate-x-1/2 -mt-1 border-b border-r' :
             actualPosition === 'bottom' ? 'bottom-full left-1/2 -translate-x-1/2 -mb-1 border-t border-l' :
-            actualPosition === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
-            'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
-          }`} />
+              actualPosition === 'left' ? 'left-full top-1/2 -translate-y-1/2 -ml-1 border-t border-r' :
+                'right-full top-1/2 -translate-y-1/2 -mr-1 border-b border-l'
+            }`} />
         </div>
       )}
     </span>

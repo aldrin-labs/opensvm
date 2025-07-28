@@ -39,7 +39,9 @@ export default function Answer({ answer }: { answer: string }) {
               /> */}
               <button
                 onClick={() => {
-                  navigator.clipboard.writeText(answer.trim());
+                  if (typeof navigator !== 'undefined' && navigator.clipboard) {
+                    navigator.clipboard.writeText(answer.trim());
+                  }
                   toast("Answer copied to clipboard", {
                     icon: "✂️",
                   });
