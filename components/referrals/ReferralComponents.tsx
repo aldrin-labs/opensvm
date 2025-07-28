@@ -90,7 +90,7 @@ export function ReferralLinkSection({ walletAddress }: { walletAddress: string }
     if (walletAddress && !isOffline) {
       generateReferralLink();
     }
-  }, [walletAddress, isOffline, referralLink, toast]);
+  }, [walletAddress, isOffline, toast]);
 
   const handleCopyLink = async () => {
     try {
