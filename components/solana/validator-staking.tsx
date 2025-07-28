@@ -73,6 +73,18 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     };
   };
 
+  // Helper function to calculate deterministic stake account PDA
+  const getStakeAccountPDA = useCallback(async () => {
+    if (!publicKey) throw new Error('Wallet not connected');
+    
+    const stakeAccountSeed = Buffer.from(`stake_opensvm_${validatorVoteAccount.slice(0, 8)}`);
+    const [stakeAccountPDA] = await PublicKey.findProgramAddress(
+      [publicKey.toBuffer(), stakeAccountSeed],
+      StakeProgram.programId
+    );
+    return stakeAccountPDA;
+  }, [publicKey, validatorVoteAccount]);
+
   // Fetch user's SVMAI balance
   const fetchSvmaiBalance = useCallback(async () => {
     if (!publicKey || !connected) return;
@@ -117,42 +129,33 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     if (!publicKey || !connected) return;
 
     try {
-      // Get stake accounts for the user with proper filtering
-      const stakeAccountInfos = await connection.getParsedProgramAccounts(
-        StakeProgram.programId,
-        {
-          commitment: 'confirmed',
-          filters: [
-            {
-              memcmp: {
-                offset: 12, // Authorized staker offset in stake account
-                bytes: publicKey.toBase58(),
-              },
-            },
-          ],
-        }
-      );
+      // Calculate the deterministic PDA for this user-validator pair
+      const stakeAccountPDA = await getStakeAccountPDA();
 
-      let totalStaked = 0;
-      const validatorStakeAccounts: PublicKey[] = [];
-
-      // Filter accounts for this specific validator
-      for (const account of stakeAccountInfos) {
-        const data = account.account.data as any;
+      // Get the specific stake account info
+      const accountInfo = await connection.getParsedAccountInfo(stakeAccountPDA);
+      
+      if (accountInfo.value) {
+        const data = accountInfo.value.data as any;
         if (data.parsed?.type === 'delegated' && 
             data.parsed?.info?.stake?.delegation?.voter === validatorVoteAccount) {
           const stakeAmount = Number(data.parsed.info.stake.delegation.stake || 0);
-          totalStaked += stakeAmount / LAMPORTS_PER_SOL;
-          validatorStakeAccounts.push(account.pubkey);
+          setUserStakedAmount(stakeAmount / LAMPORTS_PER_SOL);
+          setStakeAccounts([stakeAccountPDA]);
+        } else {
+          // Account exists but not delegated to this validator
+          setUserStakedAmount(0);
+          setStakeAccounts([]);
         }
+      } else {
+        // Account doesn't exist yet
+        setUserStakedAmount(0);
+        setStakeAccounts([]);
       }
-
-      setUserStakedAmount(totalStaked);
-      setStakeAccounts(validatorStakeAccounts);
     } catch (error) {
       console.error('Error fetching staked amount:', error);
     }
-  }, [publicKey, connected, validatorVoteAccount]);
+  }, [publicKey, connected, getStakeAccountPDA]);
 
   // Create stake account and delegate to validator
   const handleStake = async () => {
@@ -192,11 +195,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       }
 
       // Generate deterministic stake account using PDA
-      const stakeAccountSeed = Buffer.from(`stake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
-      const [stakeAccountPDA] = await PublicKey.findProgramAddress(
-        [publicKey.toBuffer(), stakeAccountSeed],
-        StakeProgram.programId
-      );
+      // Use constant seed with validator address for deterministic PDA generation
+      const stakeAccountPDA = await getStakeAccountPDA();
 
       // Use BigInt for precise lamports calculation
       const lamports = BigInt(Math.floor(amount * LAMPORTS_PER_SOL));
@@ -306,17 +306,14 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     setSuccess('');
 
     try {
-      // For simplicity, we'll deactivate the first stake account
-      // In production, you'd want to let users select which account or handle partial unstaking
-      if (stakeAccounts.length === 0) {
-        throw new Error('No stake accounts found');
-      }
+      // Calculate the same deterministic PDA used for staking
+      const stakeAccountPDA = await getStakeAccountPDA();
 
       const transaction = new Transaction();
 
       // Deactivate the stake account
       const deactivateInstruction = StakeProgram.deactivate({
-        stakePubkey: stakeAccounts[0],
+        stakePubkey: stakeAccountPDA,
         authorizedPubkey: publicKey,
       });
 
