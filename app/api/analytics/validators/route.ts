@@ -67,9 +67,25 @@ async function fetchGeoFromMultipleSources(ip: string): Promise<GeolocationData>
   const sources = [
     // Free tier of ipapi.co (1000 requests/day)
     async () => {
-      const response = await fetch(`https://ipapi.co/${ip}/json/`);
-      if (!response.ok) throw new Error('ipapi.co failed');
+      const response = await fetch(`https://ipapi.co/${ip}/json/`, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'OpenSVM-Analytics/1.0'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`ipapi.co failed (${response.status}): ${errorText}`);
+      }
+      
       const data = await response.json();
+      
+      // Check for API-specific error responses
+      if (data.error) {
+        throw new Error(`ipapi.co API error: ${data.reason || data.error}`);
+      }
+      
       return {
         country: data.country_name || 'Unknown',
         countryCode: data.country_code || 'XX',
@@ -84,9 +100,25 @@ async function fetchGeoFromMultipleSources(ip: string): Promise<GeolocationData>
     
     // Free tier of ip-api.com (1000 requests/hour)
     async () => {
-      const response = await fetch(`http://ip-api.com/json/${ip}`);
-      if (!response.ok) throw new Error('ip-api.com failed');
+      const response = await fetch(`http://ip-api.com/json/${ip}`, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'OpenSVM-Analytics/1.0'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`ip-api.com failed (${response.status}): ${errorText}`);
+      }
+      
       const data = await response.json();
+      
+      // Check for API-specific error responses
+      if (data.status === 'fail') {
+        throw new Error(`ip-api.com API error: ${data.message || 'Request failed'}`);
+      }
+      
       return {
         country: data.country || 'Unknown',
         countryCode: data.countryCode || 'XX', 
@@ -101,9 +133,25 @@ async function fetchGeoFromMultipleSources(ip: string): Promise<GeolocationData>
     
     // Free tier of ipinfo.io (50,000 requests/month)  
     async () => {
-      const response = await fetch(`https://ipinfo.io/${ip}/json`);
-      if (!response.ok) throw new Error('ipinfo.io failed');
+      const response = await fetch(`https://ipinfo.io/${ip}/json`, {
+        timeout: 5000,
+        headers: {
+          'User-Agent': 'OpenSVM-Analytics/1.0'
+        }
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        throw new Error(`ipinfo.io failed (${response.status}): ${errorText}`);
+      }
+      
       const data = await response.json();
+      
+      // Check for API-specific error responses
+      if (data.error) {
+        throw new Error(`ipinfo.io API error: ${data.error.title || data.error.message || 'Request failed'}`);
+      }
+      
       const [city, region] = (data.city || 'Unknown,Unknown').split(',');
       return {
         country: data.country || 'Unknown',
