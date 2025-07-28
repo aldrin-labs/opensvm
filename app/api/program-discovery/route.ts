@@ -203,7 +203,7 @@ async function fetchProgramTransactions(programId: string): Promise<any[]> {
     // Filter out null results and return valid transactions
     return transactions.filter((tx: any) => tx !== null);
   } catch (error) {
-    console.error(`Error fetching transactions for program ${programId}:`, error);
+    console.error('Error fetching transactions for program %s:', programId, error);
     return [];
   }
 }
