@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TransactionMetricsCalculator } from '@/lib/transaction-metrics-calculator';
+import { getConnection } from '@/lib/solana';
+import { isValidSignature } from '@/lib/utils';
 
 /**
  * GET /api/transaction-metrics/[signature]
@@ -22,82 +24,84 @@ export async function GET(
     const { searchParams } = new URL(request.url);
     const include = searchParams.get('include')?.split(',') || [];
 
-    // Validate signature format
-    if (!signature || signature.length < 64) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
-            code: 'INVALID_SIGNATURE', 
-            message: 'Invalid transaction signature format' 
-          } 
-        },
-        { status: 400 }
-      );
-    }
-
-    try {
-      // In a real implementation, this would fetch the transaction from the blockchain
-      const mockTransactionData = await generateMockTransactionData(signature);
-      
-      const calculator = new TransactionMetricsCalculator();
-      const metrics = await calculator.calculateMetrics(mockTransactionData);
-
-      // Build response data
-      const responseData: any = {
-        signature,
-        metrics
-      };
-
-      // Include additional data based on query parameters
-      if (include.includes('comparison')) {
-        responseData.comparison = await generateComparisonData(metrics);
-      }
-
-      if (include.includes('recommendations')) {
-        responseData.recommendations = generateOptimizationRecommendations(metrics);
-      }
-
-      if (include.includes('breakdown')) {
-        responseData.breakdown = generateDetailedBreakdown(metrics);
-      }
-
-      if (include.includes('historical')) {
-        responseData.historical = await generateHistoricalContext(signature);
-      }
-
+    // Validate signature format using proper utility
+    if (!signature || !isValidSignature(signature)) {
       return NextResponse.json({
-        success: true,
-        data: responseData,
-        timestamp: Date.now(),
-        cached: false
-      });
-
-    } catch (error) {
-      return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
-            code: 'CALCULATION_FAILED', 
-            message: 'Failed to calculate transaction metrics' 
-          } 
-        },
-        { status: 500 }
-      );
+        error: 'Invalid transaction signature format. Must be exactly 88 characters.',
+        details: {
+          provided: signature,
+          expectedLength: 88,
+          actualLength: signature?.length || 0
+        }
+      }, { status: 400 });
     }
+
+    // Get connection and fetch transaction
+    const connection = await getConnection();
+    const transactionData = await connection.getParsedTransaction(signature, {
+      maxSupportedTransactionVersion: 0,
+      commitment: 'confirmed'
+    });
+
+    if (!transactionData) {
+      return NextResponse.json({
+        error: 'Transaction not found',
+        details: { signature }
+      }, { status: 404 });
+    }
+
+    // Calculate metrics
+    const calculator = new TransactionMetricsCalculator(connection);
+    const metrics = await calculator.calculateMetrics(transactionData);
+
+    // Build response data
+    const responseData: any = {
+      signature,
+      metrics,
+      timestamp: Date.now()
+    };
+
+    // Include additional data based on query parameters
+    if (include.includes('comparison')) {
+      responseData.comparison = generateComparisonData(metrics, connection);
+    }
+
+    if (include.includes('recommendations')) {
+      responseData.recommendations = generateOptimizationRecommendations(metrics);
+    }
+
+    if (include.includes('breakdown')) {
+      responseData.breakdown = generateDetailedBreakdown(metrics, transactionData);
+    }
+
+    if (include.includes('historical')) {
+      responseData.historical = await generateHistoricalContext(metrics);
+    }
+
+    return NextResponse.json(responseData);
 
   } catch (error) {
-    console.error('Transaction metrics individual lookup error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
-      },
-      { status: 500 }
-    );
+    console.error('Transaction metrics error:', error);
+
+    let status = 500;
+    let message = error instanceof Error ? error.message : 'Failed to calculate transaction metrics';
+
+    if (message.toLowerCase().includes('not found')) {
+      status = 404;
+    } else if (message.toLowerCase().includes('invalid')) {
+      status = 400;
+    } else if (message.toLowerCase().includes('rate limit')) {
+      status = 429;
+    }
+
+    return NextResponse.json({
+      error: message,
+      details: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error
+    }, { status });
   }
 }
 
@@ -110,75 +114,110 @@ export async function POST(
   request: NextRequest,
   { params }: { params: { signature: string } }
 ) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for analysis
+
   try {
     const { signature } = params;
-    const body = await request.json();
-    const { action, data } = body;
+    const data = await request.json();
 
-    switch (action) {
+    // Validate signature format using proper utility
+    if (!signature || !isValidSignature(signature)) {
+      return NextResponse.json({
+        error: 'Invalid transaction signature format. Must be exactly 88 characters.',
+        details: {
+          provided: signature,
+          expectedLength: 88,
+          actualLength: signature?.length || 0
+        }
+      }, { status: 400 });
+    }
+
+    // Get connection once and reuse it
+    const connection = await getConnection();
+
+    // Fetch transaction data once
+    const transactionData = await connection.getParsedTransaction(signature, { maxSupportedTransactionVersion: 0 });
+
+    if (!transactionData) {
+      return NextResponse.json({
+        error: 'Transaction not found',
+        details: { signature }
+      }, { status: 404 });
+    }
+
+    switch (data.action) {
       case 'optimize':
-        // Analyze transaction and provide optimization suggestions
-        const mockTransactionData = await generateMockTransactionData(signature);
-        const calculator = new TransactionMetricsCalculator();
-        const metrics = await calculator.calculateMetrics(mockTransactionData);
+        const calculator = new TransactionMetricsCalculator(connection);
+        const metrics = await calculator.calculateMetrics(transactionData);
 
+        // Generate optimization suggestions based on metrics
         const optimizations = {
           currentMetrics: metrics,
-          optimizationOpportunities: [
-            {
-              category: 'compute',
-              impact: 'medium',
-              description: 'Reduce compute unit usage by optimizing instruction order',
-              potentialSavings: {
-                computeUnits: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.15),
-                fee: Math.floor(metrics.feeAnalysis.totalFee * 0.1)
-              }
-            },
-            {
-              category: 'accounts',
-              impact: 'low',
-              description: 'Minimize writable accounts to reduce rent costs',
-              potentialSavings: {
-                computeUnits: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.05),
-                fee: Math.floor(metrics.feeAnalysis.totalFee * 0.03)
-              }
-            }
-          ],
-          estimatedImprovement: {
-            feeReduction: Math.floor(metrics.feeAnalysis.totalFee * 0.13),
-            computeReduction: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.20),
-            efficiencyGain: 8.5
+          suggestions: generateOptimizationRecommendations(metrics),
+          potentialSavings: {
+            // Note: Real savings would require analysis of specific optimizations
+            // These are placeholder values until proper optimization analysis is implemented
+            fee: 0, // Would calculate based on specific optimization suggestions
+            compute: 0 // Would calculate based on instruction-level analysis
           }
         };
 
-        return NextResponse.json({
-          success: true,
-          data: optimizations,
-          timestamp: Date.now()
-        });
+        return NextResponse.json({ success: true, data: optimizations });
 
       case 'simulate_changes':
-        if (!data?.changes) {
-          return NextResponse.json(
-            { success: false, error: { code: 'INVALID_DATA', message: 'Changes data is required' } },
-            { status: 400 }
-          );
+        if (!data.changes) {
+          return NextResponse.json({
+            error: 'Changes parameter is required for simulation',
+            details: { action: data.action }
+          }, { status: 400 });
         }
 
         // Simulate the impact of proposed changes
-        const originalData = await generateMockTransactionData(signature);
+        const originalTransaction = await connection.getParsedTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed'
+        });
+
+        if (!originalTransaction) {
+          return NextResponse.json({
+            error: 'Transaction not found',
+            details: { signature }
+          }, { status: 404 });
+        }
+
+        const originalData = {
+          signature,
+          slot: originalTransaction.slot,
+          blockTime: originalTransaction.blockTime,
+          meta: originalTransaction.meta,
+          transaction: originalTransaction.transaction
+        };
+
         const calculator2 = new TransactionMetricsCalculator();
         const originalMetrics = await calculator2.calculateMetrics(originalData);
 
-        // Apply simulated changes
+        // Apply simulated changes with proper null checks
         const modifiedData = { ...originalData };
-        if (data.changes.computeUnitLimit) {
+
+        // Ensure meta exists and has required properties
+        if (!modifiedData.meta) {
+          return NextResponse.json({
+            error: 'Transaction metadata is missing',
+            details: { signature }
+          }, { status: 500 });
+        }
+
+        // Apply compute unit changes with null safety
+        if (data.changes.computeUnitLimit && modifiedData.meta.computeUnitsConsumed != null) {
           modifiedData.meta.computeUnitsConsumed = Math.min(
             modifiedData.meta.computeUnitsConsumed,
             data.changes.computeUnitLimit
           );
         }
-        if (data.changes.priorityFee) {
+
+        // Apply fee changes with null safety
+        if (data.changes.priorityFee && modifiedData.meta.fee != null) {
           modifiedData.meta.fee += data.changes.priorityFee;
         }
 
@@ -208,56 +247,82 @@ export async function POST(
 
       case 'benchmark':
         // Compare against similar transactions
-        const benchmarkData = await generateMockTransactionData(signature);
-        const calculator3 = new TransactionMetricsCalculator();
-        const transactionMetrics = await calculator3.calculateMetrics(benchmarkData);
+        const benchmarkTransaction = await connection.getParsedTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed'
+        });
 
+        if (!benchmarkTransaction) {
+          return NextResponse.json({
+            error: 'Transaction not found for benchmarking',
+            details: { signature }
+          }, { status: 404 });
+        }
+
+        const benchmarkData = {
+          signature,
+          slot: benchmarkTransaction.slot,
+          blockTime: benchmarkTransaction.blockTime,
+          meta: benchmarkTransaction.meta,
+          transaction: benchmarkTransaction.transaction
+        };
+
+        const calculator3 = new TransactionMetricsCalculator(connection);
+        const benchmarkMetrics = await calculator3.calculateMetrics(benchmarkData);
+
+        // Generate benchmark comparison
         const benchmark = {
-          transaction: transactionMetrics,
-          benchmarks: {
-            similar: {
-              averageFee: transactionMetrics.feeAnalysis.totalFee * (0.8 + Math.random() * 0.4),
-              averageCompute: transactionMetrics.computeAnalysis.computeUnitsUsed * (0.9 + Math.random() * 0.2),
-              averageEfficiency: transactionMetrics.efficiency.overall * (0.95 + Math.random() * 0.1)
-            },
-            category: {
-              averageFee: transactionMetrics.feeAnalysis.totalFee * (0.7 + Math.random() * 0.6),
-              averageCompute: transactionMetrics.computeAnalysis.computeUnitsUsed * (0.8 + Math.random() * 0.4),
-              averageEfficiency: transactionMetrics.efficiency.overall * (0.9 + Math.random() * 0.2)
-            }
-          },
-          ranking: {
-            feePercentile: Math.floor(Math.random() * 100),
-            computePercentile: Math.floor(Math.random() * 100),
-            efficiencyPercentile: Math.floor(Math.random() * 100)
+          transaction: benchmarkMetrics,
+          comparison: generateComparisonData(benchmarkMetrics, connection),
+          performance: {
+            efficiency: benchmarkMetrics.efficiency.overall,
+            feeEfficiency: benchmarkMetrics.feeAnalysis.totalFee <= 10000 ? 'excellent' : 'average',
+            computeEfficiency: benchmarkMetrics.computeAnalysis.computeUnitsUsed <= 200000 ? 'excellent' : 'average'
           }
         };
 
-        return NextResponse.json({
-          success: true,
-          data: benchmark,
-          timestamp: Date.now()
-        });
+        return NextResponse.json(benchmark);
 
       default:
-        return NextResponse.json(
-          { success: false, error: { code: 'INVALID_ACTION', message: 'Invalid action parameter' } },
-          { status: 400 }
-        );
+        return NextResponse.json({
+          error: 'Invalid action. Supported actions: optimize, simulate_changes, benchmark',
+          details: {
+            provided: data.action,
+            supported: ['optimize', 'simulate_changes', 'benchmark']
+          }
+        }, { status: 400 });
     }
 
   } catch (error) {
-    console.error('Transaction metrics individual POST error:', error);
-    return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
-      },
-      { status: 500 }
-    );
+    clearTimeout(timeoutId);
+    console.error('Transaction metrics analysis error:', error);
+
+    let status = 500;
+    let message = error instanceof Error ? error.message : 'Failed to analyze transaction metrics';
+
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        status = 504;
+        message = 'Request timed out. Please try again.';
+      } else if (message.toLowerCase().includes('not found')) {
+        status = 404;
+      } else if (message.toLowerCase().includes('invalid')) {
+        status = 400;
+      } else if (message.toLowerCase().includes('rate limit')) {
+        status = 429;
+      }
+    }
+
+    return NextResponse.json({
+      error: message,
+      details: error instanceof Error ? {
+        name: error.name,
+        message: error.message,
+        stack: error.stack
+      } : error
+    }, { status });
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -265,76 +330,26 @@ export async function POST(
  * Helper functions
  */
 
-async function generateMockTransactionData(signature: string): Promise<any> {
-  // Generate realistic mock transaction data
-  const programTypes = ['system', 'token', 'defi', 'nft'];
-  const programType = programTypes[Math.floor(Math.random() * programTypes.length)];
-  
-  let baseFee = 5000;
-  let baseCompute = 200000;
-  
-  // Adjust based on program type
-  switch (programType) {
-    case 'defi':
-      baseFee *= 3;
-      baseCompute *= 2.5;
-      break;
-    case 'nft':
-      baseFee *= 1.6;
-      baseCompute *= 1.5;
-      break;
-    case 'token':
-      baseFee *= 0.6;
-      baseCompute *= 0.8;
-      break;
-  }
-
-  return {
-    signature,
-    slot: Math.floor(Math.random() * 1000000) + 200000000,
-    blockTime: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 86400),
-    meta: {
-      fee: Math.floor(baseFee * (0.8 + Math.random() * 0.4)),
-      computeUnitsConsumed: Math.floor(baseCompute * (0.7 + Math.random() * 0.6)),
-      err: null,
-      preBalances: [1000000000, 500000000],
-      postBalances: [999995000, 500000000],
-      preTokenBalances: [],
-      postTokenBalances: [],
-      logMessages: [
-        'Program 11111111111111111111111111111111 invoke [1]',
-        'Program 11111111111111111111111111111111 success'
-      ]
-    },
-    transaction: {
-      message: {
-        accountKeys: Array.from({ length: Math.floor(Math.random() * 8) + 2 }, (_, i) => ({
-          pubkey: `mock_account_${i}`,
-          signer: i === 0,
-          writable: Math.random() < 0.5
-        })),
-        instructions: Array.from({ length: Math.floor(Math.random() * 5) + 1 }, (_, i) => ({
-          programIdIndex: 0,
-          accounts: [0, 1],
-          data: `mock_instruction_data_${i}`
-        }))
-      }
-    }
-  };
-}
-
-async function generateComparisonData(metrics: any) {
+function generateComparisonData(metrics: any, connection: any) {
+  // Note: For true comparison, we would need to query similar transactions
+  // This is a simplified version that uses the metrics themselves as baseline
   return {
     similarTransactions: {
-      count: Math.floor(Math.random() * 1000) + 100,
-      averageFee: metrics.feeAnalysis.totalFee * (0.9 + Math.random() * 0.2),
-      averageCompute: metrics.computeAnalysis.computeUnitsUsed * (0.95 + Math.random() * 0.1),
-      averageEfficiency: metrics.efficiency.overallEfficiency * (0.98 + Math.random() * 0.04)
+      count: 0, // Would need to query for actual similar transactions
+      averageFee: metrics.feeAnalysis.totalFee, // Use actual fee as baseline
+      averageCompute: metrics.computeAnalysis.computeUnitsUsed, // Use actual compute as baseline
+      averageEfficiency: metrics.efficiency.overall // Use actual efficiency as baseline
     },
-    percentileRanking: {
-      fee: Math.floor(Math.random() * 100),
-      compute: Math.floor(Math.random() * 100),
-      efficiency: Math.floor(Math.random() * 100)
+    percentiles: {
+      // Note: Real percentiles would require historical transaction data
+      // Currently returning null until proper data source is implemented
+      fee: null, // Would calculate from historical fee data
+      compute: null // Would calculate from historical compute data
+    },
+    ranking: {
+      fee: metrics.feeAnalysis.totalFee <= 5000 ? 'efficient' : metrics.feeAnalysis.totalFee <= 20000 ? 'average' : 'expensive',
+      compute: metrics.computeAnalysis.computeUnitsUsed <= 100000 ? 'efficient' : metrics.computeAnalysis.computeUnitsUsed <= 500000 ? 'average' : 'heavy',
+      overall: metrics.efficiency.overall >= 80 ? 'excellent' : metrics.efficiency.overall >= 60 ? 'good' : metrics.efficiency.overall >= 40 ? 'average' : 'poor'
     }
   };
 }
@@ -342,75 +357,105 @@ async function generateComparisonData(metrics: any) {
 function generateOptimizationRecommendations(metrics: any) {
   const recommendations = [];
 
-  if (metrics.efficiency.overallEfficiency < 70) {
+  // Analyze efficiency and generate real recommendations
+  if (metrics.efficiency.overall < 70) {
     recommendations.push({
-      type: 'efficiency',
+      category: 'efficiency',
       priority: 'high',
-      title: 'Improve Transaction Efficiency',
-      description: 'Consider optimizing instruction order and reducing unnecessary operations',
-      impact: 'Could improve efficiency by 15-25%'
+      title: 'Improve overall transaction efficiency',
+      description: `Current efficiency is ${metrics.efficiency.overall.toFixed(1)}%. Consider optimizing instruction order and reducing compute usage.`,
+      impact: 'Could improve efficiency by up to 15-25% with proper optimization'
     });
   }
 
-  if (metrics.feeAnalysis.totalFee > 10000) {
+  // Analyze fee structure
+  if (metrics.feeAnalysis.totalFee > 20000) {
     recommendations.push({
-      type: 'cost',
+      category: 'fee',
       priority: 'medium',
-      title: 'Reduce Transaction Costs',
-      description: 'Use compute budget instructions to optimize fee usage',
-      impact: 'Could reduce fees by 10-20%'
+      title: 'Reduce transaction fees',
+      description: `Current fee of ${metrics.feeAnalysis.totalFee} lamports is above average. Consider optimizing account usage and instruction count.`,
+      impact: `Potential savings of ${Math.floor(metrics.feeAnalysis.totalFee * 0.1)} lamports per transaction`
     });
   }
 
-  if (metrics.computeAnalysis.computeUnitsUsed > 800000) {
+  // Analyze compute usage
+  if (metrics.computeAnalysis.computeUnitsUsed > 500000) {
     recommendations.push({
-      type: 'compute',
+      category: 'compute',
+      priority: 'high',
+      title: 'Optimize compute unit usage',
+      description: `Using ${metrics.computeAnalysis.computeUnitsUsed} compute units. Consider reducing instruction complexity.`,
+      impact: `Could save ${Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.15)} compute units`
+    });
+  }
+
+  // Analyze instruction efficiency
+  if (metrics.instructionAnalysis && metrics.instructionAnalysis.instructionCount > 10) {
+    recommendations.push({
+      category: 'instructions',
       priority: 'medium',
-      title: 'Optimize Compute Usage',
-      description: 'Break down complex operations into smaller transactions',
-      impact: 'Could reduce compute units by 20-30%'
+      title: 'Reduce instruction count',
+      description: `Transaction contains ${metrics.instructionAnalysis.instructionCount} instructions. Consider batching or combining operations.`,
+      impact: 'Could reduce complexity and improve execution time'
     });
   }
 
   return recommendations;
 }
 
-function generateDetailedBreakdown(metrics: any) {
+function generateDetailedBreakdown(metrics: any, transactionData?: any) {
+  let writableAccounts = 0;
+  let signerAccounts = 0;
+
+  if (transactionData && transactionData.transaction && transactionData.transaction.message && transactionData.transaction.message.accountKeys) {
+    const accountKeys = transactionData.transaction.message.accountKeys;
+    writableAccounts = accountKeys.filter((acc: any) => acc.isWritable || acc.writable).length;
+    signerAccounts = accountKeys.filter((acc: any) => acc.isSigner || acc.signer).length;
+  }
+
+  // Get the actual fee from transaction metadata
+  const actualFee = transactionData?.meta?.fee || metrics.feeAnalysis.totalFee;
+
   return {
     feeBreakdown: {
-      baseFee: Math.floor(metrics.feeAnalysis.totalFee * 0.1),
-      computeFee: Math.floor(metrics.feeAnalysis.totalFee * 0.7),
-      priorityFee: Math.floor(metrics.feeAnalysis.totalFee * 0.2),
-      rentExemption: 0
+      // Note: Real fee breakdown would require analysis of Solana fee structure
+      // Currently showing total fee until proper breakdown analysis is implemented
+      totalFee: actualFee,
+      baseFee: null, // Would calculate based on signature validation cost
+      computeFee: null, // Would calculate based on compute units consumed
+      priorityFee: null, // Would extract from transaction compute budget instructions
+      rentExemption: 0 // Available from transaction data
     },
     computeBreakdown: {
-      instructionExecution: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.6),
-      accountLoading: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.2),
-      dataProcessing: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.15),
-      overhead: Math.floor(metrics.computeAnalysis.computeUnitsUsed * 0.05)
+      // Note: Real compute breakdown would require instruction-level analysis
+      // Currently showing total until proper analysis is implemented
+      totalCompute: metrics.computeAnalysis.computeUnitsUsed,
+      instructionExecution: null, // Would analyze each instruction's compute cost
+      accountLoading: null, // Would calculate based on account access patterns
+      dataProcessing: null, // Would analyze data serialization/deserialization
+      overhead: null // Would calculate system overhead
     },
     accountAnalysis: {
-      totalAccounts: Math.floor(Math.random() * 10) + 2,
-      writableAccounts: Math.floor(Math.random() * 5) + 1,
-      signerAccounts: Math.floor(Math.random() * 3) + 1,
-      programAccounts: Math.floor(Math.random() * 2) + 1
+      totalAccounts: metrics.complexity?.indicators?.accountCount || 0,
+      writableAccounts,
+      signerAccounts,
+      programAccounts: metrics.complexity?.indicators?.uniqueProgramCount || 0
     }
   };
 }
 
-async function generateHistoricalContext(signature: string) {
+async function generateHistoricalContext(metrics: any) {
+  // Note: Real historical context would require integration with:
+  // - Time/date APIs for actual timestamp
+  // - Market data APIs for SOL price and volatility
+  // - Network monitoring for real-time TPS and congestion
+  // Currently returning null until proper data sources are implemented
+
   return {
-    timeContext: {
-      blockTime: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 86400),
-      networkConditions: 'normal',
-      averageBlockTime: 400,
-      networkCongestion: Math.random() < 0.3 ? 'high' : 'normal'
-    },
-    trends: {
-      feesTrend: Math.random() < 0.5 ? 'increasing' : 'stable',
-      computeTrend: Math.random() < 0.3 ? 'increasing' : 'stable',
-      volumeTrend: Math.random() < 0.4 ? 'increasing' : 'stable'
-    }
+    timeContext: null, // Would fetch actual day/hour from timestamp
+    marketContext: null, // Would fetch real SOL price and volatility data
+    networkContext: null // Would fetch real network metrics (TPS, block time, congestion)
   };
 }
 

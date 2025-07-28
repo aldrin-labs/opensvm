@@ -3,8 +3,12 @@ import {
   AnthropicResponse,
   AnthropicError,
   AnthropicStreamChunk,
-  ANTHROPIC_HEADERS
+  ANTHROPIC_HEADERS,
+  KeyUsageStats,
+  ModelsResponse,
+  UsageStatsResponse
 } from '../types/AnthropicTypes';
+import { Mutex } from 'async-mutex';
 
 // OpenRouter specific types
 interface OpenRouterRequest {
@@ -70,6 +74,8 @@ export class AnthropicClient {
   private keyUsageCount: Map<string, number> = new Map();
   private keyLastUsed: Map<string, number> = new Map();
   private failedKeys: Set<string> = new Set();
+  private readonly keyMutex = new Mutex();
+  private readonly debug = process.env.NODE_ENV === 'development';
 
   // Model mapping from Anthropic names to OpenRouter names
   private modelMapping: Record<string, string> = {
@@ -86,10 +92,13 @@ export class AnthropicClient {
 
     // Support multiple OpenRouter keys separated by commas
     const keysFromEnv = process.env.OPENROUTER_API_KEYS || process.env.OPENROUTER_API_KEY || '';
-    this.openRouterApiKeys = keysFromEnv
+    const parsedKeys = keysFromEnv
       .split(',')
       .map(key => key.trim())
-      .filter(key => key.length > 0);
+      .filter(key => key.length > 0 && key !== '""' && key !== "''" && key !== 'null' && key !== 'undefined');
+
+    // Remove duplicates while preserving order
+    this.openRouterApiKeys = [...new Set(parsedKeys)];
 
     this.baseUrl = 'https://openrouter.ai/api/v1';
 
@@ -97,18 +106,102 @@ export class AnthropicClient {
       throw new Error('At least one OpenRouter API key is required');
     }
 
-    console.log(`Initialized with ${this.openRouterApiKeys.length} OpenRouter API key(s)`);
+    // Validate all API keys
+    const invalidKeys = this.openRouterApiKeys.filter(key => !this.validateApiKeyFormat(key));
+    if (invalidKeys.length > 0) {
+      throw new Error(`Invalid OpenRouter API key format. Keys should start with 'sk-or-v1-'`);
+    }
+
+    // Log if duplicates were removed
+    if (parsedKeys.length !== this.openRouterApiKeys.length) {
+      this.log(`Removed ${parsedKeys.length - this.openRouterApiKeys.length} duplicate API key(s)`);
+    }
+
+    this.log(`Initialized with ${this.openRouterApiKeys.length} OpenRouter API key(s)`);
   }
 
   /**
-   * Get the next API key using round-robin selection
+   * Validate OpenRouter API key format
    */
-  private getNextApiKey(): string {
+  private validateApiKeyFormat(key: string): boolean {
+    return /^sk-or-v1-[a-zA-Z0-9]+$/.test(key);
+  }
+
+  /**
+   * Secure logging that doesn't expose sensitive data
+   */
+  private log(message: string): void {
+    if (this.debug) {
+      console.log(`[AnthropicClient] ${message}`);
+    }
+  }
+
+  /**
+   * Clean up old entries to prevent memory leaks
+   * Removes entries older than 24 hours
+   */
+  private async cleanupOldEntries(): Promise<void> {
+    const release = await this.keyMutex.acquire();
+    try {
+      const now = Date.now();
+      const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+
+      // Clean up old last used entries and usage counts
+      for (const [key, timestamp] of this.keyLastUsed.entries()) {
+        if (now - timestamp > maxAge && !key.endsWith('_failed')) {
+          this.keyLastUsed.delete(key);
+          this.keyUsageCount.delete(key);
+        }
+      }
+
+      // Clean up old failed key entries
+      const keysToClean: string[] = [];
+      for (const [key, timestamp] of this.keyLastUsed.entries()) {
+        if (key.endsWith('_failed') && now - timestamp > maxAge) {
+          keysToClean.push(key);
+        }
+      }
+
+      keysToClean.forEach(key => {
+        this.keyLastUsed.delete(key);
+        const originalKey = key.replace('_failed', '');
+        this.failedKeys.delete(originalKey);
+      });
+
+      this.log(`Cleaned up old entries. Active entries: ${this.keyLastUsed.size}, Usage counts: ${this.keyUsageCount.size}`);
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Get the next API key using round-robin selection with thread safety
+   */
+  private async getNextApiKey(): Promise<string> {
+    // Periodically clean up old entries (check outside mutex for performance)
+    const shouldCleanup = Math.random() < 0.01; // 1% chance per request
+    if (shouldCleanup) {
+      await this.cleanupOldEntries();
+    }
+
+    const release = await this.keyMutex.acquire();
+    try {
+      return this.selectNextKey();
+    } finally {
+      release();
+    }
+  }
+
+  /**
+   * Select next API key (must be called within mutex)
+   */
+  private selectNextKey(): string {
     const maxAttempts = this.openRouterApiKeys.length;
     let attempts = 0;
 
     while (attempts < maxAttempts) {
       const key = this.openRouterApiKeys[this.currentKeyIndex];
+      const keyIndex = this.currentKeyIndex;
       this.currentKeyIndex = (this.currentKeyIndex + 1) % this.openRouterApiKeys.length;
 
       // Skip failed keys that were marked recently (within 5 minutes)
@@ -121,7 +214,7 @@ export class AnthropicClient {
       // Clear failed status if it's been more than 5 minutes
       if (this.failedKeys.has(key) && Date.now() - lastFailed >= 5 * 60 * 1000) {
         this.failedKeys.delete(key);
-        console.log(`Cleared failed status for key ending in ...${key.slice(-4)}`);
+        this.log(`Cleared failed status for key index ${keyIndex}`);
       }
 
       // Update usage tracking
@@ -131,9 +224,12 @@ export class AnthropicClient {
       return key;
     }
 
-    // If all keys have failed recently, try the first one anyway
-    console.warn('All OpenRouter keys have failed recently, retrying with first key');
-    return this.openRouterApiKeys[0];
+    // If all keys have failed recently, use the first one and update stats
+    const fallbackKey = this.openRouterApiKeys[0];
+    this.keyUsageCount.set(fallbackKey, (this.keyUsageCount.get(fallbackKey) || 0) + 1);
+    this.keyLastUsed.set(fallbackKey, Date.now());
+    this.log('All OpenRouter keys have failed recently, retrying with first key');
+    return fallbackKey;
   }
 
   /**
@@ -144,32 +240,42 @@ export class AnthropicClient {
     if (error.status === 429 || (error.message && error.message.includes('rate limit'))) {
       this.failedKeys.add(key);
       this.keyLastUsed.set(key + '_failed', Date.now());
-      console.warn(`Marked OpenRouter key ending in ...${key.slice(-4)} as failed due to rate limit`);
+      const keyIndex = this.openRouterApiKeys.indexOf(key);
+      if (keyIndex >= 0) {
+        this.log(`Marked key index ${keyIndex} as failed due to rate limit`);
+      } else {
+        this.log(`Marked unknown key as failed due to rate limit`);
+      }
     }
   }
 
   /**
    * Get statistics about key usage
    */
-  getKeyUsageStats(): Record<string, any> {
-    const stats: Record<string, any> = {
-      totalKeys: this.openRouterApiKeys.length,
-      activeKeys: this.openRouterApiKeys.length - this.failedKeys.size,
-      failedKeys: this.failedKeys.size,
-      usage: {}
-    };
-
-    this.openRouterApiKeys.forEach((key, index) => {
-      const keyId = `key_${index + 1}`;
-      stats.usage[keyId] = {
-        requests: this.keyUsageCount.get(key) || 0,
-        lastUsed: this.keyLastUsed.get(key) || null,
-        isFailed: this.failedKeys.has(key),
-        keyPreview: `...${key.slice(-4)}`
+  async getKeyUsageStats(): Promise<KeyUsageStats> {
+    const release = await this.keyMutex.acquire();
+    try {
+      const stats: KeyUsageStats = {
+        totalKeys: this.openRouterApiKeys.length,
+        activeKeys: this.openRouterApiKeys.length - this.failedKeys.size,
+        failedKeys: this.failedKeys.size,
+        usage: {}
       };
-    });
 
-    return stats;
+      this.openRouterApiKeys.forEach((key, index) => {
+        const keyId = `key_${index + 1}`;
+        stats.usage[keyId] = {
+          requests: this.keyUsageCount.get(key) || 0,
+          lastUsed: this.keyLastUsed.get(key) || null,
+          isFailed: this.failedKeys.has(key),
+          keyPreview: `key_${index + 1}`
+        };
+      });
+
+      return stats;
+    } finally {
+      release();
+    }
   }
 
   /**
@@ -184,7 +290,12 @@ export class AnthropicClient {
       role: msg.role,
       content: typeof msg.content === 'string'
         ? msg.content
-        : msg.content.map(c => c.type === 'text' ? c.text : '').join('')
+        : Array.isArray(msg.content)
+          ? msg.content
+            .filter(c => c && typeof c === 'object')
+            .map(c => c.type === 'text' && c.text ? c.text : '')
+            .join('')
+          : ''
     }));
 
     // Add system message if present
@@ -217,14 +328,22 @@ export class AnthropicClient {
     openRouterResponse: OpenRouterResponse,
     originalRequest: AnthropicRequest
   ): AnthropicResponse {
+    // Add null safety checks
+    if (!openRouterResponse.choices || openRouterResponse.choices.length === 0) {
+      throw new Error('No choices in OpenRouter response');
+    }
+
     const choice = openRouterResponse.choices[0];
+    if (!choice || !choice.message) {
+      throw new Error('Invalid choice structure in OpenRouter response');
+    }
 
     // Map finish_reason
     let stopReason: 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use' = 'end_turn';
     if (choice.finish_reason === 'length') {
       stopReason = 'max_tokens';
     } else if (choice.finish_reason === 'stop') {
-      stopReason = 'stop_sequence';
+      stopReason = 'end_turn';
     }
 
     return {
@@ -234,7 +353,7 @@ export class AnthropicClient {
       content: [
         {
           type: 'text',
-          text: choice.message.content
+          text: choice.message.content || ''
         }
       ],
       model: originalRequest.model, // Return the original model name
@@ -255,7 +374,7 @@ export class AnthropicClient {
     let lastError: any = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const apiKey = this.getNextApiKey();
+      const apiKey = await this.getNextApiKey();
 
       try {
         // Transform to OpenRouter format
@@ -272,7 +391,32 @@ export class AnthropicClient {
           body: JSON.stringify(openRouterRequest)
         });
 
-        const responseData = await response.json();
+        let responseData: any;
+        try {
+          responseData = await response.json();
+        } catch (jsonError) {
+          // If we can't parse JSON, create a generic error
+          const error = new AnthropicAPIError(
+            {
+              type: 'error',
+              error: {
+                type: 'api_error',
+                message: 'Invalid JSON response from OpenRouter'
+              }
+            },
+            response.status
+          );
+
+          if (response.status === 429) {
+            this.markKeyAsFailed(apiKey, error);
+            lastError = error;
+            const keyIndex = this.openRouterApiKeys.indexOf(apiKey);
+            this.log(`Rate limited on key index ${keyIndex >= 0 ? keyIndex : 'unknown'}, trying next key (attempt ${attempt + 1}/${maxRetries})`);
+            continue;
+          }
+
+          throw error;
+        }
 
         if (!response.ok) {
           const error = new AnthropicAPIError(responseData, response.status);
@@ -281,7 +425,8 @@ export class AnthropicClient {
           if (response.status === 429) {
             this.markKeyAsFailed(apiKey, error);
             lastError = error;
-            console.log(`Rate limited on key ...${apiKey.slice(-4)}, trying next key (attempt ${attempt + 1}/${maxRetries})`);
+            const keyIndex = this.openRouterApiKeys.indexOf(apiKey);
+            this.log(`Rate limited on key index ${keyIndex >= 0 ? keyIndex : 'unknown'}, trying next key (attempt ${attempt + 1}/${maxRetries})`);
             continue;
           }
 
@@ -303,7 +448,8 @@ export class AnthropicClient {
           throw error;
         }
 
-        console.error(`Error sending message to OpenRouter with key ...${apiKey.slice(-4)}:`, error);
+        const errorKeyIndex = this.openRouterApiKeys.indexOf(apiKey);
+        this.log(`Error sending message to OpenRouter with key index ${errorKeyIndex >= 0 ? errorKeyIndex : 'unknown'}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
         // If this was our last attempt, throw the error
         if (attempt === maxRetries - 1) {
@@ -313,6 +459,9 @@ export class AnthropicClient {
     }
 
     // If we exhausted all retries, throw the last error
+    if (lastError instanceof AnthropicAPIError && lastError.status === 429) {
+      throw new Error('Failed to send message to OpenRouter API: All keys exhausted');
+    }
     if (lastError instanceof AnthropicAPIError) {
       throw lastError;
     }
@@ -327,7 +476,17 @@ export class AnthropicClient {
     isFirst: boolean,
     originalRequest: AnthropicRequest
   ): AnthropicStreamChunk | null {
+    // Add null safety check
+    if (!chunk.choices || chunk.choices.length === 0) {
+      this.log('Received OpenRouter stream chunk with no choices');
+      return null;
+    }
+
     const choice = chunk.choices[0];
+    if (!choice) {
+      this.log('Invalid choice in OpenRouter stream chunk');
+      return null;
+    }
 
     if (isFirst) {
       // Send message_start event
@@ -344,6 +503,11 @@ export class AnthropicClient {
           usage: { input_tokens: 0, output_tokens: 0 }
         }
       };
+    }
+
+    // Check if delta exists
+    if (!choice.delta) {
+      return null;
     }
 
     if (choice.delta.content) {
@@ -364,7 +528,7 @@ export class AnthropicClient {
       if (choice.finish_reason === 'length') {
         stopReason = 'max_tokens';
       } else if (choice.finish_reason === 'stop') {
-        stopReason = 'stop_sequence';
+        stopReason = 'end_turn';
       }
 
       return {
@@ -388,7 +552,7 @@ export class AnthropicClient {
     let lastError: any = null;
 
     for (let attempt = 0; attempt < maxRetries; attempt++) {
-      const apiKey = this.getNextApiKey();
+      const apiKey = await this.getNextApiKey();
 
       try {
         const openRouterRequest = this.transformToOpenRouterRequest({ ...request, stream: true });
@@ -405,14 +569,27 @@ export class AnthropicClient {
         });
 
         if (!response.ok) {
-          const errorData = await response.json();
+          let errorData: any;
+          try {
+            errorData = await response.json();
+          } catch (jsonError) {
+            errorData = {
+              type: 'error',
+              error: {
+                type: 'api_error',
+                message: 'Invalid JSON response from OpenRouter'
+              }
+            };
+          }
+
           const error = new AnthropicAPIError(errorData, response.status);
 
           // If rate limited, mark this key as failed and try another
           if (response.status === 429) {
             this.markKeyAsFailed(apiKey, error);
             lastError = error;
-            console.log(`Rate limited on key ...${apiKey.slice(-4)} for streaming, trying next key (attempt ${attempt + 1}/${maxRetries})`);
+            const keyIndex = this.openRouterApiKeys.indexOf(apiKey);
+            this.log(`Rate limited on key index ${keyIndex >= 0 ? keyIndex : 'unknown'} for streaming, trying next key (attempt ${attempt + 1}/${maxRetries})`);
             continue;
           }
 
@@ -437,7 +614,8 @@ export class AnthropicClient {
           throw error;
         }
 
-        console.error(`Error sending streaming message to OpenRouter with key ...${apiKey.slice(-4)}:`, error);
+        const errorKeyIndex = this.openRouterApiKeys.indexOf(apiKey);
+        this.log(`Error sending streaming message to OpenRouter with key index ${errorKeyIndex >= 0 ? errorKeyIndex : 'unknown'}: ${error instanceof Error ? error.message : 'Unknown error'}`);
 
         // If this was our last attempt, throw the error
         if (attempt === maxRetries - 1) {
@@ -447,6 +625,9 @@ export class AnthropicClient {
     }
 
     // If we exhausted all retries, throw the last error
+    if (lastError instanceof AnthropicAPIError && lastError.status === 429) {
+      throw new Error('Failed to send streaming message to OpenRouter API: All keys exhausted');
+    }
     if (lastError instanceof AnthropicAPIError) {
       throw lastError;
     }
@@ -460,15 +641,20 @@ export class AnthropicClient {
     body: ReadableStream<Uint8Array>,
     originalRequest: AnthropicRequest
   ): ReadableStream<AnthropicStreamChunk> {
-    const reader = body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let isFirst = true;
-    let sentContentBlockStart = false;
+    const log = this.log.bind(this); // Capture the log method with correct binding
 
     return new ReadableStream({
       async start(controller) {
+        let reader: ReadableStreamDefaultReader<Uint8Array> | null = null;
+
         try {
+          reader = body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let isFirst = true;
+          let sentContentBlockStart = false;
+          const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB limit
+
           while (true) {
             const { done, value } = await reader.read();
 
@@ -482,24 +668,41 @@ export class AnthropicClient {
             }
 
             buffer += decoder.decode(value, { stream: true });
+
+            // Prevent buffer overflow
+            if (buffer.length > MAX_BUFFER_SIZE) {
+              throw new Error('Stream buffer overflow - response too large');
+            }
+
             const lines = buffer.split('\n');
             buffer = lines.pop() || '';
 
             for (const line of lines) {
-              if (line.startsWith('data: ')) {
-                const data = line.slice(6);
-
+              const trimmed = line.trim();
+              if (trimmed.startsWith('data: ')) {
+                const data = trimmed.slice(6);
                 if (data === '[DONE]') {
                   continue;
                 }
 
                 try {
-                  const chunk: OpenRouterStreamChunk = JSON.parse(data);
+                  const chunk = JSON.parse(data) as OpenRouterStreamChunk;
 
-                  if (isFirst) {
-                    // Send message_start
-                    controller.enqueue(this.transformStreamChunkToAnthropic(chunk, true, originalRequest)!);
-                    // Send content_block_start
+                  // Send initial events if first chunk
+                  if (isFirst && !sentContentBlockStart) {
+                    controller.enqueue({
+                      type: 'message_start',
+                      message: {
+                        id: chunk.id,
+                        type: 'message',
+                        role: 'assistant',
+                        content: [],
+                        model: originalRequest.model,
+                        stop_reason: null,
+                        stop_sequence: null,
+                        usage: { input_tokens: 0, output_tokens: 0 }
+                      }
+                    });
                     controller.enqueue({
                       type: 'content_block_start',
                       index: 0,
@@ -514,15 +717,22 @@ export class AnthropicClient {
                     controller.enqueue(anthropicChunk);
                   }
                 } catch (error) {
-                  console.error('Error parsing OpenRouter stream chunk:', error);
+                  log(`Error parsing OpenRouter stream chunk: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 }
               }
             }
           }
         } catch (error) {
+          log(`Error in streaming response: ${error instanceof Error ? error.message : 'Unknown error'}`);
           controller.error(error);
         } finally {
-          reader.releaseLock();
+          if (reader) {
+            try {
+              reader.releaseLock();
+            } catch (releaseError) {
+              log(`Error releasing reader lock: ${releaseError instanceof Error ? releaseError.message : 'Unknown error'}`);
+            }
+          }
         }
       }
     });
@@ -531,49 +741,41 @@ export class AnthropicClient {
   /**
    * Get available models - returns Anthropic model list
    */
-  async getModels(): Promise<any> {
+  async getModels(): Promise<ModelsResponse> {
     // Return a static list of Anthropic models since OpenRouter uses different naming
     return {
+      object: 'list',
       data: [
-        {
-          id: 'claude-3-sonnet-20240229',
-          object: 'model',
-          created: 1708963200,
-          owned_by: 'anthropic',
-          display_name: 'Claude 3 Sonnet',
-          max_tokens: 4096
-        },
         {
           id: 'claude-3-opus-20240229',
           object: 'model',
-          created: 1708963200,
-          owned_by: 'anthropic',
-          display_name: 'Claude 3 Opus',
-          max_tokens: 4096
+          created: 1708992000,
+          owned_by: 'anthropic'
+        },
+        {
+          id: 'claude-3-sonnet-20240229',
+          object: 'model',
+          created: 1708992000,
+          owned_by: 'anthropic'
         },
         {
           id: 'claude-3-haiku-20240307',
           object: 'model',
           created: 1709769600,
-          owned_by: 'anthropic',
-          display_name: 'Claude 3 Haiku',
-          max_tokens: 4096
+          owned_by: 'anthropic'
         },
+        // Support newer model versions
         {
           id: 'claude-3-sonnet-4',
           object: 'model',
-          created: 1719792000,
-          owned_by: 'anthropic',
-          display_name: 'Claude 3.5 Sonnet',
-          max_tokens: 8192
+          created: 1708992000,
+          owned_by: 'anthropic'
         },
         {
           id: 'claude-3-opus-4',
           object: 'model',
-          created: 1719792000,
-          owned_by: 'anthropic',
-          display_name: 'Claude 3.5 Opus',
-          max_tokens: 8192
+          created: 1708992000,
+          owned_by: 'anthropic'
         }
       ]
     };
@@ -586,6 +788,7 @@ export class AnthropicClient {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
+    const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB limit
 
     return new ReadableStream({
       async start(controller) {
@@ -598,6 +801,13 @@ export class AnthropicClient {
             }
 
             buffer += decoder.decode(value, { stream: true });
+
+            // Prevent buffer overflow
+            if (buffer.length > MAX_BUFFER_SIZE) {
+              controller.error(new Error('Stream buffer overflow - response too large'));
+              return;
+            }
+
             const lines = buffer.split('\n');
             buffer = lines.pop() || ''; // Keep incomplete line in buffer
 
@@ -616,7 +826,7 @@ export class AnthropicClient {
                   const chunk = JSON.parse(data) as AnthropicStreamChunk;
                   controller.enqueue(chunk);
                 } catch (parseError) {
-                  console.error('Error parsing streaming chunk:', parseError);
+                  this.log(`Error parsing streaming chunk: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
                   // Continue processing other chunks
                 }
               }
@@ -625,7 +835,7 @@ export class AnthropicClient {
 
           controller.close();
         } catch (error) {
-          console.error('Error in streaming response:', error);
+          this.log(`Error in streaming response: ${error instanceof Error ? error.message : 'Unknown error'}`);
           controller.error(error);
         }
       }
@@ -640,7 +850,7 @@ export class AnthropicClient {
       await this.getModels();
       return true;
     } catch (error) {
-      console.error('Anthropic API connection test failed:', error);
+      this.log(`Anthropic API connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
@@ -648,7 +858,7 @@ export class AnthropicClient {
   /**
    * Get API usage statistics (if available)
    */
-  async getUsageStats(): Promise<any> {
+  async getUsageStats(): Promise<UsageStatsResponse | null> {
     try {
       // Note: Anthropic may not have a usage endpoint
       // This is a placeholder for future implementation
@@ -664,7 +874,13 @@ export class AnthropicClient {
         return null; // Usage endpoint not available
       }
 
-      const responseData = await response.json();
+      let responseData: any;
+      try {
+        responseData = await response.json();
+      } catch (jsonError) {
+        this.log(`Invalid JSON in usage stats response: ${jsonError instanceof Error ? jsonError.message : 'Unknown error'}`);
+        return null;
+      }
 
       if (!response.ok) {
         throw new AnthropicAPIError(responseData, response.status);
@@ -672,27 +888,9 @@ export class AnthropicClient {
 
       return responseData;
     } catch (error) {
-      console.error('Error getting usage stats from Anthropic:', error);
+      this.log(`Error getting usage stats from Anthropic: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
     }
-  }
-
-  /**
-   * Update API key
-   */
-  updateApiKey(apiKey: string): void {
-    this.apiKey = apiKey;
-  }
-
-  /**
-   * Get current API key (masked for security)
-   */
-  getMaskedApiKey(): string {
-    if (this.apiKey.length < 8) {
-      return '***';
-    }
-
-    return this.apiKey.substring(0, 4) + '***' + this.apiKey.substring(this.apiKey.length - 4);
   }
 }
 
@@ -703,11 +901,24 @@ export class AnthropicAPIError extends Error {
   public readonly status: number;
   public readonly anthropicError: AnthropicError;
 
-  constructor(errorData: AnthropicError, status: number) {
-    super(errorData.error?.message || 'Anthropic API error');
+  constructor(errorData: any, status: number) {
+    // Safely extract error message
+    let message = 'Anthropic API error';
+    if (errorData && typeof errorData === 'object' && errorData.error) {
+      if (typeof errorData.error === 'string') {
+        message = errorData.error;
+      } else if (errorData.error.message) {
+        message = errorData.error.message;
+      }
+    }
+
+    super(message);
     this.name = 'AnthropicAPIError';
     this.status = status;
-    this.anthropicError = errorData;
+    // Ensure we have a valid AnthropicError structure
+    this.anthropicError = errorData && typeof errorData === 'object'
+      ? errorData as AnthropicError
+      : { type: 'error', error: { type: 'unknown_error', message } };
   }
 
   /**

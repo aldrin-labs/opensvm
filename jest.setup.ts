@@ -6,6 +6,67 @@ import { jest, expect } from '@jest/globals';
 global.TextEncoder = NodeTextEncoder;
 global.TextDecoder = NodeTextDecoder as typeof global.TextDecoder;
 
+// Mock Request for Next.js API routes
+export class MockRequest {
+  public url: string;
+  public method: string;
+  public headers: Headers;
+  public body: ReadableStream<Uint8Array> | null;
+  public bodyUsed: boolean;
+
+  constructor(input: string | URL, init?: RequestInit) {
+    this.url = typeof input === 'string' ? input : input.toString();
+    this.method = init?.method || 'GET';
+    this.headers = new Headers(init?.headers);
+    this.body = null;
+    this.bodyUsed = false;
+  }
+
+  json(): Promise<any> {
+    this.bodyUsed = true;
+    return Promise.resolve({});
+  }
+
+  text(): Promise<string> {
+    this.bodyUsed = true;
+    return Promise.resolve('');
+  }
+
+  arrayBuffer(): Promise<ArrayBuffer> {
+    this.bodyUsed = true;
+    return Promise.resolve(new ArrayBuffer(0));
+  }
+
+  blob(): Promise<Blob> {
+    this.bodyUsed = true;
+    return Promise.resolve(new Blob());
+  }
+
+  formData(): Promise<FormData> {
+    this.bodyUsed = true;
+    return Promise.resolve(new FormData());
+  }
+
+  clone(): MockRequest {
+    return new MockRequest(this.url, {
+      method: this.method,
+      headers: Object.fromEntries(this.headers.entries())
+    });
+  }
+}
+
+global.Request = MockRequest as unknown as typeof Request;
+
+// Mock AbortController
+export class MockAbortController {
+  signal = { aborted: false };
+  abort() {
+    this.signal.aborted = true;
+  }
+}
+
+global.AbortController = MockAbortController as unknown as typeof AbortController;
+
 // Mock Response, Request, and Headers for fetch API
 export class MockResponse {
   private bodyContent: string;
@@ -38,6 +99,11 @@ export class MockResponse {
       const encoded = encoder.encode(this.bodyContent);
       return Promise.resolve(encoded);
     };
+  }
+
+  // Static method for NextResponse.json compatibility
+  static json(data: any, init?: { status?: number; statusText?: string; headers?: Record<string, string> }) {
+    return new MockResponse(data, init);
   }
 
   json(): Promise<any> {
@@ -92,7 +158,7 @@ export class MockResponse {
 global.Response = MockResponse as unknown as typeof Response;
 global.Headers = class Headers {
   private headers: Record<string, string>;
-  
+
   constructor(init?: Record<string, string>) {
     this.headers = init || {};
   }

@@ -90,6 +90,26 @@ export interface AnthropicError {
   };
 }
 
+/**
+ * AnthropicAPIError class for handling API errors
+ */
+export class AnthropicAPIError extends Error {
+  public readonly anthropicError: AnthropicError;
+  public readonly status: number;
+
+  constructor(errorData: AnthropicError, statusCode: number) {
+    const message = errorData?.error?.message || 'Anthropic API error occurred';
+    super(message);
+
+    this.name = 'AnthropicAPIError';
+    this.anthropicError = errorData;
+    this.status = statusCode;
+
+    // Ensure proper prototype chain for instanceof checks
+    Object.setPrototypeOf(this, AnthropicAPIError.prototype);
+  }
+}
+
 export interface AnthropicModel {
   id: string;
   type: 'model';
@@ -132,3 +152,48 @@ export const ANTHROPIC_HEADERS = {
   'anthropic-version': '2023-06-01',
   'anthropic-beta': 'messages-2023-12-15'
 } as const;
+
+/**
+ * Statistics for OpenRouter API key usage
+ */
+export interface KeyUsageStats {
+  totalKeys: number;
+  activeKeys: number;
+  failedKeys: number;
+  usage: {
+    [keyId: string]: {
+      requests: number;
+      lastUsed: number | null;
+      isFailed: boolean;
+      keyPreview: string;
+    };
+  };
+}
+
+/**
+ * Models list response
+ */
+export interface ModelsResponse {
+  object: 'list';
+  data: Array<{
+    id: string;
+    object: 'model';
+    created: number;
+    owned_by: string;
+  }>;
+}
+
+/**
+ * Usage statistics response
+ */
+export interface UsageStatsResponse {
+  model: string;
+  total_tokens: number;
+  input_tokens: number;
+  output_tokens: number;
+  requests: number;
+  period: {
+    start: string;
+    end: string;
+  };
+}

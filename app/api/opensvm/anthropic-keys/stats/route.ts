@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AnthropicClient } from '@/lib/anthropic-proxy/core/AnthropicClient';
+import { getAnthropicClient } from '@/lib/anthropic-proxy/core/AnthropicClientSingleton';
 import { ProxyAuth } from '@/lib/anthropic-proxy/auth/ProxyAuth';
 
 /**
@@ -27,13 +27,23 @@ export async function GET(request: NextRequest) {
             );
         }
 
-        // Check if user has admin privileges (you may want to implement this check)
-        // For now, we'll allow any authenticated user to see stats
-        // In production, you should restrict this to admin users only
+        // Check if user has admin privileges
+        // For now, check if the API key has a special admin flag or check userId against admin list
+        const ADMIN_USER_IDS = process.env.ADMIN_USER_IDS?.split(',') || [];
+        const isAdmin = ADMIN_USER_IDS.includes(authResult.userId) ||
+            authResult.permissions?.includes('admin') ||
+            false;
+
+        if (!isAdmin) {
+            return NextResponse.json(
+                { error: 'Admin access required' },
+                { status: 403 }
+            );
+        }
 
         // Get the client instance and retrieve stats
-        const client = new AnthropicClient();
-        const stats = client.getKeyUsageStats();
+        const client = await getAnthropicClient();
+        const stats = await client.getKeyUsageStats();
 
         // Add timestamp and format response
         const response = {

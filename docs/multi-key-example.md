@@ -12,6 +12,9 @@ OPENROUTER_API_KEYS=sk-or-v1-a1b2c3d4e5f6g7h8,sk-or-v1-i9j0k1l2m3n4o5p6,sk-or-v1
 # Optional: Fallback single key (used if OPENROUTER_API_KEYS is not set)
 OPENROUTER_API_KEY=sk-or-v1-backup-key-here
 
+# Admin user IDs for accessing stats endpoint (comma-separated)
+ADMIN_USER_IDS=user-123,user-456,admin-789
+
 # Other required configs
 QDRANT_URL=https://your-qdrant-instance.com
 QDRANT_API_KEY=your-qdrant-key

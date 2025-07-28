@@ -106,9 +106,15 @@ export interface KeyGenerationResult {
   createdAt: Date;
 }
 
-export interface KeyValidationResult {
+/**
+ * API key validation result
+ */
+export interface KeyValidation {
   isValid: boolean;
   keyId?: string;
   userId?: string;
+  permissions?: string[];
+  remainingQuota?: QuotaInfo;
   error?: string;
+  isAdmin?: boolean;
 }

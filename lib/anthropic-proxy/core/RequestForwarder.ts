@@ -1,19 +1,26 @@
-import { AnthropicClient, AnthropicAPIError } from './AnthropicClient';
-import { 
-  AnthropicRequest, 
-  AnthropicResponse, 
-  AnthropicStreamChunk 
-} from '../types/AnthropicTypes';
 import { ProxyRequest, ProxyResponse } from '../types/ProxyTypes';
+import { AnthropicRequest, AnthropicResponse } from '../types/AnthropicTypes';
+import { getAnthropicClient } from './AnthropicClientSingleton';
+import { AnthropicAPIError, AnthropicClient } from './AnthropicClient';
 
 /**
- * Handles request/response proxying logic between client and Anthropic API
+ * Forwards requests to Anthropic API using master account
  */
 export class RequestForwarder {
-  private anthropicClient: AnthropicClient;
+  private anthropicClient: AnthropicClient | null = null;
 
   constructor(anthropicApiKey?: string) {
-    this.anthropicClient = new AnthropicClient(anthropicApiKey);
+    // Client will be initialized on first use
+  }
+
+  /**
+   * Ensure client is initialized
+   */
+  private async ensureClient(): Promise<AnthropicClient> {
+    if (!this.anthropicClient) {
+      this.anthropicClient = await getAnthropicClient();
+    }
+    return this.anthropicClient;
   }
 
   /**
@@ -23,11 +30,12 @@ export class RequestForwarder {
     response: AnthropicResponse;
     proxyResponse: ProxyResponse;
   }> {
+    const client = await this.ensureClient();
     const startTime = Date.now();
 
     try {
       // Forward the request to Anthropic API
-      const anthropicResponse = await this.anthropicClient.sendMessage(
+      const anthropicResponse = await client.sendMessage(
         proxyRequest.anthropicRequest
       );
 
@@ -88,6 +96,7 @@ export class RequestForwarder {
     stream: ReadableStream<AnthropicStreamChunk>;
     getProxyResponse: () => Promise<ProxyResponse>;
   }> {
+    const client = await this.ensureClient();
     const startTime = Date.now();
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
@@ -97,7 +106,7 @@ export class RequestForwarder {
 
     try {
       // Get streaming response from Anthropic API
-      const anthropicStream = await this.anthropicClient.sendStreamingMessage(
+      const anthropicStream = await client.sendStreamingMessage(
         proxyRequest.anthropicRequest
       );
 
@@ -205,13 +214,14 @@ export class RequestForwarder {
    * Forward models request to Anthropic API
    */
   async forwardModelsRequest(): Promise<any> {
+    const client = await this.ensureClient();
     try {
-      return await this.anthropicClient.getModels();
+      return await client.getModels();
     } catch (error) {
       if (error instanceof AnthropicAPIError) {
         throw error;
       }
-      
+
       console.error('Error forwarding models request:', error);
       throw new Error('Failed to forward models request to Anthropic API');
     }
@@ -221,7 +231,8 @@ export class RequestForwarder {
    * Test connection to Anthropic API
    */
   async testConnection(): Promise<boolean> {
-    return await this.anthropicClient.testConnection();
+    const client = await this.ensureClient();
+    return await client.testConnection();
   }
 
   /**
@@ -291,7 +302,7 @@ export class RequestForwarder {
   } {
     // Estimate input tokens (rough approximation)
     let totalContent = '';
-    
+
     if (request.system) {
       totalContent += request.system;
     }
@@ -316,19 +327,5 @@ export class RequestForwarder {
       hasTools: Boolean(request.tools && request.tools.length > 0),
       isStreaming: Boolean(request.stream)
     };
-  }
-
-  /**
-   * Update Anthropic API key
-   */
-  updateApiKey(apiKey: string): void {
-    this.anthropicClient.updateApiKey(apiKey);
-  }
-
-  /**
-   * Get masked API key for display
-   */
-  getMaskedApiKey(): string {
-    return this.anthropicClient.getMaskedApiKey();
   }
 }
