@@ -1,333 +1,310 @@
-/**
- * Token Bucket Rate Limiter
- * 
- * Implements a more sophisticated rate limiting algorithm than simple counting.
- * Uses the Token Bucket algorithm for smooth rate limiting with burst capacity.
- */
+// Production-ready rate limiter with sliding window algorithm
+import { memoryCache } from './cache';
 
-export interface TokenBucketConfig {
-  capacity: number;        // Maximum tokens in bucket
-  refillRate: number;      // Tokens added per second
-  windowMs: number;        // Time window for rate limiting
+interface RateLimitEntry {
+  requests: number[];
+  totalRequests: number;
+  windowStart: number;
+  burstTokens: number;
+  lastRefill: number;
 }
 
-export interface RateLimitResult {
+interface RateLimitConfig {
+  maxRequests: number;
+  windowMs: number;
+  burstLimit?: number;
+  burstRefillRate?: number; // tokens per second
+  skipSuccessfulRequests?: boolean;
+  skipFailedRequests?: boolean;
+  keyPrefix?: string;
+}
+
+interface RateLimitResult {
   allowed: boolean;
-  remainingTokens: number;
+  remaining: number;
   resetTime: number;
   retryAfter?: number;
+  burstRemaining?: number;
 }
 
-export class TokenBucket {
-  private tokens: number;
-  private lastRefill: number;
-  private readonly capacity: number;
-  private readonly refillRate: number;
-  private readonly windowMs: number;
-  private refillTimer: NodeJS.Timeout | null = null;
+class AdvancedRateLimiter {
+  private config: Required<RateLimitConfig>;
+  private cleanupInterval: NodeJS.Timeout;
 
-  constructor(config: TokenBucketConfig) {
-    this.capacity = config.capacity;
-    this.refillRate = config.refillRate;
-    this.windowMs = config.windowMs;
-    this.tokens = config.capacity;
-    this.lastRefill = Date.now();
-    this.startRefillTimer();
+  constructor(config: RateLimitConfig) {
+    this.config = {
+      maxRequests: config.maxRequests,
+      windowMs: config.windowMs,
+      burstLimit: config.burstLimit || Math.ceil(config.maxRequests * 1.5),
+      burstRefillRate: config.burstRefillRate || config.maxRequests / (config.windowMs / 1000),
+      skipSuccessfulRequests: config.skipSuccessfulRequests || false,
+      skipFailedRequests: config.skipFailedRequests || false,
+      keyPrefix: config.keyPrefix || 'rate_limit'
+    };
+
+    // Cleanup expired entries every 5 minutes
+    this.cleanupInterval = setInterval(() => {
+      this.cleanup();
+    }, 5 * 60 * 1000);
   }
 
-  /**
-   * Start timer-based token refill for better accuracy
-   */
-  private startRefillTimer(): void {
-    if (this.refillTimer) {
-      clearInterval(this.refillTimer);
-    }
+  private getCacheKey(identifier: string): string {
+    return `${this.config.keyPrefix}:${identifier}`;
+  }
+
+  private getEntry(identifier: string): RateLimitEntry {
+    const key = this.getCacheKey(identifier);
+    const existing = memoryCache.get<RateLimitEntry>(key);
     
-    // Refill every 100ms for smooth rate limiting
-    this.refillTimer = setInterval(() => {
-      this.timerBasedRefill();
-    }, 100);
-  }
+    if (existing) {
+      return existing;
+    }
 
-  /**
-   * Timer-based refill with improved semantics
-   */
-  private timerBasedRefill(): void {
     const now = Date.now();
-    const timeSinceLastRefill = (now - this.lastRefill) / 1000; // seconds
+    const newEntry: RateLimitEntry = {
+      requests: [],
+      totalRequests: 0,
+      windowStart: now,
+      burstTokens: this.config.burstLimit,
+      lastRefill: now
+    };
+
+    // Cache for window duration + 10 minutes buffer
+    memoryCache.set(key, newEntry, Math.ceil((this.config.windowMs + 600000) / 1000));
+    return newEntry;
+  }
+
+  private updateEntry(identifier: string, entry: RateLimitEntry): void {
+    const key = this.getCacheKey(identifier);
+    memoryCache.set(key, entry, Math.ceil((this.config.windowMs + 600000) / 1000));
+  }
+
+  private refillBurstTokens(entry: RateLimitEntry): void {
+    const now = Date.now();
+    const timePassed = (now - entry.lastRefill) / 1000; // seconds
+    const tokensToAdd = Math.floor(timePassed * this.config.burstRefillRate);
     
-    if (timeSinceLastRefill > 0) {
-      const tokensToAdd = timeSinceLastRefill * this.refillRate;
-      this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
-      this.lastRefill = now;
+    if (tokensToAdd > 0) {
+      entry.burstTokens = Math.min(
+        this.config.burstLimit,
+        entry.burstTokens + tokensToAdd
+      );
+      entry.lastRefill = now;
     }
   }
 
-  /**
-   * Attempt to consume tokens from the bucket
-   */
-  consume(tokens: number = 1): RateLimitResult {
-    this.timerBasedRefill();
+  private cleanExpiredRequests(entry: RateLimitEntry, now: number): void {
+    const cutoff = now - this.config.windowMs;
+    const originalLength = entry.requests.length;
+    
+    // Remove requests older than window
+    entry.requests = entry.requests.filter(timestamp => timestamp > cutoff);
+    
+    // Update total if requests were removed
+    if (entry.requests.length !== originalLength) {
+      entry.totalRequests = entry.requests.length;
+    }
 
-    if (this.tokens >= tokens) {
-      this.tokens -= tokens;
+    // Update window start if needed
+    if (entry.requests.length === 0) {
+      entry.windowStart = now;
+    } else if (entry.windowStart < cutoff) {
+      entry.windowStart = entry.requests[0];
+    }
+  }
+
+  async checkLimit(identifier: string, cost: number = 1): Promise<RateLimitResult> {
+    const now = Date.now();
+    const entry = this.getEntry(identifier);
+
+    // Clean expired requests
+    this.cleanExpiredRequests(entry, now);
+
+    // Refill burst tokens
+    this.refillBurstTokens(entry);
+
+    // Calculate remaining capacity
+    const remaining = Math.max(0, this.config.maxRequests - entry.totalRequests);
+    const windowEnd = entry.windowStart + this.config.windowMs;
+    const resetTime = windowEnd;
+
+    // Check if request would exceed limits
+    const wouldExceedRegular = (entry.totalRequests + cost) > this.config.maxRequests;
+    const wouldExceedBurst = cost > entry.burstTokens;
+
+    let allowed = false;
+    let retryAfter: number | undefined;
+
+    if (!wouldExceedBurst) {
+      // Allow request - sufficient burst tokens available
+      allowed = true;
+      entry.requests.push(...Array(cost).fill(now));
+      entry.totalRequests += cost;
+      entry.burstTokens -= cost;
+    } else {
+      // Request denied
+      allowed = false;
+      
+      // Calculate retry after time
+      if (wouldExceedRegular) {
+        // Wait until oldest request expires
+        const oldestRequest = entry.requests[0];
+        retryAfter = Math.ceil((oldestRequest + this.config.windowMs - now) / 1000);
+      } else if (wouldExceedBurst) {
+        // Wait until enough burst tokens refill
+        const tokensNeeded = cost - entry.burstTokens;
+        retryAfter = Math.ceil(tokensNeeded / this.config.burstRefillRate);
+      }
+    }
+
+    // Update entry in cache
+    this.updateEntry(identifier, entry);
+
+    return {
+      allowed,
+      remaining: Math.max(0, this.config.maxRequests - entry.totalRequests),
+      resetTime,
+      retryAfter,
+      burstRemaining: entry.burstTokens
+    };
+  }
+
+  async isAllowed(identifier: string, cost: number = 1): Promise<boolean> {
+    const result = await this.checkLimit(identifier, cost);
+    return result.allowed;
+  }
+
+  async getRemainingRequests(identifier: string): Promise<number> {
+    const result = await this.checkLimit(identifier, 0); // Check without consuming
+    return result.remaining;
+  }
+
+  async getBurstRemaining(identifier: string): Promise<number> {
+    const result = await this.checkLimit(identifier, 0);
+    return result.burstRemaining || 0;
+  }
+
+  async resetLimit(identifier: string): Promise<void> {
+    const key = this.getCacheKey(identifier);
+    memoryCache.delete(key);
+  }
+
+  async getStats(identifier: string): Promise<{
+    requests: number;
+    remaining: number;
+    resetTime: number;
+    burstRemaining: number;
+    windowStart: number;
+  }> {
+    const entry = this.getEntry(identifier);
+    const now = Date.now();
+    
+    this.cleanExpiredRequests(entry, now);
+    this.refillBurstTokens(entry);
+
+    return {
+      requests: entry.totalRequests,
+      remaining: Math.max(0, this.config.maxRequests - entry.totalRequests),
+      resetTime: entry.windowStart + this.config.windowMs,
+      burstRemaining: entry.burstTokens,
+      windowStart: entry.windowStart
+    };
+  }
+
+  private cleanup(): void {
+    // The memory cache handles TTL cleanup automatically
+    // This method is kept for compatibility and future enhancements
+  }
+
+  destroy(): void {
+    if (this.cleanupInterval) {
+      clearInterval(this.cleanupInterval);
+    }
+  }
+}
+
+// Middleware helper for Next.js API routes
+export function createRateLimitMiddleware(limiter: AdvancedRateLimiter) {
+  return async (request: Request, identifier?: string) => {
+    const clientId = identifier || 
+      request.headers.get('x-forwarded-for') || 
+      request.headers.get('x-real-ip') || 
+      'unknown';
+
+    const result = await limiter.checkLimit(clientId);
+    
+    if (!result.allowed) {
+      const headers = new Headers({
+        'X-RateLimit-Limit': limiter.config.maxRequests.toString(),
+        'X-RateLimit-Remaining': result.remaining.toString(),
+        'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
+      });
+
+      if (result.retryAfter) {
+        headers.set('Retry-After', result.retryAfter.toString());
+      }
+
+      if (result.burstRemaining !== undefined) {
+        headers.set('X-RateLimit-Burst-Remaining', result.burstRemaining.toString());
+      }
+
       return {
-        allowed: true,
-        remainingTokens: this.tokens,
-        resetTime: this.getResetTime()
+        allowed: false,
+        response: new Response(JSON.stringify({
+          success: false,
+          error: 'Rate limit exceeded',
+          retryAfter: result.retryAfter
+        }), {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            ...Object.fromEntries(headers.entries())
+          }
+        })
       };
     }
 
-    return {
-      allowed: false,
-      remainingTokens: this.tokens,
-      resetTime: this.getResetTime(),
-      retryAfter: this.getRetryAfter()
-    };
-  }
-
-  /**
-   * Check if tokens are available without consuming them
-   */
-  check(tokens: number = 1): RateLimitResult {
-    this.timerBasedRefill();
-
-    return {
-      allowed: this.tokens >= tokens,
-      remainingTokens: this.tokens,
-      resetTime: this.getResetTime(),
-      retryAfter: this.tokens < tokens ? this.getRetryAfter() : undefined
-    };
-  }
-
-  /**
-   * Get current bucket state
-   */
-  getState() {
-    this.timerBasedRefill();
-    return {
-      tokens: this.tokens,
-      capacity: this.capacity,
-      refillRate: this.refillRate,
-      lastRefill: this.lastRefill
-    };
-  }
-
-  /**
-   * Clean up timer when bucket is destroyed
-   */
-  destroy(): void {
-    if (this.refillTimer) {
-      clearInterval(this.refillTimer);
-      this.refillTimer = null;
-    }
-  }
-
-  private refill(): void {
-    // Keep legacy refill method for immediate needs
-    const now = Date.now();
-    const timePassed = (now - this.lastRefill) / 1000; // seconds
-    
-    if (timePassed > 0) {
-      const tokensToAdd = timePassed * this.refillRate;
-      this.tokens = Math.min(this.capacity, this.tokens + tokensToAdd);
-      this.lastRefill = now;
-    }
-  }
-
-  private getResetTime(): number {
-    const tokensNeeded = this.capacity - this.tokens;
-    const timeToFill = tokensNeeded / this.refillRate * 1000; // milliseconds
-    return Date.now() + timeToFill;
-  }
-
-  private getRetryAfter(): number {
-    const timeToNextToken = (1 / this.refillRate) * 1000; // milliseconds
-    return Math.ceil(timeToNextToken / 1000); // seconds
-  }
-}
-
-/**
- * Rate Limiter Manager with multiple bucket types
- */
-export class RateLimiterManager {
-  private buckets = new Map<string, TokenBucket>();
-  private configs = new Map<string, TokenBucketConfig>();
-
-  constructor() {
-    // Default configurations for different rate limit types
-    this.setConfig('api_requests', {
-      capacity: 100,        // 100 requests burst
-      refillRate: 10,       // 10 requests per second sustained
-      windowMs: 60000       // 1 minute window
-    });
-
-    this.setConfig('websocket_connections', {
-      capacity: 10,         // 10 concurrent connections
-      refillRate: 1,        // 1 new connection per second
-      windowMs: 60000       // 1 minute window
-    });
-
-    this.setConfig('authentication', {
-      capacity: 5,          // 5 auth attempts burst
-      refillRate: 0.1,      // 1 auth attempt per 10 seconds sustained
-      windowMs: 300000      // 5 minute window
-    });
-
-    this.setConfig('anomaly_analysis', {
-      capacity: 50,         // 50 analysis requests burst
-      refillRate: 5,        // 5 analyses per second sustained
-      windowMs: 60000       // 1 minute window
-    });
-  }
-
-  /**
-   * Set configuration for a rate limit type
-   */
-  setConfig(type: string, config: TokenBucketConfig): void {
-    this.configs.set(type, config);
-  }
-
-  /**
-   * Get or create a bucket for a client and type
-   */
-  private getBucket(clientId: string, type: string): TokenBucket {
-    const key = `${clientId}:${type}`;
-    
-    if (!this.buckets.has(key)) {
-      const config = this.configs.get(type);
-      if (!config) {
-        throw new Error(`No configuration found for rate limit type: ${type}`);
-      }
-      this.buckets.set(key, new TokenBucket(config));
-    }
-
-    return this.buckets.get(key)!;
-  }
-
-  /**
-   * Check rate limit for a client and type
-   */
-  checkRateLimit(clientId: string, type: string, tokens: number = 1): RateLimitResult {
-    const bucket = this.getBucket(clientId, type);
-    return bucket.consume(tokens);
-  }
-
-  /**
-   * Check rate limit without consuming tokens
-   */
-  peekRateLimit(clientId: string, type: string, tokens: number = 1): RateLimitResult {
-    const bucket = this.getBucket(clientId, type);
-    return bucket.check(tokens);
-  }
-
-  /**
-   * Get bucket state for debugging
-   */
-  getBucketState(clientId: string, type: string): any {
-    const bucket = this.getBucket(clientId, type);
-    return bucket.getState();
-  }
-
-  /**
-   * Clean up old buckets to prevent memory leaks
-   */
-  cleanup(): void {
-    const now = Date.now();
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-
-    for (const [key, bucket] of this.buckets.entries()) {
-      const state = bucket.getState();
-      if (now - state.lastRefill > maxAge) {
-        bucket.destroy(); // Clean up timer
-        this.buckets.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Get rate limiting statistics
-   */
-  getStats(): any {
-    const stats = {
-      totalBuckets: this.buckets.size,
-      configurations: Object.fromEntries(this.configs),
-      activeBuckets: {}
-    };
-
-    for (const [key, bucket] of this.buckets.entries()) {
-      const [clientId, type] = key.split(':');
-      if (!stats.activeBuckets[type]) {
-        stats.activeBuckets[type] = 0;
-      }
-      stats.activeBuckets[type]++;
-    }
-
-    return stats;
-  }
-
-  /**
-   * Reset rate limits for a client (admin function)
-   */
-  resetClientLimits(clientId: string): void {
-    const keysToDelete = [];
-    for (const key of this.buckets.keys()) {
-      if (key.startsWith(`${clientId}:`)) {
-        keysToDelete.push(key);
-      }
-    }
-    
-    keysToDelete.forEach(key => this.buckets.delete(key));
-  }
-}
-
-// Global rate limiter instance
-let globalRateLimiter: RateLimiterManager | null = null;
-
-export function getRateLimiter(): RateLimiterManager {
-  if (!globalRateLimiter) {
-    globalRateLimiter = new RateLimiterManager();
-    
-    // Set up periodic cleanup
-    setInterval(() => {
-      globalRateLimiter?.cleanup();
-    }, 60 * 60 * 1000); // Clean up every hour
-  }
-  
-  return globalRateLimiter;
-}
-
-/**
- * Middleware function for rate limiting
- */
-export function createRateLimitMiddleware(type: string, tokens: number = 1) {
-  return (clientId: string): RateLimitResult => {
-    const rateLimiter = getRateLimiter();
-    return rateLimiter.checkRateLimit(clientId, type, tokens);
+    return { allowed: true };
   };
 }
 
-/**
- * Express-like middleware for rate limiting
- */
-export function rateLimitMiddleware(options: { type: string; tokens?: number }) {
-  return (req: any, res: any, next: any) => {
-    const clientId = req.clientId || req.ip || 'anonymous';
-    const result = createRateLimitMiddleware(options.type, options.tokens)(clientId);
-    
-    if (!result.allowed) {
-      return res.status(429).json({
-        error: 'Rate limit exceeded',
-        remainingTokens: result.remainingTokens,
-        resetTime: result.resetTime,
-        retryAfter: result.retryAfter
-      });
-    }
-    
-    // Add rate limit headers
-    res.setHeader('X-RateLimit-Remaining', result.remainingTokens);
-    res.setHeader('X-RateLimit-Reset', result.resetTime);
-    
-    next();
-  };
-}
+// Pre-configured rate limiters for different use cases
+export const burnRateLimiter = new AdvancedRateLimiter({
+  maxRequests: 10,
+  windowMs: 60 * 1000, // 1 minute
+  burstLimit: 15, // Allow up to 15 burns in burst
+  burstRefillRate: 0.167, // ~10 per minute refill
+  keyPrefix: 'burn_limit'
+});
+
+export const generalRateLimiter = new AdvancedRateLimiter({
+  maxRequests: 100,
+  windowMs: 60 * 1000, // 1 minute
+  burstLimit: 150,
+  burstRefillRate: 1.67, // ~100 per minute refill
+  keyPrefix: 'general_limit'
+});
+
+export const strictRateLimiter = new AdvancedRateLimiter({
+  maxRequests: 5,
+  windowMs: 60 * 1000, // 1 minute
+  burstLimit: 7,
+  burstRefillRate: 0.083, // ~5 per minute refill
+  keyPrefix: 'strict_limit'
+});
+
+// Export the class for custom implementations
+export { AdvancedRateLimiter };
+
+// Cleanup on process exit
+process.on('SIGTERM', () => {
+  burnRateLimiter.destroy();
+  generalRateLimiter.destroy();
+  strictRateLimiter.destroy();
+});
+
+process.on('SIGINT', () => {
+  burnRateLimiter.destroy();
+  generalRateLimiter.destroy();
+  strictRateLimiter.destroy();
+});

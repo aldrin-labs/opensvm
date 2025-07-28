@@ -3,7 +3,7 @@ import { getConnection } from '@/lib/solana-connection';
 import { Connection } from '@solana/web3.js';
 import { getStreamingAnomalyDetector } from '@/lib/streaming-anomaly-detector';
 import { validateStreamRequest } from '@/lib/validation/stream-schemas';
-import { getRateLimiter, type RateLimitResult } from '@/lib/rate-limiter';
+import { generalRateLimiter } from '@/lib/rate-limiter';
 import { SSEManager } from '@/lib/sse-manager';
 import { 
   createSuccessResponse, 
@@ -35,7 +35,7 @@ const AUTH_FAILURES = new Map<string, {
   lastAttempt: number; 
   blockUntil: number | null; // Use timestamp instead of boolean flag
 }>();
-const rateLimiter = getRateLimiter();
+const rateLimiter = generalRateLimiter;
 
 // Token cleanup worker - runs every 5 minutes
 // Removed unused function: stopTokenCleanupWorker

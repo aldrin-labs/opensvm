@@ -49,8 +49,8 @@ const config: Config = {
     },
     extend: {
       fontFamily: {
-        sans: ['Berkeley Mono', 'monospace'],
-        mono: ['Berkeley Mono', 'monospace'],
+        sans: ['var(--font-family)'],
+        mono: ['var(--font-family)'],
       },
       colors: {
         background: 'hsl(var(--background))',

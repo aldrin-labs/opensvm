@@ -1,6 +1,6 @@
 .theme-dos {
   /* Typography */
-  font-family: "Berkeley Mono", "DOS", "Courier New", monospace;
+  font-family: var(--font-family);
   --font-mono: "Berkeley Mono", "DOS", "Courier New", monospace;
   font-weight: normal;
   
