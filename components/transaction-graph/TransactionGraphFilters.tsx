@@ -20,12 +20,12 @@ import {
   CopyIcon,
   CheckIcon
 } from 'lucide-react';
-import type { 
-  TransactionGraph, 
-  GraphNode, 
-  GraphEdge, 
-  NodeType, 
-  EdgeType 
+import type {
+  TransactionGraph,
+  GraphNode,
+  GraphEdge,
+  NodeType,
+  EdgeType
 } from '@/lib/transaction-graph-builder';
 
 // Filter and customization interfaces
@@ -247,7 +247,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
     // Apply search filter
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();
-      filteredNodes = filteredNodes.filter(node => 
+      filteredNodes = filteredNodes.filter(node =>
         node.label.toLowerCase().includes(query) ||
         node.data.address?.toLowerCase().includes(query) ||
         node.id.toLowerCase().includes(query)
@@ -293,7 +293,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
 
     // Filter edges to only include those with both source and target in filtered nodes
     const nodeIds = new Set(filteredNodes.map(n => n.id));
-    filteredEdges = filteredEdges.filter(edge => 
+    filteredEdges = filteredEdges.filter(edge =>
       nodeIds.has(edge.source) && nodeIds.has(edge.target)
     );
 
@@ -352,7 +352,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       URL.revokeObjectURL(url);
     } else if (format === 'url') {
       const encoded = btoa(JSON.stringify(config));
-      const url = `${window.location.origin}${window.location.pathname}?config=${encoded}`;
+      const url = typeof window !== 'undefined' ? `${window.location.origin}${window.location.pathname}?config=${encoded}` : '';
       await navigator.clipboard.writeText(url);
       setCopiedPreset('url');
       setTimeout(() => setCopiedPreset(null), 2000);
@@ -387,12 +387,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
         >
           <span className="font-medium">Basic Filters</span>
-          {expandedSections.has('basic') ? 
-            <ChevronDownIcon className="w-4 h-4" /> : 
+          {expandedSections.has('basic') ?
+            <ChevronDownIcon className="w-4 h-4" /> :
             <ChevronRightIcon className="w-4 h-4" />
           }
         </button>
-        
+
         {expandedSections.has('basic') && (
           <div className="p-4 border-t border-border space-y-4">
             {/* Search */}
@@ -473,7 +473,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Show only connected nodes</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -483,7 +483,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Hide system accounts</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -505,12 +505,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
         >
           <span className="font-medium">Advanced Filters</span>
-          {expandedSections.has('advanced') ? 
-            <ChevronDownIcon className="w-4 h-4" /> : 
+          {expandedSections.has('advanced') ?
+            <ChevronDownIcon className="w-4 h-4" /> :
             <ChevronRightIcon className="w-4 h-4" />
           }
         </button>
-        
+
         {expandedSections.has('advanced') && (
           <div className="p-4 border-t border-border space-y-4">
             {/* Amount Range */}
@@ -607,7 +607,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Group by program</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -647,8 +647,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         </div>
       </div>
     </div>
-  ); 
- const renderCustomizationSection = () => (
+  );
+  const renderCustomizationSection = () => (
     <div className="space-y-4">
       {/* Layout Options */}
       <div className="border border-border rounded-lg">
@@ -657,12 +657,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
         >
           <span className="font-medium">Layout & Positioning</span>
-          {expandedSections.has('layout') ? 
-            <ChevronDownIcon className="w-4 h-4" /> : 
+          {expandedSections.has('layout') ?
+            <ChevronDownIcon className="w-4 h-4" /> :
             <ChevronRightIcon className="w-4 h-4" />
           }
         </button>
-        
+
         {expandedSections.has('layout') && (
           <div className="p-4 border-t border-border space-y-4">
             {/* Layout Algorithm */}
@@ -721,12 +721,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
         >
           <span className="font-medium">Visual Appearance</span>
-          {expandedSections.has('appearance') ? 
-            <ChevronDownIcon className="w-4 h-4" /> : 
+          {expandedSections.has('appearance') ?
+            <ChevronDownIcon className="w-4 h-4" /> :
             <ChevronRightIcon className="w-4 h-4" />
           }
         </button>
-        
+
         {expandedSections.has('appearance') && (
           <div className="p-4 border-t border-border space-y-4">
             {/* Color Scheme */}
@@ -799,12 +799,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
         >
           <span className="font-medium">Display Options</span>
-          {expandedSections.has('display') ? 
-            <ChevronDownIcon className="w-4 h-4" /> : 
+          {expandedSections.has('display') ?
+            <ChevronDownIcon className="w-4 h-4" /> :
             <ChevronRightIcon className="w-4 h-4" />
           }
         </button>
-        
+
         {expandedSections.has('display') && (
           <div className="p-4 border-t border-border space-y-4">
             {/* Label Options */}
@@ -818,7 +818,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Show node labels</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -828,7 +828,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Show edge labels</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -851,7 +851,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Animate token transfers</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -874,7 +874,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                 />
                 <span className="text-sm">Show minimap</span>
               </label>
-              
+
               <label className="flex items-center space-x-2">
                 <input
                   type="checkbox"
@@ -918,8 +918,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                     className="p-1 hover:bg-muted rounded transition-colors"
                     title="Copy configuration"
                   >
-                    {copiedPreset === preset.id ? 
-                      <CheckIcon className="w-4 h-4 text-green-500" /> : 
+                    {copiedPreset === preset.id ?
+                      <CheckIcon className="w-4 h-4 text-green-500" /> :
                       <CopyIcon className="w-4 h-4" />
                     }
                   </button>
@@ -988,9 +988,9 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       {/* Export Options */}
       <div className="space-y-3">
         <button
-          onClick={() => onExport(customization.exportFormat, { 
-            includeFilters: true, 
-            includeCustomization: true 
+          onClick={() => onExport(customization.exportFormat, {
+            includeFilters: true,
+            includeCustomization: true
           })}
           className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
         >
@@ -1061,11 +1061,10 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === tab.id
+            className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
                 ? 'border-b-2 border-primary text-primary'
                 : 'text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             <span>{tab.label}</span>
@@ -1102,7 +1101,7 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
 
   if (filters.searchQuery.trim()) {
     const query = filters.searchQuery.toLowerCase();
-    filteredNodes = filteredNodes.filter(node => 
+    filteredNodes = filteredNodes.filter(node =>
       node.label.toLowerCase().includes(query) ||
       node.data.address?.toLowerCase().includes(query) ||
       node.id.toLowerCase().includes(query)
@@ -1143,7 +1142,7 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
 
   // Filter edges to only include those with both source and target in filtered nodes
   const nodeIds = new Set(filteredNodes.map(n => n.id));
-  filteredEdges = filteredEdges.filter(edge => 
+  filteredEdges = filteredEdges.filter(edge =>
     nodeIds.has(edge.source) && nodeIds.has(edge.target)
   );
 

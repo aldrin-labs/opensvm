@@ -755,7 +755,9 @@ export default function TransactionContent({ signature }: { signature: string })
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+    }
 
     return () => {
       if (typeof window !== 'undefined') {

@@ -579,8 +579,14 @@ export default function TransactionGraph({
       }
     }, 250);
 
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // No dependencies needed - cyRef is stable ref
 
