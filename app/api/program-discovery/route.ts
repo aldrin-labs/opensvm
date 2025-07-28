@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PublicKey } from '@solana/web3.js';
 import { dynamicProgramDiscovery } from '@/lib/dynamic-program-discovery';
+import { getConnection } from '@/lib/solana-connection';
 
 /**
  * GET /api/program-discovery
@@ -29,10 +31,9 @@ export async function GET(request: NextRequest) {
           );
         }
 
-        // For demo purposes, we'll simulate transaction data
-        // In a real implementation, this would fetch actual transaction data
-        const mockTransactionData = await generateMockTransactionData(programId);
-        const discoveredProgram = await dynamicProgramDiscovery.discoverProgram(programId, mockTransactionData);
+        // Fetch real transaction data for the program
+        const transactionData = await fetchProgramTransactions(programId);
+        const discoveredProgram = await dynamicProgramDiscovery.discoverProgram(programId, transactionData);
 
         if (!discoveredProgram) {
           return NextResponse.json(
@@ -131,15 +132,79 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Program discovery API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );
+  }
+}
+
+/**
+ * Fetch real transaction data for a program from the Solana blockchain
+ */
+async function fetchProgramTransactions(programId: string): Promise<any[]> {
+  try {
+    const connection = await getConnection();
+    const publicKey = new PublicKey(programId);
+
+    // Get recent signatures for the program (limit to reasonable number for analysis)
+    const signatures = await connection.getSignaturesForAddress(publicKey, {
+      limit: 50 // Reasonable limit for program discovery analysis
+    });
+
+    if (signatures.length === 0) {
+      return [];
+    }
+
+    // Fetch detailed transaction data for each signature
+    const transactions = await Promise.all(
+      signatures.slice(0, 20).map(async (sig: any) => { // Limit to 20 for performance
+        try {
+          const tx = await connection.getParsedTransaction(sig.signature, {
+            maxSupportedTransactionVersion: 0,
+            commitment: 'confirmed'
+          });
+
+          if (!tx || !tx.meta) {
+            return null;
+          }
+
+          // Extract transaction data in the format expected by analyzeUnknownProgram
+          return {
+            signature: sig.signature,
+            feePayer: tx.transaction.message.accountKeys[0]?.pubkey?.toString() || '',
+            signer: tx.transaction.message.accountKeys.find(acc => acc.signer)?.pubkey?.toString() || '',
+            blockTime: tx.blockTime || Math.floor(Date.now() / 1000),
+            instructions: tx.transaction.message.instructions.map((ix: any) => ({
+              programId: ix.programId?.toString() || '',
+              data: ix.data || '',
+              accounts: ix.accounts?.map((accIndex: number) => {
+                const accountKey = tx.transaction.message.accountKeys[accIndex];
+                return {
+                  pubkey: accountKey?.pubkey?.toString() || '',
+                  isSigner: accountKey?.signer || false,
+                  isWritable: accountKey?.writable || false
+                };
+              }) || []
+            }))
+          };
+        } catch (error) {
+          console.error(`Error fetching transaction ${sig.signature}:`, error);
+          return null;
+        }
+      })
+    );
+
+    // Filter out null results and return valid transactions
+    return transactions.filter((tx: any) => tx !== null);
+  } catch (error) {
+    console.error(`Error fetching transactions for program ${programId}:`, error);
+    return [];
   }
 }
 
@@ -288,72 +353,14 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Program discovery POST API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );
   }
-}
-
-/**
- * Generate mock transaction data for demonstration purposes
- * In a real implementation, this would fetch actual transaction data from the blockchain
- */
-async function generateMockTransactionData(programId: string): Promise<any[]> {
-  // Generate realistic mock data based on program ID patterns
-  const transactionCount = Math.floor(Math.random() * 100) + 10;
-  const transactions = [];
-
-  for (let i = 0; i < transactionCount; i++) {
-    const transaction = {
-      signature: `mock_signature_${i}_${programId.slice(0, 8)}`,
-      feePayer: `mock_payer_${Math.floor(Math.random() * 10)}`,
-      blockTime: Math.floor(Date.now() / 1000) - Math.floor(Math.random() * 86400 * 7), // Last 7 days
-      instructions: [
-        {
-          programId,
-          data: generateMockInstructionData(programId),
-          accounts: generateMockAccounts()
-        }
-      ]
-    };
-    transactions.push(transaction);
-  }
-
-  return transactions;
-}
-
-function generateMockInstructionData(programId: string): string {
-  // Generate different instruction patterns based on program ID
-  const patterns = [
-    '01000000', // Common pattern 1
-    '02000000', // Common pattern 2
-    '03000000', // Common pattern 3
-    '09000000', // Swap-like pattern
-    '0A000000', // Transfer-like pattern
-  ];
-  
-  const basePattern = patterns[Math.floor(Math.random() * patterns.length)];
-  const additionalData = Math.random().toString(16).slice(2, 18);
-  return basePattern + additionalData;
-}
-
-function generateMockAccounts(): any[] {
-  const accountCount = Math.floor(Math.random() * 8) + 2; // 2-9 accounts
-  const accounts = [];
-  
-  for (let i = 0; i < accountCount; i++) {
-    accounts.push({
-      pubkey: `mock_account_${i}_${Math.random().toString(36).slice(2, 10)}`,
-      isSigner: i === 0 || Math.random() < 0.2, // First account usually signer
-      isWritable: Math.random() < 0.5
-    });
-  }
-  
-  return accounts;
 }
