@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Connection } from '@solana/web3.js';
 import { VALIDATOR_CONSTANTS, PERFORMANCE_CONSTANTS } from '@/lib/constants/analytics-constants';
+import { getGeolocationService, type GeolocationData as GeoData } from '@/lib/services/geolocation';
 
 // Real Solana RPC endpoint - using public mainnet RPC
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -16,35 +17,28 @@ interface GeolocationData {
   lon?: number;
 }
 
-// Cache for geolocation data to avoid excessive API calls
-const geoCache = new Map<string, { data: GeolocationData; timestamp: number }>();
-
-// Fetch geolocation data for IP addresses using multiple services
+// Fetch geolocation data for IP addresses using the new service
 async function fetchGeolocation(ip: string): Promise<GeolocationData> {
-  const cacheKey = ip;
-  const cached = geoCache.get(cacheKey);
-  
-  // Return cached data if it's less than 24 hours old
-  if (cached && Date.now() - cached.timestamp < PERFORMANCE_CONSTANTS.CACHE_RETENTION.DAILY_CACHE_MS) {
-    return cached.data;
-  }
-  
   try {
-    // Try multiple geolocation services for better coverage
-    const geoData = await fetchGeoFromMultipleSources(ip);
+    const geoService = await getGeolocationService();
+    const geoData = await geoService.getGeolocation(ip);
     
-    // Cache the result
-    geoCache.set(cacheKey, {
-      data: geoData,
-      timestamp: Date.now()
-    });
-    
-    return geoData;
+    // Convert to the expected format
+    return {
+      country: geoData.country,
+      countryCode: geoData.countryCode,
+      region: geoData.region,
+      city: geoData.city,
+      datacenter: geoData.datacenter,
+      isp: geoData.isp,
+      lat: geoData.lat,
+      lon: geoData.lon
+    };
   } catch (error) {
     console.error(`Error fetching geolocation for ${ip}:`, error);
     
-    // Return default data if all services fail
-    const defaultData: GeolocationData = {
+    // Return default data if service fails
+    return {
       country: 'Unknown',
       countryCode: 'XX',
       region: 'Unknown',
@@ -52,138 +46,7 @@ async function fetchGeolocation(ip: string): Promise<GeolocationData> {
       datacenter: 'Unknown',
       isp: 'Unknown'
     };
-    
-    geoCache.set(cacheKey, {
-      data: defaultData,
-      timestamp: Date.now()
-    });
-    
-    return defaultData;
   }
-}
-
-// Fetch geolocation from multiple sources with fallback
-async function fetchGeoFromMultipleSources(ip: string): Promise<GeolocationData> {
-  const sources = [
-    // Free tier of ipapi.co (1000 requests/day)
-    async () => {
-      const response = await fetch(`https://ipapi.co/${ip}/json/`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'OpenSVM-Analytics/1.0'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`ipapi.co failed (${response.status}): ${errorText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check for API-specific error responses
-      if (data.error) {
-        throw new Error(`ipapi.co API error: ${data.reason || data.error}`);
-      }
-      
-      return {
-        country: data.country_name || 'Unknown',
-        countryCode: data.country_code || 'XX',
-        region: data.region || 'Unknown',
-        city: data.city || 'Unknown',
-        datacenter: data.org || 'Unknown',
-        isp: data.org || 'Unknown',
-        lat: data.latitude,
-        lon: data.longitude
-      };
-    },
-    
-    // Free tier of ip-api.com (1000 requests/hour)
-    async () => {
-      const response = await fetch(`http://ip-api.com/json/${ip}`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'OpenSVM-Analytics/1.0'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`ip-api.com failed (${response.status}): ${errorText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check for API-specific error responses
-      if (data.status === 'fail') {
-        throw new Error(`ip-api.com API error: ${data.message || 'Request failed'}`);
-      }
-      
-      return {
-        country: data.country || 'Unknown',
-        countryCode: data.countryCode || 'XX', 
-        region: data.regionName || 'Unknown',
-        city: data.city || 'Unknown',
-        datacenter: data.isp || 'Unknown',
-        isp: data.isp || 'Unknown',
-        lat: data.lat,
-        lon: data.lon
-      };
-    },
-    
-    // Free tier of ipinfo.io (50,000 requests/month)  
-    async () => {
-      const response = await fetch(`https://ipinfo.io/${ip}/json`, {
-        timeout: 5000,
-        headers: {
-          'User-Agent': 'OpenSVM-Analytics/1.0'
-        }
-      });
-      
-      if (!response.ok) {
-        const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`ipinfo.io failed (${response.status}): ${errorText}`);
-      }
-      
-      const data = await response.json();
-      
-      // Check for API-specific error responses
-      if (data.error) {
-        throw new Error(`ipinfo.io API error: ${data.error.title || data.error.message || 'Request failed'}`);
-      }
-      
-      const [city, region] = (data.city || 'Unknown,Unknown').split(',');
-      return {
-        country: data.country || 'Unknown',
-        countryCode: data.country || 'XX',
-        region: region?.trim() || 'Unknown', 
-        city: city?.trim() || 'Unknown',
-        datacenter: data.org || 'Unknown',
-        isp: data.org || 'Unknown',
-        lat: data.loc ? parseFloat(data.loc.split(',')[0]) : undefined,
-        lon: data.loc ? parseFloat(data.loc.split(',')[1]) : undefined
-      };
-    }
-  ];
-  
-  // Try each source with exponential backoff
-  for (let i = 0; i < sources.length; i++) {
-    try {
-      const result = await sources[i]();
-      if (result.country !== 'Unknown') {
-        return result;
-      }
-    } catch (error) {
-      console.warn(`Geolocation source ${i + 1} failed for ${ip}:`, error);
-      
-      // Add delay between retries
-      if (i < sources.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-      }
-    }
-  }
-  
-  throw new Error('All geolocation sources failed');
 }
 
 // Extract IP address from TPU or RPC endpoint
@@ -264,26 +127,42 @@ export async function GET() {
     const sortedValidators = allValidators
       .sort((a, b) => b.activatedStake - a.activatedStake);
     
-    // Fetch geolocation data for validators (with aggressive rate limiting for large sets)
-    // Process validators in batches to avoid overwhelming geolocation services
-    const batchSize = 20;
-    const validatorsWithGeo = [];
+    // Collect all unique IPs first for batch geolocation
+    const ipToValidatorMap = new Map<string, any[]>();
+    const validatorToIpMap = new Map<string, string>();
     
-    for (let i = 0; i < sortedValidators.length; i += batchSize) {
-      const batch = sortedValidators.slice(i, i + batchSize);
+    sortedValidators.forEach(validator => {
+      const clusterNode = clusterNodes.find(node => 
+        node.pubkey === validator.nodePubkey
+      );
       
-      const batchResults = await Promise.all(
-        batch.map(async (validator, batchIndex) => {
-          const clusterNode = clusterNodes.find(node => 
-            node.pubkey === validator.nodePubkey
-          );
-          
-          // Add small delay within batch to respect rate limits
-          if (batchIndex > 0) {
-            await new Promise(resolve => setTimeout(resolve, 50)); // 50ms delay
+      if (clusterNode?.tpu) {
+        const ip = extractIPFromEndpoint(clusterNode.tpu);
+        if (ip && ip !== '127.0.0.1' && ip !== 'localhost') {
+          validatorToIpMap.set(validator.votePubkey, ip);
+          if (!ipToValidatorMap.has(ip)) {
+            ipToValidatorMap.set(ip, []);
           }
+          ipToValidatorMap.get(ip)!.push(validator);
+        }
+      }
+    });
+    
+    // Batch geocode all unique IPs
+    const uniqueIps = Array.from(ipToValidatorMap.keys());
+    const geoService = await getGeolocationService();
+    const geoResults = await geoService.batchGeolocation(uniqueIps);
+    
+    console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
+    
+    // Process validators with cached geolocation data
+    const validatorsWithGeo = await Promise.all(
+      sortedValidators.map(async (validator, index) => {
+        const clusterNode = clusterNodes.find(node => 
+          node.pubkey === validator.nodePubkey
+        );
         
-        // Get geolocation data for validator
+        // Get geolocation data from batch results
         let geoData: GeolocationData = {
           country: 'Unknown',
           countryCode: 'XX',
@@ -293,15 +172,19 @@ export async function GET() {
           isp: 'Unknown'
         };
         
-        if (clusterNode?.tpu) {
-          const ip = extractIPFromEndpoint(clusterNode.tpu);
-          if (ip && ip !== '127.0.0.1' && ip !== 'localhost') {
-            try {
-              geoData = await fetchGeolocation(ip);
-            } catch (error) {
-              console.warn(`Failed to get geolocation for validator ${validator.votePubkey}:`, error);
-            }
-          }
+        const ip = validatorToIpMap.get(validator.votePubkey);
+        if (ip && geoResults.has(ip)) {
+          const batchGeoData = geoResults.get(ip)!;
+          geoData = {
+            country: batchGeoData.country,
+            countryCode: batchGeoData.countryCode,
+            region: batchGeoData.region,
+            city: batchGeoData.city,
+            datacenter: batchGeoData.datacenter || 'Unknown',
+            isp: batchGeoData.isp || 'Unknown',
+            lat: batchGeoData.lat,
+            lon: batchGeoData.lon
+          };
         }
         
         // Calculate performance metrics from real data
@@ -329,7 +212,7 @@ export async function GET() {
         
           return {
             voteAccount: validator.votePubkey,
-            name: `${geoData.city}, ${geoData.country}` || `Validator ${i + batchIndex + 1}`,
+            name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
             commission: validator.commission,
             activatedStake: validator.activatedStake,
             lastVote: validator.lastVote,
@@ -351,14 +234,6 @@ export async function GET() {
           };
         })
       );
-      
-      validatorsWithGeo.push(...batchResults);
-      
-      // Add delay between batches to avoid overwhelming geolocation services
-      if (i + batchSize < sortedValidators.length) {
-        await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONSTANTS.RATE_LIMITS.COOLDOWN_MS));
-      }
-    }
 
     // Calculate real network stats from Solana data
     const totalValidators = allValidators.length;
