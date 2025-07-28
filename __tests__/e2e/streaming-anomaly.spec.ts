@@ -68,7 +68,7 @@ test.describe('Blockchain Event Streaming and Anomaly Detection E2E', () => {
         console.log(`Stream API authentication returned ${response.status()} - may not be implemented yet`);
       }
     } catch (error) {
-      console.log(`Stream API authentication test failed: ${error.message}`);
+      console.log(`Stream API authentication test failed: ${(error as Error).message}`);
     }
   });
 
