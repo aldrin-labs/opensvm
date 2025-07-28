@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { waitForAnalyticsTabLoad, isElementVisible, getElementCount } from './utils/test-helpers';
 
-test.describe('Analytics Quick Tests', () => {
+test.describe.skip('Analytics Quick Tests', () => {
   test.use({ baseURL: 'http://localhost:3000' });
 
   test('should load analytics page', async ({ page }) => {

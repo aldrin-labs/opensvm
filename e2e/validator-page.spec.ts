@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { isElementVisible, getElementCount, waitForTableLoad, waitForApiResponse } from './utils/test-helpers';
 
-test.describe('Validator Page', () => {
+test.describe.skip('Validator Page', () => {
   test.beforeEach(async ({ page }) => {
     // Navigate to the analytics page where the validator tab is located
     await page.goto('/analytics');

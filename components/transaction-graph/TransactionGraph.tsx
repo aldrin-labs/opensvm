@@ -624,9 +624,9 @@ export default function TransactionGraph({
         <button
           onClick={navigateBack}
           disabled={!canGoBack}
-          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoBack ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'
-            }`}
+          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoBack ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'}`}
           title="Navigate Back (Alt+←)"
+          aria-label="Navigate Back"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M19 12H5M12 19l-7-7 7-7" />
@@ -636,9 +636,9 @@ export default function TransactionGraph({
         <button
           onClick={navigateForward}
           disabled={!canGoForward}
-          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoForward ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'
-            }`}
+          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoForward ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'}`}
           title="Navigate Forward (Alt+→)"
+          aria-label="Navigate Forward"
         >
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M5 12h14M12 5l7 7-7 7" />
@@ -651,6 +651,7 @@ export default function TransactionGraph({
           onClick={toggleFullscreen}
           className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
           title="Toggle Fullscreen"
+          aria-label="Toggle Fullscreen"
         >
           {isFullscreen ? '⛶' : '⛶'}
         </button>
@@ -659,6 +660,7 @@ export default function TransactionGraph({
           onClick={toggleCloudView}
           className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
           title="Toggle Cloud View"
+          aria-label="Show cloud view"
         >
           {isCloudView ? '📊' : '☁️'}
         </button>
@@ -667,6 +669,7 @@ export default function TransactionGraph({
           onClick={() => setUseGPUGraph(!useGPUGraph)}
           className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
           title="Toggle GPU Acceleration"
+          aria-label="Toggle GPU Acceleration"
         >
           {useGPUGraph ? '🖥️' : '🎮'}
         </button>
