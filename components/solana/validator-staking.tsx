@@ -392,7 +392,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       <div className="flex items-center space-x-3">
         <button
           disabled
-          className="px-6 py-3 bg-gray-400 text-white rounded-lg font-medium flex items-center cursor-not-allowed opacity-50"
+          className="px-6 py-3 bg-muted text-white rounded-lg font-medium flex items-center cursor-not-allowed opacity-50"
         >
           <Lock className="h-4 w-4 mr-2" />
           Connect Wallet to Stake
@@ -410,8 +410,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
           disabled={!meetsRequirement}
           className={`px-6 py-3 rounded-lg font-medium flex items-center transition-colors ${
             meetsRequirement
-              ? 'bg-green-600 hover:bg-green-700 text-white'
-              : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
+              ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+              : 'bg-muted text-white cursor-not-allowed opacity-50'
           }`}
         >
           <Zap className="h-4 w-4 mr-2" />
@@ -422,8 +422,8 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
           disabled={!meetsRequirement || userStakedAmount === 0}
           className={`px-6 py-3 rounded-lg font-medium flex items-center transition-colors ${
             meetsRequirement && userStakedAmount > 0
-              ? 'bg-red-600 hover:bg-red-700 text-white'
-              : 'bg-gray-400 text-white cursor-not-allowed opacity-50'
+              ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground'
+              : 'bg-muted text-white cursor-not-allowed opacity-50'
           }`}
         >
           <TrendingDown className="h-4 w-4 mr-2" />
@@ -459,7 +459,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">$SVMAI Balance:</span>
-                <span className={`font-medium ${meetsRequirement ? 'text-green-600' : 'text-amber-600'} flex items-center`}>
+                <span className={`font-medium ${meetsRequirement ? 'text-primary' : 'text-muted-foreground'} flex items-center`}>
                   {userSvmaiBalance.toLocaleString()} $SVMAI
                   {meetsRequirement && <CheckCircle className="inline h-3 w-3 ml-1" />}
                   {isRefreshingBalances && <Loader2 className="inline h-3 w-3 ml-1 animate-spin" />}
@@ -490,19 +490,19 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
             {/* Expected Returns */}
             {stakeAmount && parseFloat(stakeAmount) > 0 && (
-              <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-3 mb-4 transition-all duration-300">
-                <h4 className="text-sm font-medium text-green-900 dark:text-green-100 mb-2 flex items-center">
+              <div className="bg-primary/10 border border-primary rounded-lg p-3 mb-4 transition-all duration-300">
+                                  <h4 className="text-sm font-medium text-primary mb-2 flex items-center">
                   <Calculator className="h-4 w-4 mr-1.5" />
                   Expected Returns
                 </h4>
-                <div className="flex justify-between text-xs mb-2 pb-2 border-b border-green-200 dark:border-green-800">
-                  <span className="text-green-700 dark:text-green-300">Effective APY:</span>
+                <div className="flex justify-between text-xs mb-2 pb-2 border-b border-primary dark:border-primary">
+                  <span className="text-primary dark:text-primary">Effective APY:</span>
                   <div className="text-right">
-                    <span className={`font-medium ${commission >= 90 ? 'text-red-600' : 'text-green-900 dark:text-green-100'}`}>
+                    <span className={`font-medium ${commission >= 90 ? 'text-destructive' : 'text-primary dark:text-primary'}`}>
                       {(apy * (1 - commission / 100)).toFixed(2)}% (after {commission}% commission)
                     </span>
                     {commission >= 90 && (
-                      <div className="text-xs text-red-500 mt-0.5">⚠️ Very high commission</div>
+                      <div className="text-xs text-destructive mt-0.5">⚠️ Very high commission</div>
                     )}
                   </div>
                 </div>
@@ -517,12 +517,12 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
                     const returns = calculateExpectedReturns(parseFloat(stakeAmount), days);
                     return (
                       <div key={days} className="flex justify-between text-xs">
-                        <span className="text-green-700 dark:text-green-300">{label}:</span>
+                        <span className="text-primary dark:text-primary">{label}:</span>
                         <div className="text-right">
-                          <span className="font-medium text-green-900 dark:text-green-100">
+                          <span className="font-medium text-primary dark:text-primary">
                             +{returns.earnings.toFixed(4)} SOL
                           </span>
-                          <span className="text-green-600 dark:text-green-400 ml-1">
+                          <span className="text-primary dark:text-primary ml-1">
                             ({((returns.earnings / parseFloat(stakeAmount)) * 100).toFixed(2)}%)
                           </span>
                         </div>
@@ -530,14 +530,14 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
                     );
                   })}
                 </div>
-                <div className="mt-2 pt-2 border-t border-green-200 dark:border-green-800">
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                <div className="mt-2 pt-2 border-t border-primary dark:border-primary">
+                  <p className="text-xs text-primary dark:text-primary">
                     * Estimates based on current APY of {apy}%
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                  <p className="text-xs text-primary dark:text-primary">
                     * Actual returns may vary based on network performance
                   </p>
-                  <p className="text-xs text-green-600 dark:text-green-400">
+                  <p className="text-xs text-primary dark:text-primary">
                     * Commission of {commission}% is deducted from rewards
                   </p>
                 </div>
@@ -557,12 +557,12 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
             {/* Error/Success Messages */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="mb-4 p-3 bg-destructive border border-destructive rounded-lg text-destructive text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              <div className="mb-4 p-3 bg-primary border border-primary rounded-lg text-primary text-sm">
                 {success}
               </div>
             )}
@@ -572,7 +572,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
               <button
                 onClick={handleStake}
                 disabled={isStaking || !stakeAmount || parseFloat(stakeAmount) < MIN_STAKE_AMOUNT}
-                className="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white rounded-lg font-medium disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="flex-1 px-4 py-2 bg-primary hover:bg-primary/90 disabled:bg-muted text-primary-foreground disabled:text-muted-foreground rounded-lg font-medium disabled:cursor-not-allowed transition-colors flex items-center justify-center"
               >
                 {isStaking ? (
                   <>
@@ -657,12 +657,12 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
             {/* Error/Success Messages */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+              <div className="mb-4 p-3 bg-destructive border border-destructive rounded-lg text-destructive text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm">
+              <div className="mb-4 p-3 bg-primary border border-primary rounded-lg text-primary text-sm">
                 {success}
               </div>
             )}
@@ -672,7 +672,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
               <button
                 onClick={handleUnstake}
                 disabled={isUnstaking || !unstakeAmount || parseFloat(unstakeAmount) <= 0}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-lg font-medium disabled:cursor-not-allowed transition-colors flex items-center justify-center"
+                className="flex-1 px-4 py-2 bg-destructive hover:bg-destructive/90 disabled:bg-muted text-destructive-foreground disabled:text-muted-foreground rounded-lg font-medium disabled:cursor-not-allowed transition-colors flex items-center justify-center"
               >
                 {isUnstaking ? (
                   <>

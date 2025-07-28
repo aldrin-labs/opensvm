@@ -279,10 +279,10 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   if (loading) {
     return (
-      <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200 dark:border-orange-800 rounded-lg p-6">
+      <div className="bg-accent/10 border border-border rounded-lg p-6">
         <div className="flex items-center justify-center h-32">
           <div className="animate-pulse flex items-center">
-            <Flame className="h-6 w-6 text-orange-500 mr-2" />
+            <Flame className="h-6 w-6 text-accent mr-2" />
             <span className="text-lg font-medium">Loading trending validators...</span>
           </div>
         </div>
@@ -292,10 +292,10 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   if (error || trendingValidators.length === 0) {
     return (
-      <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200 dark:border-orange-800 rounded-lg p-6">
+              <div className="bg-accent/10 border border-border rounded-lg p-6">
         <div className="flex items-center justify-center h-32">
           <div className="text-center">
-            <Flame className="h-6 w-6 text-orange-500 mx-auto mb-2" />
+            <Flame className="h-6 w-6 text-accent mx-auto mb-2" />
             <p className="text-sm text-muted-foreground">
               {error || 'No trending validators available'}
             </p>
@@ -309,12 +309,12 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   return (
     <>
-      <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200 dark:border-orange-800 rounded-lg p-6 mb-6">
+              <div className="bg-accent/10 border border-border rounded-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
-            <Flame className="h-6 w-6 text-orange-500 mr-2" />
+            <Flame className="h-6 w-6 text-accent mr-2" />
             <h3 className="text-lg font-semibold">Trending Validators</h3>
-            <TrendingUp className="h-4 w-4 text-orange-500 ml-2" />
+                          <TrendingUp className="h-4 w-4 text-accent ml-2" />
           </div>
           
           <div className="flex items-center space-x-2">
@@ -346,7 +346,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center">
-                  <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-r from-orange-500 to-red-500 rounded-full text-white text-sm font-semibold mr-3">
+                  <div className="flex items-center justify-center w-8 h-8 bg-accent rounded-full text-accent-foreground text-sm font-semibold mr-3">
                     #{validator.rank}
                   </div>
                   <div>
@@ -361,13 +361,13 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 
                 <div className="flex items-center">
                   {validator.trendingReason === 'boost' && validator.boostEndTime && (
-                    <div className="flex items-center text-xs text-orange-600 dark:text-orange-400">
+                    <div className="flex items-center text-xs text-accent">
                       <Crown className="h-3 w-3 mr-1" />
                       <span>{formatTimeRemaining(validator.boostEndTime)}</span>
                     </div>
                   )}
                   {validator.trendingReason === 'volume' && (
-                    <div className="flex items-center text-xs text-green-600 dark:text-green-400">
+                                          <div className="flex items-center text-xs text-primary">
                       <TrendingUp className="h-3 w-3 mr-1" />
                       <span>Volume</span>
                     </div>
@@ -383,7 +383,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">24h Deposits:</span>
-                  <span className="font-medium text-green-600 dark:text-green-400">
+                  <span className="font-medium text-primary">
                     {formatSOL(validator.depositVolume24h * 1e9)}
                   </span>
                 </div>
@@ -395,7 +395,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Trending Score:</span>
-                  <span className="font-semibold text-orange-600 dark:text-orange-400">
+                  <span className="font-semibold text-accent">
                     {validator.trendingScore.toLocaleString()}
                   </span>
                 </div>
@@ -410,7 +410,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                     setModalSuccess('');
                     setShowBoostModal(true);
                   }}
-                   className="w-full bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
+                   className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
                  >
                    <Flame className="h-3 w-3 mr-1" />
                    Burn $SVMAI
@@ -428,7 +428,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 onClick={() => setCurrentIndex(index * itemsPerView)}
                 className={`w-2 h-2 rounded-full transition-colors ${
                   Math.floor(currentIndex / itemsPerView) === index
-                    ? 'bg-orange-500'
+                    ? 'bg-accent'
                     : 'bg-muted-foreground/30'
                 }`}
                 aria-label={`Go to slide ${index + 1}`}
@@ -444,7 +444,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
           <div className="bg-background border rounded-lg p-6 w-full max-w-md mx-4">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center">
-                <Flame className="h-5 w-5 text-orange-500 mr-2" />
+                <Flame className="h-5 w-5 text-accent mr-2" />
                 <h3 className="text-lg font-semibold">Burn $SVMAI for Boost</h3>
               </div>
               <button
@@ -464,8 +464,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
               </div>
 
               {!connected && (
-                <div className="bg-orange-500/10 border border-orange-200 dark:border-orange-800 rounded-md p-3">
-                  <p className="text-sm text-orange-700 dark:text-orange-300">
+                <div className="bg-accent/10 border border-border rounded-md p-3">
+                  <p className="text-sm text-accent-foreground">
                     Please connect your Phantom wallet to burn $SVMAI tokens.
                   </p>
                 </div>
@@ -496,14 +496,14 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 <p className="text-xs text-muted-foreground mt-1">
                   Minimum: {MIN_BURN_AMOUNTS.SVMAI} $SVMAI | Maximum: {MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI per boost
                 </p>
-                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                <p className="text-xs text-accent mt-1">
                   💡 Want to boost more? You can boost multiple times to increase your total!
                 </p>
               </div>
 
-              <div className="bg-gradient-to-r from-orange-500/10 to-red-500/10 border border-orange-200 dark:border-orange-800 rounded-md p-3">
+              <div className="bg-gradient-to-r bg-accent/10 border border-border rounded-md p-3">
                 <div className="flex items-start space-x-2">
-                  <Flame className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                  <Flame className="h-4 w-4 text-accent mt-0.5 flex-shrink-0" />
                   <div>
                     <p className="text-sm font-medium">Burn {burnAmount.toLocaleString()} $SVMAI</p>
                     <p className="text-xs text-muted-foreground mt-1">
@@ -518,12 +518,12 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
               {/* Error/Success Messages */}
               {modalError && (
-                <div className="p-3 bg-red-50 border border-red-200 rounded-md text-red-700 text-sm">
+                <div className="p-3 bg-destructive/10 border border-destructive rounded-md text-destructive text-sm">
                   {modalError}
                 </div>
               )}
               {modalSuccess && (
-                <div className="p-3 bg-green-50 border border-green-200 rounded-md text-green-700 text-sm">
+                <div className="p-3 bg-primary/10 border border-primary rounded-md text-primary text-sm">
                   {modalSuccess}
                 </div>
               )}
@@ -538,7 +538,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 </button>
                 <button
                   onClick={handleBoostPurchase}
-                  className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                                      className="flex-1 py-2 px-4 bg-accent hover:bg-accent/90 text-accent-foreground rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!connected || isProcessingBurn || burnAmount < MIN_BURN_AMOUNTS.SVMAI || burnAmount > userSvmaiBalance || burnAmount > MAX_BURN_AMOUNTS.SVMAI}
                 >
                   {isProcessingBurn ? (

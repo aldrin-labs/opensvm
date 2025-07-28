@@ -287,7 +287,7 @@ export function GenericAnalyticsTab({
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">{item.name}</span>
                           {item.isVerified && (
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-primary text-primary dark:bg-primary/30 dark:text-primary">
                               Verified
                             </span>
                           )}
@@ -316,8 +316,8 @@ export function GenericAnalyticsTab({
                       <Heart 
                         className={`h-4 w-4 cursor-pointer transition-colors ${
                           likedItems.has(item.name) 
-                            ? 'text-red-500 fill-current' 
-                            : 'text-muted-foreground hover:text-red-500'
+                            ? 'text-destructive fill-current' 
+                            : 'text-muted-foreground hover:text-destructive'
                         }`}
                         onClick={() => handleLike(item.name)}
                       />

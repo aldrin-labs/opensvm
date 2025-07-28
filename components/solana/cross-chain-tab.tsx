@@ -285,7 +285,7 @@ export function CrossChainTab() {
                     <td className="py-3 font-medium">{formatCurrency(flow.volume24h)}</td>
                     <td className="py-3">
                       <div className={`flex items-center gap-1 ${
-                        flow.volumeChange >= 0 ? 'text-accent' : 'text-red-600'
+                        flow.volumeChange >= 0 ? 'text-accent' : 'text-destructive'
                       }`}>
                         {flow.volumeChange >= 0 ? (
                           <TrendingUp className="h-4 w-4" />
@@ -316,7 +316,7 @@ export function CrossChainTab() {
               <div key={asset.asset} className="p-4 border rounded-lg">
                 <div className="flex justify-between items-start mb-2">
                   <h4 className="font-semibold text-lg">{asset.asset}</h4>
-                  <span className="text-sm text-gray-500">#{index + 1}</span>
+                  <span className="text-sm text-muted-foreground">#{index + 1}</span>
                 </div>
                 <div className="space-y-1">
                   <div className="flex justify-between">
