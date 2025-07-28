@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
+import { getConnection } from '@/lib/solana-connection';
 import * as web3 from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS } from '@/lib/config/tokens';
@@ -42,11 +43,16 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   const [success, setSuccess] = useState<string>('');
   const [stakeAccounts, setStakeAccounts] = useState<PublicKey[]>([]);
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
+  const [connection, setConnection] = useState<Connection | null>(null);
 
-  const connection = useMemo(() => 
-    new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'), 
-    []
-  );
+  // Initialize connection
+  useEffect(() => {
+    const initConnection = async () => {
+      const conn = await getConnection();
+      setConnection(conn);
+    };
+    initConnection();
+  }, []);
 
   // Check if user meets SVMAI requirement
   const meetsRequirement = userSvmaiBalance >= REQUIRED_SVMAI_BALANCE;
@@ -90,7 +96,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
   // Fetch user's SVMAI balance
   const fetchSvmaiBalance = useCallback(async () => {
-    if (!publicKey || !connected) return;
+    if (!publicKey || !connected || !connection) return;
 
     try {
       const tokenAccount = await getAssociatedTokenAddress(
@@ -117,7 +123,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
   // Fetch user's SOL balance
   const fetchSolBalance = useCallback(async () => {
-    if (!publicKey || !connected) return;
+    if (!publicKey || !connected || !connection) return;
 
     try {
       const balance = await connection.getBalance(publicKey);
@@ -129,7 +135,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
 
   // Fetch user's staked amount with this validator
   const fetchStakedAmount = useCallback(async () => {
-    if (!publicKey || !connected) return;
+    if (!publicKey || !connected || !connection) return;
 
     try {
       // Calculate the deterministic PDA for this user-validator pair

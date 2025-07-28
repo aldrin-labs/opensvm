@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRight } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { getConnection } from '@/lib/solana-connection';
 import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 
@@ -19,10 +20,6 @@ interface TrendingValidator {
   trendingReason: 'volume' | 'boost';
   rank: number;
 }
-
-// Solana connection
-const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
-const connection = new Connection(SOLANA_RPC_URL);
 
 interface TrendingCarouselProps {
   onValidatorClick?: (voteAccount: string) => void;
@@ -41,12 +38,22 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   const [userSvmaiBalance, setUserSvmaiBalance] = useState<number>(0);
   const [modalError, setModalError] = useState<string>('');
   const [modalSuccess, setModalSuccess] = useState<string>('');
+  const [connection, setConnection] = useState<Connection | null>(null);
+
+  // Initialize connection
+  useEffect(() => {
+    const initConnection = async () => {
+      const conn = await getConnection();
+      setConnection(conn);
+    };
+    initConnection();
+  }, []);
 
   const itemsPerView = 3; // Show 3 trending validators at once
 
   // Fetch user's SVMAI token balance
   const fetchSvmaiBalance = useCallback(async () => {
-    if (!publicKey || !connected) {
+    if (!publicKey || !connected || !connection) {
       setUserSvmaiBalance(0);
       return;
     }
@@ -82,6 +89,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   // Create burn transaction for SVMAI tokens
   const createBurnTransaction = async (amount: number): Promise<Transaction> => {
     if (!publicKey) throw new Error('Wallet not connected');
+    if (!connection) throw new Error('Connection not initialized');
 
     const tokenAccount = await getAssociatedTokenAddress(
       TOKEN_MINTS.SVMAI,
