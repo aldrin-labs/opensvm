@@ -316,8 +316,9 @@ export function ValidatorTab() {
           </div>
         </div>
 
+        {/* Content Area */}
         {activeTab === 'validators' && (
-          <div>
+          <div className="bg-background border rounded-lg shadow">
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <div>
@@ -326,188 +327,188 @@ export function ValidatorTab() {
                     Showing {((currentPage - 1) * itemsPerPage) + 1}-{Math.min(currentPage * itemsPerPage, sortedValidators.length)} of {sortedValidators.length} validators
                   </p>
                 </div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Show:</span>
-                <select
-                  value={itemsPerPage}
-                  onChange={(e) => {
-                    setItemsPerPage(Number(e.target.value));
-                    setCurrentPage(1); // Reset to first page when changing page size
-                  }}
-                  className="border rounded px-3 py-1 text-sm bg-background"
-                >
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                  <option value="100">100</option>
-                  <option value="200">200</option>
-                  <option value={sortedValidators.length}>All ({sortedValidators.length})</option>
-                </select>
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Sort by:</span>
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as any)}
-                  className="border rounded px-3 py-1 text-sm bg-background"
-                >
-                  <option value="stake">Activated Stake</option>
-                  <option value="commission">Commission</option>
-                  <option value="performance">Performance</option>
-                  <option value="uptime">Uptime</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="p-6">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="text-left border-b">
-                  <th className="pb-3 font-medium">Rank</th>
-                  <th className="pb-3 font-medium">Validator</th>
-                  <th className="pb-3 font-medium">Status</th>
-                  <th className="pb-3 font-medium">Activated Stake</th>
-                  <th className="pb-3 font-medium">Commission</th>
-                  <th className="pb-3 font-medium">APY</th>
-                  <th className="pb-3 font-medium">Performance</th>
-                  <th className="pb-3 font-medium">Uptime</th>
-                  <th className="pb-3 font-medium">Location</th>
-                  <th className="pb-3 font-medium">Version</th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedValidators.map((validator, index) => {
-                  const globalIndex = (currentPage - 1) * itemsPerPage + index;
-                  return (
-                  <tr key={validator.voteAccount} className="border-b hover:bg-muted/50">
-                    <td className="py-3 font-medium">#{globalIndex + 1}</td>
-                    <td className="py-3">
-                      <div>
-                        <div className="font-medium">{validator.name || 'Unknown'}</div>
-                        <button
-                          onClick={() => router.push(`/validator/${validator.voteAccount}`)}
-                          className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
-                        >
-                          {validator.voteAccount.slice(0, 8)}...{validator.voteAccount.slice(-8)}
-                        </button>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(validator.status)}`}>
-                        {validator.status}
-                      </span>
-                    </td>
-                    <td className="py-3">{formatSOL(validator.activatedStake)}</td>
-                    <td className="py-3">{formatPercent(validator.commission, true)}</td> {/* Commission is already a percentage 0-100 */}
-                    <td className="py-3">
-                      <div className={`font-medium ${
-                        validator.apy >= 7 ? 'text-accent' : 
-                        validator.apy >= 5 ? 'text-secondary' : 'text-destructive'
-                      }`}>
-                        {validator.apy ? validator.apy.toFixed(2) : '0.00'}%
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <div className="flex items-center gap-2">
-                        <div className="w-16 bg-muted rounded-full h-2">
-                          <div
-                            className="bg-primary h-2 rounded-full"
-                            style={{ width: `${validator.performanceScore * 100}%` }}
-                          />
-                        </div>
-                        <span className={`text-sm font-medium ${getPerformanceColor(validator.performanceScore)}`}>
-                          {formatPercent(validator.performanceScore)}
-                        </span>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                      <span className={`font-medium ${getPerformanceColor(validator.uptimePercent / 100)}`}>
-                        {formatPercent(validator.uptimePercent, true)} {/* uptimePercent is already 0-100 */}
-                      </span>
-                    </td>
-                    <td className="py-3">
-                      <div className="text-sm">
-                        <div className="flex items-center gap-1">
-                          <MapPin className="h-3 w-3" />
-                          {validator.country || 'Unknown'}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {validator.datacenter || 'Unknown DC'}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="py-3">
-                                              <span className="text-sm">{validator.version}</span>
-                    </td>
-                  </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-            </div>
-
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-              <div className="p-6 border-t">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
                   <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
-                      disabled={currentPage === 1}
-                      className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    <span className="text-sm text-muted-foreground">Show:</span>
+                    <select
+                      value={itemsPerPage}
+                      onChange={(e) => {
+                        setItemsPerPage(Number(e.target.value));
+                        setCurrentPage(1); // Reset to first page when changing page size
+                      }}
+                      className="border rounded px-3 py-1 text-sm bg-background"
                     >
-                      Previous
-                    </button>
-                    <span className="text-sm text-muted-foreground">
-                      Page {currentPage} of {totalPages}
-                    </span>
-                    <button
-                      onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
-                      disabled={currentPage === totalPages}
-                      className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
-                    >
-                      Next
-                    </button>
+                      <option value="25">25</option>
+                      <option value="50">50</option>
+                      <option value="100">100</option>
+                      <option value="200">200</option>
+                      <option value={sortedValidators.length}>All ({sortedValidators.length})</option>
+                    </select>
                   </div>
-                  <div className="flex items-center gap-1">
-                    {/* Show page numbers */}
-                    {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                      let pageNum;
-                      if (totalPages <= 5) {
-                        pageNum = i + 1;
-                      } else if (currentPage <= 3) {
-                        pageNum = i + 1;
-                      } else if (currentPage >= totalPages - 2) {
-                        pageNum = totalPages - 4 + i;
-                      } else {
-                        pageNum = currentPage - 2 + i;
-                      }
-                      
-                      return (
-                        <button
-                          key={pageNum}
-                          onClick={() => setCurrentPage(pageNum)}
-                          className={`px-3 py-1 text-sm border rounded ${
-                            currentPage === pageNum 
-                              ? 'bg-primary text-primary-foreground' 
-                              : 'hover:bg-muted'
-                          }`}
-                        >
-                          {pageNum}
-                        </button>
-                      );
-                    })}
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground">Sort by:</span>
+                    <select
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as any)}
+                      className="border rounded px-3 py-1 text-sm bg-background"
+                    >
+                      <option value="stake">Activated Stake</option>
+                      <option value="commission">Commission</option>
+                      <option value="performance">Performance</option>
+                      <option value="uptime">Uptime</option>
+                    </select>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+            <div className="p-6">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left border-b">
+                      <th className="pb-3 font-medium">Rank</th>
+                      <th className="pb-3 font-medium">Validator</th>
+                      <th className="pb-3 font-medium">Status</th>
+                      <th className="pb-3 font-medium">Activated Stake</th>
+                      <th className="pb-3 font-medium">Commission</th>
+                      <th className="pb-3 font-medium">APY</th>
+                      <th className="pb-3 font-medium">Performance</th>
+                      <th className="pb-3 font-medium">Uptime</th>
+                      <th className="pb-3 font-medium">Location</th>
+                      <th className="pb-3 font-medium">Version</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedValidators.map((validator, index) => {
+                      const globalIndex = (currentPage - 1) * itemsPerPage + index;
+                      return (
+                        <tr key={validator.voteAccount} className="border-b hover:bg-muted/50">
+                          <td className="py-3 font-medium">#{globalIndex + 1}</td>
+                          <td className="py-3">
+                            <div>
+                              <div className="font-medium">{validator.name || 'Unknown'}</div>
+                              <button
+                                onClick={() => router.push(`/validator/${validator.voteAccount}`)}
+                                className="text-xs text-primary hover:text-primary/80 underline cursor-pointer"
+                              >
+                                {validator.voteAccount.slice(0, 8)}...{validator.voteAccount.slice(-8)}
+                              </button>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className={`px-2 py-1 rounded text-xs font-medium ${getStatusColor(validator.status)}`}>
+                              {validator.status}
+                            </span>
+                          </td>
+                          <td className="py-3">{formatSOL(validator.activatedStake)}</td>
+                          <td className="py-3">{formatPercent(validator.commission, true)}</td>
+                          <td className="py-3">
+                            <div className={`font-medium ${
+                              validator.apy >= 7 ? 'text-accent' : 
+                              validator.apy >= 5 ? 'text-secondary' : 'text-destructive'
+                            }`}>
+                              {validator.apy ? validator.apy.toFixed(2) : '0.00'}%
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <div className="flex items-center gap-2">
+                              <div className="w-16 bg-muted rounded-full h-2">
+                                <div
+                                  className="bg-primary h-2 rounded-full"
+                                  style={{ width: `${validator.performanceScore * 100}%` }}
+                                />
+                              </div>
+                              <span className={`text-sm font-medium ${getPerformanceColor(validator.performanceScore)}`}>
+                                {formatPercent(validator.performanceScore)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className={`font-medium ${getPerformanceColor(validator.uptimePercent / 100)}`}>
+                              {formatPercent(validator.uptimePercent, true)}
+                            </span>
+                          </td>
+                          <td className="py-3">
+                            <div className="text-sm">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3 w-3" />
+                                {validator.country || 'Unknown'}
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {validator.datacenter || 'Unknown DC'}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="py-3">
+                            <span className="text-sm">{validator.version}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="p-6 border-t">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setCurrentPage(Math.max(1, currentPage - 1))}
+                        disabled={currentPage === 1}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                      >
+                        Previous
+                      </button>
+                      <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                      </span>
+                      <button
+                        onClick={() => setCurrentPage(Math.min(totalPages, currentPage + 1))}
+                        disabled={currentPage === totalPages}
+                        className="px-3 py-1 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                      >
+                        Next
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-1 text-sm border rounded ${
+                              currentPage === pageNum 
+                                ? 'bg-primary text-primary-foreground' 
+                                : 'hover:bg-muted'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
         {activeTab === 'rpc-nodes' && data.rpcNodes && (
-          <div>
+          <div className="bg-background border rounded-lg shadow">
             <div className="p-6 border-b">
               <div className="flex justify-between items-center">
                 <div>
@@ -535,9 +536,9 @@ export function ValidatorTab() {
                     {data.rpcNodes.map((node, index) => (
                       <tr key={node.pubkey} className="border-b hover:bg-muted/50">
                         <td className="py-3">
-                                                  <span className="text-sm">
-                          {node.pubkey.slice(0, 8)}...{node.pubkey.slice(-8)}
-                        </span>
+                          <span className="text-sm">
+                            {node.pubkey.slice(0, 8)}...{node.pubkey.slice(-8)}
+                          </span>
                         </td>
                         <td className="py-3">
                           {node.rpc ? (
@@ -550,10 +551,10 @@ export function ValidatorTab() {
                           <span className="text-sm">{node.gossip}</span>
                         </td>
                         <td className="py-3">
-                                                      <span className="text-sm">{node.tpu}</span>
+                          <span className="text-sm">{node.tpu}</span>
                         </td>
                         <td className="py-3">
-                                                      <span className="text-sm">{node.version || 'Unknown'}</span>
+                          <span className="text-sm">{node.version || 'Unknown'}</span>
                         </td>
                         <td className="py-3">
                           <div className="text-sm">
