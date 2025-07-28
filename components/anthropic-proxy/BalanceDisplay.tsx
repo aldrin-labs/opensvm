@@ -19,6 +19,14 @@ import { toast } from 'sonner';
 import { useSettings } from '@/lib/settings';
 import { SVMAIDepositModal } from './SVMAIDepositModal';
 
+interface BalanceDisplayProps {
+    variant?: 'compact' | 'card' | 'dashboard';
+    className?: string;
+    showDepositButton?: boolean;
+    showWarnings?: boolean;
+    refreshInterval?: number;
+}
+
 interface BalanceData {
     balance: {
         current: number;
@@ -52,12 +60,33 @@ interface BalanceData {
         tokenMint: string;
         minimumAmount: number;
     };
+    warnings: {
+        lowBalance: boolean;
+        highBurnRate: boolean;
+        noBalance: boolean;
+    };
+    monthly: {
+        spending: number;
+        estimatedMonthlyBurn: number;
+    };
+    lifetime: {
+        totalSpent: number;
+        totalDeposited: number;
+    };
 }
 
-export default function BalanceDisplay() {
+export default function BalanceDisplay({
+    variant = 'card',
+    className = '',
+    showDepositButton = true,
+    showWarnings = true,
+    refreshInterval = 30
+}: BalanceDisplayProps = {}) {
     const [balance, setBalance] = useState<BalanceData | null>(null);
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
+    const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+    const [showDepositModal, setShowDepositModal] = useState(false);
 
     // Get user settings for theme and font
     const settings = useSettings();
@@ -141,6 +170,12 @@ export default function BalanceDisplay() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const refreshBalance = async () => {
+        setRefreshing(true);
+        await loadBalance();
+        setRefreshing(false);
     };
 
     const formatBalance = (amount: number) => {
