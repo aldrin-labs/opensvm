@@ -21,7 +21,7 @@ export const MIN_BURN_AMOUNTS = {
   SVMAI: 1000,
 } as const;
 
-// Maximum burn amounts (to prevent unrealistic burns)
+// Maximum burn amounts per single boost (users can boost multiple times)
 export const MAX_BURN_AMOUNTS = {
-  SVMAI: 100000000, // 100 million SVMAI max
+  SVMAI: 69000, // 69k SVMAI maximum per single boost
 } as const;

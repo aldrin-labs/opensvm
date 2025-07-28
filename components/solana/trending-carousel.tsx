@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRigh
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
 import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -18,8 +19,6 @@ interface TrendingValidator {
   trendingReason: 'volume' | 'boost';
   rank: number;
 }
-
-import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 
 // Solana connection
 const SOLANA_RPC_URL = process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -488,14 +487,17 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 <input
                   type="number"
                   min={MIN_BURN_AMOUNTS.SVMAI}
-                  max={userSvmaiBalance}
+                  max={Math.min(userSvmaiBalance, MAX_BURN_AMOUNTS.SVMAI)}
                   value={burnAmount}
                   onChange={(e) => setBurnAmount(Number(e.target.value))}
                   className="w-full p-2 border rounded-md bg-background focus:outline-none focus:ring-2 focus:ring-ring"
                   disabled={!connected || isProcessingBurn}
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Minimum: {MIN_BURN_AMOUNTS.SVMAI} $SVMAI. Higher amounts increase trending score multiplier.
+                  Minimum: {MIN_BURN_AMOUNTS.SVMAI} $SVMAI | Maximum: {MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI per boost
+                </p>
+                <p className="text-xs text-orange-600 dark:text-orange-400 mt-1">
+                  💡 Want to boost more? You can boost multiple times to increase your total!
                 </p>
               </div>
 
@@ -537,7 +539,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 <button
                   onClick={handleBoostPurchase}
                   className="flex-1 py-2 px-4 bg-gradient-to-r from-orange-500 to-red-500 hover:from-orange-600 hover:to-red-600 text-white rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled={!connected || isProcessingBurn || burnAmount < MIN_BURN_AMOUNTS.SVMAI || burnAmount > userSvmaiBalance}
+                  disabled={!connected || isProcessingBurn || burnAmount < MIN_BURN_AMOUNTS.SVMAI || burnAmount > userSvmaiBalance || burnAmount > MAX_BURN_AMOUNTS.SVMAI}
                 >
                   {isProcessingBurn ? (
                     <div className="flex items-center justify-center">

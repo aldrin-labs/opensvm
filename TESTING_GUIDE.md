@@ -157,7 +157,7 @@ http://localhost:3000/validator/[validator_address]
 ```typescript
 // Test cases we validate:
 ✅ Minimum burn amount (1000 SVMAI)
-✅ Maximum burn amount (100M SVMAI)
+✅ Maximum burn amount (69k SVMAI per boost)
 ✅ Valid wallet addresses
 ✅ Signature format validation
 ✅ XSS prevention in user inputs

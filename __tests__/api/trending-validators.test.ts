@@ -250,7 +250,7 @@ describe('/api/analytics/trending-validators', () => {
 
       const invalidRequest = {
         ...validBurnRequest,
-        burnAmount: 200000000 // Above maximum
+        burnAmount: 70000 // Above maximum of 69k
       };
 
       const request = new NextRequest('http://localhost:3000/api/analytics/trending-validators', {
