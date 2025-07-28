@@ -135,14 +135,8 @@ class AdvancedRateLimiter {
     let allowed = false;
     let retryAfter: number | undefined;
 
-    if (!wouldExceedRegular && !wouldExceedBurst) {
-      // Allow request - within both regular and burst limits
-      allowed = true;
-      entry.requests.push(...Array(cost).fill(now));
-      entry.totalRequests += cost;
-      entry.burstTokens -= cost;
-    } else if (!wouldExceedBurst && entry.burstTokens >= cost) {
-      // Allow request using burst tokens only
+    if (!wouldExceedBurst) {
+      // Allow request - sufficient burst tokens available
       allowed = true;
       entry.requests.push(...Array(cost).fill(now));
       entry.totalRequests += cost;

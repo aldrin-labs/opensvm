@@ -23,11 +23,13 @@ class MemoryCache {
     this.cache.set(key, { value, expiresAt });
     
     // Enforce size limit with proper LRU eviction
-    if (this.cache.size > this.maxSize) {
+    while (this.cache.size > this.maxSize) {
       // Delete the first (oldest) entry
       const firstKey = this.cache.keys().next().value;
       if (firstKey) {
         this.cache.delete(firstKey);
+      } else {
+        break; // Safety break if no keys found
       }
     }
   }

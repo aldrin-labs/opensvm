@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram, Keypair } from '@solana/web3.js';
+import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
 import * as web3 from '@solana/web3.js';
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS } from '@/lib/config/tokens';
@@ -191,8 +191,12 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
         throw new Error('Invalid or inactive validator');
       }
 
-      // Create a new stake account keypair
-      const stakeAccount = web3.Keypair.generate();
+      // Generate deterministic stake account using PDA
+      const stakeAccountSeed = Buffer.from(`stake_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+      const [stakeAccountPDA] = await PublicKey.findProgramAddress(
+        [publicKey.toBuffer(), stakeAccountSeed],
+        StakeProgram.programId
+      );
 
       // Use BigInt for precise lamports calculation
       const lamports = BigInt(Math.floor(amount * LAMPORTS_PER_SOL));
@@ -210,31 +214,30 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
       // Create transaction
       const transaction = new Transaction();
 
-              // Create and initialize stake account with rent exemption
-        const createAccountInstruction = SystemProgram.createAccount({
-          fromPubkey: publicKey,
-          newAccountPubkey: stakeAccount.publicKey,
-          lamports: Number(totalLamports),
-          space: StakeProgram.space,
-          programId: StakeProgram.programId,
-        });
+      // Create stake account using PDA (no separate keypair needed)
+      const createAccountInstruction = SystemProgram.createAccountWithSeed({
+        fromPubkey: publicKey,
+        newAccountPubkey: stakeAccountPDA,
+        basePubkey: publicKey,
+        seed: stakeAccountSeed.toString(),
+        lamports: Number(totalLamports),
+        space: StakeProgram.space,
+        programId: StakeProgram.programId,
+      });
 
       const initializeInstruction = StakeProgram.initialize({
-        stakePubkey: stakeAccount.publicKey,
+        stakePubkey: stakeAccountPDA,
         authorized: new Authorized(publicKey, publicKey),
         lockup: new Lockup(0, 0, publicKey),
       });
 
       const delegateInstruction = StakeProgram.delegate({
-        stakePubkey: stakeAccount.publicKey,
+        stakePubkey: stakeAccountPDA,
         authorizedPubkey: publicKey,
         votePubkey: new PublicKey(validatorVoteAccount),
       });
 
       transaction.add(createAccountInstruction, initializeInstruction, delegateInstruction);
-      
-      // The stake account needs to sign the transaction
-      transaction.partialSign(stakeAccount);
 
       // Get latest blockhash with longer validity
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();

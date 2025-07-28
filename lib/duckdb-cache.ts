@@ -219,7 +219,8 @@ export async function cacheFeedEvents(
     
     // Try to rollback transaction if error occurs
     try {
-      const conn = await (await initDuckDB()).connect();
+      const db = await initDuckDB();
+      const conn = await db.connect();
       await conn.query('ROLLBACK');
       await conn.close();
     } catch (e) {
@@ -467,7 +468,8 @@ export async function clearCache(
     
     // Try to rollback transaction if error occurs
     try {
-      const conn = await (await initDuckDB()).connect();
+      const db = await initDuckDB();
+      const conn = await db.connect();
       await conn.query('ROLLBACK');
       await conn.close();
     } catch (e) {

@@ -146,22 +146,27 @@ async function verifyBurnTransaction(
                   throw new Error('Invalid token account type');
                 }
               } else {
-                // Fallback to transaction signer if we can't get account info
+                // Fallback to transaction signer if we can't get parsed account info
+                // Use the first signer as the burner (fee payer is typically the token account owner)
                 const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
                   tx.transaction.message.header.numRequiredSignatures > idx
                 );
                 if (signers.length > 0) {
                   burnerAccount = signers[0].toBase58();
+                } else {
+                  throw new Error('No signers found in transaction');
                 }
               }
             } catch (error) {
               console.error('Error getting token account info:', error);
-              // Fallback to transaction signer
+              // Fallback to transaction signer (with validation)
               const signers = tx.transaction.message.accountKeys.filter((_, idx) => 
                 tx.transaction.message.header.numRequiredSignatures > idx
               );
               if (signers.length > 0) {
                 burnerAccount = signers[0].toBase58();
+              } else {
+                return { valid: false, error: 'Could not determine burner account from transaction' };
               }
             }
           }
