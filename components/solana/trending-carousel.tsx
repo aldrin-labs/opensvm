@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRight } from 'lucide-react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
@@ -45,7 +45,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   const itemsPerView = 3; // Show 3 trending validators at once
 
   // Fetch user's SVMAI token balance
-  const fetchSvmaiBalance = async () => {
+  const fetchSvmaiBalance = useCallback(async () => {
     if (!publicKey || !connected) {
       setUserSvmaiBalance(0);
       return;
@@ -77,7 +77,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         setUserSvmaiBalance(0);
       }
     }
-  };
+  }, [publicKey, connected, connection]);
 
   // Create burn transaction for SVMAI tokens
   const createBurnTransaction = async (amount: number): Promise<Transaction> => {
@@ -158,7 +158,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       }
     }, 120000);
     return () => clearInterval(interval);
-  }, [publicKey, connected]);
+  }, [publicKey, connected, fetchSvmaiBalance]);
 
   const formatSOL = (lamports: number) => {
     const sol = lamports / 1e9;

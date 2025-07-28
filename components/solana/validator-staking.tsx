@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
 import * as web3 from '@solana/web3.js';
@@ -43,7 +43,10 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   const [stakeAccounts, setStakeAccounts] = useState<PublicKey[]>([]);
   const [isRefreshingBalances, setIsRefreshingBalances] = useState(false);
 
-  const connection = new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com');
+  const connection = useMemo(() => 
+    new Connection(process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'), 
+    []
+  );
 
   // Check if user meets SVMAI requirement
   const meetsRequirement = userSvmaiBalance >= REQUIRED_SVMAI_BALANCE;
@@ -110,7 +113,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
         setUserSvmaiBalance(0);
       }
     }
-  }, [publicKey, connected]);
+  }, [publicKey, connected, connection]);
 
   // Fetch user's SOL balance
   const fetchSolBalance = useCallback(async () => {
@@ -122,7 +125,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } catch (error) {
       console.error('Error fetching SOL balance:', error);
     }
-  }, [publicKey, connected]);
+  }, [publicKey, connected, connection]);
 
   // Fetch user's staked amount with this validator
   const fetchStakedAmount = useCallback(async () => {
@@ -155,7 +158,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     } catch (error) {
       console.error('Error fetching staked amount:', error);
     }
-  }, [publicKey, connected, getStakeAccountPDA]);
+  }, [publicKey, connected, connection, validatorVoteAccount, getStakeAccountPDA]);
 
   // Create stake account and delegate to validator
   const handleStake = async () => {
