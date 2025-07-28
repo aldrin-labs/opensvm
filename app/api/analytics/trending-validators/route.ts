@@ -4,6 +4,7 @@ import { memoryCache } from '@/lib/cache';
 import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
 import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
+import { getClientIP } from '@/lib/utils/client-ip';
 
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
@@ -226,12 +227,22 @@ async function verifyBurnTransaction(
 export async function GET(request: Request) {
   try {
     // Rate limiting
-    const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!generalRateLimiter.isAllowed(clientIP)) {
+    const clientIP = getClientIP(request);
+    const rateLimitResult = await generalRateLimiter.checkLimit(clientIP);
+    if (!rateLimitResult.allowed) {
       return NextResponse.json({
         success: false,
-        error: 'Rate limit exceeded. Please try again later.'
-      }, { status: 429 });
+        error: 'Rate limit exceeded. Please try again later.',
+        retryAfter: rateLimitResult.retryAfter
+      }, { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '100',
+          'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
+          'Retry-After': rateLimitResult.retryAfter?.toString() || '60'
+        }
+      });
     }
 
     // Check cache first
@@ -306,12 +317,23 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     // Rate limiting for burn operations
-    const clientIP = request.headers.get('x-forwarded-for') || 'unknown';
-    if (!burnRateLimiter.isAllowed(clientIP)) {
+    const clientIP = getClientIP(request);
+    const burnRateLimitResult = await burnRateLimiter.checkLimit(clientIP);
+    if (!burnRateLimitResult.allowed) {
       return NextResponse.json({
         success: false,
-        error: 'Rate limit exceeded for burn operations. Please try again later.'
-      }, { status: 429 });
+        error: 'Rate limit exceeded for burn operations. Please try again later.',
+        retryAfter: burnRateLimitResult.retryAfter
+      }, { 
+        status: 429,
+        headers: {
+          'X-RateLimit-Limit': '10',
+          'X-RateLimit-Remaining': burnRateLimitResult.remaining.toString(),
+          'X-RateLimit-Reset': new Date(burnRateLimitResult.resetTime).toISOString(),
+          'X-RateLimit-Burst-Remaining': burnRateLimitResult.burstRemaining?.toString() || '0',
+          'Retry-After': burnRateLimitResult.retryAfter?.toString() || '60'
+        }
+      });
     }
 
     const { voteAccount, burnAmount, burnSignature, burnerWallet } = await request.json();
