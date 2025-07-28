@@ -15,9 +15,9 @@ import {
     ArrowUpRight,
     DollarSign
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '@/lib/settings';
-import { SVMAIDepositModal } from './SVMAIDepositModal';
+import SVMAIDepositModal from './SVMAIDepositModal';
 
 interface BalanceDisplayProps {
     variant?: 'compact' | 'card' | 'dashboard';
@@ -297,7 +297,7 @@ export default function BalanceDisplay({
                                 <div className="flex-1">
                                     <p className="text-lg font-semibold">SVMAI Balance</p>
                                     <p className="text-sm text-muted-foreground">
-                                        Last updated: {formatTimeAgo(lastUpdated)}
+                                        Last updated: {lastUpdated ? formatTimeAgo(lastUpdated) : 'Never'}
                                     </p>
                                 </div>
                                 <Button
@@ -425,7 +425,7 @@ export default function BalanceDisplay({
 
                 {lastUpdated && (
                     <p className="text-xs text-muted-foreground text-center">
-                        Last updated: {formatTimeAgo(lastUpdated)}
+                        Last updated: {lastUpdated ? formatTimeAgo(lastUpdated) : 'Never'}
                     </p>
                 )}
 
@@ -433,6 +433,7 @@ export default function BalanceDisplay({
                     isOpen={showDepositModal}
                     onClose={() => setShowDepositModal(false)}
                     onDepositSuccess={onDepositSuccess}
+                    currentBalance={balance?.balance?.current || 0}
                 />
             </div>
         );
