@@ -434,11 +434,16 @@ export class SecurityMiddleware {
     private sanitizeString(str: string): string {
         if (typeof str !== 'string') return str;
 
-        return str
+        let sanitized = str
             .replace(/[<>]/g, '') // Remove potential HTML tags
-            .replace(/javascript:/gi, '') // Remove javascript: URLs
-            .replace(/on\w+\s*=/gi, '') // Remove event handlers
-            .trim();
+            .replace(/javascript:/gi, ''); // Remove javascript: URLs
+        // Remove event handlers repeatedly until none remain
+        let previous;
+        do {
+            previous = sanitized;
+            sanitized = sanitized.replace(/on\w+\s*=/gi, '');
+        } while (sanitized !== previous);
+        return sanitized.trim();
     }
 
     /**
