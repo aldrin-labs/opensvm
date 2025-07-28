@@ -82,7 +82,9 @@ export default function IntegrationGuide() {
     const exampleKey = 'sk-ant-api03-your-key-here'; // Placeholder, will be replaced by actual API key
 
     const copyToClipboard = (code: string, label: string) => {
-        navigator.clipboard.writeText(code);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(code);
+    }
         setCopiedCode(label);
         toast.success(`${label} copied to clipboard!`);
         setTimeout(() => setCopiedCode(null), 2000);

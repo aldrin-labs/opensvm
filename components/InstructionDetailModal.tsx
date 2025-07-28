@@ -46,7 +46,9 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
@@ -107,11 +109,11 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal */}
       <div className="relative bg-background rounded-lg shadow-xl border border-border w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
@@ -150,7 +152,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                 )}
               </h3>
             </div>
-            
+
             {expandedSections.has('overview') && (
               <div className="space-y-4">
                 {/* Program Information */}
@@ -174,7 +176,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                       <p className="text-foreground capitalize mt-1">{instruction.instructionType}</p>
                     </div>
                   </div>
-                  
+
                   <div className="mt-4">
                     <label className="text-sm font-medium text-foreground">Program ID</label>
                     <div className="flex items-center space-x-2 mt-1">
@@ -239,7 +241,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                   )}
                 </h3>
               </div>
-              
+
               {expandedSections.has('accounts') && (
                 <div className="space-y-3">
                   {instruction.accounts.map((account, index) => (
@@ -281,7 +283,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                           </button>
                         </div>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div>
                           <label className="text-xs font-medium text-muted-foreground">Address</label>
@@ -289,7 +291,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                             {account.pubkey}
                           </code>
                         </div>
-                        
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                           <div>
                             <label className="text-xs font-medium text-muted-foreground">Role</label>
@@ -324,7 +326,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                   )}
                 </h3>
               </div>
-              
+
               {expandedSections.has('parameters') && (
                 <div className="space-y-3">
                   {instruction.parameters.map((param, index) => (
@@ -335,13 +337,13 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                           {param.type}
                         </span>
                       </div>
-                      
+
                       <div className="space-y-2">
                         <div>
                           <label className="text-xs font-medium text-muted-foreground">Description</label>
                           <p className="text-sm text-foreground mt-1">{param.description}</p>
                         </div>
-                        
+
                         <div>
                           <label className="text-xs font-medium text-muted-foreground">Value</label>
                           <div className="flex items-center space-x-2 mt-1">
@@ -385,7 +387,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                   )}
                 </h3>
               </div>
-              
+
               {expandedSections.has('innerInstructions') && (
                 <div className="space-y-3">
                   {instruction.innerInstructions.map((innerIx, index) => (
@@ -418,7 +420,7 @@ const InstructionDetailModal: React.FC<InstructionDetailModalProps> = ({
                   )}
                 </h3>
               </div>
-              
+
               {expandedSections.has('logs') && (
                 <div className="bg-muted/10 p-4 rounded-lg">
                   <div className="space-y-1 font-mono text-sm">

@@ -25,7 +25,7 @@ export function ReferralLinkSection({ walletAddress }: { walletAddress: string }
   // Check for online/offline status
   useEffect(() => {
     // Set initial offline state
-    setIsOffline(!navigator.onLine);
+    setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
 
     // Add event listeners for online/offline status changes
     const handleOnline = () => setIsOffline(false);
@@ -94,7 +94,9 @@ export function ReferralLinkSection({ walletAddress }: { walletAddress: string }
 
   const handleCopyLink = async () => {
     try {
-      await navigator.clipboard.writeText(referralLink);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(referralLink);
+      }
       setCopied(true);
       toast.success("Referral link copied to clipboard");
       setTimeout(() => setCopied(false), 2000);

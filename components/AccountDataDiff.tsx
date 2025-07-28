@@ -40,7 +40,9 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
       await navigator.clipboard.writeText(text);
+    }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {

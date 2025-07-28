@@ -51,7 +51,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
   const formatTimeAgo = useCallback((timestamp: number) => {
     const now = Date.now();
     const diff = now - timestamp;
-    
+
     if (diff < 60000) return 'just now';
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
     if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -61,11 +61,11 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
   const handleEventClick = useCallback((event: DeduplicatedEvent) => {
     _setSelectedEvent(event);
     onEventClick?.(event);
-    
+
     // Open in explorer based on type
     const baseUrl = 'https://opensvm.com';
     let url = '';
-    
+
     if (event.type === 'transaction' && event.signature) {
       url = `${baseUrl}/tx/${event.signature}`;
     } else if (event.type === 'block' && event.data?.slot) {
@@ -73,7 +73,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
     } else if (event.type === 'account_change' && event.data?.account) {
       url = `${baseUrl}/account/${event.data.account}`;
     }
-    
+
     if (url) {
       window.open(url, '_blank', 'noopener,noreferrer');
     }
@@ -87,7 +87,9 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
 
   const copyToClipboard = useCallback((text: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    navigator.clipboard.writeText(text);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
   }, []);
 
   if (events.length === 0) {
@@ -139,7 +141,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                     </div>
                   </div>
                 </td>
-                
+
                 <td className="p-3">
                   <div className="space-y-1">
                     {event.type === 'transaction' && event.signature && (
@@ -156,7 +158,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                         </button>
                       </div>
                     )}
-                    
+
                     {event.type === 'block' && event.data?.slot && (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-muted-foreground">Slot:</span>
@@ -165,7 +167,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                         </span>
                       </div>
                     )}
-                    
+
                     {event.type === 'account_change' && event.data?.account && (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-muted-foreground">Account:</span>
@@ -177,7 +179,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                         </button>
                       </div>
                     )}
-                    
+
                     {event.data?.fee && (
                       <div className="flex items-center space-x-2">
                         <span className="text-xs text-muted-foreground">Fee:</span>
@@ -186,7 +188,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                         </span>
                       </div>
                     )}
-                    
+
                     {event.data?.err && (
                       <div className="text-xs text-red-500">
                         Failed: {JSON.stringify(event.data.err)}
@@ -194,7 +196,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                     )}
                   </div>
                 </td>
-                
+
                 <td className="p-3">
                   <div className="text-center">
                     <div className="font-medium text-sm">{event.count}</div>
@@ -205,7 +207,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                     )}
                   </div>
                 </td>
-                
+
                 <td className="p-3">
                   <div className="text-xs">
                     <div className="font-medium">{formatTimeAgo(event.timestamp)}</div>
@@ -216,7 +218,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                     )}
                   </div>
                 </td>
-                
+
                 <td className="p-3">
                   <div className="flex items-center space-x-1">
                     <button
@@ -229,7 +231,7 @@ export const DeduplicatedEventTable = React.memo(function DeduplicatedEventTable
                     >
                       <ExternalLink className="w-3 h-3" />
                     </button>
-                    
+
                     {event.signature && (
                       <button
                         onClick={(e) => copyToClipboard(event.signature!, e)}

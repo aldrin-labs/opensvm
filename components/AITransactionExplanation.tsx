@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { 
+import {
   BrainIcon,
   RefreshCwIcon,
   ThumbsUpIcon,
@@ -24,18 +24,18 @@ import {
   HelpCircleIcon
 } from 'lucide-react';
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import { 
-  aiTransactionAnalyzer, 
-  formatConfidenceLevel, 
-  getActionTypeIcon, 
+import {
+  aiTransactionAnalyzer,
+  formatConfidenceLevel,
+  getActionTypeIcon,
   getRiskLevelColor,
-  type TransactionExplanation 
+  type TransactionExplanation
 } from '@/lib/ai-transaction-analyzer';
-import { 
-  formatDeFiAmount, 
-  getDeFiActionIcon, 
-  formatPercentage, 
-  formatUsdValue 
+import {
+  formatDeFiAmount,
+  getDeFiActionIcon,
+  formatPercentage,
+  formatUsdValue
 } from '@/lib/defi-transaction-analyzer';
 
 interface AITransactionExplanationProps {
@@ -62,7 +62,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
   const loadExplanation = useCallback(async () => {
     setLoading(true);
     setError(null);
-    
+
     try {
       // Check for cached explanation first
       const cached = await aiTransactionAnalyzer.getCachedExplanation(transaction.signature);
@@ -77,12 +77,12 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
         detailLevel,
         focusAreas: []
       });
-      
+
       setExplanation(result);
-      
+
       // Cache the result
       await aiTransactionAnalyzer.cacheExplanation(transaction.signature, result);
-      
+
     } catch (err) {
       console.error('Failed to load AI explanation:', err);
       setError(err instanceof Error ? err.message : 'Failed to generate explanation');
@@ -115,7 +115,9 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
@@ -127,13 +129,13 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
     if (!explanation) return;
 
     const shareText = `AI Analysis of Solana Transaction:\n\n${explanation.summary}\n\nMain Action: ${explanation.mainAction.description}\n\nRisk Level: ${explanation.riskAssessment.level.toUpperCase()}\n\nTransaction: ${transaction.signature}`;
-    
-    if (navigator.share) {
+
+    if (typeof navigator !== 'undefined' && navigator.share) {
       try {
         await navigator.share({
           title: 'Transaction Analysis',
           text: shareText,
-          url: `${window.location.origin}/tx/${transaction.signature}`
+          url: typeof window !== 'undefined' ? `${window.location.origin}/tx/${transaction.signature}` : ''
         });
       } catch (err) {
         // Fallback to copying
@@ -146,7 +148,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
 
   const handleFeedback = (feedback: 'positive' | 'negative') => {
     if (!explanation) return;
-    
+
     setFeedbackGiven(feedback);
     onFeedback?.(feedback, explanation);
   };
@@ -228,7 +230,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
               {formatConfidenceLevel(explanation.confidence)} Confidence
             </span>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={shareExplanation}
@@ -241,7 +243,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
                 <ShareIcon className="w-4 h-4" />
               )}
             </button>
-            
+
             <button
               onClick={regenerateExplanation}
               disabled={regenerating}
@@ -264,7 +266,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
               (Score: {explanation.riskAssessment.score}/10)
             </span>
           </div>
-          
+
           <div className="flex items-center space-x-2 text-sm text-muted-foreground">
             <ClockIcon className="w-4 h-4" />
             <span>Generated {new Date(explanation.generatedAt).toLocaleTimeString()}</span>
@@ -301,7 +303,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
             )}
           </button>
         </div>
-        
+
         {expandedSections.has('summary') && (
           <div className="mt-3">
             <p className="text-foreground leading-relaxed">{explanation.summary}</p>
@@ -325,7 +327,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
             )}
           </h3>
         </div>
-        
+
         {expandedSections.has('mainAction') && (
           <div className="mt-4 space-y-4">
             <div className="bg-muted/20 p-4 rounded-lg">
@@ -411,7 +413,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
               )}
             </h3>
           </div>
-          
+
           {expandedSections.has('secondaryEffects') && (
             <div className="mt-4 space-y-3">
               {explanation.secondaryEffects.map((effect, index) => (
@@ -420,11 +422,10 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
                     <span className="font-medium text-foreground capitalize">
                       {effect.type.replace('_', ' ')}
                     </span>
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      effect.significance === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                    <span className={`px-2 py-1 rounded text-xs font-medium ${effect.significance === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
                       effect.significance === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                      'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                    }`}>
+                        'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                      }`}>
                       {effect.significance}
                     </span>
                   </div>
@@ -452,7 +453,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
             )}
           </h3>
         </div>
-        
+
         {expandedSections.has('riskAssessment') && (
           <div className="mt-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
@@ -518,7 +519,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
               )}
             </h3>
           </div>
-          
+
           {expandedSections.has('technicalDetails') && (
             <div className="mt-4 space-y-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -581,34 +582,32 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
             <HelpCircleIcon className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Was this analysis helpful?</span>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={() => handleFeedback('positive')}
-              className={`p-2 rounded transition-colors ${
-                feedbackGiven === 'positive' 
-                  ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400' 
-                  : 'text-muted-foreground hover:text-green-600'
-              }`}
+              className={`p-2 rounded transition-colors ${feedbackGiven === 'positive'
+                ? 'bg-green-100 text-green-600 dark:bg-green-900 dark:text-green-400'
+                : 'text-muted-foreground hover:text-green-600'
+                }`}
               title="Helpful"
             >
               <ThumbsUpIcon className="w-4 h-4" />
             </button>
-            
+
             <button
               onClick={() => handleFeedback('negative')}
-              className={`p-2 rounded transition-colors ${
-                feedbackGiven === 'negative' 
-                  ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400' 
-                  : 'text-muted-foreground hover:text-red-600'
-              }`}
+              className={`p-2 rounded transition-colors ${feedbackGiven === 'negative'
+                ? 'bg-red-100 text-red-600 dark:bg-red-900 dark:text-red-400'
+                : 'text-muted-foreground hover:text-red-600'
+                }`}
               title="Not helpful"
             >
               <ThumbsDownIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
-        
+
         {feedbackGiven && (
           <div className="mt-3 text-sm text-muted-foreground">
             Thank you for your feedback! This helps improve our AI analysis.

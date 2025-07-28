@@ -1,18 +1,18 @@
 'use client';
 
 import React, { useState, useMemo, useRef } from 'react';
-import { 
-  useKeyboardNavigation, 
+import {
+  useKeyboardNavigation,
   useAccessibility
 } from '@/lib/accessibility-utils';
-import { 
-  useMobileDetection, 
+import {
+  useMobileDetection,
   useSwipeGestures
 } from '@/lib/mobile-utils';
-import { 
-  ChevronDownIcon, 
-  ChevronRightIcon, 
-  TrendingUpIcon, 
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  TrendingUpIcon,
   TrendingDownIcon,
   AlertTriangleIcon,
   ShieldCheckIcon,
@@ -26,15 +26,15 @@ import {
 } from 'lucide-react';
 import Link from 'next/link';
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import { 
-  accountChangesAnalyzer, 
-  formatSolAmount, 
-  formatTokenAmount, 
-  getChangeDirection, 
-  getChangeColor, 
+import {
+  accountChangesAnalyzer,
+  formatSolAmount,
+  formatTokenAmount,
+  getChangeDirection,
+  getChangeColor,
   getRiskColor,
   type AccountChange,
-  type AccountChangesAnalysis 
+  type AccountChangesAnalysis
 } from '@/lib/account-changes-analyzer';
 import AccountDataDiff from './AccountDataDiff';
 
@@ -53,14 +53,14 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AccountChangesAnalysis | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   // Accessibility hooks
   const { highContrast, announceToScreenReader } = useAccessibility();
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Mobile detection
   const { isMobile } = useMobileDetection();
-  
+
   // Swipe gestures for mobile navigation
   useSwipeGestures(containerRef, {
     onSwipeLeft: () => {
@@ -78,7 +78,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
       }
     }
   });
-  
+
   // Keyboard navigation
   useKeyboardNavigation(containerRef, {
     roving: true
@@ -87,7 +87,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   // Load account changes analysis
   React.useEffect(() => {
     let isMounted = true;
-    
+
     const loadAnalysis = async () => {
       try {
         setIsLoading(true);
@@ -103,9 +103,9 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
         }
       }
     };
-    
+
     loadAnalysis();
-    
+
     return () => {
       isMounted = false;
     };
@@ -120,8 +120,8 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
     let filtered = accountChanges;
 
     if (showOnlyChanged) {
-      filtered = filtered.filter(change => 
-        change.balanceChange !== 0 || 
+      filtered = filtered.filter(change =>
+        change.balanceChange !== 0 ||
         change.tokenChanges.length > 0 ||
         change.dataChange?.hasChanged ||
         change.ownerChange?.hasChanged
@@ -149,7 +149,9 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
 
   const copyToClipboard = async (text: string, field: string) => {
     try {
-      await navigator.clipboard.writeText(text);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(text);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
@@ -173,7 +175,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   // Show loading state while analysis is being computed
   if (isLoading || !analysis) {
     return (
-      <div 
+      <div
         className={`bg-background rounded-lg border border-border ${className} ${highContrast ? 'high-contrast-mode' : ''}`}
         role="region"
         aria-labelledby="account-changes-heading"
@@ -191,7 +193,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`bg-background rounded-lg border border-border ${className} ${highContrast ? 'high-contrast-mode' : ''}`}
       role="region"
@@ -200,13 +202,13 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
       {/* Header */}
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
-          <h2 
+          <h2
             id="account-changes-heading"
             className="text-xl font-semibold text-foreground"
           >
             Account Changes
           </h2>
-          <div 
+          <div
             className="flex items-center space-x-2"
             role="status"
             aria-label={`Risk level: ${analysis.riskAssessment.level}`}
@@ -246,7 +248,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
             <FilterIcon className="w-4 h-4 text-muted-foreground" />
             <span className="text-sm text-muted-foreground">Filters:</span>
           </div>
-          
+
           <label className="flex items-center space-x-2 cursor-pointer">
             <input
               type="checkbox"
@@ -386,7 +388,7 @@ const AccountChangeItem: React.FC<AccountChangeItemProps> = ({
             <code className="text-sm font-mono bg-muted px-2 py-1 rounded">
               {change.pubkey.substring(0, 8)}...{change.pubkey.substring(-4)}
             </code>
-            
+
             {hasChanges && (
               <div className="flex items-center space-x-1">
                 {changeDirection === 'increase' && (
@@ -411,7 +413,7 @@ const AccountChangeItem: React.FC<AccountChangeItemProps> = ({
               {change.balanceChange > 0 ? '+' : ''}{formatSolAmount(change.balanceChange)}
             </span>
           )}
-          
+
           <div className="flex items-center space-x-1">
             <Link
               href={`/account/${change.pubkey}`}
@@ -494,11 +496,10 @@ const AccountChangeItem: React.FC<AccountChangeItemProps> = ({
                         <code className="text-xs font-mono bg-muted px-2 py-1 rounded">
                           {tokenChange.mint.substring(0, 8)}...
                         </code>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          tokenChange.significance === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                          tokenChange.significance === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
-                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${tokenChange.significance === 'high' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                            tokenChange.significance === 'medium' ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' :
+                              'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                          }`}>
                           {tokenChange.significance}
                         </span>
                       </div>
@@ -514,7 +515,7 @@ const AccountChangeItem: React.FC<AccountChangeItemProps> = ({
                         )}
                       </button>
                     </div>
-                    
+
                     <div className="grid grid-cols-3 gap-4 text-sm">
                       <div>
                         <span className="text-muted-foreground">Before</span>

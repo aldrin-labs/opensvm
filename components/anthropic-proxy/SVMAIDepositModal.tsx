@@ -149,7 +149,9 @@ export default function SVMAIDepositModal({
     };
 
     const copyToClipboard = (text: string, label: string) => {
-        navigator.clipboard.writeText(text);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
         toast.success(`${label} copied to clipboard!`);
     };
 

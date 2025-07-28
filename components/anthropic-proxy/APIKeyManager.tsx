@@ -171,7 +171,9 @@ export default function APIKeyManager() {
     };
 
     const copyToClipboard = (text: string) => {
-        navigator.clipboard.writeText(text);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+            navigator.clipboard.writeText(text);
+        }
         toast.success('Key prefix copied to clipboard!');
     };
 

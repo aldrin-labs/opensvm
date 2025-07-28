@@ -34,7 +34,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
   const [isClaimingTokens, setIsClaimingTokens] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState<string | null>(null);
   const [isOffline, setIsOffline] = useState(false);
-  
+
   // Simple toast replacement since useToast is not available
   const toast = {
     success: (message: string) => {
@@ -48,30 +48,30 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
   // Check for online/offline status
   useEffect(() => {
     // Set initial offline state
-    setIsOffline(!navigator.onLine);
-    
+    setIsOffline(typeof navigator !== 'undefined' ? !navigator.onLine : false);
+
     // Add event listeners for online/offline status changes
     const handleOnline = () => setIsOffline(false);
     const handleOffline = () => setIsOffline(true);
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
-    
+
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
   }, []);
-  
+
   // Listen for refresh-balance event (triggered by service worker)
   useEffect(() => {
     const handleRefreshBalance = () => {
       console.log('Refreshing balance from service worker event');
       setRefreshKey(prev => prev + 1);
     };
-    
+
     window.addEventListener('refresh-balance', handleRefreshBalance);
-    
+
     return () => {
       window.removeEventListener('refresh-balance', handleRefreshBalance);
     };
@@ -82,18 +82,18 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
       try {
         setIsLoading(true);
         setError(null);
-        
+
         const response = await fetch(`/api/referrals/balance?walletAddress=${walletAddress}`, {
           method: 'GET',
           credentials: 'include',
         });
-        
+
         const responseData = await response.json();
-        
+
         if (!response.ok) {
           throw new Error(responseData.error || 'Failed to fetch token balance');
         }
-        
+
         const data: BalanceResponse = responseData;
         setBalance(data.balance);
         setBalanceData(data);
@@ -113,7 +113,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
   // Format the next claim time
   const getNextClaimTime = () => {
     if (!balanceData?.nextClaimAt) return null;
-    
+
     const nextClaimDate = new Date(balanceData.nextClaimAt);
     return nextClaimDate.toLocaleString();
   };
@@ -121,7 +121,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
   // Format the last claim time
   const getLastClaimTime = () => {
     if (!balanceData?.lastClaimAt) return null;
-    
+
     const lastClaimDate = new Date(balanceData.lastClaimAt);
     return lastClaimDate.toLocaleString();
   };
@@ -135,32 +135,32 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
       setError(`You need at least ${MINIMUM_BALANCE_REQUIRED.toLocaleString()} SVMAI to claim rewards. Current balance: ${balanceData.balance.toLocaleString()} SVMAI`);
       return;
     }
-    
+
     if (!balanceData?.canClaim) {
       const nextTime = balanceData?.nextClaimAt ? new Date(balanceData.nextClaimAt).toLocaleString() : 'unknown time';
       setError(`You cannot claim rewards yet. Next claim available at ${nextTime}`);
       return;
     }
-    
+
     // Handle offline claims by storing them for later sync
     if (isOffline) {
       try {
         setIsClaimingTokens(true);
         setError(null);
-        
+
         // Store claim for later if browser supports localStorage
         if (typeof window !== 'undefined' && window.localStorage) {
           const pendingClaims = JSON.parse(localStorage.getItem('pendingReferralClaims') || '[]');
-          
+
           // Add this claim to pending list
           pendingClaims.push({
             walletAddress,
             timestamp: Date.now(),
             attempted: true
           });
-          
+
           localStorage.setItem('pendingReferralClaims', JSON.stringify(pendingClaims));
-          
+
           // Register for background sync if service worker is available
           if ('serviceWorker' in navigator && 'SyncManager' in window) {
             const registration = await navigator.serviceWorker.ready;
@@ -169,17 +169,17 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
               await (registration as any).sync.register('referralClaimSync');
             }
           }
-          
+
           toast.success("Claim queued for processing when you're back online");
           setClaimSuccess("Claim queued for when you're back online");
         } else {
           setError('Your browser does not support offline claiming');
         }
-        
+
         setTimeout(() => {
           setIsClaimingTokens(false);
         }, 1000);
-        
+
         return;
       } catch (err) {
         console.error('Error storing offline claim:', err);
@@ -188,32 +188,32 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
         return;
       }
     }
-    
+
     // Online claim process
     try {
       setIsClaimingTokens(true);
       setError(null);
-      
+
       const response = await fetch('/api/referrals/claim', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ walletAddress })
       });
-      
+
       const data = await response.json();
-      
+
       if (!response.ok) {
         const errorMessage = data.error || 'Failed to claim rewards';
         const cooldownMessage = data.code === 'CLAIM_COOLDOWN' && data.nextClaimTimeFormatted
           ? `Next claim available at ${data.nextClaimTimeFormatted}`
           : '';
-        
+
         setError(`${errorMessage}${cooldownMessage ? ` - ${cooldownMessage}` : ''}`);
         toast.error(errorMessage);
         return;
       }
-      
+
       toast.success(`Successfully claimed ${data.amount} SVMAI tokens! New balance: ${data.newBalance.toFixed(1)} SVMAI`);
       // Refresh the balance data
       setRefreshKey(prev => prev + 1);
@@ -233,12 +233,12 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
           {claimSuccess}
         </div>
       )}
-      
+
       <h3 className="text-sm font-medium mb-2 flex items-center gap-2">
         <Wallet className="h-4 w-4 text-primary" />
         <span className="truncate">SVMAI Token Balance</span>
       </h3>
-      
+
       <div className="flex flex-col">
         {isLoading ? (
           <div className="flex items-center space-x-2 py-6">
@@ -252,13 +252,13 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
             <div className="text-2xl font-bold break-words" data-balance-display="true">
               {balance !== null ? `${balance.toFixed(1)} SVMAI` : '0 SVMAI'}
             </div>
-            
+
             {balanceData?.updatedAt && (
               <div className="text-xs text-muted-foreground mt-1">
                 Updated: {new Date(balanceData.updatedAt).toLocaleString()}
               </div>
             )}
-            
+
             {isMyProfile && balanceData && (
               <div className="mt-3 space-y-2">
                 {balanceData.lastClaimAt && (
@@ -267,7 +267,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
                     Last claimed: {getLastClaimTime()}
                   </div>
                 )}
-                
+
                 {/* Time requirement message */}
                 {balanceData.timeAllowsClaim === false && balanceData.nextClaimAt && (
                   <div className="text-xs text-muted-foreground bg-muted p-2 rounded mt-2 flex items-center gap-1">
@@ -275,7 +275,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
                     <span>Next claim available: {getNextClaimTime()}</span>
                   </div>
                 )}
-                
+
                 {/* Show the claim button only if user has enough tokens and can claim */}
                 {balanceData.canClaim && balanceData.balance >= MINIMUM_BALANCE_REQUIRED && (
                   <Button
@@ -303,7 +303,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
                     )}
                   </Button>
                 )}
-                
+
                 {/* Show minimum balance warning if applicable */}
                 {isMyProfile && balanceData && balanceData.balance < MINIMUM_BALANCE_REQUIRED && (
                   <div className="mt-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 dark:bg-amber-900/20 p-2 rounded text-xs">
@@ -320,7 +320,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
                     </p>
                   </div>
                 )}
-                
+
                 {isOffline && (
                   <div className="mt-2 bg-amber-500/10 text-amber-600 dark:text-amber-400 dark:bg-amber-900/20 p-2 rounded text-xs flex items-center gap-1">
                     <WifiOff className="h-3 w-3" />
@@ -331,7 +331,7 @@ export function TokenBalance({ walletAddress, isMyProfile }: TokenBalanceProps) 
             )}
           </>
         )}
-        
+
         <p className="text-xs text-muted-foreground mt-2 max-w-full break-words">
           {isMyProfile ?
             `This is your current SVMAI token balance. You need at least ${MINIMUM_BALANCE_REQUIRED.toLocaleString()} SVMAI to claim rewards.` :
