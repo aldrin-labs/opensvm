@@ -788,14 +788,14 @@ export function VTableWrapper({
       }
     };
   }, [
-    columns, 
-    data, 
-    mounted, 
-    onLoadMore, 
-    onSort, 
-    onRowSelect, 
-    rowKey, 
-    onCellContextMenu, 
+    columns,
+    data,
+    mounted,
+    onLoadMore,
+    onSort,
+    onRowSelect,
+    rowKey,
+    onCellContextMenu,
     theme,
     autoResize,
     handleNavigation,

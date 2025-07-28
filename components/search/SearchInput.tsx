@@ -40,9 +40,8 @@ export const SearchInput: React.FC<SearchInputProps> = ({
       }
     };
 
-    if (typeof window !== 'undefined') {
-      window.addEventListener('keydown', handleKeyDown);
-    }
+    if (typeof window === 'undefined') return;
+    window.addEventListener('keydown', handleKeyDown);
     return () => {
       if (typeof window !== 'undefined') {
         window.removeEventListener('keydown', handleKeyDown);
