@@ -295,7 +295,7 @@ export class SecurityMiddleware {
             // SQL injection patterns
             /(\bUNION\b|\bSELECT\b|\bINSERT\b|\bDELETE\b|\bDROP\b)/i,
             // XSS patterns
-            /<script[^>]*>.*?<\/script>/gi,
+            /<script\b[^>]*>.*?<\/script\s*[^>]*>/gi,
             /javascript:/gi,
             /on\w+\s*=/gi,
             // Path traversal
