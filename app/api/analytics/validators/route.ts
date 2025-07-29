@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Connection } from '@solana/web3.js';
 import { VALIDATOR_CONSTANTS, PERFORMANCE_CONSTANTS } from '@/lib/constants/analytics-constants';
+import { getGeolocationService, type GeolocationData as GeoData } from '@/lib/services/geolocation';
 
 // Real Solana RPC endpoint - using public mainnet RPC
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -16,35 +17,28 @@ interface GeolocationData {
   lon?: number;
 }
 
-// Cache for geolocation data to avoid excessive API calls
-const geoCache = new Map<string, { data: GeolocationData; timestamp: number }>();
-
-// Fetch geolocation data for IP addresses using multiple services
+// Fetch geolocation data for IP addresses using the new service
 async function fetchGeolocation(ip: string): Promise<GeolocationData> {
-  const cacheKey = ip;
-  const cached = geoCache.get(cacheKey);
-  
-  // Return cached data if it's less than 24 hours old
-  if (cached && Date.now() - cached.timestamp < PERFORMANCE_CONSTANTS.CACHE_RETENTION.DAILY_CACHE_MS) {
-    return cached.data;
-  }
-  
   try {
-    // Try multiple geolocation services for better coverage
-    const geoData = await fetchGeoFromMultipleSources(ip);
+    const geoService = await getGeolocationService();
+    const geoData = await geoService.getGeolocation(ip);
     
-    // Cache the result
-    geoCache.set(cacheKey, {
-      data: geoData,
-      timestamp: Date.now()
-    });
-    
-    return geoData;
+    // Convert to the expected format
+    return {
+      country: geoData.country,
+      countryCode: geoData.countryCode,
+      region: geoData.region,
+      city: geoData.city,
+      datacenter: geoData.datacenter,
+      isp: geoData.isp,
+      lat: geoData.lat,
+      lon: geoData.lon
+    };
   } catch (error) {
     console.error(`Error fetching geolocation for ${ip}:`, error);
     
-    // Return default data if all services fail
-    const defaultData: GeolocationData = {
+    // Return default data if service fails
+    return {
       country: 'Unknown',
       countryCode: 'XX',
       region: 'Unknown',
@@ -52,90 +46,7 @@ async function fetchGeolocation(ip: string): Promise<GeolocationData> {
       datacenter: 'Unknown',
       isp: 'Unknown'
     };
-    
-    geoCache.set(cacheKey, {
-      data: defaultData,
-      timestamp: Date.now()
-    });
-    
-    return defaultData;
   }
-}
-
-// Fetch geolocation from multiple sources with fallback
-async function fetchGeoFromMultipleSources(ip: string): Promise<GeolocationData> {
-  const sources = [
-    // Free tier of ipapi.co (1000 requests/day)
-    async () => {
-      const response = await fetch(`https://ipapi.co/${ip}/json/`);
-      if (!response.ok) throw new Error('ipapi.co failed');
-      const data = await response.json();
-      return {
-        country: data.country_name || 'Unknown',
-        countryCode: data.country_code || 'XX',
-        region: data.region || 'Unknown',
-        city: data.city || 'Unknown',
-        datacenter: data.org || 'Unknown',
-        isp: data.org || 'Unknown',
-        lat: data.latitude,
-        lon: data.longitude
-      };
-    },
-    
-    // Free tier of ip-api.com (1000 requests/hour)
-    async () => {
-      const response = await fetch(`http://ip-api.com/json/${ip}`);
-      if (!response.ok) throw new Error('ip-api.com failed');
-      const data = await response.json();
-      return {
-        country: data.country || 'Unknown',
-        countryCode: data.countryCode || 'XX', 
-        region: data.regionName || 'Unknown',
-        city: data.city || 'Unknown',
-        datacenter: data.isp || 'Unknown',
-        isp: data.isp || 'Unknown',
-        lat: data.lat,
-        lon: data.lon
-      };
-    },
-    
-    // Free tier of ipinfo.io (50,000 requests/month)  
-    async () => {
-      const response = await fetch(`https://ipinfo.io/${ip}/json`);
-      if (!response.ok) throw new Error('ipinfo.io failed');
-      const data = await response.json();
-      const [city, region] = (data.city || 'Unknown,Unknown').split(',');
-      return {
-        country: data.country || 'Unknown',
-        countryCode: data.country || 'XX',
-        region: region?.trim() || 'Unknown', 
-        city: city?.trim() || 'Unknown',
-        datacenter: data.org || 'Unknown',
-        isp: data.org || 'Unknown',
-        lat: data.loc ? parseFloat(data.loc.split(',')[0]) : undefined,
-        lon: data.loc ? parseFloat(data.loc.split(',')[1]) : undefined
-      };
-    }
-  ];
-  
-  // Try each source with exponential backoff
-  for (let i = 0; i < sources.length; i++) {
-    try {
-      const result = await sources[i]();
-      if (result.country !== 'Unknown') {
-        return result;
-      }
-    } catch (error) {
-      console.warn(`Geolocation source ${i + 1} failed for ${ip}:`, error);
-      
-      // Add delay between retries
-      if (i < sources.length - 1) {
-        await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
-      }
-    }
-  }
-  
-  throw new Error('All geolocation sources failed');
 }
 
 // Extract IP address from TPU or RPC endpoint
@@ -212,24 +123,46 @@ export async function GET() {
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
     const totalNetworkStake = allValidators.reduce((sum, v) => sum + v.activatedStake, 0);
     
-    // Limit to top 50 validators by stake for performance
-    const topValidators = allValidators
-      .sort((a, b) => b.activatedStake - a.activatedStake)
-      .slice(0, 50);
+    // Sort all validators by stake (no limit - show full list)
+    const sortedValidators = allValidators
+      .sort((a, b) => b.activatedStake - a.activatedStake);
     
-    // Fetch geolocation data for validators (with rate limiting)
+    // Collect all unique IPs first for batch geolocation
+    const ipToValidatorMap = new Map<string, any[]>();
+    const validatorToIpMap = new Map<string, string>();
+    
+    sortedValidators.forEach(validator => {
+      const clusterNode = clusterNodes.find(node => 
+        node.pubkey === validator.nodePubkey
+      );
+      
+      if (clusterNode?.tpu) {
+        const ip = extractIPFromEndpoint(clusterNode.tpu);
+        if (ip && ip !== '127.0.0.1' && ip !== 'localhost') {
+          validatorToIpMap.set(validator.votePubkey, ip);
+          if (!ipToValidatorMap.has(ip)) {
+            ipToValidatorMap.set(ip, []);
+          }
+          ipToValidatorMap.get(ip)!.push(validator);
+        }
+      }
+    });
+    
+    // Batch geocode all unique IPs
+    const uniqueIps = Array.from(ipToValidatorMap.keys());
+    const geoService = await getGeolocationService();
+    const geoResults = await geoService.batchGeolocation(uniqueIps);
+    
+    console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
+    
+    // Process validators with cached geolocation data
     const validatorsWithGeo = await Promise.all(
-      topValidators.map(async (validator, index) => {
+      sortedValidators.map(async (validator, index) => {
         const clusterNode = clusterNodes.find(node => 
           node.pubkey === validator.nodePubkey
         );
         
-        // Add delay between geolocation requests to respect rate limits
-        if (index > 0) {
-          await new Promise(resolve => setTimeout(resolve, PERFORMANCE_CONSTANTS.RATE_LIMITS.COOLDOWN_MS));
-        }
-        
-        // Get geolocation data for validator
+        // Get geolocation data from batch results
         let geoData: GeolocationData = {
           country: 'Unknown',
           countryCode: 'XX',
@@ -239,15 +172,19 @@ export async function GET() {
           isp: 'Unknown'
         };
         
-        if (clusterNode?.tpu) {
-          const ip = extractIPFromEndpoint(clusterNode.tpu);
-          if (ip && ip !== '127.0.0.1' && ip !== 'localhost') {
-            try {
-              geoData = await fetchGeolocation(ip);
-            } catch (error) {
-              console.warn(`Failed to get geolocation for validator ${validator.votePubkey}:`, error);
-            }
-          }
+        const ip = validatorToIpMap.get(validator.votePubkey);
+        if (ip && geoResults.has(ip)) {
+          const batchGeoData = geoResults.get(ip)!;
+          geoData = {
+            country: batchGeoData.country,
+            countryCode: batchGeoData.countryCode,
+            region: batchGeoData.region,
+            city: batchGeoData.city,
+            datacenter: batchGeoData.datacenter || 'Unknown',
+            isp: batchGeoData.isp || 'Unknown',
+            lat: batchGeoData.lat,
+            lon: batchGeoData.lon
+          };
         }
         
         // Calculate performance metrics from real data
@@ -273,30 +210,30 @@ export async function GET() {
         const maxCredits = 440000; // Approximate max credits per epoch
         const uptimeDecimal = Math.min(currentEpochCredits / maxCredits, 1.0); // Keep as 0-1
         
-        return {
-          voteAccount: validator.votePubkey,
-          name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
-          commission: validator.commission,
-          activatedStake: validator.activatedStake,
-          lastVote: validator.lastVote,
-          // rootSlot: validator.rootSlot, // Property does not exist, remove
-          credits: totalCredits,
-          epochCredits: currentEpochCredits,
-          version: clusterNode?.version || 'Unknown',
-          status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
-          datacenter: geoData.datacenter,
-          country: geoData.country,
-          countryCode: geoData.countryCode,
-          region: geoData.region,
-          city: geoData.city,
-          isp: geoData.isp,
-          coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
-          apy: Math.round(apy * 100) / 100,
-          performanceScore: Math.round(performanceScore * 100) / 100,
-          uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
-        };
-      })
-    );
+          return {
+            voteAccount: validator.votePubkey,
+            name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
+            commission: validator.commission,
+            activatedStake: validator.activatedStake,
+            lastVote: validator.lastVote,
+            // rootSlot: validator.rootSlot, // Property does not exist, remove
+            credits: totalCredits,
+            epochCredits: currentEpochCredits,
+            version: clusterNode?.version || 'Unknown',
+            status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
+            datacenter: geoData.datacenter,
+            country: geoData.country,
+            countryCode: geoData.countryCode,
+            region: geoData.region,
+            city: geoData.city,
+            isp: geoData.isp,
+            coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
+            apy: Math.round(apy * 100) / 100,
+            performanceScore: Math.round(performanceScore * 100) / 100,
+            uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
+          };
+        })
+      );
 
     // Calculate real network stats from Solana data
     const totalValidators = allValidators.length;
@@ -409,11 +346,29 @@ export async function GET() {
       issues
     };
 
+    // Process RPC nodes (cluster nodes that provide RPC but don't necessarily vote)
+    const rpcNodes = clusterNodes
+      .filter(node => node.rpc !== null) // Only nodes that provide RPC service
+      .map(node => ({
+        pubkey: node.pubkey,
+        gossip: node.gossip,
+        rpc: node.rpc,
+        tpu: node.tpu,
+        version: node.version
+      }));
+
+    // Update network stats to include RPC node count
+    const updatedNetworkStats = {
+      ...networkStats,
+      totalRpcNodes: rpcNodes.length
+    };
+
     return NextResponse.json({
       success: true,
       data: {
         validators: validatorsWithGeo,
-        networkStats,
+        rpcNodes,
+        networkStats: updatedNetworkStats,
         decentralization,
         health
       },

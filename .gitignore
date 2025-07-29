@@ -12,11 +12,15 @@ agent_notes/vtable_study
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/playwright/.cache/
 
 # next.js
 /.next/
 /out/
-
+.kiro/
+test*.js
 # production
 /build
 

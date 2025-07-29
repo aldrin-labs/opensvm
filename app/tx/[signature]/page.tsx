@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import TransactionContent from './TransactionContent';
+import TransactionContentWrapper from './TransactionContentWrapper';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -15,7 +15,7 @@ export default async function TransactionPage({ params }: Props) {
     <ErrorBoundary>
       <div className="container mx-auto px-4 py-8">
         <Suspense fallback={<LoadingSpinner />}>
-          <TransactionContent signature={signature} />
+          <TransactionContentWrapper signature={signature} />
         </Suspense>
       </div>
     </ErrorBoundary>

@@ -13,7 +13,9 @@ export function CopyButton({ value, className = '' }: CopyButtonProps) {
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(value);
+      if (typeof navigator !== 'undefined' && navigator.clipboard) {
+        await navigator.clipboard.writeText(value);
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {

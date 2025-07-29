@@ -363,6 +363,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
 
   const startRecording = () => {
     try {
+      if (typeof window === 'undefined') return;
       const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
       recognition.lang = 'en-US';
       recognition.interimResults = false;

@@ -272,10 +272,10 @@ export function LaunchpadsTab() {
                           <span className="font-medium">{launchpad.name}</span>
                           <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                             launchpad.status === 'active' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                              ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
                               : launchpad.status === 'maintenance'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                              : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                              : 'bg-destructive text-destructive dark:bg-destructive/30 dark:text-destructive'
                           }`}>
                             {launchpad.status}
                           </span>
@@ -297,7 +297,7 @@ export function LaunchpadsTab() {
                     <span className="font-medium">{launchpad.projectsLaunched}</span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="font-medium text-green-600 dark:text-green-400">
+                    <span className="font-medium text-primary dark:text-primary">
                       {formatROI(launchpad.avgRoi)}
                     </span>
                   </td>
@@ -309,8 +309,8 @@ export function LaunchpadsTab() {
                       <Heart 
                         className={`h-4 w-4 cursor-pointer transition-colors ${
                           likedPlatforms.has(launchpad.name) 
-                            ? 'text-red-500 fill-current' 
-                            : 'text-muted-foreground hover:text-red-500'
+                            ? 'text-destructive fill-current' 
+                            : 'text-muted-foreground hover:text-destructive'
                         }`}
                         onClick={() => handleLike(launchpad.name)}
                       />
@@ -373,7 +373,7 @@ export function LaunchpadsTab() {
                     <span className="font-medium">{formatCurrency(project.raised)}</span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className="font-medium text-green-600 dark:text-green-400">
+                    <span className="font-medium text-primary dark:text-primary">
                       {formatROI(project.roi)}
                     </span>
                   </td>
@@ -383,9 +383,9 @@ export function LaunchpadsTab() {
                   <td className="px-4 py-4">
                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                       project.status === 'completed' 
-                        ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                        ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
                         : project.status === 'active'
-                        ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
+                        ? 'bg-accent text-accent dark:bg-accent/30 dark:text-accent'
                         : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                     }`}>
                       {project.status}

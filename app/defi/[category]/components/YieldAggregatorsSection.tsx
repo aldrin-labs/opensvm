@@ -49,7 +49,7 @@ export default function YieldAggregatorsSection() {
       try {
         // Simulate API call - in real implementation this would fetch from analytics API
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         const yieldAggregatorsList: YieldAggregatorData[] = [
           {
             name: 'Francium',
@@ -285,12 +285,12 @@ export default function YieldAggregatorsSection() {
   const riskLevels = ['all', 'low', 'medium', 'high'];
 
   const filteredAggregators = aggregators
-    .filter(agg => 
+    .filter(agg =>
       (categoryFilter === 'all' || agg.category === categoryFilter) &&
       (riskFilter === 'all' || agg.riskLevel === riskFilter) &&
       (agg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       agg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       agg.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
+        agg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agg.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
     )
     .sort((a, b) => b[sortBy] - a[sortBy]);
 
@@ -324,7 +324,11 @@ export default function YieldAggregatorsSection() {
     return (
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => window.location.reload()}>
+        <Button onClick={() => {
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}>
           Retry
         </Button>
       </div>
@@ -481,19 +485,23 @@ export default function YieldAggregatorsSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => window.open(aggregator.website, '_blank')}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.open(aggregator.website, '_blank');
+                    }
+                  }}
                   aria-label={`Visit ${aggregator.name} website`}
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {aggregator.description}
               </p>
-              
+
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 p-3 rounded-lg">
@@ -502,14 +510,13 @@ export default function YieldAggregatorsSection() {
                     TVL
                   </div>
                   <p className="font-bold text-lg">${formatNumber(aggregator.tvl)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${
-                    aggregator.tvlChange >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-xs ${aggregator.tvlChange >= 0 ? 'text-green-500' : 'text-red-500'
+                    }`}>
                     {aggregator.tvlChange >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(aggregator.tvlChange).toFixed(1)}%
                   </div>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Target className="h-3 w-3" />
@@ -520,7 +527,7 @@ export default function YieldAggregatorsSection() {
                     {aggregator.strategies} strategies
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <BarChart3 className="h-3 w-3" />
@@ -531,7 +538,7 @@ export default function YieldAggregatorsSection() {
                     {formatNumber(aggregator.users)} users
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Shield className="h-3 w-3" />
@@ -545,7 +552,7 @@ export default function YieldAggregatorsSection() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Features */}
               <div>
                 <p className="text-sm font-medium mb-2">Key Features:</p>
@@ -562,7 +569,7 @@ export default function YieldAggregatorsSection() {
                   )}
                 </div>
               </div>
-              
+
               {/* Technical Details */}
               <div className="border-t pt-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -583,14 +590,14 @@ export default function YieldAggregatorsSection() {
                     <span className="font-medium">{aggregator.harvesting}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-1 mt-2">
                   {aggregator.autoCompounding && <Badge variant="outline" className="text-xs">Auto-compound</Badge>}
                   {aggregator.insurance && <Badge variant="outline" className="text-xs">Insured</Badge>}
                   <Badge variant="outline" className="text-xs">Since {aggregator.launched}</Badge>
                 </div>
               </div>
-              
+
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" className="flex-1">
@@ -604,7 +611,7 @@ export default function YieldAggregatorsSection() {
           </Card>
         ))}
       </div>
-      
+
       {filteredAggregators.length === 0 && (
         <div className="text-center py-20">
           <Sprout className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

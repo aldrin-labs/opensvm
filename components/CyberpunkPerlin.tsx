@@ -7,7 +7,7 @@ interface CyberpunkPerlinProps {
   quality?: 'low' | 'medium' | 'high';
 }
 
-export const CyberpunkPerlin = ({ 
+export const CyberpunkPerlin = ({
   className = '',
   quality = 'high'
 }: CyberpunkPerlinProps) => {
@@ -30,16 +30,16 @@ export const CyberpunkPerlin = ({
   }), []);
 
   // Memoize characters array
-  const characters = useMemo(() => 
+  const characters = useMemo(() =>
     ['@', '%', '#', '*', '+', '=', '-', ':', '.', ' '] as const,
-  []);
+    []);
 
   // Optimized noise function
   const noise = useCallback((nx: number, ny: number, nz: number) => {
     const freq = 1.5;
     return (
-      Math.sin(nx * freq + nz) * 
-      Math.cos(ny * freq + nz * 2) * 
+      Math.sin(nx * freq + nz) *
+      Math.cos(ny * freq + nz * 2) *
       Math.sin((nx + ny) * freq * 0.5 + nz) * 0.5 + 0.5
     );
   }, []);
@@ -53,7 +53,7 @@ export const CyberpunkPerlin = ({
     if (!ctx) return;
 
     // Get device pixel ratio for better rendering on high DPI displays
-    const dpr = window.devicePixelRatio || 1;
+    const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
     const rect = canvas.getBoundingClientRect();
 
     // Set actual size in memory
@@ -69,7 +69,7 @@ export const CyberpunkPerlin = ({
     ctx.font = '12px Berkeley Mono';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    
+
     contextRef.current = ctx;
   }, []);
 
@@ -80,7 +80,7 @@ export const CyberpunkPerlin = ({
     const ctx = contextRef.current;
     const canvas = canvasRef.current;
     const currentQuality = qualitySettings[quality];
-    
+
     lastTimeRef.current = timestamp;
 
     // Skip frames based on quality setting
@@ -100,7 +100,7 @@ export const CyberpunkPerlin = ({
 
     // Batch similar operations
     ctx.beginPath();
-    
+
     // Pre-calculate common values
     const time = timeRef.current * 0.002 * speed;
     const scaleInv = 1 / scale;
@@ -116,7 +116,7 @@ export const CyberpunkPerlin = ({
         // Ensure characterIndex is within bounds and get character
         const index = Math.min(Math.floor(value * characters.length), characters.length - 1);
         const char = characters[index] as string;
-        
+
         // Optimize color calculation
         const brightness = 255 - (value * 200) | 0;
         ctx.fillStyle = `rgb(${brightness},${brightness},${brightness})`;
@@ -130,7 +130,7 @@ export const CyberpunkPerlin = ({
         }
       }
     }
-    
+
     ctx.stroke();
     timeRef.current++;
     animationFrameRef.current = requestAnimationFrame(draw);

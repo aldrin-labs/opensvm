@@ -58,7 +58,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       // Mock additional data - in real app this would come from token registry and APIs
       const mockPrice = Math.random() * 100;
       const mockChange = (Math.random() - 0.5) * 20;
-      
+
       return {
         mint: token.mint,
         balance: token.balance,
@@ -105,7 +105,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       }
 
       if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortDirection === 'asc' 
+        return sortDirection === 'asc'
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
@@ -132,12 +132,12 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
-            <span className="text-xs font-bold">{row.symbol?.slice(0, 2) || 'T'}</span>
+          <div className="w-8 h-8 rounded-full bg-muted/80 border border-border flex items-center justify-center">
+            <span className="text-xs font-bold text-foreground">{row.symbol?.slice(0, 2) || 'T'}</span>
           </div>
           <div>
-            <div className="font-medium">{row.symbol || 'UNK'}</div>
-            <div className="text-xs text-gray-500">{row.name || 'Unknown'}</div>
+            <div className="font-medium text-foreground">{row.symbol || 'UNK'}</div>
+            <div className="text-xs text-muted-foreground">{row.name || 'Unknown'}</div>
           </div>
         </div>
       )
@@ -149,43 +149,43 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
-          <div className="font-mono">{formatNumber(row.balance)}</div>
-          <div className="text-xs text-gray-500">{row.symbol || 'UNK'}</div>
+          <div className="font-mono text-foreground">{formatNumber(row.balance)}</div>
+          <div className="text-xs text-muted-foreground">{row.symbol || 'UNK'}</div>
         </div>
       )
     },
     {
       field: 'price',
       title: 'Price',
-      width: 100,
+      width: 120,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
-          <div className="font-mono">${row.price?.toFixed(4) || '0.0000'}</div>
+          <div className="font-mono text-foreground">${row.price?.toFixed(4) || '0.0000'}</div>
         </div>
       )
     },
     {
       field: 'value',
       title: 'Value',
-      width: 120,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
-          <div className="font-mono font-bold">${row.value?.toFixed(2) || '0.00'}</div>
+          <div className="font-mono font-bold text-foreground">${row.value?.toFixed(2) || '0.00'}</div>
         </div>
       )
     },
     {
       field: 'change24h',
       title: '24h Change',
-      width: 100,
+      width: 120,
       sortable: true,
       render: (row: TokenInfo) => {
         const change = row.change24h || 0;
         const isPositive = change >= 0;
         return (
-          <div className={`flex items-center gap-1 ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+          <div className={`flex items-center gap-1 ${isPositive ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
             {isPositive ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
             <span className="font-mono">{change.toFixed(2)}%</span>
           </div>
@@ -199,20 +199,20 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="flex items-center gap-1">
-          <Activity className="w-4 h-4 text-gray-400" />
-          <span>{row.transferCount || 0}</span>
+          <Activity className="w-4 h-4 text-muted-foreground" />
+          <span className="text-foreground">{row.transferCount || 0}</span>
         </div>
       )
     },
     {
       field: 'firstTransferFrom',
       title: 'First Transfer',
-      width: 180,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-xs">
-          <div className="font-mono">{row.firstTransferFrom || 'N/A'}</div>
-          <div className="text-gray-500 flex items-center gap-1">
+          <div className="font-mono text-foreground">{row.firstTransferFrom || 'N/A'}</div>
+          <div className="text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {row.firstTransferDate || 'N/A'}
           </div>
@@ -222,12 +222,12 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
     {
       field: 'lastTransferTo',
       title: 'Last Transfer',
-      width: 180,
+      width: 150,
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-xs">
-          <div className="font-mono">{row.lastTransferTo || 'N/A'}</div>
-          <div className="text-gray-500 flex items-center gap-1">
+          <div className="font-mono text-foreground">{row.lastTransferTo || 'N/A'}</div>
+          <div className="text-muted-foreground flex items-center gap-1">
             <Calendar className="w-3 h-3" />
             {row.lastTransferDate || 'N/A'}
           </div>
@@ -241,53 +241,61 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       sortable: true,
       render: (row: TokenInfo) => (
         <div className="text-right">
-          <div className="font-mono">${row.totalVolume?.toFixed(2) || '0.00'}</div>
+          <div className="font-mono text-foreground">${row.totalVolume?.toFixed(2) || '0.00'}</div>
         </div>
       )
     }
   ], []);
 
+  // Use fluid columns to allow VTable to stretch columns evenly across available width
+  const fluidColumns = useMemo(() => columns.map(col => ({ ...col, width: undefined })), [columns]);
+
   const getRowId = useCallback((row: TokenInfo) => row.mint, []);
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 bg-background text-foreground">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold">
+        <h2 className="text-xl font-semibold text-foreground">
           Tokens ({filteredTokens.length})
         </h2>
-        
+
         <div className="flex items-center gap-2">
           <button
             onClick={() => setShowZeroBalance(!showZeroBalance)}
-            className="flex items-center gap-2 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-sm"
+            className="flex items-center gap-2 px-3 py-1 bg-muted/60 hover:bg-muted text-muted-foreground hover:text-foreground rounded-lg transition-colors text-sm"
           >
             {showZeroBalance ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             {showZeroBalance ? 'Hide Zero Balance' : 'Show Zero Balance'}
           </button>
-          
-          <div className="flex items-center gap-1 text-sm text-gray-500">
+
+          <div className="flex items-center gap-1 text-sm text-muted-foreground">
             <ArrowUpDown className="w-4 h-4" />
             Sorted by {sortField} ({sortDirection})
           </div>
         </div>
       </div>
 
-      <div className="border border-border rounded-lg overflow-hidden h-[600px]">
+      <div className="w-full border border-border rounded-lg h-[700px] bg-card/50 tokens-vtable-container overflow-hidden">
         <VTableWrapper
-          columns={columns}
+          columns={fluidColumns}
           data={sortedTokens}
           rowKey={getRowId}
           loading={false}
           onSort={handleSort}
+          virtualScrolling={true}
+          maxRows={100000}
+          initialLoadSize={5000}
+          responsive={true}
+          minColumnWidth={120}
         />
       </div>
 
       {!showZeroBalance && tokenInfo.some(t => t.balance === 0) && (
-        <div className="text-sm text-gray-500 text-center">
+        <div className="text-sm text-muted-foreground text-center">
           {tokenInfo.filter(t => t.balance === 0).length} tokens with zero balance hidden.
           <button
             onClick={() => setShowZeroBalance(true)}
-            className="ml-2 text-blue-500 hover:text-blue-600 underline"
+            className="ml-2 text-primary hover:text-primary/80 underline"
           >
             Show all tokens
           </button>

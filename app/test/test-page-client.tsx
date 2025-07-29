@@ -8,7 +8,7 @@ export default function TestPageClient() {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-// sourcery skip: use-braces
+    // sourcery skip: use-braces
     if (!containerRef.current) return;
 
     // Scene setup
@@ -64,11 +64,15 @@ export default function TestPageClient() {
       camera.updateProjectionMatrix();
       renderer.setSize(width, height);
     }
-    window.addEventListener('resize', handleResize);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleResize);
+    }
 
     // Cleanup
     return () => {
-      window.removeEventListener('resize', handleResize);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleResize);
+      }
       if (containerRef.current) {
         // eslint-disable-next-line react-hooks/exhaustive-deps
         containerRef.current.removeChild(renderer.domElement);

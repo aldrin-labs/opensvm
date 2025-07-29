@@ -127,11 +127,11 @@ export function BotsTab() {
   const getPlatformIcon = (platform: string) => {
     switch (platform) {
       case 'telegram':
-        return <MessageCircle className="h-4 w-4 text-blue-500" />;
+        return <MessageCircle className="h-4 w-4 text-accent" />;
       case 'discord':
         return <Bot className="h-4 w-4 text-indigo-500" />;
       case 'matrix':
-        return <Shield className="h-4 w-4 text-green-500" />;
+        return <Shield className="h-4 w-4 text-primary" />;
       case 'multi-platform':
         return <Users className="h-4 w-4 text-purple-500" />;
       default:
@@ -142,15 +142,15 @@ export function BotsTab() {
   const getPlatformColor = (platform: string) => {
     switch (platform) {
       case 'telegram':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400';
+        return 'bg-accent text-accent dark:bg-accent/30 dark:text-accent';
       case 'discord':
         return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-400';
       case 'matrix':
-        return 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+        return 'bg-primary text-primary dark:bg-primary/30 dark:text-primary';
       case 'multi-platform':
         return 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400';
       default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400';
+        return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -252,7 +252,7 @@ export function BotsTab() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center space-x-2">
-            <MessageCircle className="h-5 w-5 text-blue-500" />
+            <MessageCircle className="h-5 w-5 text-accent" />
             <div>
               <p className="text-sm text-muted-foreground">Telegram</p>
               <p className="text-xl font-bold">{data.summary.platforms.telegram}</p>
@@ -272,7 +272,7 @@ export function BotsTab() {
 
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center space-x-2">
-            <Shield className="h-5 w-5 text-green-500" />
+            <Shield className="h-5 w-5 text-primary" />
             <div>
               <p className="text-sm text-muted-foreground">Matrix</p>
               <p className="text-xl font-bold">{data.summary.platforms.matrix}</p>
@@ -374,7 +374,7 @@ export function BotsTab() {
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">{bot.name}</span>
                           {bot.isVerified && (
-                            <Shield className="h-4 w-4 text-green-500" title="Verified" />
+                            <Shield className="h-4 w-4 text-primary" title="Verified" />
                           )}
                           {bot.isPremium && (
                             <Crown className="h-4 w-4 text-yellow-500" title="Premium" />
@@ -427,8 +427,8 @@ export function BotsTab() {
                       <Heart 
                         className={`h-4 w-4 cursor-pointer transition-colors ${
                           likedBots.has(bot.name) 
-                            ? 'text-red-500 fill-current' 
-                            : 'text-muted-foreground hover:text-red-500'
+                            ? 'text-destructive fill-current' 
+                            : 'text-muted-foreground hover:text-destructive'
                         }`}
                         onClick={() => handleLike(bot.name)}
                       />
@@ -450,10 +450,10 @@ export function BotsTab() {
                       )}
                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                         bot.pricing === 'free' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400'
+                          ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
                           : bot.pricing === 'freemium'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400'
-                          : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400'
+                          ? 'bg-accent text-accent dark:bg-accent/30 dark:text-accent'
+                          : 'bg-destructive text-destructive dark:bg-destructive/30 dark:text-destructive'
                       }`}>
                         {bot.pricing}
                       </span>

@@ -29,11 +29,11 @@ export default function HexView({
   // Handle scroll to update visible range
   const handleScroll = useCallback(() => {
     if (!containerRef.current) return;
-    
+
     const container = containerRef.current;
     const scrollTop = container.scrollTop;
     const viewportHeight = container.clientHeight;
-    
+
     const startRow = Math.max(0, Math.floor(scrollTop / ROW_HEIGHT) - BUFFER_SIZE);
     const endRow = Math.min(
       Math.ceil(data.length / 16),
@@ -49,17 +49,21 @@ export default function HexView({
 
     handleScroll();
     container.addEventListener('scroll', handleScroll);
-    window.addEventListener('resize', handleScroll);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('resize', handleScroll);
+    }
 
     return () => {
       container.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', handleScroll);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('resize', handleScroll);
+      }
     };
   }, [handleScroll]);
 
   useEffect(() => {
     if (selectedByte === null || selectedByte === undefined || !containerRef.current) return;
-    
+
     const row = Math.floor(selectedByte / 16);
     const container = containerRef.current;
     const rowTop = row * ROW_HEIGHT;
@@ -83,10 +87,10 @@ export default function HexView({
     const hex = bytes.map((byte, idx) => {
       const offset = baseOffset + idx;
       const isSelected = offset === selectedByte;
-      const isInRange = selectionRange && 
-        offset >= selectionRange[0] && 
+      const isInRange = selectionRange &&
+        offset >= selectionRange[0] &&
         offset <= selectionRange[1];
-      
+
       return (
         <span
           key={offset}
@@ -107,8 +111,8 @@ export default function HexView({
     const ascii = bytes.map((byte, idx) => {
       const offset = baseOffset + idx;
       const isSelected = offset === selectedByte;
-      const isInRange = selectionRange && 
-        offset >= selectionRange[0] && 
+      const isInRange = selectionRange &&
+        offset >= selectionRange[0] &&
         offset <= selectionRange[1];
 
       return (
@@ -176,7 +180,7 @@ export default function HexView({
       </div>
 
       {/* Virtualized content */}
-      <div 
+      <div
         ref={containerRef}
         className="relative overflow-auto"
         style={{ height: 'calc(100vh - 32rem)' }}

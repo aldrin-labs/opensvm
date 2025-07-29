@@ -1,11 +1,72 @@
-/* VTable Container Styles - Only for positioning, not styling the table itself */
+/* --- THEME-AWARE VTABLE BACKGROUND OVERRIDES --- */
+/* Ensure all VTable instances respect current theme */
+.vtable-container,
+.vtable-container .vtable,
+.vtable-container .vtable canvas,
+.vtable-container .vtable *,
+.tokens-vtable-container,
+.tokens-vtable-container .vtable,
+.tokens-vtable-container .vtable canvas,
+.tokens-vtable-container .vtable * {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+  color: hsl(var(--foreground)) !important;
+  border-color: hsl(var(--border)) !important;
+}
+
+/* Ultra-aggressive background enforcement */
+.vtable-container>*,
+.tokens-vtable-container>* {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Special handling for muted elements like headers */
+.vtable-container .vtable-header,
+.vtable-container [role="columnheader"],
+.tokens-vtable-container .vtable-header,
+.tokens-vtable-container [role="columnheader"] {
+  background: hsl(var(--muted)) !important;
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+}
+
+/* You can add more theme-specific overrides below if needed */
+/* VTable Container Styles - Responsive and flexible */
 .vtable-container {
   position: relative;
   width: 100%;
   height: 100%;
+  min-width: 0;
+  /* Allow shrinking */
+  min-height: 200px;
+  /* Minimum height for usability */
   font-family: inherit;
   overflow: hidden;
   background: var(--background);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  border-radius: 8px;
+  transition: box-shadow 0.2s ease;
+}
+
+/* Enhanced container for better UX */
+.vtable-container:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* Loading state overlay */
+.vtable-container.vtable-loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(var(--background), 0.8);
+  z-index: 100;
+  pointer-events: none;
 }
 
 .vtable {
@@ -13,6 +74,10 @@
   height: 100%;
   cursor: pointer;
   position: relative;
+  flex: 1;
+  min-width: 0;
+  /* Allow shrinking */
+  box-sizing: border-box;
 }
 
 /* Floating pin button */
@@ -30,20 +95,89 @@
     opacity: 0;
     transform: translateY(-10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* Loading state */
+/* Enhanced loading state */
 .vtable-loading {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   height: 200px;
   color: var(--muted-foreground);
   font-size: 0.9em;
+  gap: 12px;
+}
+
+.vtable-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid hsl(var(--muted));
+  border-top: 3px solid hsl(var(--primary));
+  border-radius: 50%;
+  animation: vtable-spin 1s linear infinite;
+}
+
+@keyframes vtable-spin {
+  0% {
+    transform: rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+/* Performance indicator */
+.vtable-performance-indicator {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: hsl(var(--muted));
+  color: hsl(var(--muted-foreground));
+  padding: 4px 8px;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  z-index: 10;
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
+}
+
+.vtable-performance-indicator:hover {
+  opacity: 1;
+}
+
+/* Infinite scroll indicator */
+.vtable-infinite-loading {
+  position: absolute;
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: hsl(var(--card));
+  border: 1px solid hsl(var(--border));
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  color: hsl(var(--muted-foreground));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.vtable-infinite-loading .spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid hsl(var(--muted));
+  border-top: 2px solid hsl(var(--primary));
+  border-radius: 50%;
+  animation: vtable-spin 1s linear infinite;
 }
 
 /* Error state */
@@ -52,7 +186,7 @@
   align-items: center;
   justify-content: center;
   height: 200px;
-  color: var(--destructive);
+  color: var(--muted-foreground);
   font-size: 0.9em;
 }
 
@@ -64,4 +198,189 @@
   height: 200px;
   color: var(--muted-foreground);
   font-size: 0.9em;
+}
+
+/* Force VTable to respect theme colors - override any hardcoded backgrounds */
+.vtable-container .vtable {
+  background: var(--background) !important;
+}
+
+.vtable-container .vtable canvas {
+  background: var(--background) !important;
+}
+
+/* Override VTable's internal styling to respect theme */
+.vtable-container [role="grid"],
+.vtable-container [role="gridcell"],
+.vtable-container [role="columnheader"],
+.vtable-container [role="row"] {
+  background: var(--background) !important;
+  color: var(--foreground) !important;
+}
+
+/* Ensure borders respect theme */
+.vtable-container .vtable * {
+  border-color: var(--border) !important;
+}
+
+/* Special handling for tokens tab */
+.tokens-vtable-container .vtable,
+.tokens-vtable-container .vtable canvas {
+  background: hsl(var(--card)) !important;
+}
+
+/* More aggressive overrides for all VTable elements */
+.vtable-container canvas,
+.vtable-container .vtable-body,
+.vtable-container .vtable-header,
+.vtable-container .vtable-cell,
+.vtable-container div[style*="background"],
+.vtable-container div[style*="backgroundColor"] {
+  background: var(--background) !important;
+  background-color: var(--background) !important;
+}
+
+/* Cyberpunk theme specific overrides */
+[data-theme="cyberpunk"] .vtable-container .vtable,
+[data-theme="cyberpunk"] .vtable-container canvas,
+[data-theme="cyberpunk"] .tokens-vtable-container .vtable,
+[data-theme="cyberpunk"] .tokens-vtable-container canvas {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Override any inline styles that might be set by VTable */
+.vtable-container * {
+  background: inherit !important;
+}
+
+.vtable-container .vtable>* {
+  background: var(--background) !important;
+}
+
+/* Ultra-specific overrides for VTable canvas elements */
+.vtable-container canvas[style],
+.tokens-vtable-container canvas[style] {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Target any div elements within VTable that might have inline styles */
+.vtable-container div[style*="background"],
+.vtable-container div[style*="backgroundColor"],
+.tokens-vtable-container div[style*="background"],
+.tokens-vtable-container div[style*="backgroundColor"] {
+  background: hsl(var(--background)) !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* Enhanced hover states with better visual feedback */
+.vtable-container .vtable [data-vtable-hover="true"],
+.vtable-container .vtable .vtable-row:hover,
+.tokens-vtable-container .vtable [data-vtable-hover="true"],
+.tokens-vtable-container .vtable .vtable-row:hover {
+  background: hsl(var(--muted)) !important;
+  background-color: hsl(var(--muted)) !important;
+  transform: translateX(2px);
+  transition: all 0.15s ease;
+  border-left: 3px solid hsl(var(--primary));
+}
+
+/* Click feedback */
+.vtable-container .vtable .vtable-row:active {
+  background: hsl(var(--accent)) !important;
+  transform: translateX(0px);
+}
+
+/* Column header improvements */
+.vtable-container [role="columnheader"] {
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.vtable-container [role="columnheader"]:hover {
+  background: hsl(var(--accent)) !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Row selection visual feedback */
+.vtable-container .vtable-row[data-selected="true"] {
+  background: hsl(var(--primary) / 0.1) !important;
+  border-left: 4px solid hsl(var(--primary)) !important;
+  box-shadow: inset 0 0 0 1px hsl(var(--primary) / 0.2);
+}
+
+/* Theme-specific overrides for each OpenSVM theme */
+.theme-cyberpunk .vtable-container,
+.theme-cyberpunk .tokens-vtable-container {
+  --vtable-bg: var(--background);
+  --vtable-fg: var(--foreground);
+  --vtable-border: var(--border);
+  --vtable-muted: var(--muted);
+}
+
+/* Cyberpunk specific aggressive background enforcement */
+.theme-cyberpunk .vtable-container canvas,
+.theme-cyberpunk .tokens-vtable-container canvas {
+  background: #0d0116 !important;
+  background-color: #0d0116 !important;
+}
+
+.theme-cyberpunk .vtable-container .vtable,
+.theme-cyberpunk .tokens-vtable-container .vtable {
+  background: #0d0116 !important;
+  background-color: #0d0116 !important;
+}
+
+/* Responsive behavior for different screen sizes */
+@media (max-width: 768px) {
+  .vtable-container {
+    min-height: 300px;
+    /* Larger minimum height on mobile */
+  }
+
+  /* Allow horizontal scrolling on mobile for wide tables */
+  .vtable-container .vtable {
+    overflow-x: auto;
+    min-width: max-content;
+  }
+}
+
+@media (max-width: 480px) {
+  .vtable-container {
+    min-height: 250px;
+  }
+}
+
+/* Ensure VTable adapts to container size changes */
+.vtable-container.vtable-resizing .vtable {
+  transition: width 0.2s ease-out;
+}
+
+/* Full-width responsive utility classes */
+.vtable-full-width {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+.vtable-auto-height {
+  height: auto !important;
+  max-height: 80vh;
+  /* Prevent tables from becoming too tall */
+  overflow-y: auto;
+}
+
+.theme-paper .vtable-container,
+.theme-paper .tokens-vtable-container,
+.theme-high-contrast .vtable-container,
+.theme-high-contrast .tokens-vtable-container,
+.theme-dos-blue .vtable-container,
+.theme-dos-blue .tokens-vtable-container,
+.theme-solarized .vtable-container,
+.theme-solarized .tokens-vtable-container {
+  --vtable-bg: var(--background);
+  --vtable-fg: var(--foreground);
+  --vtable-border: var(--border);
+  --vtable-muted: var(--muted);
 }

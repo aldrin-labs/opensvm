@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
+import { useRef, useCallback, useState, useMemo } from 'react';
 import cytoscape from 'cytoscape';
 import { debounce } from '@/lib/utils';
 import { debugLog, errorLog } from '../utils';
@@ -107,11 +107,11 @@ export function useLayoutManager() {
   }, []);
 
   // Debounced layout runner
-  const debouncedLayout = useCallback(
-    debounce((cy: cytoscape.Core | null, layoutType: string = 'dagre') => {
+  const debouncedLayout = useMemo(
+    () => debounce((cy: cytoscape.Core | null, layoutType: string = 'dagre') => {
       runLayout(cy, layoutType, false);
     }, 500),
-    [runLayout]
+    [runLayout] // Include runLayout in dependencies
   );
 
   // Cleanup function

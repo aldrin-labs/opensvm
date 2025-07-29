@@ -54,7 +54,7 @@ export class PerformanceTracker {
 
   getMemoryUsage(): PerformanceMetrics['memoryUsage'] {
     if (typeof window !== 'undefined' && 'performance' in window && 'memory' in (window as any).performance) {
-      const memory = (window as any).performance.memory;
+      const memory = typeof window !== 'undefined' ? (window as any).performance.memory : null;
       return {
         used: Math.round(memory.usedJSHeapSize / 1048576), // MB
         total: Math.round(memory.totalJSHeapSize / 1048576), // MB
@@ -79,7 +79,7 @@ export class PerformanceTracker {
   checkMemoryPressure(): boolean {
     const memory = this.getMemoryUsage();
     if (!memory) return false;
-    
+
     return memory.used > memory.limit * 0.8;
   }
 }
@@ -93,10 +93,10 @@ export function createThrottle<T extends (...args: any[]) => any>(
 ): (...args: Parameters<T>) => void {
   let lastCall = 0;
   let timeoutRef: NodeJS.Timeout | undefined;
-  
+
   return (...args: Parameters<T>) => {
     const now = Date.now();
-    
+
     if (now - lastCall >= delay) {
       lastCall = now;
       callback(...args);
@@ -104,7 +104,7 @@ export function createThrottle<T extends (...args: any[]) => any>(
       if (timeoutRef) {
         clearTimeout(timeoutRef);
       }
-      
+
       timeoutRef = setTimeout(() => {
         lastCall = Date.now();
         callback(...args);
@@ -121,12 +121,12 @@ export function createDebounce<T extends (...args: any[]) => any>(
   delay: number
 ): (...args: Parameters<T>) => void {
   let timeoutRef: NodeJS.Timeout | undefined;
-  
+
   return (...args: Parameters<T>) => {
     if (timeoutRef) {
       clearTimeout(timeoutRef);
     }
-    
+
     timeoutRef = setTimeout(() => {
       callback(...args);
     }, delay);
@@ -145,15 +145,15 @@ export class BatchProcessor<T> {
     private processor: (items: T[]) => void,
     private batchSize: number = 50,
     private delay: number = 100
-  ) {}
+  ) { }
 
   add(item: T): void {
     this.items.push(item);
-    
+
     if (this.timeout) {
       clearTimeout(this.timeout);
     }
-    
+
     if (this.items.length >= this.batchSize && !this.isProcessing) {
       this.processBatch();
     } else {
@@ -165,17 +165,17 @@ export class BatchProcessor<T> {
 
   private processBatch(): void {
     if (this.isProcessing || this.items.length === 0) return;
-    
+
     this.isProcessing = true;
     const batch = this.items.splice(0, this.batchSize);
-    
+
     try {
       this.processor(batch);
     } catch (error) {
       console.error('Batch processing error:', error);
     } finally {
       this.isProcessing = false;
-      
+
       // Process remaining items if any
       if (this.items.length > 0) {
         this.timeout = setTimeout(() => {
@@ -189,7 +189,7 @@ export class BatchProcessor<T> {
     if (this.timeout) {
       clearTimeout(this.timeout);
     }
-    
+
     if (this.items.length > 0) {
       this.processBatch();
     }
@@ -210,30 +210,30 @@ export class MemoryManager {
   private static readonly MEMORY_CHECK_INTERVAL = 10000; // 10 seconds
   private static readonly MEMORY_WARNING_THRESHOLD = 0.8; // 80% of limit
   private static readonly MEMORY_CRITICAL_THRESHOLD = 0.9; // 90% of limit
-  
+
   static startMonitoring(onMemoryPressure: (level: 'warning' | 'critical') => void): () => void {
     const tracker = PerformanceTracker.getInstance();
-    
+
     const interval = setInterval(() => {
       const memory = tracker.getMemoryUsage();
       if (!memory) return;
-      
+
       const usage = memory.used / memory.limit;
-      
+
       if (usage > MemoryManager.MEMORY_CRITICAL_THRESHOLD) {
         onMemoryPressure('critical');
       } else if (usage > MemoryManager.MEMORY_WARNING_THRESHOLD) {
         onMemoryPressure('warning');
       }
     }, MemoryManager.MEMORY_CHECK_INTERVAL);
-    
+
     return () => clearInterval(interval);
   }
-  
+
   static optimizeForMemory<T>(array: T[], maxSize: number, keepRecent = true): T[] {
     if (array.length <= maxSize) return array;
-    
-    return keepRecent 
+
+    return keepRecent
       ? array.slice(-maxSize)
       : array.slice(0, maxSize);
   }

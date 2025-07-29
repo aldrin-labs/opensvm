@@ -1,5 +1,13 @@
 {
     "editor.lightbulb.enabled": "onCode",
     "editor.experimental.treeSitterTelemetry": false,
-    "editor.experimentalInlineEdit.enabled": true
+    "editor.experimentalInlineEdit.enabled": true,
+    "mediaPreview.video.loop": true,
+    "mediaPreview.video.autoPlay": true,
+    "merge-conflict.autoNavigateNextConflict.enabled": true,
+    "github.copilot.advanced": {
+
+    },
+    "github.copilot.chat.languageContext.inline.typescript.enabled": true,
+    "vscode-kubernetes.log-viewer.autorun": true
 }

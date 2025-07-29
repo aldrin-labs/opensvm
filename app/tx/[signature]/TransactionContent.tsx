@@ -1,14 +1,76 @@
 'use client';
 
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import dynamic from 'next/dynamic';
 import { useRouter, usePathname } from 'next/navigation';
 import { useRef, Suspense, useEffect, useState, useCallback, useTransition } from 'react';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Link from 'next/link';
-import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper'; 
+import ErrorBoundaryWrapper from '@/components/ErrorBoundaryWrapper';
 import { formatNumber } from '@/lib/utils';
 import { ShareButton } from '@/components/ShareButton';
+import InstructionBreakdown from '@/components/InstructionBreakdown';
+// Dynamically load heavy analytics components to optimize initial load
+import dynamic from 'next/dynamic';
+const AccountChangesDisplay = dynamic(
+  () => import('@/components/AccountChangesDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const AITransactionExplanation = dynamic(
+  () => import('@/components/AITransactionExplanation'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const TransactionFailureAnalysisWrapper = dynamic(
+  () => import('@/components/TransactionFailureAnalysis').then(mod => {
+    const TransactionFailureAnalysisComponent = mod.default;
+
+    // This wrapper component correctly uses the hook and passes props.
+    const Wrapper = ({ signature }: { signature: string }) => {
+      const { analysis, isLoading, retry } = useTransactionFailureAnalysis({ signature, autoAnalyze: true });
+      return (
+        <TransactionFailureAnalysisComponent
+          signature={signature}
+          analysis={analysis || undefined}
+          isLoading={isLoading}
+          onRetryAnalysis={retry}
+        />
+      );
+    };
+    return { default: Wrapper };
+  }),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const RelatedTransactionsDisplay = dynamic(
+  () => import('@/components/RelatedTransactionsDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+const TransactionMetricsDisplay = dynamic(
+  () => import('@/components/TransactionMetricsDisplay'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+// Using simple version for debugging clientReferenceManifest issue  
+// Dynamically import TransactionGraph to avoid SSR window references
+const TransactionGraph = dynamic(
+  () => import('@/components/TransactionGraph'),
+  { loading: () => <LoadingSpinner />, ssr: false }
+);
+import { useTransactionFailureAnalysis } from '@/hooks/useTransactionFailureAnalysis';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { useAuthContext } from '@/contexts/AuthContext';
+import { Button } from '@/components/ui/button';
+import {
+  Activity,
+  BarChart3,
+  Brain,
+  Bug,
+  FileText,
+  GitBranch,
+  MessageSquare,
+  Network,
+  Settings,
+  Users,
+} from 'lucide-react';
 
 // Dynamically import components with no SSR and proper loading states
 // Using a ref for the tooltip positioning and timer
@@ -46,56 +108,45 @@ const TransactionGPTAnalysis = dynamic(
   }
 );
 
-const TransactionGraph = dynamic(
-  () => import('@/components/transaction-graph/TransactionGraph').catch(err => {
-    console.error('Failed to load TransactionGraph:', err);
-    return () => <div>Error loading transaction graph</div>;
-  }),
-  {
-    loading: () => <div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>,
-    ssr: false
-  }
-);
-
 // Tooltip component for account hover
-const AccountTooltip = ({ 
-  account, 
-  children 
-}: { 
-  account: string, 
-  children: React.ReactNode 
+const AccountTooltip = ({
+  account,
+  children
+}: {
+  account: string,
+  children: React.ReactNode
 }) => {
   const [showTooltip, setShowTooltip] = useState(false);
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
-  
+
   // Timer ref for delayed hiding
   const timerRef = useRef<NodeJS.Timeout | null>(null);
-  
+
   const handleMouseEnter = async (e: React.MouseEvent) => {
     // Set tooltip position based on mouse event
     setTooltipPosition({
       top: e.clientY + 20,
       left: e.clientX
     });
-    
+
     setShowTooltip(true);
-    
+
     // Clear the existing timer if there is one
     if (timerRef.current) {
       clearTimeout(timerRef.current);
     }
-    
+
     // Fetch account data if needed
     // This would be implemented to fetch account info
   };
-  
+
   const handleMouseLeave = () => {
     // Set a timer to hide the tooltip after 5 seconds
     timerRef.current = setTimeout(() => {
       setShowTooltip(false);
     }, 5000);
   };
-  
+
   useEffect(() => {
     // Clean up timer on unmount
     return () => {
@@ -104,19 +155,19 @@ const AccountTooltip = ({
       }
     };
   }, []);
-  
+
   return (
-    <span 
-      className="relative" 
-      onMouseEnter={handleMouseEnter} 
+    <span
+      className="relative"
+      onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
     >
       {children}
       {showTooltip && (
-        <div 
+        <div
           className="absolute z-50 bg-background border border-border p-3 rounded-md shadow-lg text-sm min-w-[300px] transition-opacity"
-          style={{ 
-            top: tooltipPosition.top + 'px', 
+          style={{
+            top: tooltipPosition.top + 'px',
             left: tooltipPosition.left + 'px',
             opacity: showTooltip ? 1 : 0
           }}
@@ -140,7 +191,7 @@ const TransactionOverview = ({ tx, signature, className = '' }: { tx: DetailedTr
       <span className={tx?.success ? 'text-success font-medium' : 'text-destructive font-medium'}>
         {tx?.success ? 'Success' : 'Failed'}
       </span>
-    
+
       <div>
         <span className="text-muted-foreground block mb-1">Timestamp</span>
         <span className="text-foreground">
@@ -155,7 +206,7 @@ const TransactionOverview = ({ tx, signature, className = '' }: { tx: DetailedTr
         <span className="text-muted-foreground block mb-1">Slot</span>
         <span className="text-foreground">{tx?.slot?.toLocaleString() || 'Unknown'}</span>
       </div>
-      
+
       {tx?.details?.solChanges && tx.details.solChanges.length > 0 && (
         <div>
           <span className="text-muted-foreground block mb-1 mt-4">SOL Balance Changes</span>
@@ -200,7 +251,7 @@ async function getTransactionDetails(signature: string, signal?: AbortSignal): P
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
-    
+
     console.log(`Fetching transaction data for signature: ${signature}`);
     const response = await fetch(`/api/transaction/${signature}`, {
       method: 'GET',
@@ -218,7 +269,7 @@ async function getTransactionDetails(signature: string, signal?: AbortSignal): P
       const errorText = await response.text();
       let errorMessage = 'Failed to fetch transaction';
       let errorDetails = '';
-      
+
       try {
         const errorData = JSON.parse(errorText);
         errorMessage = errorData.error || errorMessage;
@@ -251,7 +302,7 @@ async function getTransactionDetails(signature: string, signal?: AbortSignal): P
     return tx;
   } catch (error) {
     console.error('Error fetching transaction:', error);
-    
+
     // Check if this is a demo transaction signature that we should handle specially
     if (signature === '4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43') {
       console.log('Using demo data for this transaction signature');
@@ -321,8 +372,8 @@ async function getTransactionDetails(signature: string, signal?: AbortSignal): P
                     1
                   ],
                   data: 'Transfer 1000000000',
-                computeUnits: undefined as unknown as number,
-                computeUnitsConsumed: undefined as unknown as number
+                  computeUnits: undefined as unknown as number,
+                  computeUnitsConsumed: undefined as unknown as number
                 }
               ]
             }
@@ -352,7 +403,7 @@ async function getTransactionDetails(signature: string, signal?: AbortSignal): P
         }
       };
     }
-    
+
     if (error instanceof Error) {
       if (error.name === 'AbortError') {
         throw new Error('Request timed out. Please try again.');
@@ -436,7 +487,7 @@ function getDemoTransactionData(signature: string): DetailedTransactionInfo {
                 1
               ],
               data: 'Transfer 1000000000' as any as any,
-              computeUnits: undefined as unknown as number,  
+              computeUnits: undefined as unknown as number,
               computeUnitsConsumed: undefined as unknown as number
             }
           ]
@@ -473,7 +524,9 @@ function ErrorDisplay({ error, signature }: { error: Error; signature: string })
   const handleRetry = async () => {
     setRetrying(true);
     try {
-      window.location.reload();
+      if (typeof window !== 'undefined') {
+        window.location.reload();
+      }
     } catch {
       setRetrying(false);
     }
@@ -521,20 +574,41 @@ function ErrorDisplay({ error, signature }: { error: Error; signature: string })
 
 // Community Notes component
 function CommunityNotes({ signature }: { signature: string }) {
+  const { isAuthenticated } = useAuthContext();
   const [notes, setNotes] = useState<any[]>([]);
-  
-  // Mock notes for now - would be replaced with actual backend integration
+
   useEffect(() => {
-    setNotes([
-      { id: 1, text: "This transaction appears to be a token swap operation through Jupiter Exchange.", votes: 12, author: "0x1234...5678" },
-      { id: 2, text: "Executed during high network congestion period, explaining the higher than usual fees.", votes: 8, author: "0xabcd...ef01" }
-    ]);
-  }, [signature]);
-  
+    // Only load notes for authenticated users
+    if (isAuthenticated) {
+      // In production, this would fetch from backend API
+      setNotes([]);
+    }
+  }, [signature, isAuthenticated]);
+
+  if (!isAuthenticated) {
+    return (
+      <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
+        <h2 className="text-xl font-semibold mb-4 text-foreground">Community Notes</h2>
+        <div className="py-8 text-center">
+          <MessageSquare className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+          <p className="text-muted-foreground mb-4">Connect wallet to be able to view and add community notes</p>
+          <Button variant="outline" onClick={() => {
+            // This would trigger wallet connection
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+          }}>
+            Connect Wallet
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
       <h2 className="text-xl font-semibold mb-4 text-foreground">Community Notes</h2>
-      
+
       <div className="grid grid-cols-1 gap-4 mb-6">
         {notes.length > 0 ? (
           notes.map(note => (
@@ -547,10 +621,11 @@ function CommunityNotes({ signature }: { signature: string }) {
             </div>
           ))
         ) : (
-          <div className="py-4 text-center text-muted-foreground">No community notes yet. Be the first to add one!</div>
+          <div className="py-4 text-center text-muted-foreground">
+            <MessageSquare className="mx-auto h-8 w-8 mb-2" />
+            <p>No community notes yet. Be the first to add one!</p>
+          </div>
         )}
-
-        {notes.length === 0 && <p className="text-muted-foreground">No community notes yet. Be the first to add one!</p>}
       </div>
     </div>
   );
@@ -588,16 +663,18 @@ function LoadingState({ signature }: { signature: string }) {
   );
 }
 
+// Removed local TransactionFailureAnalysisWrapper function to resolve duplicate declaration error
+
 export default function TransactionContent({ signature }: { signature: string }) {
   const [tx, setTx] = useState<DetailedTransactionInfo | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentSignature, setCurrentSignature] = useState<string>(signature);
-  const [initialAccount, setInitialAccount] = useState<string | null>(null); 
+  const [initialAccount, setInitialAccount] = useState<string | null>(null);
   const [transitionState, setTransitionState] = useState<'idle' | 'loading' | 'success'>('idle');
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  
+
   // Enhanced cache with Map for better performance and key management
   const transactionDataCache = useRef<Map<string, DetailedTransactionInfo>>(new Map());
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -637,8 +714,12 @@ export default function TransactionContent({ signature }: { signature: string })
         if (data?.details?.accounts && data.details.accounts.length > 0) {
           setInitialAccount(data.details.accounts[0].pubkey);
         }
-        document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        if (typeof document !== 'undefined') {
+          document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+        }
+        if (typeof window !== 'undefined') {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
         setTransitionState('success');
         return;
       }
@@ -652,7 +733,9 @@ export default function TransactionContent({ signature }: { signature: string })
           if (data?.details?.accounts && data.details.accounts.length > 0) {
             setInitialAccount(data.details.accounts[0].pubkey);
           }
-          document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+          if (typeof document !== 'undefined') {
+            document.title = `Transaction ${newSignature.slice(0, 8)}... | OpenSVM`;
+          }
           setTransitionState('success');
         })
         .catch(err => setError(err as Error))
@@ -662,8 +745,10 @@ export default function TransactionContent({ signature }: { signature: string })
 
   // Only sync signature to state on initial render and external navigation - FIXED
   const initialRenderRef = useRef(true);
-  
+
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const handlePopState = () => {
       const pathParts = window.location.pathname.split('/tx/');
       if (pathParts.length > 1) {
@@ -674,13 +759,19 @@ export default function TransactionContent({ signature }: { signature: string })
       }
     };
 
-    window.addEventListener('popstate', handlePopState);
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+    }
 
-    return () => window.removeEventListener('popstate', handlePopState);
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+      }
+    };
   }, []);
 
   useEffect(() => {
-    const isProgrammaticNavigation = sessionStorage.getItem('programmatic_nav') === 'true';
+    const isProgrammaticNavigation = typeof sessionStorage !== 'undefined' && sessionStorage.getItem('programmatic_nav') === 'true';
 
     if (initialRenderRef.current) {
       initialRenderRef.current = false;
@@ -689,9 +780,11 @@ export default function TransactionContent({ signature }: { signature: string })
       setCurrentSignature(signature);
     }
 
-    sessionStorage.removeItem('programmatic_nav');
+    if (typeof sessionStorage !== 'undefined') {
+      sessionStorage.removeItem('programmatic_nav');
+    }
   }, [signature]);
-  
+
   // FIXED: Separate data fetching effect that triggers only when currentSignature changes
   // and specifically not from the URL signature prop
   useEffect(() => {
@@ -707,14 +800,14 @@ export default function TransactionContent({ signature }: { signature: string })
           setLoading(false);
           return;
         }
-        
+
         const data = await getTransactionDetails(currentSignature);
         setTx(data);
-        
+
         // Set the initial account for the graph
         // Cache for future use
         transactionDataCache.current.set(currentSignature, data);
-        
+
         if (data?.details?.accounts && data.details.accounts.length > 0) {
           setInitialAccount(data.details.accounts[0].pubkey);
         }
@@ -728,10 +821,12 @@ export default function TransactionContent({ signature }: { signature: string })
     // Listen for popstate events (browser back/forward)
     const handlePopState = () => {
       // Skip if this is a programmatic navigation we initiated
-      if (sessionStorage.getItem('programmatic_nav')) {
+      if (typeof sessionStorage !== 'undefined' && sessionStorage.getItem('programmatic_nav')) {
         return;
       }
-      
+
+      if (typeof window === 'undefined') return;
+
       const pathParts = window.location.pathname.split('/tx/');
       if (pathParts.length > 1) {
         const newSignature = pathParts[1];
@@ -743,24 +838,28 @@ export default function TransactionContent({ signature }: { signature: string })
         }
       }
     };
-    
-    window.addEventListener('popstate', handlePopState);
-    
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handlePopState);
+    }
+
     // Only fetch if we have a valid signature
     if (currentSignature) {
       fetchTransaction();
     }
-    
+
     return () => {
-      window.removeEventListener('popstate', handlePopState);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handlePopState);
+      }
       if (abortControllerRef.current) abortControllerRef.current.abort();
     };
   }, [currentSignature]); // Only depend on our internal state, not the URL parameter
-  
+
   // Preload probable transactions for improved UX
   useEffect(() => {
     if (!tx?.details?.accounts) return;
-    
+
     // In the background, we could preload transactions for these accounts
     // This would be implemented as a low-priority background task
     // to improve perceived performance when clicking through transactions
@@ -770,17 +869,17 @@ export default function TransactionContent({ signature }: { signature: string })
   useEffect(() => {
     // Skip if we don't have tx data yet
     if (!tx?.details?.accounts) return;
-    
+
     // Preload transactions for first 2 accounts to speed up future navigation
     const preloadAccounts = tx.details.accounts.slice(0, 2);
-    
+
     preloadAccounts.forEach(account => {
       if (!account.pubkey) return;
-      
+
       // Low priority background fetch - won't block UI
       const controller = new AbortController();
       fetch(`/api/account-transactions/${account.pubkey}?limit=5`, { signal: controller.signal })
-        .catch(() => {}); // Silently handle errors - this is just prefetching 
+        .catch(() => { }); // Silently handle errors - this is just prefetching 
     });
   }, [tx]);
 
@@ -788,10 +887,10 @@ export default function TransactionContent({ signature }: { signature: string })
     return <LoadingState signature={signature} />;
   }
 
-  if (error || !tx) { 
-    return <ErrorDisplay error={error || new Error('Failed to load transaction')} signature={signature} />; 
+  if (error || !tx) {
+    return <ErrorDisplay error={error || new Error('Failed to load transaction')} signature={signature} />;
   }
-  
+
   return (
     <ErrorBoundaryWrapper>
       <div className="space-y-6 w-full">
@@ -801,82 +900,223 @@ export default function TransactionContent({ signature }: { signature: string })
             <div className="bg-background/90 p-4 rounded-lg shadow-lg flex items-center space-x-3">
               <LoadingSpinner />
               <span>
-                {transitionState === 'loading' 
-                  ? 'Updating transaction view...' 
+                {transitionState === 'loading'
+                  ? 'Updating transaction view...'
                   : 'Loading transaction data...'}
               </span>
             </div>
           </div>
         )}
-        
-        {/* Transaction Overview and Graph in responsive grid layout */}
-        <div className="transaction-content-grid min-h-[400px] lg:min-h-[500px] transition-all duration-300 ease-in-out">
-          <div className="transaction-overview-card h-full">
-            <TransactionOverview tx={tx} signature={signature} className="h-full" />
+
+        {/* Transaction Overview Section */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-1">
+            <TransactionOverview tx={tx} signature={currentSignature} className="h-full" />
           </div>
-          <div className="transaction-graph-card h-full">
-            <ErrorBoundaryWrapper 
-              fallback={<div className="bg-background rounded-lg p-4 shadow-lg border border-border h-full flex items-center justify-center text-destructive">Error loading transaction graph</div>}
-            >
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
-                <div className="bg-background rounded-lg p-4 shadow-lg border border-border h-full flex flex-col">
-                <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Graph</h2>
-                <div className="transaction-graph-container flex-1 relative min-h-[400px]">
-                  <TransactionGraph
-                    initialSignature={currentSignature} 
-                    initialAccount={initialAccount || ''}
-                    onTransactionSelect={handleTransactionSelect}
-                    clientSideNavigation={true}
-                    height="100%" 
-                    width="100%"
-                    maxDepth={3}
-                  /> 
+          <div className="lg:col-span-2">
+            <Card className="h-full">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="h-5 w-5" />
+                  Transaction Status
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center gap-4 mb-4">
+                  <Badge variant={tx.success ? "default" : "destructive"} className="text-sm">
+                    {tx.success ? "Success" : "Failed"}
+                  </Badge>
+                  <Badge variant="outline">
+                    Slot: {tx.slot?.toLocaleString()}
+                  </Badge>
+                  <Badge variant="outline">
+                    Type: {tx.type}
+                  </Badge>
                 </div>
+                <div className="text-sm text-muted-foreground">
+                  <p>Processed at: {tx.timestamp ? new Date(tx.timestamp).toLocaleString() : 'Unknown'}</p>
+                  <p>Instructions: {tx.details?.instructions?.length || 0}</p>
+                  <p>Accounts: {tx.details?.accounts?.length || 0}</p>
                 </div>
-                
-              </Suspense>
-            </ErrorBoundaryWrapper>
+              </CardContent>
+            </Card>
           </div>
         </div>
 
-        {/* Bottom section: Transaction Details and Analysis */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
-          <div className="h-full min-h-[300px]">
-            <ErrorBoundaryWrapper fallback={<div>Error loading transaction details</div>}>
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
-                <div className="bg-background rounded-lg p-4 md:p-5 shadow-lg border border-border h-full">
-                  <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Details</h2>
-                  <TransactionNodeDetails tx={tx} />
-                </div>
-              </Suspense>
-            </ErrorBoundaryWrapper>
-          </div>
+        {/* Enhanced Tabbed Interface */}
+        <Card className="w-full">
+          <Tabs defaultValue="overview" className="w-full">
+            <CardHeader className="pb-3">
+              <TabsList className="grid w-full grid-cols-8">
+                <TabsTrigger value="overview" className="flex items-center gap-1">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Overview</span>
+                </TabsTrigger>
+                <TabsTrigger value="instructions" className="flex items-center gap-1">
+                  <Settings className="h-4 w-4" />
+                  <span className="hidden sm:inline">Instructions</span>
+                </TabsTrigger>
+                <TabsTrigger value="accounts" className="flex items-center gap-1">
+                  <Users className="h-4 w-4" />
+                  <span className="hidden sm:inline">Accounts</span>
+                </TabsTrigger>
+                <TabsTrigger value="graph" className="flex items-center gap-1">
+                  <Network className="h-4 w-4" />
+                  <span className="hidden sm:inline">Graph</span>
+                </TabsTrigger>
+                <TabsTrigger value="ai" className="flex items-center gap-1">
+                  <Brain className="h-4 w-4" />
+                  <span className="hidden sm:inline">AI Analysis</span>
+                </TabsTrigger>
+                <TabsTrigger value="metrics" className="flex items-center gap-1">
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Metrics</span>
+                </TabsTrigger>
+                <TabsTrigger value="related" className="flex items-center gap-1">
+                  <GitBranch className="h-4 w-4" />
+                  <span className="hidden sm:inline">Related</span>
+                </TabsTrigger>
+                {!tx.success && (
+                  <TabsTrigger value="failure" className="flex items-center gap-1">
+                    <Bug className="h-4 w-4" />
+                    <span className="hidden sm:inline">Failure</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <TabsContent value="overview" className="mt-0">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading transaction details</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Transaction Details</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionNodeDetails tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
 
-          {/* Transaction Analysis */}
-          <div className="h-full min-h-[300px]">
-            <ErrorBoundaryWrapper fallback={<div>Error loading transaction analysis</div>}>
-              <Suspense fallback={<div className="h-full min-h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}> 
-                <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border h-full">
-                  <h2 className="text-xl font-semibold mb-4 text-foreground">Transaction Analysis</h2>
-                  <TransactionAnalysis tx={tx} />
+                  <ErrorBoundaryWrapper fallback={<div>Error loading transaction analysis</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Analysis Summary</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionAnalysis tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
                 </div>
-              </Suspense>
-            </ErrorBoundaryWrapper>
-          </div>
-        </div>
-        
-        {/* GPT Analysis Section */}
-        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading GPT analysis</div>}>
-          <Suspense fallback={<div className="h-full min-h-[200px] flex items-center justify-center"><LoadingSpinner /></div>}>
-            <div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">
-              <TransactionGPTAnalysis tx={tx} />
-            </div>
-          </Suspense>
-        </ErrorBoundaryWrapper>
-        
-        {/* Community Notes Section */}
-        <ErrorBoundaryWrapper fallback={<div className="bg-background rounded-lg p-4 md:p-6 shadow-lg border border-border min-h-[200px]">Error loading community notes</div>}>
-          <CommunityNotes signature={signature} />
+              </TabsContent>
+
+              <TabsContent value="instructions" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading instruction breakdown</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <InstructionBreakdown
+                      transaction={tx}
+                      onInstructionClick={(instruction, index) => {
+                        console.log('Instruction clicked:', instruction, index);
+                      }}
+                    />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="accounts" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading account changes</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <AccountChangesDisplay transaction={tx} />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="graph" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading transaction graph</div>}>
+                  <Suspense fallback={<div className="h-[500px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <div className="h-[500px] relative border rounded-lg">
+                      <TransactionGraph
+                        initialSignature={currentSignature}
+                        initialAccount={initialAccount || ''}
+                        onTransactionSelect={handleTransactionSelect}
+                        clientSideNavigation={true}
+                        height="100%"
+                        width="100%"
+                        maxDepth={3}
+                      />
+                    </div>
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="ai" className="mt-0">
+                <div className="space-y-6">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading AI explanation</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <AITransactionExplanation
+                        transaction={tx}
+                        detailLevel="detailed"
+                        onFeedback={(feedback, explanation) => {
+                          console.log('AI feedback received:', feedback, explanation.confidence);
+                        }}
+                      />
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+
+                  <ErrorBoundaryWrapper fallback={<div>Error loading GPT analysis</div>}>
+                    <Suspense fallback={<div className="h-[300px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <Card>
+                        <CardHeader>
+                          <CardTitle>Advanced AI Analysis</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <TransactionGPTAnalysis tx={tx} />
+                        </CardContent>
+                      </Card>
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="metrics" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading transaction metrics</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <TransactionMetricsDisplay transaction={tx} />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              <TabsContent value="related" className="mt-0">
+                <ErrorBoundaryWrapper fallback={<div>Error loading related transactions</div>}>
+                  <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                    <RelatedTransactionsDisplay
+                      transaction={tx}
+                    />
+                  </Suspense>
+                </ErrorBoundaryWrapper>
+              </TabsContent>
+
+              {!tx.success && (
+                <TabsContent value="failure" className="mt-0">
+                  <ErrorBoundaryWrapper fallback={<div>Error loading failure analysis</div>}>
+                    <Suspense fallback={<div className="h-[400px] flex items-center justify-center"><LoadingSpinner /></div>}>
+                      <TransactionFailureAnalysisWrapper signature={currentSignature} />
+                    </Suspense>
+                  </ErrorBoundaryWrapper>
+                </TabsContent>
+              )}
+            </CardContent>
+          </Tabs>
+        </Card>
+
+        {/* Community Section */}
+        <ErrorBoundaryWrapper fallback={<div>Error loading community notes</div>}>
+          <CommunityNotes signature={currentSignature} />
         </ErrorBoundaryWrapper>
       </div>
     </ErrorBoundaryWrapper>

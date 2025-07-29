@@ -4,7 +4,9 @@ export function CopyButton({ text }: { text: string }) {
   return (
     <button
       onClick={() => {
-        navigator.clipboard.writeText(text);
+        if (typeof navigator !== 'undefined' && navigator.clipboard) {
+          navigator.clipboard.writeText(text);
+        }
       }}
       className="ml-2 p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
       title="Copy to clipboard"

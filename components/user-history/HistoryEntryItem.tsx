@@ -8,11 +8,11 @@
 import { UserHistoryEntry } from '@/types/user-history';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { 
-  Activity, 
-  Calendar, 
-  ExternalLink, 
-  Search, 
+import {
+  Activity,
+  Calendar,
+  ExternalLink,
+  Search,
   Clock,
   MousePointer,
   FileText,
@@ -67,7 +67,9 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
   const pageTypeColor = pageTypeColors[entry.pageType];
 
   const copyToClipboard = (text: string) => {
-    navigator.clipboard.writeText(text);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(text);
+    }
     toast.success('Copied to clipboard');
   };
 
@@ -91,8 +93,8 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
   if (entry.pageType === 'ai-chat' && entry.metadata?.aiChatMessage) {
     const message = entry.metadata.aiChatMessage;
     const isLongMessage = message.content.length > 200;
-    const displayContent = isExpanded || !isLongMessage 
-      ? message.content 
+    const displayContent = isExpanded || !isLongMessage
+      ? message.content
       : message.content.slice(0, 200) + '...';
 
     return (
@@ -102,7 +104,7 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
             <div className={`p-2 rounded-full ${pageTypeColor}`}>
               <IconComponent className="h-4 w-4" />
             </div>
-            
+
             <div className="flex-1 min-w-0">
               <div className="flex items-center space-x-2 mb-1">
                 <h3 className="font-medium text-gray-900 dark:text-gray-100">
@@ -112,12 +114,12 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
                   {message.tabType || 'chat'}
                 </Badge>
               </div>
-              
+
               <div className="mt-2 space-y-2">
                 <div className="text-sm text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
                   {displayContent}
                 </div>
-                
+
                 {isLongMessage && (
                   <Button
                     variant="ghost"
@@ -139,7 +141,7 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
                   </Button>
                 )}
               </div>
-              
+
               <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400 mt-2">
                 <div className="flex items-center space-x-1">
                   <Clock className="h-3 w-3" />
@@ -148,19 +150,19 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
               </div>
             </div>
           </div>
-          
+
           <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => copyToClipboard(message.content)}
               title="Copy message"
             >
               <Copy className="h-4 w-4" />
             </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={copyToAssistant}
               title="Copy to AI assistant"
             >
@@ -180,7 +182,7 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
           <div className={`p-2 rounded-full ${pageTypeColor}`}>
             <IconComponent className="h-4 w-4" />
           </div>
-          
+
           <div className="flex-1 min-w-0">
             <div className="flex items-center space-x-2 mb-1">
               <h3 className="font-medium text-gray-900 dark:text-gray-100 truncate">
@@ -190,17 +192,17 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
                 {entry.pageType}
               </Badge>
             </div>
-            
+
             <p className="text-sm text-gray-600 dark:text-gray-400 truncate mb-2">
               {entry.path}
             </p>
-            
+
             <div className="flex items-center space-x-4 text-xs text-gray-500 dark:text-gray-400">
               <div className="flex items-center space-x-1">
                 <Clock className="h-3 w-3" />
                 <span>{new Date(entry.timestamp).toLocaleString()}</span>
               </div>
-              
+
               {entry.metadata?.searchQuery && (
                 <div className="flex items-center space-x-1">
                   <Search className="h-3 w-3" />
@@ -209,7 +211,7 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
                   </span>
                 </div>
               )}
-              
+
               {entry.metadata?.transactionId && (
                 <div className="flex items-center space-x-1">
                   <Activity className="h-3 w-3" />
@@ -221,7 +223,7 @@ export function HistoryEntryItem({ entry }: HistoryEntryItemProps) {
             </div>
           </div>
         </div>
-        
+
         <Link href={entry.path} target="_blank" rel="noopener noreferrer">
           <Button variant="ghost" size="sm" className="opacity-0 group-hover:opacity-100 transition-opacity">
             <ExternalLink className="h-4 w-4" />

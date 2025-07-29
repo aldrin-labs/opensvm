@@ -23,6 +23,9 @@
 /* Import Scrollbar Theme styles */
 @import './styles/scrollbar-themes.css';
 
+/* Import Accessibility and Mobile styles */
+@import '../styles/accessibility.css';
+
 /* Optimize font loading for LCP */
 @font-face {
   font-family: 'Berkeley Mono';
@@ -41,6 +44,12 @@
   font-display: swap;
   text-rendering: optimizeLegibility;
 }
+
+/* Inter font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+/* JetBrains Mono font from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 
 @layer base {
   :root {
@@ -67,6 +76,8 @@
 
     /* Font families */
     --font-berkeley: 'Berkeley Mono', monospace;
+    --font-inter: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-jetbrains: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
     --font-family: var(--font-berkeley);
 
     /* Base font size - controlled by settings */

@@ -107,8 +107,12 @@ export default function OverviewSection() {
     return (
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <button 
-          onClick={() => window.location.reload()} 
+        <button
+          onClick={() => {
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            }
+          }}
           className="px-4 py-2 bg-primary text-primary-foreground rounded hover:opacity-90"
         >
           Retry
@@ -133,7 +137,7 @@ export default function OverviewSection() {
             <div className="text-2xl font-bold">${formatNumber(metrics.totalTvl)}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">24h Volume</CardTitle>
@@ -142,7 +146,7 @@ export default function OverviewSection() {
             <div className="text-2xl font-bold">${formatNumber(metrics.totalVolume24h)}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">Active Protocols</CardTitle>
@@ -151,7 +155,7 @@ export default function OverviewSection() {
             <div className="text-2xl font-bold">{metrics.activeDexes}</div>
           </CardContent>
         </Card>
-        
+
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">24h Transactions</CardTitle>
@@ -211,7 +215,7 @@ export default function OverviewSection() {
               <div key={item.name} className="flex items-center gap-3">
                 <div className="w-20 text-sm capitalize">{item.name}</div>
                 <div className="flex-1 bg-muted rounded-full h-6 relative overflow-hidden">
-                  <div 
+                  <div
                     className="h-full bg-primary rounded-full transition-all duration-300"
                     style={{ width: `${Math.max(item.share, 2)}%` }}
                   />

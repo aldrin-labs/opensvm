@@ -26,8 +26,8 @@ interface AnomalyAlertsTableProps {
   alerts: AnomalyAlert[];
 }
 
-export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({ 
-  alerts 
+export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
+  alerts
 }: AnomalyAlertsTableProps) {
   const [selectedAlert, setSelectedAlert] = useState<AnomalyAlert | null>(null);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
@@ -56,7 +56,7 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
 
   const getTokenMintFromAlert = useCallback((alert: AnomalyAlert): string[] => {
     const mints: string[] = [];
-    
+
     // Check tokenChanges for mint addresses
     if (alert.event?.data?.tokenChanges) {
       alert.event.data.tokenChanges.forEach((change: any) => {
@@ -65,7 +65,7 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
         }
       });
     }
-    
+
     // Check preTokenBalances for mint addresses
     if (alert.event?.data?.preTokenBalances) {
       alert.event.data.preTokenBalances.forEach((balance: any) => {
@@ -74,7 +74,7 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
         }
       });
     }
-    
+
     // Check postTokenBalances for mint addresses
     if (alert.event?.data?.postTokenBalances) {
       alert.event.data.postTokenBalances.forEach((balance: any) => {
@@ -83,7 +83,7 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
         }
       });
     }
-    
+
     // Remove duplicates
     return [...new Set(mints)];
   }, []);
@@ -118,7 +118,7 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
   const handleAlertClick = useCallback(async (alert: AnomalyAlert) => {
     setSelectedAlert(alert);
     setLoadingDetails(true);
-    
+
     try {
       // Fetch related events and similar alerts
       const [relatedEventsResponse, similarAlertsResponse] = await Promise.all([
@@ -144,7 +144,9 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
 
   const openFullAnomalyProfile = useCallback((alert: AnomalyAlert) => {
     const url = `/anomaly/${alert.id}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
+    if (typeof window !== 'undefined') {
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
   }, []);
 
   const sortedAlerts = useMemo(() => {
@@ -153,11 +155,11 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
       const severityOrder = { critical: 4, high: 3, medium: 2, low: 1 };
       const aSeverity = severityOrder[a.severity] || 0;
       const bSeverity = severityOrder[b.severity] || 0;
-      
+
       if (aSeverity !== bSeverity) {
         return bSeverity - aSeverity;
       }
-      
+
       return b.timestamp - a.timestamp;
     });
   }, [alerts]);
@@ -181,9 +183,8 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
           {sortedAlerts.map((alert) => (
             <div
               key={alert.id}
-              className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${
-                selectedAlert?.id === alert.id ? 'border-primary bg-primary/5' : 'hover:bg-accent/50'
-              }`}
+              className={`p-3 border rounded-lg cursor-pointer transition-all duration-200 hover:shadow-md ${selectedAlert?.id === alert.id ? 'border-primary bg-primary/5' : 'hover:bg-accent/50'
+                }`}
               onClick={() => handleAlertClick(alert)}
             >
               <div className="flex items-start justify-between">
@@ -268,7 +269,11 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
                   <h5 className="text-xs font-semibold mb-2">Transaction ID</h5>
                   <div className="flex items-center">
                     <button
-                      onClick={() => window.open(`/tx/${getTransactionIdFromAlert(selectedAlert)}`, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.open(`/tx/${getTransactionIdFromAlert(selectedAlert)}`, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
                       className="text-xs text-primary hover:underline font-mono"
                     >
                       {(() => {
@@ -289,7 +294,11 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
                     {getTokenMintFromAlert(selectedAlert).map((mint, index) => (
                       <div key={index} className="flex items-center">
                         <button
-                          onClick={() => window.open(`/token/${mint}`, '_blank', 'noopener,noreferrer')}
+                          onClick={() => {
+                            if (typeof window !== 'undefined') {
+                              window.open(`/token/${mint}`, '_blank', 'noopener,noreferrer');
+                            }
+                          }}
                           className="text-xs text-primary hover:underline font-mono"
                         >
                           {mint.substring(0, 8)}...{mint.substring(mint.length - 8)}
@@ -308,7 +317,11 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
                   {getAccountsFromAlert(selectedAlert).map((account, index) => (
                     <button
                       key={index}
-                      onClick={() => window.open(`/account/${account}`, '_blank', 'noopener,noreferrer')}
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.open(`/account/${account}`, '_blank', 'noopener,noreferrer');
+                        }
+                      }}
                       className="block text-xs text-primary hover:underline font-mono"
                     >
                       {account.substring(0, 8)}...{account.substring(account.length - 8)}
@@ -330,7 +343,11 @@ export const AnomalyAlertsTable = React.memo(function AnomalyAlertsTable({
                     {relatedEvents.slice(0, 3).map((event, index) => (
                       <button
                         key={index}
-                        onClick={() => window.open(`/tx/${event.signature}`, '_blank', 'noopener,noreferrer')}
+                        onClick={() => {
+                          if (typeof window !== 'undefined') {
+                            window.open(`/tx/${event.signature}`, '_blank', 'noopener,noreferrer');
+                          }
+                        }}
                         className="block text-xs text-primary hover:underline font-mono"
                       >
                         {event.signature?.substring(0, 8)}...

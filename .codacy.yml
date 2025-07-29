@@ -1,0 +1,42 @@
+---
+# Codacy configuration file
+# See https://docs.codacy.com/repositories-configure/codacy-configuration-file/
+
+# Exclude patterns for files/directories that shouldn't be analyzed
+exclude_paths:
+  - "node_modules/**"
+  - ".next/**"
+  - "dist/**"
+  - "build/**"
+  - "coverage/**"
+  - "*.min.js"
+  - "public/**"
+  - "**/*.lock"
+  - "yarn.lock"
+  - "package-lock.json"
+  - "bun.lock"
+
+# Configure specific tools
+tools:
+  # Disable PMD since this is a JavaScript/TypeScript project
+  PMD:
+    enabled: false
+  
+  # Configure ESLint to use the project's configuration
+  ESLint:
+    enabled: true
+    
+  # Enable other relevant tools for JavaScript/TypeScript
+  JSHint:
+    enabled: false  # Using ESLint instead
+    
+  # Enable security-focused tools
+  bandit:
+    enabled: false  # Python tool, not applicable
+    
+  # Enable general code quality tools
+  duplication:
+    enabled: true
+    
+  metrics:
+    enabled: true

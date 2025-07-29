@@ -43,7 +43,7 @@ export default function DeFAISection() {
       try {
         // Simulate API call - in real implementation this would fetch from analytics API
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         const defaiTools: DeFAITool[] = [
           {
             name: 'Nosana AI',
@@ -252,11 +252,11 @@ export default function DeFAISection() {
   const categories = ['all', 'AI Computing', 'Price Prediction', 'Trading Bot', 'Lending Optimization', 'DEX Aggregation', 'Market Making', 'AMM Optimization', 'NFT Analytics', 'Portfolio Management', 'Decentralized AI'];
 
   const filteredTools = tools
-    .filter(tool => 
+    .filter(tool =>
       (categoryFilter === 'all' || tool.category === categoryFilter) &&
       (tool.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       tool.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       tool.aiFeatures.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
+        tool.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tool.aiFeatures.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
     )
     .sort((a, b) => b[sortBy] - a[sortBy]);
 
@@ -272,7 +272,11 @@ export default function DeFAISection() {
     return (
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => window.location.reload()}>
+        <Button onClick={() => {
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}>
           Retry
         </Button>
       </div>
@@ -432,7 +436,11 @@ export default function DeFAISection() {
                   <Button
                     size="sm"
                     variant="ghost"
-                    onClick={() => window.open(tool.website, '_blank')}
+                    onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open(tool.website, '_blank');
+                  }
+                }}
                     aria-label={`Visit ${tool.name} website`}
                   >
                     <ExternalLink className="h-4 w-4" />
@@ -440,12 +448,12 @@ export default function DeFAISection() {
                 </div>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {tool.description}
               </p>
-              
+
               {/* AI Features */}
               <div>
                 <p className="text-sm font-medium mb-2">AI Features:</p>
@@ -462,7 +470,7 @@ export default function DeFAISection() {
                   )}
                 </div>
               </div>
-              
+
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 p-3 rounded-lg">
@@ -471,14 +479,13 @@ export default function DeFAISection() {
                     TVL
                   </div>
                   <p className="font-bold text-lg">${formatNumber(tool.tvl)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${
-                    tool.change24h >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-xs ${tool.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                    }`}>
                     {tool.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(tool.change24h).toFixed(1)}%
                   </div>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Zap className="h-3 w-3" />
@@ -489,7 +496,7 @@ export default function DeFAISection() {
                     {formatNumber(tool.trades24h)} trades
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Users className="h-3 w-3" />
@@ -500,7 +507,7 @@ export default function DeFAISection() {
                     24h revenue: ${formatNumber(tool.revenue24h)}
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <BarChart3 className="h-3 w-3" />
@@ -513,7 +520,7 @@ export default function DeFAISection() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Supported Chains */}
               <div className="border-t pt-3">
                 <div className="flex justify-between items-center text-sm mb-2">
@@ -527,7 +534,7 @@ export default function DeFAISection() {
                   </div>
                 </div>
               </div>
-              
+
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" className="flex-1" disabled={tool.status === 'coming-soon'}>
@@ -541,7 +548,7 @@ export default function DeFAISection() {
           </Card>
         ))}
       </div>
-      
+
       {filteredTools.length === 0 && (
         <div className="text-center py-20">
           <Bot className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

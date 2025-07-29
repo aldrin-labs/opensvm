@@ -28,18 +28,18 @@ export class VirtualTableErrorBoundary extends React.Component<
 
   constructor(props: VirtualTableErrorBoundaryProps) {
     super(props);
-    this.state = { 
-      hasError: false, 
-      error: null, 
-      errorCount: 0, 
-      lastErrorTime: 0 
+    this.state = {
+      hasError: false,
+      error: null,
+      errorCount: 0,
+      lastErrorTime: 0
     };
   }
 
   static getDerivedStateFromError(error: Error): Partial<VirtualTableErrorBoundaryState> {
     // Update state so the next render will show the fallback UI
-    return { 
-      hasError: true, 
+    return {
+      hasError: true,
       error,
       lastErrorTime: Date.now()
     };
@@ -48,7 +48,7 @@ export class VirtualTableErrorBoundary extends React.Component<
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const now = Date.now();
     const errorKey = error.message.substring(0, 100); // Use first 100 chars as key
-    
+
     // Track error frequency
     const currentCount = this.errorFrequencyTracker.get(errorKey) || 0;
     this.errorFrequencyTracker.set(errorKey, currentCount + 1);
@@ -60,16 +60,16 @@ export class VirtualTableErrorBoundary extends React.Component<
 
     // Check if this is a high-frequency error
     const isHighFrequency = currentCount >= this.MAX_ERROR_FREQUENCY;
-    
+
     // Enhanced error classification
-    const isDOMError = error.message.includes('removeChild') || 
-                      error.message.includes('appendChild') ||
-                      error.message.includes('insertBefore') ||
-                      error.message.includes('replaceChild');
-    
+    const isDOMError = error.message.includes('removeChild') ||
+      error.message.includes('appendChild') ||
+      error.message.includes('insertBefore') ||
+      error.message.includes('replaceChild');
+
     const isRenderError = error.message.includes('render') ||
-                         error.message.includes('unmount') ||
-                         error.message.includes('setState');
+      error.message.includes('unmount') ||
+      error.message.includes('setState');
 
     // Update state with error count
     this.setState(prevState => ({
@@ -85,7 +85,7 @@ export class VirtualTableErrorBoundary extends React.Component<
         frequency: currentCount,
         errorType: isDOMError ? 'DOM' : isRenderError ? 'RENDER' : 'UNKNOWN'
       });
-      
+
       // Alert if happening too often
       this.alertHighFrequencyErrors(errorKey, currentCount);
     } else if (!isDOMError) {
@@ -108,7 +108,7 @@ export class VirtualTableErrorBoundary extends React.Component<
   private alertHighFrequencyErrors(errorKey: string, frequency: number) {
     // In production, this could send alerts to monitoring systems
     logger.error(`VirtualTable error frequency alert: "${errorKey}" occurred ${frequency} times`);
-    
+
     // Could trigger monitoring alerts here
     if (typeof window !== 'undefined' && 'localStorage' in window) {
       try {
@@ -127,9 +127,9 @@ export class VirtualTableErrorBoundary extends React.Component<
 
   private handleRetry = () => {
     logger.debug('Retrying VirtualTable render');
-    this.setState({ 
-      hasError: false, 
-      error: null 
+    this.setState({
+      hasError: false,
+      error: null
     });
   };
 
@@ -147,7 +147,7 @@ export class VirtualTableErrorBoundary extends React.Component<
     if (this.state.hasError) {
       // Show different UI based on error frequency
       const isRepeatedError = this.state.errorCount > 3;
-      
+
       // Fallback UI for virtual table errors
       return this.props.fallback || (
         <div className="p-4 border border-destructive/20 rounded-lg bg-destructive/5">
@@ -157,14 +157,14 @@ export class VirtualTableErrorBoundary extends React.Component<
               Table Rendering Issue
             </p>
           </div>
-          
+
           <p className="text-sm text-muted-foreground mb-3">
-            {isRepeatedError 
+            {isRepeatedError
               ? `Multiple rendering errors detected (${this.state.errorCount}). This may indicate a data or compatibility issue.`
               : 'Temporary rendering error. This usually resolves automatically.'
             }
           </p>
-          
+
           <div className="flex gap-2">
             <button
               onClick={this.handleRetry}
@@ -172,7 +172,7 @@ export class VirtualTableErrorBoundary extends React.Component<
             >
               Retry
             </button>
-            
+
             {isRepeatedError && (
               <button
                 onClick={this.handleForceReload}
@@ -182,7 +182,7 @@ export class VirtualTableErrorBoundary extends React.Component<
               </button>
             )}
           </div>
-          
+
           {this.state.error && (
             <details className="mt-3">
               <summary className="text-xs text-muted-foreground cursor-pointer">

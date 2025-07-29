@@ -32,8 +32,8 @@ interface AnomalyData {
   };
 }
 
-export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({ 
-  anomalyId 
+export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
+  anomalyId
 }: AnomalyProfilePageProps) {
   const [anomalyData, setAnomalyData] = useState<AnomalyData | null>(null);
   const [relatedEvents, setRelatedEvents] = useState<any[]>([]);
@@ -46,7 +46,7 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
     const fetchAnomalyData = async () => {
       try {
         setLoading(true);
-        
+
         // Mock data for now - in production this would fetch from API
         const mockAnomaly: AnomalyData = {
           id: anomalyId,
@@ -115,7 +115,7 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
 
   const timelineData = useMemo(() => {
     if (!anomalyData) return [];
-    
+
     // Generate mock timeline data for visualization
     const baseTime = anomalyData.timestamp - (anomalyData.metrics?.timeSpan || 0) * 1000;
     return Array.from({ length: 20 }, (_, i) => ({
@@ -234,24 +234,24 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
                 strokeOpacity="0.1"
               />
             ))}
-            
+
             {/* Normal baseline */}
             <polyline
               fill="none"
               stroke="hsl(var(--muted-foreground))"
               strokeWidth="2"
               strokeOpacity="0.5"
-              points={timelineData.map((point, i) => 
+              points={timelineData.map((point, i) =>
                 `${(i / (timelineData.length - 1)) * 100},${100 - (point.normal / 300) * 100}`
               ).join(' ')}
             />
-            
+
             {/* Anomaly line */}
             <polyline
               fill="none"
               stroke="hsl(var(--primary))"
               strokeWidth="3"
-              points={timelineData.map((point, i) => 
+              points={timelineData.map((point, i) =>
                 `${(i / (timelineData.length - 1)) * 100},${100 - (point.value / 300) * 100}`
               ).join(' ')}
             />
@@ -274,14 +274,18 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
             {anomalyData.event?.data?.accountKeys?.map((account: string, index: number) => (
               <button
                 key={index}
-                onClick={() => window.open(`/account/${account}`, '_blank', 'noopener,noreferrer')}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open(`/account/${account}`, '_blank', 'noopener,noreferrer');
+                  }
+                }}
                 className="block w-full text-left p-2 border rounded hover:bg-accent text-primary hover:underline font-mono text-sm"
               >
                 {account}
               </button>
             )) || (
-              <div className="text-muted-foreground text-sm">No accounts identified</div>
-            )}
+                <div className="text-muted-foreground text-sm">No accounts identified</div>
+              )}
           </div>
         </Card>
 
@@ -292,7 +296,11 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
             {relatedEvents.map((event, index) => (
               <button
                 key={index}
-                onClick={() => window.open(`/tx/${event.signature}`, '_blank', 'noopener,noreferrer')}
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.open(`/tx/${event.signature}`, '_blank', 'noopener,noreferrer');
+                  }
+                }}
                 className="block w-full text-left p-2 border rounded hover:bg-accent"
               >
                 <div className="text-primary hover:underline font-mono text-sm">
@@ -317,9 +325,9 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
               <strong>Detection Method:</strong> AI pattern recognition comparing real-time metrics against baseline behavior
             </div>
             <div>
-              <strong>Risk Level:</strong> {anomalyData.severity === 'critical' ? 'Immediate attention required' : 
-                                            anomalyData.severity === 'high' ? 'Monitor closely' :
-                                            anomalyData.severity === 'medium' ? 'Investigate when possible' : 'Low priority review'}
+              <strong>Risk Level:</strong> {anomalyData.severity === 'critical' ? 'Immediate attention required' :
+                anomalyData.severity === 'high' ? 'Monitor closely' :
+                  anomalyData.severity === 'medium' ? 'Investigate when possible' : 'Low priority review'}
             </div>
             <div>
               <strong>Confidence:</strong> 94% (High confidence based on multiple indicators)

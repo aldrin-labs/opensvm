@@ -6,7 +6,9 @@
     "jsx": "preserve",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./*"],
+      "@/*": [
+        "./*"
+      ],
     },
     "skipLibCheck": true,
     "strict": true,
@@ -45,6 +47,8 @@
   ],
   "exclude": [
     "node_modules",
-    "agent_notes/**/*"
+    "agent_notes/**/*",
+    "__tests__/**/*",
+    "e2e/**/*"
   ]
 }

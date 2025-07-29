@@ -15,7 +15,7 @@ export const enableGPUAcceleration = (element: HTMLElement): void => {
   element.style.transform = 'translateZ(0)';
   element.style.backfaceVisibility = 'hidden';
   element.style.perspective = '1000px';
-  
+
   // Optimize for performance
   element.style.imageRendering = 'optimizeSpeed';
   element.style.pointerEvents = 'auto';
@@ -34,22 +34,22 @@ export const setupGPUCanvas = (canvas: HTMLCanvasElement): CanvasRenderingContex
     powerPreference: 'high-performance',
     willReadFrequently: false // Optimize for write operations
   }) as CanvasRenderingContext2D | null;
-  
+
   if (!context) return null;
-  
+
   // Apply GPU acceleration hints to canvas
   enableGPUAcceleration(canvas);
-  
+
   // Set high DPI support
-  const dpr = window.devicePixelRatio || 1;
+  const dpr = typeof window !== 'undefined' ? (window.devicePixelRatio || 1) : 1;
   const rect = canvas.getBoundingClientRect();
-  
+
   canvas.width = rect.width * dpr;
   canvas.height = rect.height * dpr;
   canvas.style.width = rect.width + 'px';
   canvas.style.height = rect.height + 'px';
   context.scale(dpr, dpr);
-  
+
   return context;
 };
 
@@ -62,11 +62,11 @@ export class GPUAnimationScheduler {
   private lastFrameTime: number = 0;
   // Removed unused targetFPS variable
   private frameInterval: number;
-  
+
   constructor(targetFPS: number = 60) {
     this.frameInterval = 1000 / targetFPS;
   }
-  
+
   /**
    * Schedule a function to run at the target FPS
    * @param callback Function to execute
@@ -77,13 +77,13 @@ export class GPUAnimationScheduler {
         callback();
         this.lastFrameTime = currentTime;
       }
-      
+
       this.animationFrameId = requestAnimationFrame(animate);
     };
-    
+
     this.animationFrameId = requestAnimationFrame(animate);
   }
-  
+
   /**
    * Cancel scheduled animation
    */
@@ -112,17 +112,17 @@ export class GPUParticleSystem {
     size: number;
   }>;
   private scheduler: GPUAnimationScheduler;
-  
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
     const context = setupGPUCanvas(canvas);
     if (!context) throw new Error('Could not get GPU-accelerated canvas context');
-    
+
     this.context = context;
     this.particles = [];
     this.scheduler = new GPUAnimationScheduler(60);
   }
-  
+
   /**
    * Add a particle to the system
    * @param x X position
@@ -142,7 +142,7 @@ export class GPUParticleSystem {
       size
     });
   }
-  
+
   /**
    * Add burst effect at position
    * @param x X position
@@ -158,11 +158,11 @@ export class GPUParticleSystem {
       const vy = Math.sin(angle) * speed;
       const life = 30 + Math.random() * 30;
       const size = 2 + Math.random() * 3;
-      
+
       this.addParticle(x, y, vx, vy, life, color, size);
     }
   }
-  
+
   /**
    * Start the particle system animation
    */
@@ -172,55 +172,55 @@ export class GPUParticleSystem {
       this.render();
     });
   }
-  
+
   /**
    * Stop the particle system
    */
   stop(): void {
     this.scheduler.cancel();
   }
-  
+
   /**
    * Update particle positions and lifetimes
    */
   private update(): void {
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const particle = this.particles[i];
-      
+
       // Update position
       particle.x += particle.vx;
       particle.y += particle.vy;
-      
+
       // Update lifetime
       particle.life--;
-      
+
       // Remove dead particles
       if (particle.life <= 0) {
         this.particles.splice(i, 1);
       }
     }
   }
-  
+
   /**
    * Render particles with GPU acceleration
    */
   private render(): void {
     // Clear canvas
     this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    
+
     // Batch render particles for performance
     this.context.save();
-    
+
     for (const particle of this.particles) {
       const alpha = particle.life / particle.maxLife;
       this.context.globalAlpha = alpha;
       this.context.fillStyle = particle.color;
-      
+
       this.context.beginPath();
       this.context.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
       this.context.fill();
     }
-    
+
     this.context.restore();
   }
 }
@@ -232,23 +232,23 @@ export class GPUParticleSystem {
  * @returns Throttled function
  */
 export function gpuThrottle<Args extends unknown[]>(
-  fn: (...args: Args) => void, 
+  fn: (...args: Args) => void,
   frameRate: number = 60
 ): (...args: Args) => void {
   const frameInterval = 1000 / frameRate;
   let lastTime = 0;
   let animationFrameId: number | null = null;
-  
+
   return (...args: Args) => {
     const now = performance.now();
-    
+
     if (now - lastTime >= frameInterval) {
       lastTime = now;
-      
+
       if (animationFrameId) {
         cancelAnimationFrame(animationFrameId);
       }
-      
+
       animationFrameId = requestAnimationFrame(() => {
         fn(...args);
       });
@@ -265,9 +265,9 @@ export function gpuThrottle<Args extends unknown[]>(
  * @returns CSS transform string
  */
 export const createGPUTransform = (
-  x: number = 0, 
-  y: number = 0, 
-  scale: number = 1, 
+  x: number = 0,
+  y: number = 0,
+  scale: number = 1,
   rotate: number = 0
 ): string => {
   return `translate3d(${x}px, ${y}px, 0) scale(${scale}) rotate(${rotate}deg)`;
@@ -279,11 +279,11 @@ export const createGPUTransform = (
  */
 export const optimizeCytoscapeContainer = (container: HTMLElement): void => {
   enableGPUAcceleration(container);
-  
+
   // Additional optimizations for Cytoscape
   container.style.contain = 'layout style paint';
   container.style.contentVisibility = 'auto';
-  
+
   // Find canvas elements and optimize them
   const canvases = container.querySelectorAll('canvas');
   canvases.forEach(canvas => {

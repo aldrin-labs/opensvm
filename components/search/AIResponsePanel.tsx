@@ -42,7 +42,9 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
 
   // Function to copy AI response to clipboard
   const copyToClipboard = useCallback(() => {
-    navigator.clipboard.writeText(aiResponse);
+    if (typeof navigator !== 'undefined' && navigator.clipboard) {
+      navigator.clipboard.writeText(aiResponse);
+    }
     setCopySuccess(true);
     setTimeout(() => setCopySuccess(false), 2000);
   }, [aiResponse]);
@@ -57,7 +59,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
   // Main function to generate AI response
   const generateAIResponse = useCallback(async (searchQuery: string) => {
     if (!searchQuery) return;
-    
+
     // Reset AI states
     setAiResponse('');
     setAiSources([]);
@@ -66,30 +68,30 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
     setBlockchainDataType('unknown');
     setError(null);
     setFeedbackGiven(null);
-    
+
     // Start AI thinking state
     setIsAiThinking(true);
-    
+
     try {
       // Fetch blockchain data using enhanced Moralis API
       const data = await moralis.getComprehensiveBlockchainData(searchQuery);
       setBlockchainData(data);
-      
+
       if (data) {
         setBlockchainDataType(data.type as BlockchainDataType);
       }
-      
+
       // Select the best model based on the data
       const modelToUse = openrouter.selectBestModelForData(data);
       setSelectedModel(modelToUse);
-      
+
       // Create prompt with blockchain data
       const prompt = openrouter.createBlockchainSearchPrompt(searchQuery, data);
-      
+
       // Switch to streaming mode
       setIsAiThinking(false);
       setIsAiStreaming(true);
-      
+
       // Use streaming response
       await openrouter.generateStreamingAIResponse(
         prompt,
@@ -100,7 +102,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
           setIsAiStreaming(false);
           setAiStreamComplete(true);
           setIsRefreshing(false);
-          
+
           // Extract sources from blockchain data
           const sources = openrouter.extractSourcesFromBlockchainData(data);
           setAiSources(sources);
@@ -125,17 +127,17 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
     setIsRefreshing(true);
     generateAIResponse(query);
   }, [query, generateAIResponse]);
-  
+
   // Initialize AI response when query changes
   useEffect(() => {
     if (!query) return;
     generateAIResponse(query);
   }, [query, generateAIResponse]);
-  
+
   // Format the AI response with proper styling
   const formattedResponse = useCallback(() => {
     if (!aiResponse) return null;
-    
+
     // Split by paragraphs and format
     return aiResponse.split('\n\n').map((paragraph, index) => {
       // Check if paragraph is a heading
@@ -146,7 +148,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
       } else if (paragraph.startsWith('### ')) {
         return <h4 key={index} className="text-md font-semibold mt-2 mb-1">{paragraph.substring(4)}</h4>;
       }
-      
+
       // Check if paragraph is a list
       if (paragraph.includes('\n- ')) {
         const listItems = paragraph.split('\n- ');
@@ -162,7 +164,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
           </div>
         );
       }
-      
+
       // Regular paragraph
       return (
         <p key={index} className={`my-2 ${aiStreamComplete ? '' : 'border-r-2 border-primary animate-pulse'}`}>
@@ -171,7 +173,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
       );
     });
   }, [aiResponse, aiStreamComplete]);
-  
+
   // Get a badge color based on blockchain data type
   const getDataTypeBadge = useCallback(() => {
     switch (blockchainDataType) {
@@ -189,13 +191,13 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
         return <Badge className="bg-gray-500">Unknown</Badge>;
     }
   }, [blockchainDataType]);
-  
+
   // Get model information
   const getModelInfo = useCallback(() => {
     const modelName = selectedModel.split('/').pop() || 'AI Model';
     return modelName.replace(/-/g, ' ').replace(/:beta/g, '');
   }, [selectedModel]);
-  
+
   return (
     <Card className="mb-6 overflow-hidden animate-in fade-in-0 slide-in-from-top-2 shadow-lg">
       <CardHeader className="bg-primary/5 border-b">
@@ -212,23 +214,23 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
               </Tooltip>
             )}
           </div>
-          
+
           <div className="flex items-center gap-2">
             {aiStreamComplete && (
               <>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={copyToClipboard}
                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
                 >
                   <Copy className="h-4 w-4 mr-1" />
                   {copySuccess ? 'Copied!' : 'Copy'}
                 </Button>
-                
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={refreshResponse}
                   disabled={isRefreshing}
                   className="h-8 px-2 text-muted-foreground hover:text-foreground"
@@ -238,8 +240,8 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                 </Button>
               </>
             )}
-            
-            <button 
+
+            <button
               onClick={onClose}
               className="text-muted-foreground hover:text-foreground transition-colors duration-200"
             >
@@ -250,21 +252,21 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
           </div>
         </div>
       </CardHeader>
-      
+
       <Tabs defaultValue="ai" className="w-full">
         <TabsList className="grid grid-cols-2 mx-4 mt-2">
           <TabsTrigger value="ai">AI Analysis</TabsTrigger>
           <TabsTrigger value="data">Blockchain Data</TabsTrigger>
         </TabsList>
-        
+
         <TabsContent value="ai" className="p-0">
           <CardContent className="p-4">
             {error ? (
               <div className="text-red-500 p-4 rounded-md bg-red-50 dark:bg-red-900/20">
                 <p>{error}</p>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={refreshResponse}
                   className="mt-2"
                 >
@@ -293,12 +295,12 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                 {!aiStreamComplete && isAiStreaming && (
                   <span className="inline-block w-1 h-4 bg-primary animate-pulse"></span>
                 )}
-                
+
                 {aiStreamComplete && (
                   <div className="mt-4 flex items-center gap-2">
                     <span className="text-sm text-muted-foreground">Was this analysis helpful?</span>
-                    <Button 
-                      variant={feedbackGiven === 'up' ? 'default' : 'outline'} 
+                    <Button
+                      variant={feedbackGiven === 'up' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => handleFeedback('up')}
                       disabled={feedbackGiven !== null}
@@ -306,8 +308,8 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                     >
                       <ThumbsUp className="h-4 w-4" />
                     </Button>
-                    <Button 
-                      variant={feedbackGiven === 'down' ? 'default' : 'outline'} 
+                    <Button
+                      variant={feedbackGiven === 'down' ? 'default' : 'outline'}
                       size="sm"
                       onClick={() => handleFeedback('down')}
                       disabled={feedbackGiven !== null}
@@ -320,14 +322,14 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
               </div>
             )}
           </CardContent>
-          
+
           {aiStreamComplete && aiSources.length > 0 && (
             <CardFooter className="bg-muted/30 border-t p-4">
               <div className="w-full">
                 <h4 className="text-sm font-medium mb-2">Sources:</h4>
                 <div className="flex flex-wrap gap-2">
                   {aiSources.map((source, index) => (
-                    <a 
+                    <a
                       key={index}
                       href={source.url}
                       target="_blank"
@@ -343,7 +345,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
             </CardFooter>
           )}
         </TabsContent>
-        
+
         <TabsContent value="data" className="p-0">
           <CardContent className="p-4">
             {!blockchainData ? (
@@ -356,7 +358,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                   <h3 className="text-lg font-semibold">Raw Blockchain Data</h3>
                   <Badge variant="outline">{blockchainDataType}</Badge>
                 </div>
-                
+
                 {/* Data visualization based on type */}
                 {blockchainDataType === 'token' && blockchainData.data.metadata && (
                   <div className="bg-muted/30 p-3 rounded-md">
@@ -387,7 +389,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                     </div>
                   </div>
                 )}
-                
+
                 {blockchainDataType === 'nft' && blockchainData.data.metadata && (
                   <div className="bg-muted/30 p-3 rounded-md">
                     <h4 className="font-medium mb-2">NFT Information</h4>
@@ -411,7 +413,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                     </div>
                   </div>
                 )}
-                
+
                 {blockchainDataType === 'account' && blockchainData.data && (
                   <div className="bg-muted/30 p-3 rounded-md">
                     <h4 className="font-medium mb-2">Account Information</h4>
@@ -435,7 +437,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                     </div>
                   </div>
                 )}
-                
+
                 {blockchainDataType === 'transaction' && blockchainData.data && (
                   <div className="bg-muted/30 p-3 rounded-md">
                     <h4 className="font-medium mb-2">Transaction Information</h4>
@@ -463,7 +465,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
                     </div>
                   </div>
                 )}
-                
+
                 {/* Raw data display */}
                 <div className="mt-4">
                   <h4 className="font-medium mb-2">Raw Data</h4>

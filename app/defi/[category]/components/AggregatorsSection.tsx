@@ -48,7 +48,7 @@ export default function AggregatorsSection() {
       try {
         // Simulate API call - in real implementation this would fetch from analytics API
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         const aggregatorsList: AggregatorData[] = [
           {
             name: 'Jupiter',
@@ -259,11 +259,11 @@ export default function AggregatorsSection() {
   const categories = ['all', 'Universal Aggregator', 'Specialized Router', 'Native Aggregator', 'Pool-specific Router', 'Perp-focused Router', 'HFT Router', 'Bridge Aggregator'];
 
   const filteredAggregators = aggregators
-    .filter(agg => 
+    .filter(agg =>
       (categoryFilter === 'all' || agg.category === categoryFilter) &&
       (agg.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       agg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-       agg.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
+        agg.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        agg.features.some(feature => feature.toLowerCase().includes(searchTerm.toLowerCase())))
     )
     .sort((a, b) => b[sortBy] - a[sortBy]);
 
@@ -279,7 +279,11 @@ export default function AggregatorsSection() {
     return (
       <div className="text-center py-20">
         <p className="text-red-500 mb-4">{error}</p>
-        <Button onClick={() => window.location.reload()}>
+        <Button onClick={() => {
+          if (typeof window !== 'undefined') {
+            window.location.reload();
+          }
+        }}>
           Retry
         </Button>
       </div>
@@ -423,19 +427,23 @@ export default function AggregatorsSection() {
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => window.open(aggregator.website, '_blank')}
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.open(aggregator.website, '_blank');
+                    }
+                  }}
                   aria-label={`Visit ${aggregator.name} website`}
                 >
                   <ExternalLink className="h-4 w-4" />
                 </Button>
               </div>
             </CardHeader>
-            
+
             <CardContent className="space-y-4">
               <p className="text-sm text-muted-foreground line-clamp-2">
                 {aggregator.description}
               </p>
-              
+
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-3">
                 <div className="bg-muted/50 p-3 rounded-lg">
@@ -444,14 +452,13 @@ export default function AggregatorsSection() {
                     Volume 24h
                   </div>
                   <p className="font-bold text-lg">${formatNumber(aggregator.volume24h)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${
-                    aggregator.volumeChange >= 0 ? 'text-green-500' : 'text-red-500'
-                  }`}>
+                  <div className={`flex items-center gap-1 text-xs ${aggregator.volumeChange >= 0 ? 'text-green-500' : 'text-red-500'
+                    }`}>
                     {aggregator.volumeChange >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(aggregator.volumeChange).toFixed(1)}%
                   </div>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Target className="h-3 w-3" />
@@ -462,7 +469,7 @@ export default function AggregatorsSection() {
                     vs direct swaps
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Timer className="h-3 w-3" />
@@ -473,7 +480,7 @@ export default function AggregatorsSection() {
                     {formatNumber(aggregator.trades24h)} trades
                   </p>
                 </div>
-                
+
                 <div className="bg-muted/50 p-3 rounded-lg">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground mb-1">
                     <Shield className="h-3 w-3" />
@@ -485,7 +492,7 @@ export default function AggregatorsSection() {
                   </p>
                 </div>
               </div>
-              
+
               {/* Features */}
               <div>
                 <p className="text-sm font-medium mb-2">Key Features:</p>
@@ -502,7 +509,7 @@ export default function AggregatorsSection() {
                   )}
                 </div>
               </div>
-              
+
               {/* Technical Details */}
               <div className="border-t pt-3">
                 <div className="grid grid-cols-2 gap-2 text-sm">
@@ -523,7 +530,7 @@ export default function AggregatorsSection() {
                     <span className="font-medium">{aggregator.supportedChains.length}</span>
                   </div>
                 </div>
-                
+
                 <div className="flex gap-1 mt-2">
                   {aggregator.apiAvailable && <Badge variant="outline" className="text-xs">API</Badge>}
                   {aggregator.sdkAvailable && <Badge variant="outline" className="text-xs">SDK</Badge>}
@@ -532,7 +539,7 @@ export default function AggregatorsSection() {
                   {aggregator.limitOrders && <Badge variant="outline" className="text-xs">Limit Orders</Badge>}
                 </div>
               </div>
-              
+
               {/* Actions */}
               <div className="flex gap-2 pt-2">
                 <Button size="sm" className="flex-1">
@@ -546,7 +553,7 @@ export default function AggregatorsSection() {
           </Card>
         ))}
       </div>
-      
+
       {filteredAggregators.length === 0 && (
         <div className="text-center py-20">
           <Route className="h-16 w-16 text-muted-foreground mx-auto mb-4" />

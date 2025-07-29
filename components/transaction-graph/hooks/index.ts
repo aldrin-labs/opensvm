@@ -9,3 +9,4 @@ export { useGPUForceGraph } from './useGPUForceGraph';
 export { useCloudView } from './useCloudView';
 export { useLayoutManager } from './useLayoutManager';
 export { useGraphInitialization } from './useGraphInitialization';
+export { useNavigationHistory } from './useNavigationHistory';
