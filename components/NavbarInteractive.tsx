@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { SettingsMenu } from './SettingsMenu';
 import { WalletButton } from './WalletButton';
+import { ChangelogNotification } from './ChangelogNotification';
 import { X, User } from 'lucide-react';
 import { AIChatSidebar } from './ai/AIChatSidebar';
 import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
@@ -143,6 +144,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
               <span className="font-bold text-lg">OPENSVM</span>
               <span className="text-sm text-foreground/70">[AI]</span>
             </Link>
+            <ChangelogNotification />
             <span className="hidden md:inline-block text-xs text-muted-foreground">{currentTime}</span>
           </div>
 
@@ -363,6 +365,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
 
           {/* Mobile navigation toggle */}
           <div className="md:hidden flex items-center gap-2">
+            <ChangelogNotification />
             <Button
               variant="ghost"
               size="sm"
