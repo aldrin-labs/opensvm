@@ -23,10 +23,10 @@ import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useCurrentUser } from '@/contexts/AuthContext';
-import { 
-  ReferralLinkSection, 
-  ReferralStatsSection, 
-  ReferralProgramDetails 
+import {
+  ReferralLinkSection,
+  ReferralStatsSection,
+  ReferralProgramDetails
 } from '@/components/referrals/ReferralComponents';
 import { TokenBalance } from '@/components/referrals/TokenBalance';
 import {
@@ -45,7 +45,8 @@ import {
   Lock,
   Coins,
   Share2,
-  MessageSquare
+  MessageSquare,
+  RefreshCw
 } from 'lucide-react';
 
 export default function UserProfilePage() {
@@ -54,6 +55,7 @@ export default function UserProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
   const activeTab = 'history'; // Default tab, no state needed since it never changes
   const [validatedWalletAddress, setValidatedWalletAddress] = useState<string | null>(null);
   const [isFollowing, setIsFollowing] = useState(false);
@@ -75,13 +77,22 @@ export default function UserProfilePage() {
   // Validate wallet address on mount
   useEffect(() => {
     if (rawWalletAddress) {
-      const validated = validateWalletAddress(rawWalletAddress);
-      if (!validated) {
+      try {
+        const validated = validateWalletAddress(rawWalletAddress);
+        if (!validated) {
+          setError('Invalid wallet address format');
+          setLoading(false);
+          return;
+        }
+        setValidatedWalletAddress(validated);
+      } catch (err) {
+        console.error('Error validating wallet address:', err);
         setError('Invalid wallet address format');
         setLoading(false);
-        return;
       }
-      setValidatedWalletAddress(validated);
+    } else {
+      setError('No wallet address provided');
+      setLoading(false);
     }
   }, [rawWalletAddress]);
 
@@ -103,17 +114,17 @@ export default function UserProfilePage() {
         });
         return;
       }
-      
+
       // Only apply token gating when viewing OTHER people's profiles
       try {
         const response = await fetch(`/api/token-gating/check`);
         if (response.ok) {
           const data = await response.json();
           setTokenGating({
-            hasAccess: data.data.hasAccess,
-            balance: data.data.balance,
+            hasAccess: data.data?.hasAccess || false,
+            balance: data.data?.balance || 0,
             loading: false,
-            error: data.data.error
+            error: data.data?.error
           });
         } else if (response.status === 401) {
           // User is not authenticated
@@ -124,25 +135,27 @@ export default function UserProfilePage() {
             error: 'Please connect your wallet to view restricted content'
           });
         } else {
-          setTokenGating(prev => ({ 
-            ...prev, 
-            loading: false, 
+          setTokenGating(prev => ({
+            ...prev,
+            loading: false,
             hasAccess: false,
             error: 'Failed to check token balance'
           }));
         }
       } catch (error) {
         console.error('Error checking token access:', error);
-        setTokenGating(prev => ({ 
-          ...prev, 
-          loading: false, 
+        setTokenGating(prev => ({
+          ...prev,
+          loading: false,
           hasAccess: false,
           error: 'Network error checking token balance'
         }));
       }
     };
 
-    checkTokenAccess();
+    if (validatedWalletAddress) {
+      checkTokenAccess();
+    }
   }, [myWallet, validatedWalletAddress]);
 
   const handleFollowToggle = async () => {
@@ -230,16 +243,56 @@ export default function UserProfilePage() {
     try {
       setLoading(true);
       setError(null);
+      setApiError(null);
+
+      console.log('Fetching profile for:', validatedWalletAddress);
       const response = await fetch(`/api/user-profile/${validatedWalletAddress}`);
+
       if (!response.ok) {
-        const errorData = await response.text();
-        throw new Error(`Failed to fetch user profile: ${response.status} ${errorData}`);
+        const errorText = await response.text();
+        console.error('API Error:', response.status, errorText);
+        throw new Error(`Failed to fetch user profile: ${response.status} ${errorText}`);
       }
+
       const data = await response.json();
-      if (!data.profile) {
+      console.log('Profile API response:', data);
+
+      if (!data || !data.profile) {
+        console.warn('No profile data in response:', data);
         throw new Error('No profile data in response');
       }
-      setProfile(data.profile);
+
+      // Ensure all required fields exist with fallbacks
+      const safeProfile: UserProfile = {
+        walletAddress: data.profile.walletAddress || validatedWalletAddress,
+        displayName: data.profile.displayName || null,
+        avatar: data.profile.avatar || null,
+        bio: data.profile.bio || null,
+        isPublic: data.profile.isPublic !== undefined ? data.profile.isPublic : true,
+        createdAt: data.profile.createdAt || Date.now(),
+        lastActive: data.profile.lastActive || Date.now(),
+        stats: data.profile.stats || {
+          totalVisits: 0,
+          uniquePages: 0,
+          mostVisitedPageType: 'other',
+          averageSessionDuration: 0,
+          lastVisit: 0,
+          firstVisit: 0,
+          dailyActivity: [],
+          pageTypeDistribution: []
+        },
+        socialStats: data.profile.socialStats || {
+          visitsByUsers: 0,
+          followers: 0,
+          following: 0,
+          likes: 0,
+          profileViews: 0
+        },
+        history: data.profile.history || []
+      };
+
+      setProfile(safeProfile);
+
       // Track profile view (increment view count) if not my own profile
       if (!myWallet || validatedWalletAddress !== myWallet) {
         try {
@@ -254,16 +307,22 @@ export default function UserProfilePage() {
         }
       }
     } catch (error) {
-      setError(error instanceof Error ? error.message : 'Failed to load user profile');
+      console.error('Error fetching user profile:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to load user profile';
+      setError(errorMessage);
+      setApiError(errorMessage);
     } finally {
       setLoading(false);
     }
   }, [validatedWalletAddress, myWallet]);
 
   useEffect(() => {
-    fetchUserProfile();
+    if (validatedWalletAddress) {
+      fetchUserProfile();
+    }
   }, [fetchUserProfile]);
 
+  // Loading state
   if (loading) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -279,6 +338,7 @@ export default function UserProfilePage() {
     );
   }
 
+  // Error state
   if (error) {
     return (
       <div className="min-h-screen bg-background p-4">
@@ -287,10 +347,45 @@ export default function UserProfilePage() {
             <div className="text-center">
               <AlertCircle className="h-8 w-8 mx-auto mb-4 text-destructive" />
               <p className="text-destructive mb-2">Error loading profile</p>
-              <p className="text-muted-foreground text-sm">{error}</p>
-              <Button 
-                onClick={fetchUserProfile} 
-                variant="outline" 
+              <p className="text-muted-foreground text-sm mb-4">{error}</p>
+              {apiError && (
+                <p className="text-muted-foreground text-xs mb-4">API Error: {apiError}</p>
+              )}
+              <div className="flex gap-2 justify-center">
+                <Button
+                  onClick={fetchUserProfile}
+                  variant="outline"
+                  className="gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Try Again
+                </Button>
+                <Button
+                  onClick={() => window.location.reload()}
+                  variant="outline"
+                >
+                  Reload Page
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // No profile state
+  if (!profile) {
+    return (
+      <div className="min-h-screen bg-background p-4">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="text-center">
+              <User className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
+              <p className="text-muted-foreground">No profile found</p>
+              <Button
+                onClick={fetchUserProfile}
+                variant="outline"
                 className="mt-4"
               >
                 Try Again
@@ -302,26 +397,13 @@ export default function UserProfilePage() {
     );
   }
 
-  if (!profile) {
-    return (
-      <div className="min-h-screen bg-background p-4">
-        <div className="max-w-7xl mx-auto">
-          <div className="flex items-center justify-center h-64">
-            <div className="text-center">
-              <User className="h-8 w-8 mx-auto mb-4 text-muted-foreground" />
-              <p className="text-muted-foreground">No profile found</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const formatWalletAddress = (address: string) => {
+    if (!address) return 'Unknown';
     return `${address.slice(0, 4)}...${address.slice(-4)}`;
   };
 
   const formatDate = (timestamp: number) => {
+    if (!timestamp) return 'Unknown';
     return new Date(timestamp).toLocaleDateString('en-US', {
       year: 'numeric',
       month: 'long',
@@ -331,6 +413,7 @@ export default function UserProfilePage() {
 
   const isMyProfile = myWallet && validatedWalletAddress &&
     validatedWalletAddress.toLowerCase() === myWallet.toLowerCase();
+
   return (
     <div className="min-h-screen bg-background p-3 sm:p-4">
       <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
@@ -341,7 +424,7 @@ export default function UserProfilePage() {
             <div className="flex items-start justify-between">
               <div className="flex items-center gap-4">
                 <Avatar className="h-16 w-16 border-4 border-background shadow-lg">
-                  <AvatarImage src={profile.avatar} alt={profile.displayName || 'User avatar'} />
+                  <AvatarImage src={profile.avatar || undefined} alt={profile.displayName || 'User avatar'} />
                   <AvatarFallback className="text-lg font-bold bg-gradient-to-r from-primary to-secondary text-primary-foreground">
                     {profile.displayName?.[0] || formatWalletAddress(profile.walletAddress)[0]}
                   </AvatarFallback>
@@ -415,12 +498,12 @@ export default function UserProfilePage() {
                 <UserHistoryExport profile={profile} />
                 <Badge variant="outline" className="flex items-center gap-1">
                   <Eye className="h-3 w-3" />
-                  {profile.socialStats.profileViews} views
+                  {profile.socialStats?.profileViews || 0} views
                 </Badge>
               </div>
             </div>
           </CardHeader>
-          
+
           {/* Display social action error */}
           {socialError && (
             <CardContent className="pt-0 pb-4">
@@ -447,49 +530,49 @@ export default function UserProfilePage() {
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Profile Views</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {profile.socialStats.profileViews.toLocaleString()}
+                    {(profile.socialStats?.profileViews || 0).toLocaleString()}
                   </p>
                 </div>
                 <Eye className="h-8 w-8 text-blue-600" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Followers</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {profile.socialStats.followers}
+                    {profile.socialStats?.followers || 0}
                   </p>
                 </div>
                 <Users className="h-8 w-8 text-green-600" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm font-medium text-muted-foreground">Likes</p>
                   <p className="text-2xl font-bold text-foreground">
-                    {profile.socialStats.likes}
+                    {profile.socialStats?.likes || 0}
                   </p>
                 </div>
                 <Heart className="h-8 w-8 text-red-600" />
               </div>
             </CardContent>
           </Card>
-          
+
           <Card>
             <CardContent className="p-6">
               <div className="flex items-center justify-between">
@@ -547,7 +630,7 @@ export default function UserProfilePage() {
               <span className="truncate">Feed</span>
             </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="history" className="space-y-4">
             {tokenGating.loading ? (
               <Card>
@@ -592,10 +675,10 @@ export default function UserProfilePage() {
                 </CardContent>
               </Card>
             ) : (
-              <UserHistoryDisplay history={profile.history} />
+              <UserHistoryDisplay history={profile.history || []} />
             )}
           </TabsContent>
-          
+
           <TabsContent value="stats" className="space-y-4">
             {tokenGating.loading ? (
               <Card>
@@ -628,7 +711,7 @@ export default function UserProfilePage() {
                 {profile.stats ? (
                   <>
                     <UserHistoryStats stats={profile.stats} />
-                    <UserActivityCalendar history={profile.history} />
+                    <UserActivityCalendar history={profile.history || []} />
                   </>
                 ) : (
                   <Card>
@@ -642,7 +725,7 @@ export default function UserProfilePage() {
               </>
             )}
           </TabsContent>
-          
+
           <TabsContent value="social" className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {validatedWalletAddress && (
@@ -652,7 +735,7 @@ export default function UserProfilePage() {
                 </>
               )}
             </div>
-            
+
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -663,18 +746,18 @@ export default function UserProfilePage() {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{profile.socialStats.likes}</p>
+                    <p className="text-2xl font-bold">{profile.socialStats?.likes || 0}</p>
                     <p className="text-sm text-muted-foreground">Total Likes</p>
                   </div>
                   <div className="text-center p-4 bg-muted rounded-lg">
-                    <p className="text-2xl font-bold">{profile.socialStats.profileViews}</p>
+                    <p className="text-2xl font-bold">{profile.socialStats?.profileViews || 0}</p>
                     <p className="text-sm text-muted-foreground">Profile Views</p>
                   </div>
                 </div>
               </CardContent>
             </Card>
           </TabsContent>
-          
+
           <TabsContent value="activity" className="space-y-4">
             {tokenGating.loading ? (
               <Card>
@@ -712,7 +795,7 @@ export default function UserProfilePage() {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {profile.history.slice(0, 10).map((entry) => (
+                    {(profile.history || []).slice(0, 10).map((entry) => (
                       <div key={entry.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                         <div className="w-2 h-2 rounded-full bg-primary"></div>
                         <div className="flex-1">
@@ -743,8 +826,8 @@ export default function UserProfilePage() {
                   <ReferralLinkSection walletAddress={profile.walletAddress} />
                 </div>
 
-                <ReferralStatsSection socialStats={profile.socialStats} />
-                
+                <ReferralStatsSection socialStats={profile.socialStats || { visitsByUsers: 0, followers: 0, following: 0, likes: 0, profileViews: 0 }} />
+
                 <TokenBalance
                   walletAddress={profile.walletAddress}
                   isMyProfile={isMyProfile === true}
