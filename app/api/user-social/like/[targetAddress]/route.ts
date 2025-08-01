@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserLikeEntry } from '@/types/user-history';
 import { validateWalletAddress, generateId } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import { 
+import {
   storeUserLike,
   removeUserLike,
   getUserLikes,
@@ -15,14 +15,14 @@ import {
 } from '@/lib/qdrant';
 
 // Authentication check using session validation
-function isValidRequest(_request: NextRequest): { isValid: boolean; walletAddress?: string } {
+async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean; walletAddress?: string }> {
   try {
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     if (!session) return { isValid: false };
-    
+
     // Check if session is expired
     if (Date.now() > session.expiresAt) return { isValid: false };
-    
+
     return { isValid: true, walletAddress: session.walletAddress };
   } catch (error) {
     console.error('Session validation error:', error);
@@ -42,17 +42,17 @@ export async function POST(
     }
 
     // Authentication check
-    const auth = isValidRequest(_request);
+    const auth = await isValidRequest(_request);
     if (!auth.isValid || !auth.walletAddress) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const targetAddress = params.targetAddress;
-    
+
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
     const validatedLiker = validateWalletAddress(auth.walletAddress);
-    
+
     if (!validatedTarget || !validatedLiker) {
       return NextResponse.json({ error: 'Invalid wallet address format' }, { status: 400 });
     }
@@ -92,17 +92,17 @@ export async function DELETE(
     }
 
     // Authentication check
-    const auth = isValidRequest(_request);
+    const auth = await isValidRequest(_request);
     if (!auth.isValid || !auth.walletAddress) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const targetAddress = params.targetAddress;
-    
+
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
     const validatedLiker = validateWalletAddress(auth.walletAddress);
-    
+
     if (!validatedTarget || !validatedLiker) {
       return NextResponse.json({ error: 'Invalid wallet address format' }, { status: 400 });
     }
@@ -129,7 +129,7 @@ export async function GET(
     }
 
     const targetAddress = params.targetAddress;
-    
+
     // Validate address
     const validatedTarget = validateWalletAddress(targetAddress);
     if (!validatedTarget) {

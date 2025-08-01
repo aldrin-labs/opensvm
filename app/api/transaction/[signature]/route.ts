@@ -1,9 +1,8 @@
 import { NextRequest } from 'next/server';
 import type { DetailedTransactionInfo } from '@/lib/solana';
-import { getConnection } from '@/lib/solana-connection';
+import { enhancedTransactionFetcher } from '@/lib/enhanced-transaction-fetcher';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
-import { enhancedTransactionFetcher, type EnhancedTransactionData } from '@/lib/enhanced-transaction-fetcher';
 
 const DEBUG = true; // Set to true to enable detailed logging
 
@@ -131,19 +130,19 @@ export async function GET(
     if (DEBUG) {
       console.log(`[API] Processing transaction request for signature: ${signature}`);
     }
-    
+
     // Check if this is a demo transaction
     if (signature.startsWith('demo-') || DEMO_TRANSACTIONS[signature]) {
       if (DEBUG) {
         console.log(`[API] Serving demo transaction data for: ${signature}`);
       }
-      
+
       // Use predefined demo data if available, otherwise generate a new demo
       const demoTx = DEMO_TRANSACTIONS[signature] || generateDemoTransaction(signature);
-      
+
       // Transform and return the demo transaction data
       const transactionInfo = transformTransactionData(signature, demoTx);
-      
+
       return new Response(
         JSON.stringify(transactionInfo),
         {
@@ -160,15 +159,15 @@ export async function GET(
       }
       return new Response(
         JSON.stringify({ error: 'Transaction signature is required' }),
-        { 
+        {
           status: 400,
           headers: new Headers(defaultHeaders)
         }
       );
     }
 
-    // Get connection from pool
-    const connection = await getConnection();
+    // Get connection from pool (commented out since not used)
+    // const connection = await getConnection();
     if (DEBUG) {
       console.log(`[API] Using OpenSVM RPC connection to fetch transaction data`);
     }
@@ -179,7 +178,7 @@ export async function GET(
       new Promise((_, reject) => {
         setTimeout(() => reject(new Error('RPC request timed out')), 15000); // Increase timeout to 15 seconds
       })
-    ]) as EnhancedTransactionData;
+    ]) as ParsedTransactionWithMeta;
 
     clearTimeout(timeoutId);
 
@@ -193,7 +192,7 @@ export async function GET(
     if (DEBUG) {
       console.log(`[API] Successfully processed transaction data, returning to client`);
     }
-    
+
     return new Response(
       JSON.stringify(transactionInfo),
       {
@@ -201,13 +200,13 @@ export async function GET(
         headers: new Headers(defaultHeaders)
       }
     );
-    
+
   } catch (error) {
     clearTimeout(timeoutId);
     if (DEBUG) {
       console.error('[API] Transaction error:', error);
     }
-    
+
     let status = 500;
     let message = 'Failed to fetch transaction';
 
@@ -229,12 +228,12 @@ export async function GET(
         message = 'Server error. Please try again later.';
       }
     }
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: message
       }),
-      { 
+      {
         status,
         headers: new Headers(defaultHeaders)
       }
@@ -247,7 +246,7 @@ function transformTransactionData(signature: string, tx: ParsedTransactionWithMe
   if (DEBUG) {
     console.log(`[API] Transforming transaction data for UI presentation`);
   }
-  
+
   const transactionInfo: DetailedTransactionInfo = {
     signature,
     timestamp: tx.blockTime ? tx.blockTime * 1000 : Date.now(),
@@ -372,79 +371,56 @@ function transformTransactionData(signature: string, tx: ParsedTransactionWithMe
         .filter(change => change.change !== 0);
     }
   }
-  
+
   return transactionInfo;
 }
 
 // Helper function to transform enhanced transaction data to existing format
-function transformEnhancedTransactionData(enhancedTx: EnhancedTransactionData): DetailedTransactionInfo {
+function transformEnhancedTransactionData(enhancedTx: ParsedTransactionWithMeta): DetailedTransactionInfo {
   if (DEBUG) {
     console.log(`[API] Transforming enhanced transaction data for UI presentation`);
   }
 
   const transactionInfo: DetailedTransactionInfo = {
-    signature: enhancedTx.signature,
+    signature: enhancedTx.transaction.signatures[0],
     timestamp: enhancedTx.blockTime ? enhancedTx.blockTime * 1000 : Date.now(),
     slot: enhancedTx.slot,
-    success: enhancedTx.meta.err === null,
+    success: enhancedTx.meta?.err === null,
     type: 'unknown',
     details: {
-      instructions: enhancedTx.instructionData.map(ix => ({
-        program: ix.programName || '',
-        programId: ix.programId,
-        parsed: ix.data.parsed || {},
-        accounts: ix.accounts.map(acc => acc.pubkey),
-        data: ix.data.raw,
-        computeUnits: ix.computeUnits,
-        computeUnitsConsumed: ix.computeUnits
+      instructions: enhancedTx.transaction.message.instructions.map((ix, _index) => ({
+        program: 'Unknown',
+        programId: enhancedTx.transaction.message.accountKeys[(ix as any).programIdIndex || 0].toString(),
+        parsed: 'parsed' in ix ? ix.parsed : {},
+        accounts: 'accounts' in ix ? (ix as any).accounts?.map((accIndex: number) => enhancedTx.transaction.message.accountKeys[accIndex].toString()) || [] : [],
+        data: 'data' in ix ? ix.data : '',
+        computeUnits: undefined,
+        computeUnitsConsumed: enhancedTx.meta?.computeUnitsConsumed
       })),
       accounts: enhancedTx.transaction.message.accountKeys.map(key => ({
-        pubkey: key.pubkey,
-        signer: key.signer,
-        writable: key.writable
+        pubkey: key.toString(),
+        signer: false,
+        writable: true
       })),
-      preBalances: enhancedTx.meta.preBalances,
-      postBalances: enhancedTx.meta.postBalances,
-      preTokenBalances: enhancedTx.meta.preTokenBalances,
-      postTokenBalances: enhancedTx.meta.postTokenBalances,
-      logs: enhancedTx.meta.logMessages,
-      innerInstructions: enhancedTx.instructionData.map(ix => ({
-        index: ix.index,
-        instructions: ix.innerInstructions.map(innerIx => ({
-          program: innerIx.programName || '',
-          programId: innerIx.programId,
-          parsed: innerIx.data.parsed || {},
-          accounts: innerIx.accounts.map(acc => acc.pubkey),
-          data: innerIx.data.raw,
-          computeUnits: innerIx.computeUnits,
-          computeUnitsConsumed: innerIx.computeUnits
+      preBalances: enhancedTx.meta?.preBalances || [],
+      postBalances: enhancedTx.meta?.postBalances || [],
+      preTokenBalances: enhancedTx.meta?.preTokenBalances || [],
+      postTokenBalances: enhancedTx.meta?.postTokenBalances || [],
+      logs: enhancedTx.meta?.logMessages || [],
+      innerInstructions: enhancedTx.meta?.innerInstructions?.map(inner => ({
+        index: inner.index,
+        instructions: inner.instructions.map(innerIx => ({
+          program: 'Unknown',
+          programId: enhancedTx.transaction.message.accountKeys[(innerIx as any).programIdIndex || 0].toString(),
+          parsed: 'parsed' in innerIx ? innerIx.parsed : {},
+          accounts: 'accounts' in innerIx ? (innerIx as any).accounts?.map((accIndex: number) => enhancedTx.transaction.message.accountKeys[accIndex].toString()) || [] : [],
+          data: 'data' in innerIx ? innerIx.data : '',
+          computeUnits: undefined,
+          computeUnitsConsumed: undefined
         }))
-      })),
-      tokenChanges: enhancedTx.accountStates.flatMap(account => 
-        account.tokenChanges.map(change => ({
-          mint: change.mint,
-          preAmount: change.uiAmountBefore || 0,
-          postAmount: change.uiAmountAfter || 0,
-          change: (change.uiAmountAfter || 0) - (change.uiAmountBefore || 0)
-        }))
-      ),
-      solChanges: enhancedTx.accountStates
-        .filter(account => account.lamportsDiff !== 0)
-        .map((account, index) => ({
-          accountIndex: index,
-          preBalance: 0, // Would need to calculate from account states
-          postBalance: account.lamportsDiff,
-          change: account.lamportsDiff
-        }))
+      })) || []
     }
   };
-
-  // Determine transaction type based on token changes
-  if (enhancedTx.accountStates.some(account => account.tokenChanges.length > 0)) {
-    transactionInfo.type = 'token';
-  } else if (enhancedTx.accountStates.some(account => account.lamportsDiff !== 0)) {
-    transactionInfo.type = 'sol';
-  }
 
   return transactionInfo;
 }
@@ -470,16 +446,16 @@ function generateDemoTransaction(signature: string): ParsedTransactionWithMeta {
       message: {
         recentBlockhash: 'demoBlockhash1111111111111111111111111111111',
         accountKeys: [
-          { 
+          {
             pubkey: new PublicKey('11111111111111111111111111111111'),
             signer: true,
             writable: true
           },
-          { 
+          {
             pubkey: new PublicKey('222222222222222222222222222222222'),
             signer: false,
             writable: true
-          } 
+          }
         ],
         instructions: [
           {

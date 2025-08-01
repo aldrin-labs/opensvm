@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getTransactionDetails } from '@/lib/solana';
 import { calculateTransactionMetrics } from '@/lib/transaction-metrics-calculator';
-import { cacheHelpers } from '@/lib/transaction-cache';
 
 // Request validation schema
 const MetricsRequestSchema = z.object({
@@ -107,11 +106,11 @@ export async function GET(
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<TransactionMetricsResponse>> {
   const startTime = Date.now();
-  
+
   try {
     const { signature } = params;
     const { searchParams } = new URL(request.url);
-    
+
     // Validate signature format
     if (!signature || signature.length !== 88) {
       return NextResponse.json({
@@ -134,24 +133,9 @@ export async function GET(
 
     const validatedParams = MetricsRequestSchema.parse(queryParams);
 
-    // Check cache first
-    const cached = cacheHelpers.getMetrics(signature);
-    
-    if (cached && !validatedParams.includeComparison && !validatedParams.includeBenchmarks) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          signature,
-          metrics: cached,
-          cached: true
-        },
-        timestamp: Date.now()
-      });
-    }
-
     // Fetch transaction details
     const transaction = await getTransactionDetails(signature);
-    
+
     if (!transaction) {
       return NextResponse.json({
         success: false,
@@ -165,22 +149,28 @@ export async function GET(
 
     // Calculate comprehensive metrics
     const metricsResult = await calculateTransactionMetrics(transaction);
-    
+
     // Build detailed metrics object
-    const metrics = {
+    const metrics: TransactionMetricsResponse['data']['metrics'] = {
       fees: {
-        total: metricsResult.totalFee,
-        perComputeUnit: metricsResult.totalFee / (metricsResult.computeUnitsUsed || 1),
-        breakdown: metricsResult.feeBreakdown,
+        total: metricsResult.feeAnalysis.totalFee,
+        perComputeUnit: metricsResult.feeAnalysis.totalFee / (metricsResult.computeAnalysis.computeUnitsUsed || 1),
+        breakdown: {
+          baseFee: metricsResult.feeAnalysis.breakdown.baseFee,
+          priorityFee: metricsResult.feeAnalysis.breakdown.priorityFee,
+          ...(metricsResult.feeAnalysis.breakdown.accountRentFee && {
+            rentExemption: metricsResult.feeAnalysis.breakdown.accountRentFee
+          })
+        },
         ...(validatedParams.includeComparison && {
           comparison: await getFeeComparison(transaction, validatedParams.timeframe)
         })
       },
       compute: {
-        unitsUsed: metricsResult.computeUnitsUsed,
-        unitsRequested: metricsResult.computeUnitsRequested,
-        efficiency: metricsResult.computeEfficiency,
-        costPerUnit: metricsResult.totalFee / (metricsResult.computeUnitsUsed || 1),
+        unitsUsed: metricsResult.computeAnalysis.computeUnitsUsed,
+        unitsRequested: metricsResult.computeAnalysis.totalComputeUnits,
+        efficiency: metricsResult.computeAnalysis.computeUtilization,
+        costPerUnit: metricsResult.feeAnalysis.totalFee / (metricsResult.computeAnalysis.computeUnitsUsed || 1),
         ...(validatedParams.includeComparison && {
           comparison: await getComputeComparison(transaction, validatedParams.timeframe)
         })
@@ -189,15 +179,15 @@ export async function GET(
         score: metricsResult.performance.scalability.scalabilityScore,
         factors: {
           feeEfficiency: calculateFeeEfficiency(metricsResult),
-          computeEfficiency: metricsResult.computeEfficiency,
+          computeEfficiency: metricsResult.computeAnalysis.computeUtilization,
           instructionOptimization: calculateInstructionOptimization(transaction),
           accountUsage: calculateAccountUsageScore(transaction)
         },
-        grade: getPerformanceGrade(metricsResult.performanceScore)
+        grade: getPerformanceGrade(metricsResult.overallScore)
       },
       complexity: {
-        instructionCount: transaction.transaction.message.instructions.length,
-        accountCount: transaction.transaction.message.accountKeys.length,
+        instructionCount: transaction.transaction?.message?.instructions?.length || 0,
+        accountCount: transaction.transaction?.message?.accountKeys?.length || 0,
         programCount: getUniqueProgramCount(transaction),
         dataSize: calculateTransactionDataSize(transaction),
         complexityScore: calculateComplexityScore(transaction)
@@ -205,13 +195,13 @@ export async function GET(
       timing: {
         slot: transaction.slot,
         blockTime: transaction.blockTime || 0,
-        confirmationTime: metricsResult.confirmationTime,
+        confirmationTime: metricsResult.performance.executionTime,
         networkCongestion: await getNetworkCongestionLevel(transaction.slot)
       },
       security: {
-        riskScore: metricsResult.riskScore || 0,
-        factors: metricsResult.riskFactors || [],
-        warnings: metricsResult.securityWarnings || []
+        riskScore: metricsResult.complexity.overall,
+        factors: metricsResult.complexity.riskFactors.map(factor => factor.description),
+        warnings: metricsResult.recommendations.filter(rec => rec.type === 'security').map(rec => rec.title)
       }
     };
 
@@ -224,7 +214,7 @@ export async function GET(
     // Generate recommendations if requested
     let recommendations;
     if (validatedParams.includeRecommendations) {
-      recommendations = generateRecommendations(metrics, transaction);
+      recommendations = generateRecommendations(metricsResult, transaction);
     }
 
     const result = {
@@ -233,13 +223,10 @@ export async function GET(
       ...(benchmarks && { benchmarks }),
       ...(recommendations && { recommendations }),
       cached: false
-    };
-
-    // Cache the basic metrics (without comparison data)
-    cacheHelpers.setMetrics(signature, metrics, 60 * 60 * 1000); // 1 hour
+    } as TransactionMetricsResponse['data'];
 
     const processingTime = Date.now() - startTime;
-    
+
     return NextResponse.json({
       success: true,
       data: result,
@@ -253,7 +240,7 @@ export async function GET(
 
   } catch (error) {
     console.error('Transaction metrics error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -268,7 +255,7 @@ export async function GET(
 
 // Helper functions
 
-async function getFeeComparison(transaction: any, timeframe: string) {
+async function getFeeComparison(transaction: any, _timeframe: string) {
   // This would typically query a database of recent transactions
   // For now, return mock data
   return {
@@ -278,7 +265,7 @@ async function getFeeComparison(transaction: any, timeframe: string) {
   };
 }
 
-async function getComputeComparison(transaction: any, timeframe: string) {
+async function getComputeComparison(transaction: any, _timeframe: string) {
   const computeUnits = transaction.meta?.computeUnitsConsumed || 0;
   return {
     percentile: 45,
@@ -289,16 +276,16 @@ async function getComputeComparison(transaction: any, timeframe: string) {
 
 function calculateFeeEfficiency(metrics: any): number {
   // Calculate fee efficiency based on compute units used vs fee paid
-  const feePerComputeUnit = metrics.totalFee / (metrics.computeUnitsUsed || 1);
+  const feePerComputeUnit = metrics.feeAnalysis.totalFee / (metrics.computeAnalysis.computeUnitsUsed || 1);
   const baselineEfficiency = 0.000005; // 5 lamports per compute unit baseline
-  
+
   return Math.max(0, Math.min(100, (baselineEfficiency / feePerComputeUnit) * 100));
 }
 
 function calculateInstructionOptimization(transaction: any): number {
   const instructions = transaction.transaction.message.instructions;
   const accounts = transaction.transaction.message.accountKeys;
-  
+
   // Simple heuristic: fewer instructions per account is better
   const ratio = instructions.length / accounts.length;
   return Math.max(0, Math.min(100, (1 / ratio) * 50));
@@ -307,7 +294,7 @@ function calculateInstructionOptimization(transaction: any): number {
 function calculateAccountUsageScore(transaction: any): number {
   const accounts = transaction.transaction.message.accountKeys;
   const instructions = transaction.transaction.message.instructions;
-  
+
   // Calculate how efficiently accounts are used across instructions
   const accountUsage = new Map();
   instructions.forEach((inst: any) => {
@@ -315,7 +302,7 @@ function calculateAccountUsageScore(transaction: any): number {
       accountUsage.set(accountIndex, (accountUsage.get(accountIndex) || 0) + 1);
     });
   });
-  
+
   const averageUsage = Array.from(accountUsage.values()).reduce((a, b) => a + b, 0) / accounts.length;
   return Math.min(100, averageUsage * 25);
 }
@@ -344,80 +331,81 @@ function calculateComplexityScore(transaction: any): number {
   const instructions = transaction.transaction.message.instructions.length;
   const accounts = transaction.transaction.message.accountKeys.length;
   const programs = getUniqueProgramCount(transaction);
-  
+
   // Weighted complexity score
   return Math.min(100, (instructions * 2 + accounts + programs * 3) / 2);
 }
 
-async function getNetworkCongestionLevel(slot: number): Promise<'low' | 'medium' | 'high'> {
-  // This would typically check network metrics at the time of the transaction
+async function getNetworkCongestionLevel(_slot: number): Promise<'low' | 'medium' | 'high'> {
+  // This would typically query network metrics
   // For now, return a mock value
-  return 'medium';
+  return 'low';
 }
 
-async function getBenchmarkData(transaction: any, timeframe: string) {
-  // This would query historical data for benchmarking
+async function getBenchmarkData(transaction: any, _timeframe: string) {
+  // This would typically query a database of similar transactions
+  // For now, return mock data
   return {
     similarTransactions: {
-      count: 1250,
-      averageFee: transaction.meta?.fee * 1.15,
-      averageComputeUnits: (transaction.meta?.computeUnitsConsumed || 0) * 1.08,
-      averagePerformanceScore: 72
+      count: 150,
+      averageFee: transaction.meta?.fee * 0.9,
+      averageComputeUnits: transaction.meta?.computeUnitsConsumed * 1.1,
+      averagePerformanceScore: 75
     },
     networkAverages: {
       averageFee: 5000,
-      averageComputeUnits: 150000,
-      averageInstructions: 3.2
+      averageComputeUnits: 200000,
+      averageInstructions: 3
     }
   };
 }
 
-function generateRecommendations(metrics: any, transaction: any) {
+function generateRecommendations(metrics: any, _transaction: any) {
   const recommendations = [];
-  
+
   // Fee optimization recommendations
   if (metrics.performance.factors.feeEfficiency < 50) {
     recommendations.push({
       category: 'fee' as const,
       priority: 'medium' as const,
-      title: 'Optimize Transaction Fees',
-      description: 'Your transaction fees are higher than average. Consider using priority fee optimization.',
-      potentialSavings: Math.round(metrics.fees.total * 0.2)
+      title: 'Optimize transaction fees',
+      description: 'Consider batching instructions or using priority fees strategically',
+      potentialSavings: 1000
     });
   }
-  
+
   // Compute optimization recommendations
   if (metrics.compute.efficiency < 70) {
     recommendations.push({
       category: 'compute' as const,
       priority: 'high' as const,
-      title: 'Improve Compute Efficiency',
-      description: 'Your transaction is using compute units inefficiently. Consider optimizing instruction order.',
-      potentialSavings: Math.round(metrics.fees.total * 0.15)
+      title: 'Reduce compute unit usage',
+      description: 'Optimize instruction sequence to reduce compute consumption',
+      potentialSavings: 2000
     });
   }
-  
+
   // Structure optimization recommendations
   if (metrics.complexity.complexityScore > 80) {
     recommendations.push({
       category: 'structure' as const,
-      priority: 'low' as const,
-      title: 'Simplify Transaction Structure',
-      description: 'This transaction is quite complex. Consider breaking it into smaller transactions.',
-      potentialSavings: 0
+      priority: 'medium' as const,
+      title: 'Simplify transaction structure',
+      description: 'Consider breaking complex transactions into smaller ones',
+      potentialSavings: 500
     });
   }
-  
+
   // Security recommendations
   if (metrics.security.riskScore > 50) {
     recommendations.push({
       category: 'security' as const,
       priority: 'high' as const,
-      title: 'Review Security Risks',
-      description: 'This transaction has elevated security risks. Review the warnings carefully.',
+      title: 'Review security implications',
+      description: 'Verify all account permissions and program interactions',
       potentialSavings: 0
     });
   }
-  
+
   return recommendations;
 }

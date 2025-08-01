@@ -32,16 +32,16 @@ export async function GET(request: NextRequest) {
     const url = new URL(request.url);
     const walletAddress = url.searchParams.get('walletAddress');
     const feedType = url.searchParams.get('type') || 'for-you';
-    
+
     // Validate wallet address
     if (!walletAddress || !validateWalletAddress(walletAddress)) {
       return new Response('Invalid wallet address', { status: 400 });
     }
-    
+
     // Get authenticated user (optional)
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     const authenticatedWallet = session?.walletAddress;
-    
+
     // Set up SSE headers
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
           timestamp: Date.now()
         };
         controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`));
-        
+
         // Keep connection alive with periodic messages
         const keepAliveInterval = setInterval(() => {
           try {
@@ -65,17 +65,17 @@ export async function GET(request: NextRequest) {
             controller.close();
           }
         }, 30000); // Send keep-alive every 30 seconds
-        
+
         // Set up polling for real-time events
         let lastEventTimestamp = Date.now();
         let cachedEvents: FeedEvent[] = [];
-        
+
         // Function to convert history entry to feed event
         const historyToFeedEvent = (entry: any): FeedEvent | null => {
           try {
             // Extract event data from history entry
             const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
-            
+
             // Apply feed type filtering
             if (feedType === 'following') {
               // For 'following' feed, only include events from followed users
@@ -87,18 +87,18 @@ export async function GET(request: NextRequest) {
               const todayStart = new Date().setHours(0, 0, 0, 0);
               const isFromToday = entry.timestamp >= todayStart;
               const hasEngagement = entry.metadata?.likes && entry.metadata.likes > 0;
-              
+
               // Include if: recent activity from today OR has some engagement OR is from profile owner
               if (!isFromToday && !hasEngagement && entry.walletAddress !== walletAddress) {
                 return null;
               }
             }
-            
+
             // Prepare user data for the event
             const userName = entry.metadata?.userName || `User ${entry.walletAddress.slice(0, 6)}`;
             const userAvatar = entry.metadata?.userAvatar ||
               `https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.walletAddress}`;
-            
+
             return {
               id: entry.id,
               eventType,
@@ -118,7 +118,7 @@ export async function GET(request: NextRequest) {
             return null;
           }
         };
-        
+
         // Get initial list of following if needed
         let followingList: any[] = [];
         if (feedType === 'following' && walletAddress) {
@@ -128,7 +128,7 @@ export async function GET(request: NextRequest) {
             console.error('Error fetching following list:', error);
           }
         }
-        
+
         // Poll for new events
         const realEventsInterval = setInterval(async () => {
           try {
@@ -141,29 +141,29 @@ export async function GET(request: NextRequest) {
                 // Filter in-memory after fetching
               }
             );
-            
+
             // Find new events (events with timestamp > lastEventTimestamp)
             const newEntries = history.filter(entry => entry.timestamp > lastEventTimestamp);
-            
+
             if (newEntries.length > 0) {
               // Update lastEventTimestamp to the newest event's timestamp
               lastEventTimestamp = Math.max(...newEntries.map(entry => entry.timestamp));
-              
+
               // Convert new entries to feed events
               const newEvents = newEntries
                 .map(historyToFeedEvent)
                 .filter((event): event is FeedEvent => event !== null);
-              
+
               // Update cached events
               cachedEvents = [...newEvents, ...cachedEvents].slice(0, 100); // Keep last 100 events
-              
+
               // Send each new event to the client
               for (const event of newEvents) {
                 const eventUpdate = {
                   type: 'feed-update',
                   event
                 };
-                
+
                 try {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventUpdate)}\n\n`));
                 } catch (e) {
@@ -172,32 +172,32 @@ export async function GET(request: NextRequest) {
                 }
               }
             }
-            
+
             // Randomly send like updates based on real events
             if (cachedEvents.length > 0 && Math.random() > 0.8) {
               const randomEvent = cachedEvents[Math.floor(Math.random() * cachedEvents.length)];
               const newLikes = randomEvent.likes + 1;
-              
+
               const likeUpdate = {
                 type: 'like-update',
                 eventId: randomEvent.id,
                 likes: newLikes,
                 userHasLiked: authenticatedWallet
               };
-              
+
               try {
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify(likeUpdate)}\n\n`));
-                
+
                 // Update cached event
                 cachedEvents = cachedEvents.map(e =>
-                  e.id === randomEvent.id ? {...e, likes: newLikes} : e
+                  e.id === randomEvent.id ? { ...e, likes: newLikes } : e
                 );
               } catch (e) {
                 // If enqueueing fails, the connection is likely closed
                 throw e;
               }
             }
-            
+
           } catch (e) {
             // If this fails, the connection is likely closed
             clearInterval(realEventsInterval);
@@ -205,7 +205,7 @@ export async function GET(request: NextRequest) {
             controller.close();
           }
         }, 5000); // Poll for new events every 5 seconds
-        
+
         // Handle client disconnect
         request.signal.addEventListener('abort', () => {
           clearInterval(keepAliveInterval);
@@ -214,7 +214,7 @@ export async function GET(request: NextRequest) {
         });
       }
     });
-    
+
     return new Response(stream, {
       headers: {
         'Content-Type': 'text/event-stream',
@@ -223,7 +223,7 @@ export async function GET(request: NextRequest) {
         'X-Accel-Buffering': 'no' // Prevents buffering for Nginx proxy
       }
     });
-    
+
   } catch (error) {
     console.error('Error setting up SSE connection:', error);
     return new Response('Internal Server Error', { status: 500 });

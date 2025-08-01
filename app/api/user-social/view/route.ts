@@ -18,7 +18,7 @@ export async function POST(request: Request) {
     // Get viewer address if authenticated
     let viewerAddress: string | undefined = undefined;
     try {
-      const session = getSessionFromCookie();
+      const session = await getSessionFromCookie();
       if (session && session.walletAddress) {
         viewerAddress = session.walletAddress;
       }

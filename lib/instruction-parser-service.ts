@@ -88,7 +88,7 @@ export class InstructionParserService {
   ): Promise<ParsedInstructionInfo> {
     // Generate cache key for this instruction
     const cacheKey = this.generateInstructionCacheKey(programId, accounts, data, parsed);
-    
+
     // Check cache first
     const cachedInstruction = await transactionAnalysisCache.getCachedInstructionDefinition(programId, cacheKey);
     if (cachedInstruction) {
@@ -96,9 +96,9 @@ export class InstructionParserService {
     }
 
     const program = this.programRegistry.get(programId);
-    
+
     let result: ParsedInstructionInfo;
-    
+
     if (!program) {
       result = this.parseUnknownInstruction(programId, accounts, data, parsed);
     } else if (parsed) {
@@ -111,7 +111,7 @@ export class InstructionParserService {
 
     // Cache the result
     await transactionAnalysisCache.cacheInstructionDefinition(programId, cacheKey, result);
-    
+
     return result;
   }
 
@@ -258,7 +258,7 @@ export class InstructionParserService {
 
     const instructionType = instructionDef?.name || 'unknown';
     const description = instructionDef?.description || `${program.name} instruction`;
-    
+
     const accountRoles = accounts.map((account, index) => ({
       pubkey: account,
       role: instructionDef?.accounts[index]?.role || 'unknown',
@@ -290,7 +290,7 @@ export class InstructionParserService {
   ): ParsedInstructionInfo {
     const programName = this.getKnownProgramName(programId) || 'Unknown Program';
     const instructionType = parsed?.type || 'unknown';
-    
+
     return {
       programId,
       programName,
@@ -320,13 +320,13 @@ export class InstructionParserService {
     switch (program.programId) {
       case '11111111111111111111111111111111': // System Program
         return this.generateSystemProgramDescription(instructionType, info);
-      
+
       case 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': // SPL Token
         return this.generateTokenProgramDescription(instructionType, info);
-      
+
       case 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL': // Associated Token Account
         return this.generateATAProgramDescription(instructionType, info);
-      
+
       default:
         return `${program.name} ${instructionType} instruction`;
     }
@@ -341,17 +341,17 @@ export class InstructionParserService {
         const lamports = info.lamports || 0;
         const sol = lamports / 1e9;
         return `Transfer ${sol.toFixed(4)} SOL`;
-      
+
       case 'createAccount':
         const space = info.space || 0;
         return `Create account with ${space} bytes of data`;
-      
+
       case 'assign':
         return `Assign account to program ${info.owner || 'unknown'}`;
-      
+
       case 'allocate':
         return `Allocate ${info.space || 0} bytes for account`;
-      
+
       default:
         return `System ${instructionType} instruction`;
     }
@@ -365,32 +365,32 @@ export class InstructionParserService {
       case 'transfer':
         const amount = info.amount || 0;
         return `Transfer ${amount} tokens`;
-      
+
       case 'transferChecked':
         const checkedAmount = info.tokenAmount?.uiAmount || 0;
         return `Transfer ${checkedAmount} tokens (checked)`;
-      
+
       case 'mintTo':
         const mintAmount = info.amount || 0;
         return `Mint ${mintAmount} tokens`;
-      
+
       case 'burn':
         const burnAmount = info.amount || 0;
         return `Burn ${burnAmount} tokens`;
-      
+
       case 'approve':
         const approveAmount = info.amount || 0;
         return `Approve ${approveAmount} tokens for spending`;
-      
+
       case 'initializeAccount':
         return 'Initialize token account';
-      
+
       case 'initializeMint':
         return 'Initialize token mint';
-      
+
       case 'closeAccount':
         return 'Close token account';
-      
+
       default:
         return `Token ${instructionType} instruction`;
     }
@@ -403,7 +403,7 @@ export class InstructionParserService {
     switch (instructionType) {
       case 'create':
         return 'Create associated token account';
-      
+
       default:
         return `ATA ${instructionType} instruction`;
     }
@@ -429,7 +429,7 @@ export class InstructionParserService {
             { pubkey: accounts[1], role: 'recipient', description: 'Destination account', isSigner: false, isWritable: true }
           );
           break;
-        
+
         case 'createAccount':
           roles.push(
             { pubkey: accounts[0], role: 'payer', description: 'Funding account', isSigner: true, isWritable: true },
@@ -450,7 +450,7 @@ export class InstructionParserService {
             { pubkey: accounts[2], role: 'authority', description: 'Transfer authority', isSigner: true, isWritable: false }
           );
           break;
-        
+
         case 'mintTo':
           roles.push(
             { pubkey: accounts[0], role: 'mint', description: 'Token mint', isSigner: false, isWritable: true },
@@ -574,7 +574,7 @@ export class InstructionParserService {
   private initializeProgramRegistry(): void {
     // Load all program definitions from the registry
     const allPrograms = getAllProgramDefinitions();
-    
+
     // Register each program
     allPrograms.forEach(program => {
       this.programRegistry.set(program.programId, program);
@@ -934,6 +934,22 @@ export class InstructionParserService {
 export const instructionParserService = new InstructionParserService();
 
 // Export utility functions
-export function parseInstructions(transaction: any) {
-  return instructionParserService.categorizeInstructions(transaction);
+export function parseInstructions(transaction: any): Promise<ParsedInstructionInfo[]> {
+  if (!transaction?.transaction?.message?.instructions) {
+    return Promise.resolve([]);
+  }
+
+  const instructions = transaction.transaction.message.instructions;
+  const accountKeys = transaction.transaction.message.accountKeys;
+
+  return Promise.all(
+    instructions.map(async (instruction: any, index: number) => {
+      const programId = accountKeys[instruction.programIdIndex];
+      const accounts = instruction.accounts.map((accountIndex: number) => accountKeys[accountIndex]);
+      const data = instruction.data;
+      const parsed = instruction.parsed;
+
+      return instructionParserService.parseInstruction(programId, accounts, data, parsed);
+    })
+  );
 }

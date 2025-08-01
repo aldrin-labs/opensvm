@@ -160,7 +160,7 @@ export async function DELETE(
         }
 
         // Revoke the API key
-        await apiKeyManager.revokeKey(keyId);
+        await apiKeyManager.revokeKey(keyId, userId);
 
         return NextResponse.json({
             success: true,
@@ -181,7 +181,7 @@ export async function DELETE(
     }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
     return new NextResponse(null, {
         status: 200,
         headers: {

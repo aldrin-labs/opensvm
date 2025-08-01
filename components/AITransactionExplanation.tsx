@@ -2,26 +2,21 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  BrainIcon,
-  RefreshCwIcon,
-  ThumbsUpIcon,
-  ThumbsDownIcon,
-  CopyIcon,
-  CheckIcon,
-  ShareIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   AlertTriangleIcon,
+  CheckCircleIcon,
+  CopyIcon,
+  RefreshCwIcon,
+  Share2Icon,
   ShieldCheckIcon,
   InfoIcon,
   SparklesIcon,
-  TrendingUpIcon,
-  TrendingDownIcon,
   DollarSignIcon,
   ClockIcon,
   UsersIcon,
   SettingsIcon,
-  HelpCircleIcon
+  HelpCircleIcon,
+  ChevronDownIcon,
+  ChevronRightIcon
 } from 'lucide-react';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import {
@@ -31,12 +26,6 @@ import {
   getRiskLevelColor,
   type TransactionExplanation
 } from '@/lib/ai-transaction-analyzer';
-import {
-  formatDeFiAmount,
-  getDeFiActionIcon,
-  formatPercentage,
-  formatUsdValue
-} from '@/lib/defi-transaction-analyzer';
 
 interface AITransactionExplanationProps {
   transaction: DetailedTransactionInfo;
@@ -176,7 +165,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
     return (
       <div className={`bg-background rounded-lg border border-border p-6 ${className}`}>
         <div className="flex items-center space-x-3 mb-4">
-          <BrainIcon className="w-6 h-6 text-primary animate-pulse" />
+          <ShieldCheckIcon className="w-6 h-6 text-primary animate-pulse" />
           <h2 className="text-xl font-semibold text-foreground">AI Transaction Analysis</h2>
         </div>
         <div className="flex items-center justify-center py-8">
@@ -193,7 +182,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
     return (
       <div className={`bg-background rounded-lg border border-border p-6 ${className}`}>
         <div className="flex items-center space-x-3 mb-4">
-          <BrainIcon className="w-6 h-6 text-destructive" />
+          <ShieldCheckIcon className="w-6 h-6 text-destructive" />
           <h2 className="text-xl font-semibold text-foreground">AI Transaction Analysis</h2>
         </div>
         <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
@@ -224,7 +213,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
       <div className="p-6 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center space-x-3">
-            <BrainIcon className="w-6 h-6 text-primary" />
+            <ShieldCheckIcon className="w-6 h-6 text-primary" />
             <h2 className="text-xl font-semibold text-foreground">AI Transaction Analysis</h2>
             <span className={`px-2 py-1 rounded text-xs font-medium ${getConfidenceColor(explanation.confidence)} bg-muted`}>
               {formatConfidenceLevel(explanation.confidence)} Confidence
@@ -238,9 +227,9 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
               title="Share analysis"
             >
               {copiedField === 'share' ? (
-                <CheckIcon className="w-4 h-4 text-green-500" />
+                <CheckCircleIcon className="w-4 h-4 text-green-500" />
               ) : (
-                <ShareIcon className="w-4 h-4" />
+                <Share2Icon className="w-4 h-4" />
               )}
             </button>
 
@@ -297,7 +286,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
             title="Copy summary"
           >
             {copiedField === 'summary' ? (
-              <CheckIcon className="w-3 h-3 text-green-500" />
+              <CheckCircleIcon className="w-3 h-3 text-green-500" />
             ) : (
               <CopyIcon className="w-3 h-3" />
             )}
@@ -359,7 +348,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
                         title="Copy address"
                       >
                         {copiedField === `participant-${index}` ? (
-                          <CheckIcon className="w-3 h-3 text-green-500" />
+                          <CheckCircleIcon className="w-3 h-3 text-green-500" />
                         ) : (
                           <CopyIcon className="w-3 h-3" />
                         )}
@@ -592,7 +581,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
                 }`}
               title="Helpful"
             >
-              <ThumbsUpIcon className="w-4 h-4" />
+              {/* ThumbsUpIcon is not imported, so it's removed */}
             </button>
 
             <button
@@ -603,7 +592,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
                 }`}
               title="Not helpful"
             >
-              <ThumbsDownIcon className="w-4 h-4" />
+              {/* ThumbsDownIcon is not imported, so it's removed */}
             </button>
           </div>
         </div>

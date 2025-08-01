@@ -1,17 +1,17 @@
-import { 
-  APIKey, 
-  KeyGenerationRequest, 
-  KeyGenerationResult, 
+import {
+  APIKey,
+  KeyGenerationRequest,
+  KeyGenerationResult,
   KeyValidationResult,
-  KeyUsageStats 
+  KeyUsageStats
 } from '../types/ProxyTypes';
-import { 
-  generateAPIKey, 
-  generateKeyId, 
-  hashAPIKey, 
-  getKeyPrefix, 
-  validateKeyFormat, 
-  verifyKeyChecksum 
+import {
+  generateAPIKey,
+  generateKeyId,
+  hashAPIKey,
+  getKeyPrefix,
+  validateKeyFormat,
+  verifyKeyChecksum
 } from '../utils/KeyGenerator';
 import { KeyStorage } from '../storage/KeyStorage';
 
@@ -141,6 +141,13 @@ export class APIKeyManager {
   }
 
   /**
+   * Get API key by ID (alias for getKey)
+   */
+  async getKeyById(keyId: string): Promise<APIKey | null> {
+    return this.getKey(keyId);
+  }
+
+  /**
    * Get all keys for a user
    */
   async getUserKeys(userId: string): Promise<APIKey[]> {
@@ -153,11 +160,18 @@ export class APIKeyManager {
   }
 
   /**
+   * List user keys (alias for getUserKeys)
+   */
+  async listUserKeys(userId: string): Promise<APIKey[]> {
+    return this.getUserKeys(userId);
+  }
+
+  /**
    * Update key usage statistics
    */
   async updateKeyUsage(
-    keyId: string, 
-    tokensConsumed: number, 
+    keyId: string,
+    tokensConsumed: number,
     svmaiSpent: number
   ): Promise<void> {
     try {
@@ -173,7 +187,7 @@ export class APIKeyManager {
         totalSVMAISpent: key.usageStats.totalSVMAISpent + svmaiSpent,
         lastRequestAt: new Date(),
         averageTokensPerRequest: Math.round(
-          (key.usageStats.totalTokensConsumed + tokensConsumed) / 
+          (key.usageStats.totalTokensConsumed + tokensConsumed) /
           (key.usageStats.totalRequests + 1)
         )
       };
@@ -225,6 +239,13 @@ export class APIKeyManager {
       console.error('Failed to delete key:', error);
       throw error;
     }
+  }
+
+  /**
+   * Revoke an API key (alias for deactivateKey)
+   */
+  async revokeKey(keyId: string, userId: string): Promise<void> {
+    return this.deactivateKey(keyId, userId);
   }
 
   /**

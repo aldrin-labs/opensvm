@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getProgramDefinition, 
+import {
+  getProgramDefinition,
   getProgramMetadata,
   getSimilarPrograms,
   isProgramHighRisk,
@@ -32,12 +32,12 @@ export async function GET(
     // Validate program ID format
     if (!programId || !/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(programId)) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
-            code: 'INVALID_PROGRAM_ID', 
-            message: 'Invalid program ID format' 
-          } 
+        {
+          success: false,
+          error: {
+            code: 'INVALID_PROGRAM_ID',
+            message: 'Invalid program ID format'
+          }
         },
         { status: 400 }
       );
@@ -47,12 +47,12 @@ export async function GET(
     const program = getProgramDefinition(programId);
     if (!program) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
-            code: 'PROGRAM_NOT_FOUND', 
-            message: 'Program not found in registry' 
-          } 
+        {
+          success: false,
+          error: {
+            code: 'PROGRAM_NOT_FOUND',
+            message: 'Program not found in registry'
+          }
         },
         { status: 404 }
       );
@@ -63,12 +63,12 @@ export async function GET(
       const instructionDef = getInstructionDefinition(programId, instructionName);
       if (!instructionDef) {
         return NextResponse.json(
-          { 
-            success: false, 
-            error: { 
-              code: 'INSTRUCTION_NOT_FOUND', 
-              message: 'Instruction not found' 
-            } 
+          {
+            success: false,
+            error: {
+              code: 'INSTRUCTION_NOT_FOUND',
+              message: 'Instruction not found'
+            }
           },
           { status: 404 }
         );
@@ -155,12 +155,12 @@ export async function GET(
   } catch (error) {
     console.error('Program registry individual lookup error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );
@@ -185,12 +185,12 @@ export async function POST(
     const program = getProgramDefinition(programId);
     if (!program) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
-            code: 'PROGRAM_NOT_FOUND', 
-            message: 'Program not found in registry' 
-          } 
+        {
+          success: false,
+          error: {
+            code: 'PROGRAM_NOT_FOUND',
+            message: 'Program not found in registry'
+          }
         },
         { status: 404 }
       );
@@ -206,7 +206,7 @@ export async function POST(
         }
 
         const analysisResults = data.instructions.map((instructionName: string) => {
-          const instruction = program.instructions.find(ix => 
+          const instruction = program.instructions.find(ix =>
             ix.name.toLowerCase() === instructionName.toLowerCase()
           );
 
@@ -238,8 +238,8 @@ export async function POST(
             analysisResults,
             summary: {
               totalInstructions: data.instructions.length,
-              foundInstructions: analysisResults.filter(r => r.found).length,
-              notFoundInstructions: analysisResults.filter(r => !r.found).length
+              foundInstructions: analysisResults.filter((r: any) => r.found).length,
+              notFoundInstructions: analysisResults.filter((r: any) => !r.found).length
             }
           },
           timestamp: Date.now()
@@ -306,12 +306,12 @@ export async function POST(
   } catch (error) {
     console.error('Program registry individual POST error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );

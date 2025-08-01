@@ -10,7 +10,7 @@ import { qdrantClient } from '@/lib/qdrant';
 export async function POST(request: Request) {
   try {
     // Authenticate the user
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     if (!session || Date.now() > session.expiresAt) {
       return NextResponse.json({
         error: 'Authentication required to claim rewards',
@@ -27,7 +27,7 @@ export async function POST(request: Request) {
         code: 'MISSING_WALLET'
       }, { status: 400 });
     }
-    
+
     if (session.walletAddress !== walletAddress) {
       return NextResponse.json({
         error: 'You can only claim rewards for your own wallet',
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     } catch (error) {
       console.log('Error fetching user balance, assuming 0');
     }
-    
+
     // Check if user has enough tokens to claim (minimum 1,000,000 SVMAI)
     const MINIMUM_BALANCE_REQUIRED = 1000000;
     if (currentBalance < MINIMUM_BALANCE_REQUIRED) {
@@ -118,7 +118,7 @@ export async function POST(request: Request) {
         limit: 10,
         with_payload: true
       });
-      
+
       // Sort the results manually after fetching
       lastClaimResult.sort((a, b) => {
         const aTime = (a.payload as any).claimedAt || 0;
@@ -135,7 +135,7 @@ export async function POST(request: Request) {
       const lastClaimDate = new Date(lastClaim.claimedAt);
       const now = new Date();
       const hoursSinceLastClaim = (now.getTime() - lastClaimDate.getTime()) / (1000 * 60 * 60);
-      
+
       if (hoursSinceLastClaim < 24) {
         const nextClaimTime = new Date(lastClaimDate.getTime() + 24 * 60 * 60 * 1000);
         return NextResponse.json({
@@ -178,7 +178,7 @@ export async function POST(request: Request) {
         await qdrantClient.createCollection('referral_rewards', {
           vectors: { size: 384, distance: 'Cosine' }
         });
-        
+
         // Retry upserting the reward
         await qdrantClient.upsert('referral_rewards', {
           points: [
@@ -233,7 +233,7 @@ export async function POST(request: Request) {
         await qdrantClient.createCollection('user_balances', {
           vectors: { size: 384, distance: 'Cosine' }
         });
-        
+
         // Retry upserting the balance
         await qdrantClient.upsert('user_balances', {
           points: [

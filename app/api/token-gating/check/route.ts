@@ -6,12 +6,12 @@ export async function GET(_request: NextRequest) {
   console.log(`[Token Gating] Checking access...`);
 
   // Get the authenticated session
-  const session = getSessionFromCookie();
-  
+  const session = await getSessionFromCookie();
+
   if (!session || Date.now() > session.expiresAt) {
     console.log(`[Token Gating] No authenticated session found`);
     return NextResponse.json(
-      { 
+      {
         error: 'Not authenticated',
         data: {
           hasAccess: false,
@@ -28,9 +28,9 @@ export async function GET(_request: NextRequest) {
 
   try {
     const result = await checkSVMAIAccess(walletAddress);
-    
+
     console.log(`[Token Gating] Result for ${walletAddress}:`, result);
-    
+
     return NextResponse.json({
       success: true,
       data: result
@@ -38,7 +38,7 @@ export async function GET(_request: NextRequest) {
   } catch (error) {
     console.error('Error checking token gating access:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to check token gating access',
         details: error instanceof Error ? error.message : 'Unknown error'
       },

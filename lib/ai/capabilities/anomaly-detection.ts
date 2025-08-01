@@ -1,12 +1,12 @@
 import { Connection } from '@solana/web3.js';
 import { BaseCapability } from './base';
 import type { Message, Tool, ToolParams } from '../types';
-import { 
-  getAllPatterns, 
-  calculateSeverity, 
+import {
+  getAllPatterns,
+  calculateSeverity,
   AnomalyStatistics,
-  type AnomalyPattern, 
-  type AnomalyContext 
+  type AnomalyPattern,
+  type AnomalyContext
 } from '@/lib/anomaly-patterns';
 import { SSEManager } from '@/lib/sse-manager';
 import { generateSecureUUID } from '@/lib/crypto-utils';
@@ -34,8 +34,8 @@ export class AnomalyDetectionCapability extends BaseCapability {
   private maxAlertHistory = 100;
   public tools: Tool[] = this.createTools(); // Initialize directly here
 
-  constructor(connection: Connection) {
-    super(connection);
+  constructor(connection?: Connection | null) {
+    super(connection || null);
     this.recentEvents = new RingBuffer<any>(this.maxEventHistory);
     this.alerts = new RingBuffer<AnomalyAlert>(this.maxAlertHistory);
     this.initializePatterns(); // Now async but fire-and-forget
@@ -43,13 +43,13 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
   canHandle(message: Message): boolean {
     const content = message.content.toLowerCase();
-    return content.includes('anomaly') || 
-           content.includes('suspicious') ||
-           content.includes('abnormal') ||
-           content.includes('unusual') ||
-           content.includes('detect') ||
-           content.includes('alert') ||
-           content.includes('monitor');
+    return content.includes('anomaly') ||
+      content.includes('suspicious') ||
+      content.includes('abnormal') ||
+      content.includes('unusual') ||
+      content.includes('detect') ||
+      content.includes('alert') ||
+      content.includes('monitor');
   }
 
   private async initializePatterns(): Promise<void> {
@@ -139,17 +139,17 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
     // Create context for analysis
     const context = await this.createContext();
-    
+
     // Check for anomalies with safe pattern checking
     const alerts: AnomalyAlert[] = [];
-    
+
     for (const pattern of this.patterns) {
       const isAnomaly = await this.safePatternCheck(pattern, event, context);
       if (isAnomaly) {
         const alert = this.createAlert(pattern, event, context);
         alerts.push(alert);
         this.alerts.push(alert); // Now synchronous
-        
+
         // Push alert via SSE for real-time updates
         try {
           const sseManager = SSEManager.getInstance();
@@ -167,19 +167,19 @@ export class AnomalyDetectionCapability extends BaseCapability {
     const now = Date.now();
     const recentWindow = 5 * 60 * 1000; // 5 minutes
     const recentEvents = this.recentEvents.toArray().filter(e => e.timestamp > now - recentWindow);
-    
+
     const transactionEvents = recentEvents.filter(e => e.type === 'transaction');
     const failedTransactions = transactionEvents.filter(e => e.data.err !== null);
-    
+
     // Enhanced statistical calculations
     const fees = transactionEvents
       .map(t => t.data.fee)
       .filter(fee => typeof fee === 'number' && fee > 0);
-    
+
     const feeStatistics = this.calculateFeeStatistics(fees);
     const transactionStatistics = this.calculateTransactionStatistics(transactionEvents);
     const baselineData = await this.getBaselineData();
-    
+
     return {
       recentEvents,
       transactionVolume: transactionEvents.length,
@@ -224,17 +224,17 @@ export class AnomalyDetectionCapability extends BaseCapability {
     const volumes = this.getVolumeTimeSeries(transactions);
     const volumeMovingAverage = AnomalyStatistics.calculateMovingAverage(volumes, 10);
     const volumeStdDev = AnomalyStatistics.calculateStdDev(volumes);
-    
+
     // Calculate transaction intervals for timing analysis
     const timestamps = transactions.map(t => t.timestamp).sort((a, b) => a - b);
     const intervals = [];
     for (let i = 1; i < timestamps.length; i++) {
-      intervals.push(timestamps[i] - timestamps[i-1]);
+      intervals.push(timestamps[i] - timestamps[i - 1]);
     }
-    
+
     const intervalMean = AnomalyStatistics.calculateMean(intervals);
     const intervalStdDev = AnomalyStatistics.calculateStdDev(intervals, intervalMean);
-    
+
     return {
       volumeMovingAverage,
       volumeStdDev,
@@ -248,22 +248,22 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
   private getVolumeTimeSeries(transactions: any[], bucketSizeMs: number = 30000): number[] {
     if (transactions.length === 0) return [];
-    
+
     const now = Date.now();
     const buckets: number[] = [];
     const numBuckets = 20; // 20 buckets for time series
-    
+
     for (let i = 0; i < numBuckets; i++) {
       const bucketEnd = now - (i * bucketSizeMs);
       const bucketStart = bucketEnd - bucketSizeMs;
-      
-      const bucketCount = transactions.filter(t => 
+
+      const bucketCount = transactions.filter(t =>
         t.timestamp >= bucketStart && t.timestamp < bucketEnd
       ).length;
-      
+
       buckets.unshift(bucketCount);
     }
-    
+
     return buckets;
   }
 
@@ -272,7 +272,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
     // In production, this would come from a database or cache
     const allEvents = this.recentEvents.toArray();
     const historicalTxs = allEvents.filter(e => e.type === 'transaction');
-    
+
     if (historicalTxs.length < 50) {
       return {
         historicalAverageFees: 0,
@@ -282,13 +282,13 @@ export class AnomalyDetectionCapability extends BaseCapability {
         lastUpdated: Date.now()
       };
     }
-    
+
     const historicalFees = historicalTxs
       .map(t => t.data.fee)
       .filter(fee => typeof fee === 'number' && fee > 0);
-    
+
     const historicalFailures = historicalTxs.filter(t => t.data.err !== null);
-    
+
     return {
       historicalAverageFees: AnomalyStatistics.calculateMean(historicalFees),
       historicalVolumeAverage: historicalTxs.length / 20, // Average per time bucket
@@ -300,13 +300,13 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
   private calculateAverageFees(transactions: any[]): number {
     if (transactions.length === 0) return 0;
-    
+
     const validFees = transactions
       .map(t => t.data.fee)
       .filter(fee => typeof fee === 'number' && fee > 0);
-    
+
     if (validFees.length === 0) return 0;
-    
+
     return validFees.reduce((sum, fee) => sum + fee, 0) / validFees.length;
   }
 
@@ -314,7 +314,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
     // Use unified severity calculation from externalized patterns
     const confidence = pattern.metadata?.confidence || 1.0;
     const severity = calculateSeverity(pattern, event, context, confidence);
-    
+
     return {
       id: generateSecureUUID(),
       type: pattern.type,
@@ -330,7 +330,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
   private async analyzeEvent(params: ToolParams): Promise<any> {
     const { message } = params;
-    
+
     try {
       // Extract event data from message content
       const eventData = this.extractEventFromMessage(message.content);
@@ -339,12 +339,12 @@ export class AnomalyDetectionCapability extends BaseCapability {
       }
 
       const alerts = await this.processEvent(eventData);
-      
+
       return {
         analyzed: true,
         event: eventData,
         alerts,
-        summary: alerts.length > 0 
+        summary: alerts.length > 0
           ? `Detected ${alerts.length} anomalies: ${alerts.map(a => a.type).join(', ')}`
           : 'No anomalies detected'
       };
@@ -421,7 +421,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
     // Enhanced configuration with pattern manager support
     const manager = getAnomalyPatternManager();
     const configInfo = manager.getConfigurationInfo();
-    
+
     return {
       message: 'Anomaly detection configuration',
       patterns: this.patterns.length,
@@ -435,7 +435,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
     const manager = getAnomalyPatternManager();
     const configInfo = manager.getConfigurationInfo();
     const enabledPatterns = manager.getEnabledPatterns();
-    
+
     return {
       message: 'Current anomaly pattern configuration',
       configuration: configInfo,
@@ -456,7 +456,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
       if (jsonMatch) {
         return JSON.parse(jsonMatch[0]);
       }
-      
+
       // Try to extract signature for transaction lookup
       const sigMatch = content.match(/signature:\s*([A-Za-z0-9]{88,})/);
       if (sigMatch) {
@@ -466,7 +466,7 @@ export class AnomalyDetectionCapability extends BaseCapability {
           timestamp: Date.now()
         };
       }
-      
+
       return null;
     } catch (error) {
       console.error('Error extracting event from message:', error);

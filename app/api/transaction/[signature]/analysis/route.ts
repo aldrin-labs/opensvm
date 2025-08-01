@@ -77,12 +77,10 @@ export async function GET(
   request: NextRequest,
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<TransactionAnalysisResponse>> {
-  const startTime = Date.now();
-  
   try {
     const { signature } = params;
     const { searchParams } = new URL(request.url);
-    
+
     // Validate signature format
     if (!signature || signature.length !== 88) {
       return NextResponse.json({
@@ -106,25 +104,9 @@ export async function GET(
 
     const validatedParams = AnalysisRequestSchema.parse(queryParams);
 
-    // Check cache first
-    const cacheKey = JSON.stringify({ signature, ...validatedParams });
-    const cached = cacheHelpers.getTransaction(signature);
-    
-    if (cached?.analysis) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          signature,
-          analysis: cached.analysis,
-          cached: true
-        },
-        timestamp: Date.now()
-      });
-    }
-
     // Fetch transaction details
     const transaction = await getTransactionDetails(signature);
-    
+
     if (!transaction) {
       return NextResponse.json({
         success: false,
@@ -145,7 +127,7 @@ export async function GET(
         const parsedInstructions = await parseInstructions(transaction);
         const programsInvolved = [...new Set(parsedInstructions.map(inst => inst.programId))];
         const instructionTypes: Record<string, number> = {};
-        
+
         parsedInstructions.forEach(inst => {
           const type = inst.instructionType || 'unknown';
           instructionTypes[type] = (instructionTypes[type] || 0) + 1;
@@ -180,21 +162,23 @@ export async function GET(
     // Analyze account changes if requested
     if (validatedParams.includeAccountChanges) {
       try {
-        const accountChanges = await analyzeAccountChanges(transaction);
-        
+        const accountChangesAnalysis = await analyzeAccountChanges(transaction);
+        const accountChanges = accountChangesAnalysis.changedAccounts > 0 ?
+          accountChangesAnalysis.solChanges.largestIncrease || accountChangesAnalysis.solChanges.largestDecrease ?
+            [accountChangesAnalysis.solChanges.largestIncrease, accountChangesAnalysis.solChanges.largestDecrease].filter(Boolean) :
+            [] : [];
+
         analysis.accountChanges = {
-          changes: validatedParams.detailed ? accountChanges.changes : accountChanges.changes.map(change => ({
-            account: change.account,
-            type: change.type,
-            balanceChange: change.balanceChange,
-            significance: change.significance
+          changes: validatedParams.detailed ? accountChanges : accountChanges.map(change => ({
+            account: change?.pubkey || '',
+            type: 'sol_transfer',
+            balanceChange: change?.balanceChange || 0,
+            significance: change?.balanceChange ? (Math.abs(change.balanceChange) > 1e9 ? 'high' : 'medium') : 'low'
           })),
           summary: {
-            accountsAffected: accountChanges.changes.length,
-            totalBalanceChange: accountChanges.changes.reduce((sum, change) => 
-              sum + (change.balanceChange || 0), 0),
-            tokenTransfers: accountChanges.changes.filter(change => 
-              change.type === 'token_transfer').length
+            accountsAffected: accountChangesAnalysis.changedAccounts,
+            totalBalanceChange: accountChangesAnalysis.solChanges.totalSolChange,
+            tokenTransfers: accountChangesAnalysis.tokenChanges.totalTokensAffected
           }
         };
       } catch (error) {
@@ -214,20 +198,20 @@ export async function GET(
     if (validatedParams.includeMetrics) {
       try {
         const metrics = await calculateTransactionMetrics(transaction);
-        
+
         analysis.metrics = {
           fees: {
-            total: metrics.totalFee,
-            breakdown: metrics.feeBreakdown
+            total: metrics.feeAnalysis.totalFee,
+            breakdown: metrics.feeAnalysis.breakdown
           },
           computeUnits: {
-            used: metrics.computeUnitsUsed,
-            requested: metrics.computeUnitsRequested,
-            efficiency: metrics.computeEfficiency
+            used: metrics.computeAnalysis.computeUnitsUsed,
+            requested: metrics.computeAnalysis.totalComputeUnits,
+            efficiency: metrics.computeAnalysis.computeUtilization
           },
           performance: {
             score: metrics.performance.scalability.scalabilityScore,
-            recommendations: metrics.recommendations
+            recommendations: metrics.recommendations.map(rec => rec.title)
           }
         };
       } catch (error) {
@@ -238,52 +222,36 @@ export async function GET(
       }
     }
 
-    // Analyze failure if requested and transaction failed
+    // Analyze failure if requested
     if (validatedParams.includeFailureAnalysis) {
-      const failed = transaction.meta?.err !== null;
-      
-      analysis.failureAnalysis = {
-        failed
-      };
+      try {
+        const failureAnalysis = await analyzeTransactionFailure(transaction);
 
-      if (failed) {
-        try {
-          const failureAnalysis = await analyzeTransactionFailure(transaction);
-          
-          analysis.failureAnalysis = {
-            failed: true,
-            error: transaction.meta?.err,
-            analysis: {
-              reason: failureAnalysis.reason,
-              suggestions: failureAnalysis.suggestions,
-              retryable: failureAnalysis.retryable
-            }
-          };
-        } catch (error) {
-          console.error('Failure analysis failed:', error);
-          analysis.failureAnalysis = {
-            failed: true,
-            error: transaction.meta?.err,
-            analysis: {
-              reason: 'Unable to analyze failure',
-              suggestions: [],
-              retryable: false
-            }
-          };
-        }
+        analysis.failureAnalysis = {
+          failed: !transaction.success,
+          error: failureAnalysis.errorClassification.errorMessage,
+          analysis: {
+            reason: failureAnalysis.rootCause.primaryCause,
+            suggestions: failureAnalysis.retryRecommendations.map(rec => rec.shouldRetry ? 'Retry transaction' : 'Do not retry'),
+            retryable: failureAnalysis.errorClassification.isTransient
+          }
+        };
+      } catch (error) {
+        console.error('Failure analysis failed:', error);
+        analysis.failureAnalysis = {
+          failed: !transaction.success,
+          error: 'Failed to analyze transaction failure'
+        };
       }
     }
 
-    // Cache the result
+    // Cache the analysis by storing it with the transaction
     const enrichedTransaction = {
       ...transaction,
       analysis
     };
-    
-    cacheHelpers.setTransaction(signature, enrichedTransaction, 30 * 60 * 1000); // 30 minutes
+    cacheHelpers.set(signature, enrichedTransaction);
 
-    const processingTime = Date.now() - startTime;
-    
     return NextResponse.json({
       success: true,
       data: {
@@ -292,22 +260,20 @@ export async function GET(
         cached: false
       },
       timestamp: Date.now()
-    }, {
-      headers: {
-        'X-Processing-Time': processingTime.toString(),
-        'Cache-Control': 'public, max-age=1800' // 30 minutes
-      }
     });
 
   } catch (error) {
     console.error('Transaction analysis error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: {
-        code: 'ANALYSIS_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
-        details: process.env.NODE_ENV === 'development' ? error : undefined
+        code: 'ANALYSIS_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to analyze transaction',
+        details: error instanceof Error ? {
+          name: error.name,
+          stack: error.stack
+        } : error
       },
       timestamp: Date.now()
     }, { status: 500 });
@@ -320,43 +286,151 @@ export async function POST(
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<TransactionAnalysisResponse>> {
   try {
-    const { signature } = params;
-    const body = await request.json();
-    
-    // Validate request body
-    const validatedParams = AnalysisRequestSchema.parse(body);
-    
-    // Create a new request with query parameters
-    const url = new URL(request.url);
-    Object.entries(validatedParams).forEach(([key, value]) => {
-      url.searchParams.set(key, value.toString());
-    });
-    
-    const newRequest = new NextRequest(url, {
-      method: 'GET',
-      headers: request.headers
-    });
-    
-    return GET(newRequest, { params });
-    
-  } catch (error) {
-    if (error instanceof z.ZodError) {
+    const data = await request.json();
+
+    // Validate signature
+    if (!params.signature || params.signature.length !== 88) {
       return NextResponse.json({
         success: false,
         error: {
-          code: 'VALIDATION_ERROR',
-          message: 'Invalid request parameters',
-          details: error.errors
+          code: 'INVALID_SIGNATURE',
+          message: 'Invalid transaction signature format'
         },
         timestamp: Date.now()
       }, { status: 400 });
     }
-    
+
+    // Fetch transaction details
+    const transaction = await getTransactionDetails(params.signature);
+
+    if (!transaction) {
+      return NextResponse.json({
+        success: false,
+        error: {
+          code: 'TRANSACTION_NOT_FOUND',
+          message: 'Transaction not found'
+        },
+        timestamp: Date.now()
+      }, { status: 404 });
+    }
+
+    // Build analysis object based on request type
+    const analysis: any = {};
+
+    switch (data.type) {
+      case 'instructions':
+        try {
+          const parsedInstructions = await parseInstructions(transaction);
+          analysis.instructions = {
+            parsed: parsedInstructions.map(inst => ({
+              programId: inst.programId,
+              programName: inst.programName,
+              instructionType: inst.instructionType,
+              description: inst.description
+            })),
+            summary: {
+              totalInstructions: parsedInstructions.length,
+              programsInvolved: [...new Set(parsedInstructions.map(inst => inst.programId))],
+              instructionTypes: parsedInstructions.reduce((acc, inst) => {
+                const type = inst.instructionType || 'unknown';
+                acc[type] = (acc[type] || 0) + 1;
+                return acc;
+              }, {} as Record<string, number>)
+            }
+          };
+        } catch (error) {
+          analysis.instructions = { error: 'Failed to parse instructions' };
+        }
+        break;
+
+      case 'account_changes':
+        try {
+          const accountChangesAnalysis = await analyzeAccountChanges(transaction);
+          analysis.accountChanges = {
+            summary: {
+              accountsAffected: accountChangesAnalysis.changedAccounts,
+              totalBalanceChange: accountChangesAnalysis.solChanges.totalSolChange,
+              tokenTransfers: accountChangesAnalysis.tokenChanges.totalTokensAffected
+            }
+          };
+        } catch (error) {
+          analysis.accountChanges = { error: 'Failed to analyze account changes' };
+        }
+        break;
+
+      case 'metrics':
+        try {
+          const metrics = await calculateTransactionMetrics(transaction);
+          analysis.metrics = {
+            fees: {
+              total: metrics.feeAnalysis.totalFee,
+              breakdown: metrics.feeAnalysis.breakdown
+            },
+            computeUnits: {
+              used: metrics.computeAnalysis.computeUnitsUsed,
+              requested: metrics.computeAnalysis.totalComputeUnits,
+              efficiency: metrics.computeAnalysis.computeUtilization
+            },
+            performance: {
+              score: metrics.performance.scalability.scalabilityScore,
+              recommendations: metrics.recommendations.map(rec => rec.title)
+            }
+          };
+        } catch (error) {
+          analysis.metrics = { error: 'Failed to calculate metrics' };
+        }
+        break;
+
+      case 'failure_analysis':
+        try {
+          const failureAnalysis = await analyzeTransactionFailure(transaction);
+          analysis.failureAnalysis = {
+            failed: !transaction.success,
+            error: failureAnalysis.errorClassification.errorMessage,
+            analysis: {
+              reason: failureAnalysis.rootCause.primaryCause,
+              suggestions: failureAnalysis.retryRecommendations.map(rec => rec.shouldRetry ? 'Retry transaction' : 'Do not retry'),
+              retryable: failureAnalysis.errorClassification.isTransient
+            }
+          };
+        } catch (error) {
+          analysis.failureAnalysis = { error: 'Failed to analyze failure' };
+        }
+        break;
+
+      default:
+        return NextResponse.json({
+          success: false,
+          error: {
+            code: 'INVALID_ANALYSIS_TYPE',
+            message: 'Invalid analysis type. Supported types: instructions, account_changes, metrics, failure_analysis'
+          },
+          timestamp: Date.now()
+        }, { status: 400 });
+    }
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        signature: params.signature,
+        analysis,
+        cached: false
+      },
+      timestamp: Date.now()
+    });
+
+  } catch (error) {
+    console.error('Transaction analysis POST error:', error);
+
     return NextResponse.json({
       success: false,
       error: {
-        code: 'REQUEST_ERROR',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
+        code: 'ANALYSIS_FAILED',
+        message: error instanceof Error ? error.message : 'Failed to analyze transaction',
+        details: error instanceof Error ? {
+          name: error.name,
+          stack: error.stack
+        } : error
       },
       timestamp: Date.now()
     }, { status: 500 });

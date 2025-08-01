@@ -35,6 +35,9 @@ export async function searchSearx(query: string, limit: number = 10) {
   }
 }
 
+// Alias for backward compatibility
+export const searchDuckDuckGo = searchSearx;
+export const formatDuckDuckGoResults = formatSearxResults;
 
 
 /**

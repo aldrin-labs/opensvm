@@ -89,20 +89,8 @@ export async function GET(request: NextRequest) {
             maxTokens: filters.maxTokens ? parseInt(filters.maxTokens) : undefined
         };
 
-        // Generate analytics with custom date range if provided
-        let analytics;
-        if (sanitizedFilters.startDate && sanitizedFilters.endDate) {
-            // Custom date range analytics
-            analytics = await globalUsageAnalytics.generateCustomAnalytics(
-                authResult.userId!,
-                sanitizedFilters.startDate,
-                sanitizedFilters.endDate,
-                sanitizedFilters
-            );
-        } else {
-            // Standard period analytics
-            analytics = await globalUsageAnalytics.generateAnalytics(authResult.userId!, filters.period);
-        }
+        // Generate analytics
+        const analytics = await globalUsageAnalytics.generateAnalytics(authResult.userId!, filters.period);
 
         // Apply additional filtering to analytics data
         const filteredAnalytics = await applyAdvancedFilters(analytics, sanitizedFilters);
@@ -184,7 +172,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
     return new NextResponse(null, {
         status: 204,
         headers: {

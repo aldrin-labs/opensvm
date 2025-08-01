@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { TransactionMetricsCalculator } from '@/lib/transaction-metrics-calculator';
 import { getConnection } from '@/lib/solana';
 import { isValidSignature } from '@/lib/utils';
+import type { DetailedTransactionInfo } from '@/lib/solana';
 
 /**
  * GET /api/transaction-metrics/[signature]
@@ -51,8 +52,27 @@ export async function GET(
     }
 
     // Calculate metrics
-    const calculator = new TransactionMetricsCalculator(connection);
-    const metrics = await calculator.calculateMetrics(transactionData);
+    const calculator = new TransactionMetricsCalculator();
+    const transactionInfo: DetailedTransactionInfo = {
+      signature,
+      slot: transactionData.slot,
+      blockTime: transactionData.blockTime || undefined,
+      meta: transactionData.meta ? {
+        err: transactionData.meta.err,
+        fee: transactionData.meta.fee,
+        preBalances: transactionData.meta.preBalances,
+        postBalances: transactionData.meta.postBalances,
+        preTokenBalances: transactionData.meta.preTokenBalances || undefined,
+        postTokenBalances: transactionData.meta.postTokenBalances || undefined,
+        logMessages: transactionData.meta.logMessages || undefined,
+        innerInstructions: transactionData.meta.innerInstructions || undefined
+      } : undefined,
+      transaction: transactionData.transaction,
+      success: transactionData.meta?.err === null,
+      type: 'sol',
+      timestamp: transactionData.blockTime || Date.now()
+    };
+    const metrics = await calculator.calculateMetrics(transactionInfo);
 
     // Build response data
     const responseData: any = {
@@ -88,19 +108,13 @@ export async function GET(
 
     if (message.toLowerCase().includes('not found')) {
       status = 404;
-    } else if (message.toLowerCase().includes('invalid')) {
+    } else if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('bad request')) {
       status = 400;
-    } else if (message.toLowerCase().includes('rate limit')) {
-      status = 429;
     }
 
     return NextResponse.json({
       error: message,
-      details: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      } : error
+      details: { signature: params.signature }
     }, { status });
   }
 }
@@ -108,23 +122,24 @@ export async function GET(
 /**
  * POST /api/transaction-metrics/[signature]
  * 
- * Perform operations on specific transaction metrics
+ * Perform advanced transaction analysis and optimization
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: { signature: string } }
 ) {
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30s timeout for analysis
+  const timeoutId = setTimeout(() => {
+    console.warn('Transaction metrics analysis timeout for signature:', params.signature);
+  }, 30000);
 
   try {
     const { signature } = params;
     const data = await request.json();
 
-    // Validate signature format using proper utility
+    // Validate signature
     if (!signature || !isValidSignature(signature)) {
       return NextResponse.json({
-        error: 'Invalid transaction signature format. Must be exactly 88 characters.',
+        error: 'Invalid transaction signature format',
         details: {
           provided: signature,
           expectedLength: 88,
@@ -148,8 +163,27 @@ export async function POST(
 
     switch (data.action) {
       case 'optimize':
-        const calculator = new TransactionMetricsCalculator(connection);
-        const metrics = await calculator.calculateMetrics(transactionData);
+        const calculator = new TransactionMetricsCalculator();
+        const transactionInfo: DetailedTransactionInfo = {
+          signature,
+          slot: transactionData.slot,
+          blockTime: transactionData.blockTime || undefined,
+          meta: transactionData.meta ? {
+            err: transactionData.meta.err,
+            fee: transactionData.meta.fee,
+            preBalances: transactionData.meta.preBalances,
+            postBalances: transactionData.meta.postBalances,
+            preTokenBalances: transactionData.meta.preTokenBalances || undefined,
+            postTokenBalances: transactionData.meta.postTokenBalances || undefined,
+            logMessages: transactionData.meta.logMessages || undefined,
+            innerInstructions: transactionData.meta.innerInstructions || undefined
+          } : undefined,
+          transaction: transactionData.transaction,
+          success: transactionData.meta?.err === null,
+          type: 'sol',
+          timestamp: transactionData.blockTime || Date.now()
+        };
+        const metrics = await calculator.calculateMetrics(transactionInfo);
 
         // Generate optimization suggestions based on metrics
         const optimizations = {
@@ -186,12 +220,24 @@ export async function POST(
           }, { status: 404 });
         }
 
-        const originalData = {
+        const originalData: DetailedTransactionInfo = {
           signature,
           slot: originalTransaction.slot,
-          blockTime: originalTransaction.blockTime,
-          meta: originalTransaction.meta,
-          transaction: originalTransaction.transaction
+          blockTime: originalTransaction.blockTime || undefined,
+          meta: originalTransaction.meta ? {
+            err: originalTransaction.meta.err,
+            fee: originalTransaction.meta.fee,
+            preBalances: originalTransaction.meta.preBalances,
+            postBalances: originalTransaction.meta.postBalances,
+            preTokenBalances: originalTransaction.meta.preTokenBalances || undefined,
+            postTokenBalances: originalTransaction.meta.postTokenBalances || undefined,
+            logMessages: originalTransaction.meta.logMessages || undefined,
+            innerInstructions: originalTransaction.meta.innerInstructions || undefined
+          } : undefined,
+          transaction: originalTransaction.transaction,
+          success: originalTransaction.meta?.err === null,
+          type: 'sol',
+          timestamp: originalTransaction.blockTime || Date.now()
         };
 
         const calculator2 = new TransactionMetricsCalculator();
@@ -209,9 +255,9 @@ export async function POST(
         }
 
         // Apply compute unit changes with null safety
-        if (data.changes.computeUnitLimit && modifiedData.meta.computeUnitsConsumed != null) {
-          modifiedData.meta.computeUnitsConsumed = Math.min(
-            modifiedData.meta.computeUnitsConsumed,
+        if (data.changes.computeUnitLimit && (modifiedData.meta as any).computeUnitsConsumed != null) {
+          (modifiedData.meta as any).computeUnitsConsumed = Math.min(
+            (modifiedData.meta as any).computeUnitsConsumed,
             data.changes.computeUnitLimit
           );
         }
@@ -259,15 +305,27 @@ export async function POST(
           }, { status: 404 });
         }
 
-        const benchmarkData = {
+        const benchmarkData: DetailedTransactionInfo = {
           signature,
           slot: benchmarkTransaction.slot,
-          blockTime: benchmarkTransaction.blockTime,
-          meta: benchmarkTransaction.meta,
-          transaction: benchmarkTransaction.transaction
+          blockTime: benchmarkTransaction.blockTime || undefined,
+          meta: benchmarkTransaction.meta ? {
+            err: benchmarkTransaction.meta.err,
+            fee: benchmarkTransaction.meta.fee,
+            preBalances: benchmarkTransaction.meta.preBalances,
+            postBalances: benchmarkTransaction.meta.postBalances,
+            preTokenBalances: benchmarkTransaction.meta.preTokenBalances || undefined,
+            postTokenBalances: benchmarkTransaction.meta.postTokenBalances || undefined,
+            logMessages: benchmarkTransaction.meta.logMessages || undefined,
+            innerInstructions: benchmarkTransaction.meta.innerInstructions || undefined
+          } : undefined,
+          transaction: benchmarkTransaction.transaction,
+          success: benchmarkTransaction.meta?.err === null,
+          type: 'sol',
+          timestamp: benchmarkTransaction.blockTime || Date.now()
         };
 
-        const calculator3 = new TransactionMetricsCalculator(connection);
+        const calculator3 = new TransactionMetricsCalculator();
         const benchmarkMetrics = await calculator3.calculateMetrics(benchmarkData);
 
         // Generate benchmark comparison
@@ -300,29 +358,16 @@ export async function POST(
     let status = 500;
     let message = error instanceof Error ? error.message : 'Failed to analyze transaction metrics';
 
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        status = 504;
-        message = 'Request timed out. Please try again.';
-      } else if (message.toLowerCase().includes('not found')) {
-        status = 404;
-      } else if (message.toLowerCase().includes('invalid')) {
-        status = 400;
-      } else if (message.toLowerCase().includes('rate limit')) {
-        status = 429;
-      }
+    if (message.toLowerCase().includes('not found')) {
+      status = 404;
+    } else if (message.toLowerCase().includes('invalid') || message.toLowerCase().includes('bad request')) {
+      status = 400;
     }
 
     return NextResponse.json({
       error: message,
-      details: error instanceof Error ? {
-        name: error.name,
-        message: error.message,
-        stack: error.stack
-      } : error
+      details: { signature: params.signature }
     }, { status });
-  } finally {
-    clearTimeout(timeoutId);
   }
 }
 
@@ -330,7 +375,7 @@ export async function POST(
  * Helper functions
  */
 
-function generateComparisonData(metrics: any, connection: any) {
+function generateComparisonData(metrics: any, _connection: any) {
   // Note: For true comparison, we would need to query similar transactions
   // This is a simplified version that uses the metrics themselves as baseline
   return {
@@ -445,7 +490,7 @@ function generateDetailedBreakdown(metrics: any, transactionData?: any) {
   };
 }
 
-async function generateHistoricalContext(metrics: any) {
+async function generateHistoricalContext(_metrics: any) {
   // Note: Real historical context would require integration with:
   // - Time/date APIs for actual timestamp
   // - Market data APIs for SOL price and volatility

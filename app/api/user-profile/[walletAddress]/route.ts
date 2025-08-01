@@ -6,7 +6,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import { 
+import {
   getUserProfile,
   storeUserProfile,
   getUserHistory,
@@ -14,14 +14,14 @@ import {
 } from '@/lib/qdrant';
 
 // Authentication check using session validation
-function isValidRequest(_request: NextRequest): boolean {
+async function isValidRequest(_request: NextRequest): Promise<boolean> {
   try {
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     if (!session) return false;
-    
+
     // Check if session is expired
     if (Date.now() > session.expiresAt) return false;
-    
+
     return true;
   } catch (error) {
     console.error('Session validation error:', error);
@@ -35,7 +35,7 @@ export async function GET(
 ) {
   try {
     const { walletAddress } = await context.params;
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
@@ -44,9 +44,9 @@ export async function GET(
 
     // Check Qdrant health 
     const isHealthy = await checkQdrantHealth();
-    
+
     let profile;
-    
+
     if (isHealthy) {
       try {
         // Get profile from Qdrant
@@ -56,7 +56,7 @@ export async function GET(
         profile = null;
       }
     }
-    
+
     // If profile doesn't exist or Qdrant is unavailable, create a basic one
     if (!profile) {
       profile = {
@@ -102,12 +102,12 @@ export async function GET(
     return NextResponse.json({ profile });
   } catch (error) {
     console.error('Error fetching user profile:', error);
-    
+
     // Return a basic profile even if everything fails
     try {
       const { walletAddress } = await context.params;
       const validatedAddress = validateWalletAddress(walletAddress);
-      
+
       if (validatedAddress) {
         const fallbackProfile = {
           walletAddress: validatedAddress,
@@ -124,13 +124,13 @@ export async function GET(
           },
           history: []
         };
-        
+
         return NextResponse.json({ profile: fallbackProfile });
       }
     } catch (paramError) {
       console.error('Error accessing params in fallback:', paramError);
     }
-    
+
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
@@ -155,7 +155,7 @@ export async function PUT(
     if (!isValidRequest(_request)) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
@@ -163,10 +163,10 @@ export async function PUT(
     }
 
     const body = await _request.json();
-    
+
     // Get existing profile or create new one
     let profile = await getUserProfile(validatedAddress);
-    
+
     if (!profile) {
       profile = {
         walletAddress: validatedAddress,
@@ -209,7 +209,7 @@ export async function PUT(
     if (body.isPublic !== undefined) {
       profile.isPublic = Boolean(body.isPublic);
     }
-    
+
     profile.lastActive = Date.now();
 
     // Store updated profile in Qdrant

@@ -19,7 +19,7 @@ interface RateLimitConfig {
   keyPrefix?: string;
 }
 
-interface RateLimitResult {
+export interface RateLimitResult {
   allowed: boolean;
   remaining: number;
   resetTime: number;
@@ -55,7 +55,7 @@ class AdvancedRateLimiter {
   private getEntry(identifier: string): RateLimitEntry {
     const key = this.getCacheKey(identifier);
     const existing = memoryCache.get<RateLimitEntry>(key);
-    
+
     if (existing) {
       return existing;
     }
@@ -83,7 +83,7 @@ class AdvancedRateLimiter {
     const now = Date.now();
     const timePassed = (now - entry.lastRefill) / 1000; // seconds
     const tokensToAdd = Math.floor(timePassed * this.config.burstRefillRate);
-    
+
     if (tokensToAdd > 0) {
       entry.burstTokens = Math.min(
         this.config.burstLimit,
@@ -96,10 +96,10 @@ class AdvancedRateLimiter {
   private cleanExpiredRequests(entry: RateLimitEntry, now: number): void {
     const cutoff = now - this.config.windowMs;
     const originalLength = entry.requests.length;
-    
+
     // Remove requests older than window
     entry.requests = entry.requests.filter(timestamp => timestamp > cutoff);
-    
+
     // Update total if requests were removed
     if (entry.requests.length !== originalLength) {
       entry.totalRequests = entry.requests.length;
@@ -144,7 +144,7 @@ class AdvancedRateLimiter {
     } else {
       // Request denied
       allowed = false;
-      
+
       // Calculate retry after time
       if (wouldExceedRegular) {
         // Wait until oldest request expires
@@ -198,7 +198,7 @@ class AdvancedRateLimiter {
   }> {
     const entry = this.getEntry(identifier);
     const now = Date.now();
-    
+
     this.cleanExpiredRequests(entry, now);
     this.refillBurstTokens(entry);
 
@@ -226,13 +226,13 @@ class AdvancedRateLimiter {
 // Middleware helper for Next.js API routes
 export function createRateLimitMiddleware(limiter: AdvancedRateLimiter) {
   return async (request: Request, identifier?: string) => {
-    const clientId = identifier || 
-      request.headers.get('x-forwarded-for') || 
-      request.headers.get('x-real-ip') || 
+    const clientId = identifier ||
+      request.headers.get('x-forwarded-for') ||
+      request.headers.get('x-real-ip') ||
       'unknown';
 
     const result = await limiter.checkLimit(clientId);
-    
+
     if (!result.allowed) {
       const headers = new Headers({
         'X-RateLimit-Limit': limiter.config.maxRequests.toString(),

@@ -18,9 +18,10 @@ export async function GET(request: NextRequest) {
         }
 
         const apiKey = authHeader.substring(7);
-        const authResult = await ProxyAuth.validateAPIKey(apiKey);
+        const proxyAuth = new ProxyAuth();
+        const authResult = await proxyAuth.validateApiKey(apiKey);
 
-        if (!authResult.isValid || !authResult.userId) {
+        if (!authResult.success || !authResult.userId) {
             return NextResponse.json(
                 { error: 'Invalid API key' },
                 { status: 401 }
@@ -30,9 +31,7 @@ export async function GET(request: NextRequest) {
         // Check if user has admin privileges
         // For now, check if the API key has a special admin flag or check userId against admin list
         const ADMIN_USER_IDS = process.env.ADMIN_USER_IDS?.split(',') || [];
-        const isAdmin = ADMIN_USER_IDS.includes(authResult.userId) ||
-            authResult.permissions?.includes('admin') ||
-            false;
+        const isAdmin = ADMIN_USER_IDS.includes(authResult.userId) || false;
 
         if (!isAdmin) {
             return NextResponse.json(

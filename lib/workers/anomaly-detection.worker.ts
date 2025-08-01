@@ -20,12 +20,12 @@ let processingStats = {
  */
 async function initializeDetector(): Promise<void> {
   if (isInitialized) return;
-  
+
   try {
     // Initialize without connection for pure analysis
     detector = new AnomalyDetectionCapability(null);
     isInitialized = true;
-    
+
     // Send initialization success
     self.postMessage({
       type: 'initialized',
@@ -34,7 +34,7 @@ async function initializeDetector(): Promise<void> {
   } catch (error) {
     self.postMessage({
       type: 'error',
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
     });
   }
@@ -45,20 +45,20 @@ async function initializeDetector(): Promise<void> {
  */
 async function processEvent(taskId: string, event: any): Promise<void> {
   const startTime = Date.now();
-  
+
   try {
     if (!detector) {
       throw new Error('Detector not initialized');
     }
-    
+
     const alerts = await detector.processEvent(event);
     const processingTime = Date.now() - startTime;
-    
+
     // Update stats
     processingStats.processed++;
-    processingStats.averageTime = 
+    processingStats.averageTime =
       (processingStats.averageTime * (processingStats.processed - 1) + processingTime) / processingStats.processed;
-    
+
     // Send results back to main thread
     self.postMessage({
       type: 'success',
@@ -70,14 +70,14 @@ async function processEvent(taskId: string, event: any): Promise<void> {
         timestamp: Date.now()
       }
     });
-    
+
   } catch (error) {
     processingStats.failed++;
-    
+
     self.postMessage({
       type: 'error',
       taskId,
-      error: error.message,
+      error: error instanceof Error ? error.message : 'Unknown error',
       timestamp: Date.now()
     });
   }
@@ -89,12 +89,12 @@ async function processEvent(taskId: string, event: any): Promise<void> {
 async function processBatch(taskId: string, tasks: any[]): Promise<void> {
   const startTime = Date.now();
   const results = [];
-  
+
   try {
     if (!detector) {
       throw new Error('Detector not initialized');
     }
-    
+
     for (const task of tasks) {
       try {
         const alerts = await detector.processEvent(task.data);
@@ -104,22 +104,22 @@ async function processBatch(taskId: string, tasks: any[]): Promise<void> {
           processingTime: Date.now() - startTime,
           timestamp: Date.now()
         });
-        
+
         processingStats.processed++;
       } catch (error) {
         processingStats.failed++;
         results.push({
           taskId: task.id,
-          error: error.message,
+          error: error instanceof Error ? error.message : 'Unknown error',
           timestamp: Date.now()
         });
       }
     }
-    
+
     const totalProcessingTime = Date.now() - startTime;
-    processingStats.averageTime = 
+    processingStats.averageTime =
       (processingStats.averageTime * (processingStats.processed - tasks.length) + totalProcessingTime) / processingStats.processed;
-    
+
     self.postMessage({
       type: 'success',
       taskId,
@@ -130,7 +130,7 @@ async function processBatch(taskId: string, tasks: any[]): Promise<void> {
         timestamp: Date.now()
       }
     });
-    
+
   } catch (error) {
     self.postMessage({
       type: 'error',
@@ -161,7 +161,7 @@ function sendMetrics(): void {
     totalJSHeapSize: (self as any).performance.memory.totalJSHeapSize,
     jsHeapSizeLimit: (self as any).performance.memory.jsHeapSizeLimit
   } : null;
-  
+
   self.postMessage({
     type: 'metrics',
     result: {
@@ -177,36 +177,36 @@ function sendMetrics(): void {
  */
 self.addEventListener('message', async (event) => {
   const { type, taskId, taskType, data } = event.data;
-  
+
   switch (type) {
     case 'init':
       await initializeDetector();
       break;
-      
+
     case 'process':
       if (!isInitialized) {
         await initializeDetector();
       }
-      
+
       if (taskType === 'batch') {
         await processBatch(taskId, data.tasks);
       } else {
         await processEvent(taskId, data);
       }
       break;
-      
+
     case 'heartbeat':
       sendHeartbeat();
       break;
-      
+
     case 'metrics':
       sendMetrics();
       break;
-      
+
     case 'terminate':
       self.close();
       break;
-      
+
     default:
       self.postMessage({
         type: 'error',
@@ -226,4 +226,4 @@ setInterval(sendMetrics, 60000); // Every minute
 // Initialize on startup
 initializeDetector();
 
-export {}; // Make this a module
+export { }; // Make this a module

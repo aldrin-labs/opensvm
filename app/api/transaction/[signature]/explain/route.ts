@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { getTransactionDetails } from '@/lib/solana';
 import { analyzeTransactionWithAI } from '@/lib/ai-transaction-analyzer';
-import { cacheHelpers } from '@/lib/transaction-cache';
 
 // Request validation schema
 const ExplainRequestSchema = z.object({
@@ -84,11 +83,11 @@ export async function GET(
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<ExplainTransactionResponse>> {
   const startTime = Date.now();
-  
+
   try {
     const { signature } = params;
     const { searchParams } = new URL(request.url);
-    
+
     // Validate signature format
     if (!signature || signature.length !== 88) {
       return NextResponse.json({
@@ -115,27 +114,27 @@ export async function GET(
 
     // Check cache first (unless regeneration is requested)
     if (!validatedParams.regenerate) {
-      const cached = cacheHelpers.getAIExplanation(signature, validatedParams);
-      
-      if (cached) {
-        return NextResponse.json({
-          success: true,
-          data: {
-            signature,
-            explanation: cached.explanation,
-            metadata: {
-              ...cached.metadata,
-              cached: true
-            }
-          },
-          timestamp: Date.now()
-        });
-      }
+      // Note: Cache functionality not implemented yet
+      // const cached = cacheHelpers.getAIExplanation(signature, validatedParams);
+      // if (cached) {
+      //   return NextResponse.json({
+      //     success: true,
+      //     data: {
+      //       signature,
+      //       explanation: cached.explanation,
+      //       metadata: {
+      //         ...cached.metadata,
+      //         cached: true
+      //       }
+      //     },
+      //     timestamp: Date.now()
+      //   });
+      // }
     }
 
     // Fetch transaction details
     const transaction = await getTransactionDetails(signature);
-    
+
     if (!transaction) {
       return NextResponse.json({
         success: false,
@@ -173,13 +172,13 @@ export async function GET(
       }
     };
 
-    // Cache the result
-    cacheHelpers.setAIExplanation(
-      signature,
-      result,
-      validatedParams,
-      60 * 60 * 1000 // 1 hour
-    );
+    // Cache the result (commented out until cache methods are implemented)
+    // cacheHelpers.setAIExplanation(
+    //   signature,
+    //   result,
+    //   validatedParams,
+    //   60 * 60 * 1000 // 1 hour
+    // );
 
     return NextResponse.json({
       success: true,
@@ -194,7 +193,7 @@ export async function GET(
 
   } catch (error) {
     console.error('Transaction explanation error:', error);
-    
+
     // Handle specific AI service errors
     if (error instanceof Error && error.message.includes('rate limit')) {
       return NextResponse.json({
@@ -217,7 +216,7 @@ export async function GET(
         timestamp: Date.now()
       }, { status: 413 });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -238,28 +237,28 @@ export async function POST(
   try {
     const { signature } = params;
     const body = await request.json();
-    
+
     // Validate request body
     const validatedParams = ExplainRequestSchema.parse(body);
-    
+
     // Check if streaming is requested
     if (body.stream === true) {
       return handleStreamingExplanation(signature, validatedParams);
     }
-    
+
     // Otherwise, use GET method
     const url = new URL(request.url);
     Object.entries(validatedParams).forEach(([key, value]) => {
       url.searchParams.set(key, value.toString());
     });
-    
+
     const newRequest = new NextRequest(url, {
       method: 'GET',
       headers: request.headers
     });
-    
+
     return GET(newRequest, { params });
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
@@ -272,7 +271,7 @@ export async function POST(
         timestamp: Date.now()
       }, { status: 400 });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -339,50 +338,62 @@ function formatExplanation(aiAnalysis: any, params: any, transaction: any) {
 }
 
 // Helper function to handle streaming explanations
-async function handleStreamingExplanation(signature: string, params: any): Promise<NextResponse> {
-  const encoder = new TextEncoder();
-  
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        // Fetch transaction
-        const transaction = await getTransactionDetails(signature);
-        
-        if (!transaction) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-            error: 'Transaction not found'
-          })}\n\n`));
-          controller.close();
-          return;
-        }
+async function handleStreamingExplanation(_signature: string, _params: any): Promise<NextResponse> {
+  // Streaming functionality not implemented yet
+  // For now, return a simple error response
+  return NextResponse.json({
+    success: false,
+    error: {
+      code: 'STREAMING_NOT_IMPLEMENTED',
+      message: 'Streaming explanations are not yet implemented'
+    },
+    timestamp: Date.now()
+  }, { status: 501 });
 
-        // Stream the explanation generation
-        const aiStream = await analyzeTransactionWithAI(transaction, {
-          ...params,
-          stream: true
-        });
-
-        for await (const chunk of aiStream) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-        }
-
-        controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-        controller.close();
-        
-      } catch (error) {
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-          error: error instanceof Error ? error.message : 'Unknown error'
-        })}\n\n`));
-        controller.close();
-      }
-    }
-  });
-
-  return new NextResponse(stream, {
-    headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    }
-  });
+  // TODO: Implement proper streaming
+  // const encoder = new TextEncoder();
+  // 
+  // const stream = new ReadableStream({
+  //   async start(controller) {
+  //     try {
+  //       // Fetch transaction
+  //       const transaction = await getTransactionDetails(signature);
+  //       
+  //       if (!transaction) {
+  //         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+  //           error: 'Transaction not found'
+  //         })}\n\n`));
+  //         controller.close();
+  //         return;
+  //       }
+  // 
+  //       // Stream the explanation generation
+  //       const aiStream = await analyzeTransactionWithAI(transaction, {
+  //         ...params,
+  //         stream: true
+  //       });
+  // 
+  //       for await (const chunk of aiStream) {
+  //         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
+  //       }
+  // 
+  //       controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+  //       controller.close();
+  //       
+  //     } catch (error) {
+  //       controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+  //         error: error instanceof Error ? error.message : 'Unknown error'
+  //       })}\n\n`));
+  //       controller.close();
+  //     }
+  //   }
+  // });
+  // 
+  // return new NextResponse(stream, {
+  //   headers: {
+  //     'Content-Type': 'text/event-stream',
+  //     'Cache-Control': 'no-cache',
+  //     'Connection': 'keep-alive'
+  //   }
+  // });
 }

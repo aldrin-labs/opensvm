@@ -11,22 +11,22 @@ export async function GET(request: Request) {
   try {
     const url = new URL(request.url);
     const walletAddress = url.searchParams.get('walletAddress');
-    
+
     if (!walletAddress) {
       return NextResponse.json({ error: 'Wallet address is required' }, { status: 400 });
     }
-    
+
     // If querying own balance, verify the user is authenticated
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     const isOwnBalance = session?.walletAddress === walletAddress;
-    
+
     // For security, only allow users to view their own balance details
     // unless they are viewing just the public balance amount
     if (!isOwnBalance && session) {
       // Non-owners can see the basic balance, but not transaction history
       // This could be adjusted based on privacy requirements
     }
-    
+
     // Query user's balance
     let userBalanceResult: any[] = [];
     try {
@@ -58,7 +58,7 @@ export async function GET(request: Request) {
         canClaim: false // Need both time and balance requirements
       });
     }
-    
+
     // If no balance found, return zero with consistent response structure
     if (userBalanceResult.length === 0) {
       return NextResponse.json({
@@ -70,26 +70,26 @@ export async function GET(request: Request) {
         canClaim: false // Need both time and balance requirements
       });
     }
-    
+
     const userBalance = userBalanceResult[0].payload as any;
     const balance = userBalance.balance || 0;
     const updatedAt = userBalance.updatedAt || Date.now();
-    
+
     // Return the balance information with proper typing
     // Check if user has enough tokens for the minimum requirement
     const hasMinimumBalance = balance >= MINIMUM_BALANCE_REQUIRED;
-    
+
     const response: Record<string, any> = {
       balance,
       updatedAt,
       minimumBalanceRequired: MINIMUM_BALANCE_REQUIRED,
       hasMinimumBalance,
     };
-    
+
     if (isOwnBalance) {
       // Add additional details for the account owner
       response.isOwner = true;
-      
+
       // Add recent rewards if available
       try {
         const recentRewards = await qdrantClient.search('referral_rewards', {
@@ -100,16 +100,16 @@ export async function GET(request: Request) {
           limit: 5,
           with_payload: true
         });
-        
+
         if (recentRewards.length > 0) {
           // Sort by claimed date
           const sortedRewards = recentRewards
             .map(r => r.payload as any)
             .sort((a, b) => (b.claimedAt || 0) - (a.claimedAt || 0));
-          
+
           response.recentRewards = sortedRewards;
           response.lastClaimAt = sortedRewards[0]?.claimedAt;
-          
+
           // Calculate next claim time (24 hours after last claim)
           if (sortedRewards[0]?.claimedAt) {
             const lastClaimDate = new Date(sortedRewards[0].claimedAt);
@@ -141,7 +141,7 @@ export async function GET(request: Request) {
         response.timeAllowsClaim = true;
       }
     }
-    
+
     return NextResponse.json(response);
   } catch (error) {
     console.error('Error fetching token balance:', error);

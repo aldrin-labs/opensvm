@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  getProgramDefinition, 
+import {
+  getProgramDefinition,
   getInstructionDefinition,
   getAllInstructionCategories,
   getProgramsWithInstructionType
@@ -54,7 +54,7 @@ export async function GET(request: NextRequest) {
 
         // Filter by instruction name if provided
         if (instructionName) {
-          instructions = instructions.filter(ix => 
+          instructions = instructions.filter(ix =>
             ix.name.toLowerCase().includes(instructionName.toLowerCase())
           );
         }
@@ -160,12 +160,12 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Instruction lookup API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );
@@ -209,7 +209,7 @@ export async function POST(request: NextRequest) {
             }
 
             if (instruction.name) {
-              matchingInstructions = matchingInstructions.filter(ix => 
+              matchingInstructions = matchingInstructions.filter(ix =>
                 ix.name.toLowerCase().includes(instruction.name!.toLowerCase())
               );
             }
@@ -299,8 +299,8 @@ export async function POST(request: NextRequest) {
 
         const complexityAnalysis = data.instructions.map((instruction: any) => {
           const program = getProgramDefinition(instruction.programId);
-          const instructionDef = program?.instructions.find(ix => 
-            ix.discriminator === instruction.discriminator || 
+          const instructionDef = program?.instructions.find(ix =>
+            ix.discriminator === instruction.discriminator ||
             ix.name === instruction.name
           );
 
@@ -340,21 +340,21 @@ export async function POST(request: NextRequest) {
           }
 
           // Signer requirements
-          const signerCount = instructionDef.accounts.filter(acc => acc.isSigner).length;
+          const signerCount = instructionDef.accounts.filter((acc: any) => acc.isSigner).length;
           if (signerCount > 1) {
             complexityScore += signerCount * 3;
             factors.push(`${signerCount} signers required`);
           }
 
           // Writable accounts
-          const writableCount = instructionDef.accounts.filter(acc => acc.isWritable).length;
+          const writableCount = instructionDef.accounts.filter((acc: any) => acc.isWritable).length;
           if (writableCount > 2) {
             complexityScore += writableCount * 2;
             factors.push(`${writableCount} writable accounts`);
           }
 
-          const complexity = complexityScore < 10 ? 'low' : 
-                           complexityScore < 25 ? 'medium' : 'high';
+          const complexity = complexityScore < 10 ? 'low' :
+            complexityScore < 25 ? 'medium' : 'high';
 
           return {
             programId: instruction.programId,
@@ -378,15 +378,15 @@ export async function POST(request: NextRequest) {
             summary: {
               totalInstructions: complexityAnalysis.length,
               complexityDistribution: {
-                low: complexityAnalysis.filter(i => i.complexity === 'low').length,
-                medium: complexityAnalysis.filter(i => i.complexity === 'medium').length,
-                high: complexityAnalysis.filter(i => i.complexity === 'high').length
+                low: complexityAnalysis.filter((i: any) => i.complexity === 'low').length,
+                medium: complexityAnalysis.filter((i: any) => i.complexity === 'medium').length,
+                high: complexityAnalysis.filter((i: any) => i.complexity === 'high').length
               },
-              averageScore: complexityAnalysis.reduce((sum, i) => sum + i.score, 0) / complexityAnalysis.length,
+              averageScore: complexityAnalysis.reduce((sum: number, i: any) => sum + i.score, 0) / complexityAnalysis.length,
               riskDistribution: {
-                low: complexityAnalysis.filter(i => i.riskLevel === 'low').length,
-                medium: complexityAnalysis.filter(i => i.riskLevel === 'medium').length,
-                high: complexityAnalysis.filter(i => i.riskLevel === 'high').length
+                low: complexityAnalysis.filter((i: any) => i.riskLevel === 'low').length,
+                medium: complexityAnalysis.filter((i: any) => i.riskLevel === 'medium').length,
+                high: complexityAnalysis.filter((i: any) => i.riskLevel === 'high').length
               }
             }
           },
@@ -402,12 +402,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Instruction lookup POST API error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
-          code: 'INTERNAL_ERROR', 
-          message: 'Internal server error' 
-        } 
+      {
+        success: false,
+        error: {
+          code: 'INTERNAL_ERROR',
+          message: 'Internal server error'
+        }
       },
       { status: 500 }
     );

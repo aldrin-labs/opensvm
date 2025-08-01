@@ -86,7 +86,7 @@ export async function GET(request: NextRequest) {
         if (!models) {
             // Cache miss - fetch from Anthropic client
             console.log('Models cache miss - fetching from API');
-            const anthropicClient = getAnthropicClient();
+            const anthropicClient = await getAnthropicClient();
             models = await anthropicClient.getModels();
 
             // Cache the response
@@ -116,7 +116,7 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
     return new NextResponse(null, {
         status: 204,
         headers: {

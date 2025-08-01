@@ -3,20 +3,20 @@ import { transactionFailureAnalyzer } from '@/lib/transaction-failure-analyzer';
 import { getTransactionDetails } from '@/lib/solana';
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: { signature: string } }
 ) {
   try {
     const { signature } = params;
-    
+
     if (!signature) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             code: 'MISSING_SIGNATURE',
-            message: 'Transaction signature is required' 
-          } 
+            message: 'Transaction signature is required'
+          }
         },
         { status: 400 }
       );
@@ -25,12 +25,12 @@ export async function GET(
     // Validate signature format
     if (signature.length !== 88) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             code: 'INVALID_SIGNATURE',
-            message: 'Invalid transaction signature format' 
-          } 
+            message: 'Invalid transaction signature format'
+          }
         },
         { status: 400 }
       );
@@ -38,15 +38,15 @@ export async function GET(
 
     // Get transaction details
     const transaction = await getTransactionDetails(signature);
-    
+
     if (!transaction) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             code: 'TRANSACTION_NOT_FOUND',
-            message: 'Transaction not found' 
-          } 
+            message: 'Transaction not found'
+          }
         },
         { status: 404 }
       );
@@ -63,15 +63,15 @@ export async function GET(
 
   } catch (error) {
     console.error('Error analyzing transaction failure:', error);
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
+      {
+        success: false,
+        error: {
           code: 'ANALYSIS_ERROR',
           message: 'Failed to analyze transaction failure',
           details: error instanceof Error ? error.message : 'Unknown error'
-        } 
+        }
       },
       { status: 500 }
     );
@@ -85,15 +85,15 @@ export async function POST(
   try {
     const { signature } = params;
     const body = await request.json();
-    
+
     if (!signature) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             code: 'MISSING_SIGNATURE',
-            message: 'Transaction signature is required' 
-          } 
+            message: 'Transaction signature is required'
+          }
         },
         { status: 400 }
       );
@@ -101,7 +101,7 @@ export async function POST(
 
     // Get configuration from request body
     const config = body.config || {};
-    
+
     // Create analyzer with custom configuration
     const analyzer = transactionFailureAnalyzer;
     if (Object.keys(config).length > 0) {
@@ -110,15 +110,15 @@ export async function POST(
 
     // Get transaction details
     const transaction = await getTransactionDetails(signature);
-    
+
     if (!transaction) {
       return NextResponse.json(
-        { 
-          success: false, 
-          error: { 
+        {
+          success: false,
+          error: {
             code: 'TRANSACTION_NOT_FOUND',
-            message: 'Transaction not found' 
-          } 
+            message: 'Transaction not found'
+          }
         },
         { status: 404 }
       );
@@ -136,15 +136,15 @@ export async function POST(
 
   } catch (error) {
     console.error('Error analyzing transaction failure:', error);
-    
+
     return NextResponse.json(
-      { 
-        success: false, 
-        error: { 
+      {
+        success: false,
+        error: {
           code: 'ANALYSIS_ERROR',
           message: 'Failed to analyze transaction failure',
           details: error instanceof Error ? error.message : 'Unknown error'
-        } 
+        }
       },
       { status: 500 }
     );

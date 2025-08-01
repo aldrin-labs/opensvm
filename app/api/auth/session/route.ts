@@ -12,19 +12,19 @@ export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     const { walletAddress } = body;
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
       return NextResponse.json({ error: 'Invalid wallet address' }, { status: 400 });
     }
-    
+
     // Generate session key
     const sessionKey = generateSessionKey();
-    
+
     // Create message to be signed
     const message = createSignMessage(sessionKey, validatedAddress);
-    
+
     return NextResponse.json({
       sessionKey,
       message,
@@ -38,13 +38,13 @@ export async function POST(request: NextRequest) {
 
 export async function GET() {
   try {
-    const session = getSessionFromCookie();
-    
+    const session = await getSessionFromCookie();
+
     if (!session || Date.now() > session.expiresAt) {
       return NextResponse.json({ authenticated: false });
     }
-    
-    return NextResponse.json({ 
+
+    return NextResponse.json({
       authenticated: true,
       walletAddress: session.walletAddress,
       expiresAt: session.expiresAt

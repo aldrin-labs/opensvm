@@ -5,6 +5,7 @@ import { BillingProcessor } from '../../../../lib/anthropic-proxy/billing/Billin
 import { ProxyErrorHandler } from '../../../../lib/anthropic-proxy/errors/ProxyErrorHandler';
 import { AnthropicRequest } from '../../../../lib/anthropic-proxy/types/AnthropicTypes';
 import { globalRateLimiter } from '../../../../lib/anthropic-proxy/middleware/EnhancedRateLimiter';
+import { ProxyRequest, ProxyResponse } from '../../../../lib/anthropic-proxy/types/ProxyTypes';
 
 // Polyfill for crypto.randomUUID in test environments
 const generateRequestId = () => {
@@ -29,7 +30,7 @@ const estimateRequestCost = (anthropicRequest: AnthropicRequest): number => {
     };
 
     // Default to sonnet rates if model not found
-    const rates = modelRates[model] || modelRates['claude-3-sonnet-20240229'];
+    const rates = modelRates[model as keyof typeof modelRates] || modelRates['claude-3-sonnet-20240229'];
 
     // Estimate input tokens (rough approximation: 4 chars = 1 token)
     const inputText = messages.map(m =>
@@ -56,7 +57,7 @@ const calculateActualCost = (anthropicResponse: any, model: string): number => {
         'claude-3-5-haiku-20241022': { input: 1, output: 5 }
     };
 
-    const rates = modelRates[model] || modelRates['claude-3-sonnet-20240229'];
+    const rates = modelRates[model as keyof typeof modelRates] || modelRates['claude-3-sonnet-20240229'];
     const usage = anthropicResponse.usage;
 
     const inputCost = (usage.input_tokens / 1000) * rates.input;
@@ -79,6 +80,7 @@ Promise.all([
 
 export async function POST(request: NextRequest) {
     const requestId = generateRequestId();
+    const startTime = Date.now();
 
     try {
         // Check rate limiting first
@@ -167,11 +169,12 @@ export async function POST(request: NextRequest) {
 
         // Estimate cost and reserve balance
         const estimatedCost = estimateRequestCost(anthropicRequest);
-        const proxyRequest = {
-            userId,
+        const proxyRequest: ProxyRequest = {
             keyId,
+            userId,
+            anthropicRequest,
             estimatedCost,
-            anthropicRequest
+            timestamp: new Date()
         };
 
         try {
@@ -189,7 +192,7 @@ export async function POST(request: NextRequest) {
         }
 
         // Get Anthropic client and process request
-        const anthropicClient = getAnthropicClient();
+        const anthropicClient = await getAnthropicClient();
 
         try {
             if (anthropicRequest.stream) {
@@ -211,11 +214,17 @@ export async function POST(request: NextRequest) {
 
                 // Process successful response for billing
                 const actualCost = calculateActualCost(response, anthropicRequest.model);
-                const proxyResponse = {
-                    userId,
+                const proxyResponse: ProxyResponse = {
                     keyId,
+                    userId,
+                    anthropicResponse: response,
                     actualCost,
-                    anthropicResponse: response
+                    inputTokens: response.usage?.input_tokens || 0,
+                    outputTokens: response.usage?.output_tokens || 0,
+                    model: anthropicRequest.model,
+                    success: true,
+                    timestamp: new Date(),
+                    responseTime: Date.now() - startTime
                 };
 
                 await billingProcessor.processSuccessfulResponse(proxyResponse);
@@ -228,12 +237,17 @@ export async function POST(request: NextRequest) {
             }
         } catch (error) {
             // Process failed response for billing
-            const proxyResponse = {
-                userId,
+            const proxyResponse: ProxyResponse = {
                 keyId,
-                actualCost: 0,
+                userId,
                 anthropicResponse: null,
-                error: error instanceof Error ? error.message : 'Unknown error'
+                actualCost: 0,
+                inputTokens: 0,
+                outputTokens: 0,
+                model: anthropicRequest.model,
+                success: false,
+                timestamp: new Date(),
+                responseTime: Date.now() - startTime
             };
 
             await billingProcessor.processFailedResponse(proxyResponse);
@@ -357,7 +371,7 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
     return new NextResponse(null, {
         status: 204,
         headers: {

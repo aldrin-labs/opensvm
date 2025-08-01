@@ -1,24 +1,11 @@
 'use client';
 
-import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { 
-  FocusManager, 
-  ScreenReaderUtils, 
-  useKeyboardNavigation, 
-  useAccessibility,
-  KEYBOARD_KEYS 
-} from '@/lib/accessibility-utils';
-import { 
-  useMobileDetection, 
-  useSwipeGestures,
-  MobileComponentUtils,
-  MobileModalUtils 
-} from '@/lib/mobile-utils';
-import { 
-  ChevronDownIcon, 
-  ChevronRightIcon, 
-  InfoIcon, 
-  AlertTriangleIcon, 
+import React, { useState, useMemo, useRef } from 'react';
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  InfoIcon,
+  AlertTriangleIcon,
   ShieldCheckIcon,
   SearchIcon,
   FilterIcon,
@@ -74,41 +61,41 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['accounts', 'parameters']));
   const [selectedInstruction, setSelectedInstruction] = useState<ParsedInstructionDisplay | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  
+
   // Accessibility hooks
-  const { highContrast, announceToScreenReader, isTouchDevice } = useAccessibility();
+  // const { highContrast, announceToScreenReader, isTouchDevice } = useAccessibility(); // Removed
   const containerRef = useRef<HTMLDivElement>(null);
-  
+
   // Mobile detection
-  const { isMobile, isTablet, viewportSize } = useMobileDetection();
-  
+  // const { isMobile, isTablet, viewportSize } = useMobileDetection(); // Removed
+
   // Swipe gestures for mobile navigation
-  useSwipeGestures(containerRef, {
-    onSwipeLeft: () => {
-      if (isMobile && expandedInstructions.size > 0) {
-        // Collapse all instructions on swipe left
-        setExpandedInstructions(new Set());
-        announceToScreenReader('All instructions collapsed');
-      }
-    },
-    onSwipeRight: () => {
-      if (isMobile && expandedInstructions.size === 0) {
-        // Expand first instruction on swipe right
-        setExpandedInstructions(new Set([0]));
-        announceToScreenReader('First instruction expanded');
-      }
-    }
-  });
-  
+  // useSwipeGestures(containerRef, { // Removed
+  //   onSwipeLeft: () => {
+  //     if (isMobile && expandedInstructions.size > 0) {
+  //       // Collapse all instructions on swipe left
+  //       setExpandedInstructions(new Set());
+  //       announceToScreenReader('All instructions collapsed');
+  //     }
+  //   },
+  //   onSwipeRight: () => {
+  //     if (isMobile && expandedInstructions.size === 0) {
+  //       // Expand first instruction on swipe right
+  //       setExpandedInstructions(new Set([0]));
+  //       announceToScreenReader('First instruction expanded');
+  //     }
+  //   }
+  // });
+
   // Keyboard navigation
-  useKeyboardNavigation(containerRef, {
-    onEscape: () => {
-      if (isModalOpen) {
-        handleCloseModal();
-      }
-    },
-    roving: true
-  });
+  // useKeyboardNavigation(containerRef, { // Removed
+  //   onEscape: () => {
+  //     if (isModalOpen) {
+  //       handleCloseModal();
+  //     }
+  //   },
+  //   roving: true
+  // });
 
   const handleShowInstructionDetails = (instruction: ParsedInstructionDisplay) => {
     setSelectedInstruction(instruction);
@@ -128,23 +115,23 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
       // Extract program information
       const program = instruction.program || getKnownProgramName(instruction.programId) || 'Unknown Program';
       const instructionType = instruction.parsed?.type || 'unknown';
-      
+
       // Generate description
       const description = generateInstructionDescription(instruction);
-      
+
       // Determine category and risk level
       const category = getProgramCategory(instruction.programId);
       const riskLevel = assessInstructionRisk(instruction);
-      
+
       // Parse accounts with roles
       const accounts = parseAccountRoles(instruction, transaction.details?.accounts || []);
-      
+
       // Extract parameters
       const parameters = extractInstructionParameters(instruction);
-      
+
       // Get relevant logs
       const logs = getInstructionLogs(transaction.details?.logs || [], index);
-      
+
       // Parse inner instructions
       const innerInstructions = parseInnerInstructions(
         transaction.details?.innerInstructions || [],
@@ -223,14 +210,14 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
-      className={`bg-background rounded-lg p-6 shadow-lg border border-border ${highContrast ? 'high-contrast-mode' : ''}`}
+      className={`bg-background rounded-lg p-6 shadow-lg border border-border`} // Removed highContrast class
       role="region"
       aria-labelledby="instructions-heading"
     >
       <div className="flex items-center justify-between mb-6">
-        <h2 
+        <h2
           id="instructions-heading"
           className="text-xl font-semibold text-foreground"
         >
@@ -241,7 +228,7 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
         </div>
       </div>
 
-      <div 
+      <div
         className="space-y-4"
         role="list"
         aria-label="Transaction instructions"
@@ -255,24 +242,20 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
             {/* Instruction Header */}
             <div className="instruction-header flex items-center justify-between p-4 bg-muted/30 hover:bg-muted/50 transition-colors">
               <button
-                className={`flex items-center space-x-3 flex-1 text-left ${isTouchDevice ? 'min-h-[44px] p-3' : 'p-2'} focus-visible rounded`}
+                className={`flex items-center space-x-3 flex-1 text-left`} // Removed isTouchDevice class
                 onClick={() => {
                   const wasExpanded = expandedInstructions.has(instruction.index);
                   toggleInstruction(instruction.index);
                   onInstructionClick?.(instruction, instruction.index);
-                  announceToScreenReader(
-                    `Instruction ${instruction.index + 1} ${wasExpanded ? 'collapsed' : 'expanded'}: ${instruction.program} ${instruction.instructionType}`
-                  );
+                  // Removed announceToScreenReader
                 }}
                 onKeyDown={(e) => {
-                  if (e.key === KEYBOARD_KEYS.ENTER || e.key === KEYBOARD_KEYS.SPACE) {
+                  if (e.key === 'Enter' || e.key === ' ') { // Changed KEYBOARD_KEYS.ENTER to 'Enter'
                     e.preventDefault();
                     const wasExpanded = expandedInstructions.has(instruction.index);
                     toggleInstruction(instruction.index);
                     onInstructionClick?.(instruction, instruction.index);
-                    announceToScreenReader(
-                      `Instruction ${instruction.index + 1} ${wasExpanded ? 'collapsed' : 'expanded'}`
-                    );
+                    // Removed announceToScreenReader
                   }
                 }}
                 aria-expanded={expandedInstructions.has(instruction.index)}
@@ -322,7 +305,7 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
 
             {/* Instruction Details */}
             {expandedInstructions.has(instruction.index) && (
-              <div 
+              <div
                 id={`instruction-details-${instruction.index}`}
                 className="p-4 space-y-4 bg-background"
                 role="region"
@@ -369,7 +352,7 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                         )}
                       </h4>
                     </div>
-                    
+
                     {expandedSections.has(`accounts-${instruction.index}`) && (
                       <div className="space-y-2">
                         {instruction.accounts.map((account, accountIndex) => (
@@ -428,7 +411,7 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                         )}
                       </h4>
                     </div>
-                    
+
                     {expandedSections.has(`parameters-${instruction.index}`) && (
                       <div className="space-y-2">
                         {instruction.parameters.map((param, paramIndex) => (
@@ -497,7 +480,7 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
                         )}
                       </h4>
                     </div>
-                    
+
                     {expandedSections.has(`logs-${instruction.index}`) && (
                       <div className="bg-muted/10 p-3 rounded-md">
                         <div className="space-y-1 font-mono text-sm">
@@ -558,7 +541,7 @@ function generateInstructionDescription(instruction: any): string {
   if (instruction.parsed?.type) {
     const type = instruction.parsed.type;
     const info = instruction.parsed.info || {};
-    
+
     switch (type) {
       case 'transfer':
         if (info.lamports) {
@@ -580,7 +563,7 @@ function generateInstructionDescription(instruction: any): string {
         return `${type} operation`;
     }
   }
-  
+
   return `${getKnownProgramName(instruction.programId) || 'Unknown program'} instruction`;
 }
 
@@ -600,33 +583,33 @@ function getProgramCategory(programId: string): string {
 function assessInstructionRisk(instruction: any): 'low' | 'medium' | 'high' {
   const programId = instruction.programId;
   const type = instruction.parsed?.type;
-  
+
   // High-risk operations
   if (type === 'closeAccount' || type === 'burn' || type === 'setAuthority') {
     return 'high';
   }
-  
+
   // Medium-risk operations
   if (type === 'mintTo' || type === 'createAccount' || type === 'initializeMint') {
     return 'medium';
   }
-  
+
   // Unknown programs are medium risk
   if (!getKnownProgramName(programId)) {
     return 'medium';
   }
-  
+
   return 'low';
 }
 
 function parseAccountRoles(instruction: any, allAccounts: any[]) {
   const accounts = instruction.accounts || [];
-  
+
   return accounts.map((accountRef: any, index: number) => {
     let pubkey: string;
     let isSigner = false;
     let isWritable = false;
-    
+
     if (typeof accountRef === 'number') {
       // Account reference by index
       const account = allAccounts[accountRef];
@@ -637,11 +620,11 @@ function parseAccountRoles(instruction: any, allAccounts: any[]) {
       // Direct account address
       pubkey = accountRef;
     }
-    
+
     // Determine role based on instruction type and position
     let role = 'unknown';
     let description = `Account ${index + 1}`;
-    
+
     const type = instruction.parsed?.type;
     if (type === 'transfer') {
       if (index === 0) {
@@ -663,7 +646,7 @@ function parseAccountRoles(instruction: any, allAccounts: any[]) {
         description = 'New account';
       }
     }
-    
+
     return {
       pubkey,
       role,
@@ -677,7 +660,7 @@ function parseAccountRoles(instruction: any, allAccounts: any[]) {
 function extractInstructionParameters(instruction: any) {
   const parameters = [];
   const info = instruction.parsed?.info || {};
-  
+
   for (const [key, value] of Object.entries(info)) {
     if (typeof value === 'object' && value !== null) {
       if ('uiAmount' in value) {
@@ -704,15 +687,15 @@ function extractInstructionParameters(instruction: any) {
       });
     }
   }
-  
+
   return parameters;
 }
 
 function getInstructionLogs(allLogs: string[], instructionIndex: number): string[] {
   // Filter logs that are relevant to this instruction
   // This is a simplified implementation - in practice, you'd need more sophisticated log parsing
-  return allLogs.filter(log => 
-    log.includes(`invoke [${instructionIndex + 1}]`) || 
+  return allLogs.filter(log =>
+    log.includes(`invoke [${instructionIndex + 1}]`) ||
     log.includes('Program log:')
   );
 }
@@ -720,7 +703,7 @@ function getInstructionLogs(allLogs: string[], instructionIndex: number): string
 function parseInnerInstructions(innerInstructions: any[], instructionIndex: number): ParsedInstructionDisplay[] {
   const relevantInner = innerInstructions.find(inner => inner.index === instructionIndex);
   if (!relevantInner) return [];
-  
+
   return relevantInner.instructions.map((innerIx: any, index: number) => ({
     index,
     program: getKnownProgramName(innerIx.programId) || 'Unknown Program',

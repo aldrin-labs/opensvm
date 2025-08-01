@@ -29,43 +29,21 @@ function createRandomMemecoin(): MemecoinInfo {
     return { id, name, symbol, launchpad, priceUsd, marketCapUsd, liquidityUsd, volume24hUsd, ageMinutes };
 }
 
-// Send a JSON message through the WebSocket
-function send(ws: WebSocket, data: unknown) {
-    if (ws.readyState === ws.OPEN) {
-        ws.send(JSON.stringify(data));
-    }
-}
 
-export async function GET(request: Request) {
-    // WebSocket upgrade validation
-    const upgradeHeader = request.headers.get('upgrade') || '';
-    if (upgradeHeader.toLowerCase() !== 'websocket') {
-        return new Response('Expected WebSocket', { status: 400 });
-    }
 
-    // Create WebSocket pair (Edge runtime)
-    const { 0: client, 1: server } = new WebSocketPair();
+export async function GET(_request: Request) {
+    // Return mock data for now since WebSocket is not supported in Edge runtime
+    const mockData = Array.from({ length: 20 }, () => createRandomMemecoin());
 
-    // Handle connection on the server side
-    server.accept();
-
-    // On open, immediately send initial batch
-    const initialBatch = Array.from({ length: 20 }, () => createRandomMemecoin());
-    send(server, { type: 'snapshot', data: initialBatch });
-
-    // Periodically push updates
-    const intervalId = setInterval(() => {
-        const update = createRandomMemecoin();
-        send(server, { type: 'update', data: update });
-    }, 1000);
-
-    // Cleanup on close
-    server.addEventListener('close', () => {
-        clearInterval(intervalId);
-    });
-
-    return new Response(null, {
-        status: 101,
-        webSocket: client,
+    return new Response(JSON.stringify({
+        type: 'snapshot',
+        data: mockData,
+        message: 'WebSocket not supported in Edge runtime. Use SSE instead.'
+    }), {
+        status: 200,
+        headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'
+        }
     });
 } 

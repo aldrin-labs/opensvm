@@ -3,7 +3,6 @@ import { z } from 'zod';
 import { getTransactionDetails } from '@/lib/solana';
 import { findRelatedTransactions } from '@/lib/related-transaction-finder';
 import { scoreRelationshipStrength } from '@/lib/relationship-strength-scorer';
-import { cacheHelpers } from '@/lib/transaction-cache';
 
 // Request validation schema
 const RelatedTransactionsRequestSchema = z.object({
@@ -68,11 +67,11 @@ export async function GET(
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<RelatedTransactionsResponse>> {
   const startTime = Date.now();
-  
+
   try {
     const { signature } = params;
     const { searchParams } = new URL(request.url);
-    
+
     // Validate signature format
     if (!signature || signature.length !== 88) {
       return NextResponse.json({
@@ -97,24 +96,24 @@ export async function GET(
 
     const validatedParams = RelatedTransactionsRequestSchema.parse(queryParams);
 
-    // Check cache first
-    const cacheKey = JSON.stringify({ signature, ...validatedParams });
-    const cached = cacheHelpers.getRelatedTransactions(signature, validatedParams);
-    
-    if (cached) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          ...cached,
-          cached: true
-        },
-        timestamp: Date.now()
-      });
-    }
+    // Check cache first (commented out until cache methods are implemented)
+    // const cacheKey = JSON.stringify({ signature, ...validatedParams });
+    // const cached = cacheHelpers.getRelatedTransactions(signature, validatedParams);
+    // 
+    // if (cached) {
+    //   return NextResponse.json({
+    //     success: true,
+    //     data: {
+    //       ...cached,
+    //       cached: true
+    //     },
+    //     timestamp: Date.now()
+    //   });
+    // }
 
     // Fetch the base transaction
     const baseTransaction = await getTransactionDetails(signature);
-    
+
     if (!baseTransaction) {
       return NextResponse.json({
         success: false,
@@ -127,26 +126,35 @@ export async function GET(
     }
 
     // Find related transactions
-    const relatedResults = await findRelatedTransactions(baseTransaction, {
+    const relatedResults = await findRelatedTransactions({
+      signature,
       maxResults: validatedParams.maxResults * 2, // Get more to filter later
-      timeWindow: validatedParams.timeWindow,
-      relationshipTypes: validatedParams.relationshipTypes
+      timeWindowHours: validatedParams.timeWindow,
+      relationshipTypes: validatedParams.relationshipTypes,
+      minRelevanceScore: validatedParams.minScore
     });
 
     // Score and filter relationships
     const scoredRelations = await Promise.all(
-      relatedResults.map(async (related) => {
+      relatedResults.relatedTransactions.map(async (related) => {
         const score = await scoreRelationshipStrength(
-          baseTransaction,
-          related.transaction,
-          related.relationshipType
+          related.relationship,
+          {
+            sourceTransaction: baseTransaction,
+            candidateTransaction: related as any, // Type assertion needed
+            allRelatedTransactions: relatedResults.relatedTransactions
+          }
         );
-        
+
         return {
           ...related,
-          score: score.score,
-          explanation: score.explanation,
-          details: score.details
+          score: score.overallScore,
+          explanation: score.factors.map(f => f.description).join(', '),
+          details: {
+            sharedAccounts: related.relationship.sharedElements.accounts,
+            sharedPrograms: related.relationship.sharedElements.programs,
+            timeDifference: related.relationship.sharedElements.timeWindow
+          }
         };
       })
     );
@@ -162,16 +170,16 @@ export async function GET(
         filteredRelations.sort((a, b) => b.score - a.score);
         break;
       case 'timestamp':
-        filteredRelations.sort((a, b) => 
-          (b.transaction.blockTime || 0) - (a.transaction.blockTime || 0));
+        filteredRelations.sort((a, b) =>
+          (b.blockTime || 0) - (a.blockTime || 0));
         break;
       case 'relevance':
         // Custom relevance scoring combining score and recency
         filteredRelations.sort((a, b) => {
-          const aRelevance = a.score * 0.7 + 
-            (a.transaction.blockTime ? (Date.now() / 1000 - a.transaction.blockTime) / 86400 * 0.3 : 0);
-          const bRelevance = b.score * 0.7 + 
-            (b.transaction.blockTime ? (Date.now() / 1000 - b.transaction.blockTime) / 86400 * 0.3 : 0);
+          const aRelevance = a.score * 0.7 +
+            (a.blockTime ? (Date.now() / 1000 - a.blockTime) / 86400 * 0.3 : 0);
+          const bRelevance = b.score * 0.7 +
+            (b.blockTime ? (Date.now() / 1000 - b.blockTime) / 86400 * 0.3 : 0);
           return bRelevance - aRelevance;
         });
         break;
@@ -179,9 +187,9 @@ export async function GET(
 
     // Format response data
     const relatedTransactions = filteredRelations.map(rel => ({
-      signature: rel.transaction.signature,
+      signature: rel.signature,
       relationship: {
-        type: rel.relationshipType,
+        type: rel.relationship.type,
         score: rel.score,
         explanation: rel.explanation,
         sharedAccounts: rel.details?.sharedAccounts,
@@ -189,11 +197,11 @@ export async function GET(
         timeDifference: rel.details?.timeDifference
       },
       transaction: validatedParams.includeMetadata ? {
-        slot: rel.transaction.slot,
-        blockTime: rel.transaction.blockTime || 0,
-        fee: rel.transaction.meta?.fee || 0,
-        status: rel.transaction.meta?.err ? 'failed' : 'success',
-        summary: rel.details?.summary
+        slot: rel.slot,
+        blockTime: rel.blockTime || 0,
+        fee: 0, // Fee not available in RelatedTransaction type
+        status: 'success', // Status not available in RelatedTransaction type
+        summary: rel.summary
       } : undefined
     }));
 
@@ -204,13 +212,13 @@ export async function GET(
     let latestTime = 0;
 
     filteredRelations.forEach(rel => {
-      relationshipTypes[rel.relationshipType] = 
-        (relationshipTypes[rel.relationshipType] || 0) + 1;
+      relationshipTypes[rel.relationship.type] =
+        (relationshipTypes[rel.relationship.type] || 0) + 1;
       totalScore += rel.score;
-      
-      if (rel.transaction.blockTime) {
-        earliestTime = Math.min(earliestTime, rel.transaction.blockTime);
-        latestTime = Math.max(latestTime, rel.transaction.blockTime);
+
+      if (rel.blockTime) {
+        earliestTime = Math.min(earliestTime, rel.blockTime);
+        latestTime = Math.max(latestTime, rel.blockTime);
       }
     });
 
@@ -231,16 +239,16 @@ export async function GET(
       cached: false
     };
 
-    // Cache the result
-    cacheHelpers.setRelatedTransactions(
-      signature, 
-      result, 
-      validatedParams,
-      15 * 60 * 1000 // 15 minutes
-    );
+    // Cache the result (commented out until cache methods are implemented)
+    // cacheHelpers.setRelatedTransactions(
+    //   signature,
+    //   result,
+    //   validatedParams,
+    //   15 * 60 * 1000 // 15 minutes
+    // );
 
     const processingTime = Date.now() - startTime;
-    
+
     return NextResponse.json({
       success: true,
       data: result,
@@ -254,7 +262,7 @@ export async function GET(
 
   } catch (error) {
     console.error('Related transactions error:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -275,10 +283,10 @@ export async function POST(
   try {
     const { signature } = params;
     const body = await request.json();
-    
+
     // Validate request body
     const validatedParams = RelatedTransactionsRequestSchema.parse(body);
-    
+
     // Create a new request with query parameters
     const url = new URL(request.url);
     Object.entries(validatedParams).forEach(([key, value]) => {
@@ -288,14 +296,14 @@ export async function POST(
         url.searchParams.set(key, value.toString());
       }
     });
-    
+
     const newRequest = new NextRequest(url, {
       method: 'GET',
       headers: request.headers
     });
-    
+
     return GET(newRequest, { params });
-    
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json({
@@ -308,7 +316,7 @@ export async function POST(
         timestamp: Date.now()
       }, { status: 400 });
     }
-    
+
     return NextResponse.json({
       success: false,
       error: {

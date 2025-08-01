@@ -65,7 +65,7 @@ export async function POST(request: NextRequest) {
             );
         }
 
-        const { name, permissions, expiresIn } = body;
+        const { name } = body;
 
         if (!name) {
             return NextResponse.json(
@@ -80,13 +80,15 @@ export async function POST(request: NextRequest) {
         }
 
         // Generate new API key
-        const apiKeyData = await apiKeyManager.generateKey(authResult.userId!, name, permissions || {});
+        const apiKeyData = await apiKeyManager.generateKey({
+            userId: authResult.userId!,
+            name
+        });
 
         return NextResponse.json({
-            key: apiKeyData.key,
-            keyId: apiKeyData.id,
-            name: apiKeyData.name,
-            permissions: apiKeyData.permissions,
+            key: apiKeyData.apiKey,
+            keyId: apiKeyData.keyId,
+            name,
             createdAt: apiKeyData.createdAt.toISOString()
         });
 
@@ -129,8 +131,7 @@ export async function GET(request: NextRequest) {
             keys: keyList.map(key => ({
                 keyId: key.id,
                 name: key.name,
-                keyPreview: `${key.key.substring(0, 12)}...${key.key.substring(key.key.length - 4)}`,
-                permissions: key.permissions,
+                keyPreview: `${key.keyPrefix}...`,
                 createdAt: key.createdAt.toISOString(),
                 lastUsedAt: key.lastUsedAt?.toISOString() || null,
                 isActive: key.isActive,
@@ -204,7 +205,7 @@ export async function DELETE(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS(_request: NextRequest) {
     return new NextResponse(null, {
         status: 204,
         headers: {

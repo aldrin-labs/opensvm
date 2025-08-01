@@ -4,9 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { 
-  generateShareCode, 
-  generateShareUrl, 
+import {
+  generateShareCode,
+  generateShareUrl,
   generateOgImageUrl,
   validateShareRequest,
   generateTitle,
@@ -16,10 +16,10 @@ import {
   extractHashtags
 } from '@/lib/share-utils';
 import { storeShareEntry } from '@/lib/qdrant';
-import { 
-  EntityType, 
-  ShareEntry, 
-  GenerateShareRequest, 
+import {
+  EntityType,
+  ShareEntry,
+  GenerateShareRequest,
   GenerateShareResponse,
   TransactionOGData,
   AccountOGData,
@@ -50,7 +50,7 @@ async function fetchEntityData(
         // Fetch transaction data
         const tx = await connection.getTransaction(entityId, { maxSupportedTransactionVersion: 0 });
         if (!tx) return null;
-        
+
         return {
           hash: entityId,
           status: tx.meta?.err ? 'error' : 'success',
@@ -60,15 +60,15 @@ async function fetchEntityData(
           amount: 0 // Would need to parse instructions for actual amount
         } as TransactionOGData;
       }
-      
+
       case 'account': {
         // Fetch account data
         const pubkey = new PublicKey(entityId);
         const balance = await connection.getBalance(pubkey);
-        
+
         // Get transaction count (approximate)
         const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 1 });
-        
+
         return {
           address: entityId,
           balance: balance / 1e9, // Convert lamports to SOL
@@ -77,7 +77,7 @@ async function fetchEntityData(
           lastActivity: Date.now()
         } as AccountOGData;
       }
-      
+
       case 'program': {
         // For programs, we'd need more complex logic
         // This is a simplified version
@@ -90,13 +90,13 @@ async function fetchEntityData(
           volume: 0
         } as ProgramOGData;
       }
-      
+
       case 'user': {
         // Try to fetch user profile from our database, with fallback
         try {
           const qdrantModule = await import('@/lib/qdrant');
           const profile = await qdrantModule.getUserProfile(entityId);
-          
+
           if (profile) {
             return {
               walletAddress: profile.walletAddress,
@@ -112,7 +112,7 @@ async function fetchEntityData(
         } catch (error) {
           console.warn('Could not fetch user profile from Qdrant, using fallback:', error instanceof Error ? error.message : error);
         }
-        
+
         // Fallback: create basic user data
         return {
           walletAddress: entityId,
@@ -131,7 +131,7 @@ async function fetchEntityData(
         try {
           const slotNumber = parseInt(entityId, 10);
           const blockInfo = await connection.getBlockTime(slotNumber);
-          
+
           return {
             slot: slotNumber,
             timestamp: blockInfo || Date.now() / 1000,
@@ -146,7 +146,7 @@ async function fetchEntityData(
           return null;
         }
       }
-      
+
       case 'validator': {
         // Fetch validator data
         // This is a simplified implementation
@@ -166,16 +166,16 @@ async function fetchEntityData(
           return null;
         }
       }
-      
+
       case 'token': {
         // Fetch token data
         try {
           // Here we fetch the basic token info from the blockchain
           const tokenModule = await import('@/lib/solana');
           const tokenInfo = await tokenModule.getTokenInfo(entityId);
-          
+
           if (!tokenInfo) return null;
-          
+
           // In a real implementation, you'd fetch additional data from your database
           // For now, we'll use the basic blockchain data and add placeholders
           return {
@@ -196,7 +196,7 @@ async function fetchEntityData(
           return null;
         }
       }
-      
+
       default:
         return null;
     }
@@ -218,12 +218,12 @@ async function generateAIDescription(_prompt: string): Promise<string | null> {
 export async function POST(req: NextRequest) {
   try {
     console.log('Share generation request received');
-    
+
     const body: GenerateShareRequest = await req.json();
     const { entityType, entityId, referrerAddress } = body;
-    
+
     console.log('Request data:', { entityType, entityId, referrerAddress });
-    
+
     // Validate request
     const validation = validateShareRequest(entityType, entityId, referrerAddress);
     if (!validation.isValid) {
@@ -233,13 +233,13 @@ export async function POST(req: NextRequest) {
         { status: 400 }
       );
     }
-    
+
     // Get session if referrer not provided
     let finalReferrerAddress = referrerAddress;
     if (!finalReferrerAddress) {
       try {
         // Try to get wallet from cookie
-        const cookieStore = cookies();
+        const cookieStore = await cookies();
         const walletCookie = cookieStore.get('wallet-address');
         if (walletCookie?.value) {
           finalReferrerAddress = walletCookie.value;
@@ -248,7 +248,7 @@ export async function POST(req: NextRequest) {
         console.warn('Could not access cookies:', error);
       }
     }
-    
+
     // Fetch entity data with better error handling
     let entityData;
     try {
@@ -268,7 +268,7 @@ export async function POST(req: NextRequest) {
         };
       }
     }
-    
+
     if (!entityData) {
       console.error('Entity data not found for:', { entityType, entityId });
       return NextResponse.json(
@@ -276,15 +276,15 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
-    
+
     // Generate share code
     const shareCode = generateShareCode(entityType, entityId);
     const shareUrl = generateShareUrl(shareCode);
     const ogImageUrl = generateOgImageUrl(entityType, entityId);
-    
+
     // Generate title and description
     const title = generateTitle(entityType, entityData);
-    
+
     // Try AI description first, fallback to generated
     let aiDescription: string | null = null;
     try {
@@ -293,12 +293,12 @@ export async function POST(req: NextRequest) {
     } catch (error) {
       console.warn('AI description failed:', error);
     }
-    
+
     const description = aiDescription || generateDescriptionFallback(entityType, entityData);
-    
+
     // Extract hashtags from description
     const hashtags = extractHashtags(description);
-    
+
     // Create share entry
     const shareEntry: ShareEntry = {
       id: crypto.randomUUID(),
@@ -319,7 +319,7 @@ export async function POST(req: NextRequest) {
       timestamp: Date.now(),
       expiresAt: calculateShareExpiration()
     };
-    
+
     // Store in database with error handling
     try {
       await storeShareEntry(shareEntry);
@@ -328,7 +328,7 @@ export async function POST(req: NextRequest) {
       console.warn('Failed to store share entry in database:', error);
       // Continue anyway - we can still return the share URL
     }
-    
+
     // Return response
     const response: GenerateShareResponse = {
       shareUrl,
@@ -342,10 +342,10 @@ export async function POST(req: NextRequest) {
         data: entityData
       }
     };
-    
+
     console.log('Share generation successful:', shareCode);
     return NextResponse.json(response);
-    
+
   } catch (error) {
     console.error('Error generating share:', error);
     return NextResponse.json(

@@ -143,6 +143,23 @@ export type InnerInstructions = {
 };
 
 export type DetailedTransactionInfo = BaseTransactionInfo & {
+  transaction?: {
+    message: {
+      accountKeys: any[];
+      instructions: any[];
+    };
+  };
+  meta?: {
+    err: any;
+    fee: number;
+    preBalances: number[];
+    postBalances: number[];
+    preTokenBalances?: any[];
+    postTokenBalances?: any[];
+    logMessages?: string[];
+    innerInstructions?: any[];
+  };
+  blockTime?: number;
   details?: {
     instructions: InstructionWithAccounts[];
     accounts: {
@@ -186,7 +203,7 @@ export async function getAccountInfo(address: string): Promise<SolanaAccountInfo
   try {
     const connection = await getProxyConnection();
     const pubkey = validateSolanaAddress(address);
-    
+
     // Try each endpoint until one succeeds
     let lastError;
     for (let i = 0; i < 3; i++) {
@@ -200,7 +217,7 @@ export async function getAccountInfo(address: string): Promise<SolanaAccountInfo
         await new Promise(resolve => setTimeout(resolve, 1000));
       }
     }
-    
+
     throw lastError;
   } catch (error) {
     console.error('Error fetching account info:', error);
@@ -223,7 +240,7 @@ export async function getNetworkStats(): Promise<NetworkStats> {
 
     // Calculate TPS from total transactions in the sample period
     const tps = sample.numTransactions / sample.samplePeriodSecs;
-    
+
     // Assume 100% success rate since we don't have failed transaction count
     const successRate = 100;
 
@@ -251,7 +268,7 @@ export async function getTokenInfo(mintAddress: string): Promise<TokenInfo> {
   try {
     const connection = await getProxyConnection();
     const pubkey = validateSolanaAddress(mintAddress);
-    
+
     const accountInfo = await connection.getAccountInfo(pubkey);
     if (!accountInfo) {
       throw new Error('Token not found');
@@ -330,7 +347,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
         // Process token transfers
         const tokenLogs = tx.meta.logMessages.filter(log =>
           log.includes('Program TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA invoke'));
-        
+
         if (tokenLogs.length > 0) {
           tx.meta.logMessages
             .filter(log => log.includes('Transfer') && log.includes('tokens'))
@@ -433,7 +450,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
     if (error.message?.includes('failed to get')) {
       throw new Error(`Failed to fetch block ${slot}. The RPC node may be experiencing issues.`);
     }
-    
+
     throw new Error(`Failed to fetch block details: ${error.message || 'Unknown error'}`);
   }
 }
@@ -502,7 +519,7 @@ export async function getRecentTransactions(address: string, limit: number = 100
   try {
     const connection = await getProxyConnection();
     const publicKey = new PublicKey(address);
-    
+
     // Get signatures for the address
     const signatures = await connection.getSignaturesForAddress(publicKey, {
       limit: Math.min(limit, 1000) // Solana RPC limit
@@ -523,7 +540,7 @@ export async function getRecentTransactions(address: string, limit: number = 100
 
           const timestamp = new Date((sig.blockTime || Date.now() / 1000) * 1000).toISOString();
           const status: 'success' | 'failed' = tx.meta.err === null ? 'success' : 'failed';
-          
+
           // Parse transaction for transfer details
           let from = '';
           let to = '';
@@ -538,10 +555,10 @@ export async function getRecentTransactions(address: string, limit: number = 100
               const preBalance = tx.meta.preBalances[i] || 0;
               const postBalance = tx.meta.postBalances[i] || 0;
               const balanceChange = postBalance - preBalance;
-              
+
               if (Math.abs(balanceChange) > 0) {
                 const accountAddress = accountKeys[i]?.pubkey?.toString() || '';
-                
+
                 if (balanceChange < 0) {
                   // This account sent SOL
                   from = accountAddress;

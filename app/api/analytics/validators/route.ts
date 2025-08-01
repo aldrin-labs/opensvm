@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { Connection } from '@solana/web3.js';
-import { VALIDATOR_CONSTANTS, PERFORMANCE_CONSTANTS } from '@/lib/constants/analytics-constants';
-import { getGeolocationService, type GeolocationData as GeoData } from '@/lib/services/geolocation';
+import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
+import { getGeolocationService } from '@/lib/services/geolocation';
 
 // Real Solana RPC endpoint - using public mainnet RPC
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
@@ -17,37 +17,7 @@ interface GeolocationData {
   lon?: number;
 }
 
-// Fetch geolocation data for IP addresses using the new service
-async function fetchGeolocation(ip: string): Promise<GeolocationData> {
-  try {
-    const geoService = await getGeolocationService();
-    const geoData = await geoService.getGeolocation(ip);
-    
-    // Convert to the expected format
-    return {
-      country: geoData.country,
-      countryCode: geoData.countryCode,
-      region: geoData.region,
-      city: geoData.city,
-      datacenter: geoData.datacenter,
-      isp: geoData.isp,
-      lat: geoData.lat,
-      lon: geoData.lon
-    };
-  } catch (error) {
-    console.error(`Error fetching geolocation for ${ip}:`, error);
-    
-    // Return default data if service fails
-    return {
-      country: 'Unknown',
-      countryCode: 'XX',
-      region: 'Unknown',
-      city: 'Unknown',
-      datacenter: 'Unknown',
-      isp: 'Unknown'
-    };
-  }
-}
+
 
 // Extract IP address from TPU or RPC endpoint
 function extractIPFromEndpoint(endpoint: string): string | null {
@@ -78,7 +48,7 @@ function calculatePerformanceScore(
 ): number {
   const weights = VALIDATOR_CONSTANTS.PERFORMANCE_WEIGHTS;
   const thresholds = VALIDATOR_CONSTANTS.COMMISSION;
-  
+
   // Commission score (lower is better)
   let commissionScore = 0;
   if (commission <= thresholds.EXCELLENT_THRESHOLD) commissionScore = 1.0;
@@ -86,21 +56,21 @@ function calculatePerformanceScore(
   else if (commission <= thresholds.MODERATE_THRESHOLD) commissionScore = 0.6;
   else if (commission <= thresholds.POOR_THRESHOLD) commissionScore = 0.4;
   else commissionScore = 0.2;
-  
+
   // Stake score (relative to network)
   const stakePercentage = (activatedStake / totalStake) * 100;
   const stakeScore = Math.min(stakePercentage / 5, 1); // Cap at 5% network share
-  
+
   // Uptime score (based on epoch credits)
   const maxCredits = 440000; // Approximate max credits per epoch
   const uptimeScore = Math.min(epochCredits / maxCredits, 1);
-  
+
   // Geography score (bonus for geographic diversity)
   const geoScore = geoData.country !== 'Unknown' ? 1.0 : 0.5;
-  
+
   // Version score (latest version gets full score)
   const versionScore = version !== 'Unknown' ? 1.0 : 0.5;
-  
+
   return (
     commissionScore * weights.COMMISSION_WEIGHT +
     stakeScore * weights.STAKE_WEIGHT +
@@ -113,29 +83,29 @@ function calculatePerformanceScore(
 export async function GET() {
   try {
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    
+
     // Fetch real validator data from Solana RPC
     const voteAccounts = await connection.getVoteAccounts('confirmed');
     // const epochInfo = await connection.getEpochInfo('confirmed');
     const clusterNodes = await connection.getClusterNodes();
-    
+
     // Process real validator data
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
     const totalNetworkStake = allValidators.reduce((sum, v) => sum + v.activatedStake, 0);
-    
+
     // Sort all validators by stake (no limit - show full list)
     const sortedValidators = allValidators
       .sort((a, b) => b.activatedStake - a.activatedStake);
-    
+
     // Collect all unique IPs first for batch geolocation
     const ipToValidatorMap = new Map<string, any[]>();
     const validatorToIpMap = new Map<string, string>();
-    
+
     sortedValidators.forEach(validator => {
-      const clusterNode = clusterNodes.find(node => 
+      const clusterNode = clusterNodes.find(node =>
         node.pubkey === validator.nodePubkey
       );
-      
+
       if (clusterNode?.tpu) {
         const ip = extractIPFromEndpoint(clusterNode.tpu);
         if (ip && ip !== '127.0.0.1' && ip !== 'localhost') {
@@ -147,21 +117,21 @@ export async function GET() {
         }
       }
     });
-    
+
     // Batch geocode all unique IPs
     const uniqueIps = Array.from(ipToValidatorMap.keys());
     const geoService = await getGeolocationService();
     const geoResults = await geoService.batchGeolocation(uniqueIps);
-    
+
     console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
-    
+
     // Process validators with cached geolocation data
     const validatorsWithGeo = await Promise.all(
       sortedValidators.map(async (validator, index) => {
-        const clusterNode = clusterNodes.find(node => 
+        const clusterNode = clusterNodes.find(node =>
           node.pubkey === validator.nodePubkey
         );
-        
+
         // Get geolocation data from batch results
         let geoData: GeolocationData = {
           country: 'Unknown',
@@ -171,7 +141,7 @@ export async function GET() {
           datacenter: 'Unknown',
           isp: 'Unknown'
         };
-        
+
         const ip = validatorToIpMap.get(validator.votePubkey);
         if (ip && geoResults.has(ip)) {
           const batchGeoData = geoResults.get(ip)!;
@@ -186,12 +156,12 @@ export async function GET() {
             lon: batchGeoData.lon
           };
         }
-        
+
         // Calculate performance metrics from real data
         const totalCredits = validator.epochCredits.reduce((sum, credit) => sum + credit[1], 0);
         // const recentCredits = validator.epochCredits.slice(-5).reduce((sum, credit) => sum + credit[1], 0);
         const currentEpochCredits = validator.epochCredits[validator.epochCredits.length - 1]?.[1] || 0;
-        
+
         // Calculate performance score using standardized algorithm
         const performanceScore = calculatePerformanceScore(
           validator.commission,
@@ -201,39 +171,39 @@ export async function GET() {
           clusterNode?.version || 'Unknown',
           geoData
         );
-        
+
         // Calculate APY estimate based on commission and performance
         const baseAPY = 7; // Base Solana staking APY
         const apy = baseAPY * (1 - validator.commission / 100) * performanceScore;
-        
+
         // Calculate uptime percentage (as decimal 0-1 for consistency)
         const maxCredits = 440000; // Approximate max credits per epoch
         const uptimeDecimal = Math.min(currentEpochCredits / maxCredits, 1.0); // Keep as 0-1
-        
-          return {
-            voteAccount: validator.votePubkey,
-            name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
-            commission: validator.commission,
-            activatedStake: validator.activatedStake,
-            lastVote: validator.lastVote,
-            // rootSlot: validator.rootSlot, // Property does not exist, remove
-            credits: totalCredits,
-            epochCredits: currentEpochCredits,
-            version: clusterNode?.version || 'Unknown',
-            status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
-            datacenter: geoData.datacenter,
-            country: geoData.country,
-            countryCode: geoData.countryCode,
-            region: geoData.region,
-            city: geoData.city,
-            isp: geoData.isp,
-            coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
-            apy: Math.round(apy * 100) / 100,
-            performanceScore: Math.round(performanceScore * 100) / 100,
-            uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
-          };
-        })
-      );
+
+        return {
+          voteAccount: validator.votePubkey,
+          name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
+          commission: validator.commission,
+          activatedStake: validator.activatedStake,
+          lastVote: validator.lastVote,
+          // rootSlot: validator.rootSlot, // Property does not exist, remove
+          credits: totalCredits,
+          epochCredits: currentEpochCredits,
+          version: clusterNode?.version || 'Unknown',
+          status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
+          datacenter: geoData.datacenter,
+          country: geoData.country,
+          countryCode: geoData.countryCode,
+          region: geoData.region,
+          city: geoData.city,
+          isp: geoData.isp,
+          coordinates: geoData.lat && geoData.lon ? { lat: geoData.lat, lon: geoData.lon } : undefined,
+          apy: Math.round(apy * 100) / 100,
+          performanceScore: Math.round(performanceScore * 100) / 100,
+          uptimePercent: Math.round(uptimeDecimal * 10000) / 100 // Store as percentage (0-100) with 2 decimal precision
+        };
+      })
+    );
 
     // Calculate real network stats from Solana data
     const totalValidators = allValidators.length;
@@ -248,7 +218,7 @@ export async function GET() {
     let cumulativeStake = 0;
     let nakamotoCoefficient = 0;
     const thresholdStake = totalStake * 0.33; // 33% threshold for consensus
-    
+
     for (const validator of sortedByStake) {
       cumulativeStake += validator.activatedStake;
       nakamotoCoefficient++;
@@ -272,7 +242,7 @@ export async function GET() {
     const countryMap = new Map<string, { count: number, stake: number }>();
     const datacenterMap = new Map<string, { count: number, stake: number }>();
     const versionMap = new Map<string, number>();
-    
+
     validatorsWithGeo.forEach(validator => {
       // Country distribution with real geolocation data
       const currentCountry = countryMap.get(validator.country) || { count: 0, stake: 0 };
@@ -280,7 +250,7 @@ export async function GET() {
         count: currentCountry.count + 1,
         stake: currentCountry.stake + validator.activatedStake
       });
-      
+
       // Datacenter distribution based on ISP/organization
       const datacenterKey = validator.datacenter || 'Unknown';
       const currentDatacenter = datacenterMap.get(datacenterKey) || { count: 0, stake: 0 };
@@ -288,7 +258,7 @@ export async function GET() {
         count: currentDatacenter.count + 1,
         stake: currentDatacenter.stake + validator.activatedStake
       });
-      
+
       // Version distribution from real cluster data
       const currentVersion = versionMap.get(validator.version) || 0;
       versionMap.set(validator.version, currentVersion + 1);

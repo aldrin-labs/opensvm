@@ -9,7 +9,7 @@ import { getSessionFromCookie } from '@/lib/auth-server';
 export async function POST(request: Request) {
   try {
     // Authenticate the user
-    const session = getSessionFromCookie();
+    const session = await getSessionFromCookie();
     if (!session || Date.now() > session.expiresAt) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -69,7 +69,7 @@ export async function POST(request: Request) {
 
       // Get the existing point ID from the search result
       const targetPointId = targetProfileResult[0].id;
-      
+
       await qdrantClient.upsert('user_profiles', {
         points: [
           {
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
 
       // Get the existing point ID from the search result
       const currentPointId = currentProfileResult[0].id;
-      
+
       await qdrantClient.upsert('user_profiles', {
         points: [
           {

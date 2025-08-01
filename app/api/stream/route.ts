@@ -3,13 +3,13 @@ import { getConnection } from '@/lib/solana-connection';
 import { Connection } from '@solana/web3.js';
 import { getStreamingAnomalyDetector } from '@/lib/streaming-anomaly-detector';
 import { validateStreamRequest } from '@/lib/validation/stream-schemas';
-import { generalRateLimiter } from '@/lib/rate-limiter';
+import { generalRateLimiter, type RateLimitResult } from '@/lib/rate-limiter';
 import { SSEManager } from '@/lib/sse-manager';
-import { 
-  createSuccessResponse, 
-  createErrorResponse, 
-  CommonErrors, 
-  ErrorCodes 
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  CommonErrors,
+  ErrorCodes
 } from '@/lib/api-response';
 import { generateSecureAuthToken, generateSecureClientId } from '@/lib/crypto-utils';
 import { createLogger } from '@/lib/debug-logger';
@@ -30,9 +30,9 @@ interface StreamClient {
 
 // Enhanced authentication and rate limiting with timestamp-based blocking
 const CLIENT_AUTH_TOKENS = new Map<string, { token: string; clientId: string; createdAt: number }>();
-const AUTH_FAILURES = new Map<string, { 
-  attempts: number; 
-  lastAttempt: number; 
+const AUTH_FAILURES = new Map<string, {
+  attempts: number;
+  lastAttempt: number;
   blockUntil: number | null; // Use timestamp instead of boolean flag
 }>();
 const rateLimiter = generalRateLimiter;
@@ -60,28 +60,28 @@ function validateAuthToken(clientId: string, token: string): boolean {
 
 function logAuthFailure(clientId: string, reason: string): void {
   const now = Date.now();
-  const failures = AUTH_FAILURES.get(clientId) || { 
-    attempts: 0, 
-    lastAttempt: 0, 
-    blockUntil: null 
+  const failures = AUTH_FAILURES.get(clientId) || {
+    attempts: 0,
+    lastAttempt: 0,
+    blockUntil: null
   };
-  
+
   failures.attempts++;
   failures.lastAttempt = now;
-  
+
   // Block client after 5 failed attempts - use stricter timestamp-based blocking
   if (failures.attempts >= 5) {
     failures.blockUntil = now + (60 * 60 * 1000); // Block for 1 hour
-    
+
     // Escalate repeated auth failures to console with higher severity
     logger.error(`[AUTH FAILURE - CRITICAL] Client ${clientId} BLOCKED until ${new Date(failures.blockUntil).toISOString()}: ${reason}`);
     logger.error(`[SECURITY ALERT] Client ${clientId} has made ${failures.attempts} failed authentication attempts`);
-    
+
     // Could integrate with monitoring systems here:
     // - Send alert to security team
     // - Log to security monitoring dashboard
     // - Trigger automated response if needed
-    
+
   } else if (failures.attempts >= 3) {
     // Warning level for 3+ attempts
     logger.warn(`[AUTH FAILURE - WARNING] Client ${clientId}: ${reason} (attempts: ${failures.attempts}/5)`);
@@ -89,16 +89,16 @@ function logAuthFailure(clientId: string, reason: string): void {
     // Info level for initial attempts
     logger.debug(`[AUTH FAILURE] Client ${clientId}: ${reason} (attempts: ${failures.attempts})`);
   }
-  
+
   AUTH_FAILURES.set(clientId, failures);
 }
 
 function isClientBlocked(clientId: string): boolean {
   const failures = AUTH_FAILURES.get(clientId);
   if (!failures || !failures.blockUntil) return false;
-  
+
   const now = Date.now();
-  
+
   // Check if block period has expired
   if (now >= failures.blockUntil) {
     // Automatically unblock - reset failure count for fresh start
@@ -108,12 +108,12 @@ function isClientBlocked(clientId: string): boolean {
     logger.debug(`[AUTH] Client ${clientId} automatically unblocked after timeout`);
     return false;
   }
-  
+
   return true;
 }
 
-function checkRateLimit(clientId: string, type: string, tokens: number = 1): RateLimitResult {
-  return rateLimiter.checkRateLimit(clientId, type, tokens);
+async function checkRateLimit(clientId: string, tokens: number = 1): Promise<RateLimitResult> {
+  return rateLimiter.checkLimit(clientId, tokens);
 }
 
 interface BlockchainEvent {
@@ -143,7 +143,7 @@ class EventStreamManager {
   public async addClient(client: StreamClient): Promise<void> {
     this.clients.set(client.id, client);
     logger.debug(`Client ${client.id} connected. Total clients: ${this.clients.size}`);
-    
+
     if (!this.isMonitoring) {
       await this.startMonitoring();
     }
@@ -156,13 +156,13 @@ class EventStreamManager {
       clientId,
       createdAt: Date.now()
     });
-    
+
     const client = this.clients.get(clientId);
     if (client) {
       client.authenticated = true;
       client.lastActivity = Date.now();
     }
-    
+
     return token;
   }
 
@@ -174,7 +174,7 @@ class EventStreamManager {
       CLIENT_AUTH_TOKENS.delete(clientId);
       AUTH_FAILURES.delete(clientId);
       logger.debug(`Client ${clientId} disconnected. Total clients: ${this.clients.size}`);
-      
+
       if (this.clients.size === 0) {
         this.stopMonitoring();
       }
@@ -183,17 +183,17 @@ class EventStreamManager {
 
   private async startMonitoring(): Promise<void> {
     if (this.isMonitoring) return;
-    
+
     try {
       this.connection = await getConnection();
       this.isMonitoring = true;
-      
+
       // Start the anomaly detector
       const anomalyDetector = getStreamingAnomalyDetector();
       if (!anomalyDetector.isRunning()) {
         await anomalyDetector.start();
       }
-      
+
       // Subscribe to slot changes (new blocks) with idempotency protection
       await this.safeSubscribe('slots', () => {
         const slotCallback = (slotInfo: any) => {
@@ -208,14 +208,14 @@ class EventStreamManager {
           };
           this.broadcastEvent(event);
         };
-        
+
         this.subscriptionCallbacks.set('slots', slotCallback);
         return this.connection!.onSlotChange(slotCallback);
       });
-      
+
       // Setup transaction monitoring with error protection
       await this.setupTransactionMonitoring();
-      
+
       logger.debug('Started blockchain event monitoring with anomaly detection');
     } catch (error) {
       logger.error('Failed to start monitoring:', error);
@@ -226,7 +226,7 @@ class EventStreamManager {
 
   // Safe subscription wrapper with idempotency and error handling
   private async safeSubscribe(
-    subscriptionKey: string, 
+    subscriptionKey: string,
     subscribeFunction: () => number
   ): Promise<void> {
     try {
@@ -243,9 +243,9 @@ class EventStreamManager {
       // Perform subscription
       const subscriptionId = subscribeFunction();
       this.subscriptionIds.set(subscriptionKey, subscriptionId);
-      
+
       logger.debug(`Successfully subscribed to ${subscriptionKey} (ID: ${subscriptionId})`);
-      
+
     } catch (error) {
       logger.error(`Failed to subscribe to ${subscriptionKey}:`, error);
       this.recordSubscriptionError(subscriptionKey, error);
@@ -259,13 +259,13 @@ class EventStreamManager {
     errorInfo.count++;
     errorInfo.lastError = new Date();
     this.subscriptionErrors.set(subscriptionKey, errorInfo);
-    
+
     logger.error(`Subscription error for ${subscriptionKey} (${errorInfo.count} total errors):`, error);
   }
 
   private async setupTransactionMonitoring(): Promise<void> {
     if (!this.connection) return;
-    
+
     try {
       // System programs to filter out
       const SYSTEM_PROGRAMS = new Set([
@@ -287,7 +287,7 @@ class EventStreamManager {
               if (isVoteTransaction) {
                 return;
               }
-              
+
               let txDetails = null;
               try {
                 // Try to fetch transaction details, but don't fail the whole event if this fails
@@ -314,20 +314,20 @@ class EventStreamManager {
                   }
                 }
               }
-              
+
               // Only filter out pure system transactions if we have account keys
               if (accountKeys.length > 0) {
-                const isPureSystemTransaction = accountKeys.every((key: string) => 
-                  SYSTEM_PROGRAMS.has(key) && 
+                const isPureSystemTransaction = accountKeys.every((key: string) =>
+                  SYSTEM_PROGRAMS.has(key) &&
                   !key.includes('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
                 );
-                
+
                 // Skip pure system transactions
                 if (isPureSystemTransaction) {
                   return;
                 }
               }
-              
+
               const event = {
                 type: 'transaction' as const,
                 timestamp: Date.now(),
@@ -350,11 +350,11 @@ class EventStreamManager {
             }
           }
         };
-        
+
         this.subscriptionCallbacks.set('logs', logsCallback);
         return this.connection!.onLogs('all', logsCallback, 'confirmed');
       });
-      
+
     } catch (error) {
       logger.error('Failed to setup transaction monitoring:', error);
       this.recordSubscriptionError('logs', error);
@@ -384,7 +384,7 @@ class EventStreamManager {
 
   private classifyTransaction(logs: string[], accountKeys: string[]): string {
     // Check for SPL token transfer
-    if (logs.some(log => 
+    if (logs.some(log =>
       log.includes('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') ||
       log.includes('Program log: Instruction: Transfer')
     )) {
@@ -410,7 +410,7 @@ class EventStreamManager {
 
   private stopMonitoring(): void {
     if (!this.isMonitoring || !this.connection) return;
-    
+
     // Remove all subscriptions with improved error handling
     for (const [type, subscriptionId] of this.subscriptionIds) {
       try {
@@ -426,13 +426,13 @@ class EventStreamManager {
         this.recordSubscriptionError(`${type}_removal`, error);
       }
     }
-    
+
     // Clear subscription tracking
     this.subscriptionIds.clear();
     this.subscriptionCallbacks.clear();
     this.isMonitoring = false;
     this.connection = null;
-    
+
     logger.debug('Stopped blockchain event monitoring');
   }
 
@@ -440,7 +440,7 @@ class EventStreamManager {
     const eventData = JSON.stringify(event);
     let successCount = 0;
     let failureCount = 0;
-    
+
     // Broadcast to WebSocket clients
     for (const [clientId, client] of this.clients) {
       try {
@@ -456,7 +456,7 @@ class EventStreamManager {
         this.removeClient(clientId);
       }
     }
-    
+
     // Also broadcast to SSE clients
     try {
       const sseManager = SSEManager.getInstance();
@@ -464,31 +464,31 @@ class EventStreamManager {
     } catch (error) {
       logger.error('Failed to broadcast to SSE clients:', error);
     }
-    
+
     if (failureCount > 0) {
       logger.warn(`Event broadcast: ${successCount} successful, ${failureCount} failed`);
     }
   }
 
-  public subscribeToEvents(clientId: string, eventTypes: string[], authToken?: string): boolean {
+  public async subscribeToEvents(clientId: string, eventTypes: string[], authToken?: string): Promise<boolean> {
     const client = this.clients.get(clientId);
     if (!client) {
       return false;
     }
-    
+
     // Check authentication
     if (!client.authenticated || (authToken && !validateAuthToken(clientId, authToken))) {
       logger.warn(`Unauthorized subscription attempt from client ${clientId}`);
       return false;
     }
-    
+
     // Check rate limit
-    const rateLimitResult = checkRateLimit(clientId, 'api_requests', 1);
+    const rateLimitResult = await checkRateLimit(clientId, 1);
     if (!rateLimitResult.allowed) {
       logger.warn(`Rate limit exceeded for client ${clientId}`);
       return false;
     }
-    
+
     client.lastActivity = Date.now();
     eventTypes.forEach(type => client.subscriptions.add(type));
     return true;
@@ -516,17 +516,17 @@ export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const action = searchParams.get('action');
   const clientId = searchParams.get('clientId') || generateSecureClientId();
-  
+
   // Handle status request
   if (action === 'status') {
     const manager = EventStreamManager.getInstance();
     return Response.json(createSuccessResponse(manager.getStatus()));
   }
-  
+
   // Check for WebSocket upgrade request - provide clear error message
   const upgrade = request.headers.get('upgrade');
   const connection = request.headers.get('connection');
-  
+
   if (upgrade?.toLowerCase() === 'websocket' && connection?.toLowerCase().includes('upgrade')) {
     // WebSocket is not supported - be honest about it
     const { response, status } = createErrorResponse(
@@ -554,7 +554,7 @@ export async function GET(request: NextRequest) {
       },
       426 // Upgrade Required
     );
-    
+
     return new Response(JSON.stringify(response), {
       status,
       headers: {
@@ -599,7 +599,7 @@ export async function POST(request: NextRequest) {
       const { response, status } = CommonErrors.invalidJson(jsonError);
       return Response.json(response, { status });
     }
-    
+
     // Validate request structure with Zod
     const validationResult = validateStreamRequest(requestBody);
     if (!validationResult.success) {
@@ -611,62 +611,62 @@ export async function POST(request: NextRequest) {
       );
       return Response.json(response, { status });
     }
-    
+
     const { action, clientId, eventTypes, authToken } = validationResult.data;
     const manager = EventStreamManager.getInstance();
-    
+
     // Validate input
     if (!clientId && action !== 'status') {
       const { response, status } = CommonErrors.missingField('clientId');
       return Response.json(response, { status });
     }
-    
+
     // Check if client is blocked (skip for authentication requests)
     if (clientId && action !== 'authenticate' && isClientBlocked(clientId)) {
       const { response, status } = CommonErrors.clientBlocked('Contact support to unblock your client');
       return Response.json(response, { status });
     }
-    
+
     // Check rate limit first (skip for authentication requests)
     if (clientId && action !== 'authenticate') {
-      const rateLimitResult = checkRateLimit(clientId, 'api_requests', 1);
+      const rateLimitResult = await checkRateLimit(clientId, 1);
       if (!rateLimitResult.allowed) {
-        const { response, status } = CommonErrors.rateLimit(rateLimitResult.retryAfter, rateLimitResult.remainingTokens);
-        return Response.json(response, { 
+        const { response, status } = CommonErrors.rateLimit(rateLimitResult.retryAfter, rateLimitResult.remaining);
+        return Response.json(response, {
           status,
           headers: {
-            'X-RateLimit-Remaining': rateLimitResult.remainingTokens.toString(),
+            'X-RateLimit-Remaining': rateLimitResult.remaining.toString(),
             'X-RateLimit-Reset': new Date(rateLimitResult.resetTime).toISOString(),
             'Retry-After': rateLimitResult.retryAfter?.toString() || '60'
           }
         });
       }
     }
-    
+
     switch (action) {
       case 'authenticate':
         if (!clientId) {
           const { response, status } = CommonErrors.missingField('clientId');
           return Response.json(response, { status });
         }
-        
+
         // Check authentication rate limit
-        const authRateLimit = checkRateLimit(clientId, 'authentication', 1);
+        const authRateLimit = await checkRateLimit(clientId, 1);
         if (!authRateLimit.allowed) {
           logAuthFailure(clientId, 'Authentication rate limit exceeded');
-          const { response, status } = CommonErrors.rateLimit(authRateLimit.retryAfter, authRateLimit.remainingTokens);
-          return Response.json(response, { 
+          const { response, status } = CommonErrors.rateLimit(authRateLimit.retryAfter, authRateLimit.remaining);
+          return Response.json(response, {
             status,
             headers: {
-              'X-RateLimit-Remaining': authRateLimit.remainingTokens.toString(),
+              'X-RateLimit-Remaining': authRateLimit.remaining.toString(),
               'X-RateLimit-Reset': new Date(authRateLimit.resetTime).toISOString(),
               'Retry-After': authRateLimit.retryAfter?.toString() || '60'
             }
           });
         }
-        
+
         const token = manager.authenticateClient(clientId);
-        
+
         // Clear auth failures on successful authentication
         if (AUTH_FAILURES.has(clientId)) {
           const failures = AUTH_FAILURES.get(clientId)!;
@@ -674,25 +674,25 @@ export async function POST(request: NextRequest) {
           failures.blockUntil = null;
           AUTH_FAILURES.set(clientId, failures);
         }
-        
+
         logger.debug(`[AUTH SUCCESS] Client ${clientId} authenticated successfully`);
-        
-        return Response.json(createSuccessResponse({ 
+
+        return Response.json(createSuccessResponse({
           authToken: token,
           message: 'Client authenticated',
           expiresIn: 3600, // 1 hour
           rateLimits: {
-            api_requests: rateLimiter.getBucketState(clientId, 'api_requests'),
-            websocket_connections: rateLimiter.getBucketState(clientId, 'websocket_connections')
+            api_requests: await rateLimiter.getStats(clientId),
+            websocket_connections: await rateLimiter.getStats(clientId)
           }
         }));
-        
+
       case 'subscribe':
         if (!eventTypes || !Array.isArray(eventTypes) || eventTypes.length === 0) {
           const { response, status } = CommonErrors.missingField('eventTypes');
           return Response.json(response, { status });
         }
-        
+
         // Validate event types
         const validEventTypes = ['transaction', 'block', 'account_change', 'all'];
         const invalidTypes = eventTypes.filter(type => !validEventTypes.includes(type));
@@ -705,19 +705,19 @@ export async function POST(request: NextRequest) {
           );
           return Response.json(response, { status });
         }
-        
-        const success = manager.subscribeToEvents(clientId!, eventTypes, authToken);
+
+        const success = await manager.subscribeToEvents(clientId!, eventTypes, authToken);
         if (success) {
           return Response.json(createSuccessResponse({ message: 'Subscribed to events' }));
         } else {
           const { response, status } = CommonErrors.unauthorized('Authentication required or failed');
           return Response.json(response, { status });
         }
-        
+
       case 'unsubscribe':
         manager.removeClient(clientId!);
         return Response.json(createSuccessResponse({ message: 'Unsubscribed from events' }));
-        
+
       case 'start_monitoring':
         // Create authenticated mock client for testing
         const mockClient = {
@@ -729,17 +729,17 @@ export async function POST(request: NextRequest) {
           connectionTime: Date.now(),
           lastActivity: Date.now()
         };
-        
+
         await manager.addClient(mockClient);
-        
+
         // Auto-authenticate for start_monitoring to maintain compatibility
         const autoToken = manager.authenticateClient(clientId!);
-        
-        return Response.json(createSuccessResponse({ 
+
+        return Response.json(createSuccessResponse({
           message: 'Started monitoring',
           authToken: autoToken
         }));
-        
+
       default:
         const { response, status } = createErrorResponse(
           ErrorCodes.INVALID_REQUEST,

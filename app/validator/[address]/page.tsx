@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ExternalLink, TrendingUp, TrendingDown, Zap, Shield, DollarSign, Activity, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, Shield, DollarSign, Activity, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { ShareButton } from '@/components/ShareButton';
 import { ValidatorStaking } from '@/components/solana/validator-staking';
@@ -70,7 +70,7 @@ export default function ValidatorProfilePage() {
         setLoading(true);
         const response = await fetch(`/api/validator/${validatorAddress}`);
         const result = await response.json();
-        
+
         if (result.success) {
           setValidatorData(result.data);
         } else {
@@ -152,17 +152,16 @@ export default function ValidatorProfilePage() {
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Validators
         </button>
-        
+
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center justify-between">
               <h1 className="text-3xl font-bold flex items-center">
                 {validatorData.name}
-                <span className={`ml-3 px-2 py-1 text-xs rounded-full ${
-                  validatorData.status === 'active'
+                <span className={`ml-3 px-2 py-1 text-xs rounded-full ${validatorData.status === 'active'
                     ? 'bg-green-100 text-green-800'
                     : 'bg-red-100 text-red-800'
-                }`}>
+                  }`}>
                   {validatorData.status}
                 </span>
               </h1>
@@ -175,7 +174,7 @@ export default function ValidatorProfilePage() {
               <ExternalLink className="h-4 w-4 cursor-pointer" />
             </p>
           </div>
-          
+
           <ValidatorStaking
             validatorVoteAccount={validatorData.voteAccount}
             validatorName={validatorData.name}
@@ -194,7 +193,7 @@ export default function ValidatorProfilePage() {
               Staking Requirements
             </h3>
             <p className="text-sm text-blue-700 dark:text-blue-300">
-              To stake or unstake SOL with validators, you must hold at least 100,000 $SVMAI tokens. 
+              To stake or unstake SOL with validators, you must hold at least 100,000 $SVMAI tokens.
               This requirement ensures committed participation in the ecosystem and helps prevent spam.
             </p>
           </div>
@@ -212,7 +211,7 @@ export default function ValidatorProfilePage() {
             <DollarSign className="h-8 w-8 text-green-600" />
           </div>
         </div>
-        
+
         <div className="bg-background border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -222,7 +221,7 @@ export default function ValidatorProfilePage() {
             <TrendingUp className="h-8 w-8 text-blue-600" />
           </div>
         </div>
-        
+
         <div className="bg-background border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -232,7 +231,7 @@ export default function ValidatorProfilePage() {
             <Activity className="h-8 w-8 text-orange-600" />
           </div>
         </div>
-        
+
         <div className="bg-background border rounded-lg p-6">
           <div className="flex items-center justify-between">
             <div>
@@ -257,11 +256,10 @@ export default function ValidatorProfilePage() {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
-                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${
-                  activeTab === tab.id
+                className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.id
                     ? 'border-primary text-primary'
                     : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -303,7 +301,7 @@ export default function ValidatorProfilePage() {
                 </div>
               </div>
             </div>
-            
+
             <div className="bg-background border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">Performance Metrics</h3>
               <div className="space-y-3">
@@ -342,7 +340,7 @@ export default function ValidatorProfilePage() {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-            
+
             <div className="bg-background border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">Epoch Performance</h3>
               <ResponsiveContainer width="100%" height={300}>
@@ -402,11 +400,10 @@ export default function ValidatorProfilePage() {
           <div className="space-y-6">
             <div className="bg-background border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">Staking Recommendation</h3>
-              <div className={`p-4 rounded-lg mb-4 ${
-                validatorData.recommendations.shouldStake 
-                  ? 'bg-green-50 border-green-200' 
+              <div className={`p-4 rounded-lg mb-4 ${validatorData.recommendations.shouldStake
+                  ? 'bg-green-50 border-green-200'
                   : 'bg-red-50 border-red-200'
-              }`}>
+                }`}>
                 <div className="flex items-center mb-2">
                   {validatorData.recommendations.shouldStake ? (
                     <Shield className="h-5 w-5 text-green-600 mr-2" />
@@ -421,7 +418,7 @@ export default function ValidatorProfilePage() {
                   Risk Level: <span className="font-medium">{validatorData.recommendations.riskLevel}</span>
                 </p>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
                   <h4 className="font-medium mb-2">Reasons:</h4>
@@ -434,7 +431,7 @@ export default function ValidatorProfilePage() {
                     ))}
                   </ul>
                 </div>
-                
+
                 {validatorData.recommendations.alternatives.length > 0 && (
                   <div>
                     <h4 className="font-medium mb-2">Alternative Validators:</h4>

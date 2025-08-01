@@ -5,7 +5,7 @@ import { Connection } from '@solana/web3.js';
 import { createSolanaAgent } from '@/lib/ai/core/factory';
 import { useAIChat } from '@/lib/ai/hooks/useAIChat';
 import { ChatUI } from '@/components/ai/ChatUI';
-import { Maximize2, RotateCcw, Plus, MoreHorizontal, Settings, HelpCircle, Download, Share2 } from 'lucide-react';
+import { RotateCcw, Plus, Settings } from 'lucide-react';
 
 // Initialize Solana connection
 const connection = new Connection(
@@ -37,20 +37,8 @@ export default function ChatPage() {
     resetChat();
   };
 
-  const handleExport = () => {
-    console.log('Export chat');
-  };
-
-  const handleShare = () => {
-    console.log('Share chat');
-  };
-
   const handleSettings = () => {
     console.log('Settings');
-  };
-
-  const handleHelp = () => {
-    console.log('Help');
   };
 
   return (

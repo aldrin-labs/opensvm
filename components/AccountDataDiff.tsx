@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { 
-  ChevronDownIcon, 
-  ChevronRightIcon, 
-  CopyIcon, 
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CopyIcon,
   CheckIcon,
   AlertTriangleIcon,
   InfoIcon,
@@ -31,7 +31,7 @@ interface AccountDataDiffProps {
 
 const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
   dataChange,
-  accountAddress,
+  accountAddress: _accountAddress,
   className = ''
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
@@ -41,8 +41,8 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
   const copyToClipboard = async (text: string, field: string) => {
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      await navigator.clipboard.writeText(text);
-    }
+        await navigator.clipboard.writeText(text);
+      }
       setCopiedField(field);
       setTimeout(() => setCopiedField(null), 2000);
     } catch (err) {
@@ -59,12 +59,12 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
     const preLines = dataChange.preData.split(':');
     const postLines = dataChange.postData.split(':');
     const maxLines = Math.max(preLines.length, postLines.length);
-    
+
     const differences = [];
     for (let i = 0; i < maxLines; i++) {
       const preLine = preLines[i] || '';
       const postLine = postLines[i] || '';
-      
+
       if (preLine !== postLine) {
         differences.push({
           index: i,
@@ -74,7 +74,7 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
         });
       }
     }
-    
+
     return differences;
   }, [dataChange]);
 
@@ -158,17 +158,17 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
             )}
             <span className="font-medium text-foreground">Account Data Changes</span>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {getDataTypeIcon(dataChange.dataType)}
             <span className="text-sm text-muted-foreground capitalize">
               {dataChange.dataType?.replace('_', ' ') || 'Generic'}
             </span>
-            
+
             <span className={`px-2 py-1 rounded text-xs font-medium ${getSignificanceColor(dataChange.significance)}`}>
               {dataChange.significance}
             </span>
-            
+
             {getSignificanceIcon(dataChange.significance)}
           </div>
         </div>
@@ -194,11 +194,10 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
                 <button
                   key={mode}
                   onClick={() => setViewMode(mode)}
-                  className={`px-3 py-1 text-xs font-medium transition-colors ${
-                    viewMode === mode
+                  className={`px-3 py-1 text-xs font-medium transition-colors ${viewMode === mode
                       ? 'bg-primary text-primary-foreground'
                       : 'bg-background text-muted-foreground hover:text-foreground'
-                  }`}
+                    }`}
                 >
                   {mode.charAt(0).toUpperCase() + mode.slice(1)}
                 </button>
@@ -218,15 +217,14 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
                         <span className="text-xs font-medium text-muted-foreground">
                           Field {diff.index + 1}
                         </span>
-                        <span className={`px-2 py-1 rounded text-xs font-medium ${
-                          diff.type === 'added' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
-                          diff.type === 'removed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
-                          'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
-                        }`}>
+                        <span className={`px-2 py-1 rounded text-xs font-medium ${diff.type === 'added' ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' :
+                            diff.type === 'removed' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                              'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                          }`}>
                           {diff.type}
                         </span>
                       </div>
-                      
+
                       <div className="grid grid-cols-2 gap-4 text-sm">
                         <div>
                           <span className="text-muted-foreground">Before:</span>
@@ -306,14 +304,14 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
                         {dataChange.dataType?.replace('_', ' ') || 'Generic'}
                       </span>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       <span className="text-muted-foreground">Data Size:</span>
                       <span className="font-medium text-foreground">
                         {formatDataSize(dataChange.dataSize)}
                       </span>
                     </div>
-                    
+
                     {dataChange.sizeChange && dataChange.sizeChange !== 0 && (
                       <div className="flex items-center space-x-2">
                         <span className="text-muted-foreground">Size Change:</span>
@@ -322,7 +320,7 @@ const AccountDataDiff: React.FC<AccountDataDiffProps> = ({
                         </span>
                       </div>
                     )}
-                    
+
                     <div className="flex items-center space-x-2">
                       <span className="text-muted-foreground">Change Significance:</span>
                       <span className={`px-2 py-1 rounded text-xs font-medium ${getSignificanceColor(dataChange.significance)}`}>

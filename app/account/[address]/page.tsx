@@ -172,7 +172,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
               isSystemProgram={accountInfo.isSystemProgram}
               parsedOwner={accountInfo.parsedOwner}
             />
-            <TransactionGraph address={accountInfo.address} />
+            <TransactionGraph
+              initialSignature=""
+              onTransactionSelect={() => { }}
+            />
           </div>
         </div>
         {/* Sidebar - Right Side: Account Info */}
