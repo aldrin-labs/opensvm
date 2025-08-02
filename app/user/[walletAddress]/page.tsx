@@ -17,6 +17,7 @@ import { UserFollowersList } from '@/components/user-history/UserFollowersList';
 import { UserHistoryExport } from '@/components/user-history/UserHistoryExport';
 import { UserFeedDisplay } from '@/components/user-history/UserFeedDisplay';
 import { ShareButton } from '@/components/ShareButton';
+import { APIKeyManager } from '@/components/api-keys/APIKeyManager';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -46,7 +47,8 @@ import {
   Coins,
   Share2,
   MessageSquare,
-  RefreshCw
+  RefreshCw,
+  Key
 } from 'lucide-react';
 
 export default function UserProfilePage() {
@@ -604,7 +606,7 @@ export default function UserProfilePage() {
 
         {/* Main Content Tabs */}
         <Tabs defaultValue={activeTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-6 overflow-x-auto">
+          <TabsList className="grid w-full grid-cols-7 overflow-x-auto">
             <TabsTrigger value="history" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
               <Activity className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">History</span>
@@ -628,6 +630,10 @@ export default function UserProfilePage() {
             <TabsTrigger value="feed" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
               <MessageSquare className="h-4 w-4 flex-shrink-0" />
               <span className="truncate">Feed</span>
+            </TabsTrigger>
+            <TabsTrigger value="api-keys" className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3">
+              <Key className="h-4 w-4 flex-shrink-0" />
+              <span className="truncate">API Keys</span>
             </TabsTrigger>
           </TabsList>
 
@@ -841,6 +847,14 @@ export default function UserProfilePage() {
           {/* Feed Tab Content */}
           <TabsContent value="feed" className="space-y-4">
             <UserFeedDisplay
+              walletAddress={validatedWalletAddress || ''}
+              isMyProfile={isMyProfile === true}
+            />
+          </TabsContent>
+
+          {/* API Keys Tab Content */}
+          <TabsContent value="api-keys" className="space-y-4">
+            <APIKeyManager
               walletAddress={validatedWalletAddress || ''}
               isMyProfile={isMyProfile === true}
             />
