@@ -8,47 +8,30 @@ export function generateSecureTestSignature(prefix: string = 'test-signature'): 
 }
 
 // Wait for loading spinners to disappear
-export async function waitForLoadingToComplete(page: Page, timeout = 30000) {
+export async function waitForLoadingToComplete(page: Page, timeout = 8000) {
     try {
         await page.waitForFunction(() => {
+            // Check for loading indicators but be more lenient
             const loadingSpinners = document.querySelectorAll('.animate-spin, .loading, [data-loading="true"]');
-            return loadingSpinners.length === 0;
+            const visibleSpinners = Array.from(loadingSpinners).filter(el => {
+                if (!(el instanceof HTMLElement)) return false;
+                const style = window.getComputedStyle(el);
+                return style.display !== 'none' && style.visibility !== 'hidden';
+            });
+            return visibleSpinners.length === 0;
         }, { timeout });
     } catch (error) {
         console.log('Loading spinner timeout - continuing with test');
     }
 }
 // Wait for React hydration and tab navigation to be ready
-export async function waitForReactHydration(page: Page, timeout = 30000) {
+export async function waitForReactHydration(page: Page, timeout = 10000) {
     try {
-        // Wait for React to hydrate and tab navigation to be present
+        // Very basic check for React hydration - just ensure page is interactive
         await page.waitForFunction(() => {
-            // Check if React has hydrated by looking for interactive elements
-            const buttons = document.querySelectorAll('button[data-value], .grid button');
-            const hasButtons = buttons.length > 0;
-            
-            // Check if buttons are actually clickable and visible (not just present in DOM)
-            const hasVisibleButtons = Array.from(buttons).some(btn => {
-                if (!(btn instanceof HTMLElement)) return false;
-                if (btn.hasAttribute('disabled')) return false;
-                
-                // More comprehensive visibility check
-                const style = window.getComputedStyle(btn);
-                const rect = btn.getBoundingClientRect();
-                
-                return (
-                    btn.offsetParent !== null && // element is visible in layout
-                    style.visibility !== 'hidden' &&
-                    style.display !== 'none' &&
-                    style.opacity !== '0' &&
-                    rect.width > 0 &&
-                    rect.height > 0 &&
-                    rect.top >= 0 && // not scrolled out of view
-                    rect.left >= 0
-                );
-            });
-            
-            return hasButtons && hasVisibleButtons;
+            return document.readyState === 'complete' &&
+                   document.body &&
+                   document.body.children.length > 0;
         }, { timeout });
     } catch (error) {
         console.log('React hydration timeout - continuing with test');
@@ -56,35 +39,30 @@ export async function waitForReactHydration(page: Page, timeout = 30000) {
 }
 
 // Enhanced wait for transaction tab layout to be fully ready
-export async function waitForTransactionTabLayout(page: Page, timeout = 30000) {
+export async function waitForTransactionTabLayout(page: Page, timeout = 15000) {
     try {
+        // First wait for transaction data to load (this is when tabs appear in TransactionTabLayout)
+        await page.waitForSelector('[data-testid="transaction-tab-content"]', { timeout });
+        
+        // Then wait for the specific grid structure with tab buttons
+        await page.waitForSelector('.grid button[data-value]', { timeout: 10000 });
+        
+        // Wait for at least some essential tab buttons to be visible and interactive
         await page.waitForFunction(() => {
-            // Wait for the transaction tab content to be ready
-            const tabContent = document.querySelector('[data-testid="transaction-tab-content"]');
-            const tabButtons = document.querySelectorAll('button[data-value]');
-            const hasValidButtons = tabButtons.length >= 6; // Should have at least 6 main tabs
+            const overviewBtn = document.querySelector('button[data-value="overview"]');
+            const instructionsBtn = document.querySelector('button[data-value="instructions"]');
             
-            // Check if the grid container is properly laid out
-            const gridContainer = document.querySelector('.grid.grid-cols-4, .grid.grid-cols-8');
-            const hasGridLayout = gridContainer && window.getComputedStyle(gridContainer).display === 'grid';
+            if (!overviewBtn || !instructionsBtn) return false;
             
-            // Verify at least one button is properly visible
-            const hasVisibleButton = Array.from(tabButtons).some(btn => {
-                if (!(btn instanceof HTMLElement)) return false;
-                const style = window.getComputedStyle(btn);
-                const rect = btn.getBoundingClientRect();
-                
-                return (
-                    style.visibility === 'visible' &&
-                    style.display !== 'none' &&
-                    parseFloat(style.opacity) > 0.5 &&
-                    rect.width > 50 && // reasonable button width
-                    rect.height > 20   // reasonable button height
-                );
-            });
+            // Check if buttons are actually visible and clickable
+            const overviewRect = overviewBtn.getBoundingClientRect();
+            const instructionsRect = instructionsBtn.getBoundingClientRect();
             
-            return tabContent && hasValidButtons && hasGridLayout && hasVisibleButton;
-        }, { timeout });
+            const overviewVisible = overviewRect.width > 0 && overviewRect.height > 0;
+            const instructionsVisible = instructionsRect.width > 0 && instructionsRect.height > 0;
+            
+            return overviewVisible && instructionsVisible;
+        }, { timeout: 8000 });
     } catch (error) {
         console.log('Transaction tab layout timeout - continuing with test');
     }
