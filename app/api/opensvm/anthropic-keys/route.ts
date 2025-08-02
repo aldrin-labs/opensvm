@@ -1,15 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APIKeyManager } from '../../../../lib/anthropic-proxy/core/APIKeyManager';
 import { JWTAuth } from '../../../../lib/anthropic-proxy/auth/JWTAuth';
+import { getSessionFromCookie } from '../../../../lib/auth-server';
 
 const apiKeyManager = new APIKeyManager();
 const jwtAuth = new JWTAuth();
 
-// Enhanced user authentication with JWT support
-function authenticateUser(request: NextRequest): { isValid: boolean; userId?: string; error?: string } {
-    const authHeader = request.headers.get('Authorization');
+// Enhanced user authentication with session and JWT support
+async function authenticateUser(request: NextRequest): Promise<{ isValid: boolean; userId?: string; error?: string }> {
+    // Try session-based authentication first (primary method)
+    try {
+        const session = await getSessionFromCookie();
+        if (session && session.walletAddress && Date.now() <= session.expiresAt) {
+            return {
+                isValid: true,
+                userId: session.walletAddress
+            };
+        }
+    } catch (error) {
+        console.error('Session authentication error:', error);
+    }
 
-    // Try JWT authentication first
+    // Try JWT authentication as fallback
+    const authHeader = request.headers.get('Authorization');
     const jwtResult = jwtAuth.requireAuth(authHeader);
     if (jwtResult.isValid) {
         return {
@@ -36,7 +49,7 @@ function authenticateUser(request: NextRequest): { isValid: boolean; userId?: st
 
 export async function POST(request: NextRequest) {
     try {
-        const authResult = authenticateUser(request);
+        const authResult = await authenticateUser(request);
         if (!authResult.isValid) {
             return NextResponse.json(
                 {
@@ -108,7 +121,7 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
     try {
-        const authResult = authenticateUser(request);
+        const authResult = await authenticateUser(request);
         if (!authResult.isValid) {
             return NextResponse.json(
                 {
@@ -156,7 +169,7 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
     try {
-        const authResult = authenticateUser(request);
+        const authResult = await authenticateUser(request);
         if (!authResult.isValid) {
             return NextResponse.json(
                 {

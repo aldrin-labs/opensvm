@@ -69,7 +69,6 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': walletAddress, // Use wallet address as user ID
         },
         credentials: 'include',
       });
@@ -102,7 +101,6 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': walletAddress,
         },
         credentials: 'include',
         body: JSON.stringify({ name: newKeyName.trim() }),
@@ -140,7 +138,6 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
-          'X-User-ID': walletAddress,
         },
         credentials: 'include',
       });
