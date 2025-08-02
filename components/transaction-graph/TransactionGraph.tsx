@@ -13,7 +13,8 @@ import {
   resizeGraph,
   fetchTransactionData,
   fetchAccountTransactions,
-  errorLog
+  errorLog,
+  debugLog
 } from './utils';
 import {
   useFullscreenMode,
@@ -57,6 +58,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
   initialSignature,
   initialAccount,
   onTransactionSelect,
+  clientSideNavigation = false,
   width = '100%',
   height = '100%',
   maxDepth: _maxDepth = 2
@@ -394,55 +396,6 @@ const TransactionGraph = React.memo(function TransactionGraph({
     );
   });
 
-  // Initialize graph
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    if (!containerRef.current || isInitialized) return;
-
-    const abortController = new AbortController();
-
-    const initAsync = async () => {
-      try {
-        await initializeGraph(containerRef.current!, wrappedOnTransactionSelect);
-
-        if (abortController.signal.aborted) return;
-
-        // Define fetchData locally to avoid dependency issues
-        const localFetchData = async (signature: string, account: string | null = null) => {
-          if (signature && !abortController.signal.aborted) {
-            await fetchData(signature, account);
-          }
-        };
-
-        // Define fetchAccountData locally to avoid dependency issues
-        const localFetchAccountData = async (account: string) => {
-          if (account && !abortController.signal.aborted) {
-            await fetchAccountData(account);
-          }
-        };
-
-        // Load initial data
-        if (initialSignature && !abortController.signal.aborted) {
-          await localFetchData(initialSignature, initialAccount);
-        } else if (initialAccount && !abortController.signal.aborted) {
-          await localFetchAccountData(initialAccount);
-        }
-      } catch (error) {
-        if (!abortController.signal.aborted) {
-          errorLog('Graph initialization failed:', error);
-          setError('Failed to initialize graph');
-        }
-      }
-    };
-
-    initAsync();
-
-    return () => {
-      abortController.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSignature, initialAccount, wrappedOnTransactionSelect, containerRef, initializeGraph, isInitialized]);
-
   // Fetch account data
   const fetchAccountData = useCallback(async (account: string) => {
     if (!account) return;
@@ -602,38 +555,72 @@ const TransactionGraph = React.memo(function TransactionGraph({
     return { nodes, edges };
   }, []); // No dependencies needed as this is a pure function
 
+  // Simplified graph initialization
+  useEffect(() => {
+    if (!containerRef.current || isInitialized) return;
 
-  // Timeout protection for loading
+    let isMounted = true;
+
+    const initAsync = async () => {
+      try {
+        debugLog('Starting graph initialization...');
+        setIsLoading(true);
+        setError(null);
+
+        await initializeGraph(containerRef.current!, wrappedOnTransactionSelect);
+
+        if (!isMounted) return;
+
+        debugLog('Graph initialized, loading initial data...');
+
+        // Load initial data if provided
+        if (initialSignature) {
+          setCurrentSignature(initialSignature);
+          await fetchData(initialSignature, initialAccount);
+        } else if (initialAccount) {
+          await fetchAccountData(initialAccount);
+        }
+
+        if (isMounted) {
+          debugLog('Graph initialization completed successfully');
+        }
+      } catch (error) {
+        if (isMounted) {
+          errorLog('Graph initialization failed:', error);
+          setError(`Failed to initialize graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoading(false);
+        }
+      }
+    };
+
+    initAsync();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [initialSignature, initialAccount, isInitialized, initializeGraph, wrappedOnTransactionSelect, fetchData, fetchAccountData]);
+
+  // Simplified timeout protection for loading
   useEffect(() => {
     if (!isLoading) return;
 
-    // Use refs to track timeouts to avoid stale closures
-    let progressTimeout: NodeJS.Timeout;
-    let completionTimeout: NodeJS.Timeout;
-
-    // If progress is stuck at 0% for more than 3 seconds, force it forward
-    progressTimeout = setTimeout(() => {
-      setProgress(prev => prev === 0 ? 30 : prev);
-      setProgressMessage('Initializing graph...');
-    }, 3000);
-
-    // If loading takes more than 10 seconds, force completion
-    completionTimeout = setTimeout(() => {
-      setIsLoading(false);
-      setProgress(100);
-      setError('Loading took too long. Some data may not be displayed.');
-      const errorTimeout = setTimeout(() => setError(null), 5000);
-      timeoutIds.current.push(errorTimeout);
-    }, 10000);
-
-    // Store timeout IDs for cleanup
-    timeoutIds.current.push(progressTimeout, completionTimeout);
+    // Force completion after reasonable timeout
+    const completionTimeout = setTimeout(() => {
+      if (isLoading) {
+        errorLog('Graph loading timeout - forcing completion');
+        setIsLoading(false);
+        setProgress(0);
+        setError('Graph loading timed out. Please try refreshing the page.');
+      }
+    }, 15000); // Increased timeout for better reliability
 
     return () => {
-      clearTimeout(progressTimeout);
       clearTimeout(completionTimeout);
     };
-  }, [isLoading]); // Removed progress dependency to avoid excessive re-runs
+  }, [isLoading]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -669,16 +656,36 @@ const TransactionGraph = React.memo(function TransactionGraph({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // No dependencies needed - cyRef is stable ref
 
-  // Render
+  // Render with better conditional structure to prevent DOM insertion errors
+  if (!containerRef.current && typeof window !== 'undefined') {
+    return (
+      <div
+        className={containerClassName}
+        style={containerStyle}
+      >
+        <div className="absolute inset-0 flex items-center justify-center">
+          <div className="text-center">
+            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
+            <p className="text-sm text-muted-foreground">Initializing graph container...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div
       ref={containerRef}
       className={containerClassName}
       style={containerStyle}
+      key="transaction-graph-container"
     >
-      {/* Loading overlay */}
-      {isLoading && (
-        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center">
+      {/* Loading overlay - use key for better tracking */}
+      {isLoading ? (
+        <div
+          key="loading-overlay"
+          className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center"
+        >
           <div className="text-center bg-card p-6 rounded-lg shadow-lg">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
             <p className="text-sm text-muted-foreground">{progressMessage}</p>
@@ -698,11 +705,14 @@ const TransactionGraph = React.memo(function TransactionGraph({
             )}
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Error display */}
-      {error && (
-        <div className="absolute top-4 left-4 right-4 z-30 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+      {/* Error display - use key for better tracking */}
+      {error ? (
+        <div
+          key="error-display"
+          className="absolute top-4 left-4 right-4 z-30 p-4 bg-destructive/10 border border-destructive/20 rounded-lg"
+        >
           <p className="text-sm text-destructive">{error}</p>
           <button
             onClick={() => setError(null)}
@@ -711,10 +721,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
             Dismiss
           </button>
         </div>
-      )}
+      ) : null}
 
       {/* Controls */}
-      <div className="absolute top-4 right-4 z-30 flex gap-2">
+      <div key="controls" className="absolute top-4 right-4 z-30 flex gap-2">
         {/* Navigation controls */}
         <button
           onClick={navigateBack}
@@ -740,7 +750,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
           </svg>
         </button>
 
-        <div className="w-px h-8 bg-border" /> {/* Separator */}
+        <div className="w-px h-8 bg-border" />
 
         <button
           onClick={toggleFullscreen}
@@ -771,27 +781,26 @@ const TransactionGraph = React.memo(function TransactionGraph({
       </div>
 
       {/* Debug Panel - only show when graph has issues */}
-      {!isLoading && cyRef.current && <DebugPanel />}
+      {!isLoading && cyRef.current ? <DebugPanel key="debug-panel" /> : null}
 
-      {/* Main content */}
+      {/* Main content with proper keys */}
       {isCloudView ? (
-        <div ref={cloudViewRef} className="w-full h-full">
+        <div key="cloud-view" ref={cloudViewRef} className="w-full h-full">
           <TransactionGraphClouds
             currentFocusedTransaction={currentSignature || ''}
             onLoadState={(state) => {
               console.log('Loading saved graph state', state);
-              // Implementation would restore a saved graph state
             }}
             onSaveCurrentState={() => {
               console.log('Saving current graph state');
-              // Implementation would save the current graph state
             }}
           />
         </div>
       ) : (
-        <div className="w-full h-full">
+        <div key="graph-view" className="w-full h-full">
           {useGPUGraph ? (
             <GPUAcceleratedForceGraph
+              key="gpu-graph"
               graphData={gpuGraphData}
               onNodeClick={handleGPUNodeClickWithHistory}
               onNodeHover={handleGPUNodeHover}
@@ -799,19 +808,19 @@ const TransactionGraph = React.memo(function TransactionGraph({
               height={gpuGraphDimensions.height}
             />
           ) : (
-            <div id="cy-container" className="w-full h-full" />
+            <div key="cytoscape-container" id="cy-container" className="w-full h-full" />
           )}
         </div>
       )}
 
       {/* Address tracking panel */}
-      {isTrackingMode && trackingStats && (
+      {isTrackingMode && trackingStats ? (
         <TrackingStatsPanel
+          key="tracking-panel"
           stats={trackingStats}
           onStopTracking={stopTrackingAddress}
-        // className removed as it's not in the interface
         />
-      )}
+      ) : null}
     </div>
   );
 }, (prevProps, nextProps) => {
@@ -826,4 +835,4 @@ const TransactionGraph = React.memo(function TransactionGraph({
   );
 });
 
-export default TransactionGraph;
+export default TransactionGraph;  

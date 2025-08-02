@@ -59,16 +59,16 @@ export function useGraphInitialization() {
 
       cyRef.current = cy;
 
-      // Setup interactions with dummy refs - this may need proper implementation
-      const dummyContainerRef = { current: null };
-      const dummyFocusSignatureRef = { current: '' };
-      const dummySetViewportState = () => {};
+      // Setup interactions with proper refs
+      const containerRef = { current: container as HTMLDivElement };
+      const focusSignatureRef = { current: '' };
+      const setViewportState = () => {};
       const wrappedOnTransactionSelect = (signature: string, _incrementalLoad: boolean) => {
         if (onTransactionSelect) {
           onTransactionSelect(signature);
         }
       };
-      setupGraphInteractions(cy, dummyContainerRef, dummyFocusSignatureRef, wrappedOnTransactionSelect, dummySetViewportState);
+      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState);
 
       // Mark as initialized
       isInitialized.current = true;

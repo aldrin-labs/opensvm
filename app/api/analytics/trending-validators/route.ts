@@ -1,12 +1,10 @@
 import { NextResponse } from 'next/server';
-import { Connection } from '@solana/web3.js';
+import { getConnection } from '@/lib/solana-connection';
 import { memoryCache } from '@/lib/cache';
 import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
 import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
 import { getClientIP } from '@/lib/utils/client-ip';
-
-const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -77,12 +75,13 @@ const calculateTrendingScore = (validator: any, depositVolume: number, boost?: B
 
 // Verify burn transaction on-chain
 async function verifyBurnTransaction(
-  connection: Connection,
   signature: string,
   expectedBurner: string,
   expectedAmount: number
 ): Promise<{ valid: boolean; error?: string }> {
   try {
+    const connection = await getConnection();
+    
     // Get transaction details
     const tx = await connection.getTransaction(signature, {
       commitment: 'confirmed',
@@ -376,12 +375,8 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
-    // Create connection for verification
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-
     // Verify burn transaction on-chain
     const verification = await verifyBurnTransaction(
-      connection,
       burnSignature,
       burnerWallet,
       burnAmount

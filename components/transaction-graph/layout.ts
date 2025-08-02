@@ -1,6 +1,12 @@
 'use client';
 
 import cytoscape from 'cytoscape';
+import dagre from 'cytoscape-dagre';
+
+// Register the dagre extension
+if (typeof cytoscape !== 'undefined') {
+  cytoscape.use(dagre);
+}
 
 // Define custom layout options for dagre
 type DagreLayoutOptions = cytoscape.LayoutOptions & {
@@ -33,7 +39,7 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
     
     // Run layout only on the subgraph but preserve existing positions
     subgraph.layout(<DagreLayoutOptions>{
-      name: 'dagre' as any,
+      name: 'dagre',
       rankDir: 'TB', // Top to bottom layout
       ranker: 'tight-tree',
       rankSep: 80, // Reduced for incremental layout
@@ -58,7 +64,7 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
   } else {
     // Default layout behavior for all elements
     cy.layout(<DagreLayoutOptions>{
-      name: 'dagre' as any,
+      name: 'dagre',
       rankDir: 'TB', // Top to bottom layout
       ranker: 'tight-tree',
       rankSep: 150, // Reduced for better vertical spacing
@@ -84,7 +90,7 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
  */
 export const runLayout = (cy: cytoscape.Core): void => {
   cy.layout(<DagreLayoutOptions>{
-    name: 'dagre' as any,
+    name: 'dagre',
     rankDir: 'TB', // Top to bottom layout
     ranker: 'network-simplex',
     rankSep: 150, // Reduced for better vertical spacing
@@ -293,7 +299,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
     container: container,
     style: createGraphStyle(),
     layout: <DagreLayoutOptions>{
-      name: 'dagre' as any,
+      name: 'dagre',
       rankDir: 'TB', // Top to bottom layout
       ranker: 'network-simplex',
       rankSep: 150, // Reduced for better vertical spacing

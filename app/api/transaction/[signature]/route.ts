@@ -166,6 +166,20 @@ export async function GET(
       );
     }
 
+    // Validate signature format before making RPC calls
+    if (!isValidTransactionSignature(signature)) {
+      if (DEBUG) {
+        console.error(`[API] Invalid transaction signature format: ${signature} (length: ${signature.length})`);
+      }
+      return new Response(
+        JSON.stringify({ error: 'Invalid transaction signature format' }),
+        {
+          status: 400,
+          headers: new Headers(defaultHeaders)
+        }
+      );
+    }
+
     // Get connection from pool (commented out since not used)
     // const connection = await getConnection();
     if (DEBUG) {
@@ -239,6 +253,22 @@ export async function GET(
       }
     );
   }
+}
+
+// Helper function to validate transaction signature format
+function isValidTransactionSignature(signature: string): boolean {
+  // Check length - Solana signatures are always 88 characters when base58 encoded
+  if (signature.length !== 88) {
+    return false;
+  }
+
+  // Check if it contains only valid base58 characters
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  if (!base58Regex.test(signature)) {
+    return false;
+  }
+
+  return true;
 }
 
 // Helper function to transform transaction data into the DetailedTransactionInfo format

@@ -160,6 +160,14 @@ export class EnhancedTransactionFetcher {
   async fetchEnhancedTransaction(signature: string): Promise<EnhancedTransactionData> {
     await this.init();
 
+    // Validate transaction signature format before making RPC call
+    if (!this.isValidTransactionSignature(signature)) {
+      console.error(`[EnhancedTransactionFetcher] Invalid signature format: ${signature} (length: ${signature.length})`);
+      throw new Error(`Invalid transaction signature format: ${signature}`);
+    }
+
+    console.log(`[EnhancedTransactionFetcher] Fetching transaction: ${signature}`);
+
     // Fetch the parsed transaction
     const tx = await this.connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
@@ -566,6 +574,25 @@ export class EnhancedTransactionFetcher {
       return data.slice(0, 16); // First 8 bytes as hex
     }
     return undefined;
+  }
+
+  /**
+   * Validate transaction signature format
+   * Solana transaction signatures are base58 encoded and exactly 88 characters long
+   */
+  private isValidTransactionSignature(signature: string): boolean {
+    // Check length - Solana signatures are always 88 characters when base58 encoded
+    if (signature.length !== 88) {
+      return false;
+    }
+
+    // Check if it contains only valid base58 characters
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (!base58Regex.test(signature)) {
+      return false;
+    }
+
+    return true;
   }
 }
 

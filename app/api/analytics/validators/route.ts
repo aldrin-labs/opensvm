@@ -1,10 +1,7 @@
 import { NextResponse } from 'next/server';
-import { Connection } from '@solana/web3.js';
+import { getConnection } from '@/lib/solana-connection';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
-
-// Real Solana RPC endpoint - using public mainnet RPC
-const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 interface GeolocationData {
   country: string;
@@ -16,8 +13,6 @@ interface GeolocationData {
   lat?: number;
   lon?: number;
 }
-
-
 
 // Extract IP address from TPU or RPC endpoint
 function extractIPFromEndpoint(endpoint: string): string | null {
@@ -82,16 +77,26 @@ function calculatePerformanceScore(
 
 export async function GET() {
   try {
-    const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
+    // Use OpenSVM RPC connection instead of direct connection
+    const connection = await getConnection();
 
-    // Fetch real validator data from Solana RPC
-    const voteAccounts = await connection.getVoteAccounts('confirmed');
-    // const epochInfo = await connection.getEpochInfo('confirmed');
-    const clusterNodes = await connection.getClusterNodes();
+    // Add timeout wrapper for the API calls
+    const timeoutPromise = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Validator data fetch timeout')), 30000);
+    });
+
+    // Fetch real validator data from Solana RPC with timeout
+    const [voteAccounts, clusterNodes] = await Promise.race([
+      Promise.all([
+        connection.getVoteAccounts('confirmed'),
+        connection.getClusterNodes()
+      ]),
+      timeoutPromise
+    ]) as [any, any[]];
 
     // Process real validator data
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
-    const totalNetworkStake = allValidators.reduce((sum, v) => sum + v.activatedStake, 0);
+    const totalNetworkStake = allValidators.reduce((sum: number, v: any) => sum + v.activatedStake, 0);
 
     // Sort all validators by stake (no limit - show full list)
     const sortedValidators = allValidators
@@ -118,12 +123,48 @@ export async function GET() {
       }
     });
 
-    // Batch geocode all unique IPs
+    // Skip geolocation if Qdrant is not available
     const uniqueIps = Array.from(ipToValidatorMap.keys());
-    const geoService = await getGeolocationService();
-    const geoResults = await geoService.batchGeolocation(uniqueIps);
+    let geoResults = new Map<string, GeolocationData>();
 
-    console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
+    // Check if we should attempt geolocation (only if Qdrant is available)
+    const shouldAttemptGeolocation = process.env.QDRANT_URL && process.env.QDRANT_API_KEY;
+
+    if (shouldAttemptGeolocation) {
+      try {
+        const geoService = await getGeolocationService();
+        geoResults = await geoService.batchGeolocation(uniqueIps);
+        console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
+      } catch (error) {
+        console.warn('Geolocation service failed, using fallback data:', error);
+        // Provide fallback geolocation data
+        geoResults = new Map();
+        uniqueIps.forEach(ip => {
+          geoResults.set(ip, {
+            country: 'Unknown',
+            countryCode: 'XX',
+            region: 'Unknown',
+            city: 'Unknown',
+            datacenter: 'Unknown',
+            isp: 'Unknown'
+          });
+        });
+      }
+    } else {
+      console.log('Skipping geolocation - Qdrant not configured');
+      // Provide fallback geolocation data for all validators
+      geoResults = new Map();
+      uniqueIps.forEach(ip => {
+        geoResults.set(ip, {
+          country: 'Unknown',
+          countryCode: 'XX',
+          region: 'Unknown',
+          city: 'Unknown',
+          datacenter: 'Unknown',
+          isp: 'Unknown'
+        });
+      });
+    }
 
     // Process validators with cached geolocation data
     const validatorsWithGeo = await Promise.all(
@@ -158,8 +199,7 @@ export async function GET() {
         }
 
         // Calculate performance metrics from real data
-        const totalCredits = validator.epochCredits.reduce((sum, credit) => sum + credit[1], 0);
-        // const recentCredits = validator.epochCredits.slice(-5).reduce((sum, credit) => sum + credit[1], 0);
+        const totalCredits = validator.epochCredits.reduce((sum: number, credit: any) => sum + credit[1], 0);
         const currentEpochCredits = validator.epochCredits[validator.epochCredits.length - 1]?.[1] || 0;
 
         // Calculate performance score using standardized algorithm
@@ -186,7 +226,6 @@ export async function GET() {
           commission: validator.commission,
           activatedStake: validator.activatedStake,
           lastVote: validator.lastVote,
-          // rootSlot: validator.rootSlot, // Property does not exist, remove
           credits: totalCredits,
           epochCredits: currentEpochCredits,
           version: clusterNode?.version || 'Unknown',

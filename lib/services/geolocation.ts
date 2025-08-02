@@ -25,15 +25,22 @@ interface GeolocationProvider {
 }
 
 class GeolocationService {
-  private qdrant: QdrantClient;
+  private qdrant: QdrantClient | null = null;
   private collectionName = 'ip_geolocation';
   private providers: GeolocationProvider[];
+  private qdrantAvailable = false;
 
   constructor() {
-    this.qdrant = new QdrantClient({
-      url: process.env.QDRANT_URL || 'http://localhost:6333',
-      apiKey: process.env.QDRANT_API_KEY,
-    });
+    // Initialize Qdrant client but don't fail if connection isn't available
+    try {
+      this.qdrant = new QdrantClient({
+        url: process.env.QDRANT_URL || 'http://localhost:6333',
+        apiKey: process.env.QDRANT_API_KEY,
+      });
+    } catch (error) {
+      console.warn('Qdrant client initialization failed, running without cache:', error);
+      this.qdrant = null;
+    }
 
     this.providers = [
       // IPGeolocation.io - 1000 requests/day free, very reliable
@@ -165,7 +172,17 @@ class GeolocationService {
   }
 
   async initializeCollection(): Promise<void> {
+    if (!this.qdrant) {
+      console.warn('Qdrant not available, skipping collection initialization');
+      this.qdrantAvailable = false;
+      return;
+    }
+
     try {
+      // Test connection first
+      await this.qdrant.getCollections();
+      this.qdrantAvailable = true;
+
       // Check if collection exists
       const collections = await this.qdrant.getCollections();
       const exists = collections.collections.some(c => c.name === this.collectionName);
@@ -191,7 +208,9 @@ class GeolocationService {
         console.log(`Created Qdrant collection: ${this.collectionName}`);
       }
     } catch (error) {
-      console.error('Failed to initialize Qdrant collection:', error);
+      console.warn('Qdrant connection failed, running without cache:', error);
+      this.qdrantAvailable = false;
+      this.qdrant = null;
     }
   }
 
@@ -234,6 +253,10 @@ class GeolocationService {
   }
 
   async getCachedGeolocation(ip: string): Promise<GeolocationData | null> {
+    if (!this.qdrant || !this.qdrantAvailable) {
+      return null; // Skip cache if Qdrant is not available
+    }
+
     try {
       const results = await this.qdrant.search(this.collectionName, {
         vector: [0, 0, 0, 0], // Dummy vector, we'll filter by IP
@@ -262,13 +285,18 @@ class GeolocationService {
         }
       }
     } catch (error) {
-      console.error('Failed to retrieve cached geolocation:', error);
+      console.warn('Failed to retrieve cached geolocation, continuing without cache:', error);
+      this.qdrantAvailable = false; // Mark as unavailable for future requests
     }
 
     return null;
   }
 
   async cacheGeolocation(ip: string, geoData: GeolocationData): Promise<void> {
+    if (!this.qdrant || !this.qdrantAvailable) {
+      return; // Skip caching if Qdrant is not available
+    }
+
     try {
       const vector = this.ipToVector(ip, geoData);
       const pointId = this.stringToHash(ip);
@@ -289,7 +317,8 @@ class GeolocationService {
         ]
       });
     } catch (error) {
-      console.error('Failed to cache geolocation:', error);
+      console.warn('Failed to cache geolocation, continuing without cache:', error);
+      this.qdrantAvailable = false; // Mark as unavailable for future requests
     }
   }
 
@@ -433,7 +462,17 @@ class GeolocationService {
     totalCached: number;
     cacheHitRate: number;
     providerStats: Record<string, number>;
+    qdrantAvailable: boolean;
   }> {
+    if (!this.qdrant || !this.qdrantAvailable) {
+      return {
+        totalCached: 0,
+        cacheHitRate: 0,
+        providerStats: {},
+        qdrantAvailable: false
+      };
+    }
+
     try {
       const info = await this.qdrant.getCollection(this.collectionName);
       const totalCached = info.points_count || 0;
@@ -454,14 +493,17 @@ class GeolocationService {
       return {
         totalCached,
         cacheHitRate: 0, // Would need to track this separately
-        providerStats
+        providerStats,
+        qdrantAvailable: true
       };
     } catch (error) {
-      console.error('Failed to get geolocation stats:', error);
+      console.warn('Failed to get geolocation stats, Qdrant unavailable:', error);
+      this.qdrantAvailable = false;
       return {
         totalCached: 0,
         cacheHitRate: 0,
-        providerStats: {}
+        providerStats: {},
+        qdrantAvailable: false
       };
     }
   }

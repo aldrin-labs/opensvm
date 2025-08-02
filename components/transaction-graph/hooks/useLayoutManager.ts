@@ -14,24 +14,18 @@ export function useLayoutManager() {
   
   const [isLayoutRunning, setIsLayoutRunning] = useState<boolean>(false);
 
-  // Enhanced layout function with proper debouncing and cancellation
+  // Simplified layout function for faster initialization
   const runLayout = useCallback((cy: cytoscape.Core | null, layoutType: string = 'dagre', forceRun: boolean = false) => {
     if (!cy || cy.nodes().length === 0) {
       debugLog('Skipping layout: no cytoscape instance or nodes');
       return Promise.resolve();
     }
 
-    // Check cooldown period unless forcing
+    // Simplified cooldown check
     const now = Date.now();
-    if (!forceRun && layoutCooldown.current && (now - lastLayoutTime.current) < 1000) {
+    if (!forceRun && (now - lastLayoutTime.current) < 500) {
       debugLog('Layout on cooldown, skipping');
       return Promise.resolve();
-    }
-
-    // Cancel any pending layout
-    if (pendingLayoutRef.current) {
-      clearTimeout(pendingLayoutRef.current);
-      pendingLayoutRef.current = null;
     }
 
     // Abort any running layout
@@ -40,13 +34,11 @@ export function useLayoutManager() {
     }
 
     return new Promise<void>((resolve, reject) => {
-      // Create new abort controller for this layout
       layoutAbortControllerRef.current = new AbortController();
       const abortController = layoutAbortControllerRef.current;
 
       setIsLayoutRunning(true);
       lastLayoutTime.current = now;
-      layoutCooldown.current = true;
 
       debugLog(`Running ${layoutType} layout with ${cy.nodes().length} nodes and ${cy.edges().length} edges`);
 
@@ -54,12 +46,10 @@ export function useLayoutManager() {
         const layoutConfig: any = {
           name: layoutType,
           nodeDimensionsIncludeLabels: true,
-          animate: true,
-          animationDuration: 500,
-          animationEasing: 'ease-in-out',
+          animate: false, // Disable animation for faster rendering
           randomize: false,
           fit: true,
-          padding: 50,
+          padding: 30,
           stop: () => {
             if (!abortController.signal.aborted) {
               setIsLayoutRunning(false);
@@ -72,9 +62,9 @@ export function useLayoutManager() {
         // Dagre-specific settings
         if (layoutType === 'dagre') {
           layoutConfig.rankDir = 'LR';
-          layoutConfig.nodeSep = 100;
-          layoutConfig.rankSep = 150;
-          layoutConfig.edgeSep = 50;
+          layoutConfig.nodeSep = 80;
+          layoutConfig.rankSep = 120;
+          layoutConfig.edgeSep = 40;
         }
 
         const layout = cy.layout(layoutConfig);
@@ -92,11 +82,6 @@ export function useLayoutManager() {
         });
 
         layout.run();
-
-        // Reset cooldown after a delay
-        setTimeout(() => {
-          layoutCooldown.current = false;
-        }, 2000);
 
       } catch (error) {
         setIsLayoutRunning(false);

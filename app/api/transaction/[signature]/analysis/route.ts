@@ -5,7 +5,7 @@ import { parseInstructions } from '@/lib/instruction-parser-service';
 import { analyzeAccountChanges } from '@/lib/account-changes-analyzer';
 import { calculateTransactionMetrics } from '@/lib/transaction-metrics-calculator';
 import { analyzeTransactionFailure } from '@/lib/transaction-failure-analyzer';
-import { cacheHelpers } from '@/lib/transaction-cache';
+import { cacheHelpersServer } from '@/lib/transaction-cache-server';
 
 // Request validation schema
 const AnalysisRequestSchema = z.object({
@@ -250,7 +250,7 @@ export async function GET(
       ...transaction,
       analysis
     };
-    cacheHelpers.set(signature, enrichedTransaction);
+    cacheHelpersServer.set(signature, enrichedTransaction);
 
     return NextResponse.json({
       success: true,
