@@ -317,8 +317,9 @@ export async function GET(
 
 // Helper function to validate transaction signature format
 function isValidTransactionSignature(signature: string): boolean {
-  // Check length - Solana signatures are always 88 characters when base58 encoded
-  if (signature.length !== 88) {
+  // Check length - Solana signatures are typically 88 characters when base58 encoded
+  // but can be 87 characters in edge cases due to leading zero compression
+  if (signature.length < 87 || signature.length > 88) {
     return false;
   }
 
