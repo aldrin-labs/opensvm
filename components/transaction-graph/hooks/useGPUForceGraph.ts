@@ -57,15 +57,16 @@ export function useGPUForceGraph() {
 
   // Update GPU graph data when Cytoscape changes
   const updateGPUGraphData = useCallback((cy: cytoscape.Core) => {
-    if (!cy || !useGPUGraph) return;
+    if (!cy) return;
 
     try {
       const gpuData = convertCytoscapeToGPUData(cy);
       setGpuGraphData(gpuData);
+      debugLog(`GPU graph data updated: ${gpuData.nodes.length} nodes, ${gpuData.links.length} links`);
     } catch (error) {
       console.error('Error updating GPU graph data:', error);
     }
-  }, [useGPUGraph, convertCytoscapeToGPUData]);
+  }, [convertCytoscapeToGPUData]);
 
   // GPU Graph event handlers
   const handleGPUNodeClick = useCallback((node: any) => {

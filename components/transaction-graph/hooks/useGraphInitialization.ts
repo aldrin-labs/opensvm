@@ -45,11 +45,25 @@ export function useGraphInitialization() {
         throw new Error('Initialization aborted');
       }
 
-      const cy = initializeCytoscape(container);
-      
-      if (!cy) {
-        throw new Error('Failed to initialize cytoscape');
-      }
+      // Add timeout protection to cytoscape initialization
+      const initPromise = new Promise<cytoscape.Core>((resolve, reject) => {
+        try {
+          const cy = initializeCytoscape(container);
+          if (!cy) {
+            reject(new Error('Failed to initialize cytoscape'));
+          } else {
+            resolve(cy);
+          }
+        } catch (error) {
+          reject(error);
+        }
+      });
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Cytoscape initialization timeout')), 5000);
+      });
+
+      const cy = await Promise.race([initPromise, timeoutPromise]);
 
       // Check if aborted after initialization
       if (abortController.signal.aborted) {
@@ -92,7 +106,7 @@ export function useGraphInitialization() {
     }
   }, []);
 
-  // Cleanup function
+  // Cleanup function with better DOM handling
   const cleanupGraph = useCallback(() => {
     // Abort initialization if in progress
     if (initializationAbortControllerRef.current) {
@@ -100,9 +114,12 @@ export function useGraphInitialization() {
       initializationAbortControllerRef.current = null;
     }
 
-    // Destroy cytoscape instance
+    // Destroy cytoscape instance safely
     if (cyRef.current) {
       try {
+        // Clear all elements before destroying to prevent DOM conflicts
+        cyRef.current.elements().remove();
+        // Destroy the instance
         cyRef.current.destroy();
       } catch (error) {
         debugLog('Error destroying cytoscape:', error);

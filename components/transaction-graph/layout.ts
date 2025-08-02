@@ -3,9 +3,17 @@
 import cytoscape from 'cytoscape';
 import dagre from 'cytoscape-dagre';
 
-// Register the dagre extension
+// Register the dagre extension with error handling
+let dagreRegistered = false;
 if (typeof cytoscape !== 'undefined') {
-  cytoscape.use(dagre);
+  try {
+    cytoscape.use(dagre);
+    dagreRegistered = true;
+    console.log('Dagre extension registered successfully');
+  } catch (error) {
+    console.error('Failed to register dagre extension:', error);
+    dagreRegistered = false;
+  }
 }
 
 // Define custom layout options for dagre
@@ -291,14 +299,15 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
  * @returns Cytoscape instance
  */
 export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
+  console.log('Starting cytoscape initialization...');
+  
   // Add GPU acceleration hints to the container
   container.style.willChange = 'transform';
   container.style.transform = 'translateZ(0)'; // Force hardware acceleration
   
-  return cytoscape({
-    container: container,
-    style: createGraphStyle(),
-    layout: <DagreLayoutOptions>{
+  // Choose layout based on dagre availability
+  const layoutConfig = dagreRegistered ?
+    <DagreLayoutOptions>{
       name: 'dagre',
       rankDir: 'TB', // Top to bottom layout
       ranker: 'network-simplex',
@@ -307,7 +316,21 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
       edgeSep: 80,
       padding: 60,
       spacingFactor: 1.8 // Reduced for tighter layout
-    },
+    } :
+    {
+      name: 'grid',
+      rows: 3,
+      cols: 3,
+      padding: 50,
+      spacingFactor: 1.5
+    };
+
+  console.log('Using layout:', layoutConfig.name);
+
+  const cy = cytoscape({
+    container: container,
+    style: createGraphStyle(),
+    layout: layoutConfig,
     minZoom: 0.2,
     maxZoom: 3,
     wheelSensitivity: 1.0, // Using default value for consistent zoom behavior across different mice
@@ -323,4 +346,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
     autolock: false,
     autounselectify: false,
   });
+
+  console.log('Cytoscape initialization completed');
+  return cy;
 };
