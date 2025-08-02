@@ -693,4 +693,3 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
     </>
   );
 };
-};
