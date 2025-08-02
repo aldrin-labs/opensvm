@@ -409,6 +409,8 @@ function transformTransactionData(signature: string, tx: ParsedTransactionWithMe
 function transformEnhancedTransactionData(enhancedTx: ParsedTransactionWithMeta): DetailedTransactionInfo {
   if (DEBUG) {
     console.log(`[API] Transforming enhanced transaction data for UI presentation`);
+    console.log(`[API] Transaction has ${enhancedTx.transaction.message.accountKeys.length} account keys`);
+    console.log(`[API] Transaction has ${enhancedTx.transaction.message.instructions.length} instructions`);
   }
 
   const transactionInfo: DetailedTransactionInfo = {
@@ -418,15 +420,41 @@ function transformEnhancedTransactionData(enhancedTx: ParsedTransactionWithMeta)
     success: enhancedTx.meta?.err === null,
     type: 'unknown',
     details: {
-      instructions: enhancedTx.transaction.message.instructions.map((ix, _index) => ({
-        program: 'Unknown',
-        programId: enhancedTx.transaction.message.accountKeys[(ix as any).programIdIndex || 0].toString(),
-        parsed: 'parsed' in ix ? ix.parsed : {},
-        accounts: 'accounts' in ix ? (ix as any).accounts?.map((accIndex: number) => enhancedTx.transaction.message.accountKeys[accIndex].toString()) || [] : [],
-        data: 'data' in ix ? ix.data : '',
-        computeUnits: undefined,
-        computeUnitsConsumed: enhancedTx.meta?.computeUnitsConsumed
-      })),
+      instructions: enhancedTx.transaction.message.instructions.map((ix, index) => {
+        if (DEBUG) {
+          console.log(`[API] Processing instruction ${index}:`, {
+            programIdIndex: (ix as any).programIdIndex,
+            hasAccounts: 'accounts' in ix,
+            accounts: 'accounts' in ix ? (ix as any).accounts : 'N/A',
+            accountKeysLength: enhancedTx.transaction.message.accountKeys.length
+          });
+        }
+
+        // Safe programId extraction with bounds checking
+        const programIdIndex = (ix as any).programIdIndex || 0;
+        const programIdKey = enhancedTx.transaction.message.accountKeys[programIdIndex];
+        const programId = programIdKey ? programIdKey.toString() : 'Unknown';
+
+        // Safe accounts extraction with bounds checking
+        const accounts = 'accounts' in ix ?
+          ((ix as any).accounts?.map((accIndex: number) => {
+            if (DEBUG && (accIndex >= enhancedTx.transaction.message.accountKeys.length || accIndex < 0)) {
+              console.warn(`[API] Account index ${accIndex} is out of bounds (max: ${enhancedTx.transaction.message.accountKeys.length - 1})`);
+            }
+            const accountKey = enhancedTx.transaction.message.accountKeys[accIndex];
+            return accountKey ? accountKey.toString() : `InvalidAccount[${accIndex}]`;
+          }) || []) : [];
+
+        return {
+          program: 'Unknown',
+          programId,
+          parsed: 'parsed' in ix ? ix.parsed : {},
+          accounts,
+          data: 'data' in ix ? ix.data : '',
+          computeUnits: undefined,
+          computeUnitsConsumed: enhancedTx.meta?.computeUnitsConsumed
+        };
+      }),
       accounts: enhancedTx.transaction.message.accountKeys.map(key => ({
         pubkey: key.toString(),
         signer: false,
@@ -439,15 +467,41 @@ function transformEnhancedTransactionData(enhancedTx: ParsedTransactionWithMeta)
       logs: enhancedTx.meta?.logMessages || [],
       innerInstructions: enhancedTx.meta?.innerInstructions?.map(inner => ({
         index: inner.index,
-        instructions: inner.instructions.map(innerIx => ({
-          program: 'Unknown',
-          programId: enhancedTx.transaction.message.accountKeys[(innerIx as any).programIdIndex || 0].toString(),
-          parsed: 'parsed' in innerIx ? innerIx.parsed : {},
-          accounts: 'accounts' in innerIx ? (innerIx as any).accounts?.map((accIndex: number) => enhancedTx.transaction.message.accountKeys[accIndex].toString()) || [] : [],
-          data: 'data' in innerIx ? innerIx.data : '',
-          computeUnits: undefined,
-          computeUnitsConsumed: undefined
-        }))
+        instructions: inner.instructions.map((innerIx, innerIndex) => {
+          if (DEBUG) {
+            console.log(`[API] Processing inner instruction ${inner.index}-${innerIndex}:`, {
+              programIdIndex: (innerIx as any).programIdIndex,
+              hasAccounts: 'accounts' in innerIx,
+              accounts: 'accounts' in innerIx ? (innerIx as any).accounts : 'N/A',
+              accountKeysLength: enhancedTx.transaction.message.accountKeys.length
+            });
+          }
+
+          // Safe programId extraction with bounds checking
+          const programIdIndex = (innerIx as any).programIdIndex || 0;
+          const programIdKey = enhancedTx.transaction.message.accountKeys[programIdIndex];
+          const programId = programIdKey ? programIdKey.toString() : 'Unknown';
+
+          // Safe accounts extraction with bounds checking
+          const accounts = 'accounts' in innerIx ?
+            ((innerIx as any).accounts?.map((accIndex: number) => {
+              if (DEBUG && (accIndex >= enhancedTx.transaction.message.accountKeys.length || accIndex < 0)) {
+                console.warn(`[API] Inner instruction account index ${accIndex} is out of bounds (max: ${enhancedTx.transaction.message.accountKeys.length - 1})`);
+              }
+              const accountKey = enhancedTx.transaction.message.accountKeys[accIndex];
+              return accountKey ? accountKey.toString() : `InvalidAccount[${accIndex}]`;
+            }) || []) : [];
+
+          return {
+            program: 'Unknown',
+            programId,
+            parsed: 'parsed' in innerIx ? innerIx.parsed : {},
+            accounts,
+            data: 'data' in innerIx ? innerIx.data : '',
+            computeUnits: undefined,
+            computeUnitsConsumed: undefined
+          };
+        })
       })) || []
     }
   };

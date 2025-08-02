@@ -45,11 +45,38 @@ export async function fetchTransactionData(signature: string): Promise<any> {
   }
 }
 
-export async function fetchAccountTransactions(address: string): Promise<any[]> {
+export async function fetchAccountTransactions(address: string | any): Promise<any[]> {
   try {
-    debugLog('Fetching account transactions for:', address);
+    // Ensure address is a string - handle object case
+    let addressString: string;
     
-    const response = await fetch(`/api/account-transactions/${address}`, {
+    if (typeof address === 'string') {
+      addressString = address;
+    } else if (address && typeof address === 'object') {
+      // Extract pubkey if it's an account object
+      if (address.pubkey) {
+        addressString = address.pubkey;
+      } else if (address.id) {
+        addressString = address.id;
+      } else if (address.toString && typeof address.toString === 'function') {
+        addressString = address.toString();
+      } else {
+        errorLog('Invalid address object passed to fetchAccountTransactions:', address);
+        throw new Error('Invalid address format: expected string or object with pubkey/id property');
+      }
+    } else {
+      errorLog('Invalid address type passed to fetchAccountTransactions:', typeof address, address);
+      throw new Error(`Invalid address type: expected string, got ${typeof address}`);
+    }
+
+    // Validate the final address string
+    if (!addressString || addressString.length === 0) {
+      throw new Error('Empty address provided');
+    }
+
+    debugLog('Fetching account transactions for:', addressString);
+    
+    const response = await fetch(`/api/account-transactions/${encodeURIComponent(addressString)}?limit=5`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json'

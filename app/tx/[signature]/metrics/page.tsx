@@ -7,13 +7,13 @@ interface Props {
   params: Promise<{ signature: string }>;
 }
 
-export default async function TransactionGraphPage({ params }: Props) {
+export default async function TransactionMetricsPage({ params }: Props) {
   const { signature } = await params;
 
   return (
     <ErrorBoundary>
       <Suspense fallback={<LoadingSpinner />}>
-        <TransactionTabLayout signature={signature} activeTab="graph" />
+        <TransactionTabLayout signature={signature} activeTab="metrics" />
       </Suspense>
     </ErrorBoundary>
   );

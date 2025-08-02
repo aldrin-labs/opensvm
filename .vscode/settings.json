@@ -9,5 +9,7 @@
 
     },
     "github.copilot.chat.languageContext.inline.typescript.enabled": true,
-    "vscode-kubernetes.log-viewer.autorun": true
+    "vscode-kubernetes.log-viewer.autorun": true,
+    "terminal.integrated.tabs.defaultColor": "terminal.ansiBlack",
+    "files.autoSave": "onFocusChange"
 }

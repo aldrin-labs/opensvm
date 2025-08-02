@@ -21,13 +21,6 @@ class ProxyConnection extends Connection {
   constructor(endpoint: string, config?: ConnectionConfig) {
     // Determine if we're running in the client and prepare the endpoint
     const _isClient = typeof window !== 'undefined';
-
-    // Use _isClient for environment-specific logic
-    if (_isClient) {
-      console.log('Running in client environment, enabling client-specific connection features');
-    } else {
-      console.log('Running in server environment, using server-optimized connection settings');
-    }
     let finalEndpoint = endpoint;
 
     // If this is a client and the endpoint contains opensvm.com, use the proxy instead
@@ -51,11 +44,6 @@ class ProxyConnection extends Connection {
 
         // Initialize after super() call
         this._isClient = _isClient;
-
-        // Use _isClient for connection optimization
-        if (this._isClient) {
-          console.log('Solana connection initialized for client environment');
-        }
 
         for (let i = 0; i < maxRetries; i++) {
           try {
@@ -270,9 +258,11 @@ class ConnectionPool {
     const _startIndex = this.currentIndex;
 
     // Use _startIndex for connection rotation tracking and debugging
-    console.log(`Starting connection health check from index: ${_startIndex}`);
-    if (_startIndex < 0) {
-      console.warn(`Negative start index detected: ${_startIndex}, resetting to 0`);
+    if (process.env.NODE_ENV === 'development' || process.env.DEBUG_CONNECTION) {
+      console.log(`Starting connection health check from index: ${_startIndex}`);
+      if (_startIndex < 0) {
+        console.warn(`Negative start index detected: ${_startIndex}, resetting to 0`);
+      }
     }
     let attempts = 0;
     const endpoints = getRpcEndpoints();

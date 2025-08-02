@@ -18,6 +18,29 @@ export async function waitForLoadingToComplete(page: Page, timeout = 30000) {
         console.log('Loading spinner timeout - continuing with test');
     }
 }
+// Wait for React hydration and tab navigation to be ready
+export async function waitForReactHydration(page: Page, timeout = 30000) {
+    try {
+        // Wait for React to hydrate and tab navigation to be present
+        await page.waitForFunction(() => {
+            // Check if React has hydrated by looking for interactive elements
+            const buttons = document.querySelectorAll('button[data-value], .grid button');
+            const hasButtons = buttons.length > 0;
+            
+            // Check if buttons are actually clickable (not just present in DOM)
+            const hasClickableButtons = Array.from(buttons).some(btn => 
+                btn instanceof HTMLElement && 
+                !btn.hasAttribute('disabled') &&
+                btn.offsetParent !== null // element is visible
+            );
+            
+            return hasButtons && hasClickableButtons;
+        }, { timeout });
+    } catch (error) {
+        console.log('React hydration timeout - continuing with test');
+    }
+}
+
 
 // Wait for table to load with data or error
 export async function waitForTableLoad(page: Page, timeout = 15000) {
@@ -115,7 +138,7 @@ export const TEST_CONSTANTS = {
     TEST_ADDRESSES: {
         VALID_ACCOUNT: 'DtdSSG8ZJRZVv5Jx7K1MeWp7Zxcu19GD5wQRGRpQ9uMF',
         VALID_TOKEN: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
-        VALID_TRANSACTION: '4SqVfYyUhq6PKApAZYuVBk2VH4VL9Hk3WUP3REVPUwfpLvgdF5zPUJoqGKQLZ6jRv4F8rH6mVLimnZEP',
+        VALID_TRANSACTION: '4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43',
         INVALID_ADDRESS: 'invalid_address_format'
     }
 };

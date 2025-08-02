@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils';
 
 export function useGPUForceGraph() {
-  const [useGPUGraph, setUseGPUGraph] = useState<boolean>(true); // Always use GPU by default
+  const [useGPUGraph, setUseGPUGraph] = useState<boolean>(false); // Default to regular cytoscape for compatibility
   const [gpuGraphData, setGpuGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
 
   // Debug GPU graph data changes
