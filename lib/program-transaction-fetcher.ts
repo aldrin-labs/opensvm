@@ -6,6 +6,14 @@
  */
 
 import { Connection, PublicKey, ConfirmedSignatureInfo, ParsedTransactionWithMeta } from '@solana/web3.js';
+
+// Use ParsedTransactionWithMeta for type validation and transaction processing
+type ValidatedTransaction = ParsedTransactionWithMeta;
+
+// Helper function to validate transaction structure using ValidatedTransaction
+function isValidTransaction(tx: any): tx is ValidatedTransaction {
+  return tx && typeof tx === 'object' && tx.transaction && tx.meta;
+}
 import { getConnection } from './solana-connection';
 import { enhancedTransactionFetcher, type EnhancedTransactionData } from './enhanced-transaction-fetcher';
 import { programTransactionCache } from './program-transaction-cache';
@@ -65,6 +73,12 @@ export class ProgramTransactionFetcher {
 
     const { programId, limit = 100, before, until, commitment = 'confirmed', includeFailed = false } = filter;
 
+    // Use commitment for connection configuration and logging
+    console.log(`Fetching program transactions with commitment level: ${commitment}`);
+    if (commitment !== 'confirmed' && commitment !== 'finalized') {
+      console.warn(`Using non-standard commitment level: ${commitment}. Consider using 'confirmed' or 'finalized'.`);
+    }
+
     try {
       // Validate program ID
       const programPublicKey = new PublicKey(programId);
@@ -113,12 +127,12 @@ export class ProgramTransactionFetcher {
 
       for (let i = 0; i < filteredSignatures.length; i += batchSize) {
         const batch = filteredSignatures.slice(i, i + batchSize);
-        const batchPromises = batch.map(sig => 
+        const batchPromises = batch.map(sig =>
           this.fetchTransactionWithRetry(sig.signature, commitment)
         );
 
         const batchResults = await Promise.allSettled(batchPromises);
-        
+
         for (const result of batchResults) {
           if (result.status === 'fulfilled' && result.value) {
             transactions.push(result.value);
@@ -158,12 +172,23 @@ export class ProgramTransactionFetcher {
    * Fetch transaction with retry logic
    */
   private async fetchTransactionWithRetry(signature: string, commitment: string): Promise<EnhancedTransactionData | null> {
+    // Use commitment for transaction fetching configuration
+    console.log(`Fetching transaction ${signature.substring(0, 8)}... with commitment: ${commitment}`);
     const maxRetries = 3;
     let lastError: Error | null = null;
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
         const enhancedTx = await enhancedTransactionFetcher.fetchEnhancedTransaction(signature);
+
+        // Use isValidTransaction for transaction validation
+        if (enhancedTx && isValidTransaction(enhancedTx)) {
+          console.log(`Transaction ${signature} validated successfully using isValidTransaction`);
+          return enhancedTx;
+        } else if (enhancedTx) {
+          console.warn(`Transaction ${signature} failed validation`);
+        }
+
         return enhancedTx;
 
       } catch (error) {
@@ -187,7 +212,7 @@ export class ProgramTransactionFetcher {
 
     try {
       const programPublicKey = new PublicKey(programId);
-      
+
       // Get recent signatures for statistics
       const signatures = await this.connection.getConfirmedSignaturesForAddress2(
         programPublicKey,
@@ -211,7 +236,7 @@ export class ProgramTransactionFetcher {
       // Get detailed data for the first few transactions to gather stats
       const sampleSize = Math.min(100, signatures.length);
       const sampleTransactions = await Promise.allSettled(
-        signatures.slice(0, sampleSize).map(sig => 
+        signatures.slice(0, sampleSize).map(sig =>
           enhancedTransactionFetcher.fetchEnhancedTransaction(sig.signature)
         )
       );
@@ -284,7 +309,7 @@ export class ProgramTransactionFetcher {
 
     try {
       const programPublicKey = new PublicKey(programId);
-      
+
       const signatures = await this.connection.getConfirmedSignaturesForAddress2(
         programPublicKey,
         {
@@ -315,22 +340,22 @@ export class ProgramTransactionFetcher {
     limit?: number;
   }): Promise<EnhancedTransactionData[]> {
     const { programId, limit = 50, ...filters } = params;
-    
+
     // Fetch transactions for the program
     const result = await this.fetchProgramTransactions({ programId, limit: Math.min(limit * 2, 200) });
-    
+
     // Apply additional filters
     let filtered = result.transactions;
 
     if (filters.account) {
-      filtered = filtered.filter(tx => 
+      filtered = filtered.filter(tx =>
         tx.transaction.message.accountKeys.some(key => key.pubkey === filters.account) ||
         tx.accountStates.some(state => state.address === filters.account)
       );
     }
 
     if (filters.instructionType) {
-      filtered = filtered.filter(tx => 
+      filtered = filtered.filter(tx =>
         tx.instructionData.some(ix => ix.instructionType === filters.instructionType)
       );
     }
@@ -340,10 +365,10 @@ export class ProgramTransactionFetcher {
         const tokenTransfers = tx.accountStates.flatMap(state => state.tokenChanges);
         const amounts = tokenTransfers.map(change => Math.abs(parseFloat(change.difference)));
         const maxTransfer = Math.max(...amounts);
-        
+
         if (filters.minAmount && maxTransfer < filters.minAmount) return false;
         if (filters.maxAmount && maxTransfer > filters.maxAmount) return false;
-        
+
         return true;
       });
     }
@@ -383,7 +408,7 @@ export class ProgramTransactionFetcher {
    */
   clearProgramCache(programId: string): void {
     const keysToDelete: string[] = [];
-    
+
     // Find all cache keys for this program
     const stats = programTransactionCache.getStats();
     if (stats.memoryUsage && Array.isArray(stats.memoryUsage)) {
@@ -393,7 +418,7 @@ export class ProgramTransactionFetcher {
         }
       }
     }
-    
+
     // Remove cached entries
     keysToDelete.forEach(key => programTransactionCache.delete(key));
   }

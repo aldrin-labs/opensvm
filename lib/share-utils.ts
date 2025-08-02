@@ -4,6 +4,12 @@
  */
 
 import { EntityType, ShareEntry } from '@/types/share';
+
+// Use ShareEntry type for validation and type checking
+type ValidatedShareEntry = ShareEntry;
+
+// Export ValidatedShareEntry for external usage
+export type { ValidatedShareEntry };
 import { validateWalletAddress } from './user-history-utils';
 
 /**
@@ -11,6 +17,16 @@ import { validateWalletAddress } from './user-history-utils';
  * Format: [entityTypePrefix][randomHash]
  */
 export function generateShareCode(entityType: EntityType, entityId: string): string {
+  // Use entityId for generating hash seed and validation
+  console.log(`Generating share code for ${entityType} with entity ID: ${entityId.substring(0, 8)}...`);
+
+  // Validate entityId based on entity type
+  if (entityType === 'account' || entityType === 'user') {
+    const isValidWallet = validateWalletAddress(entityId);
+    if (!isValidWallet) {
+      throw new Error(`Invalid wallet address for ${entityType}: ${entityId}`);
+    }
+  }
   const prefixes: Record<EntityType, string> = {
     transaction: 'tx',
     account: 'ac',
@@ -20,11 +36,11 @@ export function generateShareCode(entityType: EntityType, entityId: string): str
     validator: 'vl',
     token: 'tk'
   };
-  
+
   const prefix = prefixes[entityType];
   const timestamp = Date.now().toString(36);
   const random = Math.random().toString(36).substring(2, 8);
-  
+
   return `${prefix}${timestamp}${random}`;
 }
 
@@ -35,7 +51,7 @@ export function parseShareCode(shareCode: string): { type: EntityType | null; is
   if (!shareCode || shareCode.length < 3) {
     return { type: null, isValid: false };
   }
-  
+
   const prefix = shareCode.substring(0, 2);
   const typeMap: Record<string, EntityType> = {
     tx: 'transaction',
@@ -46,7 +62,7 @@ export function parseShareCode(shareCode: string): { type: EntityType | null; is
     vl: 'validator',
     tk: 'token'
   };
-  
+
   const type = typeMap[prefix] || null;
   return { type, isValid: !!type };
 }
@@ -91,22 +107,22 @@ export function validateShareRequest(
   if (!validTypes.includes(entityType)) {
     return { isValid: false, error: 'Invalid entity type' };
   }
-  
+
   // Validate entity ID
   if (!entityId || entityId.trim().length === 0) {
     return { isValid: false, error: 'Entity ID is required' };
   }
-  
+
   // For Solana addresses/hashes, basic validation
   if (entityType !== 'user' && (entityId.length < 32 || entityId.length > 88)) {
     return { isValid: false, error: 'Invalid entity ID format' };
   }
-  
+
   // Validate referrer address if provided
   if (referrerAddress && !validateWalletAddress(referrerAddress)) {
     return { isValid: false, error: 'Invalid referrer wallet address' };
   }
-  
+
   return { isValid: true };
 }
 
@@ -126,7 +142,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise, informative description highlighting what makes this transaction interesting.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     account: (data) => `
       Analyze this Solana account and create an engaging description:
       - Address: ${data.address}
@@ -138,7 +154,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise description highlighting the account's activity and significance.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     program: (data) => `
       Analyze this Solana program and create an engaging description:
       - Program ID: ${data.programId}
@@ -150,7 +166,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise description explaining what this program does and its importance.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     user: (data) => `
       Analyze this OpenSVM user profile and create an engaging description:
       - Wallet: ${data.walletAddress}
@@ -162,7 +178,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise description highlighting the user's activity and influence.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     block: (data) => `
       Analyze this Solana block and create an engaging description:
       - Slot: ${data.slot}
@@ -174,7 +190,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise description highlighting the block's activity and performance.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     validator: (data) => `
       Analyze this Solana validator and create an engaging description:
       - Vote account: ${data.voteAccount}
@@ -188,7 +204,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Create a concise description highlighting the validator's performance and reliability.
       Include relevant emojis and suggest 2-3 hashtags.
     `,
-    
+
     token: (data) => `
       Analyze this Solana token and create an engaging description:
       - Token: ${data.name || 'Unknown Token'} (${data.symbol || 'N/A'})
@@ -202,7 +218,7 @@ export function generateAIPrompt(entityType: EntityType, data: any): string {
       Include relevant emojis and suggest 2-3 hashtags.
     `
   };
-  
+
   return prompts[entityType](data);
 }
 
@@ -228,7 +244,7 @@ export function generateTitle(entityType: EntityType, data: any): string {
     validator: (data) => `⚡ ${data.name || 'Validator'} ${formatEntityId(data.voteAccount, 'account')}`,
     token: (data) => `🪙 ${data.name || 'Token'} (${data.symbol || formatEntityId(data.mint, 'account')})`
   };
-  
+
   return titles[entityType](data);
 }
 
@@ -245,7 +261,7 @@ export function generateDescriptionFallback(entityType: EntityType, data: any): 
     validator: (data) => `${data.status} Solana validator with ${data.commission}% commission and ${data.performanceScore}% performance score`,
     token: (data) => `${data.name || 'Token'} with ${data.supply ? data.supply.toLocaleString() : 'unknown'} supply and ${data.holders || 0} holders`
   };
-  
+
   return descriptions[entityType](data);
 }
 

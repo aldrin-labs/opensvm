@@ -1,10 +1,10 @@
 import React from 'react';
 import { HelpContent } from '@/components/help/ContextualHelp';
-import { 
-  ZapIcon, 
-  CoinsIcon, 
-  UsersIcon, 
-  ShieldIcon, 
+import {
+  ZapIcon,
+  CoinsIcon,
+  UsersIcon,
+  ShieldIcon,
   TrendingUpIcon,
   NetworkIcon,
   FileTextIcon,
@@ -23,7 +23,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          The transaction signature is a cryptographic hash that uniquely identifies this transaction. 
+          The transaction signature is a cryptographic hash that uniquely identifies this transaction.
           It's generated when the transaction is signed and submitted to the network.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -55,7 +55,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Transaction status indicates how many confirmations the transaction has received 
+          Transaction status indicates how many confirmations the transaction has received
           and its level of finality on the blockchain.
         </p>
         <div className="space-y-2">
@@ -88,7 +88,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Transaction fees on Solana are paid in SOL and consist of a base fee plus 
+          Transaction fees on Solana are paid in SOL and consist of a base fee plus
           priority fees for faster processing.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -116,7 +116,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Instructions are the individual operations within a transaction. Our system 
+          Instructions are the individual operations within a transaction. Our system
           parses these instructions to show you what each one does in human-readable format.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -141,7 +141,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          We analyze each instruction to assess potential risks based on the operation type, 
+          We analyze each instruction to assess potential risks based on the operation type,
           program reputation, and account interactions.
         </p>
         <div className="space-y-2">
@@ -177,11 +177,14 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Compute Units (CU) measure the computational work required to execute an instruction. 
+          Compute Units (CU) measure the computational work required to execute an instruction.
           Each transaction has a limit of 1.4 million CU.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
-          <h4 className="font-medium mb-2">Understanding CU Usage:</h4>
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <ZapIcon className="w-4 h-4 text-yellow-500" />
+            Understanding CU Usage:
+          </h4>
           <ul className="text-sm space-y-1">
             <li>• Simple transfers: ~150-300 CU</li>
             <li>• Token operations: ~2,000-5,000 CU</li>
@@ -203,11 +206,14 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Account changes show the before and after states of all accounts affected by this transaction, 
+          Account changes show the before and after states of all accounts affected by this transaction,
           including balance changes, data modifications, and ownership transfers.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
-          <h4 className="font-medium mb-2">Types of Changes:</h4>
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <UsersIcon className="w-4 h-4 text-blue-500" />
+            Types of Changes:
+          </h4>
           <ul className="text-sm space-y-1">
             <li>• <strong>Balance Changes:</strong> SOL amount increases/decreases</li>
             <li>• <strong>Token Changes:</strong> SPL token balance modifications</li>
@@ -228,7 +234,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Balance changes show how much SOL each account gained or lost during this transaction. 
+          Balance changes show how much SOL each account gained or lost during this transaction.
           This includes transfers, fees, and rent payments.
         </p>
         <div className="space-y-2">
@@ -259,11 +265,14 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Token changes show modifications to SPL token balances, including transfers, 
+          Token changes show modifications to SPL token balances, including transfers,
           mints, burns, and other token operations.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
-          <h4 className="font-medium mb-2">Change Significance:</h4>
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <CoinsIcon className="w-4 h-4 text-amber-500" />
+            Change Significance:
+          </h4>
           <ul className="text-sm space-y-1">
             <li>• <strong>High:</strong> Large amounts or critical operations</li>
             <li>• <strong>Medium:</strong> Moderate amounts or standard operations</li>
@@ -283,7 +292,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Solana accounts must maintain a minimum balance to be "rent-exempt" and avoid 
+          Solana accounts must maintain a minimum balance to be "rent-exempt" and avoid
           being garbage collected by the network.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -309,11 +318,14 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Our AI system analyzes transaction data to provide natural language explanations, 
+          Our AI system analyzes transaction data to provide natural language explanations,
           risk assessments, and insights about what the transaction accomplishes.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
-          <h4 className="font-medium mb-2">Analysis Components:</h4>
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <FileTextIcon className="w-4 h-4 text-indigo-500" />
+            Analysis Components:
+          </h4>
           <ul className="text-sm space-y-1">
             <li>• <strong>Purpose Identification:</strong> What the transaction does</li>
             <li>• <strong>Risk Assessment:</strong> Potential security concerns</li>
@@ -337,7 +349,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Our system identifies potential risks based on transaction patterns, 
+          Our system identifies potential risks based on transaction patterns,
           program interactions, and known security vulnerabilities.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -367,11 +379,14 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Related transactions are found by analyzing account interactions, program usage, 
+          Related transactions are found by analyzing account interactions, program usage,
           and temporal proximity to help you understand transaction flows and patterns.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
-          <h4 className="font-medium mb-2">Relationship Types:</h4>
+          <h4 className="font-medium mb-2 flex items-center gap-2">
+            <NetworkIcon className="w-4 h-4 text-purple-500" />
+            Relationship Types:
+          </h4>
           <ul className="text-sm space-y-1">
             <li>• <strong>Same Accounts:</strong> Transactions involving same accounts</li>
             <li>• <strong>Same Programs:</strong> Using identical programs</li>
@@ -393,7 +408,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Relationship strength is calculated based on multiple factors including shared accounts, 
+          Relationship strength is calculated based on multiple factors including shared accounts,
           programs, timing, and transaction patterns.
         </p>
         <div className="space-y-2">
@@ -427,7 +442,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          The transaction graph visualizes how accounts, programs, and tokens interact 
+          The transaction graph visualizes how accounts, programs, and tokens interact
           within this transaction using nodes and edges to show relationships.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -455,7 +470,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Use the graph controls to customize your view and interact with the visualization 
+          Use the graph controls to customize your view and interact with the visualization
           for better understanding of transaction flows.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -483,7 +498,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          Transaction metrics help you understand the performance characteristics, 
+          Transaction metrics help you understand the performance characteristics,
           costs, and efficiency of this transaction compared to similar operations.
         </p>
         <div className="bg-muted/20 p-3 rounded-md">
@@ -509,7 +524,7 @@ export const transactionHelpContent: Record<string, HelpContent> = {
     content: (
       <div className="space-y-3">
         <p>
-          The efficiency score rates how cost-effective this transaction is based on 
+          The efficiency score rates how cost-effective this transaction is based on
           the work accomplished relative to the resources consumed.
         </p>
         <div className="space-y-2">

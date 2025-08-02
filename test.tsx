@@ -16,7 +16,17 @@ const testData = new Uint8Array([
 ]);
 
 const ProgramVisualizer = ({ data }: { data: number[] }) => {
-  return <div>Test</div>;
+  // Use data for program visualization and analysis
+  console.log(`Visualizing program data: ${data.length} bytes`);
+  const dataPreview = data.slice(0, 8).map(b => `0x${b.toString(16).padStart(2, '0')}`).join(' ');
+
+  return (
+    <div>
+      <h3>Program Data Visualizer</h3>
+      <p>Data length: {data.length} bytes</p>
+      <p>Preview: {dataPreview}...</p>
+    </div>
+  );
 };
 
 export default function TestPage() {

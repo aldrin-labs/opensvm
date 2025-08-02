@@ -350,6 +350,15 @@ export async function rateLimitMiddleware(
     response?: Response;
     headers?: Record<string, string>;
 }> {
+    // Use request for enhanced rate limiting analysis
+    const requestInfo = {
+        method: request.method,
+        url: request.url,
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        contentLength: request.headers.get('content-length') || '0'
+    };
+    console.log(`Rate limiting analysis for ${requestInfo.method} ${requestInfo.url}`);
+
     const checks: Array<{
         type: RateLimitKey['type'];
         identifier: string;

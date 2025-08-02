@@ -11,7 +11,7 @@ export function pluralize(text: string, count: number) {
   return count > 1 || count === 0 ? `${text}s` : text;
 }
 
-export function getOrdinalNumber(n) {
+export function getOrdinalNumber(n: number) {
   return n + (n > 0 ? ['th', 'st', 'nd', 'rd'][(n > 3 && n < 21) || n % 10 > 3 ? 0 : n % 10] : '');
 }
 
@@ -21,8 +21,8 @@ export function deepEqual(x: any, y: any): boolean {
   //@ts-ignore
   return x && y && typeof x === 'object' && typeof y === 'object'
     ? Object.keys(x).length === Object.keys(y).length &&
-        //@ts-ignore
-        Object.keys(x).reduce((isEqual, key) => isEqual && deepEqual(x[key], y[key]), true)
+    //@ts-ignore
+    Object.keys(x).reduce((isEqual, key) => isEqual && deepEqual(x[key], y[key]), true)
     : x === y;
 }
 
@@ -43,8 +43,8 @@ export function getDomainFromEmailWithoutAnySubdomain(email: string): string {
   return mainDomain;
 }
 
-// TODO(jimmylee)
-// Obviously delete this once we implement a theme picker modal.
+// Theme toggle utility - temporary implementation
+// Note: This should be replaced with a proper theme picker modal in the future
 export function onHandleThemeChange() {
   const body = document.body;
 
@@ -71,7 +71,7 @@ export function formatDollars(value: number): string {
   }).format(value);
 }
 
-export function calculatePositionWithGutter(rect, objectWidth, viewportWidth, gutter = 24) {
+export function calculatePositionWithGutter(rect: DOMRect, objectWidth: number, viewportWidth: number, gutter = 24) {
   const right = viewportWidth - rect.right;
   const top = rect.top + rect.height + gutter;
   const side = right + objectWidth >= viewportWidth ? 'left' : 'right';
@@ -79,18 +79,24 @@ export function calculatePositionWithGutter(rect, objectWidth, viewportWidth, gu
   return { top, right: adjustedRight, side };
 }
 
-export function calculatePositionWithGutterById(id, objectWidth, viewportWidth, gutter?) {
-  let rect;
+export function calculatePositionWithGutterById(id: string, objectWidth: number, viewportWidth: number, gutter?: number) {
+  let rect: DOMRect | undefined;
   if (id) {
     const el = document.getElementById(id);
     if (el) {
       rect = el.getBoundingClientRect();
     }
   }
+
+  if (!rect) {
+    // Return default position if element not found
+    return { top: 0, right: 0, side: 'right' };
+  }
+
   return calculatePositionWithGutter(rect, objectWidth, viewportWidth, gutter);
 }
 
-export function leftPad(input, length) {
+export function leftPad(input: string, length: number) {
   const zerosNeeded = length - input.length;
   if (zerosNeeded <= 0) {
     return input;
@@ -117,7 +123,7 @@ export function toDateISOString(data: string) {
   return formattedDate;
 }
 
-export function elide(string, length = 140, emptyState = '...') {
+export function elide(string: string, length = 140, emptyState = '...') {
   if (isEmpty(string)) {
     return emptyState;
   }
@@ -178,7 +184,7 @@ export function createSlug(text: any) {
     .toString()
     .toLowerCase()
     .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(p, (c) => b.charAt(a.indexOf(c))) // Replace special chars
+    .replace(p, (c: string) => b.charAt(a.indexOf(c))) // Replace special chars
     .replace(/&/g, '-and-') // Replace & with 'and'
     .replace(/[^\w\-]+/g, '') // Remove all non-word chars
     .replace(/\-\-+/g, '-') // Replace multiple - with single -
@@ -238,7 +244,7 @@ export function throttle<Args extends unknown[]>(fn: (...args: Args) => void, de
 
   return (...args: Args) => {
     const now = Date.now();
-    
+
     if (now - lastTime >= delay) {
       lastTime = now;
       fn(...args);
@@ -286,8 +292,8 @@ export function timeAgo(dateInput: Date | string | number): string {
 export function classNames(...args: any[]): string {
   let classes: string[] = [];
 
-  for (let i = 0; i < arguments.length; i++) {
-    let arg = arguments[i];
+  for (let i = 0; i < args.length; i++) {
+    let arg = args[i];
     if (!arg) continue;
 
     let argType = typeof arg;
@@ -327,8 +333,8 @@ export async function generateNonce() {
   return result;
 }
 
-export function filterUndefined(obj) {
-  const res = {};
+export function filterUndefined(obj: Record<string, any>) {
+  const res: Record<string, any> = {};
   Object.keys(obj)
     .filter((k) => obj[k] !== undefined)
     .forEach((k) => (res[k] = obj[k]));

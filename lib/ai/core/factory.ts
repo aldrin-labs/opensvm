@@ -22,7 +22,6 @@ Some things I can help with:
 - Explaining complex blockchain operations in simple terms
 - Estimating token usage for AI models
 - Finding paths between wallets by tracking token transfers
-- Interacting with Sonic protocols
 - Trading tokens, launching new tokens, and other Solana operations
 - Real-time anomaly detection and alerting for suspicious activities
 
@@ -50,7 +49,7 @@ export interface AgentOptions {
 }
 
 export function createSolanaAgent(
-  connection: Connection, 
+  connection: Connection,
   options: AgentOptions = {}
 ): SolanaAgent {
   const capabilities = [
@@ -59,26 +58,26 @@ export function createSolanaAgent(
     new NetworkCapability(connection),
     new TokenEstimationCapability()
   ];
-  
+
   // Add optional capabilities based on options
   if (options.enableSonicKit !== false) {
     capabilities.push(new SonicCapability(connection));
   }
-  
+
   if (options.enableSolanaAgentKit !== false) {
     capabilities.push(new SolanaAgentKitCapability(connection));
   }
-  
+
   // Add wallet path finding capability
   if (options.enableWalletPathFinding !== false) {
     capabilities.push(new WalletCapability(connection));
   }
-  
+
   // Add anomaly detection capability
   if (options.enableAnomalyDetection !== false) {
-    capabilities.push(new AnomalyDetectionCapability(connection));
+    capabilities.push(new AnomalyDetectionCapability(connection) as any); // Type assertion for capability compatibility
   }
-  
+
   const config: AgentConfig = {
     capabilities,
     systemPrompt: options.systemPrompt || DEFAULT_SYSTEM_PROMPT,

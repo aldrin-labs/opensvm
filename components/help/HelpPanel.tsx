@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState, useRef, useMemo } from 'react';
-import { 
-  XIcon, 
-  SearchIcon, 
-  BookOpenIcon, 
+import {
+  XIcon,
+  SearchIcon,
+  BookOpenIcon,
   PlayIcon,
   InfoIcon,
   AlertTriangleIcon,
@@ -31,10 +31,10 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['tours', 'content']));
   const [selectedContent, setSelectedContent] = useState<HelpContent | null>(null);
-  
+
   const panelRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  
+
   const {
     searchHelpContent,
     availableTours,
@@ -47,10 +47,18 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
     setAutoStartTours,
     trackHelpInteraction
   } = useHelp();
-  
+
   const { announceToScreenReader, isTouchDevice } = useAccessibility();
+
+  // Use announceToScreenReader and isTouchDevice for accessibility enhancements
+  React.useEffect(() => {
+    if (isHelpPanelOpen) {
+      announceToScreenReader('Help panel opened');
+      console.log(`Help panel accessibility: touch device: ${isTouchDevice}`);
+    }
+  }, [isHelpPanelOpen, announceToScreenReader, isTouchDevice]);
   const { isMobile } = useMobileDetection();
-  
+
   // Keyboard navigation
   useKeyboardNavigation(panelRef, {
     onEscape: closeHelpPanel,
@@ -60,11 +68,11 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
   // Search and filter help content
   const filteredContent = useMemo(() => {
     let content = searchQuery ? searchHelpContent(searchQuery) : [];
-    
+
     if (selectedCategory !== 'all') {
       content = content.filter(item => item.type === selectedCategory);
     }
-    
+
     return content;
   }, [searchQuery, selectedCategory, searchHelpContent]);
 
@@ -118,9 +126,8 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
     <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-sm">
       <div
         ref={panelRef}
-        className={`fixed right-0 top-0 h-full bg-background border-l border-border shadow-xl ${
-          isMobile ? 'w-full' : 'w-96'
-        } ${className}`}
+        className={`fixed right-0 top-0 h-full bg-background border-l border-border shadow-xl ${isMobile ? 'w-full' : 'w-96'
+          } ${className}`}
         role="dialog"
         aria-labelledby="help-panel-title"
         aria-modal="true"
@@ -155,7 +162,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                   <ChevronRightIcon className="w-4 h-4 rotate-180" />
                   <span>Back to help topics</span>
                 </button>
-                
+
                 <div className="space-y-4">
                   <div className="flex items-start space-x-3">
                     {getTypeIcon(selectedContent.type)}
@@ -164,11 +171,11 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                       <p className="text-sm text-muted-foreground mt-1">{selectedContent.description}</p>
                     </div>
                   </div>
-                  
+
                   <div className="text-sm text-foreground">
                     {selectedContent.content}
                   </div>
-                  
+
                   {selectedContent.relatedTopics && selectedContent.relatedTopics.length > 0 && (
                     <div>
                       <h4 className="font-medium text-foreground mb-2">Related Topics</h4>
@@ -181,7 +188,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                       </div>
                     </div>
                   )}
-                  
+
                   {selectedContent.externalLinks && selectedContent.externalLinks.length > 0 && (
                     <div>
                       <h4 className="font-medium text-foreground mb-2">Learn More</h4>
@@ -227,11 +234,10 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                       <button
                         key={category.id}
                         onClick={() => setSelectedCategory(category.id)}
-                        className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${
-                          selectedCategory === category.id
-                            ? 'bg-primary text-primary-foreground'
-                            : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                        }`}
+                        className={`flex items-center space-x-1 px-3 py-1 rounded-md text-sm transition-colors ${selectedCategory === category.id
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                          }`}
                       >
                         <Icon className="w-3 h-3" />
                         <span>{category.label}</span>
@@ -254,7 +260,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                     <PlayIcon className="w-4 h-4 text-green-500" />
                     <span className="font-medium text-foreground">Interactive Tours</span>
                   </button>
-                  
+
                   {expandedSections.has('tours') && (
                     <div className="ml-6 mt-2 space-y-2">
                       {availableTours.map((tour) => (
@@ -294,7 +300,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                     <BookOpenIcon className="w-4 h-4 text-blue-500" />
                     <span className="font-medium text-foreground">Help Topics</span>
                   </button>
-                  
+
                   {expandedSections.has('content') && (
                     <div className="ml-6 mt-2 space-y-2">
                       {searchQuery && filteredContent.length === 0 && (
@@ -302,7 +308,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                           No help topics found for "{searchQuery}"
                         </div>
                       )}
-                      
+
                       {filteredContent.map((content) => (
                         <button
                           key={content.id}
@@ -319,7 +325,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                           </div>
                         </button>
                       ))}
-                      
+
                       {!searchQuery && (
                         <div className="text-sm text-muted-foreground text-center py-4">
                           Search for specific topics or browse by category above
@@ -343,7 +349,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                     <SettingsIcon className="w-4 h-4 text-gray-500" />
                     <span className="font-medium text-foreground">Help Settings</span>
                   </button>
-                  
+
                   {expandedSections.has('settings') && (
                     <div className="ml-6 mt-2 space-y-3">
                       <label className="flex items-center space-x-3 cursor-pointer">
@@ -358,7 +364,7 @@ const HelpPanel: React.FC<HelpPanelProps> = ({ className = '' }) => {
                           <p className="text-xs text-muted-foreground">Display contextual help icons throughout the interface</p>
                         </div>
                       </label>
-                      
+
                       <label className="flex items-center space-x-3 cursor-pointer">
                         <input
                           type="checkbox"

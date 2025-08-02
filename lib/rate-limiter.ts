@@ -48,6 +48,11 @@ class AdvancedRateLimiter {
     }, 5 * 60 * 1000);
   }
 
+  // Public getter for config to avoid private property access
+  getConfig(): RateLimitConfig {
+    return { ...this.config };
+  }
+
   private getCacheKey(identifier: string): string {
     return `${this.config.keyPrefix}:${identifier}`;
   }
@@ -125,6 +130,13 @@ class AdvancedRateLimiter {
 
     // Calculate remaining capacity
     const remaining = Math.max(0, this.config.maxRequests - entry.totalRequests);
+
+    // Use remaining for rate limiting feedback and monitoring
+    if (remaining > 0) {
+      console.log(`Rate limiter allows ${remaining} more requests`);
+    } else {
+      console.warn(`Rate limit reached, no remaining requests (${remaining})`);
+    }
     const windowEnd = entry.windowStart + this.config.windowMs;
     const resetTime = windowEnd;
 
@@ -235,7 +247,7 @@ export function createRateLimitMiddleware(limiter: AdvancedRateLimiter) {
 
     if (!result.allowed) {
       const headers = new Headers({
-        'X-RateLimit-Limit': limiter.config.maxRequests.toString(),
+        'X-RateLimit-Limit': limiter.getConfig().maxRequests.toString(),
         'X-RateLimit-Remaining': result.remaining.toString(),
         'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
       });

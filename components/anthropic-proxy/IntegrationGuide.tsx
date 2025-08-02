@@ -1,29 +1,22 @@
 'use client';
 
-import { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
-import { Button } from '../ui/button';
-import { Badge } from '../ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-import {
-    Code,
-    Copy,
-    ExternalLink,
-    BookOpen,
-    Terminal,
-    Download,
-    CheckCircle,
-    AlertCircle,
-    Info,
-    Lightbulb
+import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { 
+  CodeIcon,
+  TerminalIcon,
+  ExternalLinkIcon,
+  CopyIcon,
+  CheckIcon,
+  AlertTriangleIcon,
+  InfoIcon,
+  BookOpenIcon,
+  LightbulbIcon
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { toast } from 'react-hot-toast';
 import { useSettings } from '@/lib/settings';
-
-interface IntegrationGuideProps {
-    apiKey?: string; // Optional: if provided, will be used in examples
-    className?: string;
-}
 
 interface CodeExample {
     title: string;
@@ -33,7 +26,7 @@ interface CodeExample {
 }
 
 export default function IntegrationGuide() {
-    const [copiedCode, setCopiedCode] = useState<string | null>(null);
+    const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
     // Get user settings for theme and font
     const settings = useSettings();
@@ -101,9 +94,9 @@ export default function IntegrationGuide() {
                     className="h-8"
                 >
                     {copiedCode === label ? (
-                        <CheckCircle className="h-3 w-3 text-success" />
+                        <CheckIcon className="h-3 w-3 text-success" />
                     ) : (
-                        <Copy className="h-3 w-3" />
+                        <CopyIcon className="h-3 w-3" />
                     )}
                 </Button>
             </div>
@@ -423,7 +416,7 @@ client = anthropic.Anthropic(
         <div className={`${themeClasses.container} ${fontClass} ${fontSizeClass}`}>
             <div className={themeClasses.header}>
                 <h1 className={themeClasses.title}>
-                    <BookOpen className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
+                    <BookOpenIcon className="h-6 w-6 sm:h-8 sm:w-8 text-primary" />
                     Integration Guide
                 </h1>
                 <p className={themeClasses.subtitle}>
@@ -434,7 +427,7 @@ client = anthropic.Anthropic(
             <Card className={themeClasses.infoCard}>
                 <CardHeader>
                     <CardTitle className={themeClasses.infoHeader}>
-                        <Info className="h-5 w-5" />
+                        <InfoIcon className="h-5 w-5" />
                         Getting Started
                     </CardTitle>
                 </CardHeader>
@@ -483,7 +476,7 @@ client = anthropic.Anthropic(
             <Card className={themeClasses.infoCard}>
                 <CardHeader>
                     <CardTitle className={themeClasses.infoHeader}>
-                        <Lightbulb className="h-5 w-5" />
+                        <LightbulbIcon className="h-5 w-5" />
                         Quick Start
                     </CardTitle>
                 </CardHeader>
@@ -521,19 +514,19 @@ client = anthropic.Anthropic(
             <Tabs defaultValue="python" className="space-y-6">
                 <TabsList className="grid w-full grid-cols-4">
                     <TabsTrigger value="python" className="flex items-center gap-2">
-                        <Code className="h-4 w-4" />
+                        <CodeIcon className="h-4 w-4" />
                         Python
                     </TabsTrigger>
                     <TabsTrigger value="javascript" className="flex items-center gap-2">
-                        <Code className="h-4 w-4" />
+                        <CodeIcon className="h-4 w-4" />
                         JavaScript
                     </TabsTrigger>
                     <TabsTrigger value="cli" className="flex items-center gap-2">
-                        <Terminal className="h-4 w-4" />
+                        <TerminalIcon className="h-4 w-4" />
                         CLI
                     </TabsTrigger>
                     <TabsTrigger value="curl" className="flex items-center gap-2">
-                        <Terminal className="h-4 w-4" />
+                        <TerminalIcon className="h-4 w-4" />
                         cURL
                     </TabsTrigger>
                 </TabsList>
@@ -542,14 +535,14 @@ client = anthropic.Anthropic(
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Code className="h-5 w-5 text-primary" />
+                                <CodeIcon className="h-5 w-5 text-primary" />
                                 Python SDK Integration
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div>
                                 <div className={themeClasses.exampleTitle}>
-                                    <Code className="h-5 w-5 text-primary" />
+                                    <CodeIcon className="h-5 w-5 text-primary" />
                                     Python SDK
                                 </div>
                                 <div className="space-y-3">
@@ -598,14 +591,14 @@ print(message.content)`}</code>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Code className="h-5 w-5 text-secondary" />
+                                <CodeIcon className="h-5 w-5 text-secondary" />
                                 JavaScript/TypeScript SDK
                             </CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-6">
                             <div>
                                 <div className={themeClasses.exampleTitle}>
-                                    <Code className="h-5 w-5 text-secondary" />
+                                    <CodeIcon className="h-5 w-5 text-secondary" />
                                     JavaScript/TypeScript SDK
                                 </div>
                                 <div className="space-y-3">
@@ -654,7 +647,7 @@ console.log(message.content);`}</code>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Terminal className="h-5 w-5 text-purple-600" />
+                                <TerminalIcon className="h-5 w-5 text-purple-600" />
                                 Claude CLI
                             </CardTitle>
                         </CardHeader>
@@ -674,7 +667,7 @@ console.log(message.content);`}</code>
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
-                                <Terminal className="h-5 w-5 text-orange-600" />
+                                <TerminalIcon className="h-5 w-5 text-orange-600" />
                                 Direct HTTP API (cURL)
                             </CardTitle>
                         </CardHeader>
@@ -695,7 +688,7 @@ console.log(message.content);`}</code>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <Info className="h-5 w-5" />
+                        <InfoIcon className="h-5 w-5" />
                         Best Practices
                     </CardTitle>
                 </CardHeader>
@@ -705,15 +698,15 @@ console.log(message.content);`}</code>
                             <h4 className="font-semibold mb-3 text-success">✅ Do</h4>
                             <ul className={themeClasses.featureList}>
                                 <li className={themeClasses.featureItem}>
-                                    <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                                    <CheckIcon className="h-4 w-4 text-success mt-0.5" />
                                     <span>Store API keys securely in environment variables</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
-                                    <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                                    <CheckIcon className="h-4 w-4 text-success mt-0.5" />
                                     <span>Monitor your usage and costs regularly</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
-                                    <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                                    <CheckIcon className="h-4 w-4 text-success mt-0.5" />
                                     <span>Use appropriate models for your use case</span>
                                 </li>
                             </ul>
@@ -723,15 +716,15 @@ console.log(message.content);`}</code>
                             <h4 className="font-semibold mb-3 text-destructive">❌ Don't</h4>
                             <ul className={themeClasses.featureList}>
                                 <li className={themeClasses.featureItem}>
-                                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                                    <AlertTriangleIcon className="h-4 w-4 text-destructive mt-0.5" />
                                     <span>Hardcode API keys in your source code</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
-                                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                                    <AlertTriangleIcon className="h-4 w-4 text-destructive mt-0.5" />
                                     <span>Share API keys in public repositories</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
-                                    <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                                    <AlertTriangleIcon className="h-4 w-4 text-destructive mt-0.5" />
                                     <span>Use production keys for development</span>
                                 </li>
                             </ul>
@@ -744,7 +737,7 @@ console.log(message.content);`}</code>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5" />
+                        <AlertTriangleIcon className="h-5 w-5" />
                         Troubleshooting
                     </CardTitle>
                 </CardHeader>
@@ -753,7 +746,7 @@ console.log(message.content);`}</code>
                         {troubleshootingTips.map((tip, index) => (
                             <div key={index} className={themeClasses.warningCard}>
                                 <div className="flex items-start gap-3">
-                                    <AlertCircle className="h-5 w-5 text-warning mt-0.5" />
+                                    <AlertTriangleIcon className="h-5 w-5 text-warning mt-0.5" />
                                     <div className="flex-1">
                                         <h4 className="font-semibold text-foreground">{tip.issue}</h4>
                                         <p className="text-sm text-muted-foreground">{tip.solution}</p>
@@ -774,7 +767,7 @@ console.log(message.content);`}</code>
             <Card>
                 <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                        <ExternalLink className="h-5 w-5" />
+                        <ExternalLinkIcon className="h-5 w-5" />
                         Additional Resources
                     </CardTitle>
                 </CardHeader>
@@ -784,15 +777,15 @@ console.log(message.content);`}</code>
                             <h4 className="font-semibold mb-3">📚 Documentation</h4>
                             <div className="space-y-2">
                                 <a href="https://docs.anthropic.com" className={themeClasses.linkButton}>
-                                    <ExternalLink className="h-4 w-4" />
+                                    <ExternalLinkIcon className="h-4 w-4" />
                                     Anthropic API Documentation
                                 </a>
                                 <a href="https://github.com/anthropics/anthropic-sdk-python" className={themeClasses.linkButton}>
-                                    <ExternalLink className="h-4 w-4" />
+                                    <ExternalLinkIcon className="h-4 w-4" />
                                     Python SDK Repository
                                 </a>
                                 <a href="https://github.com/anthropics/anthropic-sdk-typescript" className={themeClasses.linkButton}>
-                                    <ExternalLink className="h-4 w-4" />
+                                    <ExternalLinkIcon className="h-4 w-4" />
                                     TypeScript SDK Repository
                                 </a>
                             </div>

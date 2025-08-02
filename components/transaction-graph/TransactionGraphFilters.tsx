@@ -231,8 +231,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
 
   // Calculate filtered statistics
   const filteredStats = useMemo(() => {
-    let filteredNodes = graph.nodes;
-    let filteredEdges = graph.edges;
+    let filteredNodes: GraphNode[] = graph.nodes;
+    let filteredEdges: GraphEdge[] = graph.edges;
 
     // Apply node type filter
     if (filters.nodeTypes.size > 0) {
@@ -369,6 +369,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
           if (config.filters && config.customization) {
             onFiltersChange({ ...DEFAULT_FILTERS, ...config.filters });
             onCustomizationChange({ ...DEFAULT_CUSTOMIZATION, ...config.customization });
+            onImport(config); // Notify parent component of successful import
           }
         } catch (error) {
           console.error('Failed to import configuration:', error);
@@ -376,7 +377,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       };
       reader.readAsText(file);
     }
-  }, [onFiltersChange, onCustomizationChange]);
+  }, [onFiltersChange, onCustomizationChange, onImport]);
 
   const renderFilterSection = () => (
     <div className="space-y-4">
@@ -405,8 +406,17 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                   placeholder="Search nodes by address, label..."
                   value={filters.searchQuery}
                   onChange={(e) => updateFilters({ searchQuery: e.target.value })}
-                  className="w-full pl-10 pr-4 py-2 border border-border rounded-md text-sm"
+                  className="w-full pl-10 pr-10 py-2 border border-border rounded-md text-sm"
                 />
+                {filters.searchQuery && (
+                  <button
+                    onClick={() => updateFilters({ searchQuery: '' })}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-muted rounded transition-colors"
+                    title="Clear search"
+                  >
+                    <XIcon className="w-3 h-3 text-muted-foreground" />
+                  </button>
+                )}
               </div>
             </div>
 
@@ -816,6 +826,11 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                   onChange={(e) => updateCustomization({ showNodeLabels: e.target.checked })}
                   className="rounded border-border"
                 />
+                {customization.showNodeLabels ? (
+                  <EyeIcon className="w-4 h-4 text-primary" />
+                ) : (
+                  <EyeOffIcon className="w-4 h-4 text-muted-foreground" />
+                )}
                 <span className="text-sm">Show node labels</span>
               </label>
 
@@ -826,6 +841,11 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                   onChange={(e) => updateCustomization({ showEdgeLabels: e.target.checked })}
                   className="rounded border-border"
                 />
+                {customization.showEdgeLabels ? (
+                  <EyeIcon className="w-4 h-4 text-primary" />
+                ) : (
+                  <EyeOffIcon className="w-4 h-4 text-muted-foreground" />
+                )}
                 <span className="text-sm">Show edge labels</span>
               </label>
 
@@ -1041,6 +1061,13 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <h3 className="text-lg font-semibold">Graph Controls</h3>
         <div className="flex space-x-2">
           <button
+            onClick={() => setShowAdvanced(!showAdvanced)}
+            className={`p-2 hover:bg-muted rounded transition-colors ${showAdvanced ? 'bg-muted' : ''}`}
+            title="Toggle advanced settings"
+          >
+            <SlidersIcon className="w-4 h-4" />
+          </button>
+          <button
             onClick={onReset}
             className="p-2 hover:bg-muted rounded transition-colors"
             title="Reset to defaults"
@@ -1062,8 +1089,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
             className={`flex items-center space-x-2 px-4 py-3 text-sm font-medium transition-colors ${activeTab === tab.id
-                ? 'border-b-2 border-primary text-primary'
-                : 'text-muted-foreground hover:text-foreground'
+              ? 'border-b-2 border-primary text-primary'
+              : 'text-muted-foreground hover:text-foreground'
               }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -1087,8 +1114,8 @@ export default TransactionGraphFilters;
 
 // Export utility functions
 export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilters): TransactionGraph {
-  let filteredNodes = graph.nodes;
-  let filteredEdges = graph.edges;
+  let filteredNodes: GraphNode[] = graph.nodes;
+  let filteredEdges: GraphEdge[] = graph.edges;
 
   // Apply all filters
   if (filters.nodeTypes.size > 0) {

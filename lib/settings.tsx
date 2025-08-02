@@ -30,15 +30,40 @@ const SERUM_ENDPOINT: RpcEndpoint = {
   network: 'mainnet'
 };
 
-const defaultRpcEndpoints: RpcEndpoint[] = [
-  OPENSVM_ENDPOINT,
-  SERUM_ENDPOINT,
-  { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
-  { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
-  DEFAULT_MAINNET_ENDPOINT,
-  { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
-  { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
-];
+// Use getRpcEndpoints for dynamic endpoint discovery and fallback to defaults
+const getDefaultRpcEndpoints = (): RpcEndpoint[] => {
+  try {
+    const dynamicEndpoints = getRpcEndpoints().map(endpoint => {
+      // Ensure endpoint is properly typed as RpcEndpoint
+      return typeof endpoint === 'string' ?
+        { name: 'Dynamic', url: endpoint, network: 'mainnet' as const } :
+        endpoint;
+    });
+    console.log(`Loaded ${dynamicEndpoints.length} RPC endpoints from OpenSVM configuration`);
+    return dynamicEndpoints.length > 0 ? dynamicEndpoints : [
+      OPENSVM_ENDPOINT,
+      SERUM_ENDPOINT,
+      { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
+      { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
+      DEFAULT_MAINNET_ENDPOINT,
+      { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
+      { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
+    ];
+  } catch (error) {
+    console.warn('Failed to load dynamic RPC endpoints, using defaults:', error);
+    return [
+      OPENSVM_ENDPOINT,
+      SERUM_ENDPOINT,
+      { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
+      { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
+      DEFAULT_MAINNET_ENDPOINT,
+      { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
+      { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
+    ];
+  }
+};
+
+const defaultRpcEndpoints: RpcEndpoint[] = getDefaultRpcEndpoints();
 
 const initialRpcEndpoint = OPENSVM_ENDPOINT;
 
@@ -97,7 +122,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           // Ensure rpcEndpoint is valid
           // Always use OpenSVM endpoint regardless of saved settings
           parsed.rpcEndpoint = OPENSVM_ENDPOINT;
-          
+
           setSettings(parsed);
           // Update RPC endpoint in connection pool
           updateRpcEndpoint(parsed.rpcEndpoint.url).catch(console.error);
@@ -165,7 +190,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
         setSettings((s) => ({
           ...s,
           // Add to available endpoints but force using OpenSVM
-          availableRpcEndpoints: [...s.availableRpcEndpoints, newEndpoint], 
+          availableRpcEndpoints: [...s.availableRpcEndpoints, newEndpoint],
           // Override with OpenSVM endpoint to ensure it's always used
           rpcEndpoint: OPENSVM_ENDPOINT,
         }));

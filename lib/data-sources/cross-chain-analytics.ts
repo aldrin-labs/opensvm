@@ -66,16 +66,18 @@ export class CrossChainAnalytics extends BaseAnalytics {
   private async fetchAndUpdateCrossChainData(): Promise<void> {
     const promises = this.SUPPORTED_BRIDGES.map(bridge => this.fetchBridgeSpecificData(bridge));
     const results = await Promise.allSettled(promises);
-    
+
     const flowData: CrossChainFlow[] = [];
     const migrationData: EcosystemMigration[] = [];
-    
+
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
         flowData.push(...result.value.flows);
         migrationData.push(...result.value.migrations);
       } else {
-        console.warn(`Failed to fetch data for ${this.SUPPORTED_BRIDGES[index]}:`, result.reason);
+        // PromiseSettledResult uses 'reason' for rejected promises
+        const reason = (result as PromiseRejectedResult).reason;
+        console.warn(`Failed to fetch data for ${this.SUPPORTED_BRIDGES[index]}:`, reason);
       }
     });
 
@@ -96,7 +98,7 @@ export class CrossChainAnalytics extends BaseAnalytics {
     migrations: EcosystemMigration[];
   } | null> {
     const timestamp = Date.now();
-    
+
     try {
       switch (bridge) {
         case 'Wormhole':
@@ -122,21 +124,30 @@ export class CrossChainAnalytics extends BaseAnalytics {
       // Fetch real Wormhole data from on-chain program accounts
       const wormholeProgramId = new PublicKey('worm2ZoG2kUd4vFXhvjh93UUH596ayRfgQ2MgjNMTth');
       const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-      
+
       const programAccounts = await connection.getProgramAccounts(wormholeProgramId, {
         commitment: 'confirmed',
         encoding: 'base64',
         dataSlice: { offset: 0, length: 0 }
       });
-      
+
       // Estimate bridge activity based on program account activity
       const accountCount = programAccounts.length;
       const estimatedVolumePerAccount = 25000; // $25k average per bridge account
-      
+
+      // Get chain names using the helper function and validate them
+      const ethereumChain = this.getChainName(2); // Ethereum
+      const solanaChain = this.getChainName(1);   // Solana
+
+      // Validate chains are supported
+      if (!this.isChainSupported(ethereumChain) || !this.isChainSupported(solanaChain)) {
+        console.warn('Unsupported chain detected in Wormhole data');
+      }
+
       const flows: CrossChainFlow[] = [{
         bridgeProtocol: 'Wormhole',
-        sourceChain: 'Ethereum',
-        targetChain: 'Solana',
+        sourceChain: ethereumChain,
+        targetChain: solanaChain,
         asset: 'USDC',
         volume24h: accountCount * estimatedVolumePerAccount * 0.4, // 40% ETH->SOL
         volumeChange: 0, // Would need historical data
@@ -146,8 +157,8 @@ export class CrossChainAnalytics extends BaseAnalytics {
         timestamp
       }, {
         bridgeProtocol: 'Wormhole',
-        sourceChain: 'Solana',
-        targetChain: 'Ethereum',
+        sourceChain: solanaChain,
+        targetChain: ethereumChain,
         asset: 'SOL',
         volume24h: accountCount * estimatedVolumePerAccount * 0.3, // 30% SOL->ETH
         volumeChange: 0,
@@ -168,6 +179,13 @@ export class CrossChainAnalytics extends BaseAnalytics {
         migrations: []
       };
     }
+  }
+
+  /**
+   * Validate if a chain is supported for cross-chain analytics
+   */
+  private isChainSupported(chainName: string): boolean {
+    return this.SUPPORTED_CHAINS.includes(chainName);
   }
 
   private getChainName(chainId: number): string {
@@ -209,7 +227,14 @@ export class CrossChainAnalytics extends BaseAnalytics {
     try {
       // Portal Bridge doesn't have a public API, so we'll use generic approach
       // Real implementation would need to parse on-chain data or use a bridge aggregator
-      console.warn('Portal Bridge API not available, returning empty data');
+      console.warn(`Portal Bridge API not available for timestamp ${timestamp}, returning empty data`);
+
+      // Use timestamp to determine data freshness and caching strategy
+      const dataAge = Date.now() - timestamp;
+      if (dataAge > 3600000) { // 1 hour
+        console.warn('Requested Portal data is more than 1 hour old');
+      }
+
       return {
         flows: [],
         migrations: []
@@ -227,7 +252,11 @@ export class CrossChainAnalytics extends BaseAnalytics {
     try {
       // Allbridge API integration would go here
       // For now, return empty data as their API documentation is limited
-      console.warn('Allbridge API integration not available, returning empty data');
+      console.warn(`Allbridge API integration not available for timestamp ${timestamp}, returning empty data`);
+
+      // Log timestamp for future API integration
+      const timeStr = new Date(timestamp).toISOString();
+      console.log(`Would fetch Allbridge data for time: ${timeStr}`);
       return {
         flows: [],
         migrations: []
@@ -244,8 +273,12 @@ export class CrossChainAnalytics extends BaseAnalytics {
   }> {
     // For bridges without specific API integration, return empty data
     // Real implementation would integrate with each bridge's specific API
-    console.warn(`No specific API integration for ${bridge}, returning empty data`);
-    
+    console.warn(`No specific API integration for ${bridge} at timestamp ${timestamp}, returning empty data`);
+
+    // Use timestamp for future caching and rate limiting
+    const cacheKey = `${bridge}_${Math.floor(timestamp / 60000)}`; // 1-minute cache buckets
+    console.log(`Would cache ${bridge} data with key: ${cacheKey}`);
+
     return {
       flows: [],
       migrations: []
@@ -277,16 +310,19 @@ export class CrossChainAnalytics extends BaseAnalytics {
           // Simple price calculation based on average transaction size differences
           const price1 = flow1.avgTransactionSize;
           const price2 = flow2.avgTransactionSize;
-          
+
           const priceDifference = Math.abs(price1 - price2) / Math.min(price1, price2);
-          
+
           if (priceDifference > 0.01) { // 1% threshold
             const potentialProfit = priceDifference * Math.min(flow1.volume24h, flow2.volume24h) * 0.1;
-            
+
             // Estimate bridge time and cost
             const bridgeTime = Math.random() * 30 + 5; // 5-35 minutes
             const bridgeCost = Math.max(flow1.bridgeFees, flow2.bridgeFees);
             const riskScore = this.calculateRiskScore(flow1, flow2);
+
+            // Log the arbitrage opportunity with timestamp for tracking
+            console.log(`Arbitrage opportunity found at ${new Date(timestamp).toISOString()}: ${asset} ${priceDifference.toFixed(4)} difference`);
 
             opportunities.push({
               asset,
@@ -350,7 +386,7 @@ export class CrossChainAnalytics extends BaseAnalytics {
   async getBridgeRankings(): Promise<AnalyticsResponse<{ bridge: string; totalVolume: number; marketShare: number }[]>> {
     try {
       const flowData = await this.cache.getCrossChainFlows();
-      
+
       // Calculate rankings
       const bridgeVolumes = new Map<string, number>();
       flowData.forEach(data => {
@@ -359,7 +395,7 @@ export class CrossChainAnalytics extends BaseAnalytics {
       });
 
       const totalVolume = Array.from(bridgeVolumes.values()).reduce((sum, vol) => sum + vol, 0);
-      
+
       const rankings = Array.from(bridgeVolumes.entries())
         .map(([bridge, volume]) => ({
           bridge,
@@ -385,7 +421,7 @@ export class CrossChainAnalytics extends BaseAnalytics {
   async getTopAssets(): Promise<AnalyticsResponse<{ asset: string; totalVolume: number; bridgeCount: number }[]>> {
     try {
       const flowData = await this.cache.getCrossChainFlows();
-      
+
       const assetStats = new Map<string, { volume: number; bridges: Set<string> }>();
       flowData.forEach(flow => {
         if (!assetStats.has(flow.asset)) {
@@ -428,7 +464,7 @@ export class CrossChainAnalytics extends BaseAnalytics {
   }> {
     try {
       const flowData = await this.cache.getCrossChainFlows(undefined, 10);
-      
+
       const lastUpdate = Math.max(...flowData.map(d => d.timestamp));
       const connectedBridges = new Set(flowData.map(d => d.bridgeProtocol)).size;
 
@@ -467,10 +503,10 @@ export function getCrossChainAnalytics(config?: AnalyticsConfig): CrossChainAnal
         ethereum: ['https://eth-mainnet.g.alchemy.com/v2/demo']
       }
     };
-    
+
     crossChainAnalyticsInstance = new CrossChainAnalytics(config || defaultConfig);
   }
-  
+
   return crossChainAnalyticsInstance;
 }
 

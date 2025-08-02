@@ -31,11 +31,15 @@ export class JWTAuth {
      * Generate a JWT token for a user
      */
     generateToken(payload: Omit<JWTPayload, 'iat' | 'exp'>): string {
-        return jwt.sign(payload, this.secret, {
+        const signPayload: Record<string, any> = {
+            ...payload,
+            iat: Math.floor(Date.now() / 1000)
+        };
+        return jwt.sign(signPayload, this.secret, {
             issuer: this.issuer,
             expiresIn: this.defaultExpiry,
             algorithm: 'HS256'
-        });
+        } as jwt.SignOptions);
     }
 
     /**

@@ -110,6 +110,20 @@ export class TransactionProcessor {
                 };
             }
 
+            // Check transaction timing for validation
+            const timeSinceTransaction = getTimeSinceTransaction(transaction.blockTime || 0);
+            console.log(`Processing transaction ${transactionSignature} - ${timeSinceTransaction}ms since confirmation`);
+
+            // Skip very old transactions (older than 24 hours)
+            if (typeof timeSinceTransaction === 'number' && timeSinceTransaction > 24 * 60 * 60 * 1000) {
+                return {
+                    success: false,
+                    transactionSignature,
+                    error: 'Transaction too old to process',
+                    retryable: false,
+                };
+            }
+
             // Validate transaction
             const validation = await this.validateDepositTransaction(transaction);
             if (!validation.isValid) {
@@ -323,21 +337,41 @@ export class TransactionProcessor {
      * Get user ID from Solana address
      */
     private async getUserIdFromAddress(solanaAddress: string): Promise<string | null> {
-        // TODO: Implement proper address-to-user mapping
-        // This could use:
-        // 1. A Qdrant collection with address mappings
-        // 2. User profile data with linked Solana addresses
-        // 3. On-chain program data
+        try {
+            // Validate Solana address format first
+            if (!validateSolanaAddress(solanaAddress)) {
+                console.error(`Invalid Solana address format: ${solanaAddress}`);
+                return null;
+            }
 
-        // For now, generate a deterministic user ID
-        // In production, implement proper user identification
-        const encoder = new TextEncoder();
-        const data = encoder.encode(solanaAddress);
-        const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-        const hashArray = Array.from(new Uint8Array(hashBuffer));
-        const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+            console.log(`Mapping Solana address ${solanaAddress} to user ID`);
 
-        return `user_${hashHex.substring(0, 16)}`;
+            // Implement address-to-user mapping using deterministic hash
+            // This provides consistent user IDs based on Solana addresses
+
+            // Validate as PublicKey for additional safety
+            try {
+                new PublicKey(solanaAddress);
+            } catch (error) {
+                console.error(`Invalid PublicKey format: ${solanaAddress}`, error);
+                return null;
+            }
+
+            // For now, generate a deterministic user ID
+            // In production, implement proper user identification
+            const encoder = new TextEncoder();
+            const data = encoder.encode(solanaAddress);
+            const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            const userId = `user_${hashHex.substring(0, 16)}`;
+            console.log(`Mapped address ${solanaAddress} to user ID: ${userId}`);
+            return userId;
+        } catch (error) {
+            console.error(`Error mapping address ${solanaAddress} to user ID:`, error);
+            return null;
+        }
     }
 
     /**
@@ -425,18 +459,63 @@ export class TransactionProcessor {
         userId: string,
         timeframeMs: number
     ): Promise<Array<{ amount: number; metadata?: any }>> {
-        // TODO: Implement actual lookup from balance storage
-        // For now, return empty array
-        return [];
+        try {
+            console.log(`Fetching recent deposits for user ${userId} within ${timeframeMs}ms timeframe`);
+
+            // Calculate cutoff timestamp
+            const cutoffTime = Date.now() - timeframeMs;
+
+            // Get user's transaction history from balance storage
+            const userHistory = await this.balanceStorage.getTransactionHistory(userId);
+
+            // Filter deposits within timeframe
+            const recentDeposits = userHistory
+                .filter((tx: any) =>
+                    tx.type === 'deposit' &&
+                    tx.timestamp > cutoffTime &&
+                    tx.amount > 0
+                )
+                .map((tx: any) => ({
+                    amount: tx.amount,
+                    metadata: {
+                        fromAddress: tx.fromAddress,
+                        signature: tx.signature,
+                        timestamp: tx.timestamp
+                    }
+                }));
+
+            console.log(`Found ${recentDeposits.length} recent deposits for user ${userId}`);
+            return recentDeposits;
+        } catch (error) {
+            console.error(`Error fetching recent deposits for user ${userId}:`, error);
+            return [];
+        }
     }
 
     /**
      * Get total deposits for user today
      */
     private async getDailyDepositTotal(userId: string): Promise<number> {
-        // TODO: Implement actual daily total calculation
-        // For now, return 0
-        return 0;
+        try {
+            console.log(`Calculating daily deposit total for user ${userId}`);
+
+            // Get start of today in milliseconds
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const todayStart = today.getTime();
+
+            // Get deposits from today
+            const todayDeposits = await this.getRecentDeposits(userId, Date.now() - todayStart);
+
+            // Calculate total amount
+            const totalAmount = todayDeposits.reduce((sum, deposit) => sum + deposit.amount, 0);
+
+            console.log(`User ${userId} has deposited ${totalAmount} SVMAI today`);
+            return totalAmount;
+        } catch (error) {
+            console.error(`Error calculating daily deposit total for user ${userId}:`, error);
+            return 0;
+        }
     }
 
     /**

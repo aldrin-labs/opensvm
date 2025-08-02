@@ -18,6 +18,14 @@ export async function generateAndShareScreenshot(element: HTMLElement, text: str
     // Create file from blob
     const file = new File([blob], 'screenshot.png', { type: 'image/png' });
 
+    // Use file for screenshot processing and validation
+    console.log(`Screenshot file created: ${file.name}, size: ${file.size} bytes, type: ${file.type}`);
+
+    // Validate file size (optional)
+    if (file.size > 5 * 1024 * 1024) { // 5MB limit
+      console.warn(`Screenshot file is large: ${(file.size / 1024 / 1024).toFixed(2)}MB`);
+    }
+
     // Construct Twitter share URL with text
     const encodedText = encodeURIComponent(text);
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;

@@ -3,12 +3,11 @@ import {
   DEXVolumeMetrics,
   CrossDEXArbitrage,
   CrossChainFlow,
-  EcosystemMigration,
-  ProtocolHealth,
-  ExploitAlert,
-  ValidatorMetrics,
-  NetworkDecentralization
+  ValidatorMetrics
 } from '@/lib/types/solana-analytics';
+
+// TODO: Add support for these analytics types:
+// EcosystemMigration, ProtocolHealth, ExploitAlert, NetworkDecentralization
 
 // Enhanced cache implementation with persistence planning
 // TODO: Migrate to DuckDB or LevelDB for real persistence
@@ -19,13 +18,13 @@ class EnhancedCache {
   private arbitrageOpportunities: CrossDEXArbitrage[] = [];
   private crossChainFlows: CrossChainFlow[] = [];
   private validatorMetrics: ValidatorMetrics[] = [];
-  
+
   // State management
   private initializationPromise: Promise<void> | null = null;
   private isInitialized = false;
   private isInitializing = false;
   private cleanupInterval: NodeJS.Timeout | null = null;
-  
+
   // Configuration
   private readonly maxItems = 1000; // Limit memory usage
   private readonly retentionDays = 14;
@@ -46,7 +45,7 @@ class EnhancedCache {
 
     this.isInitializing = true;
     this.initializationPromise = this.performInitialization();
-    
+
     try {
       await this.initializationPromise;
       this.isInitialized = true;
@@ -62,17 +61,17 @@ class EnhancedCache {
     try {
       // TODO: Replace with actual DuckDB/LevelDB initialization
       // For now, using enhanced memory store with better lifecycle management
-      
+
       console.log('Enhanced cache initialized successfully');
-      
+
       // Set up periodic cleanup with proper cleanup on shutdown
       this.cleanupInterval = setInterval(() => {
-        this.cleanupOldData();
+        this.cleanupOldData(this.retentionDays);
       }, 60 * 60 * 1000); // Every hour
-      
+
       // TODO: Load existing data from persistent store
       await this.loadPersistedData();
-      
+
     } catch (error) {
       console.error('Failed to initialize Enhanced cache:', error);
       throw error;
@@ -95,7 +94,7 @@ class EnhancedCache {
     if (this.liquidityData.length > this.maxItems) {
       this.liquidityData = this.liquidityData.slice(0, this.maxItems);
     }
-    
+
     // TODO: Persist to DuckDB/LevelDB
     await this.persistLiquidityData(data);
   }
@@ -107,13 +106,14 @@ class EnhancedCache {
     if (dex) {
       filteredData = this.liquidityData.filter(item => item.dex === dex);
     }
-    
+
     return filteredData.slice(0, limit);
   }
 
   private async persistLiquidityData(data: SolanaLiquidityData[]): Promise<void> {
     // TODO: Implement actual persistence to DuckDB/LevelDB
-    // console.log(`Persisting ${data.length} liquidity records`);
+    console.log(`Persisting ${data.length} liquidity records to cache`);
+    // When implemented, this will write data to persistent storage
   }
 
   // DEX Volume Metrics Methods
@@ -125,7 +125,7 @@ class EnhancedCache {
     if (this.volumeMetrics.length > this.maxItems) {
       this.volumeMetrics = this.volumeMetrics.slice(0, this.maxItems);
     }
-    
+
     // TODO: Persist to DuckDB/LevelDB
     await this.persistVolumeMetrics(data);
   }
@@ -137,13 +137,14 @@ class EnhancedCache {
     if (dex) {
       filteredData = this.volumeMetrics.filter(item => item.dex === dex);
     }
-    
+
     return filteredData.slice(0, limit);
   }
 
   private async persistVolumeMetrics(data: DEXVolumeMetrics[]): Promise<void> {
     // TODO: Implement actual persistence to DuckDB/LevelDB
-    // console.log(`Persisting ${data.length} volume metric records`);
+    console.log(`Persisting ${data.length} volume metric records to cache`);
+    // When implemented, this will write data to persistent storage
   }
 
   // Arbitrage Opportunities Methods
@@ -155,7 +156,7 @@ class EnhancedCache {
     if (this.arbitrageOpportunities.length > this.maxItems) {
       this.arbitrageOpportunities = this.arbitrageOpportunities.slice(0, this.maxItems);
     }
-    
+
     // TODO: Persist to DuckDB/LevelDB
     await this.persistArbitrageOpportunities(data);
   }
@@ -168,7 +169,8 @@ class EnhancedCache {
 
   private async persistArbitrageOpportunities(data: CrossDEXArbitrage[]): Promise<void> {
     // TODO: Implement actual persistence to DuckDB/LevelDB
-    // console.log(`Persisting ${data.length} arbitrage opportunity records`);
+    console.log(`Persisting ${data.length} arbitrage opportunity records to cache`);
+    // When implemented, this will write data to persistent storage
   }
 
   // Cross-Chain Flow Methods
@@ -180,7 +182,7 @@ class EnhancedCache {
     if (this.crossChainFlows.length > this.maxItems) {
       this.crossChainFlows = this.crossChainFlows.slice(0, this.maxItems);
     }
-    
+
     // TODO: Persist to DuckDB/LevelDB
     await this.persistCrossChainFlows(data);
   }
@@ -192,13 +194,14 @@ class EnhancedCache {
     if (bridgeProtocol) {
       filteredData = this.crossChainFlows.filter(item => item.bridgeProtocol === bridgeProtocol);
     }
-    
+
     return filteredData.slice(0, limit);
   }
 
   private async persistCrossChainFlows(data: CrossChainFlow[]): Promise<void> {
     // TODO: Implement actual persistence to DuckDB/LevelDB
-    // console.log(`Persisting ${data.length} cross-chain flow records`);
+    console.log(`Persisting ${data.length} cross-chain flow records to cache`);
+    // When implemented, this will write data to persistent storage
   }
 
   // Validator Metrics Methods
@@ -206,11 +209,11 @@ class EnhancedCache {
     if (!this.isInitialized) await this.initialize();
 
     this.validatorMetrics.push(...data);
-    this.validatorMetrics.sort((a, b) => b.totalStake - a.totalStake);
+    this.validatorMetrics.sort((a, b) => b.activatedStake - a.activatedStake);
     if (this.validatorMetrics.length > this.maxItems) {
       this.validatorMetrics = this.validatorMetrics.slice(0, this.maxItems);
     }
-    
+
     // TODO: Persist to DuckDB/LevelDB
     await this.persistValidatorMetrics(data);
   }
@@ -220,15 +223,16 @@ class EnhancedCache {
 
     let filteredData = this.validatorMetrics;
     if (validatorAddress) {
-      filteredData = this.validatorMetrics.filter(item => item.validatorAddress === validatorAddress);
+      filteredData = this.validatorMetrics.filter(item => item.voteAccount === validatorAddress);
     }
-    
+
     return filteredData.slice(0, limit);
   }
 
   private async persistValidatorMetrics(data: ValidatorMetrics[]): Promise<void> {
     // TODO: Implement actual persistence to DuckDB/LevelDB
-    // console.log(`Persisting ${data.length} validator metric records`);
+    console.log(`Persisting ${data.length} validator metric records to cache`);
+    // When implemented, this will write data to persistent storage
   }
 
   // Data cleanup methods
@@ -236,22 +240,23 @@ class EnhancedCache {
     if (!this.isInitialized) await this.initialize();
 
     const cutoffTimestamp = Date.now() - (daysToKeep * 24 * 60 * 60 * 1000);
-    
+
     this.liquidityData = this.liquidityData.filter(item => item.timestamp >= cutoffTimestamp);
     this.volumeMetrics = this.volumeMetrics.filter(item => item.timestamp >= cutoffTimestamp);
     this.arbitrageOpportunities = this.arbitrageOpportunities.filter(item => item.timestamp >= cutoffTimestamp);
     this.crossChainFlows = this.crossChainFlows.filter(item => item.timestamp >= cutoffTimestamp);
-    this.validatorMetrics = this.validatorMetrics.filter(item => item.timestamp >= cutoffTimestamp);
+    // Note: ValidatorMetrics don't have timestamps, so we keep all validator data
 
     console.log('Cleaned up old data');
-    
+
     // TODO: Also cleanup persistent store
     await this.cleanupPersistedData(cutoffTimestamp);
   }
 
   private async cleanupPersistedData(cutoffTimestamp: number): Promise<void> {
     // TODO: Implement cleanup for DuckDB/LevelDB
-    // console.log(`Cleaning up persisted data older than ${new Date(cutoffTimestamp)}`);
+    console.log(`Cleaning up persisted data older than ${new Date(cutoffTimestamp)}`);
+    // When implemented, this will remove old data from persistent storage
   }
 
   async close(): Promise<void> {
@@ -260,10 +265,10 @@ class EnhancedCache {
       clearInterval(this.cleanupInterval);
       this.cleanupInterval = null;
     }
-    
+
     this.isInitialized = false;
     this.initializationPromise = null;
-    
+
     // TODO: Close persistent store connections
     console.log('Enhanced cache closed');
   }

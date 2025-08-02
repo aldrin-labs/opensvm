@@ -197,7 +197,7 @@ export class ProxyErrorHandler {
     /**
      * Map proxy error types to Anthropic error types
      */
-    private mapToAnthropicErrorType(proxyErrorType: string): string {
+    private mapToAnthropicErrorType(proxyErrorType: string): "invalid_request_error" | "authentication_error" | "permission_error" | "not_found_error" | "rate_limit_error" | "api_error" | "overloaded_error" {
         switch (proxyErrorType) {
             case 'auth_error':
                 return 'authentication_error';
@@ -282,9 +282,20 @@ export class ProxyErrorHandler {
      * Send alert for critical errors (placeholder for production alerting)
      */
     private async sendAlert(error: ProxyError, context: ErrorContext): Promise<void> {
+        // Use context for enriched error alerting and debugging
+        console.warn('Alert would be sent for critical error:', {
+            errorType: error.type,
+            message: error.message,
+            userId: context.userId,
+            keyId: context.keyId,
+            timestamp: context.timestamp,
+            requestId: context.requestId,
+            userAgent: context.userAgent
+        });
+
         // Placeholder for production alerting system
         // This would integrate with services like PagerDuty, Slack, email, etc.
-        console.warn('Alert would be sent for critical error:', error.type);
+        // Example: await this.alertingService.sendAlert(error, context);
     }
 
     /**

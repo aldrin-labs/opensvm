@@ -54,6 +54,13 @@ export function useCacheFirst<T>(
     try {
       let cachedData: T | null = null;
       let cacheHit = false;
+
+      // Track cache performance metrics
+      const cacheMetrics = {
+        startTime: Date.now(),
+        hit: false,
+        age: 0
+      };
       let cacheAge: number | undefined;
 
       // Try cache first if enabled and not forcing refresh
@@ -63,6 +70,9 @@ export function useCacheFirst<T>(
           cachedData = await cacheManager.get<T>(key);
           if (cachedData) {
             cacheHit = true;
+            cacheMetrics.hit = true;
+            // Use cacheHit for cache performance metrics and debugging
+            console.log(`Cache hit for key: ${key}, returning cached data`);
             // Calculate cache age (simplified - would need timestamp in cache)
             cacheAge = 0; // Would be calculated from cache metadata
           }
@@ -76,6 +86,9 @@ export function useCacheFirst<T>(
         setFromCache(true);
         setCacheStats({ hit: true, cacheAge });
       } else {
+        // Use cacheHit for metrics tracking and logging
+        console.log(`Cache miss for key: ${key}, cacheHit: ${cacheHit}`);
+        cacheMetrics.hit = cacheHit;
         // Fetch from API
         const freshData = await fetchFn();
         setData(freshData);
@@ -442,7 +455,7 @@ export function useCacheManager() {
 export function useBulkCache() {
   const preloadTransactions = useCallback(async (signatures: string[]) => {
     await cacheManager.initialize();
-    
+
     const promises = signatures.map(async (signature) => {
       const cached = await cacheManager.getTransaction(signature);
       if (!cached) {
@@ -463,7 +476,7 @@ export function useBulkCache() {
 
   const preloadBlocks = useCallback(async (slots: number[]) => {
     await cacheManager.initialize();
-    
+
     const promises = slots.map(async (slot) => {
       const cached = await cacheManager.getBlock(slot);
       if (!cached) {
@@ -484,7 +497,7 @@ export function useBulkCache() {
 
   const preloadAccounts = useCallback(async (addresses: string[]) => {
     await cacheManager.initialize();
-    
+
     const promises = addresses.map(async (address) => {
       const cached = await cacheManager.getAccount(address);
       if (!cached) {

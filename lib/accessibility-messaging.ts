@@ -62,7 +62,7 @@ const MESSAGE_TEMPLATES = {
   // Status messages
   status: {
     loading: (item: string) => `Loading ${item}...`,
-    loaded: (item: string, count?: number) => 
+    loaded: (item: string, count?: number) =>
       count !== undefined ? `${item} loaded, ${count} items` : `${item} loaded`,
     empty: (item: string) => `No ${item} found`,
     error: (item: string) => `Error loading ${item}`,
@@ -75,7 +75,7 @@ const MESSAGE_TEMPLATES = {
   // Form messages
   form: {
     fieldRequired: (fieldName: string) => `${fieldName} is required`,
-    fieldInvalid: (fieldName: string, reason?: string) => 
+    fieldInvalid: (fieldName: string, reason?: string) =>
       `${fieldName} is invalid${reason ? `: ${reason}` : ''}`,
     fieldValid: (fieldName: string) => `${fieldName} is valid`,
     formSubmitted: () => 'Form submitted successfully',
@@ -86,7 +86,7 @@ const MESSAGE_TEMPLATES = {
   // Search messages
   search: {
     searching: (query: string) => `Searching for ${query}...`,
-    resultsFound: (count: number, query: string) => 
+    resultsFound: (count: number, query: string) =>
       `Found ${count} result${count !== 1 ? 's' : ''} for ${query}`,
     noResults: (query: string) => `No results found for ${query}`,
     suggestionsAvailable: (count: number) => `${count} suggestion${count !== 1 ? 's' : ''} available`,
@@ -98,7 +98,7 @@ const MESSAGE_TEMPLATES = {
   transaction: {
     analyzing: () => 'Analyzing transaction...',
     analyzed: () => 'Transaction analysis complete',
-    instructionExpanded: (index: number, type: string) => 
+    instructionExpanded: (index: number, type: string) =>
       `Instruction ${index + 1} expanded: ${type}`,
     instructionCollapsed: (index: number) => `Instruction ${index + 1} collapsed`,
     accountChangeExpanded: (index: number) => `Account ${index + 1} changes expanded`,
@@ -158,6 +158,15 @@ export class AccessibilityMessenger {
   private initializeLiveRegions(): void {
     if (typeof window === 'undefined') return;
 
+    // Use liveRegion as a general live region for accessibility announcements
+    this.liveRegion = document.createElement('div');
+    this.liveRegion.setAttribute('aria-live', 'polite');
+    this.liveRegion.setAttribute('aria-atomic', 'true');
+    this.liveRegion.setAttribute('class', 'sr-only');
+    this.liveRegion.setAttribute('id', 'general-announcements');
+    document.body.appendChild(this.liveRegion);
+    console.log('Initialized general live region for accessibility:', this.liveRegion);
+
     // Create polite live region
     this.politeRegion = document.createElement('div');
     this.politeRegion.setAttribute('aria-live', 'polite');
@@ -185,8 +194,8 @@ export class AccessibilityMessenger {
   ): void {
     if (typeof window === 'undefined') return;
 
-    const region = priority === AnnouncementPriority.ASSERTIVE 
-      ? this.assertiveRegion 
+    const region = priority === AnnouncementPriority.ASSERTIVE
+      ? this.assertiveRegion
       : this.politeRegion;
 
     if (!region) return;
@@ -197,7 +206,7 @@ export class AccessibilityMessenger {
     // Set new message after a brief delay to ensure screen readers pick it up
     setTimeout(() => {
       region.textContent = message;
-      
+
       // Clear message after announcement to avoid repetition
       setTimeout(() => {
         region.textContent = '';
@@ -209,25 +218,25 @@ export class AccessibilityMessenger {
    * Navigation-related announcements
    */
   navigation = {
-    pageLoaded: (pageName: string) => 
+    pageLoaded: (pageName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.pageLoaded(pageName)),
-    
-    sectionEntered: (sectionName: string) => 
+
+    sectionEntered: (sectionName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.sectionEntered(sectionName)),
-    
-    tabSelected: (tabName: string) => 
+
+    tabSelected: (tabName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.tabSelected(tabName)),
-    
-    modalOpened: (modalName: string) => 
+
+    modalOpened: (modalName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.modalOpened(modalName), AnnouncementPriority.ASSERTIVE),
-    
-    modalClosed: (modalName: string) => 
+
+    modalClosed: (modalName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.modalClosed(modalName)),
-    
-    menuOpened: (menuName: string) => 
+
+    menuOpened: (menuName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.menuOpened(menuName)),
-    
-    menuClosed: (menuName: string) => 
+
+    menuClosed: (menuName: string) =>
       this.announce(MESSAGE_TEMPLATES.navigation.menuClosed(menuName))
   };
 
@@ -235,31 +244,31 @@ export class AccessibilityMessenger {
    * Action-related announcements
    */
   action = {
-    copied: (item: string) => 
+    copied: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.copied(item)),
-    
-    saved: (item: string) => 
+
+    saved: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.saved(item)),
-    
-    deleted: (item: string) => 
+
+    deleted: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.deleted(item)),
-    
-    expanded: (item: string) => 
+
+    expanded: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.expanded(item)),
-    
-    collapsed: (item: string) => 
+
+    collapsed: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.collapsed(item)),
-    
-    selected: (item: string) => 
+
+    selected: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.selected(item)),
-    
-    deselected: (item: string) => 
+
+    deselected: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.action.deselected(item)),
-    
-    filtered: (count: number, type: string) => 
+
+    filtered: (count: number, type: string) =>
       this.announce(MESSAGE_TEMPLATES.action.filtered(count, type)),
-    
-    sorted: (column: string, direction: string) => 
+
+    sorted: (column: string, direction: string) =>
       this.announce(MESSAGE_TEMPLATES.action.sorted(column, direction))
   };
 
@@ -267,28 +276,28 @@ export class AccessibilityMessenger {
    * Status-related announcements
    */
   status = {
-    loading: (item: string) => 
+    loading: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.status.loading(item)),
-    
-    loaded: (item: string, count?: number) => 
+
+    loaded: (item: string, count?: number) =>
       this.announce(MESSAGE_TEMPLATES.status.loaded(item, count)),
-    
-    empty: (item: string) => 
+
+    empty: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.status.empty(item)),
-    
-    error: (item: string) => 
+
+    error: (item: string) =>
       this.announce(MESSAGE_TEMPLATES.status.error(item), AnnouncementPriority.ASSERTIVE),
-    
-    offline: () => 
+
+    offline: () =>
       this.announce(MESSAGE_TEMPLATES.status.offline(), AnnouncementPriority.ASSERTIVE),
-    
-    online: () => 
+
+    online: () =>
       this.announce(MESSAGE_TEMPLATES.status.online()),
-    
-    connected: (service: string) => 
+
+    connected: (service: string) =>
       this.announce(MESSAGE_TEMPLATES.status.connected(service)),
-    
-    disconnected: (service: string) => 
+
+    disconnected: (service: string) =>
       this.announce(MESSAGE_TEMPLATES.status.disconnected(service), AnnouncementPriority.ASSERTIVE)
   };
 
@@ -296,22 +305,22 @@ export class AccessibilityMessenger {
    * Form-related announcements
    */
   form = {
-    fieldRequired: (fieldName: string) => 
+    fieldRequired: (fieldName: string) =>
       this.announce(MESSAGE_TEMPLATES.form.fieldRequired(fieldName), AnnouncementPriority.ASSERTIVE),
-    
-    fieldInvalid: (fieldName: string, reason?: string) => 
+
+    fieldInvalid: (fieldName: string, reason?: string) =>
       this.announce(MESSAGE_TEMPLATES.form.fieldInvalid(fieldName, reason), AnnouncementPriority.ASSERTIVE),
-    
-    fieldValid: (fieldName: string) => 
+
+    fieldValid: (fieldName: string) =>
       this.announce(MESSAGE_TEMPLATES.form.fieldValid(fieldName)),
-    
-    formSubmitted: () => 
+
+    formSubmitted: () =>
       this.announce(MESSAGE_TEMPLATES.form.formSubmitted()),
-    
-    formError: (errorCount: number) => 
+
+    formError: (errorCount: number) =>
       this.announce(MESSAGE_TEMPLATES.form.formError(errorCount), AnnouncementPriority.ASSERTIVE),
-    
-    validationComplete: () => 
+
+    validationComplete: () =>
       this.announce(MESSAGE_TEMPLATES.form.validationComplete())
   };
 
@@ -319,22 +328,22 @@ export class AccessibilityMessenger {
    * Search-related announcements
    */
   search = {
-    searching: (query: string) => 
+    searching: (query: string) =>
       this.announce(MESSAGE_TEMPLATES.search.searching(query)),
-    
-    resultsFound: (count: number, query: string) => 
+
+    resultsFound: (count: number, query: string) =>
       this.announce(MESSAGE_TEMPLATES.search.resultsFound(count, query)),
-    
-    noResults: (query: string) => 
+
+    noResults: (query: string) =>
       this.announce(MESSAGE_TEMPLATES.search.noResults(query)),
-    
-    suggestionsAvailable: (count: number) => 
+
+    suggestionsAvailable: (count: number) =>
       this.announce(MESSAGE_TEMPLATES.search.suggestionsAvailable(count)),
-    
-    filterApplied: (filterName: string) => 
+
+    filterApplied: (filterName: string) =>
       this.announce(MESSAGE_TEMPLATES.search.filterApplied(filterName)),
-    
-    filterRemoved: (filterName: string) => 
+
+    filterRemoved: (filterName: string) =>
       this.announce(MESSAGE_TEMPLATES.search.filterRemoved(filterName))
   };
 
@@ -342,31 +351,31 @@ export class AccessibilityMessenger {
    * Transaction-specific announcements
    */
   transaction = {
-    analyzing: () => 
+    analyzing: () =>
       this.announce(MESSAGE_TEMPLATES.transaction.analyzing()),
-    
-    analyzed: () => 
+
+    analyzed: () =>
       this.announce(MESSAGE_TEMPLATES.transaction.analyzed()),
-    
-    instructionExpanded: (index: number, type: string) => 
+
+    instructionExpanded: (index: number, type: string) =>
       this.announce(MESSAGE_TEMPLATES.transaction.instructionExpanded(index, type)),
-    
-    instructionCollapsed: (index: number) => 
+
+    instructionCollapsed: (index: number) =>
       this.announce(MESSAGE_TEMPLATES.transaction.instructionCollapsed(index)),
-    
-    accountChangeExpanded: (index: number) => 
+
+    accountChangeExpanded: (index: number) =>
       this.announce(MESSAGE_TEMPLATES.transaction.accountChangeExpanded(index)),
-    
-    accountChangeCollapsed: (index: number) => 
+
+    accountChangeCollapsed: (index: number) =>
       this.announce(MESSAGE_TEMPLATES.transaction.accountChangeCollapsed(index)),
-    
-    riskAssessed: (level: string) => 
+
+    riskAssessed: (level: string) =>
       this.announce(MESSAGE_TEMPLATES.transaction.riskAssessed(level)),
-    
-    graphUpdated: () => 
+
+    graphUpdated: () =>
       this.announce(MESSAGE_TEMPLATES.transaction.graphUpdated()),
-    
-    graphFiltered: (nodeCount: number) => 
+
+    graphFiltered: (nodeCount: number) =>
       this.announce(MESSAGE_TEMPLATES.transaction.graphFiltered(nodeCount))
   };
 
@@ -374,25 +383,25 @@ export class AccessibilityMessenger {
    * AI-related announcements
    */
   ai = {
-    thinking: () => 
+    thinking: () =>
       this.announce(MESSAGE_TEMPLATES.ai.thinking()),
-    
-    responding: () => 
+
+    responding: () =>
       this.announce(MESSAGE_TEMPLATES.ai.responding()),
-    
-    responseComplete: () => 
+
+    responseComplete: () =>
       this.announce(MESSAGE_TEMPLATES.ai.responseComplete()),
-    
-    analysisStarted: (type: string) => 
+
+    analysisStarted: (type: string) =>
       this.announce(MESSAGE_TEMPLATES.ai.analysisStarted(type)),
-    
-    analysisComplete: (type: string) => 
+
+    analysisComplete: (type: string) =>
       this.announce(MESSAGE_TEMPLATES.ai.analysisComplete(type)),
-    
-    contextUpdated: () => 
+
+    contextUpdated: () =>
       this.announce(MESSAGE_TEMPLATES.ai.contextUpdated()),
-    
-    conversationReset: () => 
+
+    conversationReset: () =>
       this.announce(MESSAGE_TEMPLATES.ai.conversationReset())
   };
 
@@ -400,19 +409,19 @@ export class AccessibilityMessenger {
    * Mobile-specific announcements
    */
   mobile = {
-    swipeHint: (direction: string, action: string) => 
+    swipeHint: (direction: string, action: string) =>
       this.announce(MESSAGE_TEMPLATES.mobile.swipeHint(direction, action)),
-    
-    gestureDetected: (gesture: string) => 
+
+    gestureDetected: (gesture: string) =>
       this.announce(MESSAGE_TEMPLATES.mobile.gestureDetected(gesture)),
-    
-    orientationChanged: (orientation: string) => 
+
+    orientationChanged: (orientation: string) =>
       this.announce(MESSAGE_TEMPLATES.mobile.orientationChanged(orientation)),
-    
-    keyboardShown: () => 
+
+    keyboardShown: () =>
       this.announce(MESSAGE_TEMPLATES.mobile.keyboardShown()),
-    
-    keyboardHidden: () => 
+
+    keyboardHidden: () =>
       this.announce(MESSAGE_TEMPLATES.mobile.keyboardHidden())
   };
 }

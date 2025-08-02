@@ -33,7 +33,7 @@ export class StreamingProxy {
           }
         } catch (error) {
           console.error('Error in SSE stream:', error);
-          
+
           // Send error event
           const errorEvent = StreamingProxy.formatSSEError(error);
           controller.enqueue(encoder.encode(errorEvent));
@@ -91,7 +91,7 @@ export class StreamingProxy {
     anthropicStream: ReadableStream<AnthropicStreamChunk>
   ): Response {
     const sseStream = StreamingProxy.createSSEStream(anthropicStream);
-    
+
     return new Response(sseStream, {
       status: 200,
       headers: StreamingProxy.getSSEHeaders()
@@ -109,7 +109,7 @@ export class StreamingProxy {
       return StreamingProxy.createStreamingResponse(anthropicStream);
     } catch (error) {
       console.error('Error handling streaming request:', error);
-      
+
       // Create error stream
       const errorStream = new ReadableStream<AnthropicStreamChunk>({
         start(controller) {
@@ -120,7 +120,7 @@ export class StreamingProxy {
               text: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
             }
           };
-          
+
           controller.enqueue(errorChunk);
           controller.close();
         }
@@ -212,13 +212,13 @@ export class StreamingProxy {
     return new ReadableStream({
       async start(controller) {
         const reader = anthropicStream.getReader();
-        let timeoutId: NodeJS.Timeout;
+        let timeoutId: NodeJS.Timeout | null = null;
 
         const resetTimeout = () => {
           if (timeoutId) {
             clearTimeout(timeoutId);
           }
-          
+
           timeoutId = setTimeout(() => {
             console.error('Streaming timeout exceeded');
             controller.error(new Error('Streaming timeout exceeded'));
@@ -232,7 +232,9 @@ export class StreamingProxy {
             const { done, value } = await reader.read();
 
             if (done) {
-              clearTimeout(timeoutId);
+              if (timeoutId) {
+                clearTimeout(timeoutId);
+              }
               controller.close();
               break;
             }
@@ -241,7 +243,9 @@ export class StreamingProxy {
             controller.enqueue(value);
           }
         } catch (error) {
-          clearTimeout(timeoutId);
+          if (timeoutId) {
+            clearTimeout(timeoutId);
+          }
           console.error('Error in timeout stream:', error);
           controller.error(error);
         }

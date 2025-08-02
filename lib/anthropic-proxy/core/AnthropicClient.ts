@@ -100,7 +100,8 @@ export class AnthropicClient {
     // Remove duplicates while preserving order
     this.openRouterApiKeys = [...new Set(parsedKeys)];
 
-    this.baseUrl = 'https://openrouter.ai/api/v1';
+    // Use provided baseUrl or default to OpenRouter
+    this.baseUrl = baseUrl || 'https://openrouter.ai/api/v1';
 
     if (this.openRouterApiKeys.length === 0) {
       throw new Error('At least one OpenRouter API key is required');
@@ -298,10 +299,10 @@ export class AnthropicClient {
           : ''
     }));
 
-    // Add system message if present
+    // Add system message if present (OpenRouter supports system role)
     if (request.system) {
       messages.unshift({
-        role: 'system',
+        role: 'system' as any, // OpenRouter accepts system role
         content: request.system
       });
     }
@@ -358,7 +359,7 @@ export class AnthropicClient {
       ],
       model: originalRequest.model, // Return the original model name
       stop_reason: stopReason,
-      stop_sequence: null,
+      stop_sequence: undefined,
       usage: {
         input_tokens: openRouterResponse.usage?.prompt_tokens || 0,
         output_tokens: openRouterResponse.usage?.completion_tokens || 0
@@ -498,8 +499,8 @@ export class AnthropicClient {
           role: 'assistant',
           content: [],
           model: originalRequest.model,
-          stop_reason: null,
-          stop_sequence: null,
+          stop_reason: undefined,
+          stop_sequence: undefined,
           usage: { input_tokens: 0, output_tokens: 0 }
         }
       };
@@ -523,19 +524,13 @@ export class AnthropicClient {
     }
 
     if (choice.finish_reason) {
-      // Message complete
-      let stopReason: 'end_turn' | 'max_tokens' | 'stop_sequence' | 'tool_use' = 'end_turn';
-      if (choice.finish_reason === 'length') {
-        stopReason = 'max_tokens';
-      } else if (choice.finish_reason === 'stop') {
-        stopReason = 'end_turn';
-      }
+      // Message complete - finish_reason indicates stream end
 
       return {
         type: 'message_delta',
         delta: {
-          stop_reason: stopReason,
-          stop_sequence: null
+          type: 'text_delta',
+          text: '' // Empty text delta for message end
         },
         usage: { output_tokens: 0 } // OpenRouter doesn't provide token counts in stream
       };
@@ -642,6 +637,7 @@ export class AnthropicClient {
     originalRequest: AnthropicRequest
   ): ReadableStream<AnthropicStreamChunk> {
     const log = this.log.bind(this); // Capture the log method with correct binding
+    const transformStreamChunk = this.transformStreamChunkToAnthropic.bind(this); // Capture the transform method
 
     return new ReadableStream({
       async start(controller) {
@@ -698,8 +694,7 @@ export class AnthropicClient {
                         role: 'assistant',
                         content: [],
                         model: originalRequest.model,
-                        stop_reason: null,
-                        stop_sequence: null,
+                        stop_reason: 'end_turn',
                         usage: { input_tokens: 0, output_tokens: 0 }
                       }
                     });
@@ -712,7 +707,7 @@ export class AnthropicClient {
                     isFirst = false;
                   }
 
-                  const anthropicChunk = this.transformStreamChunkToAnthropic(chunk, false, originalRequest);
+                  const anthropicChunk = transformStreamChunk(chunk, false, originalRequest);
                   if (anthropicChunk) {
                     controller.enqueue(anthropicChunk);
                   }
@@ -782,13 +777,15 @@ export class AnthropicClient {
   }
 
   /**
-   * Parse streaming response from Anthropic API
+   * Parse streaming response from Anthropic API (for future direct API support)
    */
-  private parseStreamingResponse(body: ReadableStream<Uint8Array>): ReadableStream<AnthropicStreamChunk> {
+  // Reserved for future direct Anthropic API support
+  private _parseStreamingResponse(body: ReadableStream<Uint8Array>): ReadableStream<AnthropicStreamChunk> {
     const reader = body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     const MAX_BUFFER_SIZE = 1024 * 1024; // 1MB limit
+    const log = this.log.bind(this); // Capture the log method with correct binding
 
     return new ReadableStream({
       async start(controller) {
@@ -826,7 +823,7 @@ export class AnthropicClient {
                   const chunk = JSON.parse(data) as AnthropicStreamChunk;
                   controller.enqueue(chunk);
                 } catch (parseError) {
-                  this.log(`Error parsing streaming chunk: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
+                  log(`Error parsing streaming chunk: ${parseError instanceof Error ? parseError.message : 'Unknown error'}`);
                   // Continue processing other chunks
                 }
               }
@@ -835,7 +832,7 @@ export class AnthropicClient {
 
           controller.close();
         } catch (error) {
-          this.log(`Error in streaming response: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          log(`Error in streaming response: ${error instanceof Error ? error.message : 'Unknown error'}`);
           controller.error(error);
         }
       }
@@ -892,6 +889,15 @@ export class AnthropicClient {
       return null;
     }
   }
+
+  /**
+   * Create streaming response using direct Anthropic API parsing
+   * (for future direct API integration when baseUrl points to Anthropic)
+   */
+  public createDirectStreamingResponse(body: ReadableStream<Uint8Array>): ReadableStream<AnthropicStreamChunk> {
+    this.log('Using direct Anthropic API streaming response parsing');
+    return this._parseStreamingResponse(body);
+  }
 }
 
 /**
@@ -918,7 +924,7 @@ export class AnthropicAPIError extends Error {
     // Ensure we have a valid AnthropicError structure
     this.anthropicError = errorData && typeof errorData === 'object'
       ? errorData as AnthropicError
-      : { type: 'error', error: { type: 'unknown_error', message } };
+      : { type: 'error', error: { type: 'api_error', message } };
   }
 
   /**

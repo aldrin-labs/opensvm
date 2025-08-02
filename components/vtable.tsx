@@ -50,6 +50,11 @@ function getCSSVariableAsHex(variable: string): string {
   if (typeof window === 'undefined') return '#000000';
 
   const computedStyle = typeof document !== 'undefined' ? getComputedStyle(document.documentElement) : null;
+
+  if (!computedStyle) {
+    return '#000000';
+  }
+
   const value = computedStyle.getPropertyValue(variable).trim();
 
   if (!value) {
@@ -266,6 +271,8 @@ export function VTableWrapper({
 
   useEffect(() => {
     if (!mounted || !containerRef.current || !data.length) { return; }
+
+    let intervalId: NodeJS.Timeout | null = null;
 
     const initTable = () => {
       if (!containerRef.current) { return; }
@@ -526,7 +533,7 @@ export function VTableWrapper({
           }, 50);
 
           // Also set up a periodic check to ensure background stays correct
-          const intervalId = setInterval(() => {
+          intervalId = setInterval(() => {
             if (containerRef.current) {
               const canvasElements = containerRef.current.querySelectorAll('canvas');
               const bgColor = getCSSVariableAsHex('--background');
@@ -742,6 +749,10 @@ export function VTableWrapper({
                 // Update column widths
                 columns.forEach((col, index) => {
                   const newWidth = col.width ?? finalFlexWidth;
+
+                  // Log column width update for debugging
+                  console.log(`Updating column ${index} (${col.field}) width to: ${newWidth}px`);
+
                   if (tableRef.current) {
                     tableRef.current.setColumnWidth(col.field, newWidth);
                   }
@@ -765,6 +776,10 @@ export function VTableWrapper({
     // Cleanup
     return () => {
       clearTimeout(timer);
+      if (intervalId) {
+        clearInterval(intervalId);
+        intervalId = null;
+      }
       if (typeof window !== 'undefined') {
         if (typeof window !== 'undefined') {
           window.removeEventListener('resize', initTable);

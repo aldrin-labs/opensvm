@@ -1,0 +1,17 @@
+---
+alwaysApply: true
+---
+When encountering "unused variable" TypeScript errors, always investigate the PURPOSE and CONTEXT of the variable before adding underscores to ignore it. Variables are often there for important functional purposes that need proper implementation:
+
+- Function parameters like `context`, `edges`, `depth` may contain critical data for enhanced functionality
+- Component props like `transaction`, `signature` may be needed to display relevant information 
+- Callback parameters like `instruction`, `factors`, `actions` may be required for proper business logic
+- Configuration objects may need all their properties for complete functionality
+
+The correct approach is:
+1. Read the surrounding code to understand what the variable SHOULD do
+2. Look at the function/component's purpose and how the variable fits in
+3. Implement the proper functionality using the variable
+4. Only use underscore prefix for genuinely unused variables (like array indices in map functions where only the item is needed)
+
+This prevents functional regressions and ensures complete implementations rather than just silencing compiler warnings.

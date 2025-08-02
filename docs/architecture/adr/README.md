@@ -32,7 +32,7 @@ When making significant architectural decisions:
 ## ADR Template
 
 ```markdown
-# ADR-XXX: [Title]
+# ADR-006: [Title]
 
 ## Status
 [Proposed | Accepted | Deprecated | Superseded]

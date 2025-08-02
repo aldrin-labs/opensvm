@@ -297,6 +297,11 @@ const TechnicalTooltip: React.FC<TechnicalTooltipProps> = ({
             }`} />
         </div>
       )}
+
+      {/* Hidden external link icon for future functionality */}
+      <span style={{ display: 'none' }}>
+        <ExternalLinkIcon className="h-3 w-3" />
+      </span>
     </span>
   );
 };

@@ -1,5 +1,5 @@
 import { ProxyRequest, ProxyResponse } from '../types/ProxyTypes';
-import { AnthropicRequest, AnthropicResponse } from '../types/AnthropicTypes';
+import { AnthropicRequest, AnthropicResponse, AnthropicStreamChunk } from '../types/AnthropicTypes';
 import { getAnthropicClient } from './AnthropicClientSingleton';
 import { AnthropicAPIError, AnthropicClient } from './AnthropicClient';
 
@@ -8,9 +8,11 @@ import { AnthropicAPIError, AnthropicClient } from './AnthropicClient';
  */
 export class RequestForwarder {
   private anthropicClient: AnthropicClient | null = null;
+  private apiKey?: string;
 
   constructor(anthropicApiKey?: string) {
-    // Client will be initialized on first use
+    this.apiKey = anthropicApiKey;
+    // Client will be initialized on first use with provided API key
   }
 
   /**
@@ -18,7 +20,13 @@ export class RequestForwarder {
    */
   private async ensureClient(): Promise<AnthropicClient> {
     if (!this.anthropicClient) {
-      this.anthropicClient = await getAnthropicClient();
+      if (this.apiKey) {
+        // Use custom API key if provided
+        this.anthropicClient = new AnthropicClient(this.apiKey);
+      } else {
+        // Use singleton for default configuration
+        this.anthropicClient = await getAnthropicClient();
+      }
     }
     return this.anthropicClient;
   }
@@ -69,7 +77,7 @@ export class RequestForwarder {
         const proxyResponse: ProxyResponse = {
           keyId: proxyRequest.keyId,
           userId: proxyRequest.userId,
-          anthropicResponse: error.toJSON(),
+          anthropicResponse: error.toJSON() as any, // Error response doesn't match AnthropicResponse structure
           actualCost: 0,
           inputTokens: 0,
           outputTokens: 0,
@@ -79,7 +87,8 @@ export class RequestForwarder {
           responseTime
         };
 
-        // For errors, we should throw them, not return them as successful responses
+        // Log error response for metrics/debugging before throwing
+        console.error('Anthropic API error response:', proxyResponse);
         throw error;
       }
 
@@ -155,6 +164,11 @@ export class RequestForwarder {
         const endTime = Date.now();
         const responseTime = endTime - startTime;
 
+        // Log error details if streaming failed
+        if (error) {
+          console.error('Streaming error details:', String(error));
+        }
+
         return {
           keyId: proxyRequest.keyId,
           userId: proxyRequest.userId,
@@ -182,7 +196,7 @@ export class RequestForwarder {
         const proxyResponse: ProxyResponse = {
           keyId: proxyRequest.keyId,
           userId: proxyRequest.userId,
-          anthropicResponse: error.toJSON(),
+          anthropicResponse: error.toJSON() as any, // Error response doesn't match AnthropicResponse structure
           actualCost: 0,
           inputTokens: 0,
           outputTokens: 0,

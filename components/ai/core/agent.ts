@@ -1,14 +1,13 @@
-import type { 
-  AgentConfig, 
-  AgentContext, 
-  Message, 
-  Tool, 
+import type {
+  AgentConfig,
+  AgentContext,
+  Message,
+  Tool,
   ToolParams,
   CapabilityType,
   AgentAction,
   AgentCapability
 } from '../types';
-import { NETWORK_PERFORMANCE_KNOWLEDGE } from './knowledge';
 import { generateSecureActionId } from '@/lib/crypto-utils';
 
 export class SolanaAgent {
@@ -64,7 +63,7 @@ export class SolanaAgent {
 
     // For user messages, determine capability and execute
     const capability = this.config.capabilities.find(cap => cap.canHandle(message));
-    
+
     if (!capability) {
       return this.createErrorResponse('I apologize, but I\'m not sure how to handle that request.');
     }
@@ -74,23 +73,23 @@ export class SolanaAgent {
       const lastAssistantMessage = [...this.context.messages]
         .reverse()
         .find(m => m.role === 'assistant') || null;
-      
+
       // Extract actions from the last assistant message if it exists
-      const actions = lastAssistantMessage 
+      const actions = lastAssistantMessage
         ? this.extractActionsFromResponse(lastAssistantMessage.content)
         : [];
-      
+
       // Execute actions if present, otherwise use capability directly
-      const result = actions.length > 0 
+      const result = actions.length > 0
         ? await this.executeActions(actions)
         : await this.executeCapability(capability, message);
-      
+
       // Generate response using result
       const response = this.createResponse(capability.type, result);
 
       // Add response to context
       this.context.messages.push(response);
-      
+
       return response;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -103,9 +102,9 @@ export class SolanaAgent {
     // Extract the user's request from the prompt
     const requestMatch = prompt.match(/handle this request: "(.*?)" using available methods/i);
     if (!requestMatch?.[1]) return 'No actions needed';
-    
+
     const request = requestMatch[1].toLowerCase();
-    
+
     // Define action patterns with type safety
     interface ActionPattern {
       keywords: string[];
@@ -152,23 +151,23 @@ export class SolanaAgent {
         ]
       }
     ];
-    
+
     // Find matching pattern
     const matchingPattern = patterns.find(pattern =>
       pattern.keywords.some(keyword => request.includes(keyword))
     );
-    
+
     if (matchingPattern) {
       return matchingPattern.actions.join('\n');
     }
-    
+
     // If no specific pattern matches, extract methods from prompt
     const methodsMatch = prompt.match(/available methods: (.*?)(?:\.|$)/i);
     const methods = methodsMatch?.[1]?.split(', ').filter(Boolean) ?? [];
     const actionsList = methods
       .map(method => `[ACTION]${method}:Execute ${method}[/ACTION]`)
       .join('\n');
-    
+
     return actionsList || 'No actions needed';
   }
 
@@ -185,7 +184,7 @@ export class SolanaAgent {
         const { capabilityType } = capabilityInfo;
 
         // Find matching capability
-        const capability = this.config.capabilities.find(cap => 
+        const capability = this.config.capabilities.find(cap =>
           this.matchesCapability(cap.type, capabilityType)
         );
 
@@ -198,16 +197,16 @@ export class SolanaAgent {
           content: action.description
         });
 
-        results.push({ 
-          action, 
-          result, 
+        results.push({
+          action,
+          result,
           status: 'completed' as const,
-          capabilityType: capability.type 
+          capabilityType: capability.type
         });
       } catch (error) {
         const errorMessage = error instanceof Error ? error.message : String(error);
-        results.push({ 
-          action, 
+        results.push({
+          action,
           error: errorMessage,
           status: 'failed' as const
         });
@@ -223,7 +222,7 @@ export class SolanaAgent {
     // 3. capability_action (e.g., network_getStatus)
     // 4. capabilityAction (e.g., networkGetStatus)
     // 5. simple_action (e.g., getStatus)
-    
+
     // First try to match capability.action format
     const dotMatch = actionType.match(/^([a-z]+)\.([a-z]+)/i);
     if (dotMatch?.[1]) {
@@ -343,7 +342,7 @@ export class SolanaAgent {
       executableTools.forEach(tool => completedTools.add(tool.name));
 
       // Remove executed tools from remaining
-      remainingTools = remainingTools.filter(tool => 
+      remainingTools = remainingTools.filter(tool =>
         !executableTools.includes(tool)
       );
     }
@@ -411,7 +410,7 @@ export class SolanaAgent {
 
         // Extract the actual result data
         const data = item.result?.result || item.result;
-        
+
         if (!data) {
           return null;
         }

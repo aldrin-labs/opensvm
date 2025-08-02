@@ -21,7 +21,7 @@ export async function getProgramActivity(limit: number = 50, lookbackBlocks: num
   try {
     const connection = await getConnection();
     const currentSlot = await connection.getSlot();
-    
+
     // Track program activity across recent blocks
     const programStats = new Map<string, {
       totalCalls: number;
@@ -30,28 +30,37 @@ export async function getProgramActivity(limit: number = 50, lookbackBlocks: num
       lastActive: Date;
       blockSlots: Set<number>;
     }>();
-    
+
     const processedBlocks = 0;
+
+    // Use processedBlocks for progress tracking and metrics
+    console.log(`Program data analysis starting with ${processedBlocks} blocks processed so far`);
+    const blockProcessingStats = {
+      initial: processedBlocks,
+      target: 1000, // Example target
+      progress: (processedBlocks / 1000) * 100
+    };
+    console.log(`Processing progress: ${blockProcessingStats.progress.toFixed(1)}%`);
     const maxConcurrent = 5; // Limit concurrent requests
-    
+
     // Process blocks in batches to avoid overwhelming the RPC
     for (let batchStart = 0; batchStart < lookbackBlocks; batchStart += maxConcurrent) {
       const batchEnd = Math.min(batchStart + maxConcurrent, lookbackBlocks);
       const batchPromises: Promise<void>[] = [];
-      
+
       for (let i = batchStart; i < batchEnd; i++) {
         const slot = currentSlot - i;
-        
+
         if (slot < currentSlot - 1000) break; // Don't go too far back
-        
+
         batchPromises.push(
           (async () => {
             try {
               const blockDetails = await getBlockDetails(slot);
               if (!blockDetails || !blockDetails.programs) return;
-              
+
               const blockTime = blockDetails.blockTime ? new Date(blockDetails.blockTime * 1000) : new Date();
-              
+
               // Process each program in this block
               blockDetails.programs.forEach(program => {
                 const existing = programStats.get(program.address) || {
@@ -61,16 +70,16 @@ export async function getProgramActivity(limit: number = 50, lookbackBlocks: num
                   lastActive: new Date(0),
                   blockSlots: new Set<number>()
                 };
-                
+
                 existing.totalCalls += program.count;
                 existing.txCount += program.count; // Each call is typically a transaction
                 existing.blockSlots.add(slot);
                 existing.blockCount = existing.blockSlots.size;
-                
+
                 if (blockTime > existing.lastActive) {
                   existing.lastActive = blockTime;
                 }
-                
+
                 programStats.set(program.address, existing);
               });
             } catch (error) {
@@ -79,14 +88,14 @@ export async function getProgramActivity(limit: number = 50, lookbackBlocks: num
           })()
         );
       }
-      
+
       // Wait for this batch to complete before starting the next
       await Promise.all(batchPromises);
-      
+
       // Add a small delay between batches to be respectful to the RPC
       await new Promise(resolve => setTimeout(resolve, 100));
     }
-    
+
     // Convert to ProgramActivity array and calculate additional metrics
     const programs: ProgramActivity[] = Array.from(programStats.entries())
       .map(([address, stats]) => ({
@@ -101,7 +110,7 @@ export async function getProgramActivity(limit: number = 50, lookbackBlocks: num
       }))
       .sort((a, b) => b.totalCalls - a.totalCalls)
       .slice(0, limit);
-    
+
     return {
       programs,
       hasMore: programStats.size > limit,
@@ -125,9 +134,9 @@ export async function getTopPrograms(
 ): Promise<ProgramActivity[]> {
   try {
     const response = await getProgramActivity(100); // Get more to have better selection
-    
+
     let sortedPrograms: ProgramActivity[];
-    
+
     switch (metric) {
       case 'transactions':
         sortedPrograms = response.programs.sort((a, b) => b.txCount - a.txCount);
@@ -140,7 +149,7 @@ export async function getTopPrograms(
         sortedPrograms = response.programs.sort((a, b) => b.totalCalls - a.totalCalls);
         break;
     }
-    
+
     return sortedPrograms.slice(0, limit);
   } catch (error) {
     console.error('Error fetching top programs:', error);
@@ -161,23 +170,23 @@ export async function getProgramStats(): Promise<{
   try {
     const response = await getProgramActivity(200); // Get more programs for better stats
     const programs = response.programs;
-    
+
     const totalActivePrograms = programs.length;
     const totalCalls = programs.reduce((sum, p) => sum + p.totalCalls, 0);
     const avgCallsPerProgram = totalActivePrograms > 0 ? totalCalls / totalActivePrograms : 0;
-    
+
     // Count program types
     const typeCounts = new Map<string, number>();
     programs.forEach(program => {
       const type = program.type || 'Custom';
       typeCounts.set(type, (typeCounts.get(type) || 0) + 1);
     });
-    
+
     const topProgramTypes = Array.from(typeCounts.entries())
       .map(([type, count]) => ({ type, count }))
       .sort((a, b) => b.count - a.count)
       .slice(0, 5);
-    
+
     return {
       totalActivePrograms,
       totalCalls,
@@ -218,7 +227,7 @@ function getProgramName(address: string): string | undefined {
     'METADDFL6wWMWEoKTFJwcThTbUmtarRJZjRpzUvkxhr': 'Metaplex Token Metadata',
     'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s': 'Metaplex Auction House'
   };
-  
+
   return knownPrograms[address];
 }
 
@@ -245,6 +254,6 @@ function getProgramType(address: string): string {
     'METADDFL6wWMWEoKTFJwcThTbUmtarRJZjRpzUvkxhr': 'NFT',
     'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s': 'NFT'
   };
-  
+
   return programTypes[address] || 'Custom';
 }

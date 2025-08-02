@@ -3,13 +3,13 @@
  * Centralized functions for user history statistics and validation
  */
 
-import { 
-  UserHistoryEntry, 
-  UserHistoryStats, 
-  UserSocialStats, 
-  UserFollowEntry, 
-  UserLikeEntry, 
-  UserPageView 
+import {
+  UserHistoryEntry,
+  UserHistoryStats,
+  UserSocialStats,
+  UserFollowEntry,
+  UserLikeEntry,
+  UserPageView
 } from '@/types/user-history';
 
 /**
@@ -36,7 +36,7 @@ export function calculateStats(history: UserHistoryEntry[]): UserHistoryStats {
     return acc;
   }, {} as Record<string, number>);
 
-  const mostVisitedType = Object.entries(pageTypes).reduce((a, b) => 
+  const mostVisitedType = Object.entries(pageTypes).reduce((a, b) =>
     pageTypes[a[0]] > pageTypes[b[0]] ? a : b
   )[0];
 
@@ -64,12 +64,52 @@ export function calculateStats(history: UserHistoryEntry[]): UserHistoryStats {
     totalVisits: history.length,
     uniquePages: uniquePaths.size,
     mostVisitedPageType: mostVisitedType,
-    averageSessionDuration: 0, // TODO: Calculate based on session data
+    averageSessionDuration: calculateAverageSessionDuration(history),
     lastVisit: Math.max(...history.map(h => h.timestamp)),
     firstVisit: Math.min(...history.map(h => h.timestamp)),
     dailyActivity: dailyActivityArray,
     pageTypeDistribution
   };
+}
+
+/**
+ * Calculate average session duration from history entries
+ */
+function calculateAverageSessionDuration(history: UserHistoryEntry[]): number {
+  if (history.length < 2) {
+    return 0;
+  }
+
+  // Group entries by session (entries within 30 minutes of each other)
+  const sessionThreshold = 30 * 60 * 1000; // 30 minutes in milliseconds
+  const sortedHistory = [...history].sort((a, b) => a.timestamp - b.timestamp);
+
+  let sessions: number[][] = [];
+  let currentSession: number[] = [sortedHistory[0].timestamp];
+
+  for (let i = 1; i < sortedHistory.length; i++) {
+    const timeDiff = sortedHistory[i].timestamp - sortedHistory[i - 1].timestamp;
+
+    if (timeDiff <= sessionThreshold) {
+      currentSession.push(sortedHistory[i].timestamp);
+    } else {
+      sessions.push(currentSession);
+      currentSession = [sortedHistory[i].timestamp];
+    }
+  }
+  sessions.push(currentSession);
+
+  // Calculate average session duration
+  const sessionDurations = sessions.map(session => {
+    if (session.length < 2) return 0;
+    return session[session.length - 1] - session[0];
+  }).filter(duration => duration > 0);
+
+  if (sessionDurations.length === 0) {
+    return 0;
+  }
+
+  return sessionDurations.reduce((sum, duration) => sum + duration, 0) / sessionDurations.length;
 }
 
 /**
@@ -83,10 +123,10 @@ export function validateWalletAddress(address: string): string | null {
 
   // Trim whitespace and convert to string
   const sanitized = String(address).trim();
-  
+
   // Basic Solana address validation (base58, 32-44 characters)
   const base58Regex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-  
+
   if (!base58Regex.test(sanitized)) {
     return null;
   }
@@ -133,21 +173,21 @@ export function sanitizeInput(input: string): string {
   if (!input || typeof input !== 'string') {
     return '';
   }
-  
+
   let sanitized = input.trim();
-  
+
   // Remove < and > characters
   sanitized = sanitized.replace(/[<>]/g, '');
-  
+
   // Remove javascript: protocol
   sanitized = sanitized.replace(/javascript:/gi, '');
-  
+
   // Remove event handlers (apply repeatedly until no matches are found)
   let previous;
   do {
     previous = sanitized;
     sanitized = sanitized.replace(/on\w+=/gi, '');
   } while (sanitized !== previous);
-  
+
   return sanitized;
 }

@@ -112,7 +112,7 @@ export class TransactionMetadataEnricher {
   private categorizeTransaction(transaction: EnhancedTransactionData): TransactionCategory {
     const instructions = transaction.instructionData;
     const programIds = instructions.map(ix => ix.programId);
-    
+
     // Check for DeFi patterns
     if (this.isDeFiTransaction(programIds, instructions)) {
       return {
@@ -237,7 +237,7 @@ export class TransactionMetadataEnricher {
    */
   private calculatePerformanceMetrics(transaction: EnhancedTransactionData): PerformanceMetrics {
     const metrics = transaction.metrics;
-    
+
     const efficiency = metrics.efficiency;
     const costEffectiveness = this.calculateCostEffectiveness(transaction);
     const complexity = this.calculateComplexityScore(transaction);
@@ -475,7 +475,19 @@ export class TransactionMetadataEnricher {
       'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc', // Whirlpool
       '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
     ];
-    return programIds.some(id => defiPrograms.includes(id));
+
+    // Check program IDs first
+    const hasDeFiProgram = programIds.some(id => defiPrograms.includes(id));
+
+    // Analyze instructions for DeFi patterns
+    const hasDeFiInstructions = instructions.some(ix =>
+      ix.instructionType?.toLowerCase().includes('swap') ||
+      ix.instructionType?.toLowerCase().includes('liquidity') ||
+      ix.instructionType?.toLowerCase().includes('pool') ||
+      ix.instructionType?.toLowerCase().includes('trade')
+    );
+
+    return hasDeFiProgram || hasDeFiInstructions;
   }
 
   private isNFTTransaction(programIds: string[], instructions: any[]): boolean {
@@ -483,7 +495,19 @@ export class TransactionMetadataEnricher {
       'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s', // Metaplex
       'cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ', // Candy Machine
     ];
-    return programIds.some(id => nftPrograms.includes(id));
+
+    // Check program IDs first
+    const hasNFTProgram = programIds.some(id => nftPrograms.includes(id));
+
+    // Analyze instructions for NFT patterns
+    const hasNFTInstructions = instructions.some(ix =>
+      ix.instructionType?.toLowerCase().includes('mint') ||
+      ix.instructionType?.toLowerCase().includes('nft') ||
+      ix.instructionType?.toLowerCase().includes('metadata') ||
+      ix.instructionType?.toLowerCase().includes('collection')
+    );
+
+    return hasNFTProgram || hasNFTInstructions;
   }
 
   private isGovernanceTransaction(programIds: string[]): boolean {
@@ -494,11 +518,11 @@ export class TransactionMetadataEnricher {
   }
 
   private isSimpleTransfer(instructions: any[]): boolean {
-    return instructions.length <= 2 && 
-           instructions.every(ix => 
-             ix.instructionType === 'transfer' || 
-             ix.instructionType === 'transferChecked'
-           );
+    return instructions.length <= 2 &&
+      instructions.every(ix =>
+        ix.instructionType === 'transfer' ||
+        ix.instructionType === 'transferChecked'
+      );
   }
 
   private isSystemTransaction(programIds: string[]): boolean {
@@ -515,16 +539,16 @@ export class TransactionMetadataEnricher {
     const instructionCount = transaction.metrics.instructionCount;
     const accountCount = transaction.accountStates.length;
     const programCount = new Set(transaction.instructionData.map(ix => ix.programId)).size;
-    
+
     return Math.min((instructionCount * 10) + (accountCount * 5) + (programCount * 15), 100);
   }
 
   private calculateCostEffectiveness(transaction: EnhancedTransactionData): number {
     const fee = transaction.metrics.totalFee;
     const value = this.calculateTotalValue(transaction) * 1e9; // Convert to lamports
-    
+
     if (value === 0) return 50; // Neutral score for zero-value transactions
-    
+
     const ratio = fee / value;
     return Math.max(0, Math.min(100, 100 - (ratio * 1000))); // Lower ratio = higher score
   }
@@ -532,10 +556,10 @@ export class TransactionMetadataEnricher {
   private calculateGasOptimization(transaction: EnhancedTransactionData): number {
     const efficiency = transaction.metrics.efficiency;
     const instructionCount = transaction.metrics.instructionCount;
-    
+
     // Penalize transactions with many instructions but low efficiency
     const optimizationScore = efficiency - (instructionCount > 5 ? (instructionCount - 5) * 5 : 0);
-    
+
     return Math.max(0, Math.min(100, optimizationScore));
   }
 
@@ -550,7 +574,7 @@ export class TransactionMetadataEnricher {
 
   private getTokenTransfers(transaction: EnhancedTransactionData): Array<{ amount: number, symbol?: string }> {
     const transfers: Array<{ amount: number, symbol?: string }> = [];
-    
+
     transaction.accountStates.forEach(account => {
       account.tokenChanges.forEach(change => {
         if (change.uiAmountAfter && change.uiAmountBefore) {
@@ -561,20 +585,77 @@ export class TransactionMetadataEnricher {
         }
       });
     });
-    
+
     return transfers;
   }
 
   private detectNewAccounts(transaction: EnhancedTransactionData): string[] {
-    // This would require checking if accounts existed before the transaction
-    // For now, return empty array
-    return [];
+    try {
+      // Analyze account changes to detect new accounts
+      const newAccounts: string[] = [];
+
+      // Check for accounts with zero pre-balance but non-zero post-balance
+      const transactionData = transaction as any;
+      if (transactionData.accountChanges) {
+        transactionData.accountChanges.forEach((change: any, index: number) => {
+          const preBalance = transactionData.preBalances?.[index] || 0;
+          const postBalance = transactionData.postBalances?.[index] || 0;
+
+          // If account had no balance before but has balance after, likely new
+          if (preBalance === 0 && postBalance > 0) {
+            newAccounts.push(change.account);
+          }
+        });
+      }
+
+      // Check for system program account creation instructions
+      if (transactionData.instructions) {
+        transactionData.instructions.forEach((ix: any) => {
+          if (ix.programId === '11111111111111111111111111111111' &&
+            ix.instructionType?.toLowerCase().includes('create')) {
+            // Extract created account from instruction accounts
+            const createdAccount = ix.accounts?.[1]; // Usually the second account
+            if (createdAccount && !newAccounts.includes(createdAccount)) {
+              newAccounts.push(createdAccount);
+            }
+          }
+        });
+      }
+
+      console.log(`Detected ${newAccounts.length} new accounts in transaction`);
+      return newAccounts;
+    } catch (error) {
+      console.error('Error detecting new accounts:', error);
+      return [];
+    }
   }
 
   private getDeFiSubCategory(programIds: string[], instructions: any[]): string {
-    // Analyze specific DeFi operations
+    // Analyze specific DeFi operations based on programs and instructions
+
+    // Jupiter-specific operations
+    if (programIds.includes('JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4')) {
+      return 'jupiter_swap';
+    }
+
+    // Whirlpool-specific operations
+    if (programIds.includes('whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc')) {
+      if (instructions.some(ix => ix.instructionType?.includes('liquidity'))) return 'whirlpool_liquidity';
+      return 'whirlpool_operation';
+    }
+
+    // Raydium-specific operations
+    if (programIds.includes('9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM')) {
+      if (instructions.some(ix => ix.instructionType?.includes('swap'))) return 'raydium_swap';
+      if (instructions.some(ix => ix.instructionType?.includes('liquidity'))) return 'raydium_liquidity';
+      return 'raydium_operation';
+    }
+
+    // Generic DeFi operation analysis
     if (instructions.some(ix => ix.instructionType?.includes('swap'))) return 'swap';
     if (instructions.some(ix => ix.instructionType?.includes('liquidity'))) return 'liquidity';
+    if (instructions.some(ix => ix.instructionType?.includes('pool'))) return 'pool_operation';
+
     return 'defi_operation';
   }
 
@@ -597,7 +678,36 @@ export class TransactionMetadataEnricher {
   }
 
   private determineSubCategory(transaction: EnhancedTransactionData, category: TransactionCategory): string {
-    return category.secondary;
+    try {
+      // Analyze transaction data for more specific subcategorization
+      const transactionData = transaction as any;
+      const instructions = transactionData.instructions || [];
+      const programIds = instructions.map((ix: any) => ix.programId).filter(Boolean);
+
+      // Use transaction-specific analysis based on category
+      switch (category.primary) {
+        case 'defi':
+          return this.getDeFiSubCategory(programIds, instructions);
+
+        case 'nft':
+          return this.getNFTSubCategory(instructions);
+
+        case 'transfer':
+          return this.getTransferType(instructions);
+
+        case 'system':
+          return this.getSystemSubCategory(instructions);
+
+        default:
+          // Analyze transaction complexity for unknown categories
+          if (instructions.length > 5) return 'complex_operation';
+          if (instructions.length > 1) return 'multi_instruction';
+          return category.secondary || 'simple_operation';
+      }
+    } catch (error) {
+      console.error('Error determining subcategory:', error);
+      return category.secondary || 'unknown';
+    }
   }
 
   private getProgramCategory(programId: string): string {
@@ -616,7 +726,7 @@ export class TransactionMetadataEnricher {
       'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
       'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'
     ];
-    
+
     if (verifiedPrograms.includes(programId)) return 'verified';
     return 'unknown';
   }

@@ -51,20 +51,22 @@ const METADATA_STORE = 'cache-metadata';
 async function openDatabase(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    
+
     request.onerror = (event) => {
       console.error('Failed to open database:', event);
       reject(new Error('Failed to open IndexedDB database'));
     };
-    
+
     request.onsuccess = (event) => {
+      console.log('Database opened successfully:', event.type);
       const db = request.result;
       resolve(db);
     };
-    
+
     request.onupgradeneeded = (event) => {
+      console.log('Database upgrade needed, version:', (event.target as any)?.result?.version);
       const db = request.result;
-      
+
       // Create event store with index on wallet address
       if (!db.objectStoreNames.contains(EVENTS_STORE)) {
         const eventStore = db.createObjectStore(EVENTS_STORE, { keyPath: 'id' });
@@ -72,7 +74,7 @@ async function openDatabase(): Promise<IDBDatabase> {
         eventStore.createIndex('feedType', 'feedType', { unique: false });
         eventStore.createIndex('walletFeed', ['walletAddress', 'feedType'], { unique: false });
       }
-      
+
       // Create metadata store
       if (!db.objectStoreNames.contains(METADATA_STORE)) {
         db.createObjectStore(METADATA_STORE, { keyPath: 'key' });
@@ -91,18 +93,18 @@ export async function isCacheValid(key: string): Promise<boolean> {
       const transaction = db.transaction(METADATA_STORE, 'readonly');
       const store = transaction.objectStore(METADATA_STORE);
       const request = store.get(key);
-      
+
       request.onsuccess = () => {
         const metadata = request.result;
         const isValid = metadata && metadata.expiresAt > Date.now();
         resolve(!!isValid);
       };
-      
+
       request.onerror = () => {
         console.error('Error checking cache validity');
         resolve(false);
       };
-      
+
       transaction.oncomplete = () => {
         db.close();
       };
@@ -135,23 +137,23 @@ export async function cacheFeedEvents(
   filters?: FeedFilters
 ): Promise<void> {
   if (!events || events.length === 0) return;
-  
+
   try {
     const db = await openDatabase();
     const transaction = db.transaction([EVENTS_STORE, METADATA_STORE], 'readwrite');
     const eventStore = transaction.objectStore(EVENTS_STORE);
     const metadataStore = transaction.objectStore(METADATA_STORE);
-    
+
     // Delete existing events for this wallet/feed type
     const index = eventStore.index('walletFeed');
     const existingEvents = index.getAll([walletAddress, feedType]);
-    
+
     existingEvents.onsuccess = () => {
       // Delete existing events
       existingEvents.result.forEach((event) => {
         eventStore.delete(event.id);
       });
-      
+
       // Store new events
       events.forEach((event) => {
         // Add wallet and feed type info to each event
@@ -162,24 +164,36 @@ export async function cacheFeedEvents(
         };
         eventStore.put(eventToStore);
       });
-      
+
       // Update cache metadata
       const now = Date.now();
       const expiresAt = now + CACHE_EXPIRATION;
       const cacheKey = generateCacheKey(walletAddress, feedType, filters);
-      
+
+      const cacheMetadata: CachedItem<{ key: string; lastUpdated: number }> = {
+        data: {
+          key: cacheKey,
+          lastUpdated: now
+        },
+        timestamp: now,
+        expiresAt
+      };
+
+      // Validate cache metadata before storing
+      console.log(`Caching metadata for key ${cacheMetadata.data.key}, expires at: ${new Date(cacheMetadata.expiresAt).toISOString()}`);
+
       metadataStore.put({
         key: cacheKey,
         lastUpdated: now,
         expiresAt
       });
     };
-    
+
     transaction.oncomplete = () => {
       console.log(`Cached ${events.length} events for ${walletAddress}/${feedType}`);
       db.close();
     };
-    
+
     transaction.onerror = (error) => {
       console.error('Error caching feed events:', error);
       db.close();
@@ -194,21 +208,21 @@ export async function cacheFeedEvents(
  */
 function applyFilters(events: FeedEvent[], filters?: FeedFilters): FeedEvent[] {
   if (!filters) return events;
-  
+
   let filteredEvents = [...events];
-  
+
   // Filter by event type
   if (filters.eventTypes && filters.eventTypes.length > 0) {
-    filteredEvents = filteredEvents.filter(event => 
+    filteredEvents = filteredEvents.filter(event =>
       filters.eventTypes!.includes(event.eventType)
     );
   }
-  
+
   // Filter by date range
   if (filters.dateRange && filters.dateRange !== 'all') {
     const now = Date.now();
     let timeThreshold = now;
-    
+
     if (filters.dateRange === 'today') {
       timeThreshold = new Date().setHours(0, 0, 0, 0);
     } else if (filters.dateRange === 'week') {
@@ -216,10 +230,10 @@ function applyFilters(events: FeedEvent[], filters?: FeedFilters): FeedEvent[] {
     } else if (filters.dateRange === 'month') {
       timeThreshold = now - 30 * 24 * 60 * 60 * 1000;
     }
-    
+
     filteredEvents = filteredEvents.filter(event => event.timestamp >= timeThreshold);
   }
-  
+
   // Sort by specified order
   if (filters.sortOrder === 'popular') {
     filteredEvents.sort((a, b) => b.likes - a.likes);
@@ -227,18 +241,18 @@ function applyFilters(events: FeedEvent[], filters?: FeedFilters): FeedEvent[] {
     // Default to newest
     filteredEvents.sort((a, b) => b.timestamp - a.timestamp);
   }
-  
+
   // Apply search query if specified
   if (filters.searchQuery) {
     const query = filters.searchQuery.toLowerCase();
-    filteredEvents = filteredEvents.filter(event => 
-      event.content.toLowerCase().includes(query) || 
+    filteredEvents = filteredEvents.filter(event =>
+      event.content.toLowerCase().includes(query) ||
       (event.userName && event.userName.toLowerCase().includes(query)) ||
       event.eventType.toLowerCase().includes(query) ||
       event.userAddress.toLowerCase().includes(query)
     );
   }
-  
+
   return filteredEvents;
 }
 
@@ -253,46 +267,46 @@ export async function getCachedFeedEvents(
   try {
     const db = await openDatabase();
     const cacheKey = generateCacheKey(walletAddress, feedType, filters);
-    
+
     // Check cache validity and get events in single transaction to avoid race condition
     return new Promise((resolve) => {
       const transaction = db.transaction([EVENTS_STORE, METADATA_STORE], 'readonly');
       const eventStore = transaction.objectStore(EVENTS_STORE);
       const metadataStore = transaction.objectStore(METADATA_STORE);
-      
+
       // First check if cache is valid
       const metadataRequest = metadataStore.get(cacheKey);
-      
+
       metadataRequest.onsuccess = () => {
         const metadata = metadataRequest.result;
         const isValid = metadata && metadata.expiresAt > Date.now();
-        
+
         if (!isValid) {
           resolve(null);
           return;
         }
-        
+
         // Cache is valid, get events
         const index = eventStore.index('walletFeed');
         const eventsRequest = index.getAll([walletAddress, feedType]);
-        
+
         eventsRequest.onsuccess = () => {
           const events = eventsRequest.result;
           const filteredEvents = applyFilters(events, filters);
           resolve(filteredEvents);
         };
-        
+
         eventsRequest.onerror = () => {
           console.error('Error retrieving cached events');
           resolve(null);
         };
       };
-      
+
       metadataRequest.onerror = () => {
         console.error('Error checking cache metadata');
         resolve(null);
       };
-      
+
       transaction.oncomplete = () => {
         db.close();
       };
@@ -314,42 +328,42 @@ export async function updateCachedEvent(
     const db = await openDatabase();
     const transaction = db.transaction(EVENTS_STORE, 'readwrite');
     const store = transaction.objectStore(EVENTS_STORE);
-    
+
     return new Promise((resolve) => {
       // Get current event
       const getRequest = store.get(eventId);
-      
+
       getRequest.onsuccess = () => {
         const event = getRequest.result;
         if (!event) {
           resolve(false);
           return;
         }
-        
+
         // Update event with new values
         const updatedEvent = {
           ...event,
           ...updates
         };
-        
+
         // Save updated event
         const putRequest = store.put(updatedEvent);
-        
+
         putRequest.onsuccess = () => {
           resolve(true);
         };
-        
+
         putRequest.onerror = () => {
           console.error('Error updating cached event');
           resolve(false);
         };
       };
-      
+
       getRequest.onerror = () => {
         console.error('Error retrieving event for update');
         resolve(false);
       };
-      
+
       transaction.oncomplete = () => {
         db.close();
       };
@@ -372,7 +386,7 @@ export async function addEventToCache(
     const db = await openDatabase();
     const transaction = db.transaction(EVENTS_STORE, 'readwrite');
     const store = transaction.objectStore(EVENTS_STORE);
-    
+
     return new Promise((resolve) => {
       // Add wallet and feed type to event
       const eventToStore = {
@@ -380,18 +394,18 @@ export async function addEventToCache(
         walletAddress,
         feedType
       };
-      
+
       const request = store.put(eventToStore);
-      
+
       request.onsuccess = () => {
         resolve(true);
       };
-      
+
       request.onerror = () => {
         console.error('Error adding event to cache');
         resolve(false);
       };
-      
+
       transaction.oncomplete = () => {
         db.close();
       };
@@ -414,25 +428,26 @@ export async function clearCache(
     const transaction = db.transaction([EVENTS_STORE, METADATA_STORE], 'readwrite');
     const eventStore = transaction.objectStore(EVENTS_STORE);
     const metadataStore = transaction.objectStore(METADATA_STORE);
-    
+
     return new Promise((resolve) => {
       if (walletAddress && feedType) {
         // Clear specific wallet/feed type
         const index = eventStore.index('walletFeed');
         const request = index.getAll([walletAddress, feedType]);
-        
+
         request.onsuccess = () => {
           const events = request.result;
-          
+
           // Delete each event
           events.forEach(event => {
             eventStore.delete(event.id);
           });
-          
+
           // Delete related metadata
           const metadataRequest = metadataStore.openCursor();
-          
+
           metadataRequest.onsuccess = (event) => {
+            console.log('Metadata cursor operation for specific cache clear:', event.type);
             const cursor = metadataRequest.result;
             if (cursor) {
               const key = cursor.value.key;
@@ -447,19 +462,20 @@ export async function clearCache(
         // Clear all for wallet
         const index = eventStore.index('walletAddress');
         const request = index.getAll(walletAddress);
-        
+
         request.onsuccess = () => {
           const events = request.result;
-          
+
           // Delete each event
           events.forEach(event => {
             eventStore.delete(event.id);
           });
-          
+
           // Delete related metadata
           const metadataRequest = metadataStore.openCursor();
-          
+
           metadataRequest.onsuccess = (event) => {
+            console.log('Metadata cursor operation for wallet cache clear:', event.type);
             const cursor = metadataRequest.result;
             if (cursor) {
               const key = cursor.value.key;
@@ -475,12 +491,12 @@ export async function clearCache(
         eventStore.clear();
         metadataStore.clear();
       }
-      
+
       transaction.oncomplete = () => {
         db.close();
         resolve(true);
       };
-      
+
       transaction.onerror = () => {
         console.error('Error clearing cache');
         db.close();
@@ -504,21 +520,21 @@ export async function getCacheStats(): Promise<{
 }> {
   try {
     const db = await openDatabase();
-    
+
     const eventsPromise = new Promise<number>((resolve) => {
       const transaction = db.transaction(EVENTS_STORE, 'readonly');
       const store = transaction.objectStore(EVENTS_STORE);
       const countRequest = store.count();
-      
+
       countRequest.onsuccess = () => {
         resolve(countRequest.result);
       };
-      
+
       countRequest.onerror = () => {
         resolve(0);
       };
     });
-    
+
     const metadataPromise = new Promise<{
       count: number;
       oldest: number;
@@ -527,11 +543,11 @@ export async function getCacheStats(): Promise<{
       const transaction = db.transaction(METADATA_STORE, 'readonly');
       const store = transaction.objectStore(METADATA_STORE);
       const request = store.getAll();
-      
+
       request.onsuccess = () => {
         const metadata = request.result;
         const count = metadata.length;
-        
+
         if (count === 0) {
           resolve({
             count: 0,
@@ -540,18 +556,18 @@ export async function getCacheStats(): Promise<{
           });
           return;
         }
-        
+
         const timestamps = metadata.map(entry => entry.lastUpdated);
         const oldest = Math.min(...timestamps);
         const newest = Math.max(...timestamps);
-        
+
         resolve({
           count,
           oldest,
           newest
         });
       };
-      
+
       request.onerror = () => {
         resolve({
           count: 0,
@@ -560,11 +576,11 @@ export async function getCacheStats(): Promise<{
         });
       };
     });
-    
+
     const [eventCount, metadataStats] = await Promise.all([eventsPromise, metadataPromise]);
-    
+
     db.close();
-    
+
     return {
       eventCount,
       cacheEntries: metadataStats.count,

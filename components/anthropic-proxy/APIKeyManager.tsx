@@ -187,20 +187,20 @@ export default function APIKeyManager() {
         });
     };
 
-    const formatNumber = (num: number) => {
-        if (num >= 1000000) {
-            return (num / 1000000).toFixed(1) + 'M';
-        } else if (num >= 1000) {
-            return (num / 1000).toFixed(1) + 'K';
-        }
-        return num.toString();
-    };
+    // const formatNumber = (num: number) => {
+    //     if (num >= 1000000) {
+    //         return (num / 1000000).toFixed(1) + 'M';
+    //     } else if (num >= 1000) {
+    //         return (num / 1000).toFixed(1) + 'K';
+    //     }
+    //     return num.toString();
+    // };
 
     const toggleKeyVisibility = (keyId: string) => {
         setShowFullKey(showFullKey === keyId ? null : keyId);
     };
 
-    const viewKeyUsage = (keyId: string) => {
+    const viewKeyUsage = (_keyId: string) => {
         // This function is not fully implemented in the new_code,
         // so it will just show a toast for now.
         toast.info('Key usage details not yet available.');

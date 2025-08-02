@@ -2,7 +2,7 @@ import {
   APIKey,
   KeyGenerationRequest,
   KeyGenerationResult,
-  KeyValidationResult,
+  KeyValidation,
   KeyUsageStats
 } from '../types/ProxyTypes';
 import {
@@ -20,6 +20,7 @@ import { KeyStorage } from '../storage/KeyStorage';
  */
 export class APIKeyManager {
   private storage: KeyStorage;
+  private validationCache: Map<string, KeyValidation> = new Map(); // Use KeyValidation type
 
   constructor() {
     this.storage = new KeyStorage();
@@ -78,8 +79,15 @@ export class APIKeyManager {
   /**
    * Validate an API key and return user info
    */
-  async validateKey(apiKey: string): Promise<KeyValidationResult> {
+  async validateKey(apiKey: string): Promise<KeyValidation> {
     try {
+      // Use validationCache to improve performance and reduce redundant validations
+      const cached = this.validationCache.get(apiKey);
+      if (cached) {
+        console.log(`Using cached validation result for key: ${apiKey.substring(0, 8)}...`);
+        return cached;
+      }
+
       // Basic format validation
       if (!validateKeyFormat(apiKey)) {
         return {
@@ -114,11 +122,17 @@ export class APIKeyManager {
         };
       }
 
-      return {
+      const result = {
         isValid: true,
         keyId: keyRecord.id,
         userId: keyRecord.userId
       };
+
+      // Cache the validation result
+      this.validationCache.set(apiKey, result);
+      console.log(`Cached validation result for key: ${apiKey.substring(0, 8)}...`);
+
+      return result;
     } catch (error) {
       console.error('Failed to validate API key:', error);
       return {

@@ -320,7 +320,7 @@ export default function UserProfilePage() {
     if (validatedWalletAddress) {
       fetchUserProfile();
     }
-  }, [fetchUserProfile]);
+  }, [validatedWalletAddress, fetchUserProfile]);
 
   // Loading state
   if (loading) {

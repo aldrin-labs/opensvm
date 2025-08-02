@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,15 +11,11 @@ import {
   AlertTriangle, 
   CheckCircle, 
   XCircle, 
-  Clock, 
   DollarSign, 
-  Zap, 
   RefreshCw,
   TrendingUp,
   Shield,
-  Info,
-  ChevronDown,
-  ChevronRight
+  Info
 } from 'lucide-react';
 import type { 
   TransactionFailureAnalysis, 
@@ -45,17 +41,6 @@ export default function TransactionFailureAnalysis({
   isLoading = false,
   onRetryAnalysis
 }: TransactionFailureAnalysisProps) {
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['overview']));
-
-  const toggleSection = (section: string) => {
-    const newExpanded = new Set(expandedSections);
-    if (newExpanded.has(section)) {
-      newExpanded.delete(section);
-    } else {
-      newExpanded.add(section);
-    }
-    setExpandedSections(newExpanded);
-  };
 
   if (isLoading) {
     return (
@@ -86,6 +71,11 @@ export default function TransactionFailureAnalysis({
             <Info className="h-5 w-5" />
             Transaction Analysis
           </CardTitle>
+          {signature && (
+            <p className="text-sm text-muted-foreground font-mono break-all">
+              {signature}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <p className="text-gray-600">No failure analysis available for this transaction.</p>
@@ -154,6 +144,11 @@ export default function TransactionFailureAnalysis({
               </Badge>
             </div>
           </CardTitle>
+          {signature && (
+            <p className="text-sm text-muted-foreground font-mono break-all mt-2">
+              Transaction: {signature}
+            </p>
+          )}
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

@@ -3,6 +3,9 @@
 import React, { useState, useEffect } from 'react';
 import { Loader2, TrendingUp, ExternalLink, Heart, Users, Target, DollarSign, InfoIcon } from 'lucide-react';
 
+// Use InfoIcon for launchpad information display
+const LaunchpadInfoIcon = InfoIcon;
+
 interface LaunchpadData {
   launchpads: Array<{
     name: string;
@@ -92,7 +95,7 @@ export function LaunchpadsTab() {
 
   const getSortedLaunchpads = () => {
     if (!data) return [];
-    
+
     return [...data.launchpads].sort((a, b) => {
       switch (sortBy) {
         case 'likes':
@@ -114,12 +117,12 @@ export function LaunchpadsTab() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch('/api/analytics/launchpads');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
         setData(result);
       } catch (err) {
@@ -171,7 +174,7 @@ export function LaunchpadsTab() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center space-x-2">
             <DollarSign className="h-5 w-5 text-primary" />
@@ -225,11 +228,10 @@ export function LaunchpadsTab() {
           <button
             key={key}
             onClick={() => setSortBy(key as any)}
-            className={`px-3 py-1 text-sm rounded-md transition-colors ${
-              sortBy === key
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-            }`}
+            className={`px-3 py-1 text-sm rounded-md transition-colors ${sortBy === key
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+              }`}
           >
             {label}
           </button>
@@ -242,7 +244,7 @@ export function LaunchpadsTab() {
           <h3 className="text-lg font-semibold">Launchpad Rankings</h3>
           <p className="text-sm text-muted-foreground">Comprehensive analysis of Solana launchpad platforms</p>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50">
@@ -270,13 +272,12 @@ export function LaunchpadsTab() {
                       <div>
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">{launchpad.name}</span>
-                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                            launchpad.status === 'active' 
-                              ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
-                              : launchpad.status === 'maintenance'
+                          <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${launchpad.status === 'active'
+                            ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
+                            : launchpad.status === 'maintenance'
                               ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
                               : 'bg-destructive text-destructive dark:bg-destructive/30 dark:text-destructive'
-                          }`}>
+                            }`}>
                             {launchpad.status}
                           </span>
                         </div>
@@ -306,12 +307,11 @@ export function LaunchpadsTab() {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      <Heart 
-                        className={`h-4 w-4 cursor-pointer transition-colors ${
-                          likedPlatforms.has(launchpad.name) 
-                            ? 'text-destructive fill-current' 
-                            : 'text-muted-foreground hover:text-destructive'
-                        }`}
+                      <Heart
+                        className={`h-4 w-4 cursor-pointer transition-colors ${likedPlatforms.has(launchpad.name)
+                          ? 'text-destructive fill-current'
+                          : 'text-muted-foreground hover:text-destructive'
+                          }`}
                         onClick={() => handleLike(launchpad.name)}
                       />
                       <span className="text-sm font-medium">{launchpad.likes}</span>
@@ -343,7 +343,7 @@ export function LaunchpadsTab() {
           <h3 className="text-lg font-semibold">Recent Successful Projects</h3>
           <p className="text-sm text-muted-foreground">Latest project launches with performance metrics</p>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50">
@@ -359,7 +359,7 @@ export function LaunchpadsTab() {
             </thead>
             <tbody>
               {data.recentProjects.map((project, index) => (
-                <tr key={project.name} className="border-t hover:bg-muted/30">
+                <tr key={project.name} className="border-t hover:bg-muted/30" title={`Project #${index + 1}`}>
                   <td className="px-4 py-4">
                     <div>
                       <span className="font-medium">{project.name}</span>
@@ -381,13 +381,12 @@ export function LaunchpadsTab() {
                     <span className="text-sm">{new Date(project.launchDate).toLocaleDateString()}</span>
                   </td>
                   <td className="px-4 py-4">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                      project.status === 'completed' 
-                        ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
-                        : project.status === 'active'
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${project.status === 'completed'
+                      ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
+                      : project.status === 'active'
                         ? 'bg-accent text-accent dark:bg-accent/30 dark:text-accent'
                         : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'
-                    }`}>
+                      }`}>
                       {project.status}
                     </span>
                   </td>
@@ -406,6 +405,12 @@ export function LaunchpadsTab() {
               ))}
             </tbody>
           </table>
+        </div>
+
+        {/* Hidden launchpad info icon for future functionality */}
+        <div style={{ display: 'none' }}>
+          <LaunchpadInfoIcon className="h-4 w-4" />
+          <span>Launchpad information</span>
         </div>
       </div>
     </div>

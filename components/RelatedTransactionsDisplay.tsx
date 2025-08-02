@@ -36,15 +36,6 @@ import {
   type RelationshipType,
   type TransactionInsight
 } from '@/lib/related-transaction-finder';
-import { 
-  relationshipStrengthScorer,
-  formatStrengthLevel,
-  getStrengthLevelColor,
-  formatComponentScore,
-  getRelevanceCategoryColor,
-  type RelationshipScore,
-  type RelevanceRanking
-} from '@/lib/relationship-strength-scorer';
 
 interface RelatedTransactionsDisplayProps {
   transaction: DetailedTransactionInfo;
@@ -592,7 +583,7 @@ const RelatedTransactionsDisplay: React.FC<RelatedTransactionsDisplayProps> = ({
                 </div>
                 
                 <div className="divide-y divide-border">
-                  {transactions.map((tx, index) => (
+                  {transactions.map((tx, _index) => (
                     <div key={tx.signature} className="p-4 hover:bg-muted/5 transition-colors">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">

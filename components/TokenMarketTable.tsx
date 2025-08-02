@@ -1,7 +1,8 @@
 'use client';
 
-import type { TokenMarketData, TokenGainerData, NewTokenData } from '@/types/token-market';
-import { formatNumber, formatCurrency, formatPercentage } from '@/utils/format';
+import React from 'react';
+import type { TokenMarketData } from '@/types/token-market';
+import { formatCurrency, formatPercentage } from '@/utils/format';
 
 interface TokenMarketTableProps {
   tokens: TokenMarketData[];
@@ -119,11 +120,11 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
                 {type === 'gainers' && (
                   <td className="px-4 py-3 text-right">
                     <div className="space-y-1">
-                      <div className={`text-sm font-medium ${getPriceChangeColor((token as TokenGainerData).priceChange24h || 0)}`}>
-                        {formatCurrency((token as TokenGainerData).priceChange24h || 0)}
+                      <div className={`text-sm font-medium ${getPriceChangeColor((token as any).priceChange24h || 0)}`}>
+                        {formatCurrency((token as any).priceChange24h || 0)}
                       </div>
-                      <div className={`text-xs ${getPriceChangeColor((token as TokenGainerData).priceChangePercentage24h || 0)}`}>
-                        {formatPercentage((token as TokenGainerData).priceChangePercentage24h || 0)}
+                      <div className={`text-xs ${getPriceChangeColor((token as any).priceChangePercentage24h || 0)}`}>
+                        {formatPercentage((token as any).priceChangePercentage24h || 0)}
                       </div>
                     </div>
                   </td>
@@ -131,7 +132,7 @@ export default function TokenMarketTable({ tokens, type, onTokenClick, isLoading
                 {type === 'new' && (
                   <td className="px-4 py-3">
                     <span className="text-sm text-foreground">
-                      {(token as NewTokenData).daysOld === 0 ? 'Today' : `${(token as NewTokenData).daysOld}d ago`}
+                      {(token as any).daysOld === 0 ? 'Today' : `${(token as any).daysOld}d ago`}
                     </span>
                   </td>
                 )}

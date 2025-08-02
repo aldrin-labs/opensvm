@@ -5,10 +5,10 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { 
-  AlertTriangle, 
-  RefreshCw, 
-  Bug, 
+import {
+  AlertTriangle,
+  RefreshCw,
+  Bug,
   ExternalLink,
   Copy,
   ChevronDown,
@@ -54,7 +54,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     console.error('Transaction component error:', error, errorInfo);
-    
+
     this.setState({
       error,
       errorInfo
@@ -87,15 +87,15 @@ export class TransactionErrorBoundary extends Component<Props, State> {
     };
 
     console.error('Error report:', errorReport);
-    
-    // TODO: Send to error tracking service
-    // errorTrackingService.report(errorReport);
+
+    // Send to error tracking service
+    this.sendToErrorTrackingService(errorReport);
   };
 
   private handleRetry = () => {
     const { retryCount } = this.state;
     const maxRetries = 3;
-    
+
     if (retryCount >= maxRetries) {
       return;
     }
@@ -118,7 +118,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
   private handleCopyError = () => {
     const { error, errorInfo } = this.state;
     const errorText = `Error: ${error?.message}\n\nStack: ${error?.stack}\n\nComponent Stack: ${errorInfo?.componentStack}`;
-    
+
     if (typeof window !== 'undefined' && window.navigator.clipboard) {
       window.navigator.clipboard.writeText(errorText);
     }
@@ -132,68 +132,88 @@ export class TransactionErrorBoundary extends Component<Props, State> {
 
   private getErrorSeverity = (error: Error): 'low' | 'medium' | 'high' => {
     const message = error.message.toLowerCase();
-    
+
     if (message.includes('network') || message.includes('fetch') || message.includes('timeout')) {
       return 'medium';
     }
-    
+
     if (message.includes('chunk') || message.includes('loading')) {
       return 'low';
     }
-    
+
     return 'high';
   };
 
   private getErrorCategory = (error: Error): string => {
     const message = error.message.toLowerCase();
-    
+
     if (message.includes('network') || message.includes('fetch')) {
       return 'Network Error';
     }
-    
+
     if (message.includes('chunk') || message.includes('loading')) {
       return 'Loading Error';
     }
-    
+
     if (message.includes('render') || message.includes('component')) {
       return 'Rendering Error';
     }
-    
+
     if (message.includes('parse') || message.includes('json')) {
       return 'Data Error';
     }
-    
+
     return 'Application Error';
+  };
+
+  private sendToErrorTrackingService = (errorReport: any) => {
+    try {
+      // Send error report to external tracking service
+      // In production, this would send to Sentry, LogRocket, or similar
+      if (typeof window !== 'undefined') {
+        fetch('/api/error-tracking', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(errorReport),
+        }).catch(err => {
+          console.error('Failed to send error to tracking service:', err);
+        });
+      }
+    } catch (err) {
+      console.error('Error sending to tracking service:', err);
+    }
   };
 
   private getSuggestions = (error: Error): string[] => {
     const message = error.message.toLowerCase();
     const suggestions: string[] = [];
-    
+
     if (message.includes('network') || message.includes('fetch')) {
       suggestions.push('Check your internet connection');
       suggestions.push('Try refreshing the page');
       suggestions.push('The blockchain RPC might be temporarily unavailable');
     }
-    
+
     if (message.includes('chunk') || message.includes('loading')) {
       suggestions.push('Clear your browser cache');
       suggestions.push('Try refreshing the page');
       suggestions.push('Check if you have a stable internet connection');
     }
-    
+
     if (message.includes('parse') || message.includes('json')) {
       suggestions.push('The transaction data might be corrupted');
       suggestions.push('Try viewing a different transaction');
       suggestions.push('Contact support if this persists');
     }
-    
+
     if (suggestions.length === 0) {
       suggestions.push('Try refreshing the page');
       suggestions.push('Clear your browser cache');
       suggestions.push('Contact support if the problem persists');
     }
-    
+
     return suggestions;
   };
 
@@ -201,7 +221,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       const { error, errorInfo, showDetails, retryCount } = this.state;
       const { signature, componentName } = this.props;
-      
+
       if (this.props.fallback) {
         return this.props.fallback;
       }
@@ -222,7 +242,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
               </Badge>
             </CardTitle>
           </CardHeader>
-          
+
           <CardContent className="space-y-4">
             <Alert>
               <Bug className="h-4 w-4" />
@@ -231,7 +251,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
                   <p><strong>{category}:</strong> {error?.message || 'An unexpected error occurred'}</p>
                   {signature && (
                     <p className="text-sm">
-                      <strong>Transaction:</strong> 
+                      <strong>Transaction:</strong>
                       <code className="ml-1 text-xs bg-muted px-1 py-0.5 rounded">
                         {signature.slice(0, 8)}...{signature.slice(-8)}
                       </code>
@@ -259,21 +279,21 @@ export class TransactionErrorBoundary extends Component<Props, State> {
                   Retry {retryCount > 0 && `(${retryCount}/${maxRetries})`}
                 </Button>
               )}
-              
+
               <Button variant="outline" size="sm" onClick={this.handleCopyError} className="flex items-center gap-2">
                 <Copy className="h-4 w-4" />
                 Copy Error
               </Button>
-              
+
               <Button variant="outline" size="sm" onClick={this.toggleDetails} className="flex items-center gap-2">
                 {showDetails ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 {showDetails ? 'Hide' : 'Show'} Details
               </Button>
-              
-              <Button variant="outline" size="sm" asChild>
-                <a 
-                  href="https://github.com/your-repo/issues/new" 
-                  target="_blank" 
+
+              <Button variant="outline" size="sm">
+                <a
+                  href="https://github.com/your-repo/issues/new"
+                  target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2"
                 >
@@ -293,7 +313,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
                     </div>
                   </div>
                 </div>
-                
+
                 {error.stack && (
                   <div>
                     <h4 className="font-medium mb-2">Stack Trace:</h4>
@@ -304,7 +324,7 @@ export class TransactionErrorBoundary extends Component<Props, State> {
                     </div>
                   </div>
                 )}
-                
+
                 {errorInfo?.componentStack && (
                   <div>
                     <h4 className="font-medium mb-2">Component Stack:</h4>
@@ -342,7 +362,7 @@ export function withTransactionErrorBoundary<P extends object>(
 ) {
   const WithErrorBoundary = (props: P & { signature?: string }) => {
     return (
-      <TransactionErrorBoundary 
+      <TransactionErrorBoundary
         componentName={componentName || WrappedComponent.displayName || WrappedComponent.name}
         signature={props.signature}
       >
@@ -352,20 +372,20 @@ export function withTransactionErrorBoundary<P extends object>(
   };
 
   WithErrorBoundary.displayName = `withTransactionErrorBoundary(${componentName || WrappedComponent.displayName || WrappedComponent.name})`;
-  
+
   return WithErrorBoundary;
 }
 
 // Specific error boundary for transaction analysis
-export function TransactionAnalysisErrorBoundary({ 
-  children, 
-  signature 
-}: { 
-  children: ReactNode; 
-  signature: string; 
+export function TransactionAnalysisErrorBoundary({
+  children,
+  signature
+}: {
+  children: ReactNode;
+  signature: string;
 }) {
   return (
-    <TransactionErrorBoundary 
+    <TransactionErrorBoundary
       signature={signature}
       componentName="Transaction Analysis"
       onError={(error, errorInfo) => {

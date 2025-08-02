@@ -51,7 +51,7 @@ export class ErrorFormatter {
         const anthropicError: AnthropicError = {
             type: 'error',
             error: {
-                type: errorType,
+                type: errorType as "invalid_request_error" | "authentication_error" | "permission_error" | "not_found_error" | "rate_limit_error" | "api_error" | "overloaded_error",
                 message: sanitizedMessage
             }
         };

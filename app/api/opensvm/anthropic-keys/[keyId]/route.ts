@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APIKeyManager } from '../../../../../lib/anthropic-proxy/core/APIKeyManager';
 import { UsageReporter } from '../../../../../lib/anthropic-proxy/reporting/UsageReporter';
+import jwt from 'jsonwebtoken';
 
 // Initialize components
 const apiKeyManager = new APIKeyManager();
@@ -19,7 +20,7 @@ async function ensureInitialized() {
 }
 
 /**
- * Extract user ID from request (same as parent endpoint)
+ * Extract user ID from request with proper JWT validation
  */
 function extractUserId(request: NextRequest): string | null {
     const userIdHeader = request.headers.get('x-user-id');
@@ -30,8 +31,24 @@ function extractUserId(request: NextRequest): string | null {
     }
 
     if (authHeader && authHeader.startsWith('Bearer ')) {
-        // TODO: Implement proper JWT validation
-        return 'user-from-jwt-token';
+        try {
+            const token = authHeader.substring(7); // Remove 'Bearer ' prefix
+            const jwtSecret = process.env.JWT_SECRET || 'default-secret-change-in-production';
+            
+            // Verify and decode the JWT token
+            const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
+            
+            if (decoded && decoded.userId) {
+                console.log(`Extracted user ID from JWT: ${decoded.userId}`);
+                return decoded.userId;
+            } else {
+                console.warn('JWT token missing userId claim');
+                return null;
+            }
+        } catch (error) {
+            console.error('JWT validation failed:', error);
+            return null;
+        }
     }
 
     return null;

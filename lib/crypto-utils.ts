@@ -19,7 +19,7 @@ export function generateSecureUUID(): string {
     // Browser environment with enhanced fallback support
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
       return crypto.randomUUID();
-    } else if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+    } else if (typeof crypto !== 'undefined' && typeof crypto.getRandomValues === 'function') {
       // Fallback for browsers that support getRandomValues but not randomUUID
       return generateSecureUUIDFallback();
     } else {
@@ -83,11 +83,11 @@ export function generateSecureTestSignature(prefix: string = 'test-signature'): 
 function generateSecureUUIDFallback(): string {
   const array = new Uint8Array(16);
   crypto.getRandomValues(array);
-  
+
   // Set version (4) and variant bits
   array[6] = (array[6] & 0x0f) | 0x40;
   array[8] = (array[8] & 0x3f) | 0x80;
-  
+
   const hex = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
   return [
     hex.substring(0, 8),
@@ -127,7 +127,7 @@ function generateHardenedPolyfillUUID(): string {
       () => Math.floor(performance.now() % 256),
       () => Math.floor(Math.random() * Date.now()) % 256,
     ];
-    
+
     // XOR multiple sources for better entropy
     return sources.reduce((acc, source) => {
       try {
@@ -142,11 +142,11 @@ function generateHardenedPolyfillUUID(): string {
   for (let i = 0; i < 16; i++) {
     bytes[i] = getRandomValue();
   }
-  
+
   // Set version (4) and variant bits
   bytes[6] = (bytes[6] & 0x0f) | 0x40;
   bytes[8] = (bytes[8] & 0x3f) | 0x80;
-  
+
   const hex = bytes.map(b => b.toString(16).padStart(2, '0')).join('');
   return [
     hex.substring(0, 8),

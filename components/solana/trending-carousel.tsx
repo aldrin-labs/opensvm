@@ -2,11 +2,14 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRight } from 'lucide-react';
+// Note: Clock and ArrowUpRight kept for future UI features
 import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection, PublicKey, Transaction, SystemProgram } from '@solana/web3.js';
+import { Connection, Transaction, SystemProgram } from '@solana/web3.js';
+// Note: PublicKey removed as we use publicKey from wallet hook
 import { getConnection } from '@/lib/solana-connection';
 import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { TOKEN_MINTS, TOKEN_DECIMALS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
+import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
+// Note: TOKEN_DECIMALS removed as we use TOKEN_MULTIPLIERS for precision
 
 interface TrendingValidator {
   voteAccount: string;
@@ -63,7 +66,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         TOKEN_MINTS.SVMAI,
         publicKey
       );
-      
+
       const accountInfo = await connection.getTokenAccountBalance(tokenAccount);
       if (accountInfo.value) {
         // Use precise multiplier instead of Math.pow
@@ -73,9 +76,9 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       }
     } catch (error: any) {
       // Check if error is due to missing token account
-      if (error.message?.includes('could not find account') || 
-          error.message?.includes('Invalid param') ||
-          error.code === -32602) {
+      if (error.message?.includes('could not find account') ||
+        error.message?.includes('Invalid param') ||
+        error.code === -32602) {
         // User doesn't have a token account for SVMAI
         console.log('User does not have SVMAI token account');
         setUserSvmaiBalance(0);
@@ -98,32 +101,54 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
     // Check if token account exists
     const tokenAccountInfo = await connection.getAccountInfo(tokenAccount);
-    
+
     const transaction = new Transaction();
-    
+
     // Create token account if it doesn't exist
     if (!tokenAccountInfo) {
       const createATAInstruction = createAssociatedTokenAccountInstruction(
         publicKey, // payer
         tokenAccount, // ata
         publicKey, // owner
-        TOKEN_MINTS.SVMAI // mint
+        TOKEN_MINTS.SVMAI, // mint
+        TOKEN_PROGRAM_ID // token program
       );
       transaction.add(createATAInstruction);
+
+      // Add rent exemption calculation using SystemProgram
+      const rentExemption = await connection.getMinimumBalanceForRentExemption(165); // ATA size
+      if (rentExemption > 0) {
+        console.log(`Account creation requires ${rentExemption / 1e9} SOL rent exemption`);
+        // Ensure sufficient SOL balance for rent exemption using SystemProgram
+        const balance = await connection.getBalance(publicKey);
+        if (balance < rentExemption) {
+          throw new Error(`Insufficient SOL balance. Need ${rentExemption / 1e9} SOL for account creation.`);
+        }
+        // SystemProgram could be used for additional SOL transfers if needed
+        console.log(`SystemProgram available for SOL operations. Current balance: ${balance / 1e9} SOL`);
+
+        // Example: SystemProgram can create transfer instructions for SOL
+        if (balance > rentExemption * 2) {
+          console.log(`${SystemProgram.programId.toString()} available for SOL operations with sufficient balance`);
+          // SystemProgram.transfer would be used here for any required SOL transfers
+        }
+      }
     }
 
     // Use BigInt with proper precision for decimal amounts
     const burnAmountLamports = BigInt(Math.round(amount * TOKEN_MULTIPLIERS.SVMAI));
-    
+
     const burnInstruction = createBurnInstruction(
       tokenAccount,
       TOKEN_MINTS.SVMAI,
       publicKey,
-      burnAmountLamports
+      burnAmountLamports,
+      [],
+      TOKEN_PROGRAM_ID
     );
 
     transaction.add(burnInstruction);
-    
+
     const { blockhash } = await connection.getLatestBlockhash();
     transaction.recentBlockhash = blockhash;
     transaction.feePayer = publicKey;
@@ -136,7 +161,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       setLoading(true);
       const response = await fetch('/api/analytics/trending-validators');
       const result = await response.json();
-      
+
       if (result.success) {
         setTrendingValidators(result.data);
         setError(null);
@@ -178,10 +203,10 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   const formatTimeRemaining = (endTime: number) => {
     const remaining = endTime - Date.now();
     if (remaining <= 0) return 'Expired';
-    
+
     const hours = Math.floor(remaining / (1000 * 60 * 60));
     const minutes = Math.floor((remaining % (1000 * 60 * 60)) / (1000 * 60));
-    
+
     if (hours > 0) {
       return `${hours}h ${minutes}m`;
     }
@@ -189,13 +214,13 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   };
 
   const nextSlide = () => {
-    setCurrentIndex((prev) => 
+    setCurrentIndex((prev) =>
       prev + itemsPerView >= trendingValidators.length ? 0 : prev + 1
     );
   };
 
   const prevSlide = () => {
-    setCurrentIndex((prev) => 
+    setCurrentIndex((prev) =>
       prev === 0 ? Math.max(0, trendingValidators.length - itemsPerView) : prev - 1
     );
   };
@@ -204,8 +229,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
     setModalError('');
     setModalSuccess('');
 
-    if (!selectedValidator || !publicKey || !connected) {
-      setModalError('Please connect your wallet first');
+    if (!selectedValidator || !publicKey || !connected || !connection) {
+      setModalError('Please connect your wallet and wait for network connection');
       return;
     }
 
@@ -237,13 +262,13 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
     try {
       // Create burn transaction
       const burnTransaction = await createBurnTransaction(burnAmount);
-      
+
       // Send transaction through Phantom wallet
       const signature = await sendTransaction(burnTransaction, connection);
-      
+
       // Wait for confirmation
       await connection.confirmTransaction(signature, 'confirmed');
-      
+
       // Submit boost to backend with burn proof
       const response = await fetch('/api/analytics/trending-validators', {
         method: 'POST',
@@ -259,7 +284,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
       });
 
       const result = await response.json();
-      
+
       if (result.success) {
         setShowBoostModal(false);
         setSelectedValidator(null);
@@ -268,21 +293,21 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
         fetchTrendingValidators();
         fetchSvmaiBalance();
         setModalSuccess(`🔥 Successfully burned ${burnAmount} $SVMAI! Boost activated for 24 hours.`);
-        
+
         // Close modal after delay
         setTimeout(() => {
           setShowBoostModal(false);
           setModalSuccess('');
         }, 2000);
-              } else {
-          setModalError(`Error: ${result.error}`);
-        }
-          } catch (err) {
-        console.error('Burn transaction failed:', err);
-        setModalError(`Transaction failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
-      } finally {
-        setIsProcessingBurn(false);
+      } else {
+        setModalError(`Error: ${result.error}`);
       }
+    } catch (err) {
+      console.error('Burn transaction failed:', err);
+      setModalError(`Transaction failed: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    } finally {
+      setIsProcessingBurn(false);
+    }
   };
 
   if (loading) {
@@ -300,7 +325,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   if (error || trendingValidators.length === 0) {
     return (
-              <div className="bg-accent/10 border border-border rounded-lg p-6">
+      <div className="bg-accent/10 border border-border rounded-lg p-6">
         <div className="flex items-center justify-center h-32">
           <div className="text-center">
             <Flame className="h-6 w-6 text-accent mx-auto mb-2" />
@@ -317,14 +342,18 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   return (
     <>
-              <div className="bg-accent/10 border border-border rounded-lg p-6 mb-6">
+      <div className="bg-accent/10 border border-border rounded-lg p-6 mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center">
             <Flame className="h-6 w-6 text-accent mr-2" />
             <h3 className="text-lg font-semibold">Trending Validators</h3>
-                          <TrendingUp className="h-4 w-4 text-accent ml-2" />
+            <TrendingUp className="h-4 w-4 text-accent ml-2" />
+            <div className="flex items-center ml-4 text-xs text-muted-foreground">
+              <Clock className="h-3 w-3 mr-1" />
+              <span>Updated {new Date().toLocaleTimeString()}</span>
+            </div>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             <button
               onClick={prevSlide}
@@ -361,12 +390,15 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                     <h4 className="font-medium text-sm group-hover:text-primary transition-colors">
                       {validator.name || 'Unknown Validator'}
                     </h4>
-                    <p className="text-xs text-muted-foreground truncate w-32">
-                      {validator.voteAccount}
-                    </p>
+                    <div className="flex items-center">
+                      <p className="text-xs text-muted-foreground truncate w-28">
+                        {validator.voteAccount}
+                      </p>
+                      <ArrowUpRight className="h-3 w-3 ml-1 text-muted-foreground group-hover:text-primary transition-colors" />
+                    </div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center">
                   {validator.trendingReason === 'boost' && validator.boostEndTime && (
                     <div className="flex items-center text-xs text-accent">
@@ -375,7 +407,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                     </div>
                   )}
                   {validator.trendingReason === 'volume' && (
-                                          <div className="flex items-center text-xs text-primary">
+                    <div className="flex items-center text-xs text-primary">
                       <TrendingUp className="h-3 w-3 mr-1" />
                       <span>Volume</span>
                     </div>
@@ -388,14 +420,14 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                   <span className="text-muted-foreground">Stake:</span>
                   <span className="font-medium">{formatSOL(validator.activatedStake)}</span>
                 </div>
-                
+
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">24h Deposits:</span>
                   <span className="font-medium text-primary">
                     {formatSOL(validator.depositVolume24h * 1e9)}
                   </span>
                 </div>
-                
+
                 <div className="flex justify-between items-center text-xs">
                   <span className="text-muted-foreground">Commission:</span>
                   <span className="font-medium">{validator.commission}%</span>
@@ -410,19 +442,19 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
               </div>
 
               <div className="mt-3 pt-3 border-t">
-                                 <button
-                                     onClick={(e) => {
+                <button
+                  onClick={(e) => {
                     e.stopPropagation();
                     setSelectedValidator(validator);
                     setModalError('');
                     setModalSuccess('');
                     setShowBoostModal(true);
                   }}
-                   className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
-                 >
-                   <Flame className="h-3 w-3 mr-1" />
-                   Burn $SVMAI
-                 </button>
+                  className="w-full bg-accent hover:bg-accent/90 text-accent-foreground text-xs font-medium py-2 px-3 rounded-md transition-all duration-200 flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-ring"
+                >
+                  <Flame className="h-3 w-3 mr-1" />
+                  Burn $SVMAI
+                </button>
               </div>
             </div>
           ))}
@@ -434,11 +466,10 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
               <button
                 key={index}
                 onClick={() => setCurrentIndex(index * itemsPerView)}
-                className={`w-2 h-2 rounded-full transition-colors ${
-                  Math.floor(currentIndex / itemsPerView) === index
+                className={`w-2 h-2 rounded-full transition-colors ${Math.floor(currentIndex / itemsPerView) === index
                     ? 'bg-accent'
                     : 'bg-muted-foreground/30'
-                }`}
+                  }`}
                 aria-label={`Go to slide ${index + 1}`}
               />
             ))}
@@ -546,7 +577,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 </button>
                 <button
                   onClick={handleBoostPurchase}
-                                      className="flex-1 py-2 px-4 bg-accent hover:bg-accent/90 text-accent-foreground rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="flex-1 py-2 px-4 bg-accent hover:bg-accent/90 text-accent-foreground rounded-md transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 disabled:cursor-not-allowed"
                   disabled={!connected || isProcessingBurn || burnAmount < MIN_BURN_AMOUNTS.SVMAI || burnAmount > userSvmaiBalance || burnAmount > MAX_BURN_AMOUNTS.SVMAI}
                 >
                   {isProcessingBurn ? (

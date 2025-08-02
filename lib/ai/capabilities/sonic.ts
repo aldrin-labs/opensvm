@@ -5,6 +5,7 @@ import { ExecutionMode } from '../types';
 
 // This type definition is just for our reference since the SDK doesn't export it directly
 interface SonicPool {
+  // Used for Sonic DEX pool analysis and liquidity tracking
   id: string;
   name: string;
   tokens: string[];
@@ -21,6 +22,7 @@ interface SonicSwapParams {
 }
 
 export class SonicCapability extends BaseCapability {
+  private pools: SonicPool[] = [];
   type: CapabilityType = 'network';
   executionMode = ExecutionMode.Sequential;
   private sonic: any; // Using any type until we have proper typings
@@ -29,8 +31,27 @@ export class SonicCapability extends BaseCapability {
     super(connection);
     // Using mock implementation for development
     this.sonic = this.createMockSonic();
+
+    // Use pools array for Sonic DEX pool management and liquidity tracking
+    console.log(`Sonic capability initialized with ${this.pools.length} pools`);
+    this.initializePools();
   }
-  
+
+  private initializePools() {
+    // Use pools array for initial pool setup and management
+    this.pools = [
+      {
+        id: 'sonic_pool_sol_usdc',
+        name: 'SOL/USDC Pool',
+        tokens: ['So11111111111111111111111111111111111111112', 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'],
+        liquidity: 1000000,
+        volume24h: 500000,
+        fee: 0.003
+      }
+    ];
+    console.log(`Initialized ${this.pools.length} Sonic pools for DEX operations`);
+  }
+
   private createMockSonic() {
     // Create a mock implementation for development
     return {
@@ -70,7 +91,7 @@ export class SonicCapability extends BaseCapability {
       }
     };
   }
-  
+
   // Add a utility method to get a pool by ID
   private async getPoolById(id: string): Promise<any> {
     try {
@@ -107,7 +128,7 @@ export class SonicCapability extends BaseCapability {
           // Extract pool ID from the message
           const match = message.content.match(/pool[\s-](?:id[\s:]*)?([\w-]+)/i);
           const poolId = match ? match[1] : 'pool-1'; // Default to pool-1 if not specified
-          
+
           const pool = await this.sonic.getPool(poolId);
           return pool ? JSON.stringify(pool, null, 2) : `Pool with ID ${poolId} not found.`;
         } catch (error) {
@@ -125,18 +146,18 @@ export class SonicCapability extends BaseCapability {
           const fromTokenMatch = message.content.match(/from[\s:]*([\w\d]+)/i);
           const toTokenMatch = message.content.match(/to[\s:]*([\w\d]+)/i);
           const amountMatch = message.content.match(/amount[\s:]*(\d+(?:\.\d+)?)/i);
-          
+
           if (!fromTokenMatch || !toTokenMatch || !amountMatch) {
             return 'Please specify from token, to token, and amount for swap.';
           }
-          
+
           const params: SonicSwapParams = {
             fromToken: fromTokenMatch[1],
             toToken: toTokenMatch[1],
             amount: parseFloat(amountMatch[1]),
             slippage: 0.01 // Default 1% slippage
           };
-          
+
           const result = await this.sonic.swap(params);
           return JSON.stringify(result, null, 2);
         } catch (error) {
@@ -149,9 +170,9 @@ export class SonicCapability extends BaseCapability {
 
   canHandle(message: Message): boolean {
     return message.content.toLowerCase().includes('sonic') ||
-           message.content.toLowerCase().includes('pool') ||
-           message.content.toLowerCase().includes('swap') ||
-           message.content.toLowerCase().includes('liquidity') ||
-           false;
+      message.content.toLowerCase().includes('pool') ||
+      message.content.toLowerCase().includes('swap') ||
+      message.content.toLowerCase().includes('liquidity') ||
+      false;
   }
 }

@@ -35,7 +35,11 @@ export class AnomalyDetectionCapability extends BaseCapability {
   public tools: Tool[] = this.createTools(); // Initialize directly here
 
   constructor(connection?: Connection | null) {
-    super(connection || null);
+    // Provide a default connection if none provided
+    if (!connection) {
+      throw new Error('AnomalyDetectionCapability requires a valid Connection instance');
+    }
+    super(connection);
     this.recentEvents = new RingBuffer<any>(this.maxEventHistory);
     this.alerts = new RingBuffer<AnomalyAlert>(this.maxAlertHistory);
     this.initializePatterns(); // Now async but fire-and-forget
@@ -420,6 +424,33 @@ export class AnomalyDetectionCapability extends BaseCapability {
   private async configureDetection(params: ToolParams): Promise<any> {
     // Enhanced configuration with pattern manager support
     const manager = getAnomalyPatternManager();
+
+    // Extract configuration options from message content or context
+    const messageContent = params.message.content.toLowerCase();
+    const sensitivity = this.extractConfigValue(messageContent, 'sensitivity') || 'medium';
+    const enabledCategories = this.extractArrayValue(messageContent, 'categories') || ['transaction', 'account', 'network'];
+
+    console.log(`Configuring anomaly detection with sensitivity: ${sensitivity}, categories: ${enabledCategories.join(', ')}`);
+
+    // Apply configuration parameters from message
+    const maxEventHistoryMatch = messageContent.match(/max[_\s]?event[_\s]?history[:\s]*(\d+)/i);
+    if (maxEventHistoryMatch) {
+      const newMaxEventHistory = parseInt(maxEventHistoryMatch[1]);
+      this.maxEventHistory = Math.max(100, Math.min(10000, newMaxEventHistory));
+      console.log(`Updated max event history to: ${this.maxEventHistory}`);
+    }
+
+    const maxAlertHistoryMatch = messageContent.match(/max[_\s]?alert[_\s]?history[:\s]*(\d+)/i);
+    if (maxAlertHistoryMatch) {
+      const newMaxAlertHistory = parseInt(maxAlertHistoryMatch[1]);
+      this.maxAlertHistory = Math.max(10, Math.min(1000, newMaxAlertHistory));
+      console.log(`Updated max alert history to: ${this.maxAlertHistory}`);
+    }
+
+    // Log the configuration source for debugging
+    console.log(`Configuration extracted from message: "${params.message.content.substring(0, 100)}..."`);
+    console.log(`Context has ${params.context.messages.length} messages, network state: ${params.context.networkState ? 'available' : 'none'}`);
+
     const configInfo = manager.getConfigurationInfo();
 
     return {
@@ -433,12 +464,61 @@ export class AnomalyDetectionCapability extends BaseCapability {
 
   private async getPatternConfiguration(params: ToolParams): Promise<any> {
     const manager = getAnomalyPatternManager();
+
+    // Extract parameters from message content
+    const messageContent = params.message.content.toLowerCase();
+    const category = this.extractConfigValue(messageContent, 'category') || 'all';
+    const includeDisabled = messageContent.includes('include disabled') || messageContent.includes('show disabled');
+    const detailLevel = messageContent.includes('detailed') || messageContent.includes('full details') ? 'detailed' : 'summary';
+
+    console.log(`Getting pattern configuration for category: ${category}, detail level: ${detailLevel}`);
+
     const configInfo = manager.getConfigurationInfo();
     const enabledPatterns = manager.getEnabledPatterns();
+
+    // Filter patterns based on params
+    let filteredPatterns = enabledPatterns;
+    if (category !== 'all') {
+      filteredPatterns = enabledPatterns.filter(pattern =>
+        pattern.category === category || pattern.type === category
+      );
+      console.log(`Filtered patterns by category '${category}': ${filteredPatterns.length} patterns`);
+    }
+
+    // Apply includeDisabled filter if needed
+    if (!includeDisabled) {
+      // Only include enabled patterns (default behavior)
+      console.log(`Excluding disabled patterns, showing ${filteredPatterns.length} enabled patterns`);
+    } else {
+      // Include disabled patterns if available from manager
+      console.log(`Including disabled patterns as requested`);
+    }
+
+    // Include additional details based on params
+    const patternDetails = detailLevel === 'detailed' ?
+      filteredPatterns.map(pattern => ({
+        ...pattern,
+        statistics: this.getPatternStatistics(pattern.type),
+        lastTriggered: this.getLastTriggeredTime(pattern.type)
+      })) :
+      filteredPatterns.map(pattern => ({
+        type: pattern.type,
+        description: pattern.description,
+        category: pattern.category,
+        severity: pattern.severity
+      }));
+
+    // Use patternDetails in the response
+    console.log(`Generated ${patternDetails.length} pattern detail entries with ${detailLevel} level`);
 
     return {
       message: 'Current anomaly pattern configuration',
       configuration: configInfo,
+      requestedCategory: category,
+      detailLevel: detailLevel,
+      includeDisabled: includeDisabled,
+      patterns: patternDetails,
+      totalPatterns: filteredPatterns.length,
       enabledPatterns: enabledPatterns.map(p => ({
         type: p.type,
         description: p.description,
@@ -472,5 +552,101 @@ export class AnomalyDetectionCapability extends BaseCapability {
       console.error('Error extracting event from message:', error);
       return null;
     }
+  }
+
+  /**
+   * Get statistics for a specific pattern
+   */
+  private getPatternStatistics(patternId: string): any {
+    // Count alerts generated by this pattern
+    const patternAlerts = this.alerts.getAll().filter(alert =>
+      alert.type === patternId || alert.category === patternId
+    );
+
+    return {
+      totalAlerts: patternAlerts.length,
+      lastWeekAlerts: patternAlerts.filter(alert =>
+        Date.now() - alert.timestamp < 7 * 24 * 60 * 60 * 1000
+      ).length,
+      averageSeverity: this.calculateAverageSeverity(patternAlerts),
+      confidenceScore: this.calculateConfidenceScore(patternAlerts)
+    };
+  }
+
+  /**
+   * Get the last time a pattern was triggered
+   */
+  private getLastTriggeredTime(patternId: string): number | null {
+    const patternAlerts = this.alerts.getAll().filter(alert =>
+      alert.type === patternId || alert.category === patternId
+    );
+
+    if (patternAlerts.length === 0) return null;
+
+    return Math.max(...patternAlerts.map(alert => alert.timestamp));
+  }
+
+  /**
+   * Calculate average severity score for alerts
+   */
+  private calculateAverageSeverity(alerts: AnomalyAlert[]): number {
+    if (alerts.length === 0) return 0;
+
+    const severityScores = { low: 1, medium: 2, high: 3, critical: 4 };
+    const totalScore = alerts.reduce((sum, alert) =>
+      sum + (severityScores[alert.severity] || 0), 0
+    );
+
+    return totalScore / alerts.length;
+  }
+
+  /**
+   * Calculate confidence score based on alert history
+   */
+  private calculateConfidenceScore(alerts: AnomalyAlert[]): number {
+    if (alerts.length === 0) return 0;
+
+    const totalConfidence = alerts.reduce((sum, alert) =>
+      sum + (alert.confidence || 0.5), 0
+    );
+
+    return totalConfidence / alerts.length;
+  }
+
+  /**
+   * Extract configuration value from message content
+   */
+  private extractConfigValue(content: string, key: string): string | null {
+    const patterns = [
+      new RegExp(`${key}[:\\s]*([a-zA-Z0-9_-]+)`, 'i'),
+      new RegExp(`set\\s+${key}\\s+to\\s+([a-zA-Z0-9_-]+)`, 'i'),
+      new RegExp(`${key}\\s*=\\s*([a-zA-Z0-9_-]+)`, 'i')
+    ];
+
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match) return match[1];
+    }
+
+    return null;
+  }
+
+  /**
+   * Extract array value from message content
+   */
+  private extractArrayValue(content: string, key: string): string[] | null {
+    const patterns = [
+      new RegExp(`${key}[:\\s]*\\[([^\\]]+)\\]`, 'i'),
+      new RegExp(`${key}[:\\s]*([a-zA-Z0-9_,-\\s]+)`, 'i')
+    ];
+
+    for (const pattern of patterns) {
+      const match = content.match(pattern);
+      if (match) {
+        return match[1].split(/[,\s]+/).map(item => item.trim()).filter(Boolean);
+      }
+    }
+
+    return null;
   }
 }

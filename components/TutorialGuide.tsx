@@ -1,22 +1,16 @@
 'use client';
 
 import React from 'react';
-import { useHelp } from './help/HelpProvider';
 import HelpButton from './help/HelpButton';
+import { isTourCompleted } from '@/lib/help/transaction-tours';
 
 /**
  * Legacy TutorialGuide component - now redirects to the new help system
  * @deprecated Use the new help system with GuidedTour and HelpProvider instead
  */
 export function TutorialGuide() {
-  const { startTour, isTourCompleted } = useHelp();
-
   // Check if the main transaction explorer tour has been completed
   const hasCompletedMainTour = isTourCompleted('transaction-explorer-tour');
-
-  const handleStartTour = () => {
-    startTour('transaction-explorer-tour');
-  };
 
   if (hasCompletedMainTour) {
     return (

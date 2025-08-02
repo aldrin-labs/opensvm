@@ -151,7 +151,7 @@ export async function GET(
     const metricsResult = await calculateTransactionMetrics(transaction);
 
     // Build detailed metrics object
-    const metrics: TransactionMetricsResponse['data']['metrics'] = {
+    const metrics = {
       fees: {
         total: metricsResult.feeAnalysis.totalFee,
         perComputeUnit: metricsResult.feeAnalysis.totalFee / (metricsResult.computeAnalysis.computeUnitsUsed || 1),

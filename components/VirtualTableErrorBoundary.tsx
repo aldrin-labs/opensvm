@@ -46,7 +46,6 @@ export class VirtualTableErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    const now = Date.now();
     const errorKey = error.message.substring(0, 100); // Use first 100 chars as key
 
     // Track error frequency

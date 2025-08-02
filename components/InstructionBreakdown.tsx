@@ -6,15 +6,7 @@ import {
   ChevronRightIcon,
   InfoIcon,
   AlertTriangleIcon,
-  ShieldCheckIcon,
-  SearchIcon,
-  FilterIcon,
-  CopyIcon,
-  CheckIcon,
-  XIcon,
-  EyeIcon,
-  ZapIcon,
-  HelpCircleIcon
+  ShieldCheckIcon
 } from 'lucide-react';
 import Link from 'next/link';
 import type { DetailedTransactionInfo } from '@/lib/solana';
@@ -113,8 +105,8 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
 
     return transaction.details.instructions.map((instruction, index) => {
       // Extract program information
-      const program = instruction.program || getKnownProgramName(instruction.programId) || 'Unknown Program';
-      const instructionType = instruction.parsed?.type || 'unknown';
+      const program = getKnownProgramName(instruction.programId) || 'Unknown Program';
+      const instructionType = ('parsed' in instruction && instruction.parsed?.type) || 'unknown';
 
       // Generate description
       const description = generateInstructionDescription(instruction);
@@ -244,15 +236,12 @@ const InstructionBreakdown: React.FC<InstructionBreakdownProps> = ({
               <button
                 className={`flex items-center space-x-3 flex-1 text-left`} // Removed isTouchDevice class
                 onClick={() => {
-                  const wasExpanded = expandedInstructions.has(instruction.index);
                   toggleInstruction(instruction.index);
                   onInstructionClick?.(instruction, instruction.index);
-                  // Removed announceToScreenReader
                 }}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') { // Changed KEYBOARD_KEYS.ENTER to 'Enter'
                     e.preventDefault();
-                    const wasExpanded = expandedInstructions.has(instruction.index);
                     toggleInstruction(instruction.index);
                     onInstructionClick?.(instruction, instruction.index);
                     // Removed announceToScreenReader

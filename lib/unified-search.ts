@@ -7,7 +7,7 @@
 
 import { getComprehensiveBlockchainData } from './moralis-api';
 import { searchTelegramChats, formatTelegramResults } from './telegram-search';
-import { searchDuckDuckGo, formatDuckDuckGoResults } from './duckduckgo-search';
+import { searchSearx, formatSearxResults } from './duckduckgo-search';
 import { searchXCom, formatXComResults } from './xcom-search';
 import { optimizeSearchResults } from './search-optimization';
 
@@ -58,22 +58,22 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
     filterByType = [],
     timeRange = 'all'
   } = options;
-  
+
   // Create cache key based on query and options
   const cacheKey = `${query}:${JSON.stringify(options)}`;
-  
+
   // Check cache for recent results
   if (searchCache[cacheKey] && Date.now() - searchCache[cacheKey].timestamp < CACHE_DURATION) {
     console.log('Using cached search results for:', query);
     return searchCache[cacheKey].results;
   }
-  
+
   // Determine which sources to search
   const searchSVM = sources.includes('all') || sources.includes('svm');
   const searchTelegram = sources.includes('all') || sources.includes('telegram');
   const searchDuckDuckGo = sources.includes('all') || sources.includes('duckduckgo');
   const searchX = sources.includes('all') || sources.includes('xcom');
-  
+
   try {
     // Initialize results object
     const results: {
@@ -88,10 +88,10 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
       duckduckgo: [],
       xcom: []
     };
-    
+
     // Perform searches in parallel
     const searchPromises: Promise<any>[] = [];
-    
+
     // Fetch blockchain data if requested
     if (includeBlockchainData) {
       const blockchainDataPromise = getComprehensiveBlockchainData(query)
@@ -103,10 +103,10 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
         .catch((error: any) => {
           console.error('Error fetching blockchain data:', error);
         });
-      
+
       searchPromises.push(blockchainDataPromise);
     }
-    
+
     // SVM search (using existing API)
     if (searchSVM) {
       const svmSearchPromise = fetch(`/api/search/filtered?q=${encodeURIComponent(query)}`)
@@ -129,10 +129,10 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
           console.error('Error in SVM search:', error);
           results.svm = [];
         });
-      
+
       searchPromises.push(svmSearchPromise);
     }
-    
+
     // Telegram search
     if (searchTelegram) {
       const telegramSearchPromise = searchTelegramChats(query, limit)
@@ -143,24 +143,32 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
           console.error('Error in Telegram search:', error);
           results.telegram = [];
         });
-      
+
       searchPromises.push(telegramSearchPromise);
     }
-    
+
     // DuckDuckGo search
-    if (sources.includes('duckduckgo') || sources.includes('all')) {
-      const duckDuckGoSearchPromise = searchDuckDuckGo(query, limit)
-        .then((data: any) => {
-          results.duckduckgo = formatDuckDuckGoResults(data);
-        })
-        .catch((error: any) => {
+    if (searchDuckDuckGo) {
+      console.log(`Performing DuckDuckGo search for query: "${query}" with limit: ${limit}`);
+      // Use searchSearx for web search functionality via DuckDuckGo
+      console.log(`searchSearx function type: ${typeof searchSearx}`);
+
+      const duckDuckGoSearchPromise = (async () => {
+        try {
+          console.log(`Calling searchSearx function for query: "${query}"`);
+          const data = await searchSearx(query, limit);
+          console.log(`DuckDuckGo search returned ${data?.length || 0} results`);
+          results.duckduckgo = formatSearxResults(data);
+        } catch (error: any) {
           console.error('Error in DuckDuckGo search:', error);
+          // Fallback to empty results if searchDuckDuckGo fails
           results.duckduckgo = [];
-        });
-      
+        }
+      })();
+
       searchPromises.push(duckDuckGoSearchPromise);
     }
-    
+
     // X.com search
     if (searchX) {
       const xSearchPromise = searchXCom(query, limit)
@@ -171,17 +179,17 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
           console.error('Error in X.com search:', error);
           results.xcom = [];
         });
-      
+
       searchPromises.push(xSearchPromise);
     }
-    
+
     // Wait for all searches to complete
     await Promise.all(searchPromises);
-    
+
     // Apply time range filter if specified
     if (timeRange !== 'all') {
       const cutoffDate = getTimeRangeCutoff(timeRange);
-      
+
       Object.keys(results).forEach(key => {
         if (key !== 'blockchainData' && Array.isArray(results[key as keyof typeof results])) {
           const resultsArray = results[key as keyof typeof results] as UnifiedSearchResult[];
@@ -193,19 +201,19 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
         }
       });
     }
-    
+
     // Apply type filter if specified
     if (filterByType.length > 0) {
       Object.keys(results).forEach(key => {
         if (key !== 'blockchainData' && Array.isArray(results[key as keyof typeof results])) {
           const resultsArray = results[key as keyof typeof results] as UnifiedSearchResult[];
-          results[key as keyof typeof results] = resultsArray.filter(result => 
+          results[key as keyof typeof results] = resultsArray.filter(result =>
             filterByType.includes(result.type)
           ) as any;
         }
       });
     }
-    
+
     // Combine and sort results
     let allResults: UnifiedSearchResult[] = [
       ...results.svm,
@@ -213,18 +221,18 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
       ...results.duckduckgo,
       ...results.xcom
     ];
-    
+
     // Optimize and score results based on relevance to query
     allResults = optimizeSearchResults(allResults, query);
-    
+
     // Sort results
     allResults = sortResults(allResults, sortBy, sortOrder);
-    
+
     // Limit total results if specified
     if (limit > 0 && allResults.length > limit) {
       allResults = allResults.slice(0, limit);
     }
-    
+
     // Prepare final result object
     const finalResults = {
       query,
@@ -238,13 +246,13 @@ export async function unifiedSearch(query: string, options: SearchOptions = {}) 
       combined: allResults,
       timestamp: new Date().toISOString()
     };
-    
+
     // Cache the results
     searchCache[cacheKey] = {
       results: finalResults,
       timestamp: Date.now()
     };
-    
+
     return finalResults;
   } catch (error) {
     console.error('Error in unified search:', error);
@@ -289,16 +297,16 @@ function sortResults(
     return results.sort((a, b) => {
       const dateA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
       const dateB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
-      
+
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
   }
-  
+
   // For relevance sorting, use the relevance score if available
   return results.sort((a, b) => {
     const scoreA = a.relevance || 0;
     const scoreB = b.relevance || 0;
-    
+
     return sortOrder === 'asc' ? scoreA - scoreB : scoreB - scoreA;
   });
 }
@@ -375,7 +383,7 @@ export function renderUnifiedSearchResult(result: UnifiedSearchResult): string {
   const date = result.timestamp ? new Date(result.timestamp) : null;
   const formattedDate = date ? `${date.toLocaleDateString()} ${date.toLocaleTimeString()}` : '';
   const colors = getResultTypeColors(result.type);
-  
+
   return `
     <div class="border rounded-lg p-4 hover:bg-muted/30 transition-colors duration-200 animate-in fade-in-0" style="animation-delay: ${Math.random() * 300}ms">
       <div class="flex items-start gap-3">
@@ -418,7 +426,7 @@ export function groupResultsBySource(results: UnifiedSearchResult[]): Record<str
     web: [],
     x_com: []
   };
-  
+
   results.forEach(result => {
     const type = result.type;
     if (!grouped[type]) {
@@ -426,7 +434,7 @@ export function groupResultsBySource(results: UnifiedSearchResult[]): Record<str
     }
     grouped[type].push(result);
   });
-  
+
   return grouped;
 }
 

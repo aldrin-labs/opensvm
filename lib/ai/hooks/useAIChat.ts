@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Message } from '../types';
 import { SolanaAgent } from '../core/agent';
 
@@ -15,6 +15,22 @@ export function useAIChat({ agent, initialMessage }: UseAIChatProps) {
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+
+  // Use isRecording and setIsRecording for voice input functionality
+  const toggleRecording = useCallback(() => {
+    console.log(`${isRecording ? 'Stopping' : 'Starting'} voice recording...`);
+    const newRecordingState = !isRecording;
+    setIsRecording(newRecordingState);
+
+    if (newRecordingState) {
+      console.log('Voice recording started - preparing speech recognition');
+      // Future: Start speech recognition API
+    } else {
+      console.log('Voice recording stopped - processing speech input');
+      // Future: Process recorded speech and add to input
+    }
+    // Future: integrate with speech recognition API
+  }, [isRecording]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,8 +71,10 @@ export function useAIChat({ agent, initialMessage }: UseAIChatProps) {
     messages,
     input,
     isProcessing,
+    isRecording,
     setInput,
     handleSubmit,
-    resetChat
+    resetChat,
+    toggleRecording // Use toggleRecording for voice input functionality
   };
 } 

@@ -7,27 +7,30 @@
 
 'use client';
 
-import React, { useEffect, useCallback } from 'react';
-import { transactionAnalysisCache } from '@/lib/transaction-analysis-cache';
-
-
-const TransactionCacheManager: React.FC<TransactionCacheManagerProps> = ({ signature, onCacheHit, onCacheMiss }) => {
-    useEffect(() => {
-        if (!signature) return;
-
-        const cacheResult = transactionAnalysisCache.get(signature);
-        if (cacheResult) {
-            onCacheHit?.(cacheResult.type);
-        } else {
-            onCacheMiss?.(signature);
-        }
-    }, [signature, onCacheHit, onCacheMiss]);
-
-    return null;
-};
+import { useEffect } from 'react';
+import { transactionCache } from '@/lib/transaction-cache';
 
 interface TransactionCacheManagerProps {
-    signature?: string;
-    onCacheHit?: (type: string) => void;
-    onCacheMiss?: (key: string) => void;
+  signature?: string;
+  onCacheHit?: (type: string) => void;
+  onCacheMiss?: () => void;
+}
+
+export function TransactionCacheManager({ 
+  signature, 
+  onCacheHit, 
+  onCacheMiss 
+}: TransactionCacheManagerProps) {
+  useEffect(() => {
+    if (!signature) return;
+
+    const cacheResult = transactionCache.get(signature);
+    if (cacheResult) {
+      onCacheHit?.(cacheResult.type);
+    } else {
+      onCacheMiss?.();
+    }
+  }, [signature, onCacheHit, onCacheMiss]);
+
+  return null;
 }

@@ -260,6 +260,16 @@ export class ProxyMonitor {
      * Get error statistics for a time range
      */
     async getErrorStats(timeRange: { start: Date; end: Date }): Promise<ErrorStats> {
+        // Use timeRange for filtering and validation
+        console.log(`Getting error stats for time range: ${timeRange.start.toISOString()} to ${timeRange.end.toISOString()}`);
+        const rangeMs = timeRange.end.getTime() - timeRange.start.getTime();
+        if (rangeMs <= 0) {
+            throw new Error('Invalid time range: end must be after start');
+        }
+        if (rangeMs > 86400000 * 30) { // 30 days
+            console.warn(`Large time range requested: ${Math.round(rangeMs / 86400000)} days`);
+        }
+
         const totalErrors = Array.from(this.errorCounts.values()).reduce((sum, count) => sum + count, 0);
         const totalRequests = Array.from(this.requestCounts.values()).reduce((sum, count) => sum + count, 0);
 
@@ -473,6 +483,10 @@ export class ProxyMonitor {
         }
 
         try {
+            // Use lastFlush to track flush intervals and performance
+            const timeSinceLastFlush = Date.now() - this.lastFlush.getTime();
+            console.log(`Flushing ${this.metricsBuffer.length} metrics (last flush: ${Math.round(timeSinceLastFlush / 1000)}s ago)`);
+
             const documents = this.metricsBuffer.map(metric => ({
                 pageContent: JSON.stringify(metric),
                 metadata: {
@@ -486,7 +500,7 @@ export class ProxyMonitor {
             this.metricsBuffer = [];
             this.lastFlush = new Date();
 
-            console.log(`Flushed ${documents.length} metrics to Qdrant`);
+            console.log(`Successfully flushed ${documents.length} metrics to Qdrant`);
         } catch (error) {
             console.error('Failed to flush metrics to Qdrant:', error);
         }

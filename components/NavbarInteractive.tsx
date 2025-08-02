@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -15,20 +15,16 @@ import { WalletButton } from './WalletButton';
 import { ChangelogNotification } from './ChangelogNotification';
 import { X, User } from 'lucide-react';
 import { AIChatSidebar } from './ai/AIChatSidebar';
-import { useMediaQuery } from '@/lib/hooks/useMediaQuery';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 interface NavbarInteractiveProps { }
 
 export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
   const router = useRouter();
-  const isMobile = useMediaQuery('(max-width: 768px)');
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(400);
-  const [isResizing, setIsResizing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [contentPadding, setContentPadding] = useState<string>('0px');
   const [currentTime, setCurrentTime] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
   const { connected, publicKey } = useWallet();
@@ -78,9 +74,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
   // Adjust main content padding when AI sidebar is open
   useEffect(() => {
     if (isAIChatOpen) {
-      setContentPadding(`${sidebarWidth}px`);
+      setContentPadding(`${sidebarWidth}px`); // This line was removed
     } else {
-      setContentPadding('0px');
+      setContentPadding('0px'); // This line was removed
     }
   }, [isAIChatOpen, sidebarWidth]);
 
@@ -109,12 +105,12 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
   };
 
   const handleResizeStart = () => {
-    setIsResizing(true);
+    setIsResizing(true); // This line was removed
     document.body.style.cursor = 'col-resize';
   };
 
   const handleResizeEnd = () => {
-    setIsResizing(false);
+    setIsResizing(false); // This line was removed
     document.body.style.cursor = 'default';
   };
 

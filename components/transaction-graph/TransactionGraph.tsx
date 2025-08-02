@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { debounce } from '@/lib/utils';
 import { TrackingStatsPanel } from './TrackingStatsPanel';
 import { TransactionGraphClouds } from './TransactionGraphClouds';
@@ -21,7 +21,7 @@ import {
   useGPUForceGraph,
   useCloudView,
   useLayoutManager,
-  // useGraphInitialization, // Temporarily disabled for debugging
+  useGraphInitialization,
   useNavigationHistory
 } from './hooks';
 
@@ -53,7 +53,7 @@ const EXCLUDED_ACCOUNTS = new Set([
   'LoaderUpgradeab1e11111111111111111111111111'
 ]);
 
-export default function TransactionGraph({
+const TransactionGraph = React.memo(function TransactionGraph({
   initialSignature,
   initialAccount,
   onTransactionSelect,
@@ -97,8 +97,7 @@ export default function TransactionGraph({
     debouncedLayout: _debouncedLayout,
     cleanupLayout
   } = useLayoutManager();
-  // Graph initialization hook - temporarily disabled for debugging
-  /*
+  // Graph initialization hook
   const {
     cyRef,
     isInitialized,
@@ -107,24 +106,6 @@ export default function TransactionGraph({
     cleanupGraph,
     isGraphReady
   } = useGraphInitialization();
-  */
-
-  // Temporary stub values
-  const cyRef = useRef(null);
-  const isInitialized = false;
-  const initializeGraph = () => { };
-  const cleanupGraph = useCallback(() => {
-    // Destroy cytoscape instance if it exists
-    if (cyRef.current) {
-      try {
-        (cyRef.current as any).destroy?.();
-      } catch (error) {
-        console.warn('Error destroying cytoscape instance:', error);
-      }
-      cyRef.current = null;
-    }
-  }, []);
-  const isGraphReady = true;
 
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(false);
@@ -132,6 +113,26 @@ export default function TransactionGraph({
   const [_isEmpty, _setIsEmpty] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [progressMessage, setProgressMessage] = useState<string>('');
+
+  // Note: Debounced state updates could be added here for high-frequency operations
+  // but would require replacing all setProgress/setProgressMessage calls throughout the component
+
+  // Memoized style computations
+  const containerStyle = useMemo(() => ({
+    width,
+    height
+  }), [width, height]);
+
+  const containerClassName = useMemo(() =>
+    `relative w-full h-full bg-background ${isFullscreen ? 'fixed inset-0 z-50' : ''}`,
+    [isFullscreen]
+  );
+
+  // Memoized GPU graph dimensions
+  const gpuGraphDimensions = useMemo(() => ({
+    width: typeof width === 'string' ? parseInt(width, 10) : width,
+    height: typeof height === 'string' ? parseInt(height, 10) : height
+  }), [width, height]);
   const [currentSignature, setCurrentSignature] = useState<string | null>(initialSignature || null);
 
   // Detailed progress tracking
@@ -167,6 +168,14 @@ export default function TransactionGraph({
       }
     }
   });
+
+  // Wrapper for GPU node click that adds to history
+  const handleGPUNodeClickWithHistory = (node: any) => {
+    if (node && node.id) {
+      addToHistory(node.id);
+    }
+    handleGPUNodeClick(node);
+  };
 
   // Enhanced layout function
   const runLayoutWithProgress = async (layoutType: string = 'dagre', forceRun: boolean = false) => {
@@ -213,9 +222,11 @@ export default function TransactionGraph({
 
       // Add elements to cytoscape
       cyRef.current.batch(() => {
+        let newNodesCount = 0;
         elements.nodes.forEach(node => {
           if (!cyRef.current!.getElementById(node.data.id).length) {
             cyRef.current!.add(node);
+            newNodesCount++;
           }
         });
         elements.edges.forEach(edge => {
@@ -223,6 +234,11 @@ export default function TransactionGraph({
             cyRef.current!.add(edge);
           }
         });
+
+        // Update expanded nodes counter
+        if (newNodesCount > 0) {
+          setExpandedNodesCount(prev => prev + newNodesCount);
+        }
       });
 
       // Update GPU graph
@@ -276,8 +292,8 @@ export default function TransactionGraph({
     [key: string]: any; // Other properties that might be present
   }
 
-  // Process transaction data into cytoscape elements
-  const processTransactionData = (data: TransactionData, focusAccount: string | null = null) => {
+  // Memoized transaction data processing to avoid expensive recalculations
+  const processTransactionData = useCallback((data: TransactionData, focusAccount: string | null = null) => {
     const nodes: CytoscapeNode[] = [];
     const edges: CytoscapeEdge[] = [];
 
@@ -334,52 +350,98 @@ export default function TransactionGraph({
     }
 
     return { nodes, edges };
-  };
+  }, []); // No dependencies needed as this is a pure function
+
+  // Memoized wrapper to avoid stale closures
+  const wrappedOnTransactionSelect = useCallback((signature: string) => {
+    addToHistory(signature);
+    onTransactionSelect(signature);
+  }, [addToHistory, onTransactionSelect]);
+
+  // Memoized debug panel to avoid expensive cytoscape queries on every render
+  const DebugPanel = React.memo(() => {
+    if (!cyRef.current) return null;
+
+    const nodes = cyRef.current.nodes();
+    const edges = cyRef.current.edges();
+    const shouldShowDebug = nodes.length === 0 || (nodes.length === 1 && edges.length === 0);
+
+    if (!shouldShowDebug) return null;
+
+    return (
+      <div className="absolute bottom-4 left-4 p-3 bg-background/95 border border-border rounded-md shadow-lg z-20 max-w-sm text-xs">
+        <div className="font-semibold mb-2 text-muted-foreground">🔍 Debug Information</div>
+        <div className="space-y-1 text-muted-foreground">
+          <div>• Nodes: {nodes.length}</div>
+          <div>• Edges: {edges.length}</div>
+          <div>• Cytoscape initialized: {cyRef.current ? 'Yes' : 'No'}</div>
+          <div>• GPU Graph nodes: {gpuGraphData.nodes.length}</div>
+          <div>• GPU Graph links: {gpuGraphData.links.length}</div>
+          <div>• Current signature: {currentSignature?.slice(0, 8)}...</div>
+          <div>• Loading: {isLoading ? 'Yes' : 'No'}</div>
+          <div>• Expanded nodes: {expandedNodesCount}</div>
+          <div>• Total accounts to load: {totalAccountsToLoad}</div>
+          <div>• Navigation history: {navigationHistory.length} items</div>
+          <div>• History index: {currentHistoryIndex + 1}/{navigationHistory.length}</div>
+          <div>• Navigating: {isNavigatingHistory ? 'Yes' : 'No'}</div>
+        </div>
+        <div className="mt-2 pt-2 border-t border-border text-xs">
+          <div className="text-muted-foreground">
+            Check browser console for detailed logs
+          </div>
+        </div>
+      </div>
+    );
+  });
 
   // Initialize graph
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!containerRef.current || isInitialized) return;
 
+    const abortController = new AbortController();
+
     const initAsync = async () => {
       try {
-        // Wrap onTransactionSelect to add to navigation history
-        const wrappedOnTransactionSelect = (signature: string) => {
-          // Use callback that gets fresh value to avoid stale closure
-          addToHistory(signature); // addToHistory already handles navigation check internally
-          onTransactionSelect(signature);
-        };
-
         await initializeGraph(containerRef.current!, wrappedOnTransactionSelect);
+
+        if (abortController.signal.aborted) return;
 
         // Define fetchData locally to avoid dependency issues
         const localFetchData = async (signature: string, account: string | null = null) => {
-          if (signature) {
+          if (signature && !abortController.signal.aborted) {
             await fetchData(signature, account);
           }
         };
 
         // Define fetchAccountData locally to avoid dependency issues
         const localFetchAccountData = async (account: string) => {
-          if (account) {
+          if (account && !abortController.signal.aborted) {
             await fetchAccountData(account);
           }
         };
 
         // Load initial data
-        if (initialSignature) {
+        if (initialSignature && !abortController.signal.aborted) {
           await localFetchData(initialSignature, initialAccount);
-        } else if (initialAccount) {
+        } else if (initialAccount && !abortController.signal.aborted) {
           await localFetchAccountData(initialAccount);
         }
       } catch (error) {
-        errorLog('Graph initialization failed:', error);
-        setError('Failed to initialize graph');
+        if (!abortController.signal.aborted) {
+          errorLog('Graph initialization failed:', error);
+          setError('Failed to initialize graph');
+        }
       }
     };
 
     initAsync();
+
+    return () => {
+      abortController.abort();
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [initialSignature, initialAccount, onTransactionSelect, containerRef, initializeGraph, isInitialized]);
+  }, [initialSignature, initialAccount, wrappedOnTransactionSelect, containerRef, initializeGraph, isInitialized]);
 
   // Fetch account data
   const fetchAccountData = useCallback(async (account: string) => {
@@ -401,6 +463,10 @@ export default function TransactionGraph({
       setProgress(50);
       setProgressMessage('Processing account data...');
 
+      // Set total accounts to load (estimate based on transactions)
+      const estimatedAccounts = Math.min(transactions.length * 2, 100); // Rough estimate
+      setTotalAccountsToLoad(estimatedAccounts);
+
       // Process transactions
       const elements = processAccountTransactions(transactions, account);
 
@@ -409,9 +475,11 @@ export default function TransactionGraph({
 
       // Add to graph
       cyRef.current.batch(() => {
+        let newNodesCount = 0;
         elements.nodes.forEach(node => {
           if (!cyRef.current!.getElementById(node.data.id).length) {
             cyRef.current!.add(node);
+            newNodesCount++;
           }
         });
         elements.edges.forEach(edge => {
@@ -419,6 +487,11 @@ export default function TransactionGraph({
             cyRef.current!.add(edge);
           }
         });
+
+        // Update expanded nodes counter
+        if (newNodesCount > 0) {
+          setExpandedNodesCount(prev => prev + newNodesCount);
+        }
       });
 
       // Update GPU graph
@@ -479,8 +552,8 @@ export default function TransactionGraph({
     [key: string]: any; // For any other properties cytoscape might need
   }
 
-  // Process account transactions
-  const processAccountTransactions = (transactions: AccountTransaction[], account: string) => {
+  // Memoized account transactions processing to avoid expensive recalculations
+  const processAccountTransactions = useCallback((transactions: AccountTransaction[], account: string) => {
     const nodes: CytoscapeNode[] = [];
     const edges: CytoscapeEdge[] = [];
 
@@ -527,36 +600,40 @@ export default function TransactionGraph({
     });
 
     return { nodes, edges };
-  };
+  }, []); // No dependencies needed as this is a pure function
 
 
   // Timeout protection for loading
   useEffect(() => {
     if (!isLoading) return;
 
+    // Use refs to track timeouts to avoid stale closures
+    let progressTimeout: NodeJS.Timeout;
+    let completionTimeout: NodeJS.Timeout;
+
     // If progress is stuck at 0% for more than 3 seconds, force it forward
-    const progressTimeout = setTimeout(() => {
-      if (progress === 0 && isLoading) {
-        setProgress(30);
-        setProgressMessage('Initializing graph...');
-      }
+    progressTimeout = setTimeout(() => {
+      setProgress(prev => prev === 0 ? 30 : prev);
+      setProgressMessage('Initializing graph...');
     }, 3000);
 
     // If loading takes more than 10 seconds, force completion
-    const completionTimeout = setTimeout(() => {
-      if (isLoading) {
-        setIsLoading(false);
-        setProgress(100);
-        setError('Loading took too long. Some data may not be displayed.');
-        setTimeout(() => setError(null), 5000);
-      }
+    completionTimeout = setTimeout(() => {
+      setIsLoading(false);
+      setProgress(100);
+      setError('Loading took too long. Some data may not be displayed.');
+      const errorTimeout = setTimeout(() => setError(null), 5000);
+      timeoutIds.current.push(errorTimeout);
     }, 10000);
+
+    // Store timeout IDs for cleanup
+    timeoutIds.current.push(progressTimeout, completionTimeout);
 
     return () => {
       clearTimeout(progressTimeout);
       clearTimeout(completionTimeout);
     };
-  }, [isLoading, progress]);
+  }, [isLoading]); // Removed progress dependency to avoid excessive re-runs
 
   // Cleanup on unmount
   useEffect(() => {
@@ -565,6 +642,8 @@ export default function TransactionGraph({
 
     return () => {
       timeoutIdsCurrent.forEach(id => clearTimeout(id));
+      // Note: Our debounce implementation doesn't have cancel method
+      // The functions will naturally clean up when component unmounts
       cleanupLayout();
       cleanupGraph();
       stopTrackingAddress();
@@ -594,8 +673,8 @@ export default function TransactionGraph({
   return (
     <div
       ref={containerRef}
-      className={`relative w-full h-full bg-background ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}
-      style={{ width, height }}
+      className={containerClassName}
+      style={containerStyle}
     >
       {/* Loading overlay */}
       {isLoading && (
@@ -692,35 +771,7 @@ export default function TransactionGraph({
       </div>
 
       {/* Debug Panel - only show when graph has issues */}
-      {!isLoading && cyRef.current && (
-        (() => {
-          const nodes = cyRef.current.nodes();
-          const edges = cyRef.current.edges();
-          const shouldShowDebug = nodes.length === 0 || (nodes.length === 1 && edges.length === 0);
-
-          if (!shouldShowDebug) return null;
-
-          return (
-            <div className="absolute bottom-4 left-4 p-3 bg-background/95 border border-border rounded-md shadow-lg z-20 max-w-sm text-xs">
-              <div className="font-semibold mb-2 text-muted-foreground">🔍 Debug Information</div>
-              <div className="space-y-1 text-muted-foreground">
-                <div>• Nodes: {nodes.length}</div>
-                <div>• Edges: {edges.length}</div>
-                <div>• Cytoscape initialized: {cyRef.current ? 'Yes' : 'No'}</div>
-                <div>• GPU Graph nodes: {gpuGraphData.nodes.length}</div>
-                <div>• GPU Graph links: {gpuGraphData.links.length}</div>
-                <div>• Current signature: {currentSignature?.slice(0, 8)}...</div>
-                <div>• Loading: {isLoading ? 'Yes' : 'No'}</div>
-              </div>
-              <div className="mt-2 pt-2 border-t border-border text-xs">
-                <div className="text-muted-foreground">
-                  Check browser console for detailed logs
-                </div>
-              </div>
-            </div>
-          );
-        })()
-      )}
+      {!isLoading && cyRef.current && <DebugPanel />}
 
       {/* Main content */}
       {isCloudView ? (
@@ -742,10 +793,10 @@ export default function TransactionGraph({
           {useGPUGraph ? (
             <GPUAcceleratedForceGraph
               graphData={gpuGraphData}
-              onNodeClick={handleGPUNodeClick}
+              onNodeClick={handleGPUNodeClickWithHistory}
               onNodeHover={handleGPUNodeHover}
-              width={typeof width === 'string' ? parseInt(width, 10) : width}
-              height={typeof height === 'string' ? parseInt(height, 10) : height}
+              width={gpuGraphDimensions.width}
+              height={gpuGraphDimensions.height}
             />
           ) : (
             <div id="cy-container" className="w-full h-full" />
@@ -763,4 +814,16 @@ export default function TransactionGraph({
       )}
     </div>
   );
-}
+}, (prevProps, nextProps) => {
+  // Custom comparison for React.memo optimization
+  return (
+    prevProps.initialSignature === nextProps.initialSignature &&
+    prevProps.initialAccount === nextProps.initialAccount &&
+    prevProps.onTransactionSelect === nextProps.onTransactionSelect &&
+    prevProps.width === nextProps.width &&
+    prevProps.height === nextProps.height &&
+    prevProps.maxDepth === nextProps.maxDepth
+  );
+});
+
+export default TransactionGraph;

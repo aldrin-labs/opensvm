@@ -338,62 +338,73 @@ function formatExplanation(aiAnalysis: any, params: any, transaction: any) {
 }
 
 // Helper function to handle streaming explanations
-async function handleStreamingExplanation(_signature: string, _params: any): Promise<NextResponse> {
-  // Streaming functionality not implemented yet
-  // For now, return a simple error response
-  return NextResponse.json({
-    success: false,
-    error: {
-      code: 'STREAMING_NOT_IMPLEMENTED',
-      message: 'Streaming explanations are not yet implemented'
-    },
-    timestamp: Date.now()
-  }, { status: 501 });
+async function handleStreamingExplanation(signature: string, params: any): Promise<NextResponse> {
+  const encoder = new TextEncoder();
 
-  // TODO: Implement proper streaming
-  // const encoder = new TextEncoder();
-  // 
-  // const stream = new ReadableStream({
-  //   async start(controller) {
-  //     try {
-  //       // Fetch transaction
-  //       const transaction = await getTransactionDetails(signature);
-  //       
-  //       if (!transaction) {
-  //         controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-  //           error: 'Transaction not found'
-  //         })}\n\n`));
-  //         controller.close();
-  //         return;
-  //       }
-  // 
-  //       // Stream the explanation generation
-  //       const aiStream = await analyzeTransactionWithAI(transaction, {
-  //         ...params,
-  //         stream: true
-  //       });
-  // 
-  //       for await (const chunk of aiStream) {
-  //         controller.enqueue(encoder.encode(`data: ${JSON.stringify(chunk)}\n\n`));
-  //       }
-  // 
-  //       controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-  //       controller.close();
-  //       
-  //     } catch (error) {
-  //       controller.enqueue(encoder.encode(`data: ${JSON.stringify({
-  //         error: error instanceof Error ? error.message : 'Unknown error'
-  //       })}\n\n`));
-  //       controller.close();
-  //     }
-  //   }
-  // });
-  // 
-  // return new NextResponse(stream, {
-  //   headers: {
-  //     'Content-Type': 'text/event-stream',
-  //     'Cache-Control': 'no-cache',
-  //     'Connection': 'keep-alive'
-  //   }
-  // });
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        // Send initial status
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'status',
+          message: 'Fetching transaction details...'
+        })}\n\n`));
+
+        // Fetch transaction
+        const transaction = await getTransactionDetails(signature);
+
+        if (!transaction) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+            type: 'error',
+            error: 'Transaction not found'
+          })}\n\n`));
+          controller.close();
+          return;
+        }
+
+        // Send transaction found status
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'status',
+          message: 'Transaction found, generating explanation...'
+        })}\n\n`));
+
+        // Generate the explanation
+        const explanation = await analyzeTransactionWithAI(transaction, {
+          ...params
+        });
+
+        // Send the explanation as a single response
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'content',
+          content: explanation.summary,
+          explanation: explanation
+        })}\n\n`));
+
+        // Send completion signal
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'complete',
+          message: 'Explanation generation complete'
+        })}\n\n`));
+
+        controller.close();
+
+      } catch (error) {
+        console.error('Streaming explanation error:', error);
+        controller.enqueue(encoder.encode(`data: ${JSON.stringify({
+          type: 'error',
+          error: error instanceof Error ? error.message : 'Unknown error occurred'
+        })}\n\n`));
+        controller.close();
+      }
+    }
+  });
+
+  return new NextResponse(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Streaming': 'true'
+    }
+  });
 }

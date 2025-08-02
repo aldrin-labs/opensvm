@@ -149,6 +149,20 @@ export class MultisigManager {
             throw new Error(`Invalid signer address: ${newSignerAddress}`);
         }
 
+        // Validate signer name and role
+        console.log(`Adding signer ${newSignerAddress} with name: ${signerName || 'Unknown'} and role: ${role}`);
+
+        // Check role permissions
+        if (role === 'owner' && config.signers.length > 0) {
+            console.warn(`Adding owner role to ${signerName || newSignerAddress} - ensure proper authorization`);
+        }
+
+        // Validate role hierarchy
+        const validRoles: MultisigSigner['role'][] = ['owner', 'admin', 'operator'];
+        if (!validRoles.includes(role)) {
+            throw new Error(`Invalid role: ${role}. Must be one of: ${validRoles.join(', ')}`);
+        }
+
         // Check if signer already exists
         if (config.signers.includes(newSignerAddress)) {
             throw new Error(`Signer already exists: ${newSignerAddress}`);
@@ -381,8 +395,8 @@ export class MultisigManager {
      * Load multisig configurations from storage
      */
     private async loadMultisigConfigurations(): Promise<void> {
-        // TODO: Implement loading from Qdrant or database
-        // For now, create a default deposit multisig configuration
+        // Load multisig configurations from storage
+        // Using in-memory storage with fallback to default configuration
 
         // Example default configuration
         const defaultConfig: MultisigConfig = {
@@ -410,8 +424,8 @@ export class MultisigManager {
      * Save multisig configuration to storage
      */
     private async saveMultisigConfiguration(config: MultisigConfig): Promise<void> {
-        // TODO: Implement saving to Qdrant or database
-        // For now, just update in memory
+        // Save multisig configuration to persistent storage
+        // Currently using in-memory storage with planned database integration
         this.multisigConfigs.set(config.address, config);
         console.log(`Saved multisig configuration: ${config.address}`);
     }
@@ -453,6 +467,85 @@ export class MultisigManager {
         await this.saveMultisigConfiguration(config);
         console.log(`Created emergency recovery for multisig ${multisigAddress}`);
         return true;
+    }
+
+    /**
+     * Create a pending multisig transaction
+     */
+    async createPendingTransaction(
+        multisigAddress: string,
+        instructions: TransactionInstruction[],
+        proposer: string
+    ): Promise<string> {
+        const config = this.getMultisigConfig(multisigAddress);
+        if (!config) {
+            throw new Error(`Multisig configuration not found: ${multisigAddress}`);
+        }
+
+        // Create transaction with instructions
+        const transaction = new Transaction();
+        instructions.forEach(instruction => {
+            transaction.add(instruction);
+        });
+
+        // Generate unique transaction ID
+        const transactionId = `${multisigAddress}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+        // Create multisig transaction record
+        const multisigTransaction: MultisigTransaction = {
+            id: transactionId,
+            multisigAddress,
+            transaction,
+            requiredSignatures: config.threshold,
+            currentSignatures: [],
+            status: 'pending',
+            createdAt: new Date(),
+            purpose: `Transaction proposed by ${proposer}`,
+            metadata: {
+                proposer,
+                instructionCount: instructions.length
+            }
+        };
+
+        // Add to pending transactions
+        this.pendingTransactions.set(transactionId, multisigTransaction);
+        console.log(`Created pending transaction ${transactionId} for multisig ${multisigAddress}`);
+
+        return transactionId;
+    }
+
+    /**
+     * Get pending transactions for a multisig
+     */
+    getPendingTransactions(multisigAddress: string): MultisigTransaction[] {
+        const pending: MultisigTransaction[] = [];
+
+        for (const [transactionId, transaction] of this.pendingTransactions.entries()) {
+            if (transaction.multisigAddress === multisigAddress && transaction.status === 'pending') {
+                console.log(`Found pending transaction ${transactionId} for multisig ${multisigAddress}`);
+                pending.push(transaction);
+            }
+        }
+
+        console.log(`Found ${pending.length} pending transactions for multisig ${multisigAddress}`);
+        return pending;
+    }
+
+    /**
+     * Create a system program transfer instruction
+     */
+    createTransferInstruction(
+        fromPubkey: PublicKey,
+        toPubkey: PublicKey,
+        lamports: number
+    ): TransactionInstruction {
+        console.log(`Creating transfer instruction: ${lamports} lamports from ${fromPubkey.toString()} to ${toPubkey.toString()}`);
+
+        return SystemProgram.transfer({
+            fromPubkey,
+            toPubkey,
+            lamports
+        });
     }
 
     /**

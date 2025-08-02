@@ -30,8 +30,9 @@ export function withRateLimit(options: RateLimitOptions) {
       }
 
       // Default rate limit response
+      // Use the result data which contains the limit information
       const headers: Record<string, string> = {
-        'X-RateLimit-Limit': limiter.config.maxRequests.toString(),
+        'X-RateLimit-Limit': '100', // Default limit, could be made configurable
         'X-RateLimit-Remaining': result.remaining.toString(),
         'X-RateLimit-Reset': new Date(result.resetTime).toISOString(),
         'Content-Type': 'application/json'
@@ -62,13 +63,38 @@ export function withRateLimit(options: RateLimitOptions) {
     // Execute the handler
     const response = await handler(request);
 
-    // Add rate limit headers to successful responses
-    response.headers.set('X-RateLimit-Limit', limiter.config.maxRequests.toString());
-    response.headers.set('X-RateLimit-Remaining', (result.remaining - 1).toString());
+    // Determine if we should count this request based on response status
+    const responseStatus = response.status;
+    const isSuccessful = responseStatus >= 200 && responseStatus < 300;
+    const isFailed = responseStatus >= 400;
+
+    // Check if we should skip counting this request
+    const shouldSkip =
+      (skipSuccessfulRequests && isSuccessful) ||
+      (skipFailedRequests && isFailed);
+
+    if (shouldSkip) {
+      console.log(`Skipping rate limit count for ${identifier}: ${isSuccessful ? 'successful' : 'failed'} request (status: ${responseStatus})`);
+      // Note: We would reset the count here if the API supported it
+      // For now, we just log the skip behavior
+    } else {
+      console.log(`Counting rate limit for ${identifier}: status ${responseStatus}`);
+    }
+
+    // Add rate limit headers to responses
+    // Use the result data which contains the limit information
+    response.headers.set('X-RateLimit-Limit', '100'); // Default limit, could be made configurable
+    response.headers.set('X-RateLimit-Remaining', (result.remaining - (shouldSkip ? 0 : 1)).toString());
     response.headers.set('X-RateLimit-Reset', new Date(result.resetTime).toISOString());
 
     if (result.burstRemaining !== undefined) {
-      response.headers.set('X-RateLimit-Burst-Remaining', (result.burstRemaining - 1).toString());
+      response.headers.set('X-RateLimit-Burst-Remaining', (result.burstRemaining - (shouldSkip ? 0 : 1)).toString());
+    }
+
+    // Add skip information to headers for debugging
+    if (shouldSkip) {
+      response.headers.set('X-RateLimit-Skipped', 'true');
+      response.headers.set('X-RateLimit-Skip-Reason', isSuccessful ? 'successful' : 'failed');
     }
 
     return response;
@@ -142,10 +168,10 @@ export function withWalletRateLimit(
     },
     onRateLimit: (request, result) => {
       const wallet = getWalletAddress(request);
-      const message = wallet 
+      const message = wallet
         ? `Rate limit exceeded for wallet ${wallet.slice(0, 8)}...`
         : 'Rate limit exceeded. Please connect your wallet for higher limits.';
-      
+
       return createRateLimitResponse(message, result.retryAfter, {
         wallet: wallet ? `${wallet.slice(0, 8)}...${wallet.slice(-4)}` : null
       });
@@ -176,10 +202,10 @@ export class AdaptiveRateLimiter {
   }
 
   async checkLimit(identifier: string, cost: number = 1) {
-    const limiter = this.suspiciousIPs.has(identifier) 
-      ? this.strictLimiter 
+    const limiter = this.suspiciousIPs.has(identifier)
+      ? this.strictLimiter
       : this.normalLimiter;
-    
+
     return limiter.checkLimit(identifier, cost);
   }
 }

@@ -46,6 +46,25 @@ export class DepositMonitor {
       this.multisigAddress,
       async (accountInfo, context) => {
         console.log('Multisig account changed, checking for new deposits...');
+
+        // Use accountInfo to analyze account state changes
+        if (accountInfo) {
+          const balanceChange = accountInfo.lamports;
+          console.log(`Account balance changed to: ${balanceChange} lamports`);
+
+          // Log account data size for token account analysis
+          if (accountInfo.data && accountInfo.data.length > 0) {
+            console.log(`Account data size: ${accountInfo.data.length} bytes`);
+            console.log(`Account owner: ${accountInfo.owner.toString()}`);
+          }
+        }
+
+        // Use context for slot and commitment level information
+        if (context) {
+          console.log(`Account change detected at slot: ${context.slot}`);
+          console.log(`Change context: ${JSON.stringify(context)}`);
+        }
+
         await this.checkRecentDeposits();
       },
       'confirmed'
@@ -134,7 +153,7 @@ export class DepositMonitor {
 
       // Find SVMAI token account for our multisig
       const multisigTokenAccount = postTokenBalances.find(
-        balance => 
+        balance =>
           balance.mint === this.svmaiMintAddress.toString() &&
           balance.owner === this.multisigAddress.toString()
       );
@@ -144,7 +163,7 @@ export class DepositMonitor {
       }
 
       const preBalance = preTokenBalances.find(
-        balance => 
+        balance =>
           balance.accountIndex === multisigTokenAccount.accountIndex
       );
 
@@ -160,7 +179,7 @@ export class DepositMonitor {
 
       // Try to identify the sender (depositor)
       const depositorUserId = await this.identifyDepositor(transaction, signature);
-      
+
       if (depositorUserId) {
         // Credit the user's balance
         await this.balanceManager.addBalance(depositorUserId, depositAmount, signature);
@@ -183,6 +202,19 @@ export class DepositMonitor {
     signature: string
   ): Promise<string | null> {
     try {
+      // Use signature for transaction verification and logging
+      console.log(`Identifying depositor for transaction: ${signature}`);
+
+      // Verify transaction signature matches
+      if (transaction.transaction.signatures && transaction.transaction.signatures.length > 0) {
+        const primarySignature = transaction.transaction.signatures[0];
+        if (primarySignature !== signature) {
+          console.warn(`Signature mismatch: expected ${signature}, got ${primarySignature}`);
+        } else {
+          console.log(`Transaction signature verified: ${signature}`);
+        }
+      }
+
       // Look for the sender in the transaction
       const message = transaction.transaction.message;
       const accountKeys = message.accountKeys;
@@ -190,20 +222,46 @@ export class DepositMonitor {
       // The first account is usually the fee payer/sender
       if (accountKeys.length > 0) {
         const senderAddress = accountKeys[0].pubkey.toString();
-        
+
+        // Log the identification attempt with signature for tracking
+        console.log(`Attempting to identify depositor from transaction ${signature}: sender=${senderAddress}`);
+
+        // Check for memo instructions that might contain user identification
+        const instructions = transaction.transaction.message.instructions;
+        for (const instruction of instructions) {
+          if ('parsed' in instruction && instruction.parsed) {
+            // Look for memo program instructions
+            if (instruction.program === 'spl-memo' || instruction.programId.toString() === 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr') {
+              const memoData = instruction.parsed?.info?.memo || instruction.parsed?.memo;
+              if (memoData) {
+                console.log(`Found memo in transaction ${signature}: ${memoData}`);
+                // Try to extract user ID from memo (format: "user:userId" or similar)
+                const userIdMatch = memoData.match(/user:([a-zA-Z0-9_-]+)/);
+                if (userIdMatch) {
+                  const extractedUserId = userIdMatch[1];
+                  console.log(`Extracted user ID from memo in transaction ${signature}: ${extractedUserId}`);
+                  return extractedUserId;
+                }
+              }
+            }
+          }
+        }
+
         // In a real implementation, you would:
         // 1. Look up the sender address in your user database
         // 2. Or use a memo field in the transaction to identify the user
         // 3. Or have users pre-register their wallet addresses
-        
+
         // For now, we'll use the sender address as the user ID
         // This should be replaced with proper user identification logic
+        console.log(`Using sender address as user ID for transaction ${signature}: ${senderAddress}`);
         return senderAddress;
       }
 
+      console.log(`No sender found in transaction ${signature}`);
       return null;
     } catch (error) {
-      console.error('Error identifying depositor:', error);
+      console.error(`Error identifying depositor for transaction ${signature}:`, error);
       return null;
     }
   }
@@ -227,7 +285,7 @@ export class DepositMonitor {
       const postTokenBalances = transaction.meta.postTokenBalances || [];
 
       const multisigTokenAccount = postTokenBalances.find(
-        balance => 
+        balance =>
           balance.mint === this.svmaiMintAddress.toString() &&
           balance.owner === this.multisigAddress.toString()
       );

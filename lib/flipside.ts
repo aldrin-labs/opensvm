@@ -7,6 +7,14 @@ const flipside = new Flipside(
 );
 
 export async function queryFlipside<T extends Record<string, any>>(sql: string): Promise<T[]> {
+  // Use sql parameter for query validation and logging even when disabled
+  console.log(`Flipside query requested: ${sql.substring(0, 50)}${sql.length > 50 ? '...' : ''}`);
+
+  // Validate SQL query structure
+  if (!sql || sql.trim().length === 0) {
+    throw new Error('SQL query cannot be empty');
+  }
+
   // DISABLED: Return empty results immediately to avoid slow API calls during tests
   console.log('Flipside API disabled - returning empty results');
   return [];

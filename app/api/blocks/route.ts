@@ -18,7 +18,7 @@ const rateLimitMiddleware = createRateLimitMiddleware(blockListLimiter);
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     // Rate limiting
     const rateLimitResult = await rateLimitMiddleware(request);
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
       );
     } catch (error: any) {
       console.error('Error fetching blocks list:', error);
-      
+
       return NextResponse.json({
         success: false,
         error: {
@@ -67,7 +67,7 @@ export async function GET(request: NextRequest) {
           retryAfter: 5
         },
         timestamp: Date.now()
-      }, { 
+      }, {
         status: 500,
         headers: { 'Retry-After': '5' }
       });
@@ -76,9 +76,16 @@ export async function GET(request: NextRequest) {
     // Filter by validator if specified
     let filteredBlocks = blocksResponse.blocks;
     if (validatedParams.validator) {
-      // TODO: Implement validator filtering when validator info is available
-      // For now, we'll return all blocks
-      console.log(`Validator filtering requested for: ${validatedParams.validator}`);
+      // Filter blocks by validator vote account
+      // Check if the validator received rewards in the block (indicating they produced it)
+      filteredBlocks = blocksResponse.blocks.filter(block => {
+        return block.rewards.some(reward =>
+          reward.pubkey === validatedParams.validator &&
+          (reward.rewardType === 'Voting' || reward.rewardType === 'Fee')
+        );
+      });
+
+      console.log(`Filtered ${blocksResponse.blocks.length} blocks to ${filteredBlocks.length} blocks for validator: ${validatedParams.validator}`);
     }
 
     // Sort blocks based on sortBy parameter
@@ -192,7 +199,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Unexpected error in blocks list API:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -202,7 +209,7 @@ export async function GET(request: NextRequest) {
         retryAfter: 5
       },
       timestamp: Date.now()
-    }, { 
+    }, {
       status: 500,
       headers: { 'Retry-After': '5' }
     });

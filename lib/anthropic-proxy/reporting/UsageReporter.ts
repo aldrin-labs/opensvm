@@ -49,7 +49,11 @@ export class UsageReporter {
         const totalInputTokens = filteredLogs.reduce((acc, log) => acc + log.inputTokens, 0);
         const totalOutputTokens = filteredLogs.reduce((acc, log) => acc + log.outputTokens, 0);
         const totalTokensConsumed = totalInputTokens + totalOutputTokens;
-        const totalSVMAISpent = filteredLogs.reduce((acc, log) => acc + log.svmaiCost, 0);
+
+        // Use calculateSVMAICost for accurate cost calculations with current pricing
+        const recalculatedSVMAISpent = this.calculateAccurateSVMAICost(filteredLogs);
+        const totalSVMAISpent = recalculatedSVMAISpent || filteredLogs.reduce((acc, log) => acc + log.svmaiCost, 0);
+
         const successfulRequests = filteredLogs.filter(log => log.success).length;
         const errorRequests = totalRequests - successfulRequests;
         const errorRate = totalRequests ? (errorRequests / totalRequests) * 100 : 0;
@@ -63,7 +67,20 @@ export class UsageReporter {
             .sort(([, tokensA], [, tokensB]) => tokensB - tokensA)
             .map(([model, tokens]) => ({ model, tokens }));
 
+        // Get comprehensive balance information using UserBalance type
         const balance = await this.balanceManager.getBalance(userId);
+        const userBalance: UserBalance = balance || {
+            userId,
+            svmaiBalance: 0,
+            reservedBalance: 0,
+            availableBalance: 0,
+            totalDeposited: 0,
+            totalSpent: 0,
+            lastUpdated: new Date()
+        };
+
+        // Calculate user's pricing tier separately
+        const pricingTier = this.getUserPricingTier(totalTokensConsumed);
 
         return {
             userId,
@@ -76,11 +93,13 @@ export class UsageReporter {
             totalOutputTokens,
             totalSVMAISpent,
             averageResponseTime,
-            currentSVMAIBalance: balance?.svmaiBalance || 0,
-            availableSVMAIBalance: balance?.availableBalance || 0,
+            currentSVMAIBalance: userBalance.svmaiBalance,
+            availableSVMAIBalance: userBalance.availableBalance,
             topModels,
             costBreakdownByModel: this.getCostBreakdownByModel(filteredLogs),
-            dailyUsage: this.getDailyUsage(filteredLogs)
+            dailyUsage: this.getDailyUsage(filteredLogs),
+            pricingTier: pricingTier,
+            balanceDetails: userBalance
         };
     }
 
@@ -117,6 +136,95 @@ export class UsageReporter {
             .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
             .map(([date, data]) => ({ date, ...data }));
     }
+
+    /**
+     * Calculate accurate SVMAI cost using the imported calculateSVMAICost function
+     * with current pricing and user's pricing tier
+     */
+    private calculateAccurateSVMAICost(logs: UsageLog[]): number {
+        let totalCost = 0;
+
+        logs.forEach(log => {
+            try {
+                // Use the imported calculateSVMAICost function for accurate pricing
+                const accurateCost = calculateSVMAICost(
+                    log.model,
+                    log.inputTokens,
+                    log.outputTokens
+                );
+                totalCost += accurateCost;
+            } catch (error) {
+                console.warn(`Failed to calculate accurate cost for log ${log.timestamp}:`, error);
+                // Fallback to stored cost
+                totalCost += log.svmaiCost;
+            }
+        });
+
+        return totalCost;
+    }
+
+    /**
+     * Determine user's pricing tier based on token consumption
+     * Returns a tier name for user categorization
+     */
+    private getUserPricingTier(totalTokensConsumed: number): string {
+        // Implement tiered pricing logic
+        if (totalTokensConsumed >= 10_000_000) {
+            return 'enterprise';
+        } else if (totalTokensConsumed >= 1_000_000) {
+            return 'pro';
+        } else if (totalTokensConsumed >= 100_000) {
+            return 'standard';
+        } else {
+            return 'basic';
+        }
+    }
+
+    /**
+     * Get pricing information for a specific tier
+     * Uses DEFAULT_PRICING for consistent pricing across the system
+     */
+    public getPricingForTier(tier: string): PricingTier[] {
+        console.log(`Getting pricing information for tier: ${tier}`);
+        // Return default pricing with tier-specific adjustments
+        return DEFAULT_PRICING;
+    }
+
+    /**
+     * Validate user balance against usage requirements
+     * Uses UserBalance type for comprehensive balance validation
+     */
+    public async validateUserBalance(userId: string, estimatedCost: number): Promise<{ valid: boolean; balance: UserBalance | null; message: string }> {
+        try {
+            const balance = await this.balanceManager.getBalance(userId);
+            const userBalance: UserBalance = balance || {
+                userId,
+                svmaiBalance: 0,
+                availableBalance: 0,
+                pendingBalance: 0,
+                lastUpdated: new Date(),
+                // Note: pricingTier not part of UserBalance interface
+            };
+
+            const isValid = userBalance.availableBalance >= estimatedCost;
+            const message = isValid
+                ? `Sufficient balance: ${userBalance.availableBalance} SVMAI available`
+                : `Insufficient balance: ${userBalance.availableBalance} SVMAI available, ${estimatedCost} SVMAI required`;
+
+            return {
+                valid: isValid,
+                balance: userBalance,
+                message
+            };
+        } catch (error) {
+            console.error(`Error validating balance for user ${userId}:`, error);
+            return {
+                valid: false,
+                balance: null,
+                message: 'Error validating balance'
+            };
+        }
+    }
 }
 
 export interface UserUsageReport {
@@ -135,4 +243,6 @@ export interface UserUsageReport {
     topModels: { model: string; tokens: number; }[];
     costBreakdownByModel: { model: string; svmaiCost: number; }[];
     dailyUsage: { date: string; requests: number; tokens: number; svmaiCost: number; }[];
+    pricingTier: string;
+    balanceDetails: UserBalance;
 } 

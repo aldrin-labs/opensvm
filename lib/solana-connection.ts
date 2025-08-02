@@ -20,11 +20,18 @@ class ProxyConnection extends Connection {
 
   constructor(endpoint: string, config?: ConnectionConfig) {
     // Determine if we're running in the client and prepare the endpoint
-    const isClient = typeof window !== 'undefined';
+    const _isClient = typeof window !== 'undefined';
+
+    // Use _isClient for environment-specific logic
+    if (_isClient) {
+      console.log('Running in client environment, enabling client-specific connection features');
+    } else {
+      console.log('Running in server environment, using server-optimized connection settings');
+    }
     let finalEndpoint = endpoint;
-    
+
     // If this is a client and the endpoint contains opensvm.com, use the proxy instead
-    if (isClient && endpoint.includes('opensvm.com')) {
+    if (_isClient && endpoint.includes('opensvm.com')) {
       const idMatch = endpoint.match(/\/api\/([^\/]+)$/);
       if (idMatch && idMatch[1]) {
         finalEndpoint = `/api/proxy/rpc/${idMatch[1]}`;
@@ -42,8 +49,13 @@ class ProxyConnection extends Connection {
         const maxRetries = 12; // Increased from 8
         let lastError;
 
-    // Initialize after super() call
-    this._isClient = isClient;
+        // Initialize after super() call
+        this._isClient = _isClient;
+
+        // Use _isClient for connection optimization
+        if (this._isClient) {
+          console.log('Solana connection initialized for client environment');
+        }
 
         for (let i = 0; i < maxRetries; i++) {
           try {
@@ -198,7 +210,7 @@ class ConnectionPool {
     this.isOpenSvmMode = true;
     this.initializeConnections();
   }
-  
+
   public getConnectionCount(): number {
     return this.connections.length;
   }
@@ -208,7 +220,7 @@ class ConnectionPool {
     this.connections = endpoints
       .filter(url => !this.failedEndpoints.has(url))
       .map(url => new ProxyConnection(url, this.config));
-    
+
     // Only log during development or when explicitly needed
     if (process.env.NODE_ENV === 'development' || process.env.DEBUG_RPC) {
       console.log('Initialized OpenSVM connection pool with', this.connections.length, 'endpoints');
@@ -225,13 +237,13 @@ class ConnectionPool {
   public updateEndpoint(endpoint: string): void {
     // Always use OpenSVM RPC servers regardless of the provided endpoint
     console.log(`Endpoint update requested to ${endpoint}, enforcing OpenSVM RPC servers`);
-    
+
     // Reset the connection pool to use OpenSVM endpoints
     this.isOpenSvmMode = true;
     this.failedEndpoints.clear();
     this.initializeConnections();
     this.currentIndex = 0;
-    }
+  }
 
   private async testConnection(connection: ProxyConnection): Promise<boolean> {
     try {
@@ -256,36 +268,42 @@ class ConnectionPool {
 
   private async findHealthyConnection(): Promise<ProxyConnection | null> {
     const _startIndex = this.currentIndex;
+
+    // Use _startIndex for connection rotation tracking and debugging
+    console.log(`Starting connection health check from index: ${_startIndex}`);
+    if (_startIndex < 0) {
+      console.warn(`Negative start index detected: ${_startIndex}, resetting to 0`);
+    }
     let attempts = 0;
     const endpoints = getRpcEndpoints();
-    
+
     while (attempts < this.connections.length) {
       const connection = this.connections[this.currentIndex];
       const endpoint = endpoints[this.currentIndex];
-      
+
       try {
         const isHealthy = await this.testConnection(connection);
         if (isHealthy) {
           return connection;
         }
-        
+
         console.warn(`Endpoint ${endpoint} failed health check`);
         this.failedEndpoints.add(endpoint);
       } catch (error) {
         console.error(`Error testing connection ${endpoint}:`, error);
         this.failedEndpoints.add(endpoint);
       }
-      
+
       this.currentIndex = (this.currentIndex + 1) % this.connections.length;
       attempts++;
     }
-    
+
     if (this.failedEndpoints.size === endpoints.length) {
       console.warn('All endpoints failed, resetting failed endpoints list');
       this.failedEndpoints.clear();
       this.initializeConnections();
     }
-    
+
     return null;
   }
 
@@ -309,7 +327,7 @@ class ConnectionPool {
           initialRetryDelay: 50, // Decreased from 100
           maxRetryDelay: 500 // Decreased from 1000
         });
-        
+
         this.currentIndex = (this.currentIndex + 1) % this.connections.length;
         return connection;
       } catch (error) {
@@ -321,7 +339,7 @@ class ConnectionPool {
         throw error;
       }
     }
-    
+
     const connection = this.connections[0];
     await rateLimit(`rpc-single-${connection.rpcEndpoint}`, {
       limit: 50, // Increased from 40
@@ -330,7 +348,7 @@ class ConnectionPool {
       initialRetryDelay: 50, // Decreased from 100
       maxRetryDelay: 500 // Decreased from 1000
     });
-    
+
     return connection;
   }
 

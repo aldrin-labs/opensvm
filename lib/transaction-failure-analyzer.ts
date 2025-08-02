@@ -11,28 +11,28 @@ import type { DetailedTransactionInfo } from './solana';
 export interface TransactionFailureAnalysis {
   signature: string;
   isFailure: boolean;
-  
+
   // Error Classification
   errorClassification: ErrorClassification;
-  
+
   // Root Cause Analysis
   rootCause: RootCauseAnalysis;
-  
+
   // Impact Assessment
   impact: FailureImpact;
-  
+
   // Recovery Analysis
   recovery: RecoveryAnalysis;
-  
+
   // Prevention Strategies
   prevention: PreventionStrategy[];
-  
+
   // Retry Recommendations
   retryRecommendations: RetryRecommendation[];
-  
+
   // Similar Failures
   similarFailures: SimilarFailure[];
-  
+
   // Overall Assessment
   severity: 'low' | 'medium' | 'high' | 'critical';
   recoverability: 'immediate' | 'with_changes' | 'difficult' | 'impossible';
@@ -46,13 +46,13 @@ export interface ErrorClassification {
   errorMessage: string;
   technicalDescription: string;
   userFriendlyDescription: string;
-  
+
   // Error hierarchy
   isSystemError: boolean;
   isProgramError: boolean;
   isUserError: boolean;
   isNetworkError: boolean;
-  
+
   // Error characteristics
   isTransient: boolean; // Can be retried
   isDeterministic: boolean; // Will always fail with same inputs
@@ -60,7 +60,7 @@ export interface ErrorClassification {
   isDataRelated: boolean; // Related to account data/state
 }
 
-export type ErrorCategory = 
+export type ErrorCategory =
   | 'insufficient_funds'
   | 'compute_budget_exceeded'
   | 'account_not_found'
@@ -126,13 +126,13 @@ export type ErrorCategory =
 export interface RootCauseAnalysis {
   primaryCause: string;
   contributingFactors: ContributingFactor[];
-  
+
   // Context analysis
   accountStateIssues: AccountStateIssue[];
   instructionIssues: InstructionIssue[];
   resourceIssues: ResourceIssue[];
   timingIssues: TimingIssue[];
-  
+
   // Failure point
   failurePoint: {
     instructionIndex: number | null;
@@ -140,7 +140,7 @@ export interface RootCauseAnalysis {
     accountIndex: number | null;
     specificOperation: string | null;
   };
-  
+
   // Chain of events leading to failure
   failureChain: FailureEvent[];
 }
@@ -195,20 +195,20 @@ export interface FailureImpact {
   // Financial impact
   feesLost: number; // lamports
   feesLostUSD: number | null;
-  
+
   // Operational impact
   transactionFailed: boolean;
   partialExecution: boolean;
   accountsAffected: string[];
-  
+
   // User experience impact
   userImpact: 'none' | 'minor' | 'moderate' | 'severe';
   businessImpact: 'none' | 'low' | 'medium' | 'high' | 'critical';
-  
+
   // Recovery cost
   estimatedRecoveryCost: number; // lamports
   estimatedRecoveryTime: string;
-  
+
   // Downstream effects
   cascadingFailures: CascadingFailure[];
 }
@@ -223,12 +223,12 @@ export interface CascadingFailure {
 export interface RecoveryAnalysis {
   isRecoverable: boolean;
   recoveryComplexity: 'simple' | 'moderate' | 'complex' | 'very_complex';
-  
+
   // Recovery options
   immediateActions: RecoveryAction[];
   shortTermActions: RecoveryAction[];
   longTermActions: RecoveryAction[];
-  
+
   // Recovery requirements
   requiredResources: {
     additionalFunds: number; // lamports
@@ -236,7 +236,7 @@ export interface RecoveryAnalysis {
     accountChanges: string[];
     timeRequired: string;
   };
-  
+
   // Recovery success probability
   successProbability: number; // 0-100
   riskFactors: string[];
@@ -267,21 +267,21 @@ export interface PreventionStrategy {
 export interface RetryRecommendation {
   shouldRetry: boolean;
   retryStrategy: 'immediate' | 'with_delay' | 'with_modifications' | 'not_recommended';
-  
+
   // Retry parameters
   recommendedDelay: number; // milliseconds
   maxRetries: number;
   backoffStrategy: 'linear' | 'exponential' | 'fixed';
-  
+
   // Required modifications
   requiredChanges: RequiredChange[];
-  
+
   // Success probability
   retrySuccessProbability: number; // 0-100
-  
+
   // Conditions for retry
   retryConditions: string[];
-  
+
   // Monitoring recommendations
   monitoringPoints: string[];
 }
@@ -310,16 +310,16 @@ export interface FailureAnalyzerConfig {
   includeSimilarFailures: boolean;
   maxSimilarFailures: number;
   confidenceThreshold: number;
-  
+
   // Analysis depth
   deepAnalysis: boolean;
   includePreventionStrategies: boolean;
   includeRecoveryAnalysis: boolean;
-  
+
   // External data sources
   solPriceUSD?: number;
   networkConditions?: 'normal' | 'congested' | 'degraded';
-  
+
   // Thresholds
   thresholds: {
     highImpactFee: number; // lamports
@@ -380,7 +380,7 @@ export class TransactionFailureAnalyzer {
   async analyzeFailure(transaction: DetailedTransactionInfo): Promise<TransactionFailureAnalysis> {
     // Check if transaction actually failed
     const isFailure = this.isTransactionFailure(transaction);
-    
+
     if (!isFailure) {
       return this.createSuccessAnalysis(transaction);
     }
@@ -388,7 +388,7 @@ export class TransactionFailureAnalyzer {
     const analysis: TransactionFailureAnalysis = {
       signature: transaction.signature,
       isFailure: true,
-      
+
       errorClassification: await this.classifyError(transaction),
       rootCause: await this.analyzeRootCause(transaction),
       impact: await this.assessImpact(transaction),
@@ -396,7 +396,7 @@ export class TransactionFailureAnalyzer {
       prevention: await this.generatePreventionStrategies(transaction),
       retryRecommendations: await this.generateRetryRecommendations(transaction),
       similarFailures: await this.findSimilarFailures(transaction),
-      
+
       severity: 'medium', // Will be calculated
       recoverability: 'with_changes', // Will be calculated
       confidence: 0 // Will be calculated
@@ -409,7 +409,7 @@ export class TransactionFailureAnalyzer {
 
     // Cache the analysis
     this.failureHistory.set(transaction.signature, analysis);
-    
+
     return analysis;
   }
 
@@ -451,7 +451,7 @@ export class TransactionFailureAnalyzer {
     // Parse error information
     const errorInfo = this.parseError(mockError);
     const pattern = this.matchErrorPattern(errorInfo);
-    
+
     return {
       primaryCategory: pattern.category,
       secondaryCategories: pattern.secondaryCategories || [],
@@ -459,12 +459,12 @@ export class TransactionFailureAnalyzer {
       errorMessage: errorInfo.message,
       technicalDescription: pattern.technicalDescription,
       userFriendlyDescription: pattern.userFriendlyDescription,
-      
+
       isSystemError: pattern.isSystemError,
       isProgramError: pattern.isProgramError,
       isUserError: pattern.isUserError,
       isNetworkError: pattern.isNetworkError,
-      
+
       isTransient: pattern.isTransient,
       isDeterministic: pattern.isDeterministic,
       isResourceRelated: pattern.isResourceRelated,
@@ -479,28 +479,28 @@ export class TransactionFailureAnalyzer {
     const mockError = this.inferErrorFromTransaction(transaction);
     const instructions = transaction.details?.instructions || [];
     const accounts = transaction.details?.accounts || [];
-    
+
     // Determine failure point
-    const failurePoint = this.determineFailurePoint(transaction);
-    
+    const failurePoint = this.determineFailurePoint(transaction, instructions);
+
     // Analyze contributing factors
-    const contributingFactors = this.analyzeContributingFactors(transaction);
-    
+    const contributingFactors = this.analyzeContributingFactors(transaction, instructions, accounts);
+
     // Analyze account state issues
-    const accountStateIssues = await this.analyzeAccountStateIssues(transaction);
-    
+    const accountStateIssues = await this.analyzeAccountStateIssues(transaction, accounts);
+
     // Analyze instruction issues
-    const instructionIssues = this.analyzeInstructionIssues(transaction);
-    
+    const instructionIssues = this.analyzeInstructionIssues(transaction, instructions);
+
     // Analyze resource issues
     const resourceIssues = this.analyzeResourceIssues(transaction);
-    
+
     // Analyze timing issues
     const timingIssues = this.analyzeTimingIssues(transaction);
-    
+
     // Build failure chain
     const failureChain = this.buildFailureChain(transaction);
-    
+
     return {
       primaryCause: this.determinePrimaryCause(mockError, contributingFactors),
       contributingFactors,
@@ -520,20 +520,20 @@ export class TransactionFailureAnalyzer {
     // Estimate fee based on transaction complexity since we don't have meta.fee
     const fee = this.estimateTransactionFee(transaction);
     const feeUSD = this.config.solPriceUSD ? (fee / 1e9) * this.config.solPriceUSD : null;
-    
+
     const accounts = transaction.details?.accounts?.map(acc => acc.pubkey) || [];
-    
+
     // Determine user and business impact
     const userImpact = this.assessUserImpact(transaction);
     const businessImpact = this.assessBusinessImpact(transaction);
-    
+
     // Estimate recovery cost
     const estimatedRecoveryCost = this.estimateRecoveryCost(transaction);
     const estimatedRecoveryTime = this.estimateRecoveryTime(transaction);
-    
+
     // Analyze cascading failures
     const cascadingFailures = await this.analyzeCascadingFailures(transaction);
-    
+
     return {
       feesLost: fee,
       feesLostUSD: feeUSD,
@@ -553,22 +553,22 @@ export class TransactionFailureAnalyzer {
    */
   private async analyzeRecovery(transaction: DetailedTransactionInfo): Promise<RecoveryAnalysis> {
     const errorClassification = await this.classifyError(transaction);
-    
+
     const isRecoverable = this.isRecoverable(errorClassification);
     const recoveryComplexity = this.assessRecoveryComplexity(transaction, errorClassification);
-    
+
     // Generate recovery actions
     const immediateActions = this.generateImmediateActions(transaction, errorClassification);
     const shortTermActions = this.generateShortTermActions(transaction, errorClassification);
     const longTermActions = this.generateLongTermActions(transaction, errorClassification);
-    
+
     // Calculate required resources
     const requiredResources = this.calculateRequiredResources(transaction, errorClassification);
-    
+
     // Assess success probability
     const successProbability = this.calculateRecoverySuccessProbability(transaction, errorClassification);
     const riskFactors = this.identifyRecoveryRiskFactors(transaction, errorClassification);
-    
+
     return {
       isRecoverable,
       recoveryComplexity,
@@ -587,9 +587,9 @@ export class TransactionFailureAnalyzer {
   private async generatePreventionStrategies(transaction: DetailedTransactionInfo): Promise<PreventionStrategy[]> {
     const errorClassification = await this.classifyError(transaction);
     const rootCause = await this.analyzeRootCause(transaction);
-    
+
     const strategies: PreventionStrategy[] = [];
-    
+
     // Add category-specific strategies
     switch (errorClassification.primaryCategory) {
       case 'insufficient_funds':
@@ -603,7 +603,7 @@ export class TransactionFailureAnalyzer {
           category: 'validation'
         });
         break;
-        
+
       case 'compute_budget_exceeded':
         strategies.push({
           strategy: 'Compute Budget Management',
@@ -615,7 +615,7 @@ export class TransactionFailureAnalyzer {
           category: 'resource_management'
         });
         break;
-        
+
       case 'account_not_found':
         strategies.push({
           strategy: 'Account Existence Validation',
@@ -628,7 +628,7 @@ export class TransactionFailureAnalyzer {
         });
         break;
     }
-    
+
     // Add general strategies based on contributing factors
     rootCause.contributingFactors.forEach(factor => {
       if (factor.category === 'resource') {
@@ -643,7 +643,7 @@ export class TransactionFailureAnalyzer {
         });
       }
     });
-    
+
     return strategies;
   }
 
@@ -653,13 +653,13 @@ export class TransactionFailureAnalyzer {
   private async generateRetryRecommendations(transaction: DetailedTransactionInfo): Promise<RetryRecommendation[]> {
     const errorClassification = await this.classifyError(transaction);
     const recommendations: RetryRecommendation[] = [];
-    
+
     const shouldRetry = errorClassification.isTransient && !errorClassification.isDeterministic;
-    
+
     if (shouldRetry) {
       const retryStrategy = this.determineRetryStrategy(errorClassification);
       const requiredChanges = this.determineRequiredChanges(transaction, errorClassification);
-      
+
       recommendations.push({
         shouldRetry: true,
         retryStrategy,
@@ -684,7 +684,7 @@ export class TransactionFailureAnalyzer {
         monitoringPoints: []
       });
     }
-    
+
     return recommendations;
   }
 
@@ -695,20 +695,40 @@ export class TransactionFailureAnalyzer {
     if (!this.config.includeSimilarFailures) {
       return [];
     }
-    
-    // In a real implementation, this would query a database
-    // For now, return mock similar failures
-    return [
-      {
-        signature: 'similar-failure-1',
-        similarity: 85,
-        errorCategory: 'insufficient_funds',
-        resolution: 'Added sufficient funds and retried',
-        timeToResolve: '5 minutes',
+
+    // Use transaction characteristics to find similar failures
+    const instructionCount = transaction.details?.instructions?.length || 0;
+    const accountCount = transaction.details?.accounts?.length || 0;
+
+    // In a real implementation, this would query a database based on transaction characteristics
+    // For now, return mock similar failures based on transaction data
+    const mockFailures: SimilarFailure[] = [];
+
+    if (instructionCount > 5) {
+      mockFailures.push({
+        signature: `complex-tx-failure-${instructionCount}`,
+        similarity: 90,
+        errorCategory: 'compute_budget_exceeded',
+        resolution: 'Reduced instruction count or increased compute budget',
+        timeToResolve: '10 minutes',
         successfulRetry: true,
-        lessons: ['Always check balance before transaction', 'Add buffer for fees']
-      }
-    ];
+        lessons: ['Optimize transaction complexity', 'Set appropriate compute budget']
+      });
+    }
+
+    if (accountCount > 20) {
+      mockFailures.push({
+        signature: `many-accounts-failure-${accountCount}`,
+        similarity: 85,
+        errorCategory: 'too_many_account_locks',
+        resolution: 'Split transaction into smaller parts',
+        timeToResolve: '15 minutes',
+        successfulRetry: true,
+        lessons: ['Limit accounts per transaction', 'Use batching for large operations']
+      });
+    }
+
+    return mockFailures;
   }
 
   // Helper methods for error analysis
@@ -716,7 +736,7 @@ export class TransactionFailureAnalyzer {
     if (typeof error === 'string') {
       return { code: null, message: error, details: {} };
     }
-    
+
     if (typeof error === 'object') {
       // Handle different error formats
       if (error.InstructionError) {
@@ -727,7 +747,7 @@ export class TransactionFailureAnalyzer {
           details: { instructionIndex: index, error: instructionError }
         };
       }
-      
+
       if (error.InsufficientFundsForFee) {
         return {
           code: 'InsufficientFundsForFee',
@@ -735,7 +755,7 @@ export class TransactionFailureAnalyzer {
           details: error
         };
       }
-      
+
       if (error.BlockhashNotFound) {
         return {
           code: 'BlockhashNotFound',
@@ -743,7 +763,7 @@ export class TransactionFailureAnalyzer {
           details: error
         };
       }
-      
+
       // Handle other error types
       const errorType = Object.keys(error)[0];
       return {
@@ -752,7 +772,7 @@ export class TransactionFailureAnalyzer {
         details: error
       };
     }
-    
+
     return {
       code: 'UnknownError',
       message: 'Unknown error occurred',
@@ -764,12 +784,12 @@ export class TransactionFailureAnalyzer {
     if (typeof instructionError === 'string') {
       return instructionError;
     }
-    
+
     if (typeof instructionError === 'object') {
       const errorType = Object.keys(instructionError)[0];
       return `${errorType}: ${JSON.stringify(instructionError[errorType])}`;
     }
-    
+
     return 'Instruction execution failed';
   }
 
@@ -798,7 +818,7 @@ export class TransactionFailureAnalyzer {
       'AddressLookupTableNotFound': 'Address lookup table not found',
       'InvalidAddressLookupTableIndex': 'Invalid index in address lookup table'
     };
-    
+
     return errorMessages[errorType] || `${errorType}: ${JSON.stringify(errorData)}`;
   }
 
@@ -807,10 +827,14 @@ export class TransactionFailureAnalyzer {
     const patterns = Array.from(this.errorPatterns.entries());
     for (const [patternKey, pattern] of patterns) {
       if (this.matchesPattern(errorInfo, pattern)) {
+        // Log which pattern was matched for debugging and analytics
+        console.log(`Transaction failure matched pattern: ${patternKey}`);
+        // Log pattern match and return original pattern
+        // Note: matchedPatternKey would need to be added to ErrorPattern type
         return pattern;
       }
     }
-    
+
     // Return default pattern for unknown errors
     return this.getDefaultErrorPattern(errorInfo);
   }
@@ -819,13 +843,13 @@ export class TransactionFailureAnalyzer {
     if (pattern.errorCodes && errorInfo.code) {
       return pattern.errorCodes.includes(errorInfo.code);
     }
-    
+
     if (pattern.messagePatterns) {
-      return pattern.messagePatterns.some(msgPattern => 
+      return pattern.messagePatterns.some(msgPattern =>
         errorInfo.message.toLowerCase().includes(msgPattern.toLowerCase())
       );
     }
-    
+
     return false;
   }
 
@@ -867,7 +891,7 @@ export class TransactionFailureAnalyzer {
       errorCodes: ['InsufficientFundsForFee'],
       messagePatterns: ['insufficient funds']
     });
-    
+
     this.errorPatterns.set('blockhash_not_found', {
       category: 'blockhash_not_found',
       secondaryCategories: [],
@@ -884,7 +908,7 @@ export class TransactionFailureAnalyzer {
       errorCodes: ['BlockhashNotFound'],
       messagePatterns: ['blockhash not found']
     });
-    
+
     this.errorPatterns.set('compute_budget_exceeded', {
       category: 'compute_budget_exceeded',
       secondaryCategories: [],
@@ -907,26 +931,42 @@ export class TransactionFailureAnalyzer {
   private inferErrorFromTransaction(transaction: DetailedTransactionInfo): any {
     // Since we don't have meta.err, we need to infer the error type
     // This is a simplified approach - in a real implementation, we'd have more sophisticated logic
-    
+
     if (!transaction.success) {
       // Check for common failure patterns based on available data
       const instructions = transaction.details?.instructions || [];
       const accounts = transaction.details?.accounts || [];
-      
+
       // If transaction has no instructions, it might be a system error
       if (instructions.length === 0) {
         return { InsufficientFundsForFee: {} };
       }
-      
+
       // If transaction has many instructions, it might be compute budget exceeded
       if (instructions.length > 10) {
         return { ComputeBudgetExceeded: {} };
       }
-      
+
+      // Check account-related error patterns
+      if (accounts.length === 0) {
+        return { AccountNotFound: {} };
+      }
+
+      // If transaction has many accounts, might be account limit exceeded
+      if (accounts.length > 32) {
+        return { TooManyAccounts: {} };
+      }
+
+      // Check for potential account permission issues
+      const hasSignerAccounts = accounts.some((acc: any) => acc.isSigner);
+      if (!hasSignerAccounts) {
+        return { MissingRequiredSignature: {} };
+      }
+
       // Default to insufficient funds for failed transactions
       return { InsufficientFundsForFee: {} };
     }
-    
+
     return null;
   }
 
@@ -934,17 +974,32 @@ export class TransactionFailureAnalyzer {
   private estimateTransactionFee(transaction: DetailedTransactionInfo): number {
     const instructions = transaction.details?.instructions || [];
     const accounts = transaction.details?.accounts || [];
-    
+
     // Base fee (5000 lamports) + instruction fees
     const baseFee = 5000;
     const instructionFee = instructions.length * 1000;
     const accountFee = accounts.length * 100;
-    
+
     return baseFee + instructionFee + accountFee;
   }
 
   // Placeholder methods - these would be implemented with full logic
-  private determineFailurePoint(transaction: DetailedTransactionInfo): RootCauseAnalysis['failurePoint'] {
+  private determineFailurePoint(_transaction: DetailedTransactionInfo, instructions: any[]): RootCauseAnalysis['failurePoint'] {
+    // Analyze instructions to determine failure point
+    if (instructions.length > 0) {
+      // In a real implementation, we'd analyze the error logs to find which instruction failed
+      // For now, we'll assume the last instruction is most likely to have failed
+      const lastInstructionIndex = instructions.length - 1;
+      const lastInstruction = instructions[lastInstructionIndex];
+
+      return {
+        instructionIndex: lastInstructionIndex,
+        programId: lastInstruction?.programId || null,
+        accountIndex: null, // Would be determined from instruction analysis
+        specificOperation: lastInstruction?.operation || 'unknown'
+      };
+    }
+
     return {
       instructionIndex: null,
       programId: null,
@@ -953,11 +1008,10 @@ export class TransactionFailureAnalyzer {
     };
   }
 
-  private analyzeContributingFactors(transaction: DetailedTransactionInfo): ContributingFactor[] {
+  private analyzeContributingFactors(_transaction: DetailedTransactionInfo, instructions: any[], accounts: any[]): ContributingFactor[] {
     const factors: ContributingFactor[] = [];
-    const instructions = transaction.details?.instructions || [];
-    const accounts = transaction.details?.accounts || [];
-    
+    // Now using passed parameters instead of re-extracting
+
     // Analyze instruction count
     if (instructions.length > 10) {
       factors.push({
@@ -967,7 +1021,7 @@ export class TransactionFailureAnalyzer {
         category: 'resource'
       });
     }
-    
+
     // Analyze account count
     if (accounts.length > 20) {
       factors.push({
@@ -977,14 +1031,14 @@ export class TransactionFailureAnalyzer {
         category: 'resource'
       });
     }
-    
+
     return factors;
   }
 
-  private async analyzeAccountStateIssues(transaction: DetailedTransactionInfo): Promise<AccountStateIssue[]> {
+  private async analyzeAccountStateIssues(transaction: DetailedTransactionInfo, accounts: any[]): Promise<AccountStateIssue[]> {
     const issues: AccountStateIssue[] = [];
-    const accounts = transaction.details?.accounts || [];
-    
+    // Now using passed accounts parameter instead of re-extracting
+
     // In a real implementation, this would check actual account states
     // For now, return mock issues based on transaction failure
     if (!transaction.success && accounts.length > 0) {
@@ -996,14 +1050,14 @@ export class TransactionFailureAnalyzer {
         impact: 'Transaction cannot be processed'
       });
     }
-    
+
     return issues;
   }
 
-  private analyzeInstructionIssues(transaction: DetailedTransactionInfo): InstructionIssue[] {
+  private analyzeInstructionIssues(_transaction: DetailedTransactionInfo, instructions: any[]): InstructionIssue[] {
     const issues: InstructionIssue[] = [];
-    const instructions = transaction.details?.instructions || [];
-    
+    // Now using passed instructions parameter instead of re-extracting
+
     // Analyze each instruction for potential issues
     instructions.forEach((instruction, index) => {
       if ('programId' in instruction) {
@@ -1019,14 +1073,14 @@ export class TransactionFailureAnalyzer {
         }
       }
     });
-    
+
     return issues;
   }
 
   private analyzeResourceIssues(transaction: DetailedTransactionInfo): ResourceIssue[] {
     const issues: ResourceIssue[] = [];
     const mockError = this.inferErrorFromTransaction(transaction);
-    
+
     // Analyze compute budget issues
     if (this.isComputeBudgetError(mockError)) {
       issues.push({
@@ -1037,7 +1091,7 @@ export class TransactionFailureAnalyzer {
         impact: 'Transaction cannot complete execution'
       });
     }
-    
+
     // Analyze lamport issues
     if (this.isInsufficientFundsError(mockError)) {
       const fee = this.estimateTransactionFee(transaction);
@@ -1049,14 +1103,14 @@ export class TransactionFailureAnalyzer {
         impact: 'Cannot pay transaction fee'
       });
     }
-    
+
     return issues;
   }
 
   private analyzeTimingIssues(transaction: DetailedTransactionInfo): TimingIssue[] {
     const issues: TimingIssue[] = [];
     const mockError = this.inferErrorFromTransaction(transaction);
-    
+
     if (mockError && typeof mockError === 'object' && mockError.BlockhashNotFound) {
       issues.push({
         issue: 'blockhash_expired',
@@ -1065,14 +1119,14 @@ export class TransactionFailureAnalyzer {
         suggestion: 'Use a more recent blockhash and submit transaction quickly'
       });
     }
-    
+
     return issues;
   }
 
   private buildFailureChain(transaction: DetailedTransactionInfo): FailureEvent[] {
     const chain: FailureEvent[] = [];
     const mockError = this.inferErrorFromTransaction(transaction);
-    
+
     // Build a simplified failure chain
     chain.push({
       step: 1,
@@ -1081,7 +1135,7 @@ export class TransactionFailureAnalyzer {
       timestamp: transaction.timestamp,
       details: { signature: transaction.signature }
     });
-    
+
     chain.push({
       step: 2,
       description: 'Transaction validation started',
@@ -1089,7 +1143,7 @@ export class TransactionFailureAnalyzer {
       timestamp: transaction.timestamp,
       details: {}
     });
-    
+
     if (mockError) {
       chain.push({
         step: 3,
@@ -1099,7 +1153,7 @@ export class TransactionFailureAnalyzer {
         details: { error: mockError }
       });
     }
-    
+
     return chain;
   }
 
@@ -1111,25 +1165,37 @@ export class TransactionFailureAnalyzer {
   }
 
   private determinePrimaryCause(error: any, contributingFactors: ContributingFactor[]): string {
+    let primaryCause = '';
+
     if (typeof error === 'object') {
       if (error.InsufficientFundsForFee) {
-        return 'Insufficient funds to pay transaction fee';
+        primaryCause = 'Insufficient funds to pay transaction fee';
+      } else if (error.BlockhashNotFound) {
+        primaryCause = 'Transaction blockhash has expired';
+      } else if (error.InstructionError) {
+        primaryCause = 'Program instruction execution failed';
+      } else {
+        primaryCause = 'Unknown transaction failure';
       }
-      if (error.BlockhashNotFound) {
-        return 'Transaction blockhash has expired';
-      }
-      if (error.InstructionError) {
-        return 'Program instruction execution failed';
-      }
+    } else {
+      primaryCause = 'Unknown transaction failure';
     }
-    
-    return 'Unknown transaction failure';
+
+    // Enhance primary cause with contributing factors
+    // Note: ContributingFactor type would need severity property
+    const highSeverityFactors = contributingFactors.filter(f => f.impact === 'major');
+    if (highSeverityFactors.length > 0) {
+      const factorDescriptions = highSeverityFactors.map(f => f.factor).join(', ');
+      primaryCause += ` (Contributing factors: ${factorDescriptions})`;
+    }
+
+    return primaryCause;
   }
 
   // Assessment methods
   private assessUserImpact(transaction: DetailedTransactionInfo): FailureImpact['userImpact'] {
     const fee = this.estimateTransactionFee(transaction);
-    
+
     if (fee > this.config.thresholds.highImpactFee) {
       return 'severe';
     }
@@ -1145,7 +1211,7 @@ export class TransactionFailureAnalyzer {
   private assessBusinessImpact(transaction: DetailedTransactionInfo): FailureImpact['businessImpact'] {
     // This would be customized based on business logic
     const instructions = transaction.details?.instructions || [];
-    
+
     if (instructions.length > 10) {
       return 'high'; // Complex transactions likely have higher business impact
     }
@@ -1158,14 +1224,14 @@ export class TransactionFailureAnalyzer {
   private estimateRecoveryCost(transaction: DetailedTransactionInfo): number {
     const baseFee = 5000; // Base transaction fee
     const originalFee = this.estimateTransactionFee(transaction);
-    
+
     // Estimate additional cost for retry with higher fee
     return baseFee + Math.max(originalFee * 1.5, 10000);
   }
 
   private estimateRecoveryTime(transaction: DetailedTransactionInfo): string {
     const mockError = this.inferErrorFromTransaction(transaction);
-    
+
     if (this.isTransientError(mockError)) {
       return '1-5 minutes';
     }
@@ -1175,13 +1241,13 @@ export class TransactionFailureAnalyzer {
     if (this.requiresCodeChanges(mockError)) {
       return '1-24 hours';
     }
-    
+
     return 'Unknown';
   }
 
   private async analyzeCascadingFailures(transaction: DetailedTransactionInfo): Promise<CascadingFailure[]> {
     const failures: CascadingFailure[] = [];
-    
+
     // Analyze potential downstream effects
     const accounts = transaction.details?.accounts || [];
     if (accounts.length > 1) {
@@ -1192,7 +1258,7 @@ export class TransactionFailureAnalyzer {
         severity: 'medium'
       });
     }
-    
+
     return failures;
   }
 
@@ -1201,7 +1267,7 @@ export class TransactionFailureAnalyzer {
     return errorClassification.isTransient || !errorClassification.isDeterministic;
   }
 
-  private assessRecoveryComplexity(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAnalysis['recoveryComplexity'] {
+  private assessRecoveryComplexity(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAnalysis['recoveryComplexity'] {
     if (errorClassification.isTransient && !errorClassification.isResourceRelated) {
       return 'simple';
     }
@@ -1214,9 +1280,9 @@ export class TransactionFailureAnalyzer {
     return 'very_complex';
   }
 
-  private generateImmediateActions(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
+  private generateImmediateActions(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
     const actions: RecoveryAction[] = [];
-    
+
     if (errorClassification.primaryCategory === 'insufficient_funds') {
       actions.push({
         action: 'Add funds to account',
@@ -1230,7 +1296,7 @@ export class TransactionFailureAnalyzer {
         successRate: 95
       });
     }
-    
+
     if (errorClassification.primaryCategory === 'blockhash_not_found') {
       actions.push({
         action: 'Update blockhash and retry',
@@ -1244,13 +1310,13 @@ export class TransactionFailureAnalyzer {
         successRate: 90
       });
     }
-    
+
     return actions;
   }
 
-  private generateShortTermActions(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
+  private generateShortTermActions(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
     const actions: RecoveryAction[] = [];
-    
+
     if (errorClassification.primaryCategory === 'compute_budget_exceeded') {
       actions.push({
         action: 'Optimize transaction structure',
@@ -1264,13 +1330,13 @@ export class TransactionFailureAnalyzer {
         successRate: 80
       });
     }
-    
+
     return actions;
   }
 
-  private generateLongTermActions(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
+  private generateLongTermActions(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAction[] {
     const actions: RecoveryAction[] = [];
-    
+
     if (errorClassification.isProgramError) {
       actions.push({
         action: 'Review and update program logic',
@@ -1284,13 +1350,13 @@ export class TransactionFailureAnalyzer {
         successRate: 70
       });
     }
-    
+
     return actions;
   }
 
   private calculateRequiredResources(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAnalysis['requiredResources'] {
     const baseFee = this.estimateTransactionFee(transaction);
-    
+
     return {
       additionalFunds: errorClassification.primaryCategory === 'insufficient_funds' ? baseFee * 2 : 0,
       computeUnits: errorClassification.primaryCategory === 'compute_budget_exceeded' ? 200000 : 0,
@@ -1299,21 +1365,21 @@ export class TransactionFailureAnalyzer {
     };
   }
 
-  private calculateRecoverySuccessProbability(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): number {
+  private calculateRecoverySuccessProbability(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): number {
     let probability = 50; // Base probability
-    
+
     if (errorClassification.isTransient) probability += 30;
     if (!errorClassification.isDeterministic) probability += 20;
     if (errorClassification.isResourceRelated) probability += 10;
     if (errorClassification.isProgramError) probability -= 20;
     if (errorClassification.isSystemError) probability -= 10;
-    
+
     return Math.max(0, Math.min(100, probability));
   }
 
-  private identifyRecoveryRiskFactors(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): string[] {
+  private identifyRecoveryRiskFactors(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): string[] {
     const risks: string[] = [];
-    
+
     if (errorClassification.isProgramError) {
       risks.push('Program logic may have fundamental issues');
     }
@@ -1323,7 +1389,7 @@ export class TransactionFailureAnalyzer {
     if (errorClassification.isNetworkError) {
       risks.push('Network conditions may not improve');
     }
-    
+
     return risks;
   }
 
@@ -1343,7 +1409,7 @@ export class TransactionFailureAnalyzer {
 
   private determineRequiredChanges(transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RequiredChange[] {
     const changes: RequiredChange[] = [];
-    
+
     if (errorClassification.primaryCategory === 'insufficient_funds') {
       changes.push({
         type: 'increase_fee',
@@ -1353,7 +1419,7 @@ export class TransactionFailureAnalyzer {
         cost: this.estimateTransactionFee(transaction) * 0.5
       });
     }
-    
+
     if (errorClassification.primaryCategory === 'compute_budget_exceeded') {
       changes.push({
         type: 'increase_compute',
@@ -1363,7 +1429,7 @@ export class TransactionFailureAnalyzer {
         cost: 2000
       });
     }
-    
+
     if (errorClassification.primaryCategory === 'blockhash_not_found') {
       changes.push({
         type: 'update_blockhash',
@@ -1373,7 +1439,7 @@ export class TransactionFailureAnalyzer {
         cost: 0
       });
     }
-    
+
     return changes;
   }
 
@@ -1391,20 +1457,20 @@ export class TransactionFailureAnalyzer {
     if (!errorClassification.isTransient) {
       return 0;
     }
-    
+
     let probability = 60; // Base retry probability
-    
+
     if (errorClassification.primaryCategory === 'blockhash_not_found') probability = 95;
     if (errorClassification.primaryCategory === 'account_in_use') probability = 80;
     if (errorClassification.primaryCategory === 'insufficient_funds') probability = 90;
     if (errorClassification.isProgramError) probability = 20;
-    
+
     return probability;
   }
 
   private generateRetryConditions(errorClassification: ErrorClassification): string[] {
     const conditions: string[] = [];
-    
+
     if (errorClassification.primaryCategory === 'insufficient_funds') {
       conditions.push('Ensure account has sufficient balance');
     }
@@ -1414,51 +1480,51 @@ export class TransactionFailureAnalyzer {
     if (errorClassification.primaryCategory === 'account_in_use') {
       conditions.push('Wait for account to be unlocked');
     }
-    
+
     return conditions;
   }
 
   private generateMonitoringPoints(errorClassification: ErrorClassification): string[] {
     const points: string[] = [];
-    
+
     points.push('Transaction confirmation status');
     points.push('Account balance changes');
-    
+
     if (errorClassification.isResourceRelated) {
       points.push('Compute unit usage');
       points.push('Fee adequacy');
     }
-    
+
     if (errorClassification.isNetworkError) {
       points.push('Network congestion levels');
       points.push('RPC response times');
     }
-    
+
     return points;
   }
 
   // Calculation methods
   private calculateSeverity(analysis: TransactionFailureAnalysis): TransactionFailureAnalysis['severity'] {
     let severityScore = 0;
-    
+
     // Impact factors
     if (analysis.impact.userImpact === 'severe') severityScore += 3;
     else if (analysis.impact.userImpact === 'moderate') severityScore += 2;
     else if (analysis.impact.userImpact === 'minor') severityScore += 1;
-    
+
     if (analysis.impact.businessImpact === 'critical') severityScore += 3;
     else if (analysis.impact.businessImpact === 'high') severityScore += 2;
     else if (analysis.impact.businessImpact === 'medium') severityScore += 1;
-    
+
     // Recovery factors
     if (!analysis.recovery.isRecoverable) severityScore += 2;
     if (analysis.recovery.recoveryComplexity === 'very_complex') severityScore += 2;
     else if (analysis.recovery.recoveryComplexity === 'complex') severityScore += 1;
-    
+
     // Error type factors
     if (analysis.errorClassification.isProgramError) severityScore += 1;
     if (analysis.errorClassification.isSystemError) severityScore += 1;
-    
+
     if (severityScore >= 7) return 'critical';
     if (severityScore >= 5) return 'high';
     if (severityScore >= 3) return 'medium';
@@ -1469,60 +1535,60 @@ export class TransactionFailureAnalyzer {
     if (!analysis.recovery.isRecoverable) {
       return 'impossible';
     }
-    
+
     if (analysis.recovery.recoveryComplexity === 'simple' && analysis.recovery.successProbability > 80) {
       return 'immediate';
     }
-    
+
     if (analysis.recovery.recoveryComplexity === 'moderate' || analysis.recovery.successProbability > 60) {
       return 'with_changes';
     }
-    
+
     return 'difficult';
   }
 
   private calculateConfidence(analysis: TransactionFailureAnalysis): number {
     let confidence = 70; // Base confidence
-    
+
     // Increase confidence for well-known error patterns
     if (analysis.errorClassification.primaryCategory !== 'unknown_error') {
       confidence += 20;
     }
-    
+
     // Increase confidence if we have similar failures
     if (analysis.similarFailures.length > 0) {
       confidence += 10;
     }
-    
+
     // Decrease confidence for complex scenarios
     if (analysis.rootCause.contributingFactors.length > 3) {
       confidence -= 10;
     }
-    
+
     if (analysis.errorClassification.isProgramError) {
       confidence -= 5;
     }
-    
+
     return Math.max(0, Math.min(100, confidence));
   }
 
   // Utility methods
   private isComputeBudgetError(error: any): boolean {
-    return error && typeof error === 'object' && 
-           (error.ComputeBudgetExceeded || 
-            (error.InstructionError && 
-             typeof error.InstructionError[1] === 'object' && 
-             error.InstructionError[1].ComputeBudgetExceeded));
+    return error && typeof error === 'object' &&
+      (error.ComputeBudgetExceeded ||
+        (error.InstructionError &&
+          typeof error.InstructionError[1] === 'object' &&
+          error.InstructionError[1].ComputeBudgetExceeded));
   }
 
   private isInsufficientFundsError(error: any): boolean {
-    return error && typeof error === 'object' && 
-           (error.InsufficientFundsForFee || error.InsufficientFundsForRent);
+    return error && typeof error === 'object' &&
+      (error.InsufficientFundsForFee || error.InsufficientFundsForRent);
   }
 
   private isTransientError(error: any): boolean {
     if (!error) return false;
-    
+
     const transientErrors = [
       'BlockhashNotFound',
       'AccountInUse',
@@ -1530,34 +1596,34 @@ export class TransactionFailureAnalyzer {
       'NetworkError',
       'RpcError'
     ];
-    
+
     if (typeof error === 'object') {
       return transientErrors.some(transientError => error[transientError] !== undefined);
     }
-    
+
     return false;
   }
 
   private requiresAccountChanges(error: any): boolean {
     if (!error) return false;
-    
+
     const accountChangeErrors = [
       'InsufficientFundsForFee',
       'InsufficientFundsForRent',
       'AccountNotFound',
       'InvalidAccountData'
     ];
-    
+
     if (typeof error === 'object') {
       return accountChangeErrors.some(changeError => error[changeError] !== undefined);
     }
-    
+
     return false;
   }
 
   private requiresCodeChanges(error: any): boolean {
     if (!error) return false;
-    
+
     return typeof error === 'object' && error.InstructionError;
   }
 
@@ -1565,13 +1631,13 @@ export class TransactionFailureAnalyzer {
     // Check if any account balances changed despite the error
     const preBalances = transaction.details?.preBalances || [];
     const postBalances = transaction.details?.postBalances || [];
-    
+
     for (let i = 0; i < Math.min(preBalances.length, postBalances.length); i++) {
       if (preBalances[i] !== postBalances[i]) {
         return true;
       }
     }
-    
+
     return false;
   }
 

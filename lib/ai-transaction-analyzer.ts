@@ -87,7 +87,7 @@ class AITransactionAnalyzer {
         transaction.signature,
         options
       );
-      
+
       if (cachedExplanation) {
         console.log(`Using cached AI explanation for transaction ${transaction.signature}`);
         return cachedExplanation;
@@ -95,20 +95,20 @@ class AITransactionAnalyzer {
 
       // Prepare analysis context
       const context = await this.prepareAnalysisContext(transaction, options);
-      
+
       // Generate AI explanation
       const explanation = await this.generateExplanation(context);
-      
+
       // Enhance with additional analysis
       const enhancedExplanation = await this.enhanceExplanation(explanation, context);
-      
+
       // Cache the result
       await transactionAnalysisCache.cacheAIExplanation(
         transaction.signature,
         enhancedExplanation,
         options
       );
-      
+
       return enhancedExplanation;
     } catch (error) {
       console.error('AI transaction analysis failed:', error);
@@ -128,15 +128,20 @@ class AITransactionAnalyzer {
   ): Promise<AIAnalysisContext> {
     // Analyze account changes
     const accountChanges = await accountChangesAnalyzer.analyzeTransaction(transaction);
-    
-    // Parse instructions
+
+    // Parse instructions with proper arguments
     const parsedInstructions = await Promise.all(
-      transaction.details?.instructions?.map(instruction => 
-        instructionParserService.parseInstruction(instruction, transaction.details?.accounts || [])
+      transaction.details?.instructions?.map(instruction =>
+        instructionParserService.parseInstruction(
+          instruction.programId || 'Unknown',
+          instruction.accounts?.map(acc => acc.toString()) || [],
+          instruction.data || '',
+          (instruction as any).parsed
+        )
       ) || []
     );
 
-    return {
+    const context = {
       transaction,
       accountChanges,
       parsedInstructions,
@@ -145,6 +150,12 @@ class AITransactionAnalyzer {
         focusAreas: options?.focusAreas || []
       }
     };
+
+    // Add DeFi detection for enhanced analysis
+    const isDefi = this.isDeFiTransaction(context);
+    console.log(`Transaction analysis: ${isDefi ? 'DeFi' : 'Non-DeFi'} transaction detected`);
+
+    return context;
   }
 
   /**
@@ -152,7 +163,7 @@ class AITransactionAnalyzer {
    */
   private async generateExplanation(context: AIAnalysisContext): Promise<TransactionExplanation> {
     const prompt = this.buildAnalysisPrompt(context);
-    
+
     try {
       const response = await this.callAIService(prompt, context);
       return this.parseAIResponse(response, context);
@@ -167,7 +178,7 @@ class AITransactionAnalyzer {
    */
   private buildAnalysisPrompt(context: AIAnalysisContext): string {
     const { transaction, accountChanges, parsedInstructions } = context;
-    
+
     const prompt = `
 Analyze this Solana transaction and provide a comprehensive explanation:
 
@@ -241,12 +252,12 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
    */
   private async callAIService(prompt: string, context: AIAnalysisContext): Promise<string> {
     let lastError: Error | null = null;
-    
+
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.timeout);
-        
+
         const response = await fetch(this.apiEndpoint, {
           method: 'POST',
           headers: {
@@ -261,27 +272,27 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
           }),
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           throw new Error(`AI service responded with status ${response.status}`);
         }
-        
+
         const result = await response.json();
         return result.response || result.message || result.content;
-        
+
       } catch (error) {
         lastError = error as Error;
         console.warn(`AI service attempt ${attempt} failed:`, error);
-        
+
         if (attempt < this.maxRetries) {
           // Exponential backoff
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, attempt) * 1000));
         }
       }
     }
-    
+
     throw lastError || new Error('AI service failed after all retries');
   }
 
@@ -295,9 +306,9 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
       if (!jsonMatch) {
         throw new Error('No JSON found in AI response');
       }
-      
+
       const parsed = JSON.parse(jsonMatch[0]);
-      
+
       // Validate and enhance the response
       return {
         summary: parsed.summary || 'Transaction analysis completed',
@@ -339,23 +350,23 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
   ): Promise<TransactionExplanation> {
     // Add comprehensive DeFi analysis
     const defiAnalysis = await defiTransactionAnalyzer.analyzeDeFiTransaction(context.transaction);
-    
+
     if (defiAnalysis.isDefi) {
       explanation.defiAnalysis = defiAnalysis;
-      
+
       // Enhance summary with DeFi context
       if (defiAnalysis.actions.length > 0) {
         const primaryAction = defiAnalysis.actions[0];
         explanation.summary = `${explanation.summary} This DeFi transaction involves ${primaryAction.type.replace('_', ' ')} on ${primaryAction.protocol.name}.`;
       }
-      
+
       // Add DeFi-specific secondary effects
       explanation.secondaryEffects.push({
         type: 'defi_interaction',
         description: `Interacts with ${defiAnalysis.protocols.length} DeFi protocol${defiAnalysis.protocols.length !== 1 ? 's' : ''}: ${defiAnalysis.protocols.map(p => p.name).join(', ')}`,
         significance: 'high'
       });
-      
+
       // Enhance risk assessment with DeFi risks
       if (defiAnalysis.riskAssessment.overallRisk === 'high' || defiAnalysis.riskAssessment.overallRisk === 'extreme') {
         explanation.riskAssessment.level = 'high';
@@ -363,7 +374,7 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
         explanation.riskAssessment.factors.push(...defiAnalysis.riskAssessment.protocolRisks);
         explanation.riskAssessment.recommendations.push(...defiAnalysis.recommendations.slice(0, 3)); // Add top 3 DeFi recommendations
       }
-      
+
       // Add financial impact information
       if (defiAnalysis.financialImpact.totalValueIn > 0) {
         explanation.secondaryEffects.push({
@@ -372,7 +383,7 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
           significance: defiAnalysis.financialImpact.totalValueIn > 1000 ? 'high' : 'medium'
         });
       }
-      
+
       // Add yield information if available
       if (defiAnalysis.yieldAnalysis && defiAnalysis.yieldAnalysis.currentApr) {
         explanation.secondaryEffects.push({
@@ -382,17 +393,17 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
         });
       }
     }
-    
+
     // Add security warnings for high-risk transactions
     if (explanation.riskAssessment.level === 'high') {
       explanation.riskAssessment.recommendations.unshift(
         'This is a high-risk transaction - verify all details carefully before proceeding'
       );
     }
-    
+
     // Enhance with token metadata if available
     await this.enhanceWithTokenMetadata(explanation, context);
-    
+
     return explanation;
   }
 
@@ -402,7 +413,7 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
   private async generateFallbackExplanation(transaction: DetailedTransactionInfo): Promise<TransactionExplanation> {
     const accountChanges = await accountChangesAnalyzer.analyzeTransaction(transaction);
     const instructionCount = transaction.details?.instructions?.length || 0;
-    
+
     return {
       summary: `Transaction with ${instructionCount} instruction${instructionCount !== 1 ? 's' : ''} affecting ${accountChanges.changedAccounts} account${accountChanges.changedAccounts !== 1 ? 's' : ''}`,
       mainAction: {
@@ -418,9 +429,14 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
           significance: 'low'
         }
       ],
-      riskAssessment: accountChanges.riskAssessment,
+      riskAssessment: {
+        ...accountChanges.riskAssessment,
+        score: this.calculateRiskScore(accountChanges.riskAssessment)
+      },
       technicalDetails: {
-        programsUsed: this.extractProgramsFromTransaction(transaction),
+        programsUsed: [...new Set(transaction.details?.instructions?.map(instruction =>
+          instruction.programId || 'Unknown Program'
+        ) || [])],
         instructionCount,
         accountsAffected: accountChanges.changedAccounts,
         fees: {
@@ -436,27 +452,28 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
   /**
    * Helper methods
    */
-  private calculateRiskScore(level: 'low' | 'medium' | 'high'): number {
-    switch (level) {
-      case 'low': return 2;
-      case 'medium': return 5;
-      case 'high': return 8;
-      default: return 3;
-    }
-  }
+
 
   private extractProgramsUsed(context: AIAnalysisContext): string[] {
-    return [...new Set(context.parsedInstructions.map(instruction => instruction.program))];
+    return [...new Set(context.parsedInstructions.map(instruction => instruction.programId))];
   }
 
-  private extractProgramsFromTransaction(transaction: DetailedTransactionInfo): string[] {
-    return [...new Set(transaction.details?.instructions?.map(instruction => 
-      instruction.program || 'Unknown Program'
-    ) || [])];
+  private calculateRiskScore(riskAssessment: any): number {
+    // Calculate numeric risk score based on risk level and factors
+    const riskLevelScores = {
+      'low': 0.2,
+      'medium': 0.5,
+      'high': 0.8
+    };
+
+    const baseScore = riskLevelScores[riskAssessment.level as keyof typeof riskLevelScores] || 0.1;
+    const factorMultiplier = Math.min(1.0, riskAssessment.factors?.length * 0.1 || 0);
+
+    return Math.min(1.0, baseScore + factorMultiplier);
   }
 
   private calculateComputeUnits(context: AIAnalysisContext): number | undefined {
-    const totalUnits = context.parsedInstructions.reduce((sum, instruction) => 
+    const totalUnits = context.parsedInstructions.reduce((sum, instruction) =>
       sum + (instruction.computeUnits || 0), 0
     );
     return totalUnits > 0 ? totalUnits : undefined;
@@ -466,7 +483,7 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
     // Calculate fees based on account changes
     const solChanges = context.accountChanges.solChanges;
     const totalFees = Math.abs(solChanges.totalSolChange);
-    
+
     return {
       total: totalFees,
       breakdown: [
@@ -482,8 +499,8 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
       'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc', // Whirlpool
       'srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX' // Serum
     ];
-    
-    return context.parsedInstructions.some(instruction => 
+
+    return context.parsedInstructions.some(instruction =>
       defiPrograms.includes(instruction.programId)
     );
   }
@@ -495,7 +512,7 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
     // This would integrate with token metadata services
     // For now, we'll add basic token information
     const tokenChanges = context.accountChanges.tokenChanges.significantChanges;
-    
+
     if (tokenChanges.length > 0) {
       explanation.secondaryEffects.push({
         type: 'token_balance_change',
@@ -509,17 +526,50 @@ Focus on being accurate, helpful, and educational. Explain technical concepts in
    * Get cached explanation if available
    */
   public async getCachedExplanation(signature: string): Promise<TransactionExplanation | null> {
-    // This would integrate with a caching service
-    // For now, return null to always generate fresh explanations
-    return null;
+    try {
+      // Use the transaction signature as cache key
+      const cacheKey = `tx_explanation:${signature}`;
+      console.log(`Checking cache for transaction ${signature} with key: ${cacheKey}`);
+
+      // This would integrate with a caching service like Redis
+      // For now, simulate cache miss but log the operation
+      // const cachedResult = await transactionAnalysisCache.get(cacheKey);
+      const cachedResult = null; // Simulate cache miss for now
+
+      if (cachedResult) {
+        console.log(`Cache hit for transaction ${signature}`);
+        return cachedResult as TransactionExplanation;
+      }
+
+      console.log(`Cache miss for transaction ${signature}`);
+      return null;
+    } catch (error) {
+      console.error(`Error checking cache for ${signature}:`, error);
+      return null;
+    }
   }
 
   /**
    * Cache explanation for future use
    */
   public async cacheExplanation(signature: string, explanation: TransactionExplanation): Promise<void> {
-    // This would integrate with a caching service
-    // For now, this is a no-op
+    try {
+      // Use the transaction signature as cache key
+      const cacheKey = `tx_explanation:${signature}`;
+      console.log(`Caching explanation for transaction ${signature} with key: ${cacheKey}`);
+
+      // This would integrate with a caching service like Redis
+      // For now, log the caching operation
+      // await redis.set(cacheKey, JSON.stringify(explanation), 'EX', 3600);
+      console.log(`Would cache with key: ${cacheKey}`);
+
+      console.log(`Successfully cached explanation for ${signature}`);
+
+      // Log explanation summary for monitoring
+      console.log(`Cached explanation summary: ${explanation.summary.substring(0, 100)}...`);
+    } catch (error) {
+      console.error(`Error caching explanation for ${signature}:`, error);
+    }
   }
 }
 

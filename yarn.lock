@@ -38,6 +38,11 @@
   resolved "https://registry.npmjs.org/@antfu/utils/-/utils-8.1.1.tgz"
   integrity sha512-Mex9nXf9vR6AhcXmMrlz/HVgYYZpVGJ6YlPgwl7UnaFpnshXs6EK/oa5Gpf3CzENMjkvEx2tQtntGnb7UtSTOQ==
 
+"@anthropic-ai/sdk@^0.57.0":
+  version "0.57.0"
+  resolved "https://registry.npmjs.org/@anthropic-ai/sdk/-/sdk-0.57.0.tgz"
+  integrity sha512-z5LMy0MWu0+w2hflUgj4RlJr1R+0BxKXL7ldXTO8FasU8fu599STghO+QKwId2dAD0d464aHtU+ChWuRHw4FNw==
+
 "@asamuzakjp/css-color@^3.2.0":
   version "3.2.0"
   resolved "https://registry.npmjs.org/@asamuzakjp/css-color/-/css-color-3.2.0.tgz"
@@ -11795,6 +11800,11 @@ onetime@^5.1.2:
   dependencies:
     mimic-fn "^2.1.0"
 
+openai@^5.11.0:
+  version "5.11.0"
+  resolved "https://registry.npmjs.org/openai/-/openai-5.11.0.tgz"
+  integrity sha512-+AuTc5pVjlnTuA9zvn8rA/k+1RluPIx9AD4eDcnutv6JNwHHZxIhkFy+tmMKCvmMFDQzfA/r1ujvPWB19DQkYg==
+
 optionator@^0.9.3:
   version "0.9.4"
   resolved "https://registry.npmjs.org/optionator/-/optionator-0.9.4.tgz"
@@ -13638,6 +13648,11 @@ sonic-boom@^4.0.1:
   integrity sha512-INb7TM37/mAcsGmc9hyyI6+QR3rR1zVRu36B0NeGXKnOOLiZOfER5SA+N7X7k3yUYRzLWafduTDvJAfDswwEww==
   dependencies:
     atomic-sleep "^1.0.0"
+
+sonner@^2.0.6:
+  version "2.0.6"
+  resolved "https://registry.npmjs.org/sonner/-/sonner-2.0.6.tgz"
+  integrity sha512-yHFhk8T/DK3YxjFQXIrcHT1rGEeTLliVzWbO0xN8GberVun2RiBnxAjXAYpZrqwEVHBG9asI/Li8TAAhN9m59Q==
 
 source-map-js@^1.0.2, source-map-js@^1.2.1, "source-map-js@>=0.6.2 <2.0.0":
   version "1.2.1"

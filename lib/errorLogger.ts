@@ -16,8 +16,8 @@ interface ErrorLogEntry {
 class ErrorLogger {
   private logs: ErrorLogEntry[] = [];
   private maxLogs = 100; // Keep only last 100 logs in memory
-  private isDebugMode = process.env.NODE_ENV === 'development' || 
-                        (typeof window !== 'undefined' && window.localStorage?.getItem('debug') === 'true');
+  private isDebugMode = process.env.NODE_ENV === 'development' ||
+    (typeof window !== 'undefined' && window.localStorage?.getItem('debug') === 'true');
 
   /**
    * Log an error with context
@@ -58,7 +58,7 @@ class ErrorLogger {
 
     // Add to in-memory logs
     this.logs.push(entry);
-    
+
     // Keep only the last maxLogs entries
     if (this.logs.length > this.maxLogs) {
       this.logs = this.logs.slice(-this.maxLogs);
@@ -66,9 +66,9 @@ class ErrorLogger {
 
     // Console output in development
     if (this.isDebugMode) {
-      const logMethod = level === 'error' ? console.error : 
-                       level === 'warn' ? console.warn : console.log;
-      
+      const logMethod = level === 'error' ? console.error :
+        level === 'warn' ? console.warn : console.log;
+
       logMethod(`[${level.toUpperCase()}] ${message}`, {
         error,
         context,
@@ -79,7 +79,7 @@ class ErrorLogger {
     // In production, you would send to external service here
     // Example:
     // if (level === 'error' && !this.isDebugMode) {
-    //   this.sendToExternalService(entry);
+    this.sendToExternalService(entry).catch(console.error);
     // }
   }
 
@@ -101,13 +101,31 @@ class ErrorLogger {
    * Send logs to external service (placeholder for future implementation)
    */
   private async sendToExternalService(entry: ErrorLogEntry) {
+    // Use entry for external error reporting and monitoring
+    console.log(`Preparing to send error to external service:`, {
+      timestamp: entry.timestamp,
+      level: entry.level,
+      message: entry.message,
+      errorName: entry.error?.name,
+      errorMessage: entry.error?.message,
+      stack: entry.error?.stack?.substring(0, 200), // Truncate for logging
+      context: entry.context
+    });
+
     // Placeholder for sending to Sentry, LogRocket, or custom endpoint
-    // Example:
-    // await fetch('/api/logs', {
-    //   method: 'POST',
-    //   headers: { 'Content-Type': 'application/json' },
-    //   body: JSON.stringify(entry)
-    // });
+    // Example implementation:
+    try {
+      if (process.env.NODE_ENV === 'production' && entry.level === 'error') {
+        console.warn(`Would send error to external service: ${entry.error?.name || entry.message}`);
+        // await fetch('/api/logs', {
+        //   method: 'POST',
+        //   headers: { 'Content-Type': 'application/json' },
+        //   body: JSON.stringify(entry)
+        // });
+      }
+    } catch (error) {
+      console.error('Failed to send error to external service:', error);
+    }
   }
 
   /**
@@ -145,11 +163,11 @@ if (typeof window !== 'undefined') {
 }
 
 // Export convenience functions
-export const logError = (message: string, error?: Error, context?: Record<string, any>) => 
+export const logError = (message: string, error?: Error, context?: Record<string, any>) =>
   errorLogger.error(message, error, context);
 
-export const logWarn = (message: string, context?: Record<string, any>) => 
+export const logWarn = (message: string, context?: Record<string, any>) =>
   errorLogger.warn(message, context);
 
-export const logInfo = (message: string, context?: Record<string, any>) => 
+export const logInfo = (message: string, context?: Record<string, any>) =>
   errorLogger.info(message, context);

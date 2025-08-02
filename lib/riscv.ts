@@ -69,35 +69,35 @@ export function decodeInstruction(instruction: number): string {
   const rs1 = (instruction & RS1_MASK) >> 15;
   const rs2 = (instruction & RS2_MASK) >> 20;
   const funct7 = (instruction & FUNCT7_MASK) >> 25;
-  
+
   switch (opcode) {
     case OPCODES.LUI:
       return `lui ${REGISTERS[rd]}, ${(instruction >>> 12).toString(16)}`;
-      
+
     case OPCODES.AUIPC:
       return `auipc ${REGISTERS[rd]}, ${(instruction >>> 12).toString(16)}`;
-      
+
     case OPCODES.JAL: {
-      const imm = ((instruction & 0x80000000) >> 11) | 
-                  ((instruction & 0x7fe00000) >> 20) |
-                  ((instruction & 0x00100000) >> 9) |
-                  (instruction & 0x000ff000);
+      const imm = ((instruction & 0x80000000) >> 11) |
+        ((instruction & 0x7fe00000) >> 20) |
+        ((instruction & 0x00100000) >> 9) |
+        (instruction & 0x000ff000);
       return `jal ${REGISTERS[rd]}, ${imm.toString(16)}`;
     }
-    
+
     case OPCODES.JALR:
       return `jalr ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${((instruction >> 20) & 0xfff).toString(16)}`;
-      
+
     case OPCODES.BRANCH:
-      if (BRANCH_CONDITIONS[funct3]) {
+      if ((BRANCH_CONDITIONS as any)[funct3]) {
         const imm = ((instruction & 0x80000000) >> 19) |
-                   ((instruction & 0x7e000000) >> 20) |
-                   ((instruction & 0x00000f00) >> 7) |
-                   ((instruction & 0x00000080) << 4);
-        return `${BRANCH_CONDITIONS[funct3]} ${REGISTERS[rs1]}, ${REGISTERS[rs2]}, ${imm.toString(16)}`;
+          ((instruction & 0x7e000000) >> 20) |
+          ((instruction & 0x00000f00) >> 7) |
+          ((instruction & 0x00000080) << 4);
+        return `${(BRANCH_CONDITIONS as any)[funct3]} ${REGISTERS[rs1]}, ${REGISTERS[rs2]}, ${imm.toString(16)}`;
       }
       break;
-      
+
     case OPCODES.LOAD: {
       const imm = (instruction >> 20) & 0xfff;
       const loadTypes = ['lb', 'lh', 'lw', 'ld', 'lbu', 'lhu', 'lwu'];
@@ -106,7 +106,7 @@ export function decodeInstruction(instruction: number): string {
       }
       break;
     }
-    
+
     case OPCODES.STORE: {
       const imm = ((instruction >> 20) & 0xfe0) | ((instruction >> 7) & 0x1f);
       const storeTypes = ['sb', 'sh', 'sw', 'sd'];
@@ -115,25 +115,28 @@ export function decodeInstruction(instruction: number): string {
       }
       break;
     }
-    
+
     case OPCODES.OP_IMM: {
       const imm = (instruction >> 20) & 0xfff;
-      if (IMM_ARITHMETIC_OPS[funct3]) {
-        if (typeof IMM_ARITHMETIC_OPS[funct3] === 'string') {
-          return `${IMM_ARITHMETIC_OPS[funct3]} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${imm}`;
-        } else if (IMM_ARITHMETIC_OPS[funct3][funct7 & 0x20]) {
-          return `${IMM_ARITHMETIC_OPS[funct3][funct7 & 0x20]} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${imm & 0x1f}`;
+      const immOp = (IMM_ARITHMETIC_OPS as any)[funct3];
+      if (immOp) {
+        if (typeof immOp === 'string') {
+          return `${immOp} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${imm}`;
+        } else if (immOp[funct7 & 0x20]) {
+          return `${immOp[funct7 & 0x20]} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${imm & 0x1f}`;
         }
       }
       break;
     }
-    
-    case OPCODES.OP:
-      if (ARITHMETIC_OPS[funct3] && ARITHMETIC_OPS[funct3][funct7 & 0x20]) {
-        return `${ARITHMETIC_OPS[funct3][funct7 & 0x20]} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${REGISTERS[rs2]}`;
+
+    case OPCODES.OP: {
+      const arithOp = (ARITHMETIC_OPS as any)[funct3];
+      if (arithOp && arithOp[funct7 & 0x20]) {
+        return `${arithOp[funct7 & 0x20]} ${REGISTERS[rd]}, ${REGISTERS[rs1]}, ${REGISTERS[rs2]}`;
       }
       break;
-      
+    }
+
     case OPCODES.SYSTEM:
       if (funct3 === 0 && instruction === 0x00000073) {
         return 'ecall';
@@ -142,6 +145,6 @@ export function decodeInstruction(instruction: number): string {
       }
       break;
   }
-  
+
   return `unknown (${instruction.toString(16)})`;
 }

@@ -1,6 +1,7 @@
 'use client';
 
-import type { DetailedTransactionInfo, ParsedInstruction } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { ParsedInstruction } from '@solana/web3.js';
 
 // DeFi Protocol Registry
 export interface DeFiProtocol {
@@ -166,7 +167,7 @@ const DEFI_PROTOCOLS: Record<string, DeFiProtocol> = {
     riskLevel: 'low',
     fees: { trading: 0.3 }
   },
-  
+
   // Lending Protocols
   'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo': {
     name: 'Solend',
@@ -184,7 +185,7 @@ const DEFI_PROTOCOLS: Record<string, DeFiProtocol> = {
     website: 'https://mango.markets',
     riskLevel: 'high'
   },
-  
+
   // Staking Protocols
   'StakeSSzfxn391k3LvdKbZP5WVwWd6AsY39qhURmHYgD': {
     name: 'Lido',
@@ -202,7 +203,7 @@ const DEFI_PROTOCOLS: Record<string, DeFiProtocol> = {
     website: 'https://marinade.finance',
     riskLevel: 'low'
   },
-  
+
   // Yield Farming
   'EhhTKczWMGQt46ynNeRX1WfeagwwJd7ufHvCDjRxjo5Q': {
     name: 'Orca Farms',
@@ -237,7 +238,7 @@ class DeFiTransactionAnalyzer {
     try {
       // Identify DeFi protocols used
       const protocols = this.identifyProtocols(transaction);
-      
+
       if (protocols.length === 0) {
         return {
           isDefi: false,
@@ -251,27 +252,27 @@ class DeFiTransactionAnalyzer {
 
       // Analyze DeFi actions
       const actions = await this.analyzeDeFiActions(transaction, protocols);
-      
+
       // Calculate financial impact
       const financialImpact = await this.calculateFinancialImpact(transaction, actions);
-      
+
       // Assess risks
       const riskAssessment = this.assessDeFiRisks(protocols, actions, financialImpact);
-      
+
       // Analyze yield opportunities
       const yieldAnalysis = await this.analyzeYieldOpportunities(actions);
-      
+
       // Analyze liquidity provision
       const liquidityAnalysis = await this.analyzeLiquidityProvision(actions);
-      
+
       // Get market context
       const marketContext = await this.getMarketContext(actions);
-      
+
       // Generate recommendations
       const recommendations = this.generateRecommendations(
-        protocols, 
-        actions, 
-        financialImpact, 
+        protocols,
+        actions,
+        financialImpact,
         riskAssessment,
         marketContext
       );
@@ -306,29 +307,46 @@ class DeFiTransactionAnalyzer {
     const seenPrograms = new Set<string>();
 
     // Check instructions for known DeFi program IDs
-    transaction.parsedInstructions?.forEach(instruction => {
+    const parsedInstructions = (transaction as any).parsedInstructions;
+    parsedInstructions?.forEach((instruction: any) => {
       const programId = instruction.programId;
-      
-      if (!seenPrograms.has(programId) && DEFI_PROTOCOLS[programId]) {
-        protocols.push(DEFI_PROTOCOLS[programId]);
-        seenPrograms.add(programId);
+
+      if (!seenPrograms.has(programId)) {
+        // Check cache first
+        let protocol = this.protocolDataCache.get(programId);
+        if (!protocol && DEFI_PROTOCOLS[programId]) {
+          protocol = DEFI_PROTOCOLS[programId];
+          this.protocolDataCache.set(programId, protocol);
+        }
+        if (protocol) {
+          protocols.push(protocol);
+          seenPrograms.add(programId);
+        }
       }
     });
 
     // Check account keys for known programs
-    transaction.transaction.message.accountKeys.forEach(account => {
+    transaction.transaction?.message.accountKeys.forEach(account => {
       const accountKey = account.pubkey.toString();
-      
-      if (!seenPrograms.has(accountKey) && DEFI_PROTOCOLS[accountKey]) {
-        protocols.push(DEFI_PROTOCOLS[accountKey]);
-        seenPrograms.add(accountKey);
+
+      if (!seenPrograms.has(accountKey)) {
+        // Check cache first
+        let protocol = this.protocolDataCache.get(accountKey);
+        if (!protocol && DEFI_PROTOCOLS[accountKey]) {
+          protocol = DEFI_PROTOCOLS[accountKey];
+          this.protocolDataCache.set(accountKey, protocol);
+        }
+        if (protocol) {
+          protocols.push(protocol);
+          seenPrograms.add(accountKey);
+        }
       }
     });
 
     return protocols;
-  } 
- private async analyzeDeFiActions(
-    transaction: DetailedTransactionInfo, 
+  }
+  private async analyzeDeFiActions(
+    transaction: DetailedTransactionInfo,
     protocols: DeFiProtocol[]
   ): Promise<DeFiAction[]> {
     const actions: DeFiAction[] = [];
@@ -348,8 +366,9 @@ class DeFiTransactionAnalyzer {
     const actions: DeFiAction[] = [];
 
     // Get instructions for this protocol
-    const protocolInstructions = transaction.parsedInstructions?.filter(
-      instruction => instruction.programId === protocol.programId
+    const parsedInstructions = (transaction as any).parsedInstructions;
+    const protocolInstructions = parsedInstructions?.filter(
+      (instruction: any) => instruction.programId === protocol.programId
     ) || [];
 
     for (const instruction of protocolInstructions) {
@@ -370,15 +389,15 @@ class DeFiTransactionAnalyzer {
     try {
       const instructionName = instruction.parsed?.type || instruction.parsed?.info?.instruction || 'unknown';
       const actionType = this.determineActionType(instructionName, protocol);
-      
+
       if (!actionType) return null;
 
       // Extract token amounts from instruction
       const { inputTokens, outputTokens } = await this.extractTokenAmounts(instruction, transaction);
-      
+
       // Calculate fees
       const fees = this.calculateActionFees(inputTokens, outputTokens, protocol);
-      
+
       // Get additional metrics based on action type
       const additionalMetrics = await this.getActionMetrics(actionType, instruction, protocol);
 
@@ -400,7 +419,7 @@ class DeFiTransactionAnalyzer {
 
   private determineActionType(instructionName: string, protocol: DeFiProtocol): DeFiAction['type'] | null {
     const lowerName = instructionName.toLowerCase();
-    
+
     for (const [actionType, patterns] of Object.entries(DEFI_INSTRUCTION_PATTERNS)) {
       if (patterns.some(pattern => lowerName.includes(pattern))) {
         return actionType as DeFiAction['type'];
@@ -437,7 +456,7 @@ class DeFiTransactionAnalyzer {
     try {
       // Extract from parsed instruction data
       const info = instruction.parsed?.info;
-      
+
       if (info) {
         // Handle different instruction formats
         if (info.amount && info.mint) {
@@ -447,20 +466,20 @@ class DeFiTransactionAnalyzer {
             inputTokens.push(tokenAmount);
           }
         }
-        
+
         if (info.tokenAmountA && info.tokenAmountB) {
           // Liquidity pool operations
           const tokenA = await this.createTokenAmount(info.mintA, info.tokenAmountA);
           const tokenB = await this.createTokenAmount(info.mintB, info.tokenAmountB);
-          
+
           if (tokenA) inputTokens.push(tokenA);
           if (tokenB) inputTokens.push(tokenB);
         }
       }
 
       // Extract from account balance changes
-      const balanceChanges = transaction.accountChanges || [];
-      
+      const balanceChanges = (transaction as any).accountChanges || [];
+
       for (const change of balanceChanges) {
         if (change.tokenChanges) {
           for (const tokenChange of change.tokenChanges) {
@@ -468,7 +487,7 @@ class DeFiTransactionAnalyzer {
               tokenChange.mint,
               Math.abs(tokenChange.change).toString()
             );
-            
+
             if (tokenAmount) {
               if (tokenChange.change < 0) {
                 inputTokens.push(tokenAmount);
@@ -492,16 +511,16 @@ class DeFiTransactionAnalyzer {
       // Get token metadata (this would typically come from a token registry)
       const tokenInfo = await this.getTokenInfo(mint);
       const price = await this.getTokenPrice(mint);
-      
+
       const numericAmount = parseFloat(amount) / Math.pow(10, tokenInfo.decimals);
-      
+
       return {
         mint,
         symbol: tokenInfo.symbol,
         amount: numericAmount.toString(),
         decimals: tokenInfo.decimals,
         usdValue: price ? numericAmount * price : undefined,
-        pricePerToken: price
+        pricePerToken: price ?? undefined
       };
     } catch (error) {
       console.error('Error creating token amount:', error);
@@ -540,7 +559,7 @@ class DeFiTransactionAnalyzer {
       if (price) {
         this.tokenPriceCache.set(mint, price);
       }
-      
+
       return price;
     } catch (error) {
       console.error('Error fetching token price:', error);
@@ -558,8 +577,12 @@ class DeFiTransactionAnalyzer {
     // Calculate protocol fees
     if (protocol.fees?.trading) {
       const totalInputValue = inputTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
-      const feeAmount = totalInputValue * (protocol.fees.trading / 100);
-      
+      const totalOutputValue = outputTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
+
+      // Use the higher value for fee calculation (more accurate for some protocols)
+      const feeBaseValue = Math.max(totalInputValue, totalOutputValue);
+      const feeAmount = feeBaseValue * (protocol.fees.trading / 100);
+
       if (feeAmount > 0) {
         fees.push({
           type: 'trading',
@@ -624,13 +647,13 @@ class DeFiTransactionAnalyzer {
           metrics.priceImpact = await this.calculatePriceImpact(instruction);
           metrics.slippage = await this.calculateSlippage(instruction);
           break;
-          
+
         case 'add_liquidity':
         case 'remove_liquidity':
           // Calculate liquidity metrics
           metrics.liquidityProvided = await this.calculateLiquidityValue(instruction);
           break;
-          
+
         case 'stake':
         case 'lend':
           // Calculate yield metrics
@@ -638,7 +661,7 @@ class DeFiTransactionAnalyzer {
           metrics.apr = yieldData.apr;
           metrics.apy = yieldData.apy;
           break;
-          
+
         case 'claim_rewards':
         case 'harvest':
           // Calculate rewards
@@ -653,40 +676,57 @@ class DeFiTransactionAnalyzer {
   }
 
   private async calculatePriceImpact(instruction: ParsedInstruction): Promise<number | undefined> {
-    // Mock price impact calculation
+    // Mock price impact calculation based on instruction data
     // In production, this would calculate based on pool size and trade amount
-    return Math.random() * 2; // 0-2% price impact
+    const info = instruction.parsed?.info;
+    if (info && info.amount) {
+      // Simulate price impact based on trade size
+      const amount = parseFloat(info.amount);
+      return Math.min(amount / 1000000, 0.02); // Scale with amount, max 2%
+    }
+    return Math.random() * 0.02; // 0-2% price impact
   }
 
   private async calculateSlippage(instruction: ParsedInstruction): Promise<number | undefined> {
-    // Mock slippage calculation
+    // Mock slippage calculation based on instruction
+    const info = instruction.parsed?.info;
+    if (info && info.slippage) {
+      return parseFloat(info.slippage);
+    }
     return Math.random() * 1; // 0-1% slippage
   }
 
   private async calculateLiquidityValue(instruction: ParsedInstruction): Promise<number | undefined> {
-    // Mock liquidity value calculation
+    // Mock liquidity value calculation based on instruction
+    const info = instruction.parsed?.info;
+    if (info && info.liquidityAmount) {
+      return parseFloat(info.liquidityAmount);
+    }
     return Math.random() * 10000; // $0-$10,000
   }
 
   private async getYieldMetrics(protocol: DeFiProtocol): Promise<{ apr?: number; apy?: number }> {
     // Mock yield data based on protocol
-    const yieldRanges = {
+    const yieldRanges: Record<string, { apr: number; apy: number }> = {
       lending: { apr: 3, apy: 3.1 },
       staking: { apr: 7, apy: 7.3 },
       yield_farming: { apr: 15, apy: 16.2 },
-      dex: { apr: 5, apy: 5.1 }
+      dex: { apr: 5, apy: 5.1 },
+      derivatives: { apr: 10, apy: 10.5 },
+      insurance: { apr: 2, apy: 2.0 },
+      bridge: { apr: 0, apy: 0 }
     };
 
     return yieldRanges[protocol.category] || {};
   }
 
-  private async calculateRewards(instruction: ParsedInstruction): Promise<TokenAmount[] | undefined> {
+  private async calculateRewards(_instruction: ParsedInstruction): Promise<TokenAmount[] | undefined> {
     // Mock rewards calculation
     return [];
   }
 
   private async calculateFinancialImpact(
-    transaction: DetailedTransactionInfo,
+    _transaction: DetailedTransactionInfo,
     actions: DeFiAction[]
   ): Promise<FinancialImpact> {
     let totalValueIn = 0;
@@ -699,17 +739,17 @@ class DeFiTransactionAnalyzer {
     for (const action of actions) {
       // Sum input values
       totalValueIn += action.inputTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
-      
+
       // Sum output values
       totalValueOut += action.outputTokens.reduce((sum, token) => sum + (token.usdValue || 0), 0);
-      
+
       // Sum fees
       totalFees += action.fees.reduce((sum, fee) => sum + (fee.amount.usdValue || 0), 0);
-      
+
       // Aggregate price impact and slippage
       if (action.priceImpact) totalPriceImpact += action.priceImpact;
       if (action.slippage) totalSlippage += action.slippage;
-      
+
       // Calculate impermanent loss for liquidity actions
       if (action.type === 'add_liquidity' || action.type === 'remove_liquidity') {
         impermanentLoss += await this.calculateImpermanentLoss(action);
@@ -910,6 +950,14 @@ class DeFiTransactionAnalyzer {
   ): string[] {
     const strategies: string[] = [];
 
+    // Risk factor-specific strategies
+    if (factors.some(f => f.severity === 'high')) {
+      strategies.push('High risk detected - consider reducing position size or using additional risk management tools');
+    }
+    if (factors.some(f => f.type === 'market')) {
+      strategies.push('Monitor market conditions and consider using limit orders');
+    }
+
     // Protocol-specific strategies
     if (protocols.some(p => p.riskLevel === 'high')) {
       strategies.push('Consider using more established protocols with lower risk profiles');
@@ -943,7 +991,7 @@ class DeFiTransactionAnalyzer {
   }
 
   private async analyzeYieldOpportunities(actions: DeFiAction[]): Promise<YieldAnalysis | undefined> {
-    const yieldActions = actions.filter(a => 
+    const yieldActions = actions.filter(a =>
       ['stake', 'lend', 'add_liquidity', 'farm'].includes(a.type)
     );
 
@@ -994,12 +1042,12 @@ class DeFiTransactionAnalyzer {
 
   private determineYieldSource(actions: DeFiAction[]): YieldAnalysis['yieldSource'] {
     const actionTypes = actions.map(a => a.type);
-    
+
     if (actionTypes.includes('add_liquidity')) return 'trading_fees';
     if (actionTypes.includes('lend')) return 'lending_interest';
     if (actionTypes.includes('stake')) return 'staking_rewards';
     if (actionTypes.includes('farm')) return 'farming_rewards';
-    
+
     return 'mixed';
   }
 
@@ -1007,15 +1055,15 @@ class DeFiTransactionAnalyzer {
     // Assess based on protocol maturity and yield source
     const hasHighRiskProtocols = actions.some(a => a.protocol.riskLevel === 'high');
     const hasHighYield = actions.some(a => (a.apr || 0) > 20);
-    
+
     if (hasHighRiskProtocols || hasHighYield) return 'low';
     if (actions.some(a => a.protocol.riskLevel === 'medium')) return 'medium';
-    
+
     return 'high';
   }
 
   private async analyzeLiquidityProvision(actions: DeFiAction[]): Promise<LiquidityAnalysis | undefined> {
-    const liquidityActions = actions.filter(a => 
+    const liquidityActions = actions.filter(a =>
       ['add_liquidity', 'remove_liquidity'].includes(a.type)
     );
 
@@ -1038,10 +1086,13 @@ class DeFiTransactionAnalyzer {
   }
 
   private async getMarketContext(actions: DeFiAction[]): Promise<MarketContext | undefined> {
-    // Mock market context
+    // Mock market context based on actions
+    const hasHighValueActions = actions.some(a => a.inputTokens.some(t => (t.usdValue || 0) > 10000));
+    const volatilityIndex = hasHighValueActions ? 65 : 45;
+
     return {
-      marketCondition: 'sideways',
-      volatilityIndex: 45,
+      marketCondition: hasHighValueActions ? 'volatile' : 'sideways',
+      volatilityIndex,
       liquidityCondition: 'medium',
       recommendedActions: [
         'Consider dollar-cost averaging for large positions',
@@ -1062,6 +1113,14 @@ class DeFiTransactionAnalyzer {
     marketContext?: MarketContext
   ): string[] {
     const recommendations: string[] = [];
+
+    // Action-specific recommendations
+    if (actions.some(a => a.type === 'swap' && a.inputTokens.some(t => (t.usdValue || 0) > 5000))) {
+      recommendations.push('Large swap detected - consider breaking into smaller transactions to reduce price impact');
+    }
+    if (actions.some(a => a.type === 'add_liquidity')) {
+      recommendations.push('Monitor impermanent loss when providing liquidity');
+    }
 
     // Risk-based recommendations
     if (riskAssessment.overallRisk === 'high' || riskAssessment.overallRisk === 'extreme') {
@@ -1142,11 +1201,11 @@ export function formatDeFiAmount(amount: TokenAmount): string {
     minimumFractionDigits: 0,
     maximumFractionDigits: 6
   });
-  
-  const usdDisplay = amount.usdValue 
-    ? ` (~$${amount.usdValue.toLocaleString()})` 
+
+  const usdDisplay = amount.usdValue
+    ? ` (~$${amount.usdValue.toLocaleString()})`
     : '';
-    
+
   return `${formatted} ${amount.symbol}${usdDisplay}`;
 }
 
@@ -1164,7 +1223,7 @@ export function getDeFiActionIcon(actionType: DeFiAction['type']): string {
     farm: '🚜',
     harvest: '🌾'
   };
-  
+
   return icons[actionType] || '❓';
 }
 
@@ -1175,7 +1234,7 @@ export function getRiskLevelColor(riskLevel: 'low' | 'medium' | 'high' | 'extrem
     high: 'text-red-600 dark:text-red-400',
     extreme: 'text-red-800 dark:text-red-300'
   };
-  
+
   return colors[riskLevel];
 }
 

@@ -232,9 +232,9 @@ export async function GET(
       }
     };
 
-    const result = {
+    const result: RelatedTransactionsResponse['data'] = {
       signature,
-      relatedTransactions,
+      relatedTransactions: relatedTransactions as any, // Type assertion for relationship compatibility
       summary,
       cached: false
     };
@@ -281,7 +281,7 @@ export async function POST(
   { params }: { params: { signature: string } }
 ): Promise<NextResponse<RelatedTransactionsResponse>> {
   try {
-    const { signature } = params;
+    const { signature: _signature } = params;
     const body = await request.json();
 
     // Validate request body

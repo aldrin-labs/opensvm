@@ -9,10 +9,10 @@ import { useState } from 'react';
 import { UserProfile } from '@/types/user-history';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Download, 
-  FileText, 
-  Loader2, 
+import {
+  Download,
+  FileText,
+  Loader2,
   Package,
   CheckCircle,
   AlertCircle
@@ -72,6 +72,16 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
   };
 
   const exportStatsAsCSV = () => {
+    // Handle case where stats haven't been calculated yet
+    if (!profile.stats) {
+      const headers = ['Metric', 'Value', 'Description'];
+      const rows = [['No Stats Available', 'N/A', 'User statistics have not been calculated yet']];
+      return [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+    }
+
     const headers = [
       'Metric',
       'Value',
@@ -101,6 +111,16 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
   };
 
   const exportDailyActivityAsCSV = () => {
+    // Handle case where stats haven't been calculated yet
+    if (!profile.stats || !profile.stats.dailyActivity) {
+      const headers = ['Date', 'Visits', 'Day of Week'];
+      const rows = [['No Data', '0', 'N/A']];
+      return [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+    }
+
     const headers = ['Date', 'Visits', 'Day of Week'];
 
     const rows = profile.stats.dailyActivity.map(day => [
@@ -123,17 +143,17 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
       // For simplicity, we'll create a combined CSV file with multiple sheets
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
       const walletShort = profile.walletAddress.slice(0, 8);
-      
+
       const historyCSV = exportHistoryAsCSV();
       const statsCSV = exportStatsAsCSV();
       const activityCSV = exportDailyActivityAsCSV();
-      
+
       // Create a combined file with sections
       const combinedContent = [
         '# OpenSVM User History Export',
         `# Generated on: ${new Date().toISOString()}`,
         `# Wallet: ${profile.walletAddress}`,
-        `# Total Visits: ${profile.stats.totalVisits}`,
+        `# Total Visits: ${profile.stats?.totalVisits || 'N/A'}`,
         '',
         '## BROWSING HISTORY',
         historyCSV,
@@ -148,7 +168,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
       // Create blob and download
       const blob = new Blob([combinedContent], { type: 'text/csv;charset=utf-8;' });
       const link = document.createElement('a');
-      
+
       if (link.download !== undefined) {
         const url = URL.createObjectURL(blob);
         link.setAttribute('href', url);
@@ -160,7 +180,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
         URL.revokeObjectURL(url);
         return true;
       }
-      
+
       return false;
     } catch (error) {
       console.error('Error creating export file:', error);
@@ -171,13 +191,13 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
   const handleExport = async () => {
     setIsExporting(true);
     setExportStatus('idle');
-    
+
     try {
       // Simulate some processing time
       await new Promise(resolve => setTimeout(resolve, 1000));
-      
+
       const success = await createZipFile();
-      
+
       if (success) {
         setExportStatus('success');
         setTimeout(() => setExportStatus('idle'), 3000);
@@ -203,7 +223,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
         </>
       );
     }
-    
+
     if (exportStatus === 'success') {
       return (
         <>
@@ -212,7 +232,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
         </>
       );
     }
-    
+
     if (exportStatus === 'error') {
       return (
         <>
@@ -221,7 +241,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
         </>
       );
     }
-    
+
     return (
       <>
         <Download className="h-4 w-4" />
@@ -247,7 +267,7 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
       >
         {getButtonContent()}
       </Button>
-      
+
       {/* Export Info Tooltip */}
       <Card className="hidden group-hover:block absolute top-full right-0 mt-2 z-10 w-80">
         <CardHeader className="pb-2">
@@ -267,9 +287,9 @@ export function UserHistoryExport({ profile }: UserHistoryExportProps) {
               <span>Downloads as a single file with multiple sections</span>
             </div>
             <div className="text-xs text-gray-500 dark:text-gray-500">
-              File includes: {profile.history.length} history entries, 
-              {(profile.stats.pageTypeDistribution || []).length} page types, 
-              {profile.stats.dailyActivity.length} days of activity
+              File includes: {profile.history.length} history entries,
+              {(profile.stats?.pageTypeDistribution || []).length} page types,
+              {profile.stats?.dailyActivity?.length || 0} days of activity
             </div>
           </div>
         </CardContent>

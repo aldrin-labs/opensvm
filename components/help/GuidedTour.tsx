@@ -68,14 +68,12 @@ const GuidedTour: React.FC<GuidedTourProps> = ({
   const tooltipRef = useRef<HTMLDivElement>(null);
   const playIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  const { announceToScreenReader, isTouchDevice } = useAccessibility();
+  const { announceToScreenReader } = useAccessibility();
   const { isMobile, isTablet } = useMobileDetection();
 
   // Keyboard navigation
   useKeyboardNavigation(tooltipRef, {
     onEscape: onClose,
-    onArrowLeft: () => currentStepIndex > 0 && goToStep(currentStepIndex - 1),
-    onArrowRight: () => currentStepIndex < config.steps.length - 1 && goToStep(currentStepIndex + 1),
     trapFocus: true
   });
 

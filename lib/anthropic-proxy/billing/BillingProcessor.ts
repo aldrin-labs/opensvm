@@ -36,9 +36,13 @@ export class BillingProcessor {
         // 1. Track usage
         await this.usageTracker.trackResponse(proxyResponse);
 
-        // 2. Deduct actual cost from user's balance
-        // Assuming a method to deduct the final cost exists that also handles reserved amount
-        await this.balanceManager.deductBalance(userId, actualCost, keyId, model);
+        // 2. Log model-specific billing information
+        console.log(`Processing successful billing for model: ${model}, user: ${userId}, cost: ${actualCost}`);
+
+        // 3. Consume reserved balance with actual cost
+        // We need to pass the reserved amount and actual amount - using estimatedCost as reserved amount
+        const estimatedCost = proxyResponse.inputTokens + proxyResponse.outputTokens; // Approximate reserved amount
+        await this.balanceManager.consumeReservedBalance(userId, estimatedCost, actualCost, keyId);
     }
 
     /**
@@ -55,11 +59,13 @@ export class BillingProcessor {
         // Log usage even for failed requests (e.g., 0 tokens used, but still a request)
         await this.usageTracker.trackResponse(proxyResponse);
 
+        // Log model-specific failure information
+        console.log(`Processing failed billing for model: ${model}, user: ${userId}, releasing reserved balance`);
+
         // Release any reserved balance for this request. 
-        // The `deductBalance` method should handle this intelligently,
-        // or a separate `releaseReservedBalance` method might be needed if no deduction occurs.
-        // For now, assuming deductBalance with 0 cost for failed requests releases reservation.
-        await this.balanceManager.releaseReservedBalance(userId, keyId, model);
+        // We need to estimate how much was reserved and release it
+        const estimatedReservedAmount = proxyResponse.inputTokens + proxyResponse.outputTokens; // Approximate reserved amount
+        await this.balanceManager.releaseReservedBalance(userId, estimatedReservedAmount, keyId);
     }
 
     /**
@@ -67,9 +73,16 @@ export class BillingProcessor {
      */
     async reserveBalance(proxyRequest: ProxyRequest): Promise<void> {
         const { userId, estimatedCost, keyId, anthropicRequest } = proxyRequest;
-        const success = await this.balanceManager.reserveBalance(userId, estimatedCost, keyId, anthropicRequest.model);
+
+        // Log request-specific information for billing audit
+        console.log(`Reserving balance for user: ${userId}, model: ${anthropicRequest.model}, estimated cost: ${estimatedCost}`);
+        console.log(`Request details - max_tokens: ${anthropicRequest.max_tokens}, messages: ${anthropicRequest.messages.length}`);
+
+        const success = await this.balanceManager.reserveBalance(userId, estimatedCost, keyId);
         if (!success) {
-            throw new Error('Insufficient balance to reserve tokens.');
+            throw new Error(`Insufficient balance to reserve ${estimatedCost} tokens for ${anthropicRequest.model} request.`);
         }
+
+        console.log(`Successfully reserved ${estimatedCost} tokens for user ${userId} using ${anthropicRequest.model}`);
     }
 } 

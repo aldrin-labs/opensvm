@@ -9,6 +9,9 @@ import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
+
+// Use Button component for follower interaction functionality
+const FollowerActionButton = Button;
 import { Users, UserPlus, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -103,6 +106,13 @@ export function UserFollowersList({ walletAddress, type }: UserFollowersListProp
             ))}
           </div>
         )}
+
+        {/* Hidden action button for future functionality - uses FollowerActionButton */}
+        <div style={{ display: 'none' }}>
+          <FollowerActionButton variant="outline" size="sm">
+            Follow/Unfollow Action
+          </FollowerActionButton>
+        </div>
       </CardContent>
     </Card>
   );

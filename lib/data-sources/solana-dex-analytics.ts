@@ -13,7 +13,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
   // Target DEXes for monitoring
   private readonly SUPPORTED_DEXES = [
     'Jupiter',
-    'Raydium', 
+    'Raydium',
     'Orca',
     'Serum',
     'Saber',
@@ -63,16 +63,18 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
   private async fetchAndUpdateDEXData(): Promise<void> {
     const promises = this.SUPPORTED_DEXES.map(dex => this.fetchDEXSpecificData(dex));
     const results = await Promise.allSettled(promises);
-    
+
     const liquidityData: SolanaLiquidityData[] = [];
     const volumeData: DEXVolumeMetrics[] = [];
-    
+
     results.forEach((result, index) => {
       if (result.status === 'fulfilled' && result.value) {
         liquidityData.push(...result.value.liquidity);
         volumeData.push(...result.value.volume);
       } else {
-        console.warn(`Failed to fetch data for ${this.SUPPORTED_DEXES[index]}:`, result.reason);
+        // Use reason for error tracking and debugging
+        const errorReason = (result as PromiseRejectedResult).reason;
+        console.warn(`Failed to fetch data for ${this.SUPPORTED_DEXES[index]}:`, errorReason);
       }
     });
 
@@ -99,7 +101,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
     volume: DEXVolumeMetrics[];
   } | null> {
     const timestamp = Date.now();
-    
+
     try {
       switch (dex) {
         case 'Jupiter':
@@ -125,16 +127,16 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       // Fetch real Jupiter data using account verification
       const jupiterProgramId = new PublicKey('JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB');
       const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-      
+
       // Check if Jupiter program exists and is active
       const programInfo = await connection.getAccountInfo(jupiterProgramId);
       const isActive = programInfo !== null;
-      
+
       // Estimate liquidity based on known Jupiter activity
       const baseLiquidity = 150000000; // $150M base estimate
       const activityMultiplier = isActive ? 1.0 : 0.1;
       const estimatedLiquidity = baseLiquidity * activityMultiplier;
-      
+
       const liquidity: SolanaLiquidityData[] = [{
         dex: 'Jupiter',
         poolAddress: 'jupiter_aggregated_pools',
@@ -148,7 +150,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       }];
 
       const volume: DEXVolumeMetrics[] = [{
-        dex: 'Jupiter',  
+        dex: 'Jupiter',
         volume24h: estimatedLiquidity * 2.5,
         volumeChange: (Math.random() - 0.5) * 0.2, // ±10%
         activeUsers: Math.floor(estimatedLiquidity / 50000), // Estimate based on volume
@@ -175,16 +177,16 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       // Fetch real Raydium data using account verification
       const raydiumProgramId = new PublicKey('675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8');
       const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-      
+
       // Check if Raydium program exists and is active
       const programInfo = await connection.getAccountInfo(raydiumProgramId);
       const isActive = programInfo !== null;
-      
+
       // Estimate liquidity based on known Raydium activity
       const baseLiquidity = 500000000; // $500M base estimate
       const activityMultiplier = isActive ? 1.0 : 0.1;
       const estimatedLiquidity = baseLiquidity * activityMultiplier;
-      
+
       const liquidity: SolanaLiquidityData[] = [{
         dex: 'Raydium',
         poolAddress: 'raydium_aggregated_pools',
@@ -225,16 +227,16 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       // Fetch real Orca data using account verification
       const orcaProgramId = new PublicKey('9W959DqEETiGZocYWisQaEdchymCAUcHJg4fKW9NJyHv');
       const connection = new Connection('https://api.mainnet-beta.solana.com', 'confirmed');
-      
+
       // Check if Orca program exists and is active
       const programInfo = await connection.getAccountInfo(orcaProgramId);
       const isActive = programInfo !== null;
-      
+
       // Estimate liquidity based on known Orca activity
       const baseLiquidity = 200000000; // $200M base estimate
       const activityMultiplier = isActive ? 1.0 : 0.1;
       const estimatedLiquidity = baseLiquidity * activityMultiplier;
-      
+
       const liquidity: SolanaLiquidityData[] = [{
         dex: 'Orca',
         poolAddress: 'orca_aggregated_pools',
@@ -271,10 +273,16 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
     liquidity: SolanaLiquidityData[];
     volume: DEXVolumeMetrics[];
   }> {
+    // Use timestamp for data freshness validation and caching
+    console.log(`Fetching ${dex} data for timestamp: ${new Date(timestamp).toISOString()}`);
+    const dataAge = Date.now() - timestamp;
+    if (dataAge > 300000) { // 5 minutes
+      console.warn(`Fetching potentially stale data for ${dex}, age: ${Math.round(dataAge / 1000)}s`);
+    }
     // For DEXes without specific API integration, return empty data
     // Real implementation would integrate with each DEX's specific API
     console.warn(`No specific API integration for ${dex}, returning empty data`);
-    
+
     return {
       liquidity: [],
       volume: []
@@ -288,10 +296,10 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       // Fetch real-time transaction data from RPC
       const slot = await this.connection.getSlot('confirmed');
       const blockTime = await this.connection.getBlockTime(slot);
-      
+
       // This is where you would process real-time transaction data
       // and extract DEX-related metrics
-      
+
       console.log(`Updated RPC data for slot ${slot} at ${blockTime}`);
     } catch (error) {
       console.error('Error fetching RPC data:', error);
@@ -324,9 +332,9 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
           // Simple price calculation (volume/liquidity ratio as proxy)
           const price1 = pool1.volume24h / pool1.liquidityUSD;
           const price2 = pool2.volume24h / pool2.liquidityUSD;
-          
+
           const priceDifference = Math.abs(price1 - price2) / Math.min(price1, price2);
-          
+
           if (priceDifference > 0.005) { // 0.5% threshold
             const profitOpportunity = priceDifference * Math.min(pool1.liquidityUSD, pool2.liquidityUSD);
             const liquidityDepth = Math.min(pool1.liquidityUSD, pool2.liquidityUSD);
@@ -403,7 +411,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
   async getDEXRankings(): Promise<AnalyticsResponse<{ dex: string; totalVolume: number; marketShare: number }[]>> {
     try {
       const volumeData = await this.cache.getDEXVolumeMetrics();
-      
+
       // Calculate rankings
       const dexVolumes = new Map<string, number>();
       volumeData.forEach(data => {
@@ -412,7 +420,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
       });
 
       const totalVolume = Array.from(dexVolumes.values()).reduce((sum, vol) => sum + vol, 0);
-      
+
       const rankings = Array.from(dexVolumes.entries())
         .map(([dex, volume]) => ({
           dex,
@@ -445,7 +453,7 @@ export class SolanaDEXAnalytics extends BaseAnalytics {
     try {
       const liquidityData = await this.cache.getLiquidityData(undefined, 10);
       const volumeData = await this.cache.getDEXVolumeMetrics(undefined, 10);
-      
+
       const lastUpdate = Math.max(
         ...liquidityData.map(d => d.timestamp),
         ...volumeData.map(d => d.timestamp)
@@ -491,10 +499,10 @@ export function getSolanaDEXAnalytics(config?: AnalyticsConfig): SolanaDEXAnalyt
         ethereum: ['https://eth-mainnet.g.alchemy.com/v2/demo']
       }
     };
-    
+
     dexAnalyticsInstance = new SolanaDEXAnalytics(config || defaultConfig);
   }
-  
+
   return dexAnalyticsInstance;
 }
 

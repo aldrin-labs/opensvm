@@ -288,14 +288,27 @@ export class InstructionParserService {
     data: string,
     parsed?: any
   ): ParsedInstructionInfo {
-    const programName = this.getKnownProgramName(programId) || 'Unknown Program';
+    // Validate program ID format
+    try {
+      new PublicKey(programId);
+    } catch (error) {
+      console.warn(`Invalid program ID format: ${programId}`);
+    }
+
+    // Try to get enhanced program definition from registry
+    const programDefinition = getProgramDefinition(programId);
+    const programName = programDefinition?.name || this.getKnownProgramName(programId) || 'Unknown Program';
     const instructionType = parsed?.type || 'unknown';
+
+    // Analyze instruction data to provide more context
+    const dataAnalysis = this.analyzeInstructionData(data);
+    const enhancedDescription = dataAnalysis ? `${instructionType} (${dataAnalysis})` : instructionType;
 
     return {
       programId,
       programName,
       instructionType,
-      description: `${programName} instruction`,
+      description: `${programName}: ${enhancedDescription}`,
       category: 'unknown',
       accounts: accounts.map((account, index) => ({
         pubkey: account,
@@ -402,10 +415,13 @@ export class InstructionParserService {
   private generateATAProgramDescription(instructionType: string, info: any): string {
     switch (instructionType) {
       case 'create':
-        return 'Create associated token account';
+        const owner = info?.owner || 'unknown owner';
+        const mint = info?.mint || 'unknown mint';
+        return `Create associated token account for ${owner} (mint: ${mint})`;
 
       default:
-        return `ATA ${instructionType} instruction`;
+        const additionalInfo = info ? ` with ${Object.keys(info).length} parameters` : '';
+        return `ATA ${instructionType} instruction${additionalInfo}`;
     }
   }
 
@@ -424,9 +440,10 @@ export class InstructionParserService {
     if (program.programId === '11111111111111111111111111111111') {
       switch (instructionType) {
         case 'transfer':
+          const transferAmount = info?.lamports || info?.amount || 'unknown amount';
           roles.push(
-            { pubkey: accounts[0], role: 'payer', description: 'Source account', isSigner: true, isWritable: true },
-            { pubkey: accounts[1], role: 'recipient', description: 'Destination account', isSigner: false, isWritable: true }
+            { pubkey: accounts[0], role: 'payer', description: `Source account (transferring ${transferAmount} lamports)`, isSigner: true, isWritable: true },
+            { pubkey: accounts[1], role: 'recipient', description: `Destination account (receiving ${transferAmount} lamports)`, isSigner: false, isWritable: true }
           );
           break;
 
@@ -579,6 +596,12 @@ export class InstructionParserService {
     allPrograms.forEach(program => {
       this.programRegistry.set(program.programId, program);
     });
+
+    // Fallback to legacy initialization if registry is empty
+    if (this.programRegistry.size === 0) {
+      console.warn('Program registry is empty, falling back to legacy initialization');
+      this.initializeProgramRegistryLegacy();
+    }
   }
 
   /**
@@ -928,6 +951,29 @@ export class InstructionParserService {
       ]
     });
   }
+
+  /**
+   * Analyze instruction data to provide additional context
+   */
+  private analyzeInstructionData(data: string): string | null {
+    if (!data || data.length === 0) {
+      return null;
+    }
+
+    try {
+      // Basic analysis of instruction data
+      const dataLength = data.length;
+      if (dataLength <= 8) {
+        return `${dataLength / 2} bytes`;
+      } else if (dataLength <= 64) {
+        return `${dataLength / 2} bytes, likely simple operation`;
+      } else {
+        return `${dataLength / 2} bytes, complex operation`;
+      }
+    } catch (error) {
+      return 'malformed data';
+    }
+  }
 }
 
 // Export singleton instance
@@ -949,7 +995,15 @@ export function parseInstructions(transaction: any): Promise<ParsedInstructionIn
       const data = instruction.data;
       const parsed = instruction.parsed;
 
-      return instructionParserService.parseInstruction(programId, accounts, data, parsed);
+      // Parse instruction with position context
+      const parsedInstruction = await instructionParserService.parseInstruction(programId, accounts, data, parsed);
+
+      // Add instruction position metadata
+      return {
+        ...parsedInstruction,
+        instructionIndex: index,
+        description: `[${index}] ${parsedInstruction.description}`
+      };
     })
   );
 }

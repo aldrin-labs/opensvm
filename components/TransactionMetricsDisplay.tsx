@@ -126,6 +126,71 @@ const TransactionMetricsDisplay: React.FC<TransactionMetricsDisplayProps> = ({
   }
 
   if (!metrics) {
+    // Show basic transaction info if we have transaction data but no detailed metrics
+    if (transaction) {
+      return (
+        <div className={`bg-background rounded-lg border border-border p-6 ${className}`}>
+          <div className="flex items-center space-x-3 mb-6">
+            <BarChart3Icon className="w-6 h-6 text-primary" />
+            <h2 className="text-xl font-semibold text-foreground">Basic Transaction Info</h2>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {transaction.signature && (
+              <div className="bg-muted/10 rounded-lg p-4">
+                <h3 className="font-medium text-foreground mb-2">Signature</h3>
+                <p className="text-sm text-muted-foreground font-mono break-all">
+                  {transaction.signature}
+                </p>
+              </div>
+            )}
+            
+            {transaction.blockTime && (
+              <div className="bg-muted/10 rounded-lg p-4">
+                <h3 className="font-medium text-foreground mb-2">Block Time</h3>
+                <p className="text-sm text-muted-foreground">
+                  {new Date(transaction.blockTime * 1000).toLocaleString()}
+                </p>
+              </div>
+            )}
+            
+            {transaction.slot && (
+              <div className="bg-muted/10 rounded-lg p-4">
+                <h3 className="font-medium text-foreground mb-2">Slot</h3>
+                <p className="text-sm text-muted-foreground">
+                  {transaction.slot.toLocaleString()}
+                </p>
+              </div>
+            )}
+            
+            {transaction.meta?.fee && (
+              <div className="bg-muted/10 rounded-lg p-4">
+                <h3 className="font-medium text-foreground mb-2">Fee</h3>
+                <p className="text-sm text-muted-foreground">
+                  {formatLamports(transaction.meta.fee)}
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="mt-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Detailed metrics are not available for this transaction
+            </p>
+            {onRefresh && (
+              <button
+                onClick={onRefresh}
+                className="mt-2 flex items-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors mx-auto"
+              >
+                <RefreshCwIcon className="w-4 h-4" />
+                <span>Load Metrics</span>
+              </button>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
     return (
       <div className={`bg-background rounded-lg border border-border p-6 ${className}`}>
         <div className="text-center py-8">
@@ -414,18 +479,18 @@ const TransactionMetricsDisplay: React.FC<TransactionMetricsDisplayProps> = ({
                     <span className="text-sm font-medium capitalize">
                       {category.replace(/([A-Z])/g, ' $1').trim()}
                     </span>
-                    <span className={`text-sm font-semibold ${getScoreColor(score)}`}>
-                      {score.toFixed(1)}
+                    <span className={`text-sm font-semibold ${getScoreColor(score as number)}`}>
+                      {(score as number).toFixed(1)}
                     </span>
                   </div>
                   <div className="w-full bg-muted rounded-full h-2">
                     <div 
                       className={`h-2 rounded-full transition-all duration-300 ${
-                        score >= 80 ? 'bg-green-500' :
-                        score >= 60 ? 'bg-amber-500' :
+                        (score as number) >= 80 ? 'bg-green-500' :
+                        (score as number) >= 60 ? 'bg-amber-500' :
                         'bg-red-500'
                       }`}
-                      style={{ width: `${Math.min(100, score)}%` }}
+                      style={{ width: `${Math.min(100, score as number)}%` }}
                     ></div>
                   </div>
                 </div>
@@ -436,7 +501,7 @@ const TransactionMetricsDisplay: React.FC<TransactionMetricsDisplayProps> = ({
               <div>
                 <h4 className="font-medium mb-2">Performance Bottlenecks</h4>
                 <div className="space-y-2">
-                  {metrics.efficiency.bottlenecks.map((bottleneck, index) => (
+                  {metrics.efficiency.bottlenecks.map((bottleneck: any, index: number) => (
                     <div key={index} className="flex items-start space-x-3 p-3 bg-muted/10 rounded-lg">
                       <AlertTriangleIcon className={`w-4 h-4 mt-0.5 ${
                         bottleneck.severity === 'critical' ? 'text-red-500' :
@@ -493,7 +558,7 @@ const TransactionMetricsDisplay: React.FC<TransactionMetricsDisplayProps> = ({
           {expandedSections.has('recommendations') && (
             <div className="px-4 pb-4">
               <div className="space-y-3">
-                {metrics.recommendations.map((recommendation, index) => (
+                {metrics.recommendations.map((recommendation: any, index: number) => (
                   <div key={index} className="border border-border rounded-lg p-4">
                     <div className="flex items-start space-x-3">
                       <div className="mt-0.5">

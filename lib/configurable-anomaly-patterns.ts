@@ -301,7 +301,12 @@ export class AnomalyPatternManager {
       }
 
       const remotePatterns: AnomalyPatternConfiguration = await response.json();
-      
+
+      // Use isValidConfiguration for type guard validation
+      if (!this.isValidConfiguration(remotePatterns)) {
+        throw new Error('Invalid configuration structure received from remote source');
+      }
+
       // Validate the configuration
       const validation = this.validateConfiguration(remotePatterns);
       if (validation.valid) {
@@ -548,7 +553,7 @@ export class AnomalyPatternManager {
   private evaluateConditions(conditions: AnomalyPatternConfig['conditions'], event: any, context: AnomalyContext): boolean {
     return conditions.every(condition => {
       const value = condition.field ? event[condition.field] : this.getContextValue(condition.type, context);
-      
+
       switch (condition.operator) {
         case 'gt': return value > condition.value;
         case 'gte': return value >= condition.value;
@@ -597,18 +602,20 @@ export class AnomalyPatternManager {
   }
 
   /**
-   * Validate configuration structure
+   * Validate configuration structure as type guard
    */
-  private validateConfiguration(config: any): config is AnomalyPatternConfiguration {
+  private isValidConfiguration(config: any): config is AnomalyPatternConfiguration {
+    // Use isValidConfiguration for runtime config validation
+    console.log('Validating anomaly pattern configuration structure');
     if (!config || typeof config !== 'object') return false;
     if (!config.version || !config.patterns || !Array.isArray(config.patterns)) return false;
-    
+
     return config.patterns.every((pattern: any) => {
-      return pattern.id && pattern.name && pattern.description && 
-             pattern.severity && pattern.category && 
-             typeof pattern.enabled === 'boolean' &&
-             typeof pattern.threshold === 'number' &&
-             Array.isArray(pattern.conditions);
+      return pattern.id && pattern.name && pattern.description &&
+        pattern.severity && pattern.category &&
+        typeof pattern.enabled === 'boolean' &&
+        typeof pattern.threshold === 'number' &&
+        Array.isArray(pattern.conditions);
     });
   }
 }

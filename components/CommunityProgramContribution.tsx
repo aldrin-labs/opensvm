@@ -3,27 +3,17 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Trash2, CheckCircle, XCircle, Clock, TrendingUp } from 'lucide-react';
-import type { CommunityProgramDefinition, DiscoveredProgram } from '@/lib/dynamic-program-discovery';
+import { Card, CardContent } from '@/components/ui/card';
 
 interface CommunityProgramContributionProps {
   onContribute?: (definition: any) => void;
-  onVote?: (programId: string, vote: 'up' | 'down' | 'report') => void;
 }
 
 export function CommunityProgramContribution({
-  onContribute,
-  onVote
+  onContribute
 }: CommunityProgramContributionProps) {
-  const [activeTab, setActiveTab] = useState('contribute');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [submitMessage, setSubmitMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
+  
   // Form state for contribution
   const [programDefinition, setProgramDefinition] = useState({
     programId: '',
@@ -45,103 +35,22 @@ export function CommunityProgramContribution({
     ]
   });
 
-  // Mock data for demonstration
-  const [communityDefinitions] = useState<CommunityProgramDefinition[]>([
-    {
-      programId: 'ExampleProgram1111111111111111111111111',
-      name: 'Example DeFi Protocol',
-      description: 'A community-contributed DeFi protocol definition',
-      category: 'defi',
-      contributor: 'user123',
-      contributedAt: Date.now() - 86400000,
-      verified: false,
-      votes: 3,
-      reports: 0,
-      status: 'pending',
-      instructions: [
-        {
-          discriminator: '01',
-          name: 'swap',
-          description: 'Swap tokens',
-          category: 'swap',
-          riskLevel: 'medium',
-          accounts: [],
-          parameters: []
-        }
-      ]
-    }
-  ]);
-
-  const [discoveredPrograms] = useState<DiscoveredProgram[]>([
-    {
-      programId: 'DiscoveredProgram111111111111111111111111',
-      name: 'Auto-Discovered NFT Program',
-      description: 'Automatically discovered NFT minting program',
-      category: 'nft',
-      confidence: 0.85,
-      discoveryMethod: 'heuristic',
-      firstSeen: Date.now() - 172800000,
-      lastSeen: Date.now() - 3600000,
-      transactionCount: 1250,
-      uniqueUsers: 89,
-      instructions: [
-        {
-          discriminator: '01',
-          name: 'mint_nft',
-          description: 'Mint new NFT',
-          category: 'mint',
-          frequency: 1250,
-          riskLevel: 'medium',
-          accounts: [],
-          parameters: []
-        }
-      ]
-    }
-  ]);
-
-  const [trendingPrograms] = useState([
-    {
-      programId: 'TrendingProgram111111111111111111111111',
-      name: 'Popular DeFi Protocol',
-      description: 'High-usage DeFi protocol',
-      category: 'defi',
-      trendScore: 95.5,
-      stats: {
-        totalTransactions: 50000,
-        uniqueUsers: 2500,
-        userGrowth: 15.2,
-        activityTrend: 'rising'
-      }
-    }
-  ]);
-
   const handleSubmitContribution = async () => {
     setIsSubmitting(true);
-    setSubmitMessage(null);
 
     try {
-      // Validate form
-      if (!programDefinition.programId || !programDefinition.name || !programDefinition.description) {
-        throw new Error('Please fill in all required fields');
-      }
-
-      // Submit to API
-      const response = await fetch('/api/program-discovery', {
+      // Submit the program definition
+      const response = await fetch('/api/program-registry', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'contribute',
-          data: {
-            programDefinition,
-            contributor: 'current_user' // In real app, get from auth
-          }
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(programDefinition),
       });
 
       const result = await response.json();
 
       if (result.success) {
-        setSubmitMessage({ type: 'success', text: 'Program definition submitted successfully!' });
         onContribute?.(programDefinition);
         // Reset form
         setProgramDefinition({
@@ -157,81 +66,20 @@ export function CommunityProgramContribution({
               name: '',
               description: '',
               category: 'unknown',
-              riskLevel: 'low',
+              riskLevel: 'low' as const,
               accounts: [],
               parameters: []
             }
           ]
         });
       } else {
-        throw new Error(result.error?.message || 'Submission failed');
+        console.error('Submission failed:', result.error);
       }
     } catch (error) {
-      setSubmitMessage({
-        type: 'error',
-        text: error instanceof Error ? error.message : 'An error occurred'
-      });
+      console.error('Submission failed:', error);
     } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const handleVote = async (programId: string, vote: 'up' | 'down' | 'report') => {
-    try {
-      const response = await fetch('/api/program-discovery', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: 'vote',
-          data: {
-            programId,
-            vote,
-            userId: 'current_user' // In real app, get from auth
-          }
-        })
-      });
-
-      const result = await response.json();
-      if (result.success) {
-        onVote?.(programId, vote);
-      }
-    } catch (error) {
-      console.error('Vote failed:', error);
-    }
-  };
-
-  const addInstruction = () => {
-    setProgramDefinition(prev => ({
-      ...prev,
-      instructions: [
-        ...prev.instructions,
-        {
-          discriminator: '',
-          name: '',
-          description: '',
-          category: 'unknown',
-          riskLevel: 'low' as const,
-          accounts: [],
-          parameters: []
-        }
-      ]
-    }));
-  };
-
-  const removeInstruction = (index: number) => {
-    setProgramDefinition(prev => ({
-      ...prev,
-      instructions: prev.instructions.filter((_, i) => i !== index)
-    }));
-  };
-
-  const updateInstruction = (index: number, field: string, value: any) => {
-    setProgramDefinition(prev => ({
-      ...prev,
-      instructions: prev.instructions.map((inst, i) =>
-        i === index ? { ...inst, [field]: value } : inst
-      )
-    }));
   };
 
   return (

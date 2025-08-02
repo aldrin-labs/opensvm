@@ -12,11 +12,10 @@ import {
     AlertTriangle,
     Plus,
     RefreshCw,
-    ArrowUpRight,
-    DollarSign
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '@/lib/settings';
+import { useAuthContext } from '@/contexts/AuthContext';
 import SVMAIDepositModal from './SVMAIDepositModal';
 
 interface BalanceDisplayProps {
@@ -91,6 +90,10 @@ export default function BalanceDisplay({
     // Get user settings for theme and font
     const settings = useSettings();
 
+    // Get user ID from auth context
+    const { walletAddress } = useAuthContext();
+    const userId = walletAddress || 'current-user';
+
     // Theme-aware CSS classes
     const themeClasses = {
         container: "space-y-4 sm:space-y-6 p-4 sm:p-6",
@@ -144,7 +147,7 @@ export default function BalanceDisplay({
         try {
             const response = await fetch('/api/opensvm/balance', {
                 headers: {
-                    'x-user-id': 'current-user', // TODO: Get from auth context
+                    'x-user-id': userId,
                 },
             });
 
@@ -160,7 +163,7 @@ export default function BalanceDisplay({
         } finally {
             setLoading(false);
         }
-    }, []);
+    }, [userId]);
 
     useEffect(() => {
         loadBalance();
@@ -281,10 +284,6 @@ export default function BalanceDisplay({
     // Dashboard variant with full statistics
     if (variant === 'dashboard') {
         const status = getBalanceStatus(balance.balance.available);
-        const burnRate = balance.monthly.estimatedMonthlyBurn;
-        const usagePercent = balance.lifetime.totalSpent > 0
-            ? (balance.monthly.spending / balance.lifetime.totalSpent) * 100
-            : 0;
 
         return (
             <div className={`space-y-4 ${className}`}>

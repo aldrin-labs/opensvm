@@ -10,19 +10,15 @@ import {
   CopyIcon,
   CheckIcon,
   ExternalLinkIcon,
-  ZapIcon,
-  UserIcon,
   CodeIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import { 
-  useAccessibility,
-  ScreenReaderUtils 
+import {
+  useAccessibility
 } from '@/lib/accessibility-utils';
-import { 
+import {
   useMobileDetection,
-  MobileComponentUtils,
-  MobileEventUtils 
+  MobileEventUtils
 } from '@/lib/mobile-utils';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 
@@ -50,10 +46,10 @@ const MobileInstructionDisplay: React.FC<MobileInstructionDisplayProps> = ({
 }) => {
   const [expandedInstructions, setExpandedInstructions] = useState<Set<number>>(new Set());
   const [copiedField, setCopiedField] = useState<string | null>(null);
-  
+
   // Accessibility and mobile hooks
   const { announceToScreenReader } = useAccessibility();
-  const { isMobile, viewportSize } = useMobileDetection();
+  const { isMobile } = useMobileDetection();
 
   // Process instructions for mobile display
   const mobileInstructions = useMemo(() => {
@@ -61,9 +57,9 @@ const MobileInstructionDisplay: React.FC<MobileInstructionDisplayProps> = ({
 
     return transaction.details.instructions.map((instruction, index) => ({
       index,
-      program: instruction.program || getKnownProgramName(instruction.programId) || 'Unknown',
+      program: getKnownProgramName(instruction.programId) || 'Unknown',
       programId: instruction.programId,
-      type: instruction.parsed?.type || 'unknown',
+      type: ('parsed' in instruction && instruction.parsed?.type) || 'unknown',
       description: generateMobileDescription(instruction),
       category: getProgramCategory(instruction.programId),
       riskLevel: assessInstructionRisk(instruction) as 'low' | 'medium' | 'high',
@@ -189,7 +185,7 @@ interface MobileInstructionCardProps {
 
 const MobileInstructionCard: React.FC<MobileInstructionCardProps> = ({
   instruction,
-  transaction,
+  transaction: _transaction,
   onToggle,
   onCopy,
   copiedField,
@@ -230,7 +226,7 @@ const MobileInstructionCard: React.FC<MobileInstructionCardProps> = ({
               #{instruction.index + 1}
             </span>
           </div>
-          
+
           <div className="flex items-center space-x-2">
             {getRiskIcon(instruction.riskLevel)}
             <span className={`px-2 py-1 rounded-full text-xs font-medium ${getCategoryColor(instruction.category)}`}>
@@ -256,17 +252,15 @@ const MobileInstructionCard: React.FC<MobileInstructionCardProps> = ({
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <div className="flex items-center space-x-4">
               <span className="flex items-center space-x-1">
-                <UserIcon className="w-3 h-3" />
                 <span>{instruction.accounts} accounts</span>
               </span>
               {instruction.computeUnits && (
                 <span className="flex items-center space-x-1">
-                  <ZapIcon className="w-3 h-3" />
                   <span>{instruction.computeUnits.toLocaleString()} CU</span>
                 </span>
               )}
             </div>
-            
+
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -379,7 +373,7 @@ function generateMobileDescription(instruction: any): string {
   if (instruction.parsed?.type) {
     const type = instruction.parsed.type;
     const info = instruction.parsed.info || {};
-    
+
     switch (type) {
       case 'transfer':
         if (info.lamports) {
@@ -401,7 +395,7 @@ function generateMobileDescription(instruction: any): string {
         return `${type.replace(/([A-Z])/g, ' $1').toLowerCase()} operation`;
     }
   }
-  
+
   const programName = getKnownProgramName(instruction.programId);
   return programName ? `${programName} instruction` : 'Program instruction';
 }
@@ -421,22 +415,22 @@ function getProgramCategory(programId: string): string {
 
 function assessInstructionRisk(instruction: any): 'low' | 'medium' | 'high' {
   const type = instruction.parsed?.type;
-  
+
   // High-risk operations
   if (type === 'closeAccount' || type === 'burn' || type === 'setAuthority') {
     return 'high';
   }
-  
+
   // Medium-risk operations
   if (type === 'mintTo' || type === 'createAccount' || type === 'initializeMint') {
     return 'medium';
   }
-  
+
   // Unknown programs are medium risk
   if (!getKnownProgramName(instruction.programId)) {
     return 'medium';
   }
-  
+
   return 'low';
 }
 

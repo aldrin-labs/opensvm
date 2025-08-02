@@ -212,9 +212,19 @@ export function getBalanceChanges(transaction: ParsedTransactionWithMeta): Balan
     const accountKeys = transaction.transaction.message.accountKeys || [];
 
     for (let i = 0; i < accountKeys.length; i++) {
-        const account = typeof accountKeys[i] === 'string'
-            ? accountKeys[i]
-            : accountKeys[i].pubkey?.toString() || '';
+        const account = (() => {
+            const key = accountKeys[i];
+            if (typeof key === 'string') {
+                return key;
+            }
+            // Handle ParsedMessageAccount case with explicit unknown conversion
+            const unknownKey = key as unknown;
+            if (unknownKey && typeof unknownKey === 'object' && 'pubkey' in unknownKey) {
+                const pubkeyObj = (unknownKey as { pubkey: { toString(): string } }).pubkey;
+                return pubkeyObj?.toString() || '';
+            }
+            return String(unknownKey || '');
+        })();
 
         const before = transaction.meta.preBalances[i] || 0;
         const after = transaction.meta.postBalances[i] || 0;

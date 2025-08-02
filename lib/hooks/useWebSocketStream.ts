@@ -16,7 +16,7 @@ export interface BlockchainEvent {
   metadata?: any;
 }
 
-interface UseSSEStreamOptions {
+export interface UseSSEStreamOptions {
   clientId?: string;
   autoConnect?: boolean;
   maxEvents?: number;
@@ -27,7 +27,7 @@ interface UseSSEStreamOptions {
   onDisconnect?: () => void;
 }
 
-interface UseSSEStreamReturn {
+export interface UseSSEStreamReturn {
   events: BlockchainEvent[];
   isConnected: boolean;
   error: string | null;
@@ -163,7 +163,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
 
       // Use EventSource for receiving events from server
       const eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect`);
-      
+
       eventSource.onopen = () => {
         console.log(`[SSE] Connection established for ${clientId}`);
         if (isMountedRef.current) {
@@ -180,7 +180,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
         if (isMountedRef.current) {
           setIsConnected(false);
           setConnectionStatus('error');
-          
+
           const errorMsg = 'SSE connection failed';
           setError(errorMsg);
           onError?.(new Error(errorMsg));
@@ -192,9 +192,9 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
           const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000);
           const jitter = Math.random() * 1000; // 0-1s jitter
           const delay = baseDelay + jitter;
-          
+
           console.log(`[SSE] Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current++;
@@ -205,7 +205,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
           // After max attempts, wait longer before giving up completely
           console.error('[SSE] Max reconnection attempts reached. Waiting 5 minutes before final retry...');
           setError('Connection lost. Retrying in 5 minutes...');
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current = 0; // Reset for final attempt
@@ -220,14 +220,14 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
         try {
           const blockchainEvent: BlockchainEvent = JSON.parse(event.data);
           console.log('[SSE] Received blockchain event:', blockchainEvent);
-          
+
           if (isMountedRef.current) {
             setEvents(prev => {
               const newEvents = [blockchainEvent, ...prev].slice(0, maxEvents);
               return newEvents;
             });
           }
-          
+
           onEvent?.(blockchainEvent);
         } catch (parseError) {
           console.error('[SSE] Failed to parse blockchain event:', parseError);
@@ -243,16 +243,16 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
             timestamp: Date.now(),
             data: transactionData
           };
-          
+
           console.log('[SSE] Received transaction event:', blockchainEvent);
-          
+
           if (isMountedRef.current) {
             setEvents(prev => {
               const newEvents = [blockchainEvent, ...prev].slice(0, maxEvents);
               return newEvents;
             });
           }
-          
+
           onEvent?.(blockchainEvent);
         } catch (parseError) {
           console.error('[SSE] Failed to parse transaction event:', parseError);
@@ -268,16 +268,16 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
             timestamp: Date.now(),
             data: blockData
           };
-          
+
           console.log('[SSE] Received block event:', blockchainEvent);
-          
+
           if (isMountedRef.current) {
             setEvents(prev => {
               const newEvents = [blockchainEvent, ...prev].slice(0, maxEvents);
               return newEvents;
             });
           }
-          
+
           onEvent?.(blockchainEvent);
         } catch (parseError) {
           console.error('[SSE] Failed to parse block event:', parseError);
@@ -308,26 +308,44 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
     }
 
     setConnectionStatus('authenticating');
-    
+
     // First start monitoring to create the server-side client
     console.log('[SSE] Starting monitoring...');
     const monitoringStarted = await startMonitoring();
-    
+
     if (monitoringStarted) {
-      // Create the SSE connection
-      createSSEConnection();
+      // Use authenticate for secure connection establishment
+      console.log('[SSE] Authenticating connection...');
+      const authToken = await authenticate();
+
+      if (authToken) {
+        // Use subscribeToEvents to establish event subscriptions
+        console.log('[SSE] Subscribing to events...');
+        const subscribed = await subscribeToEvents(authToken);
+
+        if (subscribed) {
+          // Create the SSE connection
+          createSSEConnection();
+        } else {
+          setError('Failed to subscribe to events');
+          setConnectionStatus('error');
+        }
+      } else {
+        setError('Authentication failed');
+        setConnectionStatus('error');
+      }
     } else {
       setError('Failed to start monitoring');
       setConnectionStatus('error');
     }
-  }, [startMonitoring, createSSEConnection]);
+  }, [startMonitoring, createSSEConnection, authenticate, subscribeToEvents]);
 
   // Update the ref to avoid circular dependency
   connectRef.current = connect;
 
   const disconnect = useCallback(() => {
     console.log(`[SSE] Disconnecting client ${clientId}...`);
-    
+
     // Clear reconnection timeout
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
@@ -351,7 +369,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
       setIsConnected(false);
       setConnectionStatus('disconnected');
     }
-    
+
     reconnectAttempts.current = 0;
     onDisconnect?.();
   }, [clientId, onDisconnect]);

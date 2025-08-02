@@ -5,11 +5,10 @@
  * Uses EventSource for push-based event streaming from the server
  */
 
-export { 
-  useSSEStream as default, 
-  useSSEStream, 
-  useWebSocketStream, 
-  BlockchainEvent,
+export {
+  useSSEStream as default,
+  useSSEStream,
+  type BlockchainEvent,
   type UseSSEStreamOptions,
   type UseSSEStreamReturn
 } from './useWebSocketStream';

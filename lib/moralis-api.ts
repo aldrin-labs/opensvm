@@ -52,13 +52,13 @@ async function makeApiRequest(
 ): Promise<any> {
   const url = `${MORALIS_BASE_URL}${endpoint.replace('{network}', network)}`;
   const cacheKey = `${url}:${JSON.stringify(params)}`;
-  
+
   // Check cache if not forcing refresh
   if (!forceRefresh && apiCache[cacheKey] && Date.now() - apiCache[cacheKey].timestamp < CACHE_DURATION) {
     console.log(`Using cached data for ${endpoint}`);
     return apiCache[cacheKey].data;
   }
-  
+
   try {
     const response = await axios.get(url, {
       params,
@@ -66,13 +66,13 @@ async function makeApiRequest(
         'X-Api-Key': MORALIS_API_KEY
       }
     });
-    
+
     // Cache the response
     apiCache[cacheKey] = {
       data: response.data,
       timestamp: Date.now()
     };
-    
+
     return response.data;
   } catch (error: any) {
     // Handle rate limiting
@@ -81,7 +81,7 @@ async function makeApiRequest(
       await new Promise(resolve => setTimeout(resolve, 2000));
       return makeApiRequest(endpoint, params, network, forceRefresh);
     }
-    
+
     // Handle other errors
     console.error(`Error fetching ${endpoint}:`, error.response?.data || error.message);
     return null;
@@ -106,7 +106,7 @@ export async function getNFTMetadata(address: string, network: SolanaNetwork = D
  * @returns Array of NFTs owned by the address
  */
 export async function getNFTsForAddress(
-  address: string, 
+  address: string,
   params: NFTSearchParams = {},
   network: SolanaNetwork = DEFAULT_NETWORK
 ) {
@@ -141,13 +141,13 @@ export async function getTokenPrice(address: string, network: SolanaNetwork = DE
  * @returns Portfolio information including native balance, tokens, and NFTs
  */
 export async function getPortfolio(
-  address: string, 
+  address: string,
   includeNftMetadata: boolean = false,
   network: SolanaNetwork = DEFAULT_NETWORK
 ) {
   return makeApiRequest(
-    `/account/{network}/${address}/portfolio`, 
-    { nftMetadata: includeNftMetadata }, 
+    `/account/{network}/${address}/portfolio`,
+    { nftMetadata: includeNftMetadata },
     network
   );
 }
@@ -180,7 +180,7 @@ export async function getNativeBalance(address: string, network: SolanaNetwork =
  * @returns Swap transaction information
  */
 export async function getSwapsByWalletAddress(
-  address: string, 
+  address: string,
   params: PaginationParams = { limit: 100 },
   network: SolanaNetwork = DEFAULT_NETWORK
 ) {
@@ -195,7 +195,7 @@ export async function getSwapsByWalletAddress(
  * @returns Swap transaction information
  */
 export async function getSwapsByTokenAddress(
-  address: string, 
+  address: string,
   params: PaginationParams = { limit: 100 },
   network: SolanaNetwork = DEFAULT_NETWORK
 ) {
@@ -301,10 +301,10 @@ export async function getHistoricalTokenPrice(
 ) {
   const toDate = new Date().toISOString();
   const fromDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
-  
+
   return makeApiRequest(
-    `/token/{network}/${address}/price/history`, 
-    { to_date: toDate, from_date: fromDate }, 
+    `/token/{network}/${address}/price/history`,
+    { to_date: toDate, from_date: fromDate },
     network
   );
 }
@@ -350,7 +350,7 @@ export async function getNFTCollectionItems(
  * @param network The Solana network (mainnet or devnet)
  * @returns Comprehensive blockchain data
  */
-export async function getComprehensiveBlockchainData(query: string, network: SolanaNetwork = DEFAULT_NETWORK) {
+export async function getComprehensiveBlockchainData(query: string, network: SolanaNetwork = DEFAULT_NETWORK): Promise<any> {
   // Initialize result object
   const result: any = {
     query,
@@ -369,137 +369,137 @@ export async function getComprehensiveBlockchainData(query: string, network: Sol
         return result;
       }
     }
-    
+
     // Try to get token metadata
     const tokenMetadata = await getTokenMetadata(query, network);
     if (tokenMetadata) {
       result.type = 'token';
       result.data.metadata = tokenMetadata;
-      
+
       // Get token price
       const tokenPrice = await getTokenPrice(query, network);
       if (tokenPrice) {
         result.data.price = tokenPrice;
       }
-      
+
       // Get historical price data (7 days)
       const historicalPrice = await getHistoricalTokenPrice(query, 7, network);
       if (historicalPrice) {
         result.data.historicalPrice = historicalPrice;
       }
-      
+
       // Get token stats
       const tokenStats = await getTokenStats(query, network);
       if (tokenStats) {
         result.data.stats = tokenStats;
       }
-      
+
       // Get token holders
       const tokenHolders = await getTokenHolders(query, network);
       if (tokenHolders) {
         result.data.holders = tokenHolders;
       }
-      
+
       // Get token swaps
       const tokenSwaps = await getSwapsByTokenAddress(query, { limit: 20 }, network);
       if (tokenSwaps) {
         result.data.recentSwaps = tokenSwaps;
       }
-      
+
       return result;
     }
-    
+
     // Try to get NFT metadata
     const nftMetadata = await getNFTMetadata(query, network);
     if (nftMetadata) {
       result.type = 'nft';
       result.data.metadata = nftMetadata;
-      
+
       // Try to get collection stats if this is a collection
       const collectionStats = await getNFTCollectionStats(query, network);
       if (collectionStats) {
         result.data.collectionStats = collectionStats;
       }
-      
+
       // Try to get collection items if this is a collection
       const collectionItems = await getNFTCollectionItems(query, { limit: 10, nftMetadata: true }, network);
       if (collectionItems) {
         result.data.collectionItems = collectionItems;
       }
-      
+
       return result;
     }
-    
+
     // Try to resolve domain if it looks like a .sol domain
     if (query.endsWith('.sol')) {
       const resolvedAddress = await resolveDomain(query, network);
       if (resolvedAddress) {
         // Use the resolved address for further queries
-        const domainResult = await getComprehensiveBlockchainData(resolvedAddress.address, network);
+        const domainResult: any = await getComprehensiveBlockchainData(resolvedAddress.address, network);
         if (domainResult) {
           domainResult.data.domain = query;
           return domainResult;
         }
       }
     }
-    
+
     // Try to get account portfolio
     const portfolio = await getPortfolio(query, false, network);
     if (portfolio) {
       result.type = 'account';
       result.data.portfolio = portfolio;
-      
+
       // Get native balance
       const nativeBalance = await getNativeBalance(query, network);
       if (nativeBalance) {
         result.data.nativeBalance = nativeBalance;
       }
-      
+
       // Get token balances
       const tokenBalances = await getTokenBalances(query, network);
       if (tokenBalances) {
         result.data.tokenBalances = tokenBalances;
       }
-      
+
       // Get NFTs for address
       const nfts = await getNFTsForAddress(query, { limit: 10, nftMetadata: true }, network);
       if (nfts) {
         result.data.nfts = nfts;
       }
-      
+
       // Get recent transactions
       const transactions = await getTransactionsByAddress(query, { limit: 20 }, network);
       if (transactions) {
         result.data.recentTransactions = transactions;
       }
-      
+
       // Get SOL transfers
       const solTransfers = await getSOLTransfers(query, { limit: 10 }, network);
       if (solTransfers) {
         result.data.solTransfers = solTransfers;
       }
-      
+
       // Get SPL token transfers
       const splTransfers = await getSPLTokenTransfers(query, { limit: 10 }, network);
       if (splTransfers) {
         result.data.splTransfers = splTransfers;
       }
-      
+
       // Get account swaps
       const accountSwaps = await getSwapsByWalletAddress(query, { limit: 10 }, network);
       if (accountSwaps) {
         result.data.recentSwaps = accountSwaps;
       }
-      
+
       // Get domain info
       const domainInfo = await getDomainInfo(query, network);
       if (domainInfo) {
         result.data.domains = domainInfo;
       }
-      
+
       return result;
     }
-    
+
     // If we couldn't identify the type, return a generic result
     result.type = 'unknown';
     return result;
@@ -550,7 +550,7 @@ export async function getNewListings(limit: number = 50, daysBack: number = 7, n
  * @returns Trending tokens
  */
 export async function getTrendingTokens(
-  limit: number = 50, 
+  limit: number = 50,
   timeframe: '1h' | '24h' | '7d' = '24h',
   network: SolanaNetwork = DEFAULT_NETWORK
 ) {

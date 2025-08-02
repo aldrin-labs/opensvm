@@ -92,17 +92,17 @@ export function generateEventKey(event: any): string {
   if (event.type === 'transaction' && event.data?.signature) {
     return `tx_${event.data.signature}`;
   }
-  
+
   // For blocks, use slot number
   if (event.type === 'block' && event.data?.slot) {
     return `block_${event.data.slot}`;
   }
-  
+
   // For account changes, use account + slot
   if (event.type === 'account_change' && event.data?.account && event.data?.slot) {
     return `account_${event.data.account}_${event.data.slot}`;
   }
-  
+
   // Fallback: hash critical data with secure hash
   const criticalData = {
     type: event.type,
@@ -110,10 +110,10 @@ export function generateEventKey(event: any): string {
     dataKeys: Object.keys(event.data || {}).sort(), // Include data structure
     dataSize: JSON.stringify(event.data || {}).length
   };
-  
+
   const dataString = JSON.stringify(criticalData);
   const hash = generateSecureHash(dataString);
-  
+
   return `event_${event.type}_${hash}`;
 }
 
@@ -133,11 +133,11 @@ export function generateAnomalyKey(anomaly: any): string {
     // Include some description context to avoid grouping different issues
     descriptionHash: anomaly.description ? generateSecureHash(anomaly.description.slice(0, 50)) : null
   };
-  
+
   // Create deterministic hash of critical data
   const dataString = JSON.stringify(criticalData);
   const hash = generateSecureHash(dataString);
-  
+
   return `anomaly_${anomaly.type}_${hash}`;
 }
 
@@ -147,26 +147,26 @@ export function generateAnomalyKey(anomaly: any): string {
 export function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
   const eventMap = new Map<string, DeduplicatedEvent>();
   const collisionTracker = new Map<string, number>();
-  
+
   for (const event of events) {
     let key = generateEventKey(event);
-    
+
     // Collision detection - if we have the same key but different core data, create a variant
     if (eventMap.has(key)) {
       const existing = eventMap.get(key)!;
-      
+
       // Check if this is actually the same event or a collision
       const isSameEvent = (
         existing.type === event.type &&
         existing.signature === event.data?.signature &&
         JSON.stringify(existing.data) === JSON.stringify(event.data)
       );
-      
+
       if (isSameEvent) {
         // Same event, increment count
         existing.count++;
         existing.lastSeen = event.timestamp;
-        
+
         // Update data if newer
         if (event.timestamp > existing.timestamp) {
           existing.data = event.data;
@@ -178,7 +178,7 @@ export function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
         const collisionCount = (collisionTracker.get(key) || 0) + 1;
         collisionTracker.set(key, collisionCount);
         key = `${key}_collision_${collisionCount}`;
-        
+
         // Create new entry with collision-resistant key
         eventMap.set(key, {
           id: event.id || generateSecureUUID(),
@@ -191,7 +191,7 @@ export function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
           firstSeen: event.timestamp,
           lastSeen: event.timestamp
         });
-        
+
         console.warn(`[DEDUPLICATION] Event key collision detected and resolved: ${key}`);
       }
     } else {
@@ -208,7 +208,7 @@ export function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
       });
     }
   }
-  
+
   return Array.from(eventMap.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -218,29 +218,31 @@ export function deduplicateEvents(events: any[]): DeduplicatedEvent[] {
 export function deduplicateAnomalies(anomalies: any[]): DeduplicatedAnomaly[] {
   const anomalyMap = new Map<string, DeduplicatedAnomaly>();
   const collisionTracker = new Map<string, number>();
-  
+
   for (const anomaly of anomalies) {
     let key = generateAnomalyKey(anomaly);
-    
+
     if (anomalyMap.has(key)) {
       const existing = anomalyMap.get(key)!;
-      
+
       // Check if this is actually the same anomaly type or a collision
       const isSameAnomaly = (
         existing.type === anomaly.type &&
         existing.description === anomaly.description &&
         existing.severity === anomaly.severity
       );
-      
+
       if (isSameAnomaly) {
         // Same anomaly, group together
         existing.count++;
         existing.lastSeen = anomaly.timestamp;
         existing.instances.push(anomaly.id);
-        
+
         // Update to highest severity
-        const severityOrder = { low: 1, medium: 2, high: 3, critical: 4 };
-        if (severityOrder[anomaly.severity] > severityOrder[existing.severity]) {
+        const severityOrder: Record<string, number> = { low: 1, medium: 2, high: 3, critical: 4 };
+        const anomalySeverityLevel = severityOrder[anomaly.severity as string] || 0;
+        const existingSeverityLevel = severityOrder[existing.severity as string] || 0;
+        if (anomalySeverityLevel > existingSeverityLevel) {
           existing.severity = anomaly.severity;
         }
       } else {
@@ -248,7 +250,7 @@ export function deduplicateAnomalies(anomalies: any[]): DeduplicatedAnomaly[] {
         const collisionCount = (collisionTracker.get(key) || 0) + 1;
         collisionTracker.set(key, collisionCount);
         key = `${key}_collision_${collisionCount}`;
-        
+
         // Create new entry with collision-resistant key
         anomalyMap.set(key, {
           id: anomaly.id || generateSecureUUID(),
@@ -262,7 +264,7 @@ export function deduplicateAnomalies(anomalies: any[]): DeduplicatedAnomaly[] {
           instances: [anomaly.id],
           event: anomaly.event
         });
-        
+
         console.warn(`[DEDUPLICATION] Anomaly key collision detected and resolved: ${key}`);
       }
     } else {
@@ -280,7 +282,7 @@ export function deduplicateAnomalies(anomalies: any[]): DeduplicatedAnomaly[] {
       });
     }
   }
-  
+
   return Array.from(anomalyMap.values()).sort((a, b) => b.timestamp - a.timestamp);
 }
 
@@ -289,7 +291,7 @@ export function deduplicateAnomalies(anomalies: any[]): DeduplicatedAnomaly[] {
  */
 export function stackAnomaliesByType(anomalies: DeduplicatedAnomaly[]): AnomalyStack[] {
   const stackMap = new Map<string, AnomalyStack>();
-  
+
   for (const anomaly of anomalies) {
     if (stackMap.has(anomaly.type)) {
       const existing = stackMap.get(anomaly.type)!;
@@ -297,7 +299,7 @@ export function stackAnomaliesByType(anomalies: DeduplicatedAnomaly[]): AnomalyS
       existing.lastSeen = Math.max(existing.lastSeen, anomaly.lastSeen);
       existing.firstSeen = Math.min(existing.firstSeen, anomaly.firstSeen);
       existing.anomalies.push(anomaly);
-      
+
       // Update to highest severity
       const severityOrder = { low: 1, medium: 2, high: 3, critical: 4 };
       if (severityOrder[anomaly.severity] > severityOrder[existing.severity]) {
@@ -316,13 +318,13 @@ export function stackAnomaliesByType(anomalies: DeduplicatedAnomaly[]): AnomalyS
       });
     }
   }
-  
+
   return Array.from(stackMap.values()).sort((a, b) => {
     // Sort by severity first, then by last seen
     const severityOrder = { low: 1, medium: 2, high: 3, critical: 4 };
     const severityDiff = severityOrder[b.severity] - severityOrder[a.severity];
     if (severityDiff !== 0) return severityDiff;
-    
+
     return b.lastSeen - a.lastSeen;
   });
 }
@@ -337,10 +339,10 @@ export function cleanupOldData<T extends { timestamp: number }>(
 ): T[] {
   const now = Date.now();
   const cutoff = now - maxAge;
-  
+
   // Filter by age first
   const recent = items.filter(item => item.timestamp > cutoff);
-  
+
   // Then limit by count
   return recent.slice(0, maxCount);
 }

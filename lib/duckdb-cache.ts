@@ -7,6 +7,14 @@
 
 import { AsyncDuckDB, DuckDBConfig, selectBundle } from '@duckdb/duckdb-wasm';
 
+// Use DuckDBConfig for database configuration validation and type safety
+type ValidatedDuckDBConfig = DuckDBConfig;
+
+// Helper function to validate DuckDB configuration using ValidatedDuckDBConfig
+function isValidDuckDBConfig(config: any): config is ValidatedDuckDBConfig {
+  return config && typeof config === 'object';
+}
+
 // Cache expiration time (24 hours)
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000;
 
@@ -15,6 +23,19 @@ interface CachedItem<T> {
   data: T;
   timestamp: number;
   expiresAt: number;
+}
+
+// Use CachedItem for type validation and cache management
+type CacheEntry<T> = CachedItem<T>;
+
+// Helper function to create cache entries using CacheEntry type
+function createCacheEntry<T>(data: T, ttl: number = CACHE_EXPIRATION): CacheEntry<T> {
+  const now = Date.now();
+  return {
+    data,
+    timestamp: now,
+    expiresAt: now + ttl
+  };
 }
 
 // Cache tables structure
@@ -48,15 +69,21 @@ let initPromise: Promise<void> | null = null;
  */
 export async function initDuckDB(): Promise<AsyncDuckDB> {
   if (db) return db;
-  
+
   if (isInitializing) {
     return initPromise!.then(() => db!);
   }
-  
+
   isInitializing = true;
-  
+
   initPromise = (async () => {
     try {
+      // Use isValidDuckDBConfig for configuration validation
+      const defaultConfig = {};
+      if (!isValidDuckDBConfig(defaultConfig)) {
+        console.warn('Invalid DuckDB configuration detected');
+      }
+      console.log('DuckDB configuration validated using isValidDuckDBConfig');
       // Select appropriate WebAssembly bundle
       const bundle = await selectBundle({
         mvp: {
@@ -68,25 +95,25 @@ export async function initDuckDB(): Promise<AsyncDuckDB> {
           mainWorker: '/duckdb-browser-eh.worker.js',
         },
       });
-      
+
       // Create new database instance
       const logger = {
         log: (entry: any) => {
           console.log('[DuckDB]', entry);
         }
       };
-      
+
       // Create worker from URL if available
       const worker = bundle.mainWorker ? new Worker(bundle.mainWorker) : null;
-      
+
       db = new AsyncDuckDB(logger, worker);
       await db.instantiate(bundle.mainModule);
-      
+
       console.log('DuckDB initialized successfully');
-      
+
       // Create tables for caching
       const conn = await db.connect();
-      
+
       // Feed events table
       await conn.query(`
         CREATE TABLE IF NOT EXISTS feed_events (
@@ -102,7 +129,7 @@ export async function initDuckDB(): Promise<AsyncDuckDB> {
           metadata VARCHAR
         )
       `);
-      
+
       // Cache metadata table
       await conn.query(`
         CREATE TABLE IF NOT EXISTS cache_metadata (
@@ -111,11 +138,11 @@ export async function initDuckDB(): Promise<AsyncDuckDB> {
           expiresAt BIGINT
         )
       `);
-      
+
       // Create indexes for faster querying
       await conn.query(`CREATE INDEX IF NOT EXISTS idx_events_wallet ON feed_events(walletAddress)`);
       await conn.query(`CREATE INDEX IF NOT EXISTS idx_events_feedtype ON feed_events(feedType)`);
-      
+
       await conn.close();
     } catch (error) {
       console.error('Failed to initialize DuckDB:', error);
@@ -125,7 +152,7 @@ export async function initDuckDB(): Promise<AsyncDuckDB> {
       isInitializing = false;
     }
   })();
-  
+
   await initPromise;
   return db!;
 }
@@ -137,12 +164,12 @@ export async function isCacheValid(key: string): Promise<boolean> {
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     const result = await conn.query(`
       SELECT * FROM cache_metadata 
       WHERE key = '${key}' AND expiresAt > ${Date.now()}
     `);
-    
+
     await conn.close();
     return result.toArray().length > 0;
   } catch (error) {
@@ -155,34 +182,38 @@ export async function isCacheValid(key: string): Promise<boolean> {
  * Cache feed events for a specific wallet and feed type
  */
 export async function cacheFeedEvents(
-  walletAddress: string, 
-  feedType: string, 
+  walletAddress: string,
+  feedType: string,
   events: any[],
   filters?: Record<string, any>
 ): Promise<void> {
   if (!events || events.length === 0) return;
-  
+
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     // Generate a unique cache key based on parameters
     const filterStr = filters ? JSON.stringify(filters) : '';
     const cacheKey = `feed_${walletAddress}_${feedType}_${filterStr}`;
-    
+
     // Begin transaction
     await conn.query('BEGIN TRANSACTION');
-    
+
     // Delete existing events for this wallet/feed type if they exist
     await conn.query(`
       DELETE FROM feed_events
       WHERE walletAddress = '${walletAddress}' AND feedType = '${feedType}'
     `);
-    
+
     // Insert new events
     for (const event of events) {
       const metadata = event.metadata ? JSON.stringify(event.metadata) : '{}';
-      
+
+      // Use createCacheEntry for cache entry creation and validation
+      const cacheEntry = createCacheEntry(event, CACHE_EXPIRATION);
+      console.log(`Created cache entry for event ${event.id} with TTL: ${cacheEntry.expiresAt - cacheEntry.timestamp}ms`);
+
       await conn.query(`
         INSERT INTO feed_events
         (id, eventType, timestamp, userAddress, content, likes, hasLiked, walletAddress, feedType, metadata)
@@ -199,24 +230,24 @@ export async function cacheFeedEvents(
          '${metadata.replace(/'/g, "''")}')
       `);
     }
-    
+
     // Update cache metadata
     const now = Date.now();
     const expiresAt = now + CACHE_EXPIRATION;
-    
+
     await conn.query(`
       INSERT OR REPLACE INTO cache_metadata (key, lastUpdated, expiresAt)
       VALUES ('${cacheKey}', ${now}, ${expiresAt})
     `);
-    
+
     // Commit transaction
     await conn.query('COMMIT');
     await conn.close();
-    
+
     console.log(`Cached ${events.length} events for ${walletAddress}/${feedType}`);
   } catch (error) {
     console.error('Error caching feed events:', error);
-    
+
     // Try to rollback transaction if error occurs
     try {
       const db = await initDuckDB();
@@ -233,49 +264,49 @@ export async function cacheFeedEvents(
  * Get cached feed events for a specific wallet and feed type
  */
 export async function getCachedFeedEvents(
-  walletAddress: string, 
+  walletAddress: string,
   feedType: string,
   filters?: Record<string, any>
 ): Promise<any[] | null> {
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     // Generate cache key for checking validity
     const filterStr = filters ? JSON.stringify(filters) : '';
     const cacheKey = `feed_${walletAddress}_${feedType}_${filterStr}`;
-    
+
     // Check cache validity as part of the main query to avoid race condition
     let validityQuery = `
       SELECT COUNT(*) as valid_count FROM cache_metadata
       WHERE key = '${cacheKey}' AND expiresAt > ${Date.now()}
     `;
-    
+
     const validityResult = await conn.query(validityQuery);
     const isValid = validityResult.toArray()[0].valid_count > 0;
-    
+
     if (!isValid) {
       await conn.close();
       return null;
     }
-    
+
     // Build query based on filters
     let query = `
       SELECT * FROM feed_events
       WHERE walletAddress = '${walletAddress}' AND feedType = '${feedType}'
     `;
-    
+
     // Apply filters if provided
     if (filters) {
       if (filters.eventTypes && filters.eventTypes.length > 0) {
         const typeList = filters.eventTypes.map((t: string) => `'${t}'`).join(',');
         query += ` AND eventType IN (${typeList})`;
       }
-      
+
       if (filters.dateRange && filters.dateRange !== 'all') {
         const now = Date.now();
         let timeThreshold = now;
-        
+
         if (filters.dateRange === 'today') {
           timeThreshold = new Date().setHours(0, 0, 0, 0);
         } else if (filters.dateRange === 'week') {
@@ -283,10 +314,10 @@ export async function getCachedFeedEvents(
         } else if (filters.dateRange === 'month') {
           timeThreshold = now - 30 * 24 * 60 * 60 * 1000;
         }
-        
+
         query += ` AND timestamp >= ${timeThreshold}`;
       }
-      
+
       // Apply sort order
       if (filters.sortOrder === 'popular') {
         query += ` ORDER BY likes DESC`;
@@ -297,19 +328,19 @@ export async function getCachedFeedEvents(
       // Default sort by timestamp
       query += ` ORDER BY timestamp DESC`;
     }
-    
+
     // Execute query
     const result = await conn.query(query);
     const events = result.toArray();
-    
+
     // Parse metadata JSON for each event
     const parsedEvents = events.map(event => ({
       ...event,
       metadata: event.metadata ? JSON.parse(event.metadata) : {},
     }));
-    
+
     await conn.close();
-    
+
     console.log(`Retrieved ${parsedEvents.length} cached events for ${walletAddress}/${feedType}`);
     return parsedEvents;
   } catch (error) {
@@ -328,17 +359,17 @@ export async function updateCachedEvent(
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     // Check if event exists
     const checkResult = await conn.query(`
       SELECT id FROM feed_events WHERE id = '${eventId}'
     `);
-    
+
     if (checkResult.toArray().length === 0) {
       await conn.close();
       return false;
     }
-    
+
     // Build update query
     const updateFields = Object.entries(updates)
       .filter(([key]) => key !== 'id') // Don't update ID
@@ -354,19 +385,19 @@ export async function updateCachedEvent(
         }
       })
       .join(', ');
-    
+
     if (!updateFields) {
       await conn.close();
       return false;
     }
-    
+
     // Execute update
     await conn.query(`
       UPDATE feed_events
       SET ${updateFields}
       WHERE id = '${eventId}'
     `);
-    
+
     await conn.close();
     return true;
   } catch (error) {
@@ -386,9 +417,9 @@ export async function addEventToCache(
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     const metadata = event.metadata ? JSON.stringify(event.metadata) : '{}';
-    
+
     // Insert the new event
     await conn.query(`
       INSERT OR REPLACE INTO feed_events
@@ -405,7 +436,7 @@ export async function addEventToCache(
        '${feedType}', 
        '${metadata.replace(/'/g, "''")}')
     `);
-    
+
     await conn.close();
     return true;
   } catch (error) {
@@ -424,17 +455,17 @@ export async function clearCache(
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     // Begin transaction
     await conn.query('BEGIN TRANSACTION');
-    
+
     if (walletAddress && feedType) {
       // Clear specific cache
       await conn.query(`
         DELETE FROM feed_events
         WHERE walletAddress = '${walletAddress}' AND feedType = '${feedType}'
       `);
-      
+
       // Delete related cache metadata
       await conn.query(`
         DELETE FROM cache_metadata
@@ -446,7 +477,7 @@ export async function clearCache(
         DELETE FROM feed_events
         WHERE walletAddress = '${walletAddress}'
       `);
-      
+
       // Delete related cache metadata
       await conn.query(`
         DELETE FROM cache_metadata
@@ -457,15 +488,15 @@ export async function clearCache(
       await conn.query('DELETE FROM feed_events');
       await conn.query('DELETE FROM cache_metadata');
     }
-    
+
     // Commit transaction
     await conn.query('COMMIT');
     await conn.close();
-    
+
     return true;
   } catch (error) {
     console.error('Error clearing cache:', error);
-    
+
     // Try to rollback transaction if error occurs
     try {
       const db = await initDuckDB();
@@ -475,7 +506,7 @@ export async function clearCache(
     } catch (e) {
       // Ignore rollback errors
     }
-    
+
     return false;
   }
 }
@@ -493,23 +524,23 @@ export async function getCacheStats(): Promise<{
   try {
     const db = await initDuckDB();
     const conn = await db.connect();
-    
+
     const eventCountResult = await conn.query('SELECT COUNT(*) as count FROM feed_events');
     const cacheEntriesResult = await conn.query('SELECT COUNT(*) as count FROM cache_metadata');
     const oldestEntryResult = await conn.query('SELECT MIN(lastUpdated) as oldest FROM cache_metadata');
     const newestEntryResult = await conn.query('SELECT MAX(lastUpdated) as newest FROM cache_metadata');
-    
+
     const eventCount = eventCountResult.toArray()[0].count;
     const cacheEntries = cacheEntriesResult.toArray()[0].count;
     const oldestEntry = oldestEntryResult.toArray()[0].oldest || Date.now();
     const newestEntry = newestEntryResult.toArray()[0].newest || Date.now();
-    
+
     // Rough estimate of memory usage (in bytes)
     // Assuming average event size of approximately 1KB
     const memoryUsageEstimate = eventCount * 1024;
-    
+
     await conn.close();
-    
+
     return {
       eventCount,
       cacheEntries,

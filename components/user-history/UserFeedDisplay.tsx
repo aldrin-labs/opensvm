@@ -17,15 +17,15 @@ import {
   FeedFilters
 } from '@/lib/feed-cache';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { 
-  Loader2, 
-  Globe, 
-  Users, 
-  Heart, 
-  Clock, 
-  User, 
-  RefreshCw, 
-  AlertCircle, 
+import {
+  Loader2,
+  Globe,
+  Users,
+  Heart,
+  Clock,
+  User,
+  RefreshCw,
+  AlertCircle,
   Filter,
   Search,
   Coins,
@@ -78,6 +78,26 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
 
+  // Profile-specific features based on isMyProfile
+  const profileFeatures = useMemo(() => {
+    if (isMyProfile) {
+      return {
+        canDeleteEvents: true,
+        canEditProfile: true,
+        showPrivateEvents: true,
+        canManageFollowers: true,
+        showAnalytics: true
+      };
+    }
+    return {
+      canDeleteEvents: false,
+      canEditProfile: false,
+      showPrivateEvents: false,
+      canManageFollowers: false,
+      showAnalytics: false
+    };
+  }, [isMyProfile]);
+
   // Pagination and infinite scroll
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
@@ -105,7 +125,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         setPage(1);
         setHasMore(true);
       }
-      
+
       // Create filter object for cache
       const filterObj: FeedFilters = {
         eventTypes: filters.eventTypes,
@@ -113,21 +133,36 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         sortOrder: filters.sortOrder,
         searchQuery: searchQuery
       };
-      
+
       // Check cache first if this is the initial load
       if (reset) {
         console.log('Checking cache for feed data...');
         const cachedEvents = await getCachedFeedEvents(walletAddress, feedType, filterObj);
-        
+
         if (cachedEvents) {
           console.log('Using cached feed data');
-          setEvents(cachedEvents);
+          // Convert CachedFeedEvent to FeedEvent format
+          const convertedEvents = cachedEvents.map((cachedEvent: CachedFeedEvent) => ({
+            id: cachedEvent.id,
+            eventType: cachedEvent.eventType,
+            timestamp: cachedEvent.timestamp,
+            userAddress: cachedEvent.userAddress,
+            userName: cachedEvent.userName,
+            userAvatar: cachedEvent.userAvatar,
+            content: cachedEvent.content,
+            targetAddress: cachedEvent.targetAddress,
+            targetId: cachedEvent.targetId,
+            metadata: cachedEvent.metadata,
+            likes: cachedEvent.likes || 0,
+            hasLiked: cachedEvent.hasLiked || false
+          }));
+          setEvents(convertedEvents);
           setLoading(false);
           return;
         }
         console.log('No valid cache found, fetching from API');
       }
-      
+
       // If cache miss or pagination, proceed with API request
       const queryParams = new URLSearchParams({
         type: feedType,
@@ -137,25 +172,25 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         eventTypes: filters.eventTypes.join(','),
         sort: filters.sortOrder
       });
-      
+
       const response = await fetch(`/api/user-feed/${walletAddress}?${queryParams}`);
-      
+
       if (!response.ok) {
         throw new Error('Failed to fetch feed data');
       }
-      
+
       const data = await response.json();
-      
+
       // Update state with new data
       if (reset) {
         setEvents(data.events);
-        
+
         // Cache the events for future use
         cacheFeedEvents(walletAddress, feedType, data.events, filterObj)
           .catch(error => console.error('Error caching feed events:', error));
       } else {
         setEvents(prev => [...prev, ...data.events]);
-        
+
         // Add new events to cache
         if (data.events.length > 0) {
           // We only cache the first page as a complete set
@@ -166,10 +201,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           });
         }
       }
-      
+
       // Check if there are more events to load
       setHasMore(data.events.length === 10);
-      
+
     } catch (err) {
       setError('Failed to load feed events');
       console.error('Error fetching feed:', err);
@@ -182,7 +217,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Load more events for infinite scrolling
   const loadMoreEvents = useCallback(async () => {
     if (loading || !hasMore || loadingMore.current) return;
-    
+
     loadingMore.current = true;
     setPage(prevPage => prevPage + 1);
     await fetchFeed(activeTab, false);
@@ -195,16 +230,16 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       console.error('Invalid event in shouldShowEvent:', event);
       return false;
     }
-    
+
     // Check event type filter
     if (!filters.eventTypes.includes(event.eventType)) {
       return false;
     }
-    
+
     // Check date range filter
     const now = Date.now();
     const eventDate = event.timestamp;
-    
+
     if (filters.dateRange === 'today') {
       const todayStart = new Date().setHours(0, 0, 0, 0);
       if (eventDate < todayStart) return false;
@@ -215,20 +250,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       const monthStart = now - 30 * 24 * 60 * 60 * 1000;
       if (eventDate < monthStart) return false;
     }
-    
+
     // Check search query
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      
+
       // Ensure we always return a boolean by checking each condition separately
       const contentMatch = event.content ? event.content.toLowerCase().includes(query) : false;
       const userNameMatch = event.userName ? event.userName.toLowerCase().includes(query) : false;
       const eventTypeMatch = event.eventType ? event.eventType.toLowerCase().includes(query) : false;
       const addressMatch = event.userAddress ? event.userAddress.toLowerCase().includes(query) : false;
-      
+
       return contentMatch || userNameMatch || eventTypeMatch || addressMatch;
     }
-    
+
     return true;
   }, [filters, searchQuery]);
 
@@ -268,54 +303,54 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   useEffect(() => {
     const setupEventSource = () => {
       setConnectionStatus('connecting');
-      
+
       const queryParams = new URLSearchParams({
         walletAddress,
         type: activeTab,
         eventTypes: filters.eventTypes.join(',')
       });
-      
+
       const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
-      
+
       newEventSource.onopen = () => {
         setConnectionStatus('connected');
         console.log('SSE connection established');
       };
-      
+
       newEventSource.onmessage = (event) => {
         // Set to connected on first message as a fallback
         if (connectionStatus !== 'connected') {
           setConnectionStatus('connected');
         }
-        
+
         try {
           console.log('SSE raw data:', event.data);
           const data = JSON.parse(event.data);
           console.log('Parsed SSE data:', data);
-          
+
           if (!data) {
             console.error('SSE event data is null or undefined');
             return;
           }
-          
+
           if (data.type === 'feed-update') {
             // Validate event data exists and has required fields
             if (!data.event) {
               console.error('SSE feed-update missing event data');
               return;
             }
-            
+
             if (!data.event.id) {
               console.error('SSE event missing id', data.event);
               return;
             }
-            
+
             // Ensure userAddress exists to prevent slice errors
             if (!data.event.userAddress) {
               console.warn('SSE event missing userAddress, adding placeholder', data.event);
               data.event.userAddress = 'unknown-address';
             }
-            
+
             // Check if event matches current filters
             if (shouldShowEvent(data.event)) {
               console.log('Adding new event:', data.event);
@@ -326,7 +361,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   // Update cache for this event
                   updateCachedEvent(data.event.id, data.event)
                     .catch(error => console.error('Error updating cached event:', error));
-                    
+
                   return prevEvents.map(e => e.id === data.event.id ? data.event : e);
                 } else {
                   // Add to beginning for 'newest' sort, or in correct position for 'popular'
@@ -334,15 +369,15 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     // Add new event to cache
                     addEventToCache(walletAddress, activeTab, data.event)
                       .catch(error => console.error('Error adding event to cache:', error));
-                      
+
                     return [data.event, ...prevEvents];
                   } else {
                     const newEvents = [...prevEvents, data.event];
-                    
+
                     // Add new event to cache
                     addEventToCache(walletAddress, activeTab, data.event)
                       .catch(error => console.error('Error adding event to cache:', error));
-                      
+
                     return newEvents.sort((a, b) => b.likes - a.likes);
                   }
                 }
@@ -354,19 +389,19 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               console.error('SSE like-update missing required fields', data);
               return;
             }
-            
+
             // Update likes count for an event
             setEvents(prevEvents => {
               const updatedEvents = prevEvents.map(event =>
                 event.id === data.eventId
                   ? {
-                      ...event,
-                      likes: data.likes,
-                      hasLiked: data.userHasLiked === walletAddress ? true : event.hasLiked
-                    }
+                    ...event,
+                    likes: data.likes,
+                    hasLiked: data.userHasLiked === walletAddress ? true : event.hasLiked
+                  }
                   : event
               );
-              
+
               // Update cache for this event if it exists
               const updatedEvent = updatedEvents.find(e => e.id === data.eventId);
               if (updatedEvent) {
@@ -375,10 +410,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   hasLiked: data.userHasLiked === walletAddress
                 }).catch(error => console.error('Error updating cached event:', error));
               }
-              
+
               return updatedEvents;
             });
-            
+
             // If sorted by popularity, re-sort the events
             if (filters.sortOrder === 'popular') {
               setEvents(prev => [...prev].sort((a, b) => b.likes - a.likes));
@@ -388,7 +423,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           console.error('Error parsing SSE event:', err);
         }
       };
-      
+
       newEventSource.onerror = (error) => {
         console.error('Detailed EventSource error:', { error, readyState: newEventSource.readyState });
         setConnectionStatus('disconnected');
@@ -396,16 +431,16 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         // Attempt to reconnect after a few seconds
         setTimeout(setupEventSource, 5000);
       };
-      
+
       setEventSource(newEventSource);
     };
-    
+
     // Initial fetch
     fetchFeed(activeTab);
-    
+
     // Setup SSE
     setupEventSource();
-    
+
     // Cleanup on unmount
     return () => {
       if (eventSource) {
@@ -419,12 +454,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     const newTab = value as 'for-you' | 'following';
     setActiveTab(newTab);
     fetchFeed(newTab);
-    
+
     // Reconnect SSE with new parameters
     if (eventSource) {
       eventSource.close();
     }
-    
+
     // Reset search query when changing tabs
     setSearchQuery('');
   };
@@ -437,7 +472,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Group events by time period
   const groupedEvents = useMemo(() => {
     if (!groupByTime) return { all: filteredEvents };
-    
+
     const groups: Record<string, FeedEvent[]> = {
       today: [],
       yesterday: [],
@@ -445,13 +480,13 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       thisMonth: [],
       older: []
     };
-    
+
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
     const yesterday = today - 86400000;
     const thisWeekStart = today - (now.getDay() * 86400000);
     const thisMonthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
-    
+
     filteredEvents.forEach(event => {
       if (event.timestamp >= today) {
         groups.today.push(event);
@@ -465,29 +500,29 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         groups.older.push(event);
       }
     });
-    
+
     return groups;
   }, [filteredEvents, groupByTime]);
 
   // Group consecutive events from the same user for stacking
   const stackedEvents = useMemo(() => {
-    const stacked: Array<{ 
+    const stacked: Array<{
       id: string;
-      isGroup: boolean; 
+      isGroup: boolean;
       events: FeedEvent[];
       groupKey: string;
       primaryEvent: FeedEvent;
     }> = [];
-    
+
     let currentGroup: FeedEvent[] = [];
     let lastUserAddress = '';
-    
+
     // Sort events by timestamp first (newest first)
     const sortedEvents = [...filteredEvents].sort((a, b) => b.timestamp - a.timestamp);
-    
+
     for (let i = 0; i < sortedEvents.length; i++) {
       const event = sortedEvents[i];
-      
+
       // Check if this event should be grouped with the previous ones
       if (event.userAddress === lastUserAddress && currentGroup.length > 0) {
         currentGroup.push(event);
@@ -515,13 +550,13 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             });
           }
         }
-        
+
         // Start new group
         currentGroup = [event];
         lastUserAddress = event.userAddress;
       }
     }
-    
+
     // Process the last group
     if (currentGroup.length > 0) {
       if (currentGroup.length === 1) {
@@ -543,7 +578,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         });
       }
     }
-    
+
     return stacked;
   }, [filteredEvents]);
 
@@ -553,63 +588,63 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       setLikeError(null); // Clear any previous errors
       const event = events.find(e => e.id === eventId);
       if (!event) return;
-      
+
       // Optimistically update UI first for better UX
       const newLikes = event.hasLiked ? event.likes - 1 : event.likes + 1;
       const newHasLiked = !event.hasLiked;
-      
+
       setEvents(prevEvents =>
         prevEvents.map(evt =>
           evt.id === eventId
             ? {
-                ...evt,
-                likes: newLikes,
-                hasLiked: newHasLiked
-              }
+              ...evt,
+              likes: newLikes,
+              hasLiked: newHasLiked
+            }
             : evt
         )
       );
-      
+
       // Update the cache for this event
       updateCachedEvent(eventId, {
         likes: newLikes,
         hasLiked: newHasLiked
       }).catch(error => console.error('Error updating cached event like status:', error));
-      
+
       // If sorted by popularity, re-sort the events
       if (filters.sortOrder === 'popular') {
         setEvents(prev => [...prev].sort((a, b) => b.likes - a.likes));
       }
-      
+
       const action = event.hasLiked ? 'unlike-event' : 'like-event';
-      
+
       const response = await fetch(`/api/user-social/${action}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({ eventId })
       });
-      
+
       if (!response.ok) {
         // Revert the optimistic update if the request fails
         setEvents(prevEvents =>
           prevEvents.map(evt =>
             evt.id === eventId
               ? {
-                  ...evt,
-                  likes: event.likes, // Revert to original value
-                  hasLiked: event.hasLiked // Revert to original state
-                }
+                ...evt,
+                likes: event.likes, // Revert to original value
+                hasLiked: event.hasLiked // Revert to original state
+              }
               : evt
           )
         );
-        
+
         // Also revert in cache
         updateCachedEvent(eventId, {
           likes: event.likes,
           hasLiked: event.hasLiked
         }).catch(error => console.error('Error reverting cached event like status:', error));
-        
+
         // Handle different error types
         if (response.status === 401) {
           setLikeError('Please connect your wallet to like posts');
@@ -646,15 +681,15 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Format timestamp
   const formatTimestamp = (timestamp?: number): string => {
     if (!timestamp) return 'Unknown time';
-    
+
     const now = Date.now();
     const diff = now - timestamp;
-    
+
     const seconds = Math.floor(diff / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
-    
+
     if (days > 0) {
       return `${days}d ago`;
     } else if (hours > 0) {
@@ -729,7 +764,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           {event.userName?.[0] || (event.userAddress ? formatWalletAddress(event.userAddress)[0] : '?')}
         </AvatarFallback>
       </Avatar>
-      
+
       <div className="flex-1 space-y-1">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1 flex-wrap">
@@ -745,9 +780,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             </Badge>
           </div>
         </div>
-        
+
         <p className="text-sm">{event.content}</p>
-        
+
         {/* Rich content for transaction events */}
         {event.eventType === 'transaction' && event.metadata?.amount && (
           <div className="mt-2 p-2 rounded-md bg-muted/50">
@@ -764,21 +799,21 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             </div>
           </div>
         )}
-        
+
         {/* Media support */}
         {event.metadata?.mediaUrl && (
           <div className="mt-2 rounded-md overflow-hidden">
-            <img 
-              src={event.metadata.mediaUrl} 
+            <img
+              src={event.metadata.mediaUrl}
               alt="Event media"
               className="w-full h-auto max-h-48 object-cover"
             />
           </div>
         )}
-        
+
         <div className="flex items-center gap-4 pt-1">
-          <Button 
-            variant="ghost" 
+          <Button
+            variant="ghost"
             size="sm"
             className={`flex items-center gap-1 p-1 h-auto ${event.hasLiked ? 'text-red-500' : 'text-muted-foreground'}`}
             onClick={() => handleLike(event.id)}
@@ -792,14 +827,14 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   );
 
   // Render grouped event card with expand/collapse functionality  
-  const GroupedEventCard = ({ 
-    groupData, 
-    isExpanded, 
-    onToggle 
-  }: { 
-    groupData: { 
+  const GroupedEventCard = ({
+    groupData,
+    isExpanded,
+    onToggle
+  }: {
+    groupData: {
       id: string;
-      isGroup: boolean; 
+      isGroup: boolean;
       events: FeedEvent[];
       groupKey: string;
       primaryEvent: FeedEvent;
@@ -813,10 +848,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     return (
       <div className="border rounded-lg bg-card">
         {/* Primary event with group indicator */}
-        <div 
-          className={`flex gap-3 p-4 hover:bg-accent/5 transition-colors cursor-pointer ${
-            isExpanded ? 'border-b' : ''
-          }`}
+        <div
+          className={`flex gap-3 p-4 hover:bg-accent/5 transition-colors cursor-pointer ${isExpanded ? 'border-b' : ''
+            }`}
           onClick={onToggle}
         >
           <Avatar className="h-10 w-10 flex-shrink-0">
@@ -825,7 +859,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               {primaryEvent.userName?.[0] || (primaryEvent.userAddress ? formatWalletAddress(primaryEvent.userAddress)[0] : '?')}
             </AvatarFallback>
           </Avatar>
-          
+
           <div className="flex-1 space-y-1">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-1 flex-wrap">
@@ -845,15 +879,14 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   </Badge>
                 )}
               </div>
-              <ChevronDown 
-                className={`h-4 w-4 text-muted-foreground transition-transform ${
-                  isExpanded ? 'rotate-180' : ''
-                }`} 
+              <ChevronDown
+                className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''
+                  }`}
               />
             </div>
-            
+
             <p className="text-sm">{primaryEvent.content}</p>
-            
+
             {/* Rich content for transaction events */}
             {primaryEvent.eventType === 'transaction' && primaryEvent.metadata?.amount && (
               <div className="mt-2 p-2 rounded-md bg-muted/50">
@@ -870,10 +903,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 </div>
               </div>
             )}
-            
+
             <div className="flex items-center gap-4 pt-1">
-              <Button 
-                variant="ghost" 
+              <Button
+                variant="ghost"
                 size="sm"
                 className={`flex items-center gap-1 p-1 h-auto ${primaryEvent.hasLiked ? 'text-red-500' : 'text-muted-foreground'}`}
                 onClick={(e) => {
@@ -893,9 +926,14 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           <div className="px-4 pb-4">
             <div className="ml-12 space-y-3 pt-3">
               {events.slice(1).map((event, index) => (
-                <div 
-                  key={event.id} 
+                <div
+                  key={event.id}
                   className="flex gap-3 p-3 rounded-md bg-muted/20 border-l-2 border-primary/20"
+                  data-event-index={index + 1} // Use index for event positioning in tree structure
+                  style={{
+                    marginLeft: `${Math.min(index * 8, 32)}px`, // Progressive indentation based on index
+                    opacity: Math.max(1 - (index * 0.1), 0.6) // Fade effect based on position
+                  }}
                 >
                   <Avatar className="h-8 w-8 flex-shrink-0">
                     <AvatarImage src={event.userAvatar} />
@@ -903,7 +941,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       {event.userName?.[0] || (event.userAddress ? formatWalletAddress(event.userAddress)[0] : '?')}
                     </AvatarFallback>
                   </Avatar>
-                  
+
                   <div className="flex-1 space-y-1">
                     <div className="flex items-center gap-1 flex-wrap">
                       <span className="text-xs text-muted-foreground">
@@ -914,9 +952,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                         {event.eventType}
                       </Badge>
                     </div>
-                    
+
                     <p className="text-sm">{event.content}</p>
-                    
+
                     {/* Rich content for transaction events */}
                     {event.eventType === 'transaction' && event.metadata?.amount && (
                       <div className="mt-2 p-2 rounded-md bg-muted/30">
@@ -933,10 +971,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                         </div>
                       </div>
                     )}
-                    
+
                     <div className="flex items-center gap-4 pt-1">
-                      <Button 
-                        variant="ghost" 
+                      <Button
+                        variant="ghost"
                         size="sm"
                         className={`flex items-center gap-1 p-1 h-auto ${event.hasLiked ? 'text-red-500' : 'text-muted-foreground'}`}
                         onClick={(e) => {
@@ -976,7 +1014,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <Skeleton className="h-10 mx-auto w-24" />
             </div>
           </div>
-          
+
           {/* Feed items skeleton */}
           <div className="space-y-4">
             <FeedItemSkeleton />
@@ -1043,7 +1081,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                 <span className="sr-only">Refresh</span>
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -1067,29 +1105,27 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           <div className="grid w-full grid-cols-2">
             <button
               onClick={() => handleTabChange('for-you')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 transition-colors ${
-                activeTab === 'for-you'
+              className={`flex items-center justify-center gap-2 px-4 py-2 transition-colors ${activeTab === 'for-you'
                   ? 'border-b-2 border-primary text-primary font-medium'
                   : 'text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Globe className="h-4 w-4" />
               <span>For You</span>
             </button>
             <button
               onClick={() => handleTabChange('following')}
-              className={`flex items-center justify-center gap-2 px-4 py-2 transition-colors ${
-                activeTab === 'following'
+              className={`flex items-center justify-center gap-2 px-4 py-2 transition-colors ${activeTab === 'following'
                   ? 'border-b-2 border-primary text-primary font-medium'
                   : 'text-muted-foreground hover:text-foreground'
-              }`}
+                }`}
             >
               <Users className="h-4 w-4" />
               <span>Following</span>
             </button>
           </div>
         </div>
-        
+
         {/* Filters and search */}
         <div className="flex flex-col sm:flex-row gap-2 sm:items-center justify-between">
           <div className="relative flex-1">
@@ -1111,7 +1147,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               </Button>
             )}
           </div>
-          
+
           <div className="flex gap-2">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -1130,7 +1166,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       const isSelected = filters.eventTypes.includes(type);
                       setFilters(prev => ({
                         ...prev,
-                        eventTypes: isSelected 
+                        eventTypes: isSelected
                           ? prev.eventTypes.filter(t => t !== type)
                           : [...prev.eventTypes, type]
                       }));
@@ -1147,18 +1183,18 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     </div>
                   </DropdownMenuItem>
                 ))}
-                
+
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Date Range</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                
+
                 {['today', 'week', 'month', 'all'].map(range => (
                   <DropdownMenuItem
                     key={range}
                     onClick={() => {
-                      setFilters(prev => ({ 
-                        ...prev, 
-                        dateRange: range as 'today' | 'week' | 'month' | 'all' 
+                      setFilters(prev => ({
+                        ...prev,
+                        dateRange: range as 'today' | 'week' | 'month' | 'all'
                       }));
                     }}
                   >
@@ -1167,17 +1203,17 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                         {filters.dateRange === range && <span>●</span>}
                       </div>
                       <span>
-                        {range === 'today' ? 'Today' : 
-                         range === 'week' ? 'This Week' : 
-                         range === 'month' ? 'This Month' : 
-                         'All Time'}
+                        {range === 'today' ? 'Today' :
+                          range === 'week' ? 'This Week' :
+                            range === 'month' ? 'This Month' :
+                              'All Time'}
                       </span>
                     </div>
                   </DropdownMenuItem>
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm">
@@ -1188,9 +1224,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <DropdownMenuContent align="end">
                 <DropdownMenuItem
                   onClick={() => {
-                    setFilters(prev => ({ 
-                      ...prev, 
-                      sortOrder: 'newest' 
+                    setFilters(prev => ({
+                      ...prev,
+                      sortOrder: 'newest'
                     }));
                     setEvents(prev => [...prev].sort((a, b) => b.timestamp - a.timestamp));
                   }}
@@ -1203,12 +1239,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     <span>Newest First</span>
                   </div>
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuItem
                   onClick={() => {
-                    setFilters(prev => ({ 
-                      ...prev, 
-                      sortOrder: 'popular' 
+                    setFilters(prev => ({
+                      ...prev,
+                      sortOrder: 'popular'
                     }));
                     setEvents(prev => [...prev].sort((a, b) => b.likes - a.likes));
                   }}
@@ -1225,21 +1261,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             </DropdownMenu>
           </div>
         </div>
-        
+
         {/* Connection status indicator */}
         <div className="flex items-center gap-2 mb-3">
-          <div className={`h-2 w-2 rounded-full ${
-            connectionStatus === 'connected' ? 'bg-green-500' :
-            connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
-            'bg-red-500'
-          }`} />
+          <div className={`h-2 w-2 rounded-full ${connectionStatus === 'connected' ? 'bg-green-500' :
+              connectionStatus === 'connecting' ? 'bg-yellow-500 animate-pulse' :
+                'bg-red-500'
+            }`} />
           <span className="text-xs text-muted-foreground">
             {connectionStatus === 'connected' ? 'Live updates active' :
-             connectionStatus === 'connecting' ? 'Connecting...' :
-             'Disconnected - retrying'}
+              connectionStatus === 'connecting' ? 'Connecting...' :
+                'Disconnected - retrying'}
           </span>
         </div>
-        
+
         <div className="mt-2">
           {filteredEvents.length === 0 ? (
             <div className="text-center py-10 bg-muted/20 rounded-md flex flex-col items-center justify-center space-y-3">
@@ -1249,8 +1284,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 <Users className="h-12 w-12 text-muted-foreground/40 mb-2" />
               )}
               <p className="text-muted-foreground font-medium">
-                {searchQuery 
-                  ? 'No events match your search criteria.' 
+                {searchQuery
+                  ? 'No events match your search criteria.'
                   : activeTab === 'for-you'
                     ? 'No events to show at the moment.'
                     : 'No events from users you follow.'}
@@ -1271,7 +1306,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   Clear Search
                 </Button>
               )}
-              
+
               <Button
                 variant="outline"
                 size="sm"
@@ -1286,7 +1321,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             <div className="space-y-4">
               {groupByTime ? (
                 // Grouped events by time periods
-                Object.entries(groupedEvents).map(([period, periodEvents]) => 
+                Object.entries(groupedEvents).map(([period, periodEvents]) =>
                   periodEvents.length > 0 && (
                     <div key={period} className="space-y-2 mb-6">
                       <h3 className="text-sm font-medium text-muted-foreground capitalize">
@@ -1319,14 +1354,14 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   }
                 })
               )}
-              
+
               {/* Infinite scroll loader */}
               {hasMore && (
                 <div ref={loaderRef} className="h-10 flex justify-center items-center">
                   {loading && <Loader2 className="h-5 w-5 animate-spin text-primary" />}
                 </div>
               )}
-              
+
               {loading && events.length > 0 && (
                 <div className="flex justify-center items-center gap-2 py-4 bg-muted/10 rounded-md">
                   <Loader2 className="h-5 w-5 animate-spin text-primary" />
@@ -1363,6 +1398,58 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     <RefreshCw className="h-3 w-3 mr-1" />
                     Reconnect
                   </Button>
+                </div>
+              )}
+
+              {/* Like Error Display */}
+              {likeError && (
+                <div className="flex justify-center items-center gap-2 py-3 mt-4 bg-destructive/10 rounded-md border border-destructive/20">
+                  <AlertCircle className="h-4 w-4 text-destructive" />
+                  <span className="text-sm text-destructive">{likeError}</span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-7 ml-2 border-destructive/30 text-destructive hover:bg-destructive/10"
+                    onClick={() => setLikeError(null)}
+                  >
+                    <X className="h-3 w-3 mr-1" />
+                    Dismiss
+                  </Button>
+                </div>
+              )}
+
+              {/* Profile-specific features */}
+              {profileFeatures.showAnalytics && (
+                <div className="mt-4 p-4 bg-primary/5 rounded-md border border-primary/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Coins className="h-4 w-4 text-primary" />
+                    <span className="text-sm font-medium text-primary">Your Activity Analytics</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4 text-xs text-muted-foreground">
+                    <div>
+                      <span className="font-medium">{events.length}</span> total events
+                    </div>
+                    <div>
+                      <span className="font-medium">{events.reduce((sum, e) => sum + e.likes, 0)}</span> total likes received
+                    </div>
+                    <div>
+                      <span className="font-medium">{events.filter(e => e.eventType === 'transaction').length}</span> transactions
+                    </div>
+                    <div>
+                      <span className="font-medium">{events.filter(e => e.hasLiked).length}</span> events liked by you
+                    </div>
+                  </div>
+                  {profileFeatures.canEditProfile && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 h-7"
+                      onClick={() => console.log('Edit profile clicked')}
+                    >
+                      <User className="h-3 w-3 mr-1" />
+                      Edit Profile
+                    </Button>
+                  )}
                 </div>
               )}
             </div>

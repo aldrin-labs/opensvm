@@ -7,10 +7,10 @@
  */
 
 import type { ProgramDefinition } from './instruction-parser-service';
-import { 
-  getAllProgramDefinitions, 
+import {
+  getAllProgramDefinitions,
   getProgramDefinition,
-  validateProgramDefinition 
+  validateProgramDefinition
 } from './program-registry';
 
 /**
@@ -114,6 +114,39 @@ export class DynamicProgramDiscoveryService {
 
   constructor() {
     this.initializeDiscoveryRules();
+    this.initializeKnownPrograms();
+  }
+
+  /**
+   * Initialize service with known program definitions from registry
+   */
+  private initializeKnownPrograms(): void {
+    try {
+      const knownPrograms = getAllProgramDefinitions();
+
+      // Convert known programs to discovered programs with high confidence
+      knownPrograms.forEach(program => {
+        const discoveredProgram: DiscoveredProgram = {
+          programId: program.programId,
+          name: program.name,
+          description: program.description,
+          category: program.category,
+          confidence: 1.0, // Maximum confidence for known programs
+          discoveryMethod: 'community',
+          firstSeen: Date.now(),
+          lastSeen: Date.now(),
+          transactionCount: 0,
+          uniqueUsers: 0,
+          instructions: []
+        };
+
+        this.discoveredPrograms.set(program.programId, discoveredProgram);
+      });
+
+      console.log(`Initialized with ${knownPrograms.length} known programs from registry`);
+    } catch (error) {
+      console.warn('Failed to load known programs from registry:', error);
+    }
   }
 
   /**
@@ -200,18 +233,25 @@ export class DynamicProgramDiscoveryService {
       };
     }
 
-    // Update votes/reports
+    // Log the vote for analytics and user tracking
+    console.log(`User ${userId} voted ${vote} on program ${programId}`);
+
+    // Update vote counts based on vote type
     switch (vote) {
       case 'up':
-        definition.votes++;
+        definition.votes = Math.max(0, definition.votes + 1);
         break;
       case 'down':
-        definition.votes--;
+        definition.votes = Math.max(0, definition.votes - 1);
         break;
       case 'report':
-        definition.reports++;
+        definition.reports = (definition.reports || 0) + 1;
+        // Decrease votes for reported content
+        definition.votes = Math.max(0, definition.votes - 1);
         break;
     }
+
+    this.communityDefinitions.set(programId, definition);
 
     // Auto-approve if enough positive votes
     if (definition.votes >= 5 && definition.reports < 2) {
@@ -247,7 +287,7 @@ export class DynamicProgramDiscoveryService {
     // Analyze transaction data
     const uniqueUsers = new Set(transactionData.map(tx => tx.feePayer || tx.signer)).size;
     const totalTransactions = transactionData.length;
-    
+
     // Analyze instruction usage
     const instructionCounts: Record<string, number> = {};
     transactionData.forEach(tx => {
@@ -270,7 +310,7 @@ export class DynamicProgramDiscoveryService {
       .slice(0, 10);
 
     // Calculate growth and trend
-    const userGrowth = existing 
+    const userGrowth = existing
       ? ((uniqueUsers - existing.uniqueUsers) / existing.uniqueUsers) * 100
       : 0;
 
@@ -301,12 +341,12 @@ export class DynamicProgramDiscoveryService {
     trendScore: number;
   }>> {
     const allStats = Array.from(this.usageStats.values());
-    
+
     return allStats
       .map(stats => {
         const program = this.getProgram(stats.programId);
         const trendScore = this.calculateTrendScore(stats);
-        
+
         return {
           programId: stats.programId,
           name: program?.name,
@@ -375,7 +415,18 @@ export class DynamicProgramDiscoveryService {
         category: 'defi',
         confidence: 0.8,
         matcher: (programId: string, instructions: any[]) => {
-          const hasSwapInstructions = instructions.some(ix => 
+          // Check for known DEX program IDs first
+          const knownDexPrograms = [
+            'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4', // Jupiter
+            '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Serum
+            '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8'  // Raydium
+          ];
+
+          if (knownDexPrograms.includes(programId)) {
+            return true;
+          }
+
+          const hasSwapInstructions = instructions.some(ix =>
             ix.data && (
               ix.data.includes('swap') ||
               ix.data.includes('exchange') ||
@@ -390,6 +441,17 @@ export class DynamicProgramDiscoveryService {
         category: 'nft',
         confidence: 0.7,
         matcher: (programId: string, instructions: any[]) => {
+          // Check for known NFT program IDs
+          const knownNFTPrograms = [
+            'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s', // Metaplex Token Metadata
+            'cndy3Z4yapfJBmL3ShUp5exZKqR3z33thTzeNMm2gRZ',  // Candy Machine v2
+            'CandyMachineV1YS812P8UAdwoX8dkZuEk4Ic4z1Ws'      // Candy Machine v1
+          ];
+
+          if (knownNFTPrograms.includes(programId)) {
+            return true;
+          }
+
           const hasNFTPatterns = instructions.some(ix =>
             ix.data && (
               ix.data.includes('mint') ||
@@ -405,6 +467,16 @@ export class DynamicProgramDiscoveryService {
         category: 'governance',
         confidence: 0.9,
         matcher: (programId: string, instructions: any[]) => {
+          // Check for known governance program IDs
+          const knownGovernancePrograms = [
+            'GovER5Lthms3bLBqWub97yVrMmEogzX7xNjdXpPPCVZw', // SPL Governance
+            'GqTPL6qRf5aUuqscLh8Rg2HTxPUXfhhAXDptTLhp1t2J'  // Mango DAO
+          ];
+
+          if (knownGovernancePrograms.includes(programId)) {
+            return true;
+          }
+
           const hasGovernancePatterns = instructions.some(ix =>
             ix.data && (
               ix.data.includes('vote') ||
@@ -544,7 +616,7 @@ export class DynamicProgramDiscoveryService {
   private analyzeParameterPatterns(instructions: any[]): DiscoveredParameter[] {
     // Simplified parameter analysis
     const hasData = instructions.some(ix => ix.data && ix.data.length > 8);
-    
+
     if (!hasData) return [];
 
     return [
@@ -638,7 +710,11 @@ export class DynamicProgramDiscoveryService {
       governance: 'Governance and voting program',
       unknown: 'Unknown program'
     };
-    return descriptions[category] || descriptions.unknown;
+
+    const baseDescription = descriptions[category] || descriptions.unknown;
+    const shortId = programId.slice(0, 8) + '...' + programId.slice(-8);
+
+    return `${baseDescription} (${shortId})`;
   }
 
   private generateInstructionName(discriminator: string): string {
@@ -650,14 +726,33 @@ export class DynamicProgramDiscoveryService {
   }
 
   private categorizeInstruction(discriminator: string, occurrences: any[]): string {
-    // Simple heuristic categorization
+    // Use discriminator for pattern-based categorization
+    const discriminatorPatterns = {
+      'initialize': 'initialization',
+      'create': 'creation',
+      'update': 'modification',
+      'transfer': 'transfer',
+      'swap': 'exchange',
+      'vote': 'governance',
+      'mint': 'minting',
+      'burn': 'burning'
+    };
+
+    // Check if discriminator matches known patterns
+    for (const [pattern, category] of Object.entries(discriminatorPatterns)) {
+      if (discriminator.toLowerCase().includes(pattern)) {
+        return category;
+      }
+    }
+
+    // Fallback to heuristic categorization
     if (occurrences.some(ix => ix.accounts?.length >= 4)) return 'complex';
     if (occurrences.some(ix => ix.accounts?.some((acc: any) => acc.isWritable))) return 'state_change';
     return 'query';
   }
 
   private assessInstructionRisk(occurrences: any[]): 'low' | 'medium' | 'high' {
-    const hasWritableAccounts = occurrences.some(ix => 
+    const hasWritableAccounts = occurrences.some(ix =>
       ix.accounts?.some((acc: any) => acc.isWritable)
     );
     const hasMultipleSigners = occurrences.some(ix =>
@@ -690,9 +785,9 @@ export class DynamicProgramDiscoveryService {
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
     const days = 7; // Last 7 days
-    
+
     const dailyCounts = new Array(days).fill(0);
-    
+
     transactionData.forEach(tx => {
       const txTime = tx.blockTime * 1000; // Convert to milliseconds
       const dayIndex = Math.floor((now - txTime) / oneDayMs);
@@ -700,7 +795,7 @@ export class DynamicProgramDiscoveryService {
         dailyCounts[days - 1 - dayIndex]++;
       }
     });
-    
+
     return dailyCounts;
   }
 
@@ -709,10 +804,10 @@ export class DynamicProgramDiscoveryService {
     currentTransactions: number
   ): 'increasing' | 'stable' | 'decreasing' {
     if (!existing) return 'stable';
-    
+
     const change = currentTransactions - existing.totalTransactions;
     const changePercent = (change / existing.totalTransactions) * 100;
-    
+
     if (changePercent > 10) return 'increasing';
     if (changePercent < -10) return 'decreasing';
     return 'stable';
@@ -720,15 +815,15 @@ export class DynamicProgramDiscoveryService {
 
   private calculateTrendScore(stats: ProgramUsageStats): number {
     let score = 0;
-    
+
     // Base score from transaction volume
     score += Math.log10(stats.totalTransactions + 1) * 10;
-    
+
     // User growth bonus
     if (stats.userGrowth > 0) {
       score += stats.userGrowth * 2;
     }
-    
+
     // Activity trend bonus
     switch (stats.activityTrend) {
       case 'increasing':
@@ -741,13 +836,13 @@ export class DynamicProgramDiscoveryService {
         score -= 10;
         break;
     }
-    
+
     // Recent activity bonus
     const daysSinceUpdate = (Date.now() - stats.lastUpdated) / (24 * 60 * 60 * 1000);
     if (daysSinceUpdate < 1) {
       score += 10;
     }
-    
+
     return Math.max(0, score);
   }
 }

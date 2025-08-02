@@ -10,17 +10,17 @@ import type { DetailedTransactionInfo } from './solana';
 import type { RelatedTransaction } from './related-transaction-finder';
 
 // Graph node types
-export type NodeType = 
-  | 'account' 
-  | 'program' 
-  | 'token' 
+export type NodeType =
+  | 'account'
+  | 'program'
+  | 'token'
   | 'transaction'
   | 'system_account'
   | 'token_account'
   | 'program_account';
 
 // Graph edge types
-export type EdgeType = 
+export type EdgeType =
   | 'transfer'
   | 'instruction'
   | 'account_access'
@@ -229,7 +229,7 @@ export class TransactionGraphBuilder {
     this.addNode(txNode);
 
     // Process accounts involved in the transaction
-    const accountKeys = transaction.transaction.message.accountKeys || [];
+    const accountKeys = transaction.transaction?.message.accountKeys || [];
     for (let i = 0; i < accountKeys.length; i++) {
       const account = accountKeys[i];
       const accountNode = await this.createAccountNode(account, transaction, i);
@@ -241,7 +241,7 @@ export class TransactionGraphBuilder {
     }
 
     // Process instructions
-    if (transaction.transaction.message.instructions) {
+    if (transaction.transaction?.message.instructions) {
       for (let i = 0; i < transaction.transaction.message.instructions.length; i++) {
         const instruction = transaction.transaction.message.instructions[i];
         await this.processInstruction(instruction, transaction, i, depth);
@@ -263,6 +263,11 @@ export class TransactionGraphBuilder {
    * Process a related transaction with reduced detail
    */
   private async processRelatedTransaction(relatedTx: RelatedTransaction, depth: number): Promise<void> {
+    // Skip processing if depth limit exceeded
+    if (depth <= 0 || depth > this.options.maxDepth) {
+      return;
+    }
+
     // Create a simplified node for the related transaction
     const relatedNode: GraphNode = {
       id: `tx_${relatedTx.signature}`,
@@ -331,7 +336,12 @@ export class TransactionGraphBuilder {
     instructionIndex: number,
     depth: number
   ): Promise<void> {
-    const programId = transaction.transaction.message.accountKeys?.[instruction.programIdIndex];
+    // Skip detailed processing at deeper levels to prevent complexity explosion
+    if (depth > this.options.maxDepth) {
+      return;
+    }
+
+    const programId = transaction.transaction?.message.accountKeys?.[instruction.programIdIndex];
     if (!programId || !this.options.includePrograms) return;
 
     // Create program node
@@ -341,7 +351,7 @@ export class TransactionGraphBuilder {
     // Create instruction edges to involved accounts
     if (instruction.accounts) {
       for (const accountIndex of instruction.accounts) {
-        const accountAddress = transaction.transaction.message.accountKeys?.[accountIndex];
+        const accountAddress = transaction.transaction?.message.accountKeys?.[accountIndex];
         if (accountAddress) {
           const accountNodeId = `account_${accountAddress}`;
           const instructionEdge = this.createInstructionEdge(
@@ -388,7 +398,7 @@ export class TransactionGraphBuilder {
     for (const postBalance of postBalances) {
       const key = `${postBalance.accountIndex}_${postBalance.mint}`;
       const existing = balanceChanges.get(key);
-      
+
       if (existing) {
         existing.postAmount = parseFloat(postBalance.uiTokenAmount.amount);
         existing.change = existing.postAmount - existing.preAmount;
@@ -406,7 +416,9 @@ export class TransactionGraphBuilder {
     // Create token transfer edges for significant changes
     for (const [key, change] of balanceChanges.entries()) {
       if (Math.abs(change.change) >= this.options.minTransferAmount) {
-        await this.createTokenTransferEdge(change, transaction);
+        // Parse key to get account index and mint for enhanced edge creation
+        const [accountIndex, mint] = key.split('_');
+        await this.createTokenTransferEdge(change, transaction, { accountIndex: parseInt(accountIndex), mint });
       }
     }
   }
@@ -417,7 +429,7 @@ export class TransactionGraphBuilder {
   private async processAccountChanges(transaction: DetailedTransactionInfo): Promise<void> {
     const preBalances = transaction.meta?.preBalances || [];
     const postBalances = transaction.meta?.postBalances || [];
-    const accountKeys = transaction.transaction.message.accountKeys || [];
+    const accountKeys = transaction.transaction?.message.accountKeys || [];
 
     for (let i = 0; i < Math.min(preBalances.length, postBalances.length); i++) {
       const preBalance = preBalances[i];
@@ -481,7 +493,12 @@ export class TransactionGraphBuilder {
   ): Promise<GraphNode> {
     const accountInfo = await this.getAccountInfo(address);
     const nodeType = this.determineAccountNodeType(accountInfo);
-    
+
+    // Extract transaction-specific account properties
+    const accountKey = transaction.transaction?.message.accountKeys?.[accountIndex];
+    const isSigner = accountKey?.isSigner || false;
+    const isWritable = accountKey?.isWritable || false;
+
     return {
       id: `account_${address}`,
       type: nodeType,
@@ -493,6 +510,8 @@ export class TransactionGraphBuilder {
         executable: accountInfo?.executable || false,
         metadata: {
           accountIndex,
+          isSigner,
+          isWritable,
           ...accountInfo
         }
       },
@@ -512,10 +531,10 @@ export class TransactionGraphBuilder {
    */
   private async createProgramNode(
     programId: string,
-    transaction: DetailedTransactionInfo
+    _transaction: DetailedTransactionInfo
   ): Promise<GraphNode> {
     const programInfo = await this.getProgramInfo(programId);
-    
+
     return {
       id: `program_${programId}`,
       type: 'program',
@@ -605,11 +624,12 @@ export class TransactionGraphBuilder {
       postAmount: number;
       change: number;
     },
-    transaction: DetailedTransactionInfo
+    _transaction: DetailedTransactionInfo,
+    context?: { accountIndex: number; mint: string }
   ): Promise<void> {
     const tokenInfo = await this.getTokenInfo(change.mint);
     const amount = Math.abs(change.change);
-    
+
     // Create token node if it doesn't exist
     const tokenNodeId = `token_${change.mint}`;
     if (!this.nodeMap.has(tokenNodeId)) {
@@ -636,8 +656,11 @@ export class TransactionGraphBuilder {
 
     // Create transfer edge
     const ownerNodeId = `account_${change.owner}`;
+    const edgeId = context
+      ? `transfer_${ownerNodeId}_${tokenNodeId}_${context.accountIndex}`
+      : `transfer_${ownerNodeId}_${tokenNodeId}_${Date.now()}`;
     const transferEdge: GraphEdge = {
-      id: `transfer_${ownerNodeId}_${tokenNodeId}_${Date.now()}`,
+      id: edgeId,
       source: change.change > 0 ? tokenNodeId : ownerNodeId,
       target: change.change > 0 ? ownerNodeId : tokenNodeId,
       type: 'token_transfer',
@@ -646,7 +669,12 @@ export class TransactionGraphBuilder {
         amount,
         symbol: tokenInfo?.symbol,
         direction: change.change > 0 ? 'in' : 'out',
-        metadata: { change, tokenInfo }
+        metadata: {
+          change,
+          tokenInfo,
+          transactionContext: context,
+          accountIndex: context?.accountIndex
+        }
       },
       style: {
         width: this.calculateEdgeWidth('token_transfer', { amount }),
@@ -657,10 +685,10 @@ export class TransactionGraphBuilder {
     };
 
     this.addEdge(transferEdge);
-  } 
- /**
-   * Calculate layout positions for all nodes
-   */
+  }
+  /**
+    * Calculate layout positions for all nodes
+    */
   private async calculateLayout(): Promise<void> {
     const nodes = Array.from(this.nodeMap.values());
     const edges = Array.from(this.edgeMap.values());
@@ -706,7 +734,7 @@ export class TransactionGraphBuilder {
 
     for (let iter = 0; iter < iterations; iter++) {
       const forces = new Map<string, { x: number; y: number }>();
-      
+
       // Initialize forces
       nodes.forEach(node => {
         forces.set(node.id, { x: 0, y: 0 });
@@ -720,14 +748,14 @@ export class TransactionGraphBuilder {
           const dx = nodeB.position!.x - nodeA.position!.x;
           const dy = nodeB.position!.y - nodeA.position!.y;
           const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
+
           const force = repulsionStrength / (distance * distance);
           const fx = (dx / distance) * force;
           const fy = (dy / distance) * force;
-          
+
           const forceA = forces.get(nodeA.id)!;
           const forceB = forces.get(nodeB.id)!;
-          
+
           forceA.x -= fx;
           forceA.y -= fy;
           forceB.x += fx;
@@ -739,19 +767,19 @@ export class TransactionGraphBuilder {
       edges.forEach(edge => {
         const sourceNode = nodes.find(n => n.id === edge.source);
         const targetNode = nodes.find(n => n.id === edge.target);
-        
+
         if (sourceNode && targetNode) {
           const dx = targetNode.position!.x - sourceNode.position!.x;
           const dy = targetNode.position!.y - sourceNode.position!.y;
           const distance = Math.sqrt(dx * dx + dy * dy) || 1;
-          
+
           const force = attractionStrength * distance * edge.weight;
           const fx = (dx / distance) * force;
           const fy = (dy / distance) * force;
-          
+
           const sourceForce = forces.get(sourceNode.id)!;
           const targetForce = forces.get(targetNode.id)!;
-          
+
           sourceForce.x += fx;
           sourceForce.y += fy;
           targetForce.x -= fx;
@@ -764,7 +792,7 @@ export class TransactionGraphBuilder {
         const force = forces.get(node.id)!;
         node.position!.x += force.x * damping;
         node.position!.y += force.y * damping;
-        
+
         // Keep nodes within bounds
         node.position!.x = Math.max(50, Math.min(width - 50, node.position!.x));
         node.position!.y = Math.max(50, Math.min(height - 50, node.position!.y));
@@ -775,41 +803,41 @@ export class TransactionGraphBuilder {
   /**
    * Hierarchical layout calculation
    */
-  private async calculateHierarchicalLayout(nodes: GraphNode[], edges: GraphEdge[]): Promise<void> {
+  private async calculateHierarchicalLayout(nodes: GraphNode[], _edges: GraphEdge[]): Promise<void> {
     const width = 800;
     const height = 600;
     const layers = new Map<number, GraphNode[]>();
-    
+
     // Find transaction nodes (root level)
     const transactionNodes = nodes.filter(n => n.type === 'transaction');
     layers.set(0, transactionNodes);
-    
+
     // Find program nodes (level 1)
     const programNodes = nodes.filter(n => n.type === 'program');
     layers.set(1, programNodes);
-    
+
     // Find account nodes (level 2)
     const accountNodes = nodes.filter(n => n.type.includes('account'));
     layers.set(2, accountNodes);
-    
+
     // Find token nodes (level 3)
     const tokenNodes = nodes.filter(n => n.type === 'token');
     layers.set(3, tokenNodes);
-    
+
     // Position nodes in layers
     let currentY = 100;
     const layerHeight = (height - 200) / layers.size;
-    
-    layers.forEach((layerNodes, level) => {
+
+    layers.forEach((layerNodes, _level) => {
       const nodeWidth = width / (layerNodes.length + 1);
-      
+
       layerNodes.forEach((node, index) => {
         node.position = {
           x: nodeWidth * (index + 1),
           y: currentY
         };
       });
-      
+
       currentY += layerHeight;
     });
   }
@@ -820,23 +848,35 @@ export class TransactionGraphBuilder {
   private async calculateCircularLayout(nodes: GraphNode[], edges: GraphEdge[]): Promise<void> {
     const centerX = 400;
     const centerY = 300;
-    const radius = 200;
-    
+    const baseRadius = 200;
+
+    // Calculate node connectivity for radius adjustment
+    const nodeConnectivity = new Map<string, number>();
+    edges.forEach(edge => {
+      nodeConnectivity.set(edge.source, (nodeConnectivity.get(edge.source) || 0) + 1);
+      nodeConnectivity.set(edge.target, (nodeConnectivity.get(edge.target) || 0) + 1);
+    });
+
     // Place transaction in center
     const transactionNodes = nodes.filter(n => n.type === 'transaction');
     transactionNodes.forEach(node => {
       node.position = { x: centerX, y: centerY };
     });
-    
-    // Place other nodes in circle
+
+    // Place other nodes in circle with radius based on connectivity
     const otherNodes = nodes.filter(n => n.type !== 'transaction');
     const angleStep = (2 * Math.PI) / otherNodes.length;
-    
+
     otherNodes.forEach((node, index) => {
       const angle = index * angleStep;
+      const connectivity = nodeConnectivity.get(node.id) || 0;
+      // More connected nodes are closer to center
+      const radius = baseRadius - (connectivity * 20);
+      const adjustedRadius = Math.max(radius, baseRadius * 0.5);
+
       node.position = {
-        x: centerX + Math.cos(angle) * radius,
-        y: centerY + Math.sin(angle) * radius
+        x: centerX + Math.cos(angle) * adjustedRadius,
+        y: centerY + Math.sin(angle) * adjustedRadius
       };
     });
   }
@@ -844,16 +884,16 @@ export class TransactionGraphBuilder {
   /**
    * Grid layout calculation
    */
-  private async calculateGridLayout(nodes: GraphNode[], edges: GraphEdge[]): Promise<void> {
+  private async calculateGridLayout(nodes: GraphNode[], _edges: GraphEdge[]): Promise<void> {
     const cols = Math.ceil(Math.sqrt(nodes.length));
     const rows = Math.ceil(nodes.length / cols);
     const cellWidth = 800 / cols;
     const cellHeight = 600 / rows;
-    
+
     nodes.forEach((node, index) => {
       const col = index % cols;
       const row = Math.floor(index / cols);
-      
+
       node.position = {
         x: col * cellWidth + cellWidth / 2,
         y: row * cellHeight + cellHeight / 2
@@ -866,7 +906,7 @@ export class TransactionGraphBuilder {
   private buildFinalGraph(transactionSignature: string): TransactionGraph {
     const nodes = Array.from(this.nodeMap.values());
     const edges = Array.from(this.edgeMap.values());
-    
+
     // Calculate bounds
     const positions = nodes.map(n => n.position!).filter(p => p);
     const bounds = {
@@ -875,7 +915,7 @@ export class TransactionGraphBuilder {
       minY: Math.min(...positions.map(p => p.y)) - 50,
       maxY: Math.max(...positions.map(p => p.y)) + 50
     };
-    
+
     // Build groups
     const groups: TransactionGraph['groups'] = {};
     nodes.forEach(node => {
@@ -890,29 +930,29 @@ export class TransactionGraphBuilder {
         groups[node.group].nodes.push(node.id);
       }
     });
-    
+
     // Calculate statistics
     const nodeTypeDistribution = nodes.reduce((acc, node) => {
       acc[node.type] = (acc[node.type] || 0) + 1;
       return acc;
     }, {} as Record<NodeType, number>);
-    
+
     const edgeTypeDistribution = edges.reduce((acc, edge) => {
       acc[edge.type] = (acc[edge.type] || 0) + 1;
       return acc;
     }, {} as Record<EdgeType, number>);
-    
+
     const totalValue = edges
       .filter(e => e.data.usdValue)
       .reduce((sum, e) => sum + (e.data.usdValue || 0), 0);
-    
+
     const largestTransfer = Math.max(
       ...edges
         .filter(e => e.data.amount)
         .map(e => e.data.amount || 0),
       0
     );
-    
+
     return {
       nodes,
       edges,
@@ -948,15 +988,15 @@ export class TransactionGraphBuilder {
       token_account: 12,
       program_account: 14
     };
-    
+
     let size = baseSizes[type] || 15;
-    
+
     if (this.options.nodeSize === 'by_balance' && data?.balance) {
       size += Math.min(data.balance / 1000000000, 10); // Scale by SOL balance
     } else if (this.options.nodeSize === 'by_activity' && data?.relevanceScore) {
       size += data.relevanceScore * 10;
     }
-    
+
     return size;
   }
 
@@ -972,9 +1012,9 @@ export class TransactionGraphBuilder {
       delegation: 1,
       approval: 1
     };
-    
+
     let width = baseWidths[type] || 2;
-    
+
     if (this.options.edgeWidth === 'by_amount' && data?.amount) {
       width += Math.min(Math.log10(data.amount + 1), 5);
     } else if (this.options.edgeWidth === 'by_frequency' && data?.strength) {
@@ -986,7 +1026,7 @@ export class TransactionGraphBuilder {
       };
       width *= strengthMultiplier[data.strength as keyof typeof strengthMultiplier] || 1;
     }
-    
+
     return Math.max(1, width);
   }
 
@@ -1004,7 +1044,7 @@ export class TransactionGraphBuilder {
       token_account: 'circle',
       program_account: 'triangle'
     };
-    
+
     return shapes[type] || 'circle';
   }
 
@@ -1016,7 +1056,7 @@ export class TransactionGraphBuilder {
       tokens: '#10B981',
       related_transactions: '#EC4899'
     };
-    
+
     return colors[group] || '#6B7280';
   }
 
@@ -1038,10 +1078,17 @@ export class TransactionGraphBuilder {
   // Mock methods for external data (to be implemented with actual data sources)
   private async getAccountInfo(address: string): Promise<any> {
     // Mock implementation - replace with actual Solana RPC calls
+    // Use address to generate consistent mock data
+    const addressHash = address.split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+
     return {
-      lamports: Math.floor(Math.random() * 10000000000),
-      owner: '11111111111111111111111111111111',
-      executable: false
+      lamports: Math.abs(addressHash) % 10000000000,
+      owner: address.startsWith('11111') ? '11111111111111111111111111111111' : 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+      executable: address.includes('Program') || address.includes('program'),
+      address // Include the address in the returned data
     };
   }
 
@@ -1052,7 +1099,7 @@ export class TransactionGraphBuilder {
       'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA': { name: 'SPL Token Program' },
       'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB': { name: 'Jupiter Aggregator' }
     };
-    
+
     return knownPrograms[programId] || { name: null };
   }
 
@@ -1062,7 +1109,7 @@ export class TransactionGraphBuilder {
       'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v': { symbol: 'USDC', decimals: 6 },
       'So11111111111111111111111111111111111111112': { symbol: 'SOL', decimals: 9 }
     };
-    
+
     return knownTokens[mint] || { symbol: null, decimals: 9 };
   }
 
@@ -1093,19 +1140,19 @@ export class TransactionGraphBuilder {
     if (this.nodeImportanceCache.has(address)) {
       return this.nodeImportanceCache.get(address)!;
     }
-    
+
     let importance = 0.5; // Base importance
-    
+
     // Higher importance for accounts with more SOL
     if (accountInfo?.lamports) {
       importance += Math.min(accountInfo.lamports / 10000000000, 0.3);
     }
-    
+
     // Higher importance for executable accounts (programs)
     if (accountInfo?.executable) {
       importance += 0.2;
     }
-    
+
     this.nodeImportanceCache.set(address, importance);
     return importance;
   }
@@ -1115,17 +1162,17 @@ export class TransactionGraphBuilder {
     if (this.isSystemProgram(programId)) {
       return 0.9;
     }
-    
+
     // Known DeFi programs are important
     const defiPrograms = [
       'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB', // Jupiter
       '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
     ];
-    
+
     if (defiPrograms.includes(programId)) {
       return 0.8;
     }
-    
+
     return 0.6;
   }
 
@@ -1135,16 +1182,16 @@ export class TransactionGraphBuilder {
       'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
       'So11111111111111111111111111111111111111112', // SOL
     ];
-    
+
     let importance = 0.5;
-    
+
     if (majorTokens.includes(mint)) {
       importance += 0.3;
     }
-    
+
     // Higher amounts are more important
     importance += Math.min(Math.log10(amount + 1) / 10, 0.2);
-    
+
     return importance;
   }
 
@@ -1160,7 +1207,7 @@ export class TransactionGraphBuilder {
       'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token
       'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token
     ];
-    
+
     return systemPrograms.includes(programId);
   }
 }
@@ -1179,12 +1226,12 @@ export function getDefaultGraphOptions(): GraphBuilderOptions {
 export function validateGraphData(graph: TransactionGraph): boolean {
   // Validate that all edge sources and targets exist as nodes
   const nodeIds = new Set(graph.nodes.map(n => n.id));
-  
+
   for (const edge of graph.edges) {
     if (!nodeIds.has(edge.source) || !nodeIds.has(edge.target)) {
       return false;
     }
   }
-  
+
   return true;
 }

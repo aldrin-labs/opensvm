@@ -68,10 +68,12 @@ export interface EnhancedAccountKey {
 
 export interface EnhancedInstruction {
   programId: string;
+  programName?: string;
   accounts: string[];
   data: string;
   parsed?: any;
   stackHeight?: number;
+  description?: string;
 }
 
 export interface AccountStateData {
@@ -233,7 +235,7 @@ export class EnhancedTransactionFetcher {
     for (let i = 0; i < accountKeys.length; i++) {
       const accountKey = accountKeys[i];
       const address = accountKey.pubkey.toString();
-      
+
       // Calculate lamports difference
       const preLamports = preBalances[i] || 0;
       const postLamports = postBalances[i] || 0;
@@ -241,7 +243,7 @@ export class EnhancedTransactionFetcher {
 
       // Find token changes for this account
       const tokenChanges: TokenStateChange[] = [];
-      
+
       // Match pre and post token balances
       const preTokens = preTokenBalances.filter(tb => tb.accountIndex === i);
       const postTokens = postTokenBalances.filter(tb => tb.accountIndex === i);
@@ -318,7 +320,7 @@ export class EnhancedTransactionFetcher {
 
       const enhancedInstruction = await this.parseInstruction(instruction, i.toString(), logs);
       enhancedInstruction.innerInstructions = parsedInnerInstructions;
-      
+
       enhancedInstructions.push(enhancedInstruction);
     }
 
@@ -334,10 +336,10 @@ export class EnhancedTransactionFetcher {
     logs: string[]
   ): Promise<EnhancedInstructionData> {
     const programId = instruction.programId.toString();
-    
+
     // Extract relevant logs for this instruction
-    const instructionLogs = logs.filter(log => 
-      log.includes(`Program ${programId}`) || 
+    const instructionLogs = logs.filter(log =>
+      log.includes(`Program ${programId}`) ||
       log.includes(`invoke [${index}]`)
     );
 
@@ -346,19 +348,19 @@ export class EnhancedTransactionFetcher {
     let accounts: string[] = [];
     let data: string = '';
     let parsed: any = undefined;
-    
+
     if ('accounts' in instruction && instruction.accounts) {
       accounts = instruction.accounts.map((acc: any) => acc.toString());
     }
-    
+
     if ('data' in instruction && instruction.data) {
       data = instruction.data;
     }
-    
+
     if ('parsed' in instruction) {
       parsed = instruction.parsed;
     }
-    
+
     const parsedInfo = await instructionParserService.parseInstruction(
       programId,
       accounts,
@@ -366,23 +368,31 @@ export class EnhancedTransactionFetcher {
       parsed
     );
 
-    // Build enhanced account info with roles from parser
+    // Build enhanced account info with roles from parser and fallback detection
     const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey: string, i: number) => {
       const roleInfo = parsedInfo.accounts[i];
+
+      // Use determineAccountRole as fallback when parser doesn't provide role
+      const fallbackRole = roleInfo?.role || this.determineAccountRole(accountPubkey, instruction);
+
       return {
         pubkey: accountPubkey,
         isSigner: roleInfo?.isSigner || false,
         isWritable: roleInfo?.isWritable || false,
-        role: roleInfo?.role as any || undefined
+        role: fallbackRole as any || undefined
       };
     });
+
+    // Use helper functions as fallbacks for enhanced data
+    const programName = parsedInfo.programName || this.getProgramName(programId) || 'Unknown Program';
+    const description = parsedInfo.description || (parsed ? this.generateInstructionDescription(parsed) : 'Unknown instruction');
 
     return {
       index: parseInt(index.split('.')[0]),
       programId,
-      programName: parsedInfo.programName,
+      programName,
       instructionType: parsedInfo.instructionType,
-      description: parsedInfo.description,
+      description,
       accounts: enhancedAccounts,
       data: {
         raw: data,
@@ -464,29 +474,33 @@ export class EnhancedTransactionFetcher {
       let data: string = '';
       let parsed: any = undefined;
       let stackHeight: number | undefined = undefined;
-      
+
       if ('accounts' in ix && ix.accounts) {
         accounts = ix.accounts.map((acc: any) => acc.toString());
       }
-      
+
       if ('data' in ix && ix.data) {
         data = ix.data;
       }
-      
+
       if ('parsed' in ix) {
         parsed = ix.parsed;
       }
-      
+
       if ('stackHeight' in ix && typeof ix.stackHeight === 'number') {
         stackHeight = ix.stackHeight;
       }
-      
+
+      const programId = ix.programId.toString();
+
       return {
-        programId: ix.programId.toString(),
+        programId,
+        programName: this.getProgramName(programId),
         accounts,
         data,
         parsed,
-        stackHeight
+        stackHeight,
+        description: parsed ? this.generateInstructionDescription(parsed) : undefined
       };
     });
   }
@@ -535,7 +549,7 @@ export class EnhancedTransactionFetcher {
   ): string | undefined {
     if ('parsed' in instruction && instruction.parsed?.info) {
       const info = instruction.parsed.info;
-      
+
       if (info.source === accountPubkey) return 'payer';
       if (info.destination === accountPubkey) return 'recipient';
       if (info.authority === accountPubkey) return 'authority';

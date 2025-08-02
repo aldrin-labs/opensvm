@@ -26,7 +26,7 @@ export function useScrollbar(options: UseScrollbarOptions = {}) {
   const contentRef = useRef<HTMLDivElement>(null);
   const thumbRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
-  
+
   const [state, setState] = useState<ScrollbarState>({
     scrollTop: 0,
     scrollHeight: 0,
@@ -36,19 +36,14 @@ export function useScrollbar(options: UseScrollbarOptions = {}) {
     scrollPercentage: 0,
   });
 
-  const [dragState, setDragState] = useState({
-    startY: 0,
-    startScrollTop: 0,
-  });
-
   // Calculate scroll metrics
   const updateScrollMetrics = useCallback(() => {
     if (!containerRef.current) return;
 
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
     const isAtBottom = scrollTop + clientHeight >= scrollHeight - autoScrollThreshold;
-    const scrollPercentage = scrollHeight > clientHeight 
-      ? scrollTop / (scrollHeight - clientHeight) 
+    const scrollPercentage = scrollHeight > clientHeight
+      ? scrollTop / (scrollHeight - clientHeight)
       : 0;
 
     setState(prev => ({
@@ -108,7 +103,6 @@ export function useScrollbar(options: UseScrollbarOptions = {}) {
     const startY = e.clientY;
     const startScrollTop = containerRef.current.scrollTop;
 
-    setDragState({ startY, startScrollTop });
     setState(prev => ({ ...prev, isDragging: true }));
 
     // Add global mouse event listeners
@@ -144,12 +138,12 @@ export function useScrollbar(options: UseScrollbarOptions = {}) {
     if (e.target === thumbRef.current) return;
 
     e.preventDefault();
-    
+
     const trackRect = trackRef.current.getBoundingClientRect();
     const thumbHeight = thumbRef.current.clientHeight;
     const clickY = e.clientY - trackRect.top;
     const trackHeight = trackRect.height;
-    
+
     // Calculate target scroll position
     const maxScrollTop = containerRef.current.scrollHeight - containerRef.current.clientHeight;
     const targetRatio = Math.max(0, Math.min(1, (clickY - thumbHeight / 2) / (trackHeight - thumbHeight)));
@@ -245,19 +239,19 @@ export function useScrollbar(options: UseScrollbarOptions = {}) {
     contentRef,
     thumbRef,
     trackRef,
-    
+
     // State
     ...state,
-    
+
     // Actions
     scrollTo,
     scrollToBottom,
     scrollBy,
-    
+
     // Event handlers
     handleThumbMouseDown,
     handleTrackClick,
-    
+
     // Utils
     updateScrollMetrics,
   };

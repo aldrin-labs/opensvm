@@ -78,7 +78,7 @@ class TransactionOptimizationService {
   isLargeTransaction(transaction: DetailedTransactionInfo): boolean {
     const instructionCount = transaction.details?.instructions?.length || 0;
     const accountCount = transaction.details?.accounts?.length || 0;
-    
+
     return (
       instructionCount > OPTIMIZATION_CONFIG.LARGE_TRANSACTION_THRESHOLD ||
       accountCount > 200 || // Large number of accounts
@@ -98,7 +98,7 @@ class TransactionOptimizationService {
     const totalPages = Math.ceil(totalCount / pageSize);
     const startIndex = (page - 1) * pageSize;
     const endIndex = Math.min(startIndex + pageSize, totalCount);
-    
+
     const paginatedInstructions = instructions.slice(startIndex, endIndex);
 
     return {
@@ -124,7 +124,7 @@ class TransactionOptimizationService {
   } {
     const totalCount = allRelatedTransactions.length;
     const initialTransactions = allRelatedTransactions.slice(0, initialLoadSize);
-    
+
     const initialData: PaginatedRelatedTransactions = {
       transactions: initialTransactions,
       totalCount,
@@ -159,13 +159,13 @@ class TransactionOptimizationService {
   }> {
     const startIndex = currentData.loadedCount;
     const endIndex = Math.min(startIndex + batchSize, allRelatedTransactions.length);
-    
+
     // Simulate async loading delay for better UX
     await new Promise(resolve => setTimeout(resolve, 100));
-    
+
     const newTransactions = allRelatedTransactions.slice(startIndex, endIndex);
     const updatedTransactions = [...currentData.transactions, ...newTransactions];
-    
+
     const updatedData: PaginatedRelatedTransactions = {
       ...currentData,
       transactions: updatedTransactions,
@@ -201,10 +201,10 @@ class TransactionOptimizationService {
   }> {
     const startTime = Date.now();
     const optimizationsApplied: string[] = [];
-    
+
     // Check if transaction needs optimization
     const isLarge = this.isLargeTransaction(transaction);
-    
+
     if (isLarge) {
       optimizationsApplied.push('large_transaction_handling');
     }
@@ -220,10 +220,10 @@ class TransactionOptimizationService {
 
     // Process the transaction
     const result = await processor(transaction);
-    
+
     const processingTime = Date.now() - startTime;
     const memoryUsage = this.estimateMemoryUsage(result);
-    
+
     // Create metrics
     const metrics: TransactionOptimizationMetrics = {
       instructionCount: transaction.details?.instructions?.length || 0,
@@ -342,7 +342,11 @@ class TransactionOptimizationService {
         data: PaginatedRelatedTransactions;
         lazyState: LazyLoadingState;
       } => {
-        return this.createLazyLoadingState(allRelatedTransactions);
+        const result = this.createLazyLoadingState(allRelatedTransactions);
+        return {
+          data: result.initialData,
+          lazyState: result.lazyState
+        };
       },
 
       /**
@@ -430,7 +434,7 @@ class TransactionOptimizationService {
   private startPerformanceMonitoring(): void {
     this.memoryCleanupInterval = setInterval(() => {
       const cutoffTime = Date.now() - (60 * 60 * 1000); // 1 hour ago
-      
+
       for (const [signature, metrics] of this.performanceMetrics.entries()) {
         if (metrics.processingTime < cutoffTime) {
           this.performanceMetrics.delete(signature);

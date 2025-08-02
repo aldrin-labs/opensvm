@@ -114,7 +114,12 @@ export interface KeyValidation {
   keyId?: string;
   userId?: string;
   permissions?: string[];
-  remainingQuota?: QuotaInfo;
+  remainingQuota?: {
+    used: number;
+    limit: number;
+    remaining: number;
+    resetTime?: Date;
+  };
   error?: string;
   isAdmin?: boolean;
 }

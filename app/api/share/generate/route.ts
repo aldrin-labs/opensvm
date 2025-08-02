@@ -207,12 +207,89 @@ async function fetchEntityData(
 }
 
 /**
- * Generate AI-powered description (placeholder for now)
+ * Generate AI-powered description using OpenAI or other AI service
  */
-async function generateAIDescription(_prompt: string): Promise<string | null> {
-  // TODO: Integrate with OpenAI or other AI service
-  // For now, return null to use fallback
-  return null;
+async function generateAIDescription(prompt: string): Promise<string | null> {
+  try {
+    // Check if AI service is configured
+    const openaiApiKey = process.env.OPENAI_API_KEY;
+    const anthropicApiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!openaiApiKey && !anthropicApiKey) {
+      console.warn('No AI service API key configured, skipping AI description');
+      return null;
+    }
+
+    // Try OpenAI first, then Anthropic as fallback
+    if (openaiApiKey) {
+      try {
+        const openaiModule = await import('openai');
+        const openai = new openaiModule.OpenAI({
+          apiKey: openaiApiKey,
+        });
+
+        const completion = await openai.chat.completions.create({
+          model: 'gpt-3.5-turbo',
+          messages: [
+            {
+              role: 'system',
+              content: 'You are a helpful assistant that generates concise, engaging descriptions for blockchain entities. Keep descriptions under 200 characters and make them informative and shareable.'
+            },
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+          max_tokens: 150,
+          temperature: 0.7,
+        });
+
+        const description = completion.choices[0]?.message?.content?.trim();
+        if (description) {
+          console.log('Generated AI description using OpenAI');
+          return description;
+        }
+      } catch (error) {
+        console.warn('OpenAI request failed, trying Anthropic:', error);
+      }
+    }
+
+    // Try Anthropic as fallback
+    if (anthropicApiKey) {
+      try {
+        const anthropicModule = await import('@anthropic-ai/sdk');
+        const anthropic = new anthropicModule.Anthropic({
+          apiKey: anthropicApiKey,
+        });
+
+        const message = await anthropic.messages.create({
+          model: 'claude-3-haiku-20240307',
+          max_tokens: 150,
+          messages: [
+            {
+              role: 'user',
+              content: prompt
+            }
+          ],
+        });
+
+        const content = message.content[0];
+        const description = content && 'text' in content ? content.text?.trim() : null;
+        if (description) {
+          console.log('Generated AI description using Anthropic');
+          return description;
+        }
+      } catch (error) {
+        console.warn('Anthropic request failed:', error);
+      }
+    }
+
+    console.warn('All AI services failed, using fallback description');
+    return null;
+  } catch (error) {
+    console.error('Error generating AI description:', error);
+    return null;
+  }
 }
 
 export async function POST(req: NextRequest) {

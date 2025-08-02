@@ -6,7 +6,6 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { VantaBackground } from './VantaBackground';
 import { CustomScrollbar } from './CustomScrollbar';
 import { NewMessageBadge } from './NewMessageBadge';
-import { VirtualizedMessageList } from './VirtualizedMessageList';
 
 interface ChatUIProps {
   messages: Message[];
@@ -43,11 +42,9 @@ export function ChatUI({
   onRetryAction,
   onVoiceRecord,
   isRecording,
-  variant = 'inline',
-  enableVirtualization = true
+  variant = 'inline'
 }: ChatUIProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
 
   // State for new message tracking
@@ -312,9 +309,9 @@ export function ChatUI({
                           >
                             <div
                               className={`w-2 h-2 rounded-full ${action.status === 'completed' ? 'bg-green-500' :
-                                  action.status === 'failed' ? 'bg-red-500' :
-                                    action.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' :
-                                      'bg-yellow-500'
+                                action.status === 'failed' ? 'bg-red-500' :
+                                  action.status === 'in_progress' ? 'bg-yellow-500 animate-pulse' :
+                                    'bg-yellow-500'
                                 }`}
                               aria-hidden="true"
                             />

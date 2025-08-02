@@ -22,10 +22,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   // Effect to initialize theme on client-side only
   useEffect(() => {
+    // Use getSystemTheme for automatic theme detection when no saved preference
     const savedTheme = localStorage.getItem('theme') as Theme;
+    const systemTheme = getSystemTheme();
     // Reset to cyberpunk if no theme is saved or if the saved theme is the old default (dos)
     if (!savedTheme) {
-      setTheme('cyberpunk');
+      console.log(`No saved theme found, using system theme: ${systemTheme}`);
+      setTheme(systemTheme);
     } else if (['paper', 'high-contrast', 'dos-blue', 'cyberpunk', 'solarized'].includes(savedTheme)) {
       setTheme(savedTheme);
     }

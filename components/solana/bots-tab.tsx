@@ -101,13 +101,13 @@ export function BotsTab() {
 
   const getSortedAndFilteredBots = () => {
     if (!data) return [];
-    
+
     let filteredBots = data.bots;
-    
+
     if (filterBy !== 'all') {
       filteredBots = filteredBots.filter(bot => bot.platform === filterBy);
     }
-    
+
     return filteredBots.sort((a, b) => {
       switch (sortBy) {
         case 'likes':
@@ -159,12 +159,12 @@ export function BotsTab() {
       try {
         setLoading(true);
         setError(null);
-        
+
         const response = await fetch('/api/analytics/bots');
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const result = await response.json();
         setData(result);
       } catch (err) {
@@ -216,7 +216,7 @@ export function BotsTab() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center space-x-2">
             <Users className="h-5 w-5 text-primary" />
@@ -259,7 +259,7 @@ export function BotsTab() {
             </div>
           </div>
         </div>
-        
+
         <div className="bg-card p-4 rounded-lg border">
           <div className="flex items-center space-x-2">
             <Bot className="h-5 w-5 text-indigo-500" />
@@ -305,11 +305,10 @@ export function BotsTab() {
             <button
               key={key}
               onClick={() => setFilterBy(key as any)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                filterBy === key
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${filterBy === key
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+                }`}
             >
               {label}
             </button>
@@ -327,11 +326,10 @@ export function BotsTab() {
             <button
               key={key}
               onClick={() => setSortBy(key as any)}
-              className={`px-3 py-1 text-sm rounded-md transition-colors ${
-                sortBy === key
+              className={`px-3 py-1 text-sm rounded-md transition-colors ${sortBy === key
                   ? 'bg-primary text-primary-foreground'
                   : 'bg-muted text-muted-foreground hover:bg-muted/80'
-              }`}
+                }`}
             >
               {label}
             </button>
@@ -345,7 +343,7 @@ export function BotsTab() {
           <h3 className="text-lg font-semibold">Trading & Analytics Bots</h3>
           <p className="text-sm text-muted-foreground">Comprehensive directory of Solana ecosystem bots</p>
         </div>
-        
+
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50">
@@ -374,10 +372,14 @@ export function BotsTab() {
                         <div className="flex items-center space-x-2">
                           <span className="font-medium">{bot.name}</span>
                           {bot.isVerified && (
-                            <Shield className="h-4 w-4 text-primary" title="Verified" />
+                            <span title="Verified">
+                              <Shield className="h-4 w-4 text-primary" />
+                            </span>
                           )}
                           {bot.isPremium && (
-                            <Crown className="h-4 w-4 text-yellow-500" title="Premium" />
+                            <span title="Premium">
+                              <Crown className="h-4 w-4 text-yellow-500" />
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground max-w-xs truncate">{bot.description}</p>
@@ -424,12 +426,11 @@ export function BotsTab() {
                   </td>
                   <td className="px-4 py-4">
                     <div className="flex items-center space-x-2">
-                      <Heart 
-                        className={`h-4 w-4 cursor-pointer transition-colors ${
-                          likedBots.has(bot.name) 
-                            ? 'text-destructive fill-current' 
+                      <Heart
+                        className={`h-4 w-4 cursor-pointer transition-colors ${likedBots.has(bot.name)
+                            ? 'text-destructive fill-current'
                             : 'text-muted-foreground hover:text-destructive'
-                        }`}
+                          }`}
                         onClick={() => handleLike(bot.name)}
                       />
                       <span className="text-sm font-medium">{bot.likes}</span>
@@ -448,13 +449,12 @@ export function BotsTab() {
                           <span>Use</span>
                         </a>
                       )}
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                        bot.pricing === 'free' 
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${bot.pricing === 'free'
                           ? 'bg-primary text-primary dark:bg-primary/30 dark:text-primary'
                           : bot.pricing === 'freemium'
-                          ? 'bg-accent text-accent dark:bg-accent/30 dark:text-accent'
-                          : 'bg-destructive text-destructive dark:bg-destructive/30 dark:text-destructive'
-                      }`}>
+                            ? 'bg-accent text-accent dark:bg-accent/30 dark:text-accent'
+                            : 'bg-destructive text-destructive dark:bg-destructive/30 dark:text-destructive'
+                        }`}>
                         {bot.pricing}
                       </span>
                     </div>

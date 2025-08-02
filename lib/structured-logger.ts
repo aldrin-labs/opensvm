@@ -126,7 +126,7 @@ class PerformanceTimer {
 
   constructor() {
     this.startTime = performance.now();
-    
+
     if (typeof process !== 'undefined' && process.memoryUsage) {
       this.startMemory = process.memoryUsage().heapUsed;
     }
@@ -238,9 +238,9 @@ export class StructuredLogger {
     duration: number,
     data?: Record<string, any>
   ): void {
-    const level = statusCode >= 500 ? LogLevel.ERROR : 
-                 statusCode >= 400 ? LogLevel.WARN : LogLevel.INFO;
-    
+    const level = statusCode >= 500 ? LogLevel.ERROR :
+      statusCode >= 400 ? LogLevel.WARN : LogLevel.INFO;
+
     this.log(level, LogContext.API, `${method} ${url} - ${statusCode}`, {
       ...data,
       method,
@@ -293,9 +293,9 @@ export class StructuredLogger {
     data?: Record<string, any>
   ): void {
     const level = severity === 'critical' ? LogLevel.FATAL :
-                 severity === 'high' ? LogLevel.ERROR :
-                 severity === 'medium' ? LogLevel.WARN : LogLevel.INFO;
-    
+      severity === 'high' ? LogLevel.ERROR :
+        severity === 'medium' ? LogLevel.WARN : LogLevel.INFO;
+
     this.log(level, LogContext.SECURITY, `Security: ${event}`, {
       ...data,
       event,
@@ -363,20 +363,24 @@ export class StructuredLogger {
    */
   private redactSensitiveData(data: Record<string, any>): Record<string, any> {
     const redacted = { ...data };
-    
+
     const redactValue = (obj: any, key: string): void => {
-      if (this.config.redactFields.some(field => 
+      if (this.config.redactFields.some(field =>
         key.toLowerCase().includes(field.toLowerCase())
       )) {
         obj[key] = '[REDACTED]';
       } else if (typeof obj[key] === 'object' && obj[key] !== null) {
-        this.redactObject(obj[key]);
+        redactObject(obj[key]);
       }
     };
 
     const redactObject = (obj: any): void => {
       if (Array.isArray(obj)) {
         obj.forEach((item, index) => {
+          // Use index for array item tracking in debug mode
+          if (typeof item === 'object' && item !== null) {
+            console.log(`Processing array item at index ${index} for redaction`);
+          }
           if (typeof item === 'object' && item !== null) {
             redactObject(item);
           }
@@ -395,7 +399,7 @@ export class StructuredLogger {
    */
   private addToBuffer(entry: LogEntry): void {
     this.buffer.push(entry);
-    
+
     if (this.buffer.length >= this.config.maxBufferSize) {
       this.flush();
     }
@@ -407,10 +411,10 @@ export class StructuredLogger {
   private logToConsole(entry: LogEntry): void {
     const { timestamp, levelName, context, message, data, error } = entry;
     const prefix = `[${timestamp}] ${levelName} [${context}]`;
-    
+
     const consoleMethod = entry.level >= LogLevel.ERROR ? 'error' :
-                         entry.level >= LogLevel.WARN ? 'warn' : 'log';
-    
+      entry.level >= LogLevel.WARN ? 'warn' : 'log';
+
     if (process.env.NODE_ENV === 'development') {
       // Pretty format for development
       console[consoleMethod](`${prefix} ${message}`);
@@ -482,34 +486,34 @@ export const logger = new StructuredLogger();
 export const log = {
   debug: (context: LogContext, message: string, data?: Record<string, any>) =>
     logger.debug(context, message, data),
-  
+
   info: (context: LogContext, message: string, data?: Record<string, any>) =>
     logger.info(context, message, data),
-  
+
   warn: (context: LogContext, message: string, data?: Record<string, any>) =>
     logger.warn(context, message, data),
-  
+
   error: (context: LogContext, message: string, error?: Error, data?: Record<string, any>) =>
     logger.error(context, message, error, data),
-  
+
   fatal: (context: LogContext, message: string, error?: Error, data?: Record<string, any>) =>
     logger.fatal(context, message, error, data),
-  
+
   performance: (context: LogContext, operation: string, timer: PerformanceTimer, data?: Record<string, any>) =>
     logger.performance(context, operation, timer, data),
-  
+
   api: (method: string, url: string, statusCode: number, duration: number, data?: Record<string, any>) =>
     logger.apiRequest(method, url, statusCode, duration, data),
-  
+
   blockchain: (operation: string, signature?: string, data?: Record<string, any>, error?: Error) =>
     logger.blockchain(operation, signature, data, error),
-  
+
   auth: (event: string, userId?: string, wallet?: string, success?: boolean, data?: Record<string, any>) =>
     logger.auth(event, userId, wallet, success, data),
-  
+
   security: (event: string, severity: 'low' | 'medium' | 'high' | 'critical', data?: Record<string, any>) =>
     logger.security(event, severity, data),
-  
+
   timer: () => logger.startTimer()
 };
 
@@ -528,9 +532,9 @@ export function logPerformance(context: LogContext, operation?: string) {
         logger.performance(context, operationName, timer, { args: args.length });
         return result;
       } catch (error) {
-        logger.performance(context, operationName, timer, { 
-          args: args.length, 
-          error: true 
+        logger.performance(context, operationName, timer, {
+          args: args.length,
+          error: true
         });
         throw error;
       }
@@ -552,11 +556,11 @@ if (typeof process !== 'undefined') {
   process.on('exit', () => {
     logger.destroy();
   });
-  
+
   process.on('SIGINT', () => {
     logger.destroy().then(() => process.exit(0));
   });
-  
+
   process.on('SIGTERM', () => {
     logger.destroy().then(() => process.exit(0));
   });

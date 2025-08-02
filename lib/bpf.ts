@@ -8,59 +8,59 @@ function toHex(num: number, width: number = 2): string {
 // BPF instruction classes
 const BPF = {
   // Classes
-  LD    : 0x00, // Load
-  LDX   : 0x01, // Load from register
-  ST    : 0x02, // Store
-  STX   : 0x03, // Store to register
-  ALU   : 0x04, // Arithmetic operations
-  JMP   : 0x05, // Jump operations
-  JMP32 : 0x06, // Jump operations (32-bit)
-  ALU64 : 0x07, // 64-bit arithmetic operations
+  LD: 0x00, // Load
+  LDX: 0x01, // Load from register
+  ST: 0x02, // Store
+  STX: 0x03, // Store to register
+  ALU: 0x04, // Arithmetic operations
+  JMP: 0x05, // Jump operations
+  JMP32: 0x06, // Jump operations (32-bit)
+  ALU64: 0x07, // 64-bit arithmetic operations
 
   // Sizes
-  W  : 0x00, // Word (32-bit)
-  H  : 0x08, // Half-word (16-bit)
-  B  : 0x10, // Byte (8-bit)
-  DW : 0x18, // Double-word (64-bit)
+  W: 0x00, // Word (32-bit)
+  H: 0x08, // Half-word (16-bit)
+  B: 0x10, // Byte (8-bit)
+  DW: 0x18, // Double-word (64-bit)
 
   // Modes
-  IMM  : 0x00, // Immediate value
-  ABS  : 0x20, // Absolute
-  IND  : 0x40, // Indirect
-  MEM  : 0x60, // Memory
-  XADD : 0xc0, // Atomic add
+  IMM: 0x00, // Immediate value
+  ABS: 0x20, // Absolute
+  IND: 0x40, // Indirect
+  MEM: 0x60, // Memory
+  XADD: 0xc0, // Atomic add
 
   // ALU operations
-  ADD  : 0x00, // Add
-  SUB  : 0x10, // Subtract
-  MUL  : 0x20, // Multiply
-  DIV  : 0x30, // Divide
-  OR   : 0x40, // Bitwise OR
-  AND  : 0x50, // Bitwise AND
-  LSH  : 0x60, // Left shift
-  RSH  : 0x70, // Right shift
-  NEG  : 0x80, // Negate
-  MOD  : 0x90, // Modulo
-  XOR  : 0xa0, // Bitwise XOR
-  MOV  : 0xb0, // Move
-  ARSH : 0xc0, // Arithmetic right shift
-  END  : 0xd0, // Endianness conversion
+  ADD: 0x00, // Add
+  SUB: 0x10, // Subtract
+  MUL: 0x20, // Multiply
+  DIV: 0x30, // Divide
+  OR: 0x40, // Bitwise OR
+  AND: 0x50, // Bitwise AND
+  LSH: 0x60, // Left shift
+  RSH: 0x70, // Right shift
+  NEG: 0x80, // Negate
+  MOD: 0x90, // Modulo
+  XOR: 0xa0, // Bitwise XOR
+  MOV: 0xb0, // Move
+  ARSH: 0xc0, // Arithmetic right shift
+  END: 0xd0, // Endianness conversion
 
   // Jump operations
-  JA   : 0x00, // Jump always
-  JEQ  : 0x10, // Jump if equal
-  JGT  : 0x20, // Jump if greater than
-  JGE  : 0x30, // Jump if greater or equal
-  JSET : 0x40, // Jump if bits set
-  JNE  : 0x50, // Jump if not equal
-  JSGT : 0x60, // Jump if greater than (signed)
-  JSGE : 0x70, // Jump if greater or equal (signed)
-  CALL : 0x80, // Function call
-  EXIT : 0x90, // Return from program
-  JLT  : 0xa0, // Jump if less than
-  JLE  : 0xb0, // Jump if less or equal
-  JSLT : 0xc0, // Jump if less than (signed)
-  JSLE : 0xd0, // Jump if less or equal (signed)
+  JA: 0x00, // Jump always
+  JEQ: 0x10, // Jump if equal
+  JGT: 0x20, // Jump if greater than
+  JGE: 0x30, // Jump if greater or equal
+  JSET: 0x40, // Jump if bits set
+  JNE: 0x50, // Jump if not equal
+  JSGT: 0x60, // Jump if greater than (signed)
+  JSGE: 0x70, // Jump if greater or equal (signed)
+  CALL: 0x80, // Function call
+  EXIT: 0x90, // Return from program
+  JLT: 0xa0, // Jump if less than
+  JLE: 0xb0, // Jump if less or equal
+  JSLT: 0xc0, // Jump if less than (signed)
+  JSLE: 0xd0, // Jump if less or equal (signed)
 };
 
 // Register descriptions
@@ -114,7 +114,7 @@ function getRegName(reg: number): string {
 }
 
 function getRegDesc(reg: number): string {
-  return REG_DESC[reg] || 'Unknown register';
+  return (REG_DESC as Record<number, string>)[reg] || 'Unknown register';
 }
 
 function formatImm(imm: number): string {
@@ -136,20 +136,20 @@ export interface DecodedInstruction {
 export function decodeInstruction(instruction: number | bigint | { opcode: number; dst_reg: number; src_reg: number; offset: number; imm: number }): DecodedInstruction {
   // Handle both raw number/bigint and instruction object formats
   let opcode: number, dst_reg: number, src_reg: number, offset: number, imm: number;
-  
+
   if (typeof instruction === 'number' || typeof instruction === 'bigint') {
     // Convert to BigInt for proper 64-bit handling if not already
     const bigInstruction = BigInt(instruction);
-    
+
     // Extract fields using BigInt operations
     opcode = Number(bigInstruction & 0xffn);
     dst_reg = Number((bigInstruction >> 8n) & 0xfn);
     src_reg = Number((bigInstruction >> 12n) & 0xfn);
-    
+
     // Handle offset as signed 16-bit value using BigInt for sign extension
     const offsetBig = (bigInstruction >> 16n) & 0xffffn;
     offset = Number((offsetBig << 48n) >> 48n); // Sign extend using BigInt shifts
-    
+
     // Handle immediate as signed 32-bit value using BigInt for sign extension
     const immBig = (bigInstruction >> 32n) & 0xffffffffn;
     imm = Number((immBig << 32n) >> 32n); // Sign extend using BigInt shifts

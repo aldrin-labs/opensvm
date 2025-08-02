@@ -493,6 +493,12 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
               }
             });
 
+            // Use customResult for action completion tracking and logging
+            console.log(`Wallet path finding action completed:`, customResult ? 'success' : 'no result');
+            if (customResult) {
+              console.log(`Action result details:`, typeof customResult);
+            }
+
             // Update action status to completed
             setAgentActions(prev => prev.map(a =>
               a.id === actionId

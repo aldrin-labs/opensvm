@@ -10,17 +10,12 @@
  */
 
 import {
-  Connection,
   PublicKey,
   ParsedTransactionWithMeta,
-  ParsedInstruction,
-  PartiallyDecodedInstruction,
-  AccountMeta,
-  ParsedMessageAccount,
   AccountInfo as SolanaAccountInfo,
-  BlockResponse,
   VersionedBlockResponse
 } from '@solana/web3.js';
+// Note: Connection, AccountMeta, ParsedMessageAccount, BlockResponse, ParsedInstruction, PartiallyDecodedInstruction removed as they're not currently used
 import { getConnection as getProxyConnection } from './solana-connection';
 export { getConnection } from './solana-connection';
 
@@ -355,7 +350,8 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
               const match = log.match(/Transfer (\d+) tokens/);
               if (match) {
                 const amount = parseInt(match[1]);
-                const mintAddress = tx.transaction.message.getAccountKeys?.()?.[1]?.toString();
+                const accountKeys = tx.transaction.message.getAccountKeys?.();
+                const mintAddress = accountKeys?.get(1)?.toString();
                 if (mintAddress) {
                   tokenTransfers.set(
                     mintAddress,
@@ -371,7 +367,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
       if (tx.meta) {
         totalFees += tx.meta.fee ?? 0;
         tx.meta.preBalances?.forEach((pre, index) => {
-          const post = tx.meta.postBalances?.[index];
+          const post = tx.meta!.postBalances?.[index];
           if (post !== undefined && post < pre) {
             totalSolVolume += (pre - post);
           }
@@ -435,7 +431,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
       error: error.message || error,
       stack: error.stack,
       slot,
-      endpoint: connection.rpcEndpoint
+      endpoint: connection?.rpcEndpoint || 'unknown'
     });
 
     if (error.message?.includes('429') || error.message?.includes('Too many requests')) {
@@ -470,7 +466,7 @@ export async function getRPCLatency(): Promise<number> {
 export async function getTransactionDetails(signature: string): Promise<DetailedTransactionInfo> {
   try {
     const connection = await getProxyConnection();
-    const tx = await connection.getParsedTransaction(signature, {
+    const tx: ParsedTransactionWithMeta | null = await connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
       commitment: 'confirmed'
     });
@@ -529,7 +525,7 @@ export async function getRecentTransactions(address: string, limit: number = 100
     const transactions = await Promise.all(
       signatures.slice(0, limit).map(async (sig) => {
         try {
-          const tx = await connection.getParsedTransaction(sig.signature, {
+          const tx: ParsedTransactionWithMeta | null = await connection.getParsedTransaction(sig.signature, {
             maxSupportedTransactionVersion: 0,
             commitment: 'confirmed'
           });

@@ -96,8 +96,8 @@ interface MockTransactionDB {
 }
 
 class RelatedTransactionFinder {
-  private transactionCache = new Map<string, DetailedTransactionInfo>();
-  private relationshipCache = new Map<string, RelatedTransactionResult>();
+  private transactionCache = new Map<string, { data: DetailedTransactionInfo; timestamp: number }>();
+  private relationshipCache = new Map<string, { data: RelatedTransactionResult; timestamp: number }>();
   private readonly cacheTimeout = 5 * 60 * 1000; // 5 minutes
 
   // Mock database - in production this would connect to actual blockchain data
@@ -114,7 +114,15 @@ class RelatedTransactionFinder {
     const startTime = Date.now();
 
     try {
-      // Check cache first using the new caching system
+      // Check local cache first
+      const cacheKey = this.generateCacheKey(query);
+      const localCached = this.relationshipCache.get(cacheKey);
+      if (localCached && Date.now() - localCached.timestamp < this.cacheTimeout) {
+        console.log(`Using local cached related transactions for ${query.signature}`);
+        return localCached.data;
+      }
+
+      // Check external cache system
       const cachedResult = await transactionAnalysisCache.getCachedRelatedTransactions(
         query.signature,
         query
@@ -155,6 +163,9 @@ class RelatedTransactionFinder {
         relationshipSummary,
         insights
       };
+
+      // Cache result locally
+      this.relationshipCache.set(cacheKey, { data: result, timestamp: Date.now() });
 
       // Cache result using the new caching system
       await transactionAnalysisCache.cacheRelatedTransactions(
@@ -226,7 +237,7 @@ class RelatedTransactionFinder {
     // Search for transactions with shared accounts
     const candidates = await this.searchTransactionsByAccounts(
       sourceAccounts,
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -246,7 +257,7 @@ class RelatedTransactionFinder {
           related.push({
             signature: candidate.signature,
             slot: candidate.slot,
-            blockTime: candidate.blockTime,
+            blockTime: candidate.blockTime ?? null,
             relationship,
             relevanceScore: relationship.confidence,
             summary: this.generateTransactionSummary(candidate),
@@ -275,7 +286,7 @@ class RelatedTransactionFinder {
     // Search for transactions using the same programs
     const candidates = await this.searchTransactionsByPrograms(
       sourcePrograms,
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -295,7 +306,7 @@ class RelatedTransactionFinder {
           related.push({
             signature: candidate.signature,
             slot: candidate.slot,
-            blockTime: candidate.blockTime,
+            blockTime: candidate.blockTime ?? null,
             relationship,
             relevanceScore: relationship.confidence,
             summary: this.generateTransactionSummary(candidate),
@@ -322,7 +333,7 @@ class RelatedTransactionFinder {
 
     // Search for transactions in time window
     const candidates = await this.searchTransactionsByTimeWindow(
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -335,7 +346,7 @@ class RelatedTransactionFinder {
         related.push({
           signature: candidate.signature,
           slot: candidate.slot,
-          blockTime: candidate.blockTime,
+          blockTime: candidate.blockTime ?? null,
           relationship,
           relevanceScore: relationship.confidence,
           summary: this.generateTransactionSummary(candidate),
@@ -367,7 +378,7 @@ class RelatedTransactionFinder {
     const tokenMints = sourceTokenTransfers.map(t => t.mint);
     const candidates = await this.searchTransactionsByTokens(
       tokenMints,
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -386,7 +397,7 @@ class RelatedTransactionFinder {
         related.push({
           signature: candidate.signature,
           slot: candidate.slot,
-          blockTime: candidate.blockTime,
+          blockTime: candidate.blockTime ?? null,
           relationship,
           relevanceScore: relationship.confidence,
           summary: this.generateTransactionSummary(candidate),
@@ -427,7 +438,7 @@ class RelatedTransactionFinder {
     // Search for transactions using the same DeFi protocols
     const candidates = await this.searchTransactionsByPrograms(
       sourceDeFiPrograms,
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -448,7 +459,7 @@ class RelatedTransactionFinder {
           related.push({
             signature: candidate.signature,
             slot: candidate.slot,
-            blockTime: candidate.blockTime,
+            blockTime: candidate.blockTime ?? null,
             relationship,
             relevanceScore: relationship.confidence,
             summary: this.generateTransactionSummary(candidate),
@@ -477,7 +488,7 @@ class RelatedTransactionFinder {
     // Look for transactions that might be part of a sequence
     const candidates = await this.searchTransactionsByAccounts(
       sourceAccounts,
-      sourceTransaction.blockTime,
+      sourceTransaction.blockTime ?? null,
       timeWindow
     );
 
@@ -498,7 +509,7 @@ class RelatedTransactionFinder {
         related.push({
           signature: candidate.signature,
           slot: candidate.slot,
-          blockTime: candidate.blockTime,
+          blockTime: candidate.blockTime ?? null,
           relationship,
           relevanceScore: relationship.confidence,
           summary: this.generateTransactionSummary(candidate),
@@ -749,13 +760,14 @@ class RelatedTransactionFinder {
     const accounts = new Set<string>();
 
     // Add accounts from transaction message
-    transaction.transaction.message.accountKeys.forEach(account => {
+    transaction.transaction?.message.accountKeys.forEach(account => {
       accounts.add(account.pubkey.toString());
     });
 
-    // Add accounts from parsed instructions
-    transaction.parsedInstructions?.forEach(instruction => {
-      instruction.accounts?.forEach(account => {
+    // Add accounts from parsed instructions (if available)
+    const parsedInstructions = (transaction as any).parsedInstructions;
+    parsedInstructions?.forEach((instruction: any) => {
+      instruction.accounts?.forEach((account: any) => {
         accounts.add(account);
       });
     });
@@ -766,7 +778,8 @@ class RelatedTransactionFinder {
   private extractPrograms(transaction: DetailedTransactionInfo): string[] {
     const programs = new Set<string>();
 
-    transaction.parsedInstructions?.forEach(instruction => {
+    const parsedInstructions = (transaction as any).parsedInstructions;
+    parsedInstructions?.forEach((instruction: any) => {
       if (instruction.programId) {
         programs.add(instruction.programId);
       }
@@ -778,9 +791,10 @@ class RelatedTransactionFinder {
   private extractTokenTransfers(transaction: DetailedTransactionInfo): TokenTransfer[] {
     const transfers: TokenTransfer[] = [];
 
-    // Extract from account changes
-    transaction.accountChanges?.forEach(change => {
-      change.tokenChanges?.forEach(tokenChange => {
+    // Extract from account changes (if available)
+    const accountChanges = (transaction as any).accountChanges;
+    accountChanges?.forEach((change: any) => {
+      change.tokenChanges?.forEach((tokenChange: any) => {
         transfers.push({
           mint: tokenChange.mint,
           symbol: this.getTokenSymbol(tokenChange.mint),
@@ -841,7 +855,8 @@ class RelatedTransactionFinder {
   private generateTransactionSummary(transaction: DetailedTransactionInfo): string {
     const programs = this.extractPrograms(transaction);
     const accounts = this.extractAccounts(transaction);
-    const instructionCount = transaction.parsedInstructions?.length || 0;
+    const parsedInstructions = (transaction as any).parsedInstructions;
+    const instructionCount = parsedInstructions?.length || 0;
 
     if (programs.length > 0) {
       const programNames = programs.map(p => this.getProgramName(p)).join(', ');
@@ -852,7 +867,7 @@ class RelatedTransactionFinder {
   }
 
   private generateTransactionInsights(
-    sourceTransaction: DetailedTransactionInfo,
+    _sourceTransaction: DetailedTransactionInfo,
     relatedTransactions: RelatedTransaction[]
   ): TransactionInsight[] {
     const insights: TransactionInsight[] = [];
@@ -1071,15 +1086,17 @@ class RelatedTransactionFinder {
         signature: `mock-${searchType}-${i}-${Date.now()}-${Math.random().toString(36).substring(7)}`,
         slot: Math.floor(Math.random() * 1000000) + 100000,
         blockTime: mockTime,
-        success: Math.random() > 0.1, // 90% success rate
+        success: Math.random() > 0.1, // 90% success rate,
+        timestamp: Date.now(),
+        type: 'unknown',
         parsedInstructions: this.generateMockInstructions(searchCriteria, searchType),
         accountChanges: this.generateMockAccountChanges(),
         transaction: {
           message: {
             accountKeys: this.generateMockAccountKeys(searchCriteria, searchType)
           }
-        } as any
-      });
+        }
+      } as any);
     }
 
     return transactions;
@@ -1207,14 +1224,16 @@ class RelatedTransactionFinder {
 
   private async getTransaction(signature: string): Promise<DetailedTransactionInfo | null> {
     // Check cache first
-    if (this.transactionCache.has(signature)) {
-      return this.transactionCache.get(signature)!;
+    // Check cache with expiration
+    const cached = this.transactionCache.get(signature);
+    if (cached && Date.now() - cached.timestamp < this.cacheTimeout) {
+      return cached.data;
     }
 
     // Check mock database
     if (this.mockDB[signature]) {
       const transaction = this.mockDB[signature];
-      this.transactionCache.set(signature, transaction);
+      this.transactionCache.set(signature, { data: transaction, timestamp: Date.now() });
       return transaction;
     }
 
@@ -1224,11 +1243,13 @@ class RelatedTransactionFinder {
 
   private initializeMockData(): void {
     // Initialize with some sample transactions for testing
-    const sampleTransaction: DetailedTransactionInfo = {
+    const sampleTransaction = {
       signature: 'sample-transaction-signature-123',
       slot: 123456,
       blockTime: Date.now() - 60000, // 1 minute ago
       success: true,
+      timestamp: Date.now(),
+      type: 'token',
       parsedInstructions: [
         {
           programId: 'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB',
@@ -1261,8 +1282,8 @@ class RelatedTransactionFinder {
             { pubkey: { toString: () => 'account3' } }
           ]
         }
-      } as any
-    };
+      }
+    } as unknown as DetailedTransactionInfo;
 
     this.mockDB['sample-transaction-signature-123'] = sampleTransaction;
   }

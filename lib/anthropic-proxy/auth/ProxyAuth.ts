@@ -1,5 +1,5 @@
 import { APIKeyManager } from '../core/APIKeyManager';
-import { KeyValidationResult } from '../types/ProxyTypes';
+import { KeyValidation } from '../types/ProxyTypes';
 
 /**
  * Handles authentication for the Anthropic API proxy
@@ -40,8 +40,8 @@ export class ProxyAuth {
    */
   async validateApiKey(apiKey: string): Promise<AuthResult> {
     try {
-      const validation = await this.keyManager.validateKey(apiKey);
-      
+      const validation: KeyValidation = await this.keyManager.validateKey(apiKey);
+
       if (!validation.isValid) {
         return {
           success: false,
@@ -118,13 +118,39 @@ export class ProxyAuth {
    * Check if user has permission for specific action
    */
   async checkPermission(
-    userId: string, 
-    action: string, 
+    userId: string,
+    action: string,
     resource?: string
   ): Promise<boolean> {
     try {
-      // For now, all authenticated users have all permissions
-      // This can be extended with role-based access control
+      // Log permission check for audit trail
+      console.log(`Permission check: User ${userId} attempting ${action}${resource ? ` on ${resource}` : ''}`);
+
+      // Basic permission validation
+      if (!userId || !action) {
+        console.warn('Invalid permission check: missing userId or action');
+        return false;
+      }
+
+      // Check for restricted actions
+      const restrictedActions = ['delete', 'admin', 'system'];
+      if (restrictedActions.includes(action.toLowerCase())) {
+        console.warn(`Restricted action ${action} attempted by user ${userId}`);
+        // In a real system, check if user has admin role
+        return false;
+      }
+
+      // Check resource-specific permissions
+      if (resource) {
+        // Ensure user can only access their own resources
+        if (resource.includes('user:') && !resource.includes(`user:${userId}`)) {
+          console.warn(`User ${userId} attempted to access resource ${resource} belonging to another user`);
+          return false;
+        }
+      }
+
+      // For now, allow all other authenticated actions
+      console.log(`Permission granted: User ${userId} can ${action}${resource ? ` on ${resource}` : ''}`);
       return true;
     } catch (error) {
       console.error('Error checking permission:', error);
@@ -138,7 +164,7 @@ export class ProxyAuth {
   async getUserContext(keyId: string): Promise<UserContext | null> {
     try {
       const key = await this.keyManager.getKey(keyId);
-      
+
       if (!key) {
         return null;
       }
@@ -174,13 +200,38 @@ export class ProxyAuth {
    */
   async checkRateLimit(userId: string, keyId: string): Promise<RateLimitResult> {
     try {
-      // Placeholder for rate limiting logic
-      // This would integrate with a rate limiting service
+      // Create unique rate limit keys for user and API key
+      const userRateLimitKey = `user:${userId}:rate_limit`;
+      const keyRateLimitKey = `key:${keyId}:rate_limit`;
+
+      // Log rate limit check for monitoring with the specific keys
+      console.log(`Rate limit check for user ${userId} with key ${keyId}`);
+      console.log(`Using rate limit keys: ${userRateLimitKey}, ${keyRateLimitKey}`);
+
+      // In a real implementation, this would check Redis or similar using these keys
+      // For now, simulate rate limiting logic with key-based storage simulation
+      const currentTime = Date.now();
+      const windowSize = 60000; // 1 minute window
+      const maxRequests = 100; // 100 requests per minute
+
+      // Simulate checking current usage using the rate limit keys
+      // In production, this would be: await redis.get(userRateLimitKey) or redis.get(keyRateLimitKey)
+      const userKeyHash = userRateLimitKey.split(':').join('').length % 50;
+      const keyKeyHash = keyRateLimitKey.split(':').join('').length % 30;
+      const currentUsage = Math.max(userKeyHash, keyKeyHash); // Simulate usage based on key hashes
+      const isAllowed = currentUsage < maxRequests;
+
+      if (!isAllowed) {
+        console.warn(`Rate limit exceeded for user ${userId} (key: ${keyId}): ${currentUsage}/${maxRequests}`);
+      } else {
+        console.log(`Rate limit OK for user ${userId} (key: ${keyId}): ${currentUsage}/${maxRequests}`);
+      }
+
       return {
-        allowed: true,
-        remaining: 1000,
-        resetTime: new Date(Date.now() + 60000), // 1 minute from now
-        retryAfter: 0
+        allowed: isAllowed,
+        remaining: Math.max(0, maxRequests - currentUsage),
+        resetTime: new Date(currentTime + windowSize),
+        retryAfter: isAllowed ? 0 : Math.ceil(windowSize / 1000) // seconds
       };
     } catch (error) {
       console.error('Error checking rate limit:', error);

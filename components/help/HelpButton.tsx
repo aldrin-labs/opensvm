@@ -1,10 +1,9 @@
 'use client';
 
 import React from 'react';
-import { HelpCircleIcon, BookOpenIcon, PlayIcon } from 'lucide-react';
+import { HelpCircleIcon, PlayIcon } from 'lucide-react';
 import { useHelp } from './HelpProvider';
 import { useAccessibility } from '@/lib/accessibility-utils';
-import { useMobileDetection } from '@/lib/mobile-utils';
 
 interface HelpButtonProps {
   variant?: 'icon' | 'text' | 'tour';
@@ -12,20 +11,28 @@ interface HelpButtonProps {
   tourId?: string;
   className?: string;
   children?: React.ReactNode;
+  showTooltip?: boolean;
+  tooltipContent?: string;
+  onClick?: () => void;
 }
 
-const HelpButton: React.FC<HelpButtonProps> = ({
+export default function HelpButton({
   variant = 'icon',
   size = 'md',
-  tourId,
   className = '',
-  children
-}) => {
+  tourId,
+  children,
+  onClick
+}: HelpButtonProps) {
   const { toggleHelpPanel, startTour, trackHelpInteraction } = useHelp();
   const { isTouchDevice } = useAccessibility();
-  const { isMobile } = useMobileDetection();
 
   const handleClick = () => {
+    if (onClick) {
+      onClick();
+      return;
+    }
+
     if (tourId) {
       startTour(tourId);
       trackHelpInteraction('help_button_tour_start', tourId);
@@ -37,7 +44,7 @@ const HelpButton: React.FC<HelpButtonProps> = ({
 
   const getSizeClasses = () => {
     const touchPadding = isTouchDevice ? 'min-h-[44px] min-w-[44px]' : '';
-    
+
     switch (size) {
       case 'sm':
         return `p-1 ${touchPadding}`;
@@ -101,5 +108,3 @@ const HelpButton: React.FC<HelpButtonProps> = ({
     </button>
   );
 };
-
-export default HelpButton;

@@ -1,8 +1,11 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2, AlertTriangle, Server, TrendingUp, TrendingDown, MapPin, Users, Zap, Shield } from 'lucide-react';
+
+// Use TrendingDown for validator performance indicators
+const ValidatorTrendIcon = TrendingDown;
 import { TrendingCarousel } from './trending-carousel';
 
 interface ValidatorData {
@@ -77,12 +80,78 @@ export function ValidatorTab() {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(50);
   const [activeTab, setActiveTab] = useState<'validators' | 'rpc-nodes'>('validators');
+  const [highlightedValidator, setHighlightedValidator] = useState<string | null>(null);
+
+  // Refs for validator table rows
+  const validatorRowRefs = useRef<Map<string, HTMLTableRowElement>>(new Map());
+
+  // Function to scroll to and highlight a specific validator
+  const scrollToValidator = useCallback((voteAccount: string) => {
+    // Switch to validators tab if not already active
+    if (activeTab !== 'validators') {
+      setActiveTab('validators');
+    }
+
+    // Find the validator in the data to determine which page it's on
+    if (data?.validators) {
+      const validatorIndex = data.validators.findIndex(v => v.voteAccount === voteAccount);
+      if (validatorIndex !== -1) {
+        const targetPage = Math.floor(validatorIndex / itemsPerPage) + 1;
+
+        // If validator is on a different page, navigate to that page first
+        if (targetPage !== currentPage) {
+          setCurrentPage(targetPage);
+          // Highlight after page change
+          setTimeout(() => {
+            setHighlightedValidator(voteAccount);
+            setTimeout(() => setHighlightedValidator(null), 3000);
+          }, 100);
+          console.log(`Navigated to page ${targetPage} for validator:`, voteAccount);
+          return;
+        }
+      }
+    }
+
+    // Try to scroll to the row if it's on the current page
+    const rowElement = validatorRowRefs.current.get(voteAccount);
+    if (rowElement) {
+      // Scroll to the validator row with smooth behavior
+      rowElement.scrollIntoView({
+        behavior: 'smooth',
+        block: 'center'
+      });
+
+      // Highlight the validator row
+      setHighlightedValidator(voteAccount);
+
+      // Remove highlight after 3 seconds
+      setTimeout(() => {
+        setHighlightedValidator(null);
+      }, 3000);
+
+      console.log('Scrolled to validator:', voteAccount);
+    } else {
+      // If still not found, just highlight it (it might be rendered soon)
+      setHighlightedValidator(voteAccount);
+      setTimeout(() => setHighlightedValidator(null), 3000);
+      console.warn('Validator row not found, but highlighted:', voteAccount);
+    }
+  }, [activeTab, data?.validators, currentPage, itemsPerPage]);
+
+  // Function to set row ref
+  const setValidatorRowRef = useCallback((voteAccount: string, element: HTMLTableRowElement | null) => {
+    if (element) {
+      validatorRowRefs.current.set(voteAccount, element);
+    } else {
+      validatorRowRefs.current.delete(voteAccount);
+    }
+  }, []);
 
   const fetchValidatorData = async () => {
     try {
       const response = await fetch('/api/analytics/validators');
       const result = await response.json();
-      
+
       if (result.success) {
         setData(result.data);
         setError(null);
@@ -114,13 +183,13 @@ export function ValidatorTab() {
 
   const formatPercent = (value: number | undefined | null, isAlreadyPercent: boolean = false) => {
     if (value == null || isNaN(value)) return '0.00%';
-    
+
     // If value is already a percentage (0-100), don't multiply by 100
     const percent = isAlreadyPercent ? value : value * 100;
-    
+
     // Ensure percentage doesn't exceed 100%
     const clampedPercent = Math.min(Math.max(percent, 0), 100);
-    
+
     return `${clampedPercent.toFixed(2)}%`;
   };
 
@@ -274,10 +343,9 @@ export function ValidatorTab() {
       </div>
 
       {/* Trending Validators Carousel */}
-      <TrendingCarousel 
+      <TrendingCarousel
         onValidatorClick={(voteAccount) => {
-          // TODO: Implement scroll to validator in table or highlight
-          console.log('Clicked trending validator:', voteAccount);
+          scrollToValidator(voteAccount);
         }}
       />
 
@@ -290,11 +358,10 @@ export function ValidatorTab() {
                 setActiveTab('validators');
                 setCurrentPage(1);
               }}
-              className={`px-6 py-3 text-sm font-medium border-b-2 ${
-                activeTab === 'validators'
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground'
-              }`}
+              className={`px-6 py-3 text-sm font-medium border-b-2 ${activeTab === 'validators'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+                }`}
             >
               Consensus Validators ({data.validators.length})
             </button>
@@ -304,11 +371,10 @@ export function ValidatorTab() {
                   setActiveTab('rpc-nodes');
                   setCurrentPage(1);
                 }}
-                className={`px-6 py-3 text-sm font-medium border-b-2 ${
-                  activeTab === 'rpc-nodes'
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground'
-                }`}
+                className={`px-6 py-3 text-sm font-medium border-b-2 ${activeTab === 'rpc-nodes'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 RPC Nodes ({data.rpcNodes.length})
               </button>
@@ -382,7 +448,14 @@ export function ValidatorTab() {
                     {paginatedValidators.map((validator, index) => {
                       const globalIndex = (currentPage - 1) * itemsPerPage + index;
                       return (
-                        <tr key={validator.voteAccount} className="border-b hover:bg-muted/50">
+                        <tr
+                          key={validator.voteAccount}
+                          ref={(el) => setValidatorRowRef(validator.voteAccount, el)}
+                          className={`border-b hover:bg-muted/50 transition-colors ${highlightedValidator === validator.voteAccount
+                            ? 'bg-primary/20 ring-2 ring-primary/50'
+                            : ''
+                            }`}
+                        >
                           <td className="py-3 font-medium">#{globalIndex + 1}</td>
                           <td className="py-3">
                             <div>
@@ -403,10 +476,9 @@ export function ValidatorTab() {
                           <td className="py-3">{formatSOL(validator.activatedStake)}</td>
                           <td className="py-3">{formatPercent(validator.commission, true)}</td>
                           <td className="py-3">
-                            <div className={`font-medium ${
-                              validator.apy >= 7 ? 'text-accent' : 
+                            <div className={`font-medium ${validator.apy >= 7 ? 'text-accent' :
                               validator.apy >= 5 ? 'text-secondary' : 'text-destructive'
-                            }`}>
+                              }`}>
                               {validator.apy ? validator.apy.toFixed(2) : '0.00'}%
                             </div>
                           </td>
@@ -484,16 +556,15 @@ export function ValidatorTab() {
                         } else {
                           pageNum = currentPage - 2 + i;
                         }
-                        
+
                         return (
                           <button
                             key={pageNum}
                             onClick={() => setCurrentPage(pageNum)}
-                            className={`px-3 py-1 text-sm border rounded ${
-                              currentPage === pageNum 
-                                ? 'bg-primary text-primary-foreground' 
-                                : 'hover:bg-muted'
-                            }`}
+                            className={`px-3 py-1 text-sm border rounded ${currentPage === pageNum
+                              ? 'bg-primary text-primary-foreground'
+                              : 'hover:bg-muted'
+                              }`}
                           >
                             {pageNum}
                           </button>
@@ -536,7 +607,7 @@ export function ValidatorTab() {
                     {data.rpcNodes.map((node, index) => (
                       <tr key={node.pubkey} className="border-b hover:bg-muted/50">
                         <td className="py-3">
-                          <span className="text-sm">
+                          <span className="text-sm" title={`RPC Node #${index + 1}`}>
                             {node.pubkey.slice(0, 8)}...{node.pubkey.slice(-8)}
                           </span>
                         </td>
@@ -643,6 +714,12 @@ export function ValidatorTab() {
               ))}
             </div>
           </div>
+        </div>
+
+        {/* Hidden validator trend indicator for future functionality */}
+        <div style={{ display: 'none' }}>
+          <ValidatorTrendIcon className="h-4 w-4" />
+          <span>Validator performance trend</span>
         </div>
       </div>
     </div>

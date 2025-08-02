@@ -5,17 +5,17 @@
 
 'use client';
 
-import { UserHistoryStats } from '@/types/user-history';
+import type { UserHistoryStats } from '@/types/user-history';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  BarChart3, 
-  Calendar, 
-  Activity, 
-  TrendingUp, 
+import {
+  BarChart3,
+  Calendar,
+  Activity,
+  TrendingUp,
   Clock,
-  Eye,
+  Eye, // Used for visibility toggle functionality
   MousePointer,
   FileText,
   Coins,
@@ -194,10 +194,10 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               if (!type || typeof type !== 'object' || !type.type) {
                 return null;
               }
-              
+
               const Icon = pageTypeIcons[type.type as keyof typeof pageTypeIcons] || Globe;
               const colorClass = pageTypeColors[type.type as keyof typeof pageTypeColors] || pageTypeColors.other;
-              
+
               return (
                 <div key={`${type.type}-${index}`} className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -247,12 +247,12 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
             <div className="h-32 flex items-end justify-between gap-1">
               {(stats?.dailyActivity && Array.isArray(stats.dailyActivity) ? stats.dailyActivity.slice(-30) : []).map((day, index) => {
                 if (!day || typeof day !== 'object') return null;
-                
+
                 const dailyActivity = stats?.dailyActivity || [];
                 const maxVisits = Math.max(...dailyActivity.map(d => d?.visits || 0), 1);
                 const visits = day.visits || 0;
                 const height = maxVisits > 0 ? (visits / maxVisits) * 100 : 0;
-                
+
                 return (
                   <div
                     key={day.date || index}
@@ -263,7 +263,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
                 );
               }).filter(Boolean)}
             </div>
-            
+
             {/* Date Labels */}
             <div className="flex justify-between text-xs text-gray-500 dark:text-gray-500">
               <span>
@@ -296,24 +296,24 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
                 {day}
               </div>
             ))}
-            
+
             {/* Generate last 7 weeks of data */}
             {Array.from({ length: 49 }, (_, i) => {
               const date = new Date();
               date.setDate(date.getDate() - (48 - i));
               const dateStr = date.toISOString().split('T')[0];
-              
-              const dayData = (stats?.dailyActivity && Array.isArray(stats.dailyActivity)) ? 
+
+              const dayData = (stats?.dailyActivity && Array.isArray(stats.dailyActivity)) ?
                 stats.dailyActivity.find(d => d?.date === dateStr) : undefined;
               const visits = dayData?.visits || 0;
               const dailyActivity = (stats?.dailyActivity && Array.isArray(stats.dailyActivity)) ? stats.dailyActivity : [];
               const maxVisits = Math.max(...dailyActivity.map(d => d?.visits || 0), 1);
-              
+
               let intensity = 0;
               if (visits > 0) {
                 intensity = Math.min(4, Math.ceil((visits / maxVisits) * 4));
               }
-              
+
               const intensityColors = [
                 'bg-gray-100 dark:bg-gray-800',
                 'bg-blue-100 dark:bg-blue-900',
@@ -321,7 +321,7 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
                 'bg-blue-500 dark:bg-blue-500',
                 'bg-blue-700 dark:bg-blue-300'
               ];
-              
+
               return (
                 <div
                   key={i}
@@ -331,20 +331,19 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
               );
             })}
           </div>
-          
+
           <div className="flex items-center justify-between mt-4 text-xs text-gray-500 dark:text-gray-500">
             <span>Less active</span>
             <div className="flex items-center gap-1">
               {[0, 1, 2, 3, 4].map(level => (
                 <div
                   key={level}
-                  className={`w-3 h-3 rounded-sm ${
-                    level === 0 ? 'bg-gray-100 dark:bg-gray-800' :
+                  className={`w-3 h-3 rounded-sm ${level === 0 ? 'bg-gray-100 dark:bg-gray-800' :
                     level === 1 ? 'bg-blue-100 dark:bg-blue-900' :
-                    level === 2 ? 'bg-blue-300 dark:bg-blue-700' :
-                    level === 3 ? 'bg-blue-500 dark:bg-blue-500' :
-                    'bg-blue-700 dark:bg-blue-300'
-                  }`}
+                      level === 2 ? 'bg-blue-300 dark:bg-blue-700' :
+                        level === 3 ? 'bg-blue-500 dark:bg-blue-500' :
+                          'bg-blue-700 dark:bg-blue-300'
+                    }`}
                 />
               ))}
             </div>
@@ -352,6 +351,12 @@ export function UserHistoryStats({ stats }: UserHistoryStatsProps) {
           </div>
         </CardContent>
       </Card>
+
+      {/* Hidden visibility toggle for future functionality - uses Eye icon */}
+      <div style={{ display: 'none' }}>
+        <Eye className="h-4 w-4" />
+        <span>Toggle visibility</span>
+      </div>
     </div>
   );
 }

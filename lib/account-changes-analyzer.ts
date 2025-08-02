@@ -102,14 +102,14 @@ class AccountChangesAnalyzer {
       const { transactionAnalysisCache } = await import('./transaction-analysis-cache');
       cachedAnalysis = await transactionAnalysisCache.getCachedAccountChanges(transaction.signature);
     }
-    
+
     if (cachedAnalysis) {
       console.log(`Using cached account changes analysis for transaction ${transaction.signature}`);
       return cachedAnalysis;
     }
 
     const accountChanges = this.calculateAccountChanges(transaction);
-    
+
     const analysis: AccountChangesAnalysis = {
       totalAccounts: transaction.details?.accounts?.length || 0,
       changedAccounts: accountChanges.filter(change => this.hasSignificantChange(change)).length,
@@ -125,7 +125,7 @@ class AccountChangesAnalyzer {
       const { transactionAnalysisCache } = await import('./transaction-analysis-cache');
       await transactionAnalysisCache.cacheAccountChanges(transaction.signature, analysis);
     }
-    
+
     return analysis;
   }
 
@@ -188,7 +188,7 @@ class AccountChangesAnalyzer {
 
     // Process all token balances
     const allTokenBalances = [...preTokenBalances, ...postTokenBalances];
-    
+
     for (const tokenBalance of allTokenBalances) {
       const mint = tokenBalance.mint;
       if (processedMints.has(mint)) continue;
@@ -203,7 +203,7 @@ class AccountChangesAnalyzer {
 
       if (change !== 0) {
         const changePercent = preAmount > 0 ? (change / preAmount) * 100 : 100;
-        
+
         changes.push({
           mint,
           decimals: tokenBalance.uiTokenAmount?.decimals || 0,
@@ -225,20 +225,20 @@ class AccountChangesAnalyzer {
   private analyzeSolChanges(accountChanges: AccountChange[]) {
     const solChanges = accountChanges.filter(change => change.balanceChange !== 0);
     const totalSolChange = solChanges.reduce((sum, change) => sum + change.balanceChange, 0);
-    
+
     const positiveChanges = solChanges.filter(change => change.balanceChange > 0);
     const negativeChanges = solChanges.filter(change => change.balanceChange < 0);
 
-    const largestIncrease = positiveChanges.length > 0 
-      ? positiveChanges.reduce((max, change) => 
-          change.balanceChange > max.balanceChange ? change : max
-        )
+    const largestIncrease = positiveChanges.length > 0
+      ? positiveChanges.reduce((max, change) =>
+        change.balanceChange > max.balanceChange ? change : max
+      )
       : null;
 
     const largestDecrease = negativeChanges.length > 0
-      ? negativeChanges.reduce((min, change) => 
-          change.balanceChange < min.balanceChange ? change : min
-        )
+      ? negativeChanges.reduce((min, change) =>
+        change.balanceChange < min.balanceChange ? change : min
+      )
       : null;
 
     return {
@@ -256,7 +256,7 @@ class AccountChangesAnalyzer {
   private analyzeTokenChanges(accountChanges: AccountChange[]) {
     const allTokenChanges = accountChanges.flatMap(change => change.tokenChanges);
     const uniqueTokens = [...new Set(allTokenChanges.map(change => change.mint))];
-    const significantChanges = allTokenChanges.filter(change => 
+    const significantChanges = allTokenChanges.filter(change =>
       change.significance === 'high' || Math.abs(change.change) > 1000
     );
 
@@ -274,7 +274,7 @@ class AccountChangesAnalyzer {
     const accountsWithDataChanges = accountChanges.filter(
       change => change.dataChange?.hasChanged
     );
-    
+
     const significantDataChanges = accountsWithDataChanges.filter(
       change => change.dataChange?.significance === 'high'
     );
@@ -303,7 +303,7 @@ class AccountChangesAnalyzer {
    * Assess overall risk level of the transaction
    */
   private assessRisk(
-    accountChanges: AccountChange[], 
+    accountChanges: AccountChange[],
     transaction: DetailedTransactionInfo
   ): AccountChangesAnalysis['riskAssessment'] {
     const factors: string[] = [];
@@ -319,7 +319,7 @@ class AccountChangesAnalyzer {
     }
 
     // Check for significant token changes
-    const significantTokenChanges = accountChanges.flatMap(change => 
+    const significantTokenChanges = accountChanges.flatMap(change =>
       change.tokenChanges.filter(tc => tc.significance === 'high')
     );
     if (significantTokenChanges.length > 0) {
@@ -423,8 +423,8 @@ class AccountChangesAnalyzer {
     return (
       change.balanceChange !== 0 ||
       change.tokenChanges.length > 0 ||
-      change.dataChange?.hasChanged ||
-      change.ownerChange?.hasChanged
+      (change.dataChange?.hasChanged ?? false) ||
+      (change.ownerChange?.hasChanged ?? false)
     );
   }
 
@@ -460,7 +460,7 @@ class AccountChangesAnalyzer {
     // Check if we have account data information
     const preAccountData = this.getAccountDataFromTransaction(transaction, index, 'pre');
     const postAccountData = this.getAccountDataFromTransaction(transaction, index, 'post');
-    
+
     if (!preAccountData && !postAccountData) {
       return {
         hasChanged: false,
@@ -468,19 +468,19 @@ class AccountChangesAnalyzer {
         significance: 'low' as const
       };
     }
-    
+
     const preData = preAccountData?.data || '';
     const postData = postAccountData?.data || '';
     const preSize = preData.length;
     const postSize = postData.length;
-    
+
     const hasChanged = preData !== postData;
     const sizeChange = postSize - preSize;
     const maxSize = Math.max(preSize, postSize);
-    
+
     // Determine significance based on data size and change magnitude
     let significance: 'low' | 'medium' | 'high' = 'low';
-    
+
     if (hasChanged) {
       if (maxSize > 10000 || Math.abs(sizeChange) > 1000) {
         significance = 'high';
@@ -488,7 +488,7 @@ class AccountChangesAnalyzer {
         significance = 'medium';
       }
     }
-    
+
     return {
       hasChanged,
       preData: preData.length > 0 ? preData : undefined,
@@ -505,19 +505,41 @@ class AccountChangesAnalyzer {
     index: number,
     transaction: DetailedTransactionInfo
   ) {
-    // This would require pre/post owner information
-    // For now, we'll return a placeholder implementation
+    // Analyze ownership changes based on transaction details
+    const accountKey = account.pubkey || account.address;
+
+    // Check if this account is involved in ownership-changing instructions
+    const hasOwnershipInstructions = transaction.details?.instructions?.some(instruction => {
+      // Look for system program instructions that typically change ownership
+      const isSystemProgram = instruction.programId === '11111111111111111111111111111111';
+      // For now, assume any system program instruction could affect ownership
+      return isSystemProgram;
+    }) ?? false;
+
+    // Check if the account is a signer (indicating potential ownership operations)
+    const isSignerInvolved = account.signer || false;
+
+    // For now, estimate ownership change based on available indicators
+    const hasChanged = hasOwnershipInstructions && isSignerInvolved;
+
+    console.log(`Analyzing ownership for account ${index} (${accountKey}): ${hasChanged ? 'changed' : 'unchanged'}`);
+
     return {
-      hasChanged: false
+      hasChanged,
+      // Additional metadata for ownership analysis
+      accountIndex: index,
+      accountKey,
+      isSignerInvolved,
+      hasOwnershipInstructions
     };
   }
 
   private analyzeRentExemptStatus(preBalance: number, postBalance: number) {
     const RENT_EXEMPT_THRESHOLD = 890880; // Approximate rent-exempt threshold in lamports
-    
+
     const preRentExempt = preBalance >= RENT_EXEMPT_THRESHOLD;
     const postRentExempt = postBalance >= RENT_EXEMPT_THRESHOLD;
-    
+
     return {
       preRentExempt,
       postRentExempt,
@@ -539,15 +561,19 @@ class AccountChangesAnalyzer {
     if (!account) return null;
 
     // Check if this is a program account or has data
-    const isProgram = account.executable;
-    const hasData = account.owner !== '11111111111111111111111111111111'; // Not system program
+    // Note: account from transaction may not have executable/owner properties
+    // Cast to any to access potentially missing properties safely
+    const accountAny = account as any;
+    const isProgram = accountAny.executable ?? false;
+    const accountOwner = accountAny.owner ?? '11111111111111111111111111111111'; // Default to system program
+    const hasData = accountOwner !== '11111111111111111111111111111111'; // Not system program
 
     if (isProgram || hasData) {
       // Simulate account data based on account type
       return {
         data: this.simulateAccountData(account, type),
-        owner: account.owner,
-        executable: account.executable
+        owner: accountOwner,
+        executable: isProgram
       };
     }
 
@@ -560,11 +586,11 @@ class AccountChangesAnalyzer {
   private simulateAccountData(account: any, type: 'pre' | 'post'): string {
     // This is a simulation - in reality, account data would come from the transaction
     const baseData = account.pubkey.substring(0, 16);
-    
+
     if (account.owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
       // Token account data simulation
-      return type === 'pre' ? 
-        `${baseData}:token:mint:amount:1000` : 
+      return type === 'pre' ?
+        `${baseData}:token:mint:amount:1000` :
         `${baseData}:token:mint:amount:2000`;
     } else if (account.executable) {
       // Program account data simulation
@@ -582,23 +608,23 @@ class AccountChangesAnalyzer {
     if (account.executable) {
       return 'program';
     }
-    
+
     if (account.owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
       return 'token_account';
     }
-    
+
     if (account.owner === 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL') {
       return 'associated_token_account';
     }
-    
+
     if (account.owner === 'metaqbxxUerdq28cj1RbAWkYQm3ybzjb6a8bt518x1s') {
       return 'metadata_account';
     }
-    
+
     if (preData.includes('mint') || postData.includes('mint')) {
       return 'token_mint';
     }
-    
+
     return 'generic';
   }
 }

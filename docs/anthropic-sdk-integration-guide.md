@@ -19,7 +19,7 @@ This guide shows you how to use popular Anthropic SDKs and tools with OpenSVM's 
 
 OpenSVM's Anthropic API proxy allows you to use any existing Anthropic SDK or tool by simply:
 
-1. **Changing the base URL** to `https://opensvm.com/v1`
+1. **Changing the base URL** to `https://osvm.ai/v1`
 2. **Using your OpenSVM API key** instead of Anthropic's
 3. **Depositing SVMAI tokens** for billing
 
@@ -29,7 +29,7 @@ OpenSVM's Anthropic API proxy allows you to use any existing Anthropic SDK or to
 
 ### 1. Get Your OpenSVM API Key
 
-1. Visit [OpenSVM Dashboard](https://opensvm.com/dashboard)
+1. Visit [OpenSVM Dashboard](https://osvm.ai/dashboard)
 2. Navigate to **API Keys** section
 3. Click **Generate New Key**
 4. Copy your key (format: `sk-ant-api03-...`)
@@ -47,7 +47,7 @@ Update your SDK configuration to use OpenSVM's endpoint:
 
 ```bash
 # Base URL to use
-https://opensvm.com/v1
+https://osvm.ai/v1
 ```
 
 ## Claude CLI
@@ -69,7 +69,7 @@ Create or update your Claude CLI config:
 export ANTHROPIC_API_KEY="sk-ant-api03-your-opensvm-key-here"
 
 # Set OpenSVM base URL
-export ANTHROPIC_BASE_URL="https://opensvm.com/v1"
+export ANTHROPIC_BASE_URL="https://osvm.ai/v1"
 ```
 
 Or configure via file `~/.claude/config.json`:
@@ -77,7 +77,7 @@ Or configure via file `~/.claude/config.json`:
 ```json
 {
   "api_key": "sk-ant-api03-your-opensvm-key-here",
-  "base_url": "https://opensvm.com/v1"
+  "base_url": "https://osvm.ai/v1"
 }
 ```
 
@@ -140,12 +140,12 @@ import anthropic
 # Initialize client with OpenSVM
 client = anthropic.Anthropic(
     api_key="sk-ant-api03-your-opensvm-key-here",
-    base_url="https://opensvm.com/v1"
+    base_url="https://osvm.ai/v1"
 )
 
 # Alternative: use environment variables
 # export ANTHROPIC_API_KEY="sk-ant-api03-your-opensvm-key-here"
-# export ANTHROPIC_BASE_URL="https://opensvm.com/v1"
+# export ANTHROPIC_BASE_URL="https://osvm.ai/v1"
 # client = anthropic.Anthropic()
 ```
 
@@ -308,7 +308,7 @@ import Anthropic from '@anthropic-ai/sdk';
 
 const anthropic = new Anthropic({
   apiKey: 'sk-ant-api03-your-opensvm-key-here',
-  baseURL: 'https://opensvm.com/v1'
+  baseURL: 'https://osvm.ai/v1'
 });
 
 // Alternative: use environment variables

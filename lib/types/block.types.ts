@@ -6,7 +6,10 @@
  */
 
 // Re-export existing block types from solana.ts for compatibility
-export type { BlockDetails as LegacyBlockDetails, Transaction } from '../solana';
+export type { BlockDetails as LegacyBlockDetails } from '../solana';
+
+// Import Transaction type from Solana web3.js for proper typing
+import type { Transaction } from '@solana/web3.js';
 
 // ============================================================================
 // Core Block Data Models

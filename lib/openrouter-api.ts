@@ -177,7 +177,12 @@ export async function generateStreamingAIResponse(
     const stream = response.data;
     let buffer = '';
 
+    // Use buffer for accumulating streaming data and managing partial messages
+    console.log(`Initializing streaming buffer for OpenRouter API response`);
+
     stream.on('data', (chunk: Buffer) => {
+      // Use buffer to accumulate partial SSE messages
+      buffer += chunk.toString();
       const lines = chunk
         .toString()
         .split('\n')
@@ -191,7 +196,7 @@ export async function generateStreamingAIResponse(
           try {
             const parsed: OpenRouterStreamResponse = JSON.parse(data);
             const content = parsed.choices[0].delta.content;
-            
+
             if (content) {
               onChunk(content);
             }
@@ -235,7 +240,7 @@ Your task is to analyze this query and provide a detailed, informative response 
   // Add specific instructions based on data type
   if (blockchainData) {
     prompt += `\n\n## BLOCKCHAIN DATA\nI have retrieved the following blockchain data related to this query:\n\`\`\`json\n${JSON.stringify(blockchainData, null, 2)}\n\`\`\`\n`;
-    
+
     // Add type-specific instructions
     if (blockchainData.type === 'token') {
       prompt += `\n## TOKEN ANALYSIS INSTRUCTIONS
@@ -246,7 +251,7 @@ This appears to be a Solana token. Please provide:
 4. Notable holders or recent significant transactions if available
 5. Any relevant context about the project behind this token
 6. Potential risks or considerations for users interested in this token`;
-    } 
+    }
     else if (blockchainData.type === 'nft') {
       prompt += `\n## NFT ANALYSIS INSTRUCTIONS
 This appears to be a Solana NFT. Please provide:
@@ -314,11 +319,11 @@ export function extractSourcesFromBlockchainData(blockchainData: BlockchainData 
   const sources: { title: string, url: string }[] = [
     { title: 'Solana Documentation', url: 'https://docs.solana.com' }
   ];
-  
+
   if (!blockchainData) return sources;
-  
+
   const query = blockchainData.query;
-  
+
   // Add type-specific sources
   if (blockchainData.type === 'token') {
     const tokenName = blockchainData.data?.metadata?.name || 'Token';
@@ -326,19 +331,19 @@ export function extractSourcesFromBlockchainData(blockchainData: BlockchainData 
       { title: `${tokenName} on Solscan`, url: `https://solscan.io/token/${query}` },
       { title: `${tokenName} on Solana Explorer`, url: `https://explorer.solana.com/address/${query}` }
     );
-    
+
     // Add Jupiter if price data is available
     if (blockchainData.data?.price) {
       sources.push({ title: `${tokenName} on Jupiter`, url: `https://jup.ag/swap/SOL-${query}` });
     }
-  } 
+  }
   else if (blockchainData.type === 'nft') {
     const nftName = blockchainData.data?.metadata?.name || 'NFT';
     sources.push(
       { title: `${nftName} on Solscan`, url: `https://solscan.io/token/${query}` },
       { title: `${nftName} on Solana Explorer`, url: `https://explorer.solana.com/address/${query}` }
     );
-    
+
     // Add Magic Eden if it's likely an NFT
     sources.push({ title: `${nftName} on Magic Eden`, url: `https://magiceden.io/item-details/${query}` });
   }
@@ -354,7 +359,7 @@ export function extractSourcesFromBlockchainData(blockchainData: BlockchainData 
       { title: 'Transaction on Solana Explorer', url: `https://explorer.solana.com/tx/${query}` }
     );
   }
-  
+
   return sources;
 }
 
@@ -365,30 +370,30 @@ export function extractSourcesFromBlockchainData(blockchainData: BlockchainData 
  */
 export function selectBestModelForData(blockchainData: BlockchainData | null): string {
   if (!blockchainData) return DEFAULT_MODEL;
-  
+
   // Select model based on data type and complexity
   switch (blockchainData.type) {
     case 'token':
       // For tokens with extensive data, use a more powerful model
-      const hasExtensiveData = 
+      const hasExtensiveData =
         (blockchainData.data?.price && blockchainData.data?.holders && blockchainData.data?.recentSwaps);
       return hasExtensiveData ? 'anthropic/claude-3-opus:beta' : 'anthropic/claude-3-sonnet:beta';
-      
+
     case 'nft':
       // NFTs typically don't need the most powerful model
       return 'anthropic/claude-3-sonnet:beta';
-      
+
     case 'account':
       // For accounts with many transactions or tokens, use a more powerful model
-      const hasComplexPortfolio = 
-        blockchainData.data?.portfolio?.tokens?.length > 10 || 
+      const hasComplexPortfolio =
+        blockchainData.data?.portfolio?.tokens?.length > 10 ||
         blockchainData.data?.recentSwaps?.length > 10;
       return hasComplexPortfolio ? 'anthropic/claude-3-opus:beta' : 'anthropic/claude-3-sonnet:beta';
-      
+
     case 'transaction':
       // Complex transactions need more powerful analysis
       return 'anthropic/claude-3-opus:beta';
-      
+
     default:
       return DEFAULT_MODEL;
   }

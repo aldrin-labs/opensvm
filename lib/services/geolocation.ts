@@ -196,13 +196,31 @@ class GeolocationService {
   }
 
   private ipToVector(ip: string, geoData: GeolocationData): number[] {
-    // Create a simple vector representation
+    console.log(`Creating vector representation for IP ${ip}`);
+
+    // Create a comprehensive vector representation using both IP and geo data
     const lat = geoData.lat || 0;
     const lon = geoData.lon || 0;
     const countryHash = this.stringToHash(geoData.countryCode) / 1000000;
     const regionHash = this.stringToHash(geoData.region) / 1000000;
-    
-    return [lat / 90, lon / 180, countryHash, regionHash]; // Normalize to [-1, 1]
+
+    // Use IP address for additional vector dimensions
+    const ipParts = ip.split('.').map(part => parseInt(part, 10) || 0);
+    const ipHash = this.stringToHash(ip) / 1000000;
+
+    // Create normalized IP components
+    const ipVector = ipParts.map(part => part / 255); // Normalize to [0, 1]
+
+    console.log(`Vector created for ${ip}: geo=[${lat / 90}, ${lon / 180}], country=${countryHash}, region=${regionHash}, ip=[${ipVector.join(', ')}]`);
+
+    return [
+      lat / 90,           // Normalized latitude
+      lon / 180,          // Normalized longitude
+      countryHash,        // Country code hash
+      regionHash,         // Region hash
+      ...ipVector,        // IP octets normalized
+      ipHash              // IP string hash
+    ];
   }
 
   private stringToHash(str: string): number {
@@ -233,7 +251,7 @@ class GeolocationService {
 
       if (results.length > 0) {
         const payload = results[0].payload as any;
-        
+
         // Check if cache is still valid (24 hours)
         const cacheAge = Date.now() - payload.cached_at;
         if (cacheAge < 24 * 60 * 60 * 1000) {
@@ -246,7 +264,7 @@ class GeolocationService {
     } catch (error) {
       console.error('Failed to retrieve cached geolocation:', error);
     }
-    
+
     return null;
   }
 
@@ -304,7 +322,8 @@ class GeolocationService {
       return provider.parse(data);
     } catch (error) {
       clearTimeout(timeoutId);
-      if (error.name === 'AbortError') {
+      const err = error as Error;
+      if (err.name === 'AbortError') {
         throw new Error(`${provider.name} request timed out`);
       }
       throw error;
@@ -320,21 +339,22 @@ class GeolocationService {
 
     // Try providers in order of preference (paid services first)
     const errors: string[] = [];
-    
+
     for (const provider of this.providers) {
       try {
         const result = await this.fetchFromProvider(provider, ip);
-        
+
         // Cache the successful result
         await this.cacheGeolocation(ip, result);
-        
+
         console.log(`Successfully geocoded ${ip} using ${provider.name}`);
         return result;
       } catch (error) {
-        const errorMsg = `${provider.name}: ${error.message}`;
+        const err = error as Error;
+        const errorMsg = `${provider.name}: ${err.message}`;
         errors.push(errorMsg);
-        console.warn(`Geolocation provider ${provider.name} failed for ${ip}:`, error.message);
-        
+        console.warn(`Geolocation provider ${provider.name} failed for ${ip}:`, err.message);
+
         // Add delay between providers to avoid rate limiting
         await new Promise(resolve => setTimeout(resolve, 100));
       }
@@ -342,7 +362,7 @@ class GeolocationService {
 
     // All providers failed, return fallback data
     console.error(`All geolocation providers failed for ${ip}:`, errors);
-    
+
     const fallbackData: GeolocationData = {
       country: 'Unknown',
       countryCode: 'XX',
@@ -355,7 +375,7 @@ class GeolocationService {
 
     // Cache the fallback data with shorter TTL
     await this.cacheGeolocation(ip, fallbackData);
-    
+
     return fallbackData;
   }
 
@@ -379,7 +399,7 @@ class GeolocationService {
 
     for (let i = 0; i < uncachedIps.length; i += batchSize) {
       const batch = uncachedIps.slice(i, i + batchSize);
-      
+
       const batchPromises = batch.map(async (ip) => {
         try {
           const result = await this.getGeolocation(ip);

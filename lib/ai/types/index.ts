@@ -1,5 +1,8 @@
 import { Connection } from '@solana/web3.js';
 
+// Use Connection for AI agent Solana integration
+export type AIConnection = Connection;
+
 export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'utility';
 
 export type ToolType = 

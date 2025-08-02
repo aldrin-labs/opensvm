@@ -1,8 +1,6 @@
 'use client';
 
-import { FC, useState, useEffect, useRef, useCallback } from 'react';
-import { X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Connection } from '@solana/web3.js';
 import { createSolanaAgent } from '@/components/ai/core/factory';
 import { useAIChatTabs } from '@/components/ai/hooks/useAIChatTabs';
@@ -21,14 +19,14 @@ interface AIChatSidebarProps {
   initialWidth?: number;
 }
 
-export const AIChatSidebar: FC<AIChatSidebarProps> = ({
+export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   isOpen,
   onClose,
   onWidthChange,
   onResizeStart,
   onResizeEnd,
   initialWidth = 480
-}) => {
+}: AIChatSidebarProps) => {
   const [agent] = useState(() => createSolanaAgent(connection));
   const {
     activeTab,
@@ -49,16 +47,15 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
   } = useAIChatTabs({ agent });
 
   const [width, setWidth] = useState(initialWidth);
-  const sidebarRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
   const lastX = useRef(0);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
-    
+
     const deltaX = lastX.current - e.clientX;
     lastX.current = e.clientX;
-    
+
     const newWidth = Math.min(800, Math.max(300, width + deltaX));
     setWidth(newWidth);
     onWidthChange?.(newWidth);
@@ -72,15 +69,6 @@ export const AIChatSidebar: FC<AIChatSidebarProps> = ({
       onResizeEnd?.();
     }
   }, [onResizeEnd]);
-
-  const handleMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    isResizing.current = true;
-    lastX.current = e.clientX;
-    document.body.style.cursor = 'ew-resize';
-    document.body.classList.add('select-none');
-    onResizeStart?.();
-  };
 
   useEffect(() => {
     document.addEventListener('mousemove', handleMouseMove);

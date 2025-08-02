@@ -40,8 +40,8 @@ export async function initializeCollections() {
         console.log(`Created index for ${fieldName} in ${collectionName}`);
       } catch (error: any) {
         // Index might already exist, check if it's already exists error
-        if (error?.data?.status?.error?.includes('already exists') || 
-            error?.message?.includes('already exists')) {
+        if (error?.data?.status?.error?.includes('already exists') ||
+          error?.message?.includes('already exists')) {
           console.log(`Index for ${fieldName} in ${collectionName} already exists`);
         } else {
           console.warn(`Failed to create index for ${fieldName} in ${collectionName}:`, error?.data?.status?.error || error?.message);
@@ -51,7 +51,7 @@ export async function initializeCollections() {
 
     // Check if user_history collection exists
     const historyExists = await qdrantClient.getCollection(COLLECTIONS.USER_HISTORY).catch(() => null);
-    
+
     if (!historyExists) {
       await qdrantClient.createCollection(COLLECTIONS.USER_HISTORY, {
         vectors: {
@@ -61,13 +61,13 @@ export async function initializeCollections() {
       });
       console.log('Created user_history collection');
     }
-    
+
     // Ensure walletAddress index exists for user_history
     await ensureIndex(COLLECTIONS.USER_HISTORY, 'walletAddress');
-    
+
     // Check if user_profiles collection exists
     const profilesExists = await qdrantClient.getCollection(COLLECTIONS.USER_PROFILES).catch(() => null);
-    
+
     if (!profilesExists) {
       await qdrantClient.createCollection(COLLECTIONS.USER_PROFILES, {
         vectors: {
@@ -77,13 +77,13 @@ export async function initializeCollections() {
       });
       console.log('Created user_profiles collection');
     }
-    
+
     // Ensure walletAddress index exists for user_profiles
     await ensureIndex(COLLECTIONS.USER_PROFILES, 'walletAddress');
-    
+
     // Check if user_follows collection exists
     const followsExists = await qdrantClient.getCollection(COLLECTIONS.USER_FOLLOWS).catch(() => null);
-    
+
     if (!followsExists) {
       await qdrantClient.createCollection(COLLECTIONS.USER_FOLLOWS, {
         vectors: {
@@ -93,14 +93,14 @@ export async function initializeCollections() {
       });
       console.log('Created user_follows collection');
     }
-    
+
     // Ensure indexes exist for user_follows
     await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'followerAddress');
     await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'targetAddress');
-    
+
     // Check if user_likes collection exists
     const likesExists = await qdrantClient.getCollection(COLLECTIONS.USER_LIKES).catch(() => null);
-    
+
     if (!likesExists) {
       await qdrantClient.createCollection(COLLECTIONS.USER_LIKES, {
         vectors: {
@@ -110,14 +110,14 @@ export async function initializeCollections() {
       });
       console.log('Created user_likes collection');
     }
-    
+
     // Ensure indexes exist for user_likes
     await ensureIndex(COLLECTIONS.USER_LIKES, 'likerAddress');
     await ensureIndex(COLLECTIONS.USER_LIKES, 'targetAddress');
-    
+
     // Check if shares collection exists
     const sharesExists = await qdrantClient.getCollection(COLLECTIONS.SHARES).catch(() => null);
-    
+
     if (!sharesExists) {
       await qdrantClient.createCollection(COLLECTIONS.SHARES, {
         vectors: {
@@ -127,16 +127,16 @@ export async function initializeCollections() {
       });
       console.log('Created shares collection');
     }
-    
+
     // Ensure indexes exist for shares
     await ensureIndex(COLLECTIONS.SHARES, 'shareCode');
     await ensureIndex(COLLECTIONS.SHARES, 'referrerAddress');
     await ensureIndex(COLLECTIONS.SHARES, 'entityType');
     await ensureIndex(COLLECTIONS.SHARES, 'entityId');
-    
+
     // Check if share_clicks collection exists
     const shareClicksExists = await qdrantClient.getCollection(COLLECTIONS.SHARE_CLICKS).catch(() => null);
-    
+
     if (!shareClicksExists) {
       await qdrantClient.createCollection(COLLECTIONS.SHARE_CLICKS, {
         vectors: {
@@ -146,11 +146,11 @@ export async function initializeCollections() {
       });
       console.log('Created share_clicks collection');
     }
-    
+
     // Ensure indexes exist for share_clicks
     await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'shareCode');
     await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'clickerAddress');
-    
+
     console.log('Qdrant collections initialized successfully');
   } catch (error) {
     console.error('Error initializing Qdrant collections:', error);
@@ -168,13 +168,13 @@ function generateSimpleEmbedding(text: string): number[] {
     a = ((a << 5) - a) + b.charCodeAt(0);
     return a & a;
   }, 0);
-  
+
   // Generate 384-dimensional vector
   const vector = new Array(384).fill(0);
   for (let i = 0; i < 384; i++) {
     vector[i] = Math.sin(hash + i) * 0.1;
   }
-  
+
   return vector;
 }
 
@@ -184,11 +184,11 @@ function generateSimpleEmbedding(text: string): number[] {
 export async function storeHistoryEntry(entry: UserHistoryEntry): Promise<void> {
   try {
 
-    
+
     // Generate embedding from page content
     const textContent = `${entry.pageTitle} ${entry.path} ${entry.pageType} ${JSON.stringify(entry.metadata)}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.USER_HISTORY, {
       wait: true,
       points: [{
@@ -222,21 +222,21 @@ export async function getUserHistory(
   if (typeof window !== 'undefined') {
     return { history: [], total: 0 };
   }
-  
+
   try {
     const { limit = 100, offset = 0, pageType } = options;
-    
+
     // Debug logging
     const displayWallet = walletAddress || '(all users)';
     if (process.env.NODE_ENV === 'development') {
       console.log(`getUserHistory called for: ${displayWallet}, limit: ${limit}, offset: ${offset}`);
     }
-    
+
     // Build filter
     const filter: any = {
       must: []
     };
-    
+
     // Only filter by wallet address if one is provided
     if (walletAddress && walletAddress.trim() !== '') {
       filter.must.push({
@@ -251,14 +251,14 @@ export async function getUserHistory(
         console.log('No wallet filter - fetching from all users');
       }
     }
-    
+
     if (pageType) {
       filter.must.push({
         key: 'pageType',
         match: { value: pageType }
       });
     }
-    
+
     // If no filters are specified, remove the filter entirely to get all entries
     const searchParams: any = {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
@@ -266,11 +266,11 @@ export async function getUserHistory(
       offset,
       with_payload: true
     };
-    
+
     if (filter.must.length > 0) {
       searchParams.filter = filter;
     }
-    
+
     // Use scroll instead of search to get results ordered by timestamp
     // Scroll API allows us to get results in insertion order and we can sort by timestamp
     const scrollParams: any = {
@@ -282,25 +282,25 @@ export async function getUserHistory(
         direction: 'desc' // Most recent first
       }
     };
-    
+
     if (filter.must.length > 0) {
       scrollParams.filter = filter;
     }
-    
+
     // Use scroll API to get properly ordered results
     const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
-    
+
     // Get total count
     const countParams: any = {};
     if (filter.must.length > 0) {
       countParams.filter = filter;
     }
     const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
-    
+
     // Scroll API returns { points: [...] } instead of direct array
     const points = result.points || result;
     const history = points.map(point => point.payload as unknown as UserHistoryEntry);
-    
+
     // Debug logging for results
     if (process.env.NODE_ENV === 'development') {
       console.log(`getUserHistory results: ${history.length} entries retrieved out of ${countResult.count} total`);
@@ -311,7 +311,7 @@ export async function getUserHistory(
           const count = history.filter(h => h.walletAddress === w).length;
           console.log(`  ${w}: ${count} entries`);
         });
-        
+
         // Show timestamp information for debugging
         console.log('Sample entries with timestamps:');
         history.slice(0, 5).forEach((entry, i) => {
@@ -321,10 +321,10 @@ export async function getUserHistory(
         });
       }
     }
-    
+
     // Data is already sorted by timestamp via order_by in the query
     // No need to sort again as scroll API with order_by returns pre-sorted results
-    
+
     return {
       history,
       total: countResult.count
@@ -341,7 +341,7 @@ export async function getUserHistory(
 export async function deleteUserHistory(walletAddress: string): Promise<void> {
   try {
 
-    
+
     await qdrantClient.delete(COLLECTIONS.USER_HISTORY, {
       wait: true,
       filter: {
@@ -363,7 +363,7 @@ export async function deleteUserHistory(walletAddress: string): Promise<void> {
 export async function storeUserProfile(profile: UserProfile): Promise<void> {
   try {
 
-    
+
     // First check if profile exists by searching for walletAddress
     const existingResult = await qdrantClient.search(COLLECTIONS.USER_PROFILES, {
       vector: new Array(384).fill(0),
@@ -373,9 +373,9 @@ export async function storeUserProfile(profile: UserProfile): Promise<void> {
       limit: 1,
       with_payload: true
     });
-    
+
     let pointId: string;
-    
+
     if (existingResult.length > 0) {
       // Use existing point ID
       pointId = existingResult[0].id as string;
@@ -383,11 +383,11 @@ export async function storeUserProfile(profile: UserProfile): Promise<void> {
       // Generate new UUID for new profile
       pointId = crypto.randomUUID();
     }
-    
+
     // Generate embedding from profile data
     const textContent = `${profile.walletAddress} ${profile.displayName || ''} ${profile.bio || ''}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.USER_PROFILES, {
       wait: true,
       points: [{
@@ -408,7 +408,7 @@ export async function storeUserProfile(profile: UserProfile): Promise<void> {
 export async function getUserProfile(walletAddress: string): Promise<UserProfile | null> {
   try {
 
-    
+
     // Search for profile by walletAddress instead of using it as ID
     const result = await qdrantClient.search(COLLECTIONS.USER_PROFILES, {
       vector: new Array(384).fill(0),
@@ -418,11 +418,11 @@ export async function getUserProfile(walletAddress: string): Promise<UserProfile
       limit: 1,
       with_payload: true
     });
-    
+
     if (result.length === 0) {
       return null;
     }
-    
+
     return result[0].payload as unknown as UserProfile;
   } catch (error) {
     console.error('Error getting user profile:', error);
@@ -453,10 +453,10 @@ export async function checkQdrantHealth(): Promise<boolean> {
 export async function storeUserFollow(entry: UserFollowEntry): Promise<void> {
   try {
     //await initializeCollections();
-    
+
     const textContent = `${entry.followerAddress} follows ${entry.targetAddress}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.USER_FOLLOWS, {
       wait: true,
       points: [{
@@ -476,7 +476,7 @@ export async function storeUserFollow(entry: UserFollowEntry): Promise<void> {
  */
 export async function removeUserFollow(followerAddress: string, targetAddress: string): Promise<void> {
   try {
-    
+
     await qdrantClient.delete(COLLECTIONS.USER_FOLLOWS, {
       wait: true,
       filter: {
@@ -497,7 +497,7 @@ export async function removeUserFollow(followerAddress: string, targetAddress: s
  */
 export async function getUserFollowers(targetAddress: string): Promise<UserFollowEntry[]> {
   try {
-    
+
     const result = await qdrantClient.search(COLLECTIONS.USER_FOLLOWS, {
       vector: new Array(384).fill(0),
       filter: {
@@ -506,7 +506,7 @@ export async function getUserFollowers(targetAddress: string): Promise<UserFollo
       limit: 1000,
       with_payload: true
     });
-    
+
     return result.map(point => point.payload as unknown as UserFollowEntry);
   } catch (error) {
     console.error('Error getting user followers:', error);
@@ -519,7 +519,7 @@ export async function getUserFollowers(targetAddress: string): Promise<UserFollo
  */
 export async function getUserFollowing(followerAddress: string): Promise<UserFollowEntry[]> {
   try {
-    
+
     const result = await qdrantClient.search(COLLECTIONS.USER_FOLLOWS, {
       vector: new Array(384).fill(0),
       filter: {
@@ -528,7 +528,7 @@ export async function getUserFollowing(followerAddress: string): Promise<UserFol
       limit: 1000,
       with_payload: true
     });
-    
+
     return result.map(point => point.payload as unknown as UserFollowEntry);
   } catch (error) {
     console.error('Error getting user following:', error);
@@ -553,10 +553,10 @@ interface UserLikeEntry {
  */
 export async function storeUserLike(entry: UserLikeEntry): Promise<void> {
   try {
-    
+
     const textContent = `${entry.likerAddress} likes ${entry.targetAddress}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.USER_LIKES, {
       wait: true,
       points: [{
@@ -576,7 +576,7 @@ export async function storeUserLike(entry: UserLikeEntry): Promise<void> {
  */
 export async function removeUserLike(likerAddress: string, targetAddress: string): Promise<void> {
   try {
-    
+
     await qdrantClient.delete(COLLECTIONS.USER_LIKES, {
       wait: true,
       filter: {
@@ -597,7 +597,7 @@ export async function removeUserLike(likerAddress: string, targetAddress: string
  */
 export async function getUserLikes(targetAddress: string): Promise<UserLikeEntry[]> {
   try {
-    
+
     const result = await qdrantClient.search(COLLECTIONS.USER_LIKES, {
       vector: new Array(384).fill(0),
       filter: {
@@ -606,7 +606,7 @@ export async function getUserLikes(targetAddress: string): Promise<UserLikeEntry
       limit: 1000,
       with_payload: true
     });
-    
+
     return result.map(point => point.payload as unknown as UserLikeEntry);
   } catch (error) {
     console.error('Error getting user likes:', error);
@@ -626,10 +626,10 @@ import { ShareEntry, ShareClickEntry } from '@/types/share';
  */
 export async function storeShareEntry(share: ShareEntry): Promise<void> {
   try {
-    
+
     const textContent = `${share.entityType} ${share.entityId} shared by ${share.referrerAddress}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.SHARES, {
       wait: true,
       points: [{
@@ -649,7 +649,7 @@ export async function storeShareEntry(share: ShareEntry): Promise<void> {
  */
 export async function getShareByCode(shareCode: string): Promise<ShareEntry | null> {
   try {
-    
+
     const result = await qdrantClient.search(COLLECTIONS.SHARES, {
       vector: new Array(384).fill(0),
       filter: {
@@ -658,11 +658,11 @@ export async function getShareByCode(shareCode: string): Promise<ShareEntry | nu
       limit: 1,
       with_payload: true
     });
-    
+
     if (result.length === 0) {
       return null;
     }
-    
+
     return result[0].payload as unknown as ShareEntry;
   } catch (error) {
     console.error('Error getting share by code:', error);
@@ -678,13 +678,13 @@ export async function getSharesByReferrer(
   options: { limit?: number; offset?: number } = {}
 ): Promise<{ shares: ShareEntry[]; total: number }> {
   try {
-    
+
     const { limit = 50, offset = 0 } = options;
-    
+
     const filter = {
       must: [{ key: 'referrerAddress', match: { value: referrerAddress } }]
     };
-    
+
     const result = await qdrantClient.search(COLLECTIONS.SHARES, {
       vector: new Array(384).fill(0),
       filter,
@@ -692,12 +692,12 @@ export async function getSharesByReferrer(
       offset,
       with_payload: true
     });
-    
+
     const countResult = await qdrantClient.count(COLLECTIONS.SHARES, { filter });
-    
+
     const shares = result.map(point => point.payload as unknown as ShareEntry);
     shares.sort((a, b) => b.timestamp - a.timestamp);
-    
+
     return { shares, total: countResult.count };
   } catch (error) {
     console.error('Error getting shares by referrer:', error);
@@ -711,10 +711,10 @@ export async function getSharesByReferrer(
 export async function storeShareClick(click: ShareClickEntry): Promise<void> {
   try {
 
-    
+
     const textContent = `Click on share ${click.shareCode} by ${click.clickerAddress || 'anonymous'}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.SHARE_CLICKS, {
       wait: true,
       points: [{
@@ -735,7 +735,7 @@ export async function storeShareClick(click: ShareClickEntry): Promise<void> {
 export async function getShareClicks(shareCode: string): Promise<ShareClickEntry[]> {
   try {
 
-    
+
     const result = await qdrantClient.search(COLLECTIONS.SHARE_CLICKS, {
       vector: new Array(384).fill(0),
       filter: {
@@ -744,7 +744,7 @@ export async function getShareClicks(shareCode: string): Promise<ShareClickEntry
       limit: 1000,
       with_payload: true
     });
-    
+
     return result.map(point => point.payload as unknown as ShareClickEntry);
   } catch (error) {
     console.error('Error getting share clicks:', error);
@@ -759,7 +759,7 @@ export async function incrementShareClicks(shareCode: string): Promise<void> {
   try {
     const share = await getShareByCode(shareCode);
     if (!share) return;
-    
+
     share.clicks = (share.clicks || 0) + 1;
     await storeShareEntry(share);
   } catch (error) {
@@ -774,10 +774,10 @@ export async function markShareConversion(shareCode: string, clickerAddress: str
   try {
     const share = await getShareByCode(shareCode);
     if (!share) return;
-    
+
     share.conversions = (share.conversions || 0) + 1;
     await storeShareEntry(share);
-    
+
     // Also update the click entry
     const clicks = await getShareClicks(shareCode);
     const userClick = clicks.find(c => c.clickerAddress === clickerAddress);
@@ -824,7 +824,7 @@ async function ensureTransfersCollection() {
 
   try {
     const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
-    
+
     if (!exists) {
       await qdrantClient.createCollection(COLLECTIONS.TRANSFERS, {
         vectors: {
@@ -834,7 +834,7 @@ async function ensureTransfersCollection() {
       });
       console.log('Created transfers collection');
     }
-    
+
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string) => {
       try {
@@ -845,21 +845,21 @@ async function ensureTransfersCollection() {
         console.log(`Created index for ${fieldName} in transfers`);
       } catch (error: any) {
         if (error?.data?.status?.error?.includes('already exists') ||
-            error?.message?.includes('already exists')) {
+          error?.message?.includes('already exists')) {
           console.log(`Index for ${fieldName} in transfers already exists`);
         } else {
           console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
         }
       }
     };
-    
+
     // Ensure necessary indexes exist
     await ensureIndex('walletAddress');
     await ensureIndex('signature');
     await ensureIndex('token');
     await ensureIndex('isSolanaOnly');
     await ensureIndex('cached');
-    
+
   } catch (error) {
     console.error('Error ensuring transfers collection:', error);
     throw error;
@@ -872,14 +872,14 @@ async function ensureTransfersCollection() {
 export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
   // Skip in browser
   if (typeof window !== 'undefined') return;
-  
+
   try {
     await ensureTransfersCollection();
-    
+
     // Generate embedding from transfer content
     const textContent = `${entry.walletAddress} ${entry.type} ${entry.token} ${entry.amount} ${entry.from} ${entry.to}`;
     const vector = generateSimpleEmbedding(textContent);
-    
+
     await qdrantClient.upsert(COLLECTIONS.TRANSFERS, {
       wait: true,
       points: [{
@@ -910,12 +910,12 @@ export async function getCachedTransfers(
   if (typeof window !== 'undefined') {
     return { transfers: [], total: 0 };
   }
-  
+
   try {
     await ensureTransfersCollection();
-    
+
     const { limit = 100, offset = 0, solanaOnly = false, transferType = 'ALL' } = options;
-    
+
     // Build filter
     const filter: any = {
       must: [
@@ -929,14 +929,14 @@ export async function getCachedTransfers(
         }
       ]
     };
-    
+
     if (solanaOnly) {
       filter.must.push({
         key: 'isSolanaOnly',
         match: { value: true }
       });
     }
-    
+
     if (transferType === 'SOL') {
       filter.must.push({
         key: 'token',
@@ -951,7 +951,7 @@ export async function getCachedTransfers(
         }
       ];
     }
-    
+
     // Search with filter
     const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
@@ -960,17 +960,17 @@ export async function getCachedTransfers(
       offset,
       with_payload: true
     });
-    
+
     // Get total count
     const countResult = await qdrantClient.count(COLLECTIONS.TRANSFERS, {
       filter
     });
-    
+
     const transfers = result.map(point => point.payload as unknown as TransferEntry);
-    
+
     // Sort by timestamp (newest first)
     transfers.sort((a, b) => b.timestamp - a.timestamp);
-    
+
     return {
       transfers,
       total: countResult.count
@@ -988,7 +988,7 @@ export async function getLastSyncTimestamp(walletAddress: string): Promise<numbe
   try {
 
     await ensureTransfersCollection();
-    
+
     const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
       vector: new Array(384).fill(0),
       filter: {
@@ -1000,15 +1000,15 @@ export async function getLastSyncTimestamp(walletAddress: string): Promise<numbe
       limit: 1,
       with_payload: true
     });
-    
+
     if (result.length === 0) {
       return 0; // No cached data, start from beginning
     }
-    
+
     // Find the most recent timestamp
     const transfers = result.map(point => point.payload as unknown as TransferEntry);
     const maxTimestamp = Math.max(...transfers.map(t => t.lastUpdated));
-    
+
     return maxTimestamp;
   } catch (error) {
     console.error('Error getting last sync timestamp:', error);
@@ -1023,9 +1023,9 @@ export async function markTransfersCached(signatures: string[], walletAddress: s
   try {
 
     await ensureTransfersCollection();
-    
+
     const timestamp = Date.now();
-    
+
     // Update each transfer to mark as cached
     for (const signature of signatures) {
       const filter = {
@@ -1034,22 +1034,22 @@ export async function markTransfersCached(signatures: string[], walletAddress: s
           { key: 'walletAddress', match: { value: walletAddress } }
         ]
       };
-      
+
       const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
         vector: new Array(384).fill(0),
         filter,
         limit: 1,
         with_payload: true
       });
-      
+
       if (result.length > 0) {
         const transfer = result[0].payload as unknown as TransferEntry;
         transfer.cached = true;
         transfer.lastUpdated = timestamp;
-        
+
         const textContent = `${transfer.walletAddress} ${transfer.type} ${transfer.token} ${transfer.amount} ${transfer.from} ${transfer.to}`;
         const vector = generateSimpleEmbedding(textContent);
-        
+
         await qdrantClient.upsert(COLLECTIONS.TRANSFERS, {
           wait: true,
           points: [{
@@ -1070,54 +1070,125 @@ export async function markTransfersCached(signatures: string[], walletAddress: s
  * Detect if a transaction is Solana-only (not cross-chain)
  */
 export function isSolanaOnlyTransaction(transfer: any): boolean {
-  // Known Solana program IDs
-  // List of known Solana program IDs (expanded, not exhaustive, but covers many major protocols)
-  const solanaPrograms = [
-    // Core Solana Programs
-    '11111111111111111111111111111111', // System Program
-    'Stake11111111111111111111111111111111111111', // Stake Program
-    'Vote111111111111111111111111111111111111111', // Vote Program
-    'BPFLoader1111111111111111111111111111111111', // BPF Loader
-    'BPFLoader2111111111111111111111111111111111', // BPF Loader 2
-    'BPFLoaderUpgradeab1e11111111111111111111111', // BPF Loader Upgradeable
-    'Config1111111111111111111111111111111111111', // Config Program
-    'AddressLookupTab1e1111111111111111111111111', // Address Lookup Table
+  try {
+    // Known Solana program IDs
+    // List of known Solana program IDs (expanded, not exhaustive, but covers many major protocols)
+    const solanaPrograms = new Set([
+      // Core Solana Programs
+      '11111111111111111111111111111111', // System Program
+      'Stake11111111111111111111111111111111111111', // Stake Program
+      'Vote111111111111111111111111111111111111111', // Vote Program
+      'BPFLoader1111111111111111111111111111111111', // BPF Loader
+      'BPFLoader2111111111111111111111111111111111', // BPF Loader 2
+      'BPFLoaderUpgradeab1e11111111111111111111111', // BPF Loader Upgradeable
+      'Config1111111111111111111111111111111111111', // Config Program
+      'AddressLookupTab1e1111111111111111111111111', // Address Lookup Table
 
-    // Token Programs
-    'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token Program
-    'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token Program
-    'SPLMemo111111111111111111111111111111111111111', // Memo Program
-    'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', // Memo v2
-    'SysvarRent111111111111111111111111111111111', // Rent Sysvar
-    'SysvarC1ock11111111111111111111111111111111', // Clock Sysvar
-    'SysvarRecentB1ockHashes11111111111111111111', // Recent Blockhashes Sysvar
-    'SysvarEpochSchedu1e111111111111111111111111', // Epoch Schedule Sysvar
-    'SysvarFees111111111111111111111111111111111', // Fees Sysvar
-    'SysvarInstructions1111111111111111111111111', // Instructions Sysvar
-    'SysvarRewards111111111111111111111111111111', // Rewards Sysvar
-    'SysvarSlotHashes111111111111111111111111111', // Slot Hashes Sysvar
-    'SysvarSlotHistory11111111111111111111111111', // Slot History Sysvar
-    'SysvarStakeHistory1111111111111111111111111', // Stake History Sysvar
+      // Token Programs
+      'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token Program
+      'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token Program
+      'SPLMemo111111111111111111111111111111111111111', // Memo Program
+      'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr', // Memo v2
+      'SysvarRent111111111111111111111111111111111', // Rent Sysvar
+      'SysvarC1ock11111111111111111111111111111111', // Clock Sysvar
+      'SysvarRecentB1ockHashes11111111111111111111', // Recent Blockhashes Sysvar
+      'SysvarEpochSchedu1e111111111111111111111111', // Epoch Schedule Sysvar
+      'SysvarFees111111111111111111111111111111111', // Fees Sysvar
+      'SysvarInstructions1111111111111111111111111', // Instructions Sysvar
+      'SysvarRewards111111111111111111111111111111', // Rewards Sysvar
+      'SysvarSlotHashes111111111111111111111111111', // Slot Hashes Sysvar
+      'SysvarSlotHistory11111111111111111111111111', // Slot History Sysvar
+      'SysvarStakeHistory1111111111111111111111111', // Stake History Sysvar
 
-    // Wrapped SOL
-    'So11111111111111111111111111111111111111112', // Wrapped SOL
+      // Wrapped SOL
+      'So11111111111111111111111111111111111111112', // Wrapped SOL
 
-    // DEXes & DeFi
-    '9xQeWvG816bUx9EPa2uD3D6vE6z5pQKk5jGzj1h3bT9', // Serum DEX v3
-    '4ckmDgGzLYLyE3M9h1w9yQpZ9g2ZbYv5Q3QAtFj5hA9y', // Serum DEX v2
-    '5quB8F1iFv5QkQwZ5QkQwZ5QkQwZ5QkQwZ5QkQwZ5QkQ', // Serum DEX v1 (example, not real)
-    '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
-    'RVKd61ztZW9GdKz5vKz6kUo87bY6z3Y6z3Y6z3Y6z3Y', // Raydium AMM (example, not real)
-    'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB', // Jupiter Aggregator
-    'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4', // Jupiter v6
-    'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY', // Phoenix DEX
-    'SaberM8r1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
-    'SwaPp1ng11111111111111111111111111111111111', // Orca (example, not real)
-    'orca111111111111111111111111111111111111111', // Orca
-    'MERLuDFBMmsHnszBSb5Q6pR9bxaENa8zD6zF8g5nKX', // Mercurial
-    'SwaPp1ng11111111111111111111111111111111111', // Orca Swap (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
-    'Saberqk1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n1n', // Saber (example, not real)
-  ];
+      // DEXes & DeFi
+      '9xQeWvG816bUx9EPa2uD3D6vE6z5pQKk5jGzj1h3bT9', // Serum DEX v3
+      '4ckmDgGzLYLyE3M9h1w9yQpZ9g2ZbYv5Q3QAtFj5hA9y', // Serum DEX v2
+      '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
+      'JUP4Fb2cqiRUcaTHdrPC8h2gNsA2ETXiPDD33WcGuJB', // Jupiter Aggregator
+      'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4', // Jupiter v6
+      'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY', // Phoenix DEX
+      'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc', // Whirlpool
+      'orca111111111111111111111111111111111111111', // Orca
+      'MERLuDFBMmsHnszBSb5Q6pR9bxaENa8zD6zF8g5nKX', // Mercurial
+    ]);
+
+    // Cross-chain bridge program IDs (if any of these are present, it's NOT Solana-only)
+    const crossChainPrograms = new Set([
+      'wormDTUJ6AWPNvk59vGQbDvGJmqbDTdgWgAqcLBCgUb', // Wormhole
+      'wormRHhg8A2fRkVfqJBx1xQ732GTFX9RWhooFqH9K', // Wormhole v2
+      'A11111111111111111111111111111111111111111', // Allbridge (example)
+      'portalDTUJ6AWPNvk59vGQbDvGJmqbDTdgWgAqcLBCgUb', // Portal Bridge (example)
+    ]);
+
+    // Analyze the transfer object to determine if it's Solana-only
+    if (!transfer) {
+      console.warn('Transfer object is null or undefined');
+      return false;
+    }
+
+    // Check if transfer has program IDs (instructions)
+    const programIds: string[] = [];
+
+    if (transfer.instructions) {
+      programIds.push(...transfer.instructions.map((ix: any) => ix.programId).filter(Boolean));
+    }
+
+    if (transfer.programId) {
+      programIds.push(transfer.programId);
+    }
+
+    if (transfer.programIds) {
+      programIds.push(...transfer.programIds);
+    }
+
+    // If no program IDs found, check other indicators
+    if (programIds.length === 0) {
+      // Check for cross-chain indicators in metadata
+      if (transfer.metadata) {
+        const metadataStr = JSON.stringify(transfer.metadata).toLowerCase();
+        const crossChainKeywords = ['bridge', 'wormhole', 'portal', 'ethereum', 'polygon', 'bsc', 'avalanche'];
+
+        if (crossChainKeywords.some(keyword => metadataStr.includes(keyword))) {
+          console.log(`Cross-chain keywords detected in transfer metadata`);
+          return false;
+        }
+      }
+
+      // Default to Solana-only if no clear indicators
+      console.log(`No program IDs found, defaulting to Solana-only for transfer`);
+      return true;
+    }
+
+    // Check if any program IDs are cross-chain bridges
+    const hasCrossChainPrograms = programIds.some(programId => crossChainPrograms.has(programId));
+    if (hasCrossChainPrograms) {
+      console.log(`Cross-chain bridge programs detected: ${programIds.filter(id => crossChainPrograms.has(id))}`);
+      return false;
+    }
+
+    // Check if all program IDs are known Solana programs
+    const allSolanaPrograms = programIds.every(programId => solanaPrograms.has(programId));
+
+    if (allSolanaPrograms) {
+      console.log(`All ${programIds.length} program IDs are known Solana programs`);
+      return true;
+    }
+
+    // If we have unknown program IDs, they could be custom Solana programs
+    const unknownPrograms = programIds.filter(id => !solanaPrograms.has(id) && !crossChainPrograms.has(id));
+
+    if (unknownPrograms.length > 0) {
+      console.log(`Found ${unknownPrograms.length} unknown program IDs, assuming Solana-only: ${unknownPrograms.slice(0, 3)}`);
+      return true; // Assume unknown programs are Solana programs unless proven otherwise
+    }
+
+    return true; // Default to Solana-only
+
+  } catch (error) {
+    console.error('Error analyzing transfer for Solana-only detection:', error);
+    return false; // Default to cross-chain on error for safety
+  }
 }

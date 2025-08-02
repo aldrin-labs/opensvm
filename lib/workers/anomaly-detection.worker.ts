@@ -135,7 +135,7 @@ async function processBatch(taskId: string, tasks: any[]): Promise<void> {
     self.postMessage({
       type: 'error',
       taskId,
-      error: error.message,
+      error: error instanceof Error ? error.message : String(error),
       timestamp: Date.now()
     });
   }

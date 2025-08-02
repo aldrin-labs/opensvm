@@ -130,7 +130,12 @@ Remember, don't blindly repeat the contexts verbatim and don't tell the user how
       "[getAnswer] Fetching answer stream from Together API using text and question"
     );
     const stream = await TogetherAIStream(payload);
-    // TODO: Need to add error handling here, since a non-200 status code doesn't throw.
+    
+    // Enhanced error handling for streaming responses
+    if (!stream) {
+      throw new Error("Failed to create stream response");
+    }
+    
     return new Response(stream, {
       headers: new Headers({
         "Cache-Control": "no-cache",

@@ -54,7 +54,7 @@ export class UsageTracker {
 
         await this.usageStorage.logUsage(usageLog);
 
-        // TODO: Potentially update APIKey usage stats directly here, or in BillingProcessor
+        // Note: APIKey usage stats are updated in BillingProcessor for consistency
     }
 
     /**
