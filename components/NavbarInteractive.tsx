@@ -73,10 +73,15 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
 
   // Adjust main content padding when AI sidebar is open
   useEffect(() => {
-    if (isAIChatOpen) {
-      setContentPadding(`${sidebarWidth}px`); // This line was removed
-    } else {
-      setContentPadding('0px'); // This line was removed
+    const mainElement = document.querySelector('main');
+    if (mainElement) {
+      if (isAIChatOpen) {
+        mainElement.style.paddingRight = `${sidebarWidth}px`;
+        mainElement.style.transition = 'padding-right 0.3s ease-in-out';
+      } else {
+        mainElement.style.paddingRight = '0px';
+        mainElement.style.transition = 'padding-right 0.3s ease-in-out';
+      }
     }
   }, [isAIChatOpen, sidebarWidth]);
 
@@ -105,13 +110,13 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
   };
 
   const handleResizeStart = () => {
-    setIsResizing(true); // This line was removed
     document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
   };
 
   const handleResizeEnd = () => {
-    setIsResizing(false); // This line was removed
     document.body.style.cursor = 'default';
+    document.body.style.userSelect = '';
   };
 
   // Focus trap for keyboard navigation in mobile menu
@@ -687,4 +692,5 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
       />
     </>
   );
+};
 };
