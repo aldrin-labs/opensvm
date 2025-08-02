@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { TEST_CONSTANTS, waitForLoadingToComplete, waitForReactHydration, isElementVisible, measurePerformance } from './utils/test-helpers';
+import { TEST_CONSTANTS, waitForLoadingToComplete, waitForReactHydration, waitForTransactionTabLayout, isElementVisible, measurePerformance } from './utils/test-helpers';
 
 // Test transaction signature - using a known working transaction
 const TEST_TRANSACTION = TEST_CONSTANTS.TEST_ADDRESSES.VALID_TRANSACTION;
@@ -39,17 +39,26 @@ test.describe('Transaction Tab Routing System', () => {
       await page.goto(`/tx/${TEST_TRANSACTION}`);
       await waitForLoadingToComplete(page);
       
-      // Wait for React hydration to complete
+      // Wait for React hydration and transaction tab layout to be ready
       await waitForReactHydration(page);
+      await waitForTransactionTabLayout(page);
       
-      // Check that tab navigation is present
-      const tabNavigation = page.locator('button[data-value]').first();
+      // Additional wait for any animations or layout shifts
+      await page.waitForTimeout(1000);
+      
+      // Check that tab navigation is present with more specific selector
+      const tabNavigation = page.locator('.grid.grid-cols-4 button[data-value], .grid.grid-cols-8 button[data-value]').first();
       await expect(tabNavigation).toBeVisible();
 
-      // Verify all expected tabs are present using data-value selectors
+      // Verify all expected tabs are present using enhanced selectors
       for (const tab of VALID_TABS) {
-        const tabButton = page.locator(`button[data-value="${tab}"]`);
+        const tabButton = page.locator(`button[data-value="${tab}"], button[data-testid="tab-${tab}"]`);
         await expect(tabButton).toBeVisible();
+        
+        // Also verify the button has proper dimensions
+        const box = await tabButton.boundingBox();
+        expect(box?.width).toBeGreaterThan(50);
+        expect(box?.height).toBeGreaterThan(20);
       }
 
       console.log('✅ Transaction page loads with all tab buttons visible');
@@ -61,21 +70,53 @@ test.describe('Transaction Tab Routing System', () => {
         
         await page.goto(`/tx/${TEST_TRANSACTION}/${tab}`);
         await waitForLoadingToComplete(page);
+        await waitForTransactionTabLayout(page);
 
         // Verify URL is correct
         expect(page.url()).toContain(`/tx/${TEST_TRANSACTION}/${tab}`);
 
-        // Verify active tab is highlighted (flexible selector)
-        const activeTab = page.locator(`button[data-value="${tab}"], button:has-text("${tab.charAt(0).toUpperCase() + tab.slice(1)}")`).first();
+        // Enhanced selector for active tab with multiple fallbacks
+        const activeTabSelectors = [
+          `button[data-value="${tab}"][data-state="active"]`,
+          `button[data-testid="tab-${tab}"][data-state="active"]`,
+          `button[data-value="${tab}"].bg-primary`,
+          `button[data-testid="tab-${tab}"].bg-primary`,
+          `.grid button[data-value="${tab}"]`,
+          `.grid button:has-text("${tab.charAt(0).toUpperCase() + tab.slice(1)}")`
+        ];
+        
+        let activeTab = page.locator(`button[data-value="${tab}"]`).first();
+        let found = false;
+        
+        for (const selector of activeTabSelectors) {
+          const element = page.locator(selector).first();
+          if (await element.isVisible()) {
+            activeTab = element;
+            found = true;
+            break;
+          }
+        }
+        
+        // Fallback to basic selector if enhanced selectors don't work
+        if (!found) {
+          activeTab = page.locator(`button[data-value="${tab}"], button:has-text("${tab.charAt(0).toUpperCase() + tab.slice(1)}")`).first();
+        }
+        
         await expect(activeTab).toBeVisible();
         
-        // Wait for any animations to complete
-        await page.waitForTimeout(500);
+        // Wait for any animations to complete and verify button layout
+        await page.waitForTimeout(1000);
         
-        // Verify the active tab has the correct styling
-        const hasActiveStyles = await activeTab.evaluate(el =>
-          el.classList.contains('bg-primary') || el.getAttribute('data-state') === 'active'
-        );
+        // Verify the active tab has proper dimensions and styling
+        const box = await activeTab.boundingBox();
+        expect(box?.width).toBeGreaterThan(50);
+        expect(box?.height).toBeGreaterThan(20);
+        
+        const hasActiveStyles = await activeTab.evaluate(el => {
+          return el.classList.contains('bg-primary') ||
+                 el.getAttribute('data-state') === 'active' ||
+                 el.getAttribute('variant') === 'default';
+        });
         expect(hasActiveStyles).toBe(true);
 
         // Verify tab content loads using specific test ID
@@ -89,6 +130,7 @@ test.describe('Transaction Tab Routing System', () => {
     test('should navigate between tabs via button clicks', async ({ page }) => {
       await page.goto(`/tx/${TEST_TRANSACTION}/overview`);
       await waitForLoadingToComplete(page);
+      await waitForTransactionTabLayout(page);
 
       // Test clicking between different tabs
       const tabsToTest = ['graph', 'instructions', 'accounts', 'ai'];
@@ -97,11 +139,38 @@ test.describe('Transaction Tab Routing System', () => {
         console.log(`Clicking ${tab} tab...`);
         
         const performance = await measurePerformance(page, async () => {
-          // Find and click the tab button
-          const tabButton = page.locator(`.grid.grid-cols-4 button[data-value="${tab}"]`);
+          // Find tab button with enhanced selectors
+          const tabButtonSelectors = [
+            `.grid button[data-value="${tab}"]`,
+            `.grid button[data-testid="tab-${tab}"]`,
+            `button[data-value="${tab}"]`,
+            `button[data-testid="tab-${tab}"]`
+          ];
+          
+          let tabButton = page.locator(`button[data-value="${tab}"]`).first();
+          let found = false;
+          
+          for (const selector of tabButtonSelectors) {
+            const element = page.locator(selector).first();
+            if (await element.isVisible()) {
+              tabButton = element;
+              found = true;
+              break;
+            }
+          }
+          
+          // If enhanced selectors don't work, use fallback
+          if (!found) {
+            tabButton = page.locator(`button[data-value="${tab}"]`).first();
+          }
+          
+          await expect(tabButton).toBeVisible();
+          
+          // Scroll to button if needed and click
+          await tabButton.scrollIntoViewIfNeeded();
           await tabButton.click();
           
-          // Wait for navigation to complete (more lenient timeout and check)
+          // Wait for navigation to complete with enhanced checking
           try {
             await page.waitForURL(`**/tx/${TEST_TRANSACTION}/${tab}`, { timeout: 8000 });
           } catch (error) {
@@ -117,7 +186,9 @@ test.describe('Transaction Tab Routing System', () => {
               }
             }
           }
+          
           await waitForLoadingToComplete(page);
+          await waitForTransactionTabLayout(page);
         });
 
         // Verify URL changed

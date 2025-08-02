@@ -271,8 +271,17 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
             </div>
             
             {/* Custom Tab Navigation - Test-compatible grid structure */}
-            <div className="p-2 bg-muted rounded-lg overflow-visible">
-              <div className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full">
+            <div className="p-2 bg-muted rounded-lg overflow-visible" style={{ minHeight: '60px' }}>
+              <div
+                className="grid grid-cols-4 md:grid-cols-8 gap-2 w-full"
+                style={{
+                  display: 'grid',
+                  gridTemplateColumns: isMobile ? 'repeat(4, 1fr)' : 'repeat(8, 1fr)',
+                  gap: '0.5rem',
+                  width: '100%',
+                  minHeight: '44px'
+                }}
+              >
                 <Button
                   variant={activeTab === 'overview' ? 'default' : 'ghost'}
                   size="sm"
@@ -284,7 +293,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="overview"
                   data-testid="tab-overview"
@@ -308,7 +319,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="instructions"
                   data-testid="tab-instructions"
@@ -332,7 +345,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="accounts"
                   data-testid="tab-accounts"
@@ -356,7 +371,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="graph"
                   data-testid="tab-graph"
@@ -380,7 +397,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="ai"
                   data-testid="tab-ai"
@@ -404,7 +423,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="metrics"
                   data-testid="tab-metrics"
@@ -428,7 +449,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     opacity: 1,
                     display: 'inline-flex',
                     position: 'relative',
-                    zIndex: 1
+                    zIndex: 1,
+                    minWidth: '80px',
+                    minHeight: '36px'
                   }}
                   data-value="related"
                   data-testid="tab-related"
@@ -453,7 +476,9 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                       opacity: 1,
                       display: 'inline-flex',
                       position: 'relative',
-                      zIndex: 1
+                      zIndex: 1,
+                      minWidth: '80px',
+                      minHeight: '36px'
                     }}
                     data-value="failure"
                     data-testid="tab-failure"

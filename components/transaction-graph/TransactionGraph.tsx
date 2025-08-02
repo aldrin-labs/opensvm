@@ -936,104 +936,149 @@ const TransactionGraph = React.memo(function TransactionGraph({
         </div>
       )}
 
-      {/* Loading overlay - use key for better tracking */}
+      {/* Enhanced Loading overlay with better animations */}
       {isLoading ? (
         <div
           key="loading-overlay"
-          className="absolute inset-0 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center"
+          className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/80 backdrop-blur-sm z-20 flex items-center justify-center"
         >
-          <div className="text-center bg-card p-6 rounded-lg shadow-lg">
-            <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
-            <p className="text-sm text-muted-foreground">{progressMessage}</p>
+          <div className="text-center bg-card/95 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-border/50 max-w-sm">
+            <div className="relative mb-6">
+              <div className="w-12 h-12 border-4 border-primary/20 rounded-full"></div>
+              <div className="absolute inset-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Processing Graph</h3>
+            <p className="text-sm text-muted-foreground mb-4">{progressMessage}</p>
             {progress > 0 && (
-              <div className="w-48 h-2 bg-muted rounded-full mt-2">
+              <div className="w-64 h-3 bg-muted rounded-full mt-4 overflow-hidden">
                 <div
-                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${progress}%` }}
                 ></div>
-                <p className="text-xs text-center mt-1">{progress}%</p>
+                <p className="text-xs text-center mt-2 font-medium">{progress}%</p>
               </div>
             )}
             {expandedNodesCount > 0 && (
-              <p className="text-xs text-muted-foreground mt-2">
-                Processed {expandedNodesCount} of {totalAccountsToLoad || '?'} accounts
-              </p>
+              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
+                <p className="text-xs text-muted-foreground">
+                  Processed <span className="font-semibold text-foreground">{expandedNodesCount}</span> of{' '}
+                  <span className="font-semibold text-foreground">{totalAccountsToLoad || '?'}</span> accounts
+                </p>
+              </div>
             )}
           </div>
         </div>
       ) : null}
 
-      {/* Error display - use key for better tracking */}
+      {/* Enhanced Error display with better styling */}
       {error ? (
         <div
           key="error-display"
-          className="absolute top-4 left-4 right-4 z-30 p-4 bg-destructive/10 border border-destructive/20 rounded-lg"
+          className="absolute top-4 left-4 right-4 z-30 p-4 bg-gradient-to-r from-destructive/10 to-destructive/5 border border-destructive/20 rounded-xl shadow-lg backdrop-blur-sm"
         >
-          <p className="text-sm text-destructive">{error}</p>
-          <button
-            onClick={() => setError(null)}
-            className="mt-2 text-xs text-destructive hover:underline"
-          >
-            Dismiss
-          </button>
+          <div className="flex items-start gap-3">
+            <div className="flex-shrink-0 w-5 h-5 rounded-full bg-destructive/20 flex items-center justify-center mt-0.5">
+              <svg className="w-3 h-3 text-destructive" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div className="flex-1">
+              <p className="text-sm text-destructive font-medium">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="mt-2 text-xs text-destructive/80 hover:text-destructive hover:underline transition-colors"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
 
-      {/* Controls */}
+      {/* Enhanced Controls with modern styling */}
       <div key="controls" className="absolute top-4 right-4 z-30 flex gap-2">
         {/* Navigation controls */}
-        <button
-          onClick={navigateBack}
-          disabled={!canGoBack}
-          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoBack ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'}`}
-          title="Navigate Back (Alt+←)"
-          aria-label="Navigate Back"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" />
-          </svg>
-        </button>
+        <div className="flex gap-1 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl p-1 shadow-lg">
+          <button
+            onClick={navigateBack}
+            disabled={!canGoBack}
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
+              canGoBack
+                ? 'hover:bg-muted text-foreground hover:scale-105'
+                : 'opacity-40 cursor-not-allowed text-muted-foreground'
+            }`}
+            title="Navigate Back (Alt+←)"
+            aria-label="Navigate Back"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M19 12H5M12 19l-7-7 7-7" />
+            </svg>
+          </button>
 
-        <button
-          onClick={navigateForward}
-          disabled={!canGoForward}
-          className={`p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg ${canGoForward ? 'hover:bg-muted' : 'opacity-50 cursor-not-allowed'}`}
-          title="Navigate Forward (Alt+→)"
-          aria-label="Navigate Forward"
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M5 12h14M12 5l7 7-7 7" />
-          </svg>
-        </button>
+          <button
+            onClick={navigateForward}
+            disabled={!canGoForward}
+            className={`p-2.5 rounded-lg transition-all duration-200 ${
+              canGoForward
+                ? 'hover:bg-muted text-foreground hover:scale-105'
+                : 'opacity-40 cursor-not-allowed text-muted-foreground'
+            }`}
+            title="Navigate Forward (Alt+→)"
+            aria-label="Navigate Forward"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M5 12h14M12 5l7 7-7 7" />
+            </svg>
+          </button>
+        </div>
 
-        <div className="w-px h-8 bg-border" />
+        <div className="flex gap-1 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl p-1 shadow-lg">
+          <button
+            onClick={toggleFullscreen}
+            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
+            title="Toggle Fullscreen"
+            aria-label="Toggle Fullscreen"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {isFullscreen ? (
+                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
+              ) : (
+                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+              )}
+            </svg>
+          </button>
 
-        <button
-          onClick={toggleFullscreen}
-          className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
-          title="Toggle Fullscreen"
-          aria-label="Toggle Fullscreen"
-        >
-          {isFullscreen ? '⛶' : '⛶'}
-        </button>
+          <button
+            onClick={toggleCloudView}
+            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
+            title="Toggle Cloud View"
+            aria-label="Show cloud view"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {isCloudView ? (
+                <path d="M3 3h18v18H3zM9 9h6v6H9z" />
+              ) : (
+                <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
+              )}
+            </svg>
+          </button>
 
-        <button
-          onClick={toggleCloudView}
-          className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
-          title="Toggle Cloud View"
-          aria-label="Show cloud view"
-        >
-          {isCloudView ? '📊' : '☁️'}
-        </button>
-
-        <button
-          onClick={() => setUseGPUGraph(!useGPUGraph)}
-          className="p-2 bg-background/80 backdrop-blur-sm border border-border rounded-lg hover:bg-muted"
-          title="Toggle GPU Acceleration"
-          aria-label="Toggle GPU Acceleration"
-        >
-          {useGPUGraph ? '🖥️' : '🎮'}
-        </button>
+          <button
+            onClick={() => setUseGPUGraph(!useGPUGraph)}
+            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
+            title="Toggle GPU Acceleration"
+            aria-label="Toggle GPU Acceleration"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              {useGPUGraph ? (
+                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
+              ) : (
+                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
+              )}
+              <polyline points="6,12 10,16 18,8" />
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Debug Panel - only show when graph has issues */}

@@ -27,17 +27,66 @@ export async function waitForReactHydration(page: Page, timeout = 30000) {
             const buttons = document.querySelectorAll('button[data-value], .grid button');
             const hasButtons = buttons.length > 0;
             
-            // Check if buttons are actually clickable (not just present in DOM)
-            const hasClickableButtons = Array.from(buttons).some(btn => 
-                btn instanceof HTMLElement && 
-                !btn.hasAttribute('disabled') &&
-                btn.offsetParent !== null // element is visible
-            );
+            // Check if buttons are actually clickable and visible (not just present in DOM)
+            const hasVisibleButtons = Array.from(buttons).some(btn => {
+                if (!(btn instanceof HTMLElement)) return false;
+                if (btn.hasAttribute('disabled')) return false;
+                
+                // More comprehensive visibility check
+                const style = window.getComputedStyle(btn);
+                const rect = btn.getBoundingClientRect();
+                
+                return (
+                    btn.offsetParent !== null && // element is visible in layout
+                    style.visibility !== 'hidden' &&
+                    style.display !== 'none' &&
+                    style.opacity !== '0' &&
+                    rect.width > 0 &&
+                    rect.height > 0 &&
+                    rect.top >= 0 && // not scrolled out of view
+                    rect.left >= 0
+                );
+            });
             
-            return hasButtons && hasClickableButtons;
+            return hasButtons && hasVisibleButtons;
         }, { timeout });
     } catch (error) {
         console.log('React hydration timeout - continuing with test');
+    }
+}
+
+// Enhanced wait for transaction tab layout to be fully ready
+export async function waitForTransactionTabLayout(page: Page, timeout = 30000) {
+    try {
+        await page.waitForFunction(() => {
+            // Wait for the transaction tab content to be ready
+            const tabContent = document.querySelector('[data-testid="transaction-tab-content"]');
+            const tabButtons = document.querySelectorAll('button[data-value]');
+            const hasValidButtons = tabButtons.length >= 6; // Should have at least 6 main tabs
+            
+            // Check if the grid container is properly laid out
+            const gridContainer = document.querySelector('.grid.grid-cols-4, .grid.grid-cols-8');
+            const hasGridLayout = gridContainer && window.getComputedStyle(gridContainer).display === 'grid';
+            
+            // Verify at least one button is properly visible
+            const hasVisibleButton = Array.from(tabButtons).some(btn => {
+                if (!(btn instanceof HTMLElement)) return false;
+                const style = window.getComputedStyle(btn);
+                const rect = btn.getBoundingClientRect();
+                
+                return (
+                    style.visibility === 'visible' &&
+                    style.display !== 'none' &&
+                    parseFloat(style.opacity) > 0.5 &&
+                    rect.width > 50 && // reasonable button width
+                    rect.height > 20   // reasonable button height
+                );
+            });
+            
+            return tabContent && hasValidButtons && hasGridLayout && hasVisibleButton;
+        }, { timeout });
+    } catch (error) {
+        console.log('Transaction tab layout timeout - continuing with test');
     }
 }
 
