@@ -59,20 +59,22 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         
-        {/* Preload critical fonts */}
-        <link 
-          rel="preload" 
-          href="/fonts/BerkeleyMono-Regular.woff2" 
-          as="font" 
-          type="font/woff2" 
+        {/* Preload critical fonts with high priority */}
+        <link
+          rel="preload"
+          href="/fonts/BerkeleyMono-Regular.woff2"
+          as="font"
+          type="font/woff2"
           crossOrigin="anonymous"
+          fetchPriority="high"
         />
-        <link 
-          rel="preload" 
-          href="/fonts/BerkeleyMono-Bold.woff2" 
-          as="font" 
-          type="font/woff2" 
+        <link
+          rel="preload"
+          href="/fonts/BerkeleyMono-Bold.woff2"
+          as="font"
+          type="font/woff2"
           crossOrigin="anonymous"
+          fetchPriority="high"
         />
         
         {/* Priority hints for critical resources */}
@@ -87,7 +89,7 @@ export default function RootLayout({
         {/* Meta tags for viewport control and performance monitoring */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         <meta name="theme-color" content="#000000" />
-        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         
         {/* PWA support */}

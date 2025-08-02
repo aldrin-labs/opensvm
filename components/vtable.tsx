@@ -733,8 +733,10 @@ export function VTableWrapper({
             clearTimeout(timer);
             setTimeout(() => {
               if (tableRef.current && containerRef.current) {
-                // Update table width
-                tableRef.current.setWidth(width);
+                // Update table width - check if method exists
+                if (tableRef.current && typeof tableRef.current.setWidth === 'function') {
+                  tableRef.current.setWidth(width);
+                }
 
                 // Recalculate column widths for responsive behavior
                 const fixedColumns = columns.filter(col => col.width);

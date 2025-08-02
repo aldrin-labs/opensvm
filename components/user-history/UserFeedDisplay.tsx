@@ -77,6 +77,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [likeError, setLikeError] = useState<string | null>(null);
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
+  
+  // Retry logic state
+  const [retryCount, setRetryCount] = useState(0);
+  const [retryTimeout, setRetryTimeout] = useState<NodeJS.Timeout | null>(null);
+  const maxRetries = 5;
+  const baseRetryDelay = 2000; // Start with 2 seconds
 
   // Profile-specific features based on isMyProfile
   const profileFeatures = useMemo(() => {
@@ -302,6 +308,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Initialize SSE connection for real-time updates
   useEffect(() => {
     const setupEventSource = () => {
+      // Clear any existing retry timeout
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+        setRetryTimeout(null);
+      }
+
       setConnectionStatus('connecting');
 
       const queryParams = new URLSearchParams({
@@ -314,6 +326,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
 
       newEventSource.onopen = () => {
         setConnectionStatus('connected');
+        setRetryCount(0); // Reset retry count on successful connection
         console.log('SSE connection established');
       };
 
@@ -321,6 +334,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         // Set to connected on first message as a fallback
         if (connectionStatus !== 'connected') {
           setConnectionStatus('connected');
+          setRetryCount(0); // Reset retry count on successful message
         }
 
         try {
@@ -425,11 +439,32 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       };
 
       newEventSource.onerror = (error) => {
-        console.error('Detailed EventSource error:', { error, readyState: newEventSource.readyState });
+        console.error('Detailed EventSource error:', {
+          error,
+          readyState: newEventSource.readyState,
+          retryCount,
+          maxRetries
+        });
+        
         setConnectionStatus('disconnected');
         newEventSource.close();
-        // Attempt to reconnect after a few seconds
-        setTimeout(setupEventSource, 5000);
+        
+        // Implement exponential backoff with retry limits
+        if (retryCount < maxRetries) {
+          const retryDelay = Math.min(baseRetryDelay * Math.pow(2, retryCount), 30000); // Cap at 30 seconds
+          console.log(`Attempting to reconnect in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          
+          const timeoutId = setTimeout(() => {
+            setRetryCount(prev => prev + 1);
+            setupEventSource();
+          }, retryDelay);
+          
+          setRetryTimeout(timeoutId);
+        } else {
+          console.error('Max retry attempts reached. SSE connection failed permanently.');
+          setConnectionStatus('disconnected');
+          // Optionally show a user-friendly message or fallback to polling
+        }
       };
 
       setEventSource(newEventSource);
@@ -446,8 +481,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       if (eventSource) {
         eventSource.close();
       }
+      if (retryTimeout) {
+        clearTimeout(retryTimeout);
+      }
     };
-  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, connectionStatus, eventSource, filters.sortOrder, shouldShowEvent]);
+  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, filters.sortOrder, shouldShowEvent]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
@@ -459,6 +497,15 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     if (eventSource) {
       eventSource.close();
     }
+    
+    // Clear any pending retry timeout
+    if (retryTimeout) {
+      clearTimeout(retryTimeout);
+      setRetryTimeout(null);
+    }
+    
+    // Reset retry state for new tab
+    setRetryCount(0);
 
     // Reset search query when changing tabs
     setSearchQuery('');
@@ -1270,8 +1317,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             }`} />
           <span className="text-xs text-muted-foreground">
             {connectionStatus === 'connected' ? 'Live updates active' :
-              connectionStatus === 'connecting' ? 'Connecting...' :
-                'Disconnected - retrying'}
+              connectionStatus === 'connecting' ?
+                (retryCount > 0 ? `Reconnecting... (attempt ${retryCount}/${maxRetries})` : 'Connecting...') :
+                retryCount >= maxRetries ? 'Connection failed - manual retry required' : 'Disconnected - retrying'}
           </span>
         </div>
 
@@ -1381,15 +1429,35 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       if (eventSource) {
                         eventSource.close();
                       }
+                      if (retryTimeout) {
+                        clearTimeout(retryTimeout);
+                        setRetryTimeout(null);
+                      }
+                      // Reset retry count for manual reconnection
+                      setRetryCount(0);
+                      setConnectionStatus('connecting');
+                      
                       // Reinitialize the SSE connection
                       const setupEventSource = () => {
-                        setConnectionStatus('connecting');
                         const queryParams = new URLSearchParams({
                           walletAddress,
                           type: activeTab,
                           eventTypes: filters.eventTypes.join(',')
                         });
                         const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
+                        
+                        newEventSource.onopen = () => {
+                          setConnectionStatus('connected');
+                          setRetryCount(0);
+                          console.log('SSE connection established (manual reconnect)');
+                        };
+                        
+                        newEventSource.onerror = (error) => {
+                          console.error('Manual reconnect failed:', error);
+                          setConnectionStatus('disconnected');
+                          newEventSource.close();
+                        };
+                        
                         setEventSource(newEventSource);
                       };
                       setupEventSource();

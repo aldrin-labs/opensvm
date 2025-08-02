@@ -333,7 +333,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
     layout: layoutConfig,
     minZoom: 0.2,
     maxZoom: 3,
-    wheelSensitivity: 1.0, // Using default value for consistent zoom behavior across different mice
+    // Use default wheelSensitivity (don't set custom value to avoid warnings)
     // Performance optimizations
     styleEnabled: true,
     hideEdgesOnViewport: false,
