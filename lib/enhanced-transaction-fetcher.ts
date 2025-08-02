@@ -168,21 +168,26 @@ export class EnhancedTransactionFetcher {
 
     console.log(`[EnhancedTransactionFetcher] Fetching transaction: ${signature}`);
 
-    // Fetch the parsed transaction
-    const tx = await this.connection.getParsedTransaction(signature, {
-      maxSupportedTransactionVersion: 0,
-      commitment: 'confirmed'
-    });
+    // Fetch the parsed transaction with timeout
+    const tx = await Promise.race([
+      this.connection.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0,
+        commitment: 'confirmed'
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Transaction fetch timed out')), 8000); // 8 second timeout
+      })
+    ]) as ParsedTransactionWithMeta;
 
     if (!tx) {
       throw new Error(`Transaction not found: ${signature}`);
     }
 
-    // Get account states before and after transaction
-    const accountStates = await this.getAccountStates(tx);
+    // Get account states before and after transaction (lightweight version)
+    const accountStates = this.getAccountStatesLightweight(tx);
 
-    // Parse instructions with enhanced data
-    const instructionData = await this.parseInstructions(tx);
+    // Parse instructions with basic data (skip heavy processing)
+    const instructionData = this.parseInstructionsBasic(tx);
 
     // Calculate transaction metrics
     const metrics = this.calculateMetrics(tx, instructionData);
@@ -217,15 +222,116 @@ export class EnhancedTransactionFetcher {
       metrics
     };
 
-    // Add metadata enrichment
-    try {
-      enhancedData.enrichment = await transactionMetadataEnricher.enrichTransaction(enhancedData);
-    } catch (error) {
-      console.warn('Failed to enrich transaction metadata:', error);
-      // Continue without enrichment rather than failing the entire request
-    }
+    // Skip metadata enrichment for now to avoid timeouts
+    // This can be done asynchronously later if needed
 
     return enhancedData;
+  }
+
+  /**
+   * Fetch basic transaction data for faster response (fallback method)
+   */
+  async fetchBasicTransaction(signature: string): Promise<ParsedTransactionWithMeta> {
+    await this.init();
+
+    // Validate transaction signature format before making RPC call
+    if (!this.isValidTransactionSignature(signature)) {
+      console.error(`[EnhancedTransactionFetcher] Invalid signature format: ${signature} (length: ${signature.length})`);
+      throw new Error(`Invalid transaction signature format: ${signature}`);
+    }
+
+    console.log(`[EnhancedTransactionFetcher] Fetching basic transaction: ${signature}`);
+
+    // Fetch the parsed transaction with shorter timeout
+    const tx = await Promise.race([
+      this.connection.getParsedTransaction(signature, {
+        maxSupportedTransactionVersion: 0,
+        commitment: 'confirmed'
+      }),
+      new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Basic transaction fetch timed out')), 5000); // 5 second timeout
+      })
+    ]) as ParsedTransactionWithMeta;
+
+    if (!tx) {
+      throw new Error(`Transaction not found: ${signature}`);
+    }
+
+    return tx;
+  }
+
+  /**
+   * Get account states before and after transaction (lightweight version)
+   */
+  private getAccountStatesLightweight(tx: ParsedTransactionWithMeta): AccountStateData[] {
+    const accountKeys = tx.transaction.message.accountKeys;
+    const preBalances = tx.meta?.preBalances || [];
+    const postBalances = tx.meta?.postBalances || [];
+    const preTokenBalances = tx.meta?.preTokenBalances || [];
+    const postTokenBalances = tx.meta?.postTokenBalances || [];
+
+    const accountStates: AccountStateData[] = [];
+
+    for (let i = 0; i < accountKeys.length; i++) {
+      const accountKey = accountKeys[i];
+      const address = accountKey.pubkey.toString();
+
+      // Calculate lamports difference
+      const preLamports = preBalances[i] || 0;
+      const postLamports = postBalances[i] || 0;
+      const lamportsDiff = postLamports - preLamports;
+
+      // Find token changes for this account (simplified)
+      const tokenChanges: TokenStateChange[] = [];
+
+      // Match pre and post token balances
+      const preTokens = preTokenBalances.filter(tb => tb.accountIndex === i);
+      const postTokens = postTokenBalances.filter(tb => tb.accountIndex === i);
+
+      // Simple token change tracking
+      const tokenChangeMap = new Map<string, TokenStateChange>();
+
+      preTokens.forEach(preToken => {
+        const postToken = postTokens.find(pt => pt.mint === preToken.mint);
+        tokenChangeMap.set(preToken.mint, {
+          mint: preToken.mint,
+          beforeAmount: preToken.uiTokenAmount.amount,
+          afterAmount: postToken?.uiTokenAmount.amount || '0',
+          difference: (BigInt(postToken?.uiTokenAmount.amount || '0') - BigInt(preToken.uiTokenAmount.amount)).toString(),
+          decimals: preToken.uiTokenAmount.decimals,
+          uiAmountBefore: preToken.uiTokenAmount.uiAmount,
+          uiAmountAfter: postToken?.uiTokenAmount.uiAmount || 0
+        });
+      });
+
+      postTokens.forEach(postToken => {
+        if (!tokenChangeMap.has(postToken.mint)) {
+          tokenChangeMap.set(postToken.mint, {
+            mint: postToken.mint,
+            beforeAmount: '0',
+            afterAmount: postToken.uiTokenAmount.amount,
+            difference: postToken.uiTokenAmount.amount,
+            decimals: postToken.uiTokenAmount.decimals,
+            uiAmountBefore: 0,
+            uiAmountAfter: postToken.uiTokenAmount.uiAmount
+          });
+        }
+      });
+
+      tokenChanges.push(...tokenChangeMap.values());
+
+      // Skip heavy account state fetching for performance
+      accountStates.push({
+        address,
+        beforeState: null,
+        afterState: null,
+        lamportsDiff,
+        tokenChanges,
+        dataChanges: null
+      });
+    }
+
+    return accountStates;
   }
 
   /**
@@ -304,6 +410,30 @@ export class EnhancedTransactionFetcher {
   }
 
   /**
+   * Parse instructions with basic data (faster version)
+   */
+  private parseInstructionsBasic(tx: ParsedTransactionWithMeta): EnhancedInstructionData[] {
+    const instructions = tx.transaction.message.instructions;
+    const logs = tx.meta?.logMessages || [];
+
+    const enhancedInstructions: EnhancedInstructionData[] = [];
+
+    for (let i = 0; i < instructions.length; i++) {
+      const instruction = instructions[i];
+      
+      // Basic instruction parsing without heavy analysis
+      const enhancedInstruction = this.parseInstructionBasic(instruction, i.toString(), logs);
+      
+      // Skip inner instruction processing for performance
+      enhancedInstruction.innerInstructions = [];
+
+      enhancedInstructions.push(enhancedInstruction);
+    }
+
+    return enhancedInstructions;
+  }
+
+  /**
    * Parse instructions with enhanced metadata
    */
   private async parseInstructions(tx: ParsedTransactionWithMeta): Promise<EnhancedInstructionData[]> {
@@ -333,6 +463,68 @@ export class EnhancedTransactionFetcher {
     }
 
     return enhancedInstructions;
+  }
+
+  /**
+   * Parse a single instruction with basic data (faster version)
+   */
+  private parseInstructionBasic(
+    instruction: ParsedInstruction | PartiallyDecodedInstruction,
+    index: string,
+    logs: string[]
+  ): EnhancedInstructionData {
+    const programId = instruction.programId.toString();
+
+    // Extract relevant logs for this instruction
+    const instructionLogs = logs.filter(log =>
+      log.includes(`Program ${programId}`) ||
+      log.includes(`invoke [${index}]`)
+    );
+
+    // Handle different instruction types safely
+    let accounts: string[] = [];
+    let data: string = '';
+    let parsed: any = undefined;
+
+    if ('accounts' in instruction && instruction.accounts) {
+      accounts = instruction.accounts.map((acc: any) => acc.toString());
+    }
+
+    if ('data' in instruction && instruction.data) {
+      data = instruction.data;
+    }
+
+    if ('parsed' in instruction) {
+      parsed = instruction.parsed;
+    }
+
+    // Simple program name lookup without heavy parsing
+    const programName = this.getProgramName(programId) || 'Unknown Program';
+    const description = parsed ? this.generateInstructionDescription(parsed) : 'Unknown instruction';
+
+    // Basic account info without roles
+    const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey: string) => ({
+      pubkey: accountPubkey,
+      isSigner: false,
+      isWritable: false,
+      role: 'unknown' as any
+    }));
+
+    return {
+      index: parseInt(index.split('.')[0]),
+      programId,
+      programName,
+      instructionType: parsed?.type || 'unknown',
+      description,
+      accounts: enhancedAccounts,
+      data: {
+        raw: data,
+        parsed,
+        discriminator: this.extractDiscriminator(data)
+      },
+      innerInstructions: [],
+      logs: instructionLogs
+    };
   }
 
   /**

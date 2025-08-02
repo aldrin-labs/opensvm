@@ -35,7 +35,7 @@ class ProxyConnection extends Connection {
       ...config,
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
-      confirmTransactionInitialTimeout: 60000, // Decreased from 180000
+      confirmTransactionInitialTimeout: 30000, // Further decreased to 30 seconds
       wsEndpoint: undefined,
       fetch: async (url, options) => {
         const headers = getRpcHeaders(endpoint);
@@ -48,7 +48,7 @@ class ProxyConnection extends Connection {
         for (let i = 0; i < maxRetries; i++) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout to match API layer
 
             const response = await fetch(url, {
               ...options,
@@ -119,7 +119,7 @@ class ProxyConnection extends Connection {
     try {
       const headers = getRpcHeaders(this.rpcEndpoint);
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout to match API layer
 
       const response = await fetch(this.rpcEndpoint, {
         method: 'POST',
@@ -186,12 +186,21 @@ class ConnectionPool {
   private failedEndpoints: Set<string> = new Set();
   private lastHealthCheck: number = 0;
   private readonly healthCheckInterval = 60000; // Decreased from 120000
+  
+  // Circuit breaker state
+  private circuitBreakerState: Map<string, {
+    failureCount: number;
+    lastFailureTime: number;
+    isOpen: boolean;
+  }> = new Map();
+  private readonly circuitBreakerThreshold = 3; // Failures before opening circuit
+  private readonly circuitBreakerTimeout = 30000; // 30 seconds before trying again
 
   private constructor() {
     this.config = {
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
-      confirmTransactionInitialTimeout: 60000, // Decreased from 180000
+      confirmTransactionInitialTimeout: 30000, // Further decreased to 30 seconds
       wsEndpoint: undefined
     };
 
@@ -234,23 +243,95 @@ class ConnectionPool {
   }
 
   private async testConnection(connection: ProxyConnection): Promise<boolean> {
+    const endpoint = connection.rpcEndpoint;
+    
+    // Check circuit breaker state
+    if (this.isCircuitBreakerOpen(endpoint)) {
+      console.warn(`Circuit breaker is open for ${endpoint}`);
+      return false;
+    }
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for health checks
       const blockHeight = await connection.getBlockHeight();
       clearTimeout(timeoutId);
+      
+      // Reset circuit breaker on success
+      this.resetCircuitBreaker(endpoint);
       return blockHeight > 0;
     } catch (error) {
+      // Record failure in circuit breaker
+      this.recordFailure(endpoint);
+      
       if (error instanceof RateLimitError) {
-        console.warn(`Rate limit hit during health check for ${connection.rpcEndpoint}`);
+        console.warn(`Rate limit hit during health check for ${endpoint}`);
         return true; // Don't fail just because of rate limit
       }
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`Health check timed out for ${connection.rpcEndpoint}`);
+        console.warn(`Health check timed out for ${endpoint}`);
         return false;
       }
-      console.error(`Error testing connection:`, error);
+      console.error(`Error testing connection ${endpoint}:`, error);
       return false;
+    }
+  }
+
+  /**
+   * Check if circuit breaker is open for an endpoint
+   */
+  private isCircuitBreakerOpen(endpoint: string): boolean {
+    const state = this.circuitBreakerState.get(endpoint);
+    if (!state) return false;
+    
+    if (state.isOpen) {
+      // Check if enough time has passed to try again
+      const timeSinceLastFailure = Date.now() - state.lastFailureTime;
+      if (timeSinceLastFailure > this.circuitBreakerTimeout) {
+        state.isOpen = false;
+        state.failureCount = 0;
+        console.log(`Circuit breaker reset for ${endpoint}`);
+        return false;
+      }
+      return true;
+    }
+    
+    return false;
+  }
+
+  /**
+   * Record a failure for circuit breaker
+   */
+  private recordFailure(endpoint: string): void {
+    const state = this.circuitBreakerState.get(endpoint) || {
+      failureCount: 0,
+      lastFailureTime: 0,
+      isOpen: false
+    };
+    
+    state.failureCount++;
+    state.lastFailureTime = Date.now();
+    
+    if (state.failureCount >= this.circuitBreakerThreshold) {
+      state.isOpen = true;
+      console.warn(`Circuit breaker opened for ${endpoint} after ${state.failureCount} failures`);
+    }
+    
+    this.circuitBreakerState.set(endpoint, state);
+  }
+
+  /**
+   * Reset circuit breaker on successful connection
+   */
+  private resetCircuitBreaker(endpoint: string): void {
+    const state = this.circuitBreakerState.get(endpoint);
+    if (state && (state.failureCount > 0 || state.isOpen)) {
+      console.log(`Circuit breaker reset for ${endpoint}`);
+      this.circuitBreakerState.set(endpoint, {
+        failureCount: 0,
+        lastFailureTime: 0,
+        isOpen: false
+      });
     }
   }
 
@@ -308,38 +389,71 @@ class ConnectionPool {
     }
 
     if (this.isOpenSvmMode && this.connections.length > 1) {
-      const connection = this.connections[this.currentIndex];
-      try {
-        await rateLimit(`rpc-${connection.rpcEndpoint}`, {
-          limit: 100, // Increased from 80
-          windowMs: 1000,
-          maxRetries: 20, // Increased from 15
-          initialRetryDelay: 50, // Decreased from 100
-          maxRetryDelay: 500 // Decreased from 1000
-        });
-
-        this.currentIndex = (this.currentIndex + 1) % this.connections.length;
-        return connection;
-      } catch (error) {
-        if (error instanceof RateLimitError) {
-          console.warn(`Rate limit exceeded for ${connection.rpcEndpoint}, switching endpoints`);
+      // Try to find a connection that's not circuit broken
+      let attempts = 0;
+      const maxAttempts = this.connections.length;
+      
+      while (attempts < maxAttempts) {
+        const connection = this.connections[this.currentIndex];
+        const endpoint = connection.rpcEndpoint;
+        
+        // Skip if circuit breaker is open
+        if (this.isCircuitBreakerOpen(endpoint)) {
           this.currentIndex = (this.currentIndex + 1) % this.connections.length;
-          return this.getConnection();
+          attempts++;
+          continue;
         }
-        throw error;
+        
+        try {
+          await rateLimit(`rpc-${endpoint}`, {
+            limit: 100, // Increased from 80
+            windowMs: 1000,
+            maxRetries: 20, // Increased from 15
+            initialRetryDelay: 50, // Decreased from 100
+            maxRetryDelay: 500 // Decreased from 1000
+          });
+
+          this.currentIndex = (this.currentIndex + 1) % this.connections.length;
+          return connection;
+        } catch (error) {
+          this.recordFailure(endpoint);
+          
+          if (error instanceof RateLimitError) {
+            console.warn(`Rate limit exceeded for ${endpoint}, switching endpoints`);
+            this.currentIndex = (this.currentIndex + 1) % this.connections.length;
+            attempts++;
+            continue;
+          }
+          throw error;
+        }
       }
+      
+      // If all connections are circuit broken, return the first one anyway
+      console.warn('All connections are circuit broken, using first connection anyway');
+      return this.connections[0];
     }
 
     const connection = this.connections[0];
-    await rateLimit(`rpc-single-${connection.rpcEndpoint}`, {
-      limit: 50, // Increased from 40
-      windowMs: 1000,
-      maxRetries: 20, // Increased from 15
-      initialRetryDelay: 50, // Decreased from 100
-      maxRetryDelay: 500 // Decreased from 1000
-    });
+    const endpoint = connection.rpcEndpoint;
+    
+    if (this.isCircuitBreakerOpen(endpoint)) {
+      throw new Error(`All connections are circuit broken`);
+    }
+    
+    try {
+      await rateLimit(`rpc-single-${endpoint}`, {
+        limit: 50, // Increased from 40
+        windowMs: 1000,
+        maxRetries: 20, // Increased from 15
+        initialRetryDelay: 50, // Decreased from 100
+        maxRetryDelay: 500 // Decreased from 1000
+      });
 
-    return connection;
+      return connection;
+    } catch (error) {
+      this.recordFailure(endpoint);
+      throw error;
+    }
   }
 
   public async healthCheck(): Promise<boolean> {

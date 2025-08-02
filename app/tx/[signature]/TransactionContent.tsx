@@ -50,7 +50,7 @@ const TransactionMetricsDisplay = dynamic(
 // Using simple version for debugging clientReferenceManifest issue  
 // Dynamically import TransactionGraph to avoid SSR window references
 const TransactionGraph = dynamic(
-  () => import('@/components/TransactionGraph'),
+  () => import('@/components/transaction-graph/TransactionGraph'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
 import { useTransactionFailureAnalysis } from '@/hooks/useTransactionFailureAnalysis';

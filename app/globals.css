@@ -1,3 +1,4 @@
+/* Cytoscape does not require a global CSS import. Remove invalid @import. */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

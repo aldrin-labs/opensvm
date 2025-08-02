@@ -67,12 +67,22 @@ const nextConfig = {
   // This ensures animation classes used by interactive components
   // are included in production builds
   webpack: (config, { dev, isServer }) => {
+    // Add rule to handle ES modules properly (fixes mermaid/cytoscape CSS import issues)
+    config.module.rules.push({
+      test: /\.m?js$/,
+      resolve: {
+        fullySpecified: false,
+      },
+    });
+
     // Resolve Three.js to a single instance to prevent multiple imports
     config.resolve.alias = {
       ...config.resolve.alias,
       'three': 'three',
       'three/examples/jsm/controls/OrbitControls': 'three/examples/jsm/controls/OrbitControls',
-      'three/examples/jsm/controls/OrbitControls.js': 'three/examples/jsm/controls/OrbitControls.js'
+      'three/examples/jsm/controls/OrbitControls.js': 'three/examples/jsm/controls/OrbitControls.js',
+      // Prevent cytoscape CSS imports that don't exist (fixes mermaid issue)
+      'cytoscape/dist/cytoscape.css': false,
     };
     
     // Configure externals to prevent multiple Three.js instances
@@ -81,7 +91,10 @@ const nextConfig = {
         ...config.resolve.fallback,
         fs: false,
         path: false,
-        os: false
+        os: false,
+        // Ignore cytoscape CSS imports that don't exist
+        './dist/cytoscape.css': false,
+        'cytoscape/dist/cytoscape.css': false,
       };
     }
 

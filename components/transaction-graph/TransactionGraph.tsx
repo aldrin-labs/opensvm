@@ -9,6 +9,7 @@ import { GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
 
 
 import type { TransactionGraphProps } from './types';
+import type { DetailedTransactionInfo } from '@/lib/solana';
 import {
   resizeGraph,
   fetchTransactionData,
@@ -57,6 +58,7 @@ const EXCLUDED_ACCOUNTS = new Set([
 const TransactionGraph = React.memo(function TransactionGraph({
   initialSignature,
   initialAccount,
+  initialTransactionData,
   onTransactionSelect,
   clientSideNavigation = false,
   width = '100%',
@@ -179,8 +181,8 @@ const TransactionGraph = React.memo(function TransactionGraph({
     handleGPUNodeClick(node);
   };
 
-  // Enhanced layout function
-  const runLayoutWithProgress = async (layoutType: string = 'dagre', forceRun: boolean = false) => {
+  // Enhanced layout function - memoized to prevent infinite loops
+  const runLayoutWithProgress = useCallback(async (layoutType: string = 'dagre', forceRun: boolean = false) => {
     if (!isGraphReady() || !cyRef.current) return;
 
     setProgressMessage(`Running ${layoutType} layout...`);
@@ -194,7 +196,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
       errorLog('Layout error:', error);
       setProgress(0);
     }
-  };
+  }, [isGraphReady, runLayout, setProgressMessage, setProgress]);
 
   // Enhanced fetch function
   const fetchData = useCallback(async (signature: string, account: string | null = null) => {
@@ -465,8 +467,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
     } finally {
       setIsLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cyRef, setIsLoading, setError, setProgress, setProgressMessage, runLayoutWithProgress]);
+  }, [cyRef, runLayoutWithProgress]);
   // Note: processAccountTransactions is a stable function defined after this useCallback
   // updateGPUGraphData intentionally omitted to prevent infinite loops
 
@@ -555,32 +556,77 @@ const TransactionGraph = React.memo(function TransactionGraph({
     return { nodes, edges };
   }, []); // No dependencies needed as this is a pure function
 
-  // Simplified graph initialization
+  /**
+   * Improved graph initialization effect:
+   * - Runs as soon as containerRef.current is set (using containerRef as dependency)
+   * - Prevents missed initialization if ref is not set on first render
+   */
   useEffect(() => {
     if (!containerRef.current || isInitialized) return;
-
+  
     let isMounted = true;
-
+  
     const initAsync = async () => {
       try {
         debugLog('Starting graph initialization...');
         setIsLoading(true);
         setError(null);
-
+  
         await initializeGraph(containerRef.current!, wrappedOnTransactionSelect);
-
+  
         if (!isMounted) return;
-
+  
         debugLog('Graph initialized, loading initial data...');
-
+  
         // Load initial data if provided
-        if (initialSignature) {
+        if (initialTransactionData && initialSignature) {
+          setCurrentSignature(initialSignature);
+  
+          setProgress(50);
+          setProgressMessage('Processing transaction data...');
+  
+          const elements = processTransactionData(initialTransactionData, initialAccount);
+  
+          setProgress(80);
+          setProgressMessage('Updating graph...');
+  
+          if (cyRef.current) {
+            cyRef.current.batch(() => {
+              let newNodesCount = 0;
+              elements.nodes.forEach(node => {
+                if (!cyRef.current!.getElementById(node.data.id).length) {
+                  cyRef.current!.add(node);
+                  newNodesCount++;
+                }
+              });
+              elements.edges.forEach(edge => {
+                if (!cyRef.current!.getElementById(edge.data.id).length) {
+                  cyRef.current!.add(edge);
+                }
+              });
+  
+              if (newNodesCount > 0) {
+                setExpandedNodesCount(prev => prev + newNodesCount);
+              }
+            });
+          }
+  
+          if (cyRef.current) { updateGPUGraphData(cyRef.current); }
+  
+          await runLayoutWithProgress('dagre', true);
+  
+          setProgress(100);
+          setTimeout(() => {
+            setProgress(0);
+            setProgressMessage('');
+          }, 1000);
+        } else if (initialSignature) {
           setCurrentSignature(initialSignature);
           await fetchData(initialSignature, initialAccount);
         } else if (initialAccount) {
           await fetchAccountData(initialAccount);
         }
-
+  
         if (isMounted) {
           debugLog('Graph initialization completed successfully');
         }
@@ -595,13 +641,14 @@ const TransactionGraph = React.memo(function TransactionGraph({
         }
       }
     };
-
+  
     initAsync();
-
+  
     return () => {
       isMounted = false;
     };
-  }, [initialSignature, initialAccount, isInitialized, initializeGraph, wrappedOnTransactionSelect, fetchData, fetchAccountData]);
+  // Add containerRef as a dependency to ensure effect runs when ref is set
+  }, [containerRef.current, initialSignature, initialAccount, isInitialized, initializeGraph]);
 
   // Simplified timeout protection for loading
   useEffect(() => {

@@ -31,7 +31,7 @@ import {
 } from '@/lib/mobile-utils';
 
 // Import components
-import TransactionGraph from '@/components/TransactionGraph';
+import TransactionGraph from '@/components/transaction-graph/TransactionGraph';
 import InstructionBreakdown from '@/components/InstructionBreakdown';
 import AccountChangesDisplay from '@/components/AccountChangesDisplay';
 import MobileInstructionDisplay from '@/components/MobileInstructionDisplay';

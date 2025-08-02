@@ -5,7 +5,7 @@ import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
 import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
-import TransactionGraph from '@/components/TransactionGraph';
+import TransactionGraph from '@/components/transaction-graph/TransactionGraph';
 import AccountTabs from './tabs';
 import { useEffect, useState } from 'react';
 

@@ -1,6 +1,7 @@
 import { NextRequest } from 'next/server';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import { enhancedTransactionFetcher } from '@/lib/enhanced-transaction-fetcher';
+import { getConnection } from '@/lib/solana-connection';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 
@@ -121,6 +122,7 @@ export async function GET(
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const startTime = Date.now(); // Track processing time
 
   try {
     // Get signature from params - properly awaited in Next.js 13+
@@ -142,6 +144,21 @@ export async function GET(
 
       // Transform and return the demo transaction data
       const transactionInfo = transformTransactionData(signature, demoTx);
+      
+      // Calculate and log metrics for demo response
+      if (DEBUG) {
+        const metrics = calculateResponseMetrics(transactionInfo, signature, startTime);
+        console.log(`[API] 📊 DEMO TRANSACTION METRICS:`);
+        console.log(`  • Signature: ${metrics.signature}`);
+        console.log(`  • Processing Time: ${metrics.processingTime}`);
+        console.log(`  • JSON Size: ${metrics.jsonSize.readable} (${metrics.jsonSize.bytes} bytes)`);
+        console.log(`  • Key Count: ${metrics.keyCount.total} total, ${metrics.keyCount.topLevel} top-level`);
+        console.log(`  • Instructions: ${metrics.transactionData.instructionCount} main, ${metrics.transactionData.innerInstructionCount} inner`);
+        console.log(`  • Accounts: ${metrics.transactionData.accountCount}`);
+        console.log(`  • Logs: ${metrics.transactionData.logCount} entries`);
+        console.log(`  • Changes: ${metrics.transactionData.tokenChangeCount} token, ${metrics.transactionData.solChangeCount} SOL`);
+        console.log(`  • Type: ${metrics.transactionData.transactionType} | Success: ${metrics.transactionData.success}`);
+      }
 
       return new Response(
         JSON.stringify(transactionInfo),
@@ -186,24 +203,67 @@ export async function GET(
       console.log(`[API] Using OpenSVM RPC connection to fetch transaction data`);
     }
 
-    // Use enhanced transaction fetcher for comprehensive data
-    const enhancedTx = await Promise.race([
-      enhancedTransactionFetcher.fetchEnhancedTransaction(signature),
-      new Promise((_, reject) => {
-        setTimeout(() => reject(new Error('RPC request timed out')), 15000); // Increase timeout to 15 seconds
-      })
-    ]) as ParsedTransactionWithMeta;
+    // Try enhanced fetcher first with shorter timeout, fallback to basic fetcher
+    let transactionInfo: DetailedTransactionInfo;
+    try {
+      const basicTx = await Promise.race([
+        enhancedTransactionFetcher.fetchBasicTransaction(signature), // Use faster basic fetch
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Basic fetch timed out')), 8000); // Shorter timeout for basic
+        })
+      ]) as ParsedTransactionWithMeta;
+
+      if (DEBUG) {
+        console.log(`[API] Basic transaction data received: ${basicTx ? 'YES' : 'NO'}`);
+      }
+
+      // Transform basic data to existing format
+      transactionInfo = transformTransactionData(signature, basicTx);
+      
+    } catch (basicError) {
+      if (DEBUG) {
+        console.log(`[API] Basic fetch failed, falling back to direct connection: ${basicError instanceof Error ? basicError.message : 'Unknown error'}`);
+      }
+      
+      // Fallback to direct connection fetch
+      const connection = await getConnection();
+      const fallbackTx = await Promise.race([
+        connection.getParsedTransaction(signature, {
+          maxSupportedTransactionVersion: 0,
+          commitment: 'confirmed'
+        }),
+        new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Fallback RPC request timed out')), 10000); // 10 second timeout for fallback
+        })
+      ]) as ParsedTransactionWithMeta;
+
+      if (!fallbackTx) {
+        throw new Error(`Transaction not found: ${signature}`);
+      }
+
+      if (DEBUG) {
+        console.log(`[API] Fallback transaction data received`);
+      }
+
+      // Transform fallback data to existing format
+      transactionInfo = transformTransactionData(signature, fallbackTx);
+    }
 
     clearTimeout(timeoutId);
 
+    // Calculate and log comprehensive metrics
     if (DEBUG) {
-      console.log(`[API] Enhanced transaction data received: ${enhancedTx ? 'YES' : 'NO'}`);
-    }
-
-    // Transform enhanced data to existing format for backward compatibility
-    const transactionInfo = transformEnhancedTransactionData(enhancedTx);
-
-    if (DEBUG) {
+      const metrics = calculateResponseMetrics(transactionInfo, signature, startTime);
+      console.log(`[API] 📊 TRANSACTION RESPONSE METRICS:`);
+      console.log(`  • Signature: ${metrics.signature}`);
+      console.log(`  • Processing Time: ${metrics.processingTime}`);
+      console.log(`  • JSON Size: ${metrics.jsonSize.readable} (${metrics.jsonSize.bytes} bytes)`);
+      console.log(`  • Key Count: ${metrics.keyCount.total} total, ${metrics.keyCount.topLevel} top-level`);
+      console.log(`  • Instructions: ${metrics.transactionData.instructionCount} main, ${metrics.transactionData.innerInstructionCount} inner`);
+      console.log(`  • Accounts: ${metrics.transactionData.accountCount}`);
+      console.log(`  • Logs: ${metrics.transactionData.logCount} entries`);
+      console.log(`  • Changes: ${metrics.transactionData.tokenChangeCount} token, ${metrics.transactionData.solChangeCount} SOL`);
+      console.log(`  • Type: ${metrics.transactionData.transactionType} | Success: ${metrics.transactionData.success}`);
       console.log(`[API] Successfully processed transaction data, returning to client`);
     }
 
@@ -269,6 +329,59 @@ function isValidTransactionSignature(signature: string): boolean {
   }
 
   return true;
+}
+
+// Helper function to calculate detailed response metrics
+function calculateResponseMetrics(data: any, signature: string, startTime: number) {
+  const jsonString = JSON.stringify(data);
+  const endTime = Date.now();
+  const processingTime = endTime - startTime;
+  
+  // Calculate JSON size in bytes
+  const jsonSizeBytes = new Blob([jsonString]).size;
+  const jsonSizeKB = (jsonSizeBytes / 1024).toFixed(2);
+  
+  // Count total keys recursively
+  function countKeys(obj: any): number {
+    if (typeof obj !== 'object' || obj === null) return 0;
+    if (Array.isArray(obj)) {
+      return obj.reduce((sum: number, item: any) => sum + countKeys(item), 0);
+    }
+    return Object.keys(obj).length + Object.values(obj).reduce((sum: number, value: any) => sum + countKeys(value), 0);
+  }
+  
+  const totalKeys = countKeys(data);
+  
+  // Transaction-specific metrics
+  const metrics = {
+    signature: signature.substring(0, 20) + '...',
+    processingTime: `${processingTime}ms`,
+    jsonSize: {
+      bytes: jsonSizeBytes,
+      kb: `${jsonSizeKB}KB`,
+      readable: jsonSizeBytes < 1024 ? `${jsonSizeBytes}B` :
+                jsonSizeBytes < 1024 * 1024 ? `${jsonSizeKB}KB` :
+                `${(jsonSizeBytes / (1024 * 1024)).toFixed(2)}MB`
+    },
+    keyCount: {
+      total: totalKeys,
+      topLevel: Object.keys(data).length
+    },
+    transactionData: {
+      instructionCount: data.details?.instructions?.length || 0,
+      accountCount: data.details?.accounts?.length || 0,
+      innerInstructionCount: data.details?.innerInstructions?.reduce((sum: number, inner: any) =>
+        sum + (inner.instructions?.length || 0), 0) || 0,
+      logCount: data.details?.logs?.length || 0,
+      tokenChangeCount: data.details?.tokenChanges?.length || 0,
+      solChangeCount: data.details?.solChanges?.length || 0,
+      hasMetadata: !!data.meta,
+      transactionType: data.type || 'unknown',
+      success: data.success
+    }
+  };
+  
+  return metrics;
 }
 
 // Helper function to transform transaction data into the DetailedTransactionInfo format

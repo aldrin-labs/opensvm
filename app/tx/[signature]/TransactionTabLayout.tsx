@@ -62,7 +62,7 @@ const TransactionMetricsDisplay = dynamic(
   { loading: () => <LoadingSpinner />, ssr: false }
 );
 const TransactionGraph = dynamic(
-  () => import('@/components/TransactionGraph'),
+  () => import('@/components/transaction-graph/TransactionGraph'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
 const TransactionNodeDetails = dynamic(
@@ -530,6 +530,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                       <TransactionGraph
                         initialSignature={signature}
                         initialAccount={initialAccount || ''}
+                        initialTransactionData={tx}
                         onTransactionSelect={handleTransactionSelect}
                         clientSideNavigation={true}
                         height="100%"
