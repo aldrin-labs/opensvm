@@ -136,6 +136,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
     gpuGraphData,
     updateGPUGraphData,
     handleGPUNodeClick,
+    handleGPULinkClick,
     handleGPUNodeHover
   } = useGPUForceGraph();
   const {
@@ -225,10 +226,32 @@ const TransactionGraph = React.memo(function TransactionGraph({
 
   // Wrapper for GPU node click that adds to history
   const handleGPUNodeClickWithHistory = (node: any) => {
-    if (node && node.id) {
+    if (node && node.id && node.type === 'transaction') {
       addToHistory(node.id);
     }
     handleGPUNodeClick(node);
+  };
+
+  // Wrapper for GPU link click that adds to history
+  const handleGPULinkClickWithHistory = (link: any) => {
+    // Extract transaction ID from link and add to history
+    let transactionId = null;
+    
+    if (link.source && link.target) {
+      if (typeof link.source === 'object' && link.source.type === 'transaction') {
+        transactionId = link.source.id;
+      } else if (typeof link.target === 'object' && link.target.type === 'transaction') {
+        transactionId = link.target.id;
+      } else if (typeof link.source === 'string') {
+        transactionId = link.source.length > 50 ? link.source : link.target;
+      }
+    }
+    
+    if (transactionId) {
+      addToHistory(transactionId);
+    }
+    
+    handleGPULinkClick(link);
   };
 
   // Enhanced layout function with timeout protection - memoized to prevent infinite loops
@@ -1104,6 +1127,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
               key="gpu-graph"
               graphData={gpuGraphData}
               onNodeClick={handleGPUNodeClickWithHistory}
+              onLinkClick={handleGPULinkClickWithHistory}
               onNodeHover={handleGPUNodeHover}
               width={gpuGraphDimensions.width}
               height={gpuGraphDimensions.height}

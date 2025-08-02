@@ -72,17 +72,42 @@ export function useGPUForceGraph() {
   const handleGPUNodeClick = useCallback((node: any) => {
     debugLog('GPU node clicked:', node);
     
-    if (node.type === 'transaction') {
-      // Handle transaction click
+    if (node.type === 'account') {
+      // Handle account click - navigate to account page
+      const address = node.id;
+      if (typeof window !== 'undefined') {
+        window.open(`/account/${address}`, '_blank');
+      }
+    } else if (node.type === 'transaction') {
+      // Handle transaction click - navigate to transaction page
       const signature = node.id;
       if (typeof window !== 'undefined') {
         window.open(`/tx/${signature}`, '_blank');
       }
-    } else if (node.type === 'account') {
-      // Handle account click
-      const address = node.id;
-      if (typeof window !== 'undefined') {
-        window.open(`/account/${address}`, '_blank');
+    }
+  }, []);
+
+  // Handle link clicks - should open transaction pages
+  const handleGPULinkClick = useCallback((link: any) => {
+    debugLog('GPU link clicked:', link);
+    
+    // Links represent connections between accounts and transactions
+    // When a link is clicked, we want to navigate to the transaction
+    if (link.source && link.target) {
+      // Determine which end is the transaction
+      let transactionId = null;
+      
+      if (typeof link.source === 'object' && link.source.type === 'transaction') {
+        transactionId = link.source.id;
+      } else if (typeof link.target === 'object' && link.target.type === 'transaction') {
+        transactionId = link.target.id;
+      } else if (typeof link.source === 'string') {
+        // If source is string, check if it looks like a transaction signature (longer than account address)
+        transactionId = link.source.length > 50 ? link.source : link.target;
+      }
+      
+      if (transactionId && typeof window !== 'undefined') {
+        window.open(`/tx/${transactionId}`, '_blank');
       }
     }
   }, []);
@@ -99,6 +124,7 @@ export function useGPUForceGraph() {
     convertCytoscapeToGPUData,
     updateGPUGraphData,
     handleGPUNodeClick,
+    handleGPULinkClick,
     handleGPUNodeHover
   };
 }

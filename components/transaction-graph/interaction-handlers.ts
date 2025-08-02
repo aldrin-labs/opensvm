@@ -228,13 +228,18 @@ export const setupGraphInteractions = (
       focusOnTransaction(signature, true);
     }
     else if (nodeType === 'account') {
-      // For account nodes, start address tracking on click
+      // For account nodes, navigate to account page
       const address = signature; // In this case, the ID is the address
       
       // Highlight the account and its connections
       node.connectedEdges().addClass('highlighted').connectedNodes().addClass('highlighted');
       
-      // Trigger address tracking if callback is provided
+      // Navigate to account page
+      if (typeof window !== 'undefined') {
+        window.open(`/account/${address}`, '_blank');
+      }
+      
+      // Also trigger address tracking if callback is provided (for additional functionality)
       if (onAddressTrack) {
         onAddressTrack(address);
       }
@@ -260,10 +265,17 @@ export const setupGraphInteractions = (
     edge.addClass('highlighted');
     edge.connectedNodes().addClass('highlighted');
     
-    // If one of the connected nodes is a transaction, focus on it
+    // If one of the connected nodes is a transaction, navigate to it
     const connectedTxs = edge.connectedNodes().filter((node: any) => node.data('type') === 'transaction');
     if (connectedTxs.length > 0) {
       const txSignature = connectedTxs[0].id();
+      
+      // Navigate to transaction page
+      if (typeof window !== 'undefined') {
+        window.open(`/tx/${txSignature}`, '_blank');
+      }
+      
+      // Also focus on it in the current graph for visual feedback
       if (txSignature !== focusSignatureRef.current) {
         focusOnTransaction(txSignature, true);
       }

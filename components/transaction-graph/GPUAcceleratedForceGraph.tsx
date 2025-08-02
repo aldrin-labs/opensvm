@@ -37,6 +37,7 @@ interface GPUAcceleratedForceGraphProps {
   graphData: GraphData;
   onNodeClick?: (node: Node) => void;
   onNodeHover?: (node: Node | null) => void;
+  onLinkClick?: (link: Link) => void;
   width?: number;
   height?: number;
   use3D?: boolean;
@@ -51,6 +52,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
   graphData,
   onNodeClick,
   onNodeHover,
+  onLinkClick,
   width = 800,
   height = 600,
   use3D = false,
@@ -299,6 +301,18 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     }
   };
 
+  // Calculate actual dimensions for the canvas
+  const containerDimensions = useMemo(() => {
+    // If width/height are not numbers or are invalid, use container dimensions
+    const actualWidth = typeof width === 'number' && width > 0 ? width : 800;
+    const actualHeight = typeof height === 'number' && height > 0 ? height : 600;
+    
+    return {
+      width: actualWidth,
+      height: actualHeight
+    };
+  }, [width, height]);
+
   return (
     <div
       ref={containerRef}
@@ -306,12 +320,17 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
       style={{
         willChange: 'transform',
         transform: 'translateZ(0)',
-        backfaceVisibility: 'hidden'
+        backfaceVisibility: 'hidden',
+        minWidth: containerDimensions.width,
+        minHeight: containerDimensions.height
       }}
     >
       {use3D ? (
         <ForceGraph3D
           {...commonProps}
+          width={containerDimensions.width}
+          height={containerDimensions.height}
+          onLinkClick={onLinkClick}
           controlType="orbit"
           rendererConfig={{
             antialias: true,
@@ -322,6 +341,9 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
       ) : (
         <ForceGraph2D
           {...commonProps}
+          width={containerDimensions.width}
+          height={containerDimensions.height}
+          onLinkClick={onLinkClick}
         />
       )}
     </div>
