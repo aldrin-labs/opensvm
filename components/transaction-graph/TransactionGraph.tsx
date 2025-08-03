@@ -110,6 +110,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
   initialAccount,
   initialTransactionData,
   onTransactionSelect,
+  onAccountSelect,
   clientSideNavigation = false,
   width = '100%',
   height = '100%',
@@ -495,6 +496,13 @@ const TransactionGraph = React.memo(function TransactionGraph({
     onTransactionSelect(signature);
   }, [addToHistory, onTransactionSelect]);
 
+  // Memoized wrapper for account selection
+  const wrappedOnAccountSelect = useCallback((accountAddress: string) => {
+    if (onAccountSelect) {
+      onAccountSelect(accountAddress);
+    }
+  }, [onAccountSelect]);
+
   // Memoized debug panel to avoid expensive cytoscape queries on every render
   const DebugPanel = React.memo(() => {
     if (!cyRef.current) {
@@ -768,7 +776,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
           return;
         }
   
-        initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect);
+        initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect, wrappedOnAccountSelect);
         await initPromise;
   
         if (!isMounted) {

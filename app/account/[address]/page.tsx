@@ -7,7 +7,8 @@ import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
 import TransactionGraph from '@/components/transaction-graph/TransactionGraph';
 import AccountTabs from './tabs';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { useRouter, useParams } from 'next/navigation';
 
 interface AccountData {
   address: string;
@@ -71,58 +72,129 @@ interface PageProps {
 }
 
 export default function AccountPage({ params, searchParams }: PageProps) {
+  const router = useRouter();
+  const urlParams = useParams();
   const [accountInfo, setAccountInfo] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('tokens');
+  const [currentAddress, setCurrentAddress] = useState<string>('');
+  const graphRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
+  // Smooth navigation function with error handling
+  const navigateToAccount = useCallback(async (newAddress: string) => {
+    if (newAddress !== currentAddress) {
+      try {
+        await router.push(`/account/${newAddress}`, { scroll: false });
+      } catch (error) {
+        console.error('Navigation failed:', error);
+        setError('Failed to navigate to account. Please try again.');
+      }
+    }
+  }, [currentAddress, router]);
+
+  // Load account data function with abort controller
+  const loadAccountData = useCallback(async (address: string, signal?: AbortSignal) => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      // Check if already aborted
+      if (signal?.aborted) return;
+      
+      // Basic validation
+      if (!address) {
+        throw new Error('Address is required');
+      }
+
+      // Clean up the address
+      let cleanAddress = address;
+      try {
+        cleanAddress = decodeURIComponent(address);
+      } catch (e) {
+        // Address was likely already decoded
+      }
+      cleanAddress = cleanAddress.trim();
+
+      // Basic format validation
+      if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(cleanAddress)) {
+        throw new Error('Invalid characters in address. Solana addresses can only contain base58 characters.');
+      }
+
+      if (cleanAddress.length < 32 || cleanAddress.length > 44) {
+        throw new Error('Invalid address length. Solana addresses must be between 32 and 44 characters.');
+      }
+
+      // Fetch account info
+      const accountData = await getAccountData(cleanAddress);
+      
+      // Check again if aborted after async operation
+      if (signal?.aborted) return;
+      
+      setAccountInfo(accountData);
+      setCurrentAddress(cleanAddress);
+
+    } catch (err) {
+      if (signal?.aborted) return;
+      console.error('Error loading account data:', err);
+      setError(err instanceof Error ? err.message : 'Unknown error occurred');
+    } finally {
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
+    }
+  }, []);
+
+  // Single effect to handle all address changes
   useEffect(() => {
+    let mounted = true;
+    
     const initializeComponent = async () => {
       try {
+        // Cancel any ongoing requests
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+        
+        // Create new abort controller
+        abortControllerRef.current = new AbortController();
+        const signal = abortControllerRef.current.signal;
+        
         const { address: rawAddress } = await params;
         const resolvedSearchParams = await searchParams;
         const { tab } = resolvedSearchParams;
 
+        if (!mounted || signal.aborted) return;
+
         setActiveTab(tab as string || 'tokens');
 
-        // Basic validation
-        if (!rawAddress) {
-          throw new Error('Address is required');
+        // Determine the address to load (prioritize URL params for client-side nav)
+        const addressToLoad = (urlParams?.address as string) || rawAddress;
+        
+        // Only load data if address has changed and is valid
+        if (addressToLoad && addressToLoad !== currentAddress && mounted) {
+          await loadAccountData(addressToLoad, signal);
         }
-
-        // Clean up the address
-        let cleanAddress = rawAddress;
-        try {
-          cleanAddress = decodeURIComponent(rawAddress);
-        } catch (e) {
-          // Address was likely already decoded
-        }
-        cleanAddress = cleanAddress.trim();
-
-        // Basic format validation
-        if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(cleanAddress)) {
-          throw new Error('Invalid characters in address. Solana addresses can only contain base58 characters.');
-        }
-
-        if (cleanAddress.length < 32 || cleanAddress.length > 44) {
-          throw new Error('Invalid address length. Solana addresses must be between 32 and 44 characters.');
-        }
-
-
-        // Fetch account info
-        const accountData = await getAccountData(cleanAddress);
-        setAccountInfo(accountData);
 
       } catch (err) {
-        console.error('Error initializing account page:', err);
-        setError(err instanceof Error ? err.message : 'Unknown error occurred');
-      } finally {
-        setLoading(false);
+        if (mounted && !abortControllerRef.current?.signal.aborted) {
+          console.error('Error initializing account page:', err);
+          setError(err instanceof Error ? err.message : 'Unknown error occurred');
+          setLoading(false);
+        }
       }
     };
 
     initializeComponent();
-  }, [params, searchParams]);
+    
+    return () => {
+      mounted = false;
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
+  }, [params, searchParams, urlParams?.address, currentAddress, loadAccountData]);
 
   if (loading) {
     return (
@@ -172,10 +244,25 @@ export default function AccountPage({ params, searchParams }: PageProps) {
               isSystemProgram={accountInfo.isSystemProgram}
               parsedOwner={accountInfo.parsedOwner}
             />
-            <TransactionGraph
-              initialSignature=""
-              onTransactionSelect={() => { }}
-            />
+            <div ref={graphRef}>
+              <TransactionGraph
+                key="transaction-graph-stable" // Keep stable to prevent re-mounting
+                initialAccount={accountInfo.address}
+                onTransactionSelect={(signature) => {
+                  // Navigate to transaction page
+                  window.open(`/tx/${signature}`, '_blank');
+                }}
+                onAccountSelect={(accountAddress: string) => {
+                  // Smooth client-side navigation to account page
+                  if (accountAddress !== accountInfo.address) {
+                    navigateToAccount(accountAddress);
+                  }
+                }}
+                clientSideNavigation={true}
+                width="100%"
+                height="400px"
+              />
+            </div>
           </div>
         </div>
         {/* Sidebar - Right Side: Account Info */}

@@ -48,10 +48,11 @@ export interface AccountData {
 }
 
 export interface TransactionGraphProps {
-  initialSignature: string;
+  initialSignature?: string;
   initialAccount?: string;
   initialTransactionData?: any; // DetailedTransactionInfo from @/lib/solana
   onTransactionSelect: (signature: string) => void;
+  onAccountSelect?: (accountAddress: string) => void;
   clientSideNavigation?: boolean;
   width?: string | number;
   height?: string | number;

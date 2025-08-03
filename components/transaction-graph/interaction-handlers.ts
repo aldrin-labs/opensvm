@@ -234,14 +234,14 @@ export const setupGraphInteractions = (
       // Highlight the account and its connections
       node.connectedEdges().addClass('highlighted').connectedNodes().addClass('highlighted');
       
-      // Navigate to account page
-      if (typeof window !== 'undefined') {
-        window.open(`/account/${address}`, '_blank');
-      }
-      
-      // Also trigger address tracking if callback is provided (for additional functionality)
+      // Use callback if provided, otherwise fallback to default behavior
       if (onAddressTrack) {
         onAddressTrack(address);
+      } else {
+        // Fallback: Navigate to account page
+        if (typeof window !== 'undefined') {
+          window.open(`/account/${address}`, '_blank');
+        }
       }
     }
   });

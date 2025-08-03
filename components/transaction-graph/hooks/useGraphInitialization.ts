@@ -17,7 +17,8 @@ export function useGraphInitialization() {
   // Initialize graph once with enhanced race condition protection
   const initializeGraph = useCallback(async (
     container: HTMLElement,
-    onTransactionSelect?: (signature: string) => void
+    onTransactionSelect?: (signature: string) => void,
+    onAccountSelect?: (accountAddress: string) => void
   ) => {
     // Prevent multiple initializations
     if (isInitialized.current || isInitializingRef.current) {
@@ -82,7 +83,7 @@ export function useGraphInitialization() {
           onTransactionSelect(signature);
         }
       };
-      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState);
+      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState, onAccountSelect);
 
       // Mark as initialized
       isInitialized.current = true;
