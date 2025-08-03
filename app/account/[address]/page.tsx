@@ -246,7 +246,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
             />
             <div ref={graphRef}>
               <TransactionGraph
-                key="transaction-graph-stable" // Keep stable to prevent re-mounting
+                key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
                 initialAccount={accountInfo.address}
                 onTransactionSelect={(signature) => {
                   // Navigate to transaction page

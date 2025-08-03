@@ -880,7 +880,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
     return () => {
       isMounted = false;
     };
-  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, updateGPUGraphData, runLayoutWithProgress]);
+  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress]);
 
   // Enhanced timeout protection for loading with recovery
   useEffect(() => {
@@ -1162,6 +1162,8 @@ const TransactionGraph = React.memo(function TransactionGraph({
     prevProps.initialSignature === nextProps.initialSignature &&
     prevProps.initialAccount === nextProps.initialAccount &&
     prevProps.onTransactionSelect === nextProps.onTransactionSelect &&
+    prevProps.onAccountSelect === nextProps.onAccountSelect &&
+    prevProps.clientSideNavigation === nextProps.clientSideNavigation &&
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
     prevProps.maxDepth === nextProps.maxDepth
