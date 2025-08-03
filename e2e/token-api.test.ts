@@ -83,10 +83,12 @@ test.describe('Token API Tests', () => {
 
     const data = await response.json();
     expect(data).toHaveProperty('error');
+    // Updated to match actual API response format
     expect(data.error).toBe('Not a token mint account');
     expect(data).toHaveProperty('message');
     expect(data.message).toBe('This account is not a token mint account.');
     expect(data).toHaveProperty('accountOwner');
+    console.log(`Non-token account test passed for ${programId}`);
   });
 
   test('should handle network errors gracefully', async ({ request }) => {
@@ -99,5 +101,6 @@ test.describe('Token API Tests', () => {
     const data = await response.json();
     expect(data).toHaveProperty('error');
     expect(data.error).toBe('Account not found');
+    console.log(`Network error handling test passed for non-existent mint ${badMint}`);
   });
 });

@@ -121,7 +121,7 @@ export async function GET(
   context: { params: Promise<{ signature: string }> }
 ) {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 8000); // Reduced to 8 seconds for faster failures
   const startTime = Date.now(); // Track processing time
 
   try {

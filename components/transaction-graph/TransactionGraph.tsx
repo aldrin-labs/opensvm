@@ -67,13 +67,19 @@ const CytoscapeContainer = React.memo(() => {
     const cytoscapeDiv = document.createElement('div');
     cytoscapeDiv.id = 'cy-container';
     cytoscapeDiv.className = 'w-full h-full';
+    cytoscapeDiv.setAttribute('data-testid', 'cytoscape-container');
+    cytoscapeDiv.setAttribute('data-graph-ready', 'false');
     cytoscapeDiv.style.cssText = `
       width: 100%;
       height: 100%;
+      min-height: 400px;
       will-change: transform;
       transform: translateZ(0);
       isolation: isolate;
       position: relative;
+      background: transparent;
+      border: 1px solid hsl(var(--border));
+      border-radius: 8px;
     `;
 
     // Clear any existing content and append the isolated div
@@ -81,6 +87,15 @@ const CytoscapeContainer = React.memo(() => {
     containerRef.current.appendChild(cytoscapeDiv);
     
     isInitializedRef.current = true;
+
+    // Dispatch event to signal container is ready with a slight delay for test stability
+    setTimeout(() => {
+      const containerReadyEvent = new CustomEvent('cytoscapeContainerReady', {
+        detail: { containerId: 'cy-container' }
+      });
+      document.dispatchEvent(containerReadyEvent);
+      console.log('Cytoscape container ready event dispatched');
+    }, 50);
 
     return () => {
       // Clean up by removing the programmatically created div
@@ -94,10 +109,14 @@ const CytoscapeContainer = React.memo(() => {
   return (
     <div
       ref={containerRef}
-      className="w-full h-full"
+      className="w-full h-full relative"
+      data-testid="cytoscape-wrapper"
       suppressHydrationWarning={true}
       style={{
         position: 'relative',
+        minHeight: '400px',
+        width: '100%',
+        height: '100%',
         containIntrinsicSize: '100% 100%',
         contain: 'layout style paint'
       }}
@@ -757,33 +776,61 @@ const TransactionGraph = React.memo(function TransactionGraph({
         setIsLoading(true);
         setError(null);
 
-        // Wait for the programmatically created container
+        // Wait for the programmatically created container with better timeout handling
         let cytoscapeContainer: HTMLElement | null = null;
         let attempts = 0;
-        while (!cytoscapeContainer && attempts < 10 && isMounted) {
+        const maxAttempts = 30; // Increased for better test compatibility
+        
+        while (!cytoscapeContainer && attempts < maxAttempts && isMounted) {
           cytoscapeContainer = document.getElementById('cy-container');
           if (!cytoscapeContainer) {
-            await new Promise(resolve => setTimeout(resolve, 100));
+            await new Promise(resolve => setTimeout(resolve, 200)); // Longer wait between attempts
             attempts++;
+            debugLog(`Waiting for cytoscape container, attempt ${attempts}/${maxAttempts}`);
           }
         }
 
         if (!cytoscapeContainer || !isMounted) {
-          debugLog('Cytoscape container not found or component unmounted');
+          debugLog(`Cytoscape container not found after ${attempts} attempts or component unmounted`);
+          if (isMounted) {
+            setError('Graph container could not be initialized. This may be expected in some test environments.');
+          }
           return;
         }
 
         debugLog('Found cytoscape container, initializing...');
+        
+        // Mark container as initializing for tests
+        cytoscapeContainer.setAttribute('data-graph-ready', 'initializing');
   
         // Protect against multiple simultaneous initializations
         if (initPromise) {
           debugLog('Initialization already in progress, waiting...');
-          await initPromise;
-          return;
+          try {
+            await initPromise;
+          } catch (error) {
+            debugLog('Previous initialization failed, retrying...');
+            initPromise = null; // Reset to allow retry
+          }
+          if (initPromise) return; // If successful, return
         }
   
-        initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect, wrappedOnAccountSelect);
-        await initPromise;
+        try {
+          initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect, wrappedOnAccountSelect);
+          await initPromise;
+          
+          // Mark container as ready for tests
+          if (cytoscapeContainer && isMounted) {
+            cytoscapeContainer.setAttribute('data-graph-ready', 'true');
+            debugLog('Graph initialization completed successfully');
+          }
+        } catch (error) {
+          debugLog('Graph initialization failed:', error);
+          if (cytoscapeContainer && isMounted) {
+            cytoscapeContainer.setAttribute('data-graph-ready', 'error');
+          }
+          throw error;
+        }
   
         if (!isMounted) {
           debugLog('Component unmounted during initialization, cleaning up...');
@@ -909,13 +956,13 @@ const TransactionGraph = React.memo(function TransactionGraph({
             // Force GPU graph update using existing hook function
             updateGPUGraphData(cyRef.current);
           } else {
-            setError('Graph loading timed out. No data could be loaded. Please try refreshing the page.');
+            setError('Graph loading timed out. No data could be loaded. This may be expected for accounts with limited activity.');
           }
         } else {
-          setError('Graph loading timed out. Please try refreshing the page.');
+          setError('Graph container not initialized. This may be expected during page load.');
         }
       }
-    }, 12000); // Reduced to 12 seconds for faster recovery
+    }, 20000); // Increased to 20 seconds for test stability
 
     return () => {
       clearTimeout(completionTimeout);

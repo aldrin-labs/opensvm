@@ -92,9 +92,19 @@ interface TransactionTabLayoutProps {
 const TAB_PREFERENCE_KEY = 'opensvm_preferred_tx_tab';
 
 async function saveUserTabPreference(tab: TabType, walletAddress?: string) {
-  // Save to localStorage
+  // Save to localStorage with error handling for test environments
   if (typeof window !== 'undefined') {
-    localStorage.setItem(TAB_PREFERENCE_KEY, tab);
+    try {
+      // Check if localStorage is actually available and writable
+      if (typeof window.localStorage !== 'undefined' && window.localStorage.setItem) {
+        window.localStorage.setItem(TAB_PREFERENCE_KEY, tab);
+      } else {
+        console.debug('localStorage not available for writing');
+      }
+    } catch (error) {
+      // Silently handle localStorage access errors in test environments
+      console.debug('localStorage write failed:', error);
+    }
   }
 
   // Save to user profile if authenticated
@@ -120,7 +130,18 @@ async function saveUserTabPreference(tab: TabType, walletAddress?: string) {
 
 function getUserTabPreference(): TabType | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(TAB_PREFERENCE_KEY) as TabType || null;
+    try {
+      // Check if localStorage is actually available
+      if (typeof window.localStorage === 'undefined') {
+        console.debug('localStorage not available in this environment');
+        return null;
+      }
+      return window.localStorage.getItem(TAB_PREFERENCE_KEY) as TabType || null;
+    } catch (error) {
+      // Silently handle localStorage access errors in test environments
+      console.debug('localStorage access failed:', error);
+      return null;
+    }
   }
   return null;
 }
@@ -189,16 +210,22 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
     loadTransaction();
   }, [signature]);
 
-  // Handle tab navigation - save preference when this component mounts
+  // Handle tab navigation - save preference when this component mounts (optimized)
   useEffect(() => {
-    // Only save preference when user changes tabs, not on initial load
-    const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
-    const isDirectNavigation = currentPath.endsWith(`/${activeTab}`);
-    
-    if (isDirectNavigation) {
-      // Get wallet address if available (this would need to be implemented based on auth system)
-      saveUserTabPreference(activeTab);
-    }
+    // Use a shorter timeout to avoid blocking tab switches
+    const timeoutId = setTimeout(() => {
+      const currentPath = typeof window !== 'undefined' ? window.location.pathname : '';
+      const isDirectNavigation = currentPath.endsWith(`/${activeTab}`);
+      
+      if (isDirectNavigation) {
+        // Save preference asynchronously without blocking
+        saveUserTabPreference(activeTab).catch(err =>
+          console.debug('Failed to save tab preference:', err)
+        );
+      }
+    }, 50); // Very short delay to avoid blocking
+
+    return () => clearTimeout(timeoutId);
   }, [activeTab]);
 
   // Handle transaction selection for graph
@@ -302,7 +329,8 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'overview' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/overview`);
-                    saveUserTabPreference('overview');
+                    // Save preference async without blocking navigation
+                    saveUserTabPreference('overview').catch(() => {});
                   }}
                 >
                   <FileText className="h-3 w-3" />
@@ -328,7 +356,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'instructions' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/instructions`);
-                    saveUserTabPreference('instructions');
+                    saveUserTabPreference('instructions').catch(() => {});
                   }}
                 >
                   <Settings className="h-3 w-3" />
@@ -354,7 +382,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'accounts' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/accounts`);
-                    saveUserTabPreference('accounts');
+                    saveUserTabPreference('accounts').catch(() => {});
                   }}
                 >
                   <Users className="h-3 w-3" />
@@ -380,7 +408,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'graph' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/graph`);
-                    saveUserTabPreference('graph');
+                    saveUserTabPreference('graph').catch(() => {});
                   }}
                 >
                   <Network className="h-3 w-3" />
@@ -406,7 +434,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'ai' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/ai`);
-                    saveUserTabPreference('ai');
+                    saveUserTabPreference('ai').catch(() => {});
                   }}
                 >
                   <Brain className="h-3 w-3" />
@@ -432,7 +460,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'metrics' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/metrics`);
-                    saveUserTabPreference('metrics');
+                    saveUserTabPreference('metrics').catch(() => {});
                   }}
                 >
                   <BarChart3 className="h-3 w-3" />
@@ -458,7 +486,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                   data-state={activeTab === 'related' ? 'active' : 'inactive'}
                   onClick={() => {
                     router.push(`/tx/${signature}/related`);
-                    saveUserTabPreference('related');
+                    saveUserTabPreference('related').catch(() => {});
                   }}
                 >
                   <GitBranch className="h-3 w-3" />
@@ -485,7 +513,7 @@ export default function TransactionTabLayout({ signature, activeTab }: Transacti
                     data-state={activeTab === 'failure' ? 'active' : 'inactive'}
                     onClick={() => {
                       router.push(`/tx/${signature}/failure`);
-                      saveUserTabPreference('failure');
+                      saveUserTabPreference('failure').catch(() => {});
                     }}
                   >
                     <Bug className="h-3 w-3" />

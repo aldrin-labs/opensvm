@@ -14,7 +14,18 @@ const TAB_PREFERENCE_KEY = 'opensvm_preferred_tx_tab';
 
 function getUserTabPreference(): TabType | null {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem(TAB_PREFERENCE_KEY) as TabType || null;
+    try {
+      // Check if localStorage is actually available
+      if (typeof window.localStorage === 'undefined') {
+        console.debug('localStorage not available in this environment');
+        return null;
+      }
+      return window.localStorage.getItem(TAB_PREFERENCE_KEY) as TabType || null;
+    } catch (error) {
+      // Silently handle localStorage access errors in test environments
+      console.debug('localStorage access failed:', error);
+      return null;
+    }
   }
   return null;
 }
@@ -39,8 +50,13 @@ export default function TransactionRedirectHandler({ signature }: TransactionRed
         return; // Don't redirect if user is already on a specific tab
       }
 
-      // Get preferred tab from localStorage
-      const preferredTab = getUserTabPreference();
+      // Get preferred tab from localStorage with error handling
+      let preferredTab: TabType | null = null;
+      try {
+        preferredTab = getUserTabPreference();
+      } catch (error) {
+        console.debug('Failed to get user tab preference:', error);
+      }
       
       // Valid tab types for validation
       const validTabs = ['overview', 'instructions', 'accounts', 'graph', 'ai', 'metrics', 'related', 'failure'];
