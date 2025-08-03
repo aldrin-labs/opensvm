@@ -6,6 +6,10 @@ import { debugLog } from '../utils';
 export function useGPUForceGraph() {
   const [useGPUGraph, setUseGPUGraph] = useState<boolean>(false); // Default to regular cytoscape for compatibility
   const [gpuGraphData, setGpuGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
+  
+  // Store callbacks for GPU handlers
+  const [onTransactionSelect, setOnTransactionSelect] = useState<((signature: string) => void) | null>(null);
+  const [onAccountSelect, setOnAccountSelect] = useState<((address: string) => void) | null>(null);
 
   // Debug GPU graph data changes
   useEffect(() => {
@@ -73,19 +77,23 @@ export function useGPUForceGraph() {
     debugLog('GPU node clicked:', node);
     
     if (node.type === 'account') {
-      // Handle account click - navigate to account page
+      // Handle account click - use callback if available, otherwise fallback
       const address = node.id;
-      if (typeof window !== 'undefined') {
+      if (onAccountSelect) {
+        onAccountSelect(address);
+      } else if (typeof window !== 'undefined') {
         window.open(`/account/${address}`, '_blank');
       }
     } else if (node.type === 'transaction') {
-      // Handle transaction click - navigate to transaction page
+      // Handle transaction click - use callback if available, otherwise fallback
       const signature = node.id;
-      if (typeof window !== 'undefined') {
+      if (onTransactionSelect) {
+        onTransactionSelect(signature);
+      } else if (typeof window !== 'undefined') {
         window.open(`/tx/${signature}`, '_blank');
       }
     }
-  }, []);
+  }, [onAccountSelect, onTransactionSelect]);
 
   // Handle link clicks - should open transaction pages
   const handleGPULinkClick = useCallback((link: any) => {
@@ -106,14 +114,27 @@ export function useGPUForceGraph() {
         transactionId = link.source.length > 50 ? link.source : link.target;
       }
       
-      if (transactionId && typeof window !== 'undefined') {
-        window.open(`/tx/${transactionId}`, '_blank');
+      if (transactionId) {
+        if (onTransactionSelect) {
+          onTransactionSelect(transactionId);
+        } else if (typeof window !== 'undefined') {
+          window.open(`/tx/${transactionId}`, '_blank');
+        }
       }
     }
-  }, []);
+  }, [onTransactionSelect]);
 
   const handleGPUNodeHover = useCallback((node: any) => {
     debugLog('GPU node hovered:', node?.id);
+  }, []);
+
+  // Function to set the callbacks for GPU handlers
+  const setGPUCallbacks = useCallback((
+    transactionCallback?: (signature: string) => void,
+    accountCallback?: (address: string) => void
+  ) => {
+    setOnTransactionSelect(() => transactionCallback || null);
+    setOnAccountSelect(() => accountCallback || null);
   }, []);
 
   return {
@@ -125,6 +146,7 @@ export function useGPUForceGraph() {
     updateGPUGraphData,
     handleGPUNodeClick,
     handleGPULinkClick,
-    handleGPUNodeHover
+    handleGPUNodeHover,
+    setGPUCallbacks
   };
 }

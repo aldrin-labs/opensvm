@@ -138,7 +138,8 @@ const TransactionGraph = React.memo(function TransactionGraph({
     updateGPUGraphData,
     handleGPUNodeClick,
     handleGPULinkClick,
-    handleGPUNodeHover
+    handleGPUNodeHover,
+    setGPUCallbacks
   } = useGPUForceGraph();
   const {
     isCloudView,
@@ -502,6 +503,11 @@ const TransactionGraph = React.memo(function TransactionGraph({
       onAccountSelect(accountAddress);
     }
   }, [onAccountSelect]);
+
+  // Set GPU callbacks when component mounts or callbacks change
+  useEffect(() => {
+    setGPUCallbacks(wrappedOnTransactionSelect, wrappedOnAccountSelect);
+  }, [setGPUCallbacks, wrappedOnTransactionSelect, wrappedOnAccountSelect]);
 
   // Memoized debug panel to avoid expensive cytoscape queries on every render
   const DebugPanel = React.memo(() => {
