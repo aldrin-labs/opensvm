@@ -351,29 +351,29 @@ function generateHistoricalData(volume24h: number, tvl: number) {
   const volumeHistory = [];
   const feeHistory = [];
   const performanceHistory = [];
-  
+
   for (let i = days; i >= 0; i--) {
     const date = new Date();
     date.setDate(date.getDate() - i);
     const dateStr = date.toISOString().split('T')[0];
-    
+
     // Generate realistic volume variations
     const volumeVariation = 0.8 + Math.random() * 0.4; // 80% to 120% of base
     const tvlVariation = 0.9 + Math.random() * 0.2; // 90% to 110% of base
-    
+
     volumeHistory.push({
       date: dateStr,
       volume: Math.floor(volume24h * volumeVariation),
       tvl: Math.floor(tvl * tvlVariation),
       users: Math.floor(1000 + Math.random() * 5000),
     });
-    
+
     feeHistory.push({
       date: dateStr,
       fees: Math.floor(volume24h * 0.003 * volumeVariation), // 0.3% fee estimate
       transactions: Math.floor(10000 + Math.random() * 50000),
     });
-    
+
     performanceHistory.push({
       date: dateStr,
       uptime: 98 + Math.random() * 2,
@@ -381,7 +381,7 @@ function generateHistoricalData(volume24h: number, tvl: number) {
       latency: 50 + Math.random() * 100,
     });
   }
-  
+
   return { volumeHistory, feeHistory, performanceHistory };
 }
 
@@ -393,15 +393,15 @@ async function fetchDexData(dexName: string): Promise<Partial<DexProfileData> | 
     if (analyticsResponse.ok) {
       const analyticsData = await analyticsResponse.json();
       if (analyticsData.success && analyticsData.data.volume.length > 0) {
-        const dexData = analyticsData.data.volume.find((d: any) => 
+        const dexData = analyticsData.data.volume.find((d: any) =>
           d.dex.toLowerCase() === dexName.toLowerCase()
         );
-        
+
         if (dexData) {
-          const liquidityData = analyticsData.data.liquidity.find((l: any) => 
+          const liquidityData = analyticsData.data.liquidity.find((l: any) =>
             l.dex.toLowerCase() === dexName.toLowerCase()
           );
-          
+
           return {
             volume24h: dexData.volume24h || 0,
             tvl: liquidityData?.tvl || 0,
@@ -414,16 +414,16 @@ async function fetchDexData(dexName: string): Promise<Partial<DexProfileData> | 
         }
       }
     }
-    
+
     // Fallback to DeFiLlama if analytics API doesn't have the data
     const defiLlamaResponse = await fetch('https://api.llama.fi/overview/dexs/solana');
     if (defiLlamaResponse.ok) {
       const data = await defiLlamaResponse.json();
-      const dexData = data.protocols?.find((p: any) => 
+      const dexData = data.protocols?.find((p: any) =>
         p.name.toLowerCase() === dexName.toLowerCase() ||
         p.name.toLowerCase().includes(dexName.toLowerCase())
       );
-      
+
       if (dexData) {
         return {
           volume24h: dexData.total24h || 0,
@@ -433,7 +433,7 @@ async function fetchDexData(dexName: string): Promise<Partial<DexProfileData> | 
         };
       }
     }
-    
+
     return null;
   } catch (error) {
     console.error(`Error fetching data for ${dexName}:`, error);
@@ -442,12 +442,14 @@ async function fetchDexData(dexName: string): Promise<Partial<DexProfileData> | 
 }
 
 export async function GET(
-  { params }: { params: { name: string } }
+  _request: Request,
+  { params }: { params: Promise<{ name: string }> }
 ) {
   try {
-    const dexName = decodeURIComponent(params.name).toLowerCase();
+    const { name } = await params;
+    const dexName = decodeURIComponent(name).toLowerCase();
     let config = DEX_CONFIGS[dexName];
-    
+
     // If not found in configs, create a dynamic config for any DEX
     if (!config) {
       // Check if this DEX exists in our analytics API
@@ -455,10 +457,10 @@ export async function GET(
       if (analyticsResponse.ok) {
         const analyticsData = await analyticsResponse.json();
         if (analyticsData.success && analyticsData.data.volume.length > 0) {
-          const dexData = analyticsData.data.volume.find((d: any) => 
+          const dexData = analyticsData.data.volume.find((d: any) =>
             d.dex.toLowerCase() === dexName.toLowerCase()
           );
-          
+
           if (dexData) {
             // Create dynamic config for this DEX
             config = {
@@ -481,7 +483,7 @@ export async function GET(
           }
         }
       }
-      
+
       // If still not found, return 404
       if (!config) {
         return NextResponse.json({
@@ -490,16 +492,16 @@ export async function GET(
         }, { status: 404 });
       }
     }
-    
+
     // Fetch real data from external APIs
     const realData = await fetchDexData(dexName);
-    
+
     // Base metrics calculation from real data or fallbacks
     const volume24h = realData?.volume24h || 50000000 + Math.random() * 200000000;
     const tvl = realData?.tvl || 20000000 + Math.random() * 100000000;
     const volumeChange = realData?.volumeChange || (-0.05 + Math.random() * 0.15);
     const totalVolume = realData?.totalVolume || volume24h * (200 + Math.random() * 200);
-    
+
     // Calculate derived metrics
     const marketShare = volume24h / (1000000000 + Math.random() * 2000000000); // Estimate against total market
     const activeUsers = realData?.activeUsers || Math.floor(volume24h / 5000); // Estimate users from volume
@@ -507,7 +509,7 @@ export async function GET(
     const avgTransactionSize = realData?.avgTransactionSize || 5000;
     const fees24h = volume24h * 0.003; // 0.3% average fee
     const totalFees = totalVolume * 0.003;
-    
+
     // Generate top pools
     const topPools = Array.from({ length: 10 }, (_, i) => {
       const pools = [
@@ -522,11 +524,11 @@ export async function GET(
         { tokenA: 'SABER', tokenB: 'USDC' },
         { tokenA: 'COPE', tokenB: 'USDC' },
       ];
-      
+
       const pool = pools[i % pools.length];
       const poolTvl = tvl * (0.1 + Math.random() * 0.2); // 10-30% of total TVL
       const poolVolume = volume24h * (0.05 + Math.random() * 0.15); // 5-20% of total volume
-      
+
       return {
         address: `${pool.tokenA}${pool.tokenB}Pool${i + 1}`,
         tokenA: pool.tokenA,
@@ -538,7 +540,7 @@ export async function GET(
         price: 1 + Math.random() * 10,
       };
     });
-    
+
     // Generate recent trades
     const recentTrades = Array.from({ length: 20 }, (_, i) => {
       const pools = ['SOL/USDC', 'SOL/USDT', 'RAY/USDC', 'ORCA/USDC'];
@@ -558,15 +560,15 @@ export async function GET(
         user: `user_${Math.floor(Math.random() * 10000)}`,
       };
     });
-    
+
     // Generate historical data
     const historicalData = generateHistoricalData(volume24h, tvl);
-    
+
     // Calculate security score and recommendations
     const securityScore = config.security?.audited ? 70 : 30;
     const volumeScore = Math.min(volume24h / 100000000 * 30, 30); // Up to 30 points for volume
     const totalScore = securityScore + volumeScore;
-    
+
     const recommendations = {
       shouldTrade: totalScore > 50,
       riskLevel: (totalScore > 70 ? 'low' : totalScore > 50 ? 'medium' : 'high') as 'low' | 'medium' | 'high',
@@ -586,7 +588,7 @@ export async function GET(
         volume24h < 10000000 ? 'Low daily volume' : 'High competition',
       ],
     };
-    
+
     const profile: DexProfileData = {
       ...config,
       name: dexName,
@@ -636,7 +638,7 @@ export async function GET(
       data: profile,
       timestamp: Date.now(),
     });
-    
+
   } catch (error) {
     console.error('Error in DEX profile API:', error);
     return NextResponse.json(

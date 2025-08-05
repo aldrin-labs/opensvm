@@ -149,6 +149,7 @@ export async function focusOnTransaction(
  * @param focusOnTransaction Function to focus on a transaction
  * @param setViewportState Function to update viewport state
  * @param onAddressTrack Optional callback for address tracking
+ * @param onTransactionSelect Optional callback for transaction selection
  */
 export const setupGraphInteractions = (
   cy: cytoscape.Core,
@@ -156,8 +157,13 @@ export const setupGraphInteractions = (
   focusSignatureRef: React.MutableRefObject<string>,
   focusOnTransaction: (signature: string, incrementalLoad: boolean) => void,
   setViewportState: (state: ViewportState) => void,
-  onAddressTrack?: (address: string) => void
+  onAddressTrack?: (address: string) => void,
+  onTransactionSelect?: (signature: string) => void
 ): void => {
+  console.log('setupGraphInteractions called with callbacks:', {
+    addressCallback: !!onAddressTrack,
+    transactionCallback: !!onTransactionSelect
+  });
   // Add active state styling
   cy.style().selector(':active').style({ 'opacity': 0.7 }).update();
   
@@ -231,14 +237,18 @@ export const setupGraphInteractions = (
       // For account nodes, navigate to account page
       const address = signature; // In this case, the ID is the address
       
+      console.log('Account node clicked:', address, 'Callback available:', !!onAddressTrack);
+      
       // Highlight the account and its connections
       node.connectedEdges().addClass('highlighted').connectedNodes().addClass('highlighted');
       
       // ALWAYS use callback if provided - prioritize it over fallback
       if (onAddressTrack && typeof onAddressTrack === 'function') {
+        console.log('Using callback for account navigation:', address);
         onAddressTrack(address);
       } else {
         // Fallback: Navigate to account page in new tab
+        console.log('No callback available, falling back to page navigation:', address);
         if (typeof window !== 'undefined') {
           window.open(`/account/${address}`, '_blank');
         }

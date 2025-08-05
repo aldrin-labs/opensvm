@@ -109,14 +109,14 @@ export class UXManager {
 
   // Event handlers
   private eventHandlers = {
-    onLoadingStart: (id: string, state: LoadingState) => {},
-    onLoadingProgress: (id: string, progress: number) => {},
-    onLoadingComplete: (id: string, duration: number) => {},
-    onError: (id: string, state: ErrorRecoveryState) => {},
-    onErrorRecovered: (id: string, action: string) => {},
-    onKeyboardShortcut: (shortcut: KeyboardShortcut, event: KeyboardEvent) => {},
-    onAccessibilityViolation: (violation: string, element?: HTMLElement) => {},
-    onUserInteraction: (type: string, target?: HTMLElement) => {}
+    onLoadingStart: (_id: string, _state: LoadingState) => { },
+    onLoadingProgress: (_id: string, _progress: number) => { },
+    onLoadingComplete: (_id: string, _duration: number) => { },
+    onError: (_id: string, _state: ErrorRecoveryState) => { },
+    onErrorRecovered: (_id: string, _action: string) => { },
+    onKeyboardShortcut: (_shortcut: KeyboardShortcut, _event: KeyboardEvent) => { },
+    onAccessibilityViolation: (_violation: string, _element?: HTMLElement) => { },
+    onUserInteraction: (_type: string, _target?: HTMLElement) => { }
   };
 
   private constructor() {
@@ -176,7 +176,7 @@ export class UXManager {
     if (state) {
       state.progress = Math.max(0, Math.min(100, progress));
       if (message) state.message = message;
-      
+
       this.eventHandlers.onLoadingProgress(id, progress);
     }
   }
@@ -186,7 +186,7 @@ export class UXManager {
     if (state) {
       const duration = Date.now() - state.startTime;
       this.uxMetrics.loadingTimes[state.type] = duration;
-      
+
       this.loadingStates.delete(id);
       this.eventHandlers.onLoadingComplete(id, duration);
     }
@@ -228,7 +228,7 @@ export class UXManager {
 
     this.errorStates.set(id, errorState);
     this.uxMetrics.errorCounts[severity] = (this.uxMetrics.errorCounts[severity] || 0) + 1;
-    
+
     this.eventHandlers.onError(id, errorState);
 
     // Announce error to screen readers
@@ -246,7 +246,7 @@ export class UXManager {
 
     try {
       await action.action();
-      
+
       // Clear error state on successful recovery
       this.errorStates.delete(id);
       this.eventHandlers.onErrorRecovered(id, actionId);
@@ -258,7 +258,7 @@ export class UXManager {
 
     } catch (recoveryError) {
       console.error('Recovery action failed:', recoveryError);
-      
+
       // Update error state with recovery failure
       errorState.userMessage = 'Recovery action failed. Please try another option.';
       errorState.technicalDetails += `\nRecovery error: ${recoveryError}`;
@@ -337,7 +337,7 @@ export class UXManager {
   reportAccessibilityViolation(violation: string, element?: HTMLElement): void {
     this.uxMetrics.accessibilityViolations++;
     this.eventHandlers.onAccessibilityViolation(violation, element);
-    
+
     if (process.env.NODE_ENV === 'development') {
       console.warn('Accessibility violation:', violation, element);
     }
@@ -399,7 +399,7 @@ export class UXManager {
         if (target && target !== this.lastFocusedElement) {
           this.focusHistory.push(target);
           this.lastFocusedElement = target;
-          
+
           // Keep focus history manageable
           if (this.focusHistory.length > 50) {
             this.focusHistory.shift();
@@ -488,7 +488,7 @@ export class UXManager {
       if (shortcut.preventDefault) {
         event.preventDefault();
       }
-      
+
       shortcut.action(event);
       this.eventHandlers.onKeyboardShortcut(shortcut, event);
     }
@@ -500,7 +500,7 @@ export class UXManager {
     if (shortcut.shiftKey) modifiers.push('shift');
     if (shortcut.altKey) modifiers.push('alt');
     if (shortcut.metaKey) modifiers.push('meta');
-    
+
     return [...modifiers, shortcut.key.toLowerCase()].join('+');
   }
 
@@ -509,7 +509,7 @@ export class UXManager {
     this.registerKeyboardShortcut({
       key: 'Tab',
       description: 'Navigate to next focusable element',
-      action: () => {}, // Browser default
+      action: () => { }, // Browser default
       scope: 'global',
       preventDefault: false
     });
@@ -518,7 +518,7 @@ export class UXManager {
       key: 'Tab',
       shiftKey: true,
       description: 'Navigate to previous focusable element',
-      action: () => {}, // Browser default
+      action: () => { }, // Browser default
       scope: 'global',
       preventDefault: false
     });
@@ -553,7 +553,7 @@ export class UXManager {
 
   private trapFocus(container: HTMLElement): () => void {
     const focusableElements = this.getFocusableElements(container);
-    if (focusableElements.length === 0) return () => {};
+    if (focusableElements.length === 0) return () => { };
 
     const firstElement = focusableElements[0];
     const lastElement = focusableElements[focusableElements.length - 1];
@@ -635,7 +635,7 @@ export class UXManager {
     }
   }
 
-  private generateUserFriendlyMessage(error: Error, severity: ErrorRecoveryState['severity']): string {
+  private generateUserFriendlyMessage(_error: Error, severity: ErrorRecoveryState['severity']): string {
     const messages = {
       low: 'Something minor went wrong, but you can continue.',
       medium: 'We encountered an issue. Please try again.',
@@ -646,7 +646,7 @@ export class UXManager {
     return messages[severity] || messages.medium;
   }
 
-  private getDefaultRecoveryActions(error: Error, severity: ErrorRecoveryState['severity']): RecoveryAction[] {
+  private getDefaultRecoveryActions(_error: Error, severity: ErrorRecoveryState['severity']): RecoveryAction[] {
     const actions: RecoveryAction[] = [];
 
     // Always provide refresh action for high/critical errors
@@ -708,11 +708,11 @@ export class UXManager {
     this.errorStates.clear();
     this.keyboardShortcuts.clear();
     this.focusHistory = [];
-    
+
     if (this.currentFocusTrap) {
       this.currentFocusTrap();
     }
-    
+
     UXManager.instance = null;
   }
 }

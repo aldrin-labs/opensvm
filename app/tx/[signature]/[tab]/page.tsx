@@ -2,7 +2,7 @@ import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import TransactionTabLayout from '../TransactionTabLayout';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Props {
   params: Promise<{ signature: string; tab: string }>;

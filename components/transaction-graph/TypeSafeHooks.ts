@@ -26,9 +26,9 @@ export interface SafeIntervalConfig {
 }
 
 export interface CytoscapeConfig {
-  container: string | HTMLElement;
+  container: HTMLElement;
   elements: cytoscape.ElementDefinition[];
-  style: cytoscape.Stylesheet[];
+  style: cytoscape.StylesheetCSS[];
   layout: cytoscape.LayoutOptions;
 }
 
@@ -56,7 +56,6 @@ export function useSafeAsync<T>(
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const memoryManager = MemoryManager.getInstance();
 
   const abort = useCallback(() => {
     if (abortControllerRef.current) {
@@ -77,7 +76,7 @@ export function useSafeAsync<T>(
 
     try {
       const result = await asyncFunction(signal);
-      
+
       if (!signal.aborted) {
         setState({ data: result, loading: false, error: null });
       }
@@ -98,7 +97,7 @@ export function useSafeAsync<T>(
 
   useEffect(() => {
     execute();
-    
+
     // Cleanup on unmount
     return () => {
       abort();
@@ -123,27 +122,25 @@ export function useSafeTimeout(
   restart: () => void;
 } {
   const [isActive, setIsActive] = useState(false);
-  const timeoutIdRef = useRef<string | null>(null);
-  const memoryManager = MemoryManager.getInstance();
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
 
   const stop = useCallback(() => {
     if (timeoutIdRef.current) {
-      memoryManager.unregisterResource(timeoutIdRef.current);
       timeoutIdRef.current = null;
       setIsActive(false);
     }
-  }, [memoryManager]);
+  }, []);
 
   const start = useCallback(() => {
     stop(); // Clear any existing timeout
-    
+
     setIsActive(true);
-    timeoutIdRef.current = memoryManager.safeSetTimeout(() => {
+    timeoutIdRef.current = setTimeout(() => {
       callback();
       setIsActive(false);
       timeoutIdRef.current = null;
-    }, config.delay, config.description);
-  }, [callback, config.delay, config.description, memoryManager, stop]);
+    }, config.delay);
+  }, [callback, config.delay, stop]);
 
   const restart = useCallback(() => {
     start();
@@ -154,7 +151,7 @@ export function useSafeTimeout(
     if (config.immediate) {
       start();
     }
-    
+
     return () => {
       stop();
     };
@@ -192,7 +189,7 @@ export function useSafeInterval(
 
   const start = useCallback(() => {
     stop(); // Clear any existing interval
-    
+
     setIsActive(true);
     intervalIdRef.current = memoryManager.safeSetInterval(() => {
       callback();
@@ -208,7 +205,7 @@ export function useSafeInterval(
     if (config.immediate) {
       start();
     }
-    
+
     return () => {
       stop();
     };
@@ -243,8 +240,8 @@ export function useSafeEventListener<
   const listenerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const element = elementRef && typeof elementRef === 'object' && 'current' in elementRef 
-      ? elementRef.current 
+    const element = elementRef && typeof elementRef === 'object' && 'current' in elementRef
+      ? elementRef.current
       : elementRef;
 
     if (!element) return;
@@ -310,7 +307,7 @@ export function useSafeCytoscape(
 
     try {
       const cy = cytoscape(config);
-      
+
       cyIdRef.current = memoryManager.registerCytoscape(
         cy,
         'Main graph Cytoscape instance'
@@ -341,7 +338,7 @@ export function useSafeCytoscape(
 
   useEffect(() => {
     create();
-    
+
     return () => {
       cleanup();
     };
@@ -427,7 +424,7 @@ export function useSafeObserver<T extends IntersectionObserver | MutationObserve
 
   useEffect(() => {
     start();
-    
+
     return () => {
       stop();
     };
@@ -499,14 +496,14 @@ export function useSafeWorker<TMessage = any, TResponse = any>(
 
       // Simple ready check
       worker.postMessage({ type: 'ping' });
-      
+
       const readyHandler = (event: MessageEvent) => {
         if (event.data?.type === 'pong') {
           setIsReady(true);
           worker.removeEventListener('message', readyHandler);
         }
       };
-      
+
       worker.addEventListener('message', readyHandler);
 
     } catch (error) {
@@ -555,7 +552,7 @@ export function useSafeLocalStorage<T>(
     try {
       const valueToStore = value instanceof Function ? value(storedValue) : value;
       setStoredValue(valueToStore);
-      
+
       if (typeof window !== 'undefined') {
         window.localStorage.setItem(key, serialize(valueToStore));
       }
@@ -567,7 +564,7 @@ export function useSafeLocalStorage<T>(
   const removeValue = useCallback(() => {
     try {
       setStoredValue(defaultValue);
-      
+
       if (typeof window !== 'undefined') {
         window.localStorage.removeItem(key);
       }
@@ -604,12 +601,11 @@ export function useSafeThrottle<T extends (...args: any[]) => any>(
 ): T {
   const throttledCallback = useRef<T | null>(null);
   const lastCall = useRef<number>(0);
-  const memoryManager = MemoryManager.getInstance();
 
   return useMemo(() => {
     const throttled = ((...args: Parameters<T>) => {
       const now = Date.now();
-      
+
       if (now - lastCall.current >= delay) {
         lastCall.current = now;
         return callback(...args);

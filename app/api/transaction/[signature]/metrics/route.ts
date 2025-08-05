@@ -103,12 +103,12 @@ interface TransactionMetricsResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<TransactionMetricsResponse>> {
   const startTime = Date.now();
 
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const { searchParams } = new URL(request.url);
 
     // Validate signature format

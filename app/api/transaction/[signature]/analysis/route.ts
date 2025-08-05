@@ -75,10 +75,10 @@ interface TransactionAnalysisResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<TransactionAnalysisResponse>> {
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const { searchParams } = new URL(request.url);
 
     // Validate signature format
@@ -283,13 +283,14 @@ export async function GET(
 // POST method for more complex analysis requests
 export async function POST(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<TransactionAnalysisResponse>> {
   try {
     const data = await request.json();
+    const { signature } = await params;
 
     // Validate signature
-    if (!params.signature || params.signature.length !== 88) {
+    if (!signature || signature.length !== 88) {
       return NextResponse.json({
         success: false,
         error: {
@@ -301,7 +302,7 @@ export async function POST(
     }
 
     // Fetch transaction details
-    const transaction = await getTransactionDetails(params.signature);
+    const transaction = await getTransactionDetails(signature);
 
     if (!transaction) {
       return NextResponse.json({
@@ -412,7 +413,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       data: {
-        signature: params.signature,
+        signature: signature,
         analysis,
         cached: false
       },

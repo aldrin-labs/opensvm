@@ -64,12 +64,12 @@ interface RelatedTransactionsResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<RelatedTransactionsResponse>> {
   const startTime = Date.now();
 
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const { searchParams } = new URL(request.url);
 
     // Validate signature format
@@ -278,10 +278,10 @@ export async function GET(
 // POST method for more complex related transaction queries
 export async function POST(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<RelatedTransactionsResponse>> {
   try {
-    const { signature: _signature } = params;
+    const { signature: _signature } = await params;
     const body = await request.json();
 
     // Validate request body

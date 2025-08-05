@@ -30,32 +30,32 @@ export interface GraphState {
   // Core graph data
   nodes: GraphNode[];
   edges: GraphEdge[];
-  
+
   // Navigation state
   currentAccount: string | null;
   currentTransaction: string | null;
   navigationHistory: string[];
   currentHistoryIndex: number;
-  
+
   // UI state
   loading: boolean;
   error: string | null;
   progress: number;
   progressMessage: string;
-  
+
   // View state
   isFullscreen: boolean;
   useGPUAcceleration: boolean;
   viewportState: { zoom: number; pan: { x: number; y: number } } | null;
-  
+
   // Tracking state
   trackedAddress: string | null;
   isTrackingMode: boolean;
-  
+
   // Performance state
   expandedNodesCount: number;
   totalNodesToLoad: number;
-  
+
   // Security state
   lastValidatedUrls: Set<string>;
   rateLimitState: Map<string, { count: number; lastReset: number }>;
@@ -121,14 +121,14 @@ const sanitizeUrl = (url: string): string => {
 const isRateLimited = (state: GraphState, key: string, limit: number, windowMs: number): boolean => {
   const now = Date.now();
   const entry = state.rateLimitState.get(key);
-  
+
   if (!entry) return false;
-  
+
   // Reset window if expired
   if (now - entry.lastReset > windowMs) {
     return false;
   }
-  
+
   return entry.count >= limit;
 };
 
@@ -137,43 +137,43 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
   switch (action.type) {
     case 'SET_LOADING':
       return { ...state, loading: action.payload };
-      
+
     case 'SET_ERROR':
       return { ...state, error: action.payload, loading: false };
-      
+
     case 'SET_PROGRESS':
-      return { 
-        ...state, 
-        progress: action.payload.progress, 
-        progressMessage: action.payload.message 
+      return {
+        ...state,
+        progress: action.payload.progress,
+        progressMessage: action.payload.message
       };
-      
+
     case 'SET_NODES':
       return { ...state, nodes: action.payload };
-      
+
     case 'SET_EDGES':
       return { ...state, edges: action.payload };
-      
+
     case 'ADD_NODES':
       const existingNodeIds = new Set(state.nodes.map(n => n.id));
       const newNodes = action.payload.filter(n => !existingNodeIds.has(n.id));
       return { ...state, nodes: [...state.nodes, ...newNodes] };
-      
+
     case 'ADD_EDGES':
       const existingEdgeIds = new Set(state.edges.map(e => e.id));
       const newEdges = action.payload.filter(e => !existingEdgeIds.has(e.id));
       return { ...state, edges: [...state.edges, ...newEdges] };
-      
+
     case 'NAVIGATE_TO_ACCOUNT':
       let newHistory = state.navigationHistory;
       let newIndex = state.currentHistoryIndex;
-      
+
       if (action.payload.addToHistory !== false) {
         // Add to history if not explicitly disabled
         newHistory = [...state.navigationHistory.slice(0, state.currentHistoryIndex + 1), action.payload.address];
         newIndex = newHistory.length - 1;
       }
-      
+
       return {
         ...state,
         currentAccount: action.payload.address,
@@ -182,16 +182,16 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
         loading: true,
         error: null
       };
-      
+
     case 'NAVIGATE_TO_TRANSACTION':
       let newTxHistory = state.navigationHistory;
       let newTxIndex = state.currentHistoryIndex;
-      
+
       if (action.payload.addToHistory !== false) {
         newTxHistory = [...state.navigationHistory.slice(0, state.currentHistoryIndex + 1), action.payload.signature];
         newTxIndex = newTxHistory.length - 1;
       }
-      
+
       return {
         ...state,
         currentTransaction: action.payload.signature,
@@ -200,7 +200,7 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
         loading: true,
         error: null
       };
-      
+
     case 'NAVIGATION_SUCCESS':
       return {
         ...state,
@@ -209,40 +209,40 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
         ...(action.payload.type === 'account' && { currentAccount: action.payload.target }),
         ...(action.payload.type === 'transaction' && { currentTransaction: action.payload.target })
       };
-      
+
     case 'NAVIGATION_ERROR':
       return { ...state, loading: false, error: action.payload };
-      
+
     case 'SET_VIEWPORT':
       return { ...state, viewportState: action.payload };
-      
+
     case 'TOGGLE_FULLSCREEN':
       return { ...state, isFullscreen: !state.isFullscreen };
-      
+
     case 'TOGGLE_GPU_ACCELERATION':
       return { ...state, useGPUAcceleration: !state.useGPUAcceleration };
-      
+
     case 'START_TRACKING':
-      return { 
-        ...state, 
-        trackedAddress: action.payload, 
-        isTrackingMode: true 
+      return {
+        ...state,
+        trackedAddress: action.payload,
+        isTrackingMode: true
       };
-      
+
     case 'STOP_TRACKING':
-      return { 
-        ...state, 
-        trackedAddress: null, 
-        isTrackingMode: false 
+      return {
+        ...state,
+        trackedAddress: null,
+        isTrackingMode: false
       };
-      
+
     case 'UPDATE_PERFORMANCE_METRICS':
       return {
         ...state,
         expandedNodesCount: action.payload.expandedNodes,
         totalNodesToLoad: action.payload.totalNodes
       };
-      
+
     case 'VALIDATE_URL':
       try {
         const validUrl = sanitizeUrl(action.payload);
@@ -253,15 +253,15 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
       } catch {
         return { ...state, error: 'Invalid URL provided' };
       }
-      
+
     case 'RATE_LIMIT_CHECK':
       const { key, limit, window: windowMs } = action.payload;
       const now = Date.now();
       const existing = state.rateLimitState.get(key);
-      
+
       let newCount = 1;
       let lastReset = now;
-      
+
       if (existing) {
         if (now - existing.lastReset > windowMs) {
           // Reset window
@@ -272,19 +272,19 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
           lastReset = existing.lastReset;
         }
       }
-      
+
       const newRateLimitState = new Map(state.rateLimitState);
       newRateLimitState.set(key, { count: newCount, lastReset });
-      
+
       return {
         ...state,
         rateLimitState: newRateLimitState,
         ...(newCount > limit && { error: `Rate limit exceeded for ${key}` })
       };
-      
+
     case 'RESET_STATE':
       return { ...initialState };
-      
+
     default:
       return state;
   }
@@ -294,11 +294,11 @@ const graphReducer = (state: GraphState, action: GraphAction): GraphState => {
 export interface GraphContextValue {
   state: GraphState;
   dispatch: React.Dispatch<GraphAction>;
-  
+
   // Cytoscape instance management
   cyRef: React.MutableRefObject<cytoscape.Core | null>;
   isInitialized: boolean;
-  
+
   // Navigation actions
   navigateToAccount: (address: string, options?: { addToHistory?: boolean; validateUrl?: boolean }) => Promise<void>;
   navigateToTransaction: (signature: string, options?: { addToHistory?: boolean; validateUrl?: boolean }) => Promise<void>;
@@ -306,19 +306,19 @@ export interface GraphContextValue {
   canGoForward: boolean;
   navigateBack: () => void;
   navigateForward: () => void;
-  
+
   // Graph manipulation
   addNodes: (nodes: GraphNode[]) => void;
   addEdges: (edges: GraphEdge[]) => void;
   updateViewport: (viewport: { zoom: number; pan: { x: number; y: number } }) => void;
-  
+
   // Security functions
   safeNavigate: (url: string) => Promise<void>;
   checkRateLimit: (key: string, limit?: number, windowMs?: number) => boolean;
-  
+
   // Performance monitoring
   updatePerformanceMetrics: (metrics: { expandedNodes: number; totalNodes: number }) => void;
-  
+
   // Error recovery
   retryLastAction: () => void;
   clearError: () => void;
@@ -380,72 +380,72 @@ export const GraphProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Navigation functions with enhanced security
   const navigateToAccount = useCallback(async (
-    address: string, 
+    address: string,
     options: { addToHistory?: boolean; validateUrl?: boolean } = {}
   ) => {
     const { addToHistory = true, validateUrl = true } = options;
-    
+
     try {
       // Rate limiting check
       if (isRateLimited(state, `navigate-${address}`, 10, 60000)) { // 10 requests per minute
         throw new Error('Navigation rate limit exceeded');
       }
-      
+
       dispatch({ type: 'RATE_LIMIT_CHECK', payload: { key: `navigate-${address}`, limit: 10, window: 60000 } });
-      
+
       // URL validation if requested
       if (validateUrl) {
         const url = `/account/${address}`;
         dispatch({ type: 'VALIDATE_URL', payload: url });
       }
-      
+
       // Create and execute navigation command
       const command = new AccountNavigationCommand(dispatch, router, address, state.currentAccount);
       await command.execute();
-      
+
       if (addToHistory) {
         commandHistory.current.push(command);
       }
-      
+
       // Store for retry functionality
       lastActionRef.current = () => navigateToAccount(address, options);
-      
+
     } catch (error) {
       dispatch({ type: 'NAVIGATION_ERROR', payload: error instanceof Error ? error.message : 'Navigation failed' });
     }
-  }, [router, state.currentAccount, state]);
+  }, [router, state]);
 
   const navigateToTransaction = useCallback(async (
     signature: string,
     options: { addToHistory?: boolean; validateUrl?: boolean } = {}
   ) => {
     const { addToHistory = true, validateUrl = true } = options;
-    
+
     try {
       // Rate limiting check
       if (isRateLimited(state, `navigate-tx-${signature}`, 10, 60000)) {
         throw new Error('Transaction navigation rate limit exceeded');
       }
-      
+
       dispatch({ type: 'RATE_LIMIT_CHECK', payload: { key: `navigate-tx-${signature}`, limit: 10, window: 60000 } });
-      
+
       // URL validation if requested
       if (validateUrl) {
         const url = `/tx/${signature}`;
         dispatch({ type: 'VALIDATE_URL', payload: url });
       }
-      
+
       dispatch({ type: 'NAVIGATE_TO_TRANSACTION', payload: { signature, addToHistory } });
-      
+
       // Open in new tab for transactions (safer than same-tab navigation)
       const sanitizedUrl = sanitizeUrl(`/tx/${signature}`);
       window.open(sanitizedUrl, '_blank', 'noopener,noreferrer');
-      
+
       dispatch({ type: 'NAVIGATION_SUCCESS', payload: { target: signature, type: 'transaction' } });
-      
+
       // Store for retry functionality
       lastActionRef.current = () => navigateToTransaction(signature, options);
-      
+
     } catch (error) {
       dispatch({ type: 'NAVIGATION_ERROR', payload: error instanceof Error ? error.message : 'Transaction navigation failed' });
     }
@@ -456,15 +456,15 @@ export const GraphProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       const sanitizedUrl = sanitizeUrl(url);
       dispatch({ type: 'VALIDATE_URL', payload: sanitizedUrl });
-      
+
       // Check rate limit for this specific URL
       const urlKey = `safe-navigate-${new URL(sanitizedUrl).pathname}`;
       if (isRateLimited(state, urlKey, 5, 30000)) { // 5 requests per 30 seconds per URL
         throw new Error('URL navigation rate limit exceeded');
       }
-      
+
       dispatch({ type: 'RATE_LIMIT_CHECK', payload: { key: urlKey, limit: 5, window: 30000 } });
-      
+
       window.open(sanitizedUrl, '_blank', 'noopener,noreferrer');
     } catch (error) {
       dispatch({ type: 'SET_ERROR', payload: error instanceof Error ? error.message : 'Navigation failed' });
@@ -534,11 +534,12 @@ export const GraphProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   useEffect(() => {
     return () => {
       // Clean up any ongoing operations
-      if (cyRef.current) {
-        cyRef.current.destroy();
+      const cy = cyRef.current;
+      if (cy) {
+        cy.destroy();
       }
     };
-  }, []);
+  }, [cyRef]);
 
   const contextValue: GraphContextValue = {
     state,

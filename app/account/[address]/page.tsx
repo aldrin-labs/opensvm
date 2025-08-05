@@ -5,10 +5,11 @@ import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
 import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
-import TransactionGraph from '@/components/transaction-graph/TransactionGraph';
-import AccountTabs from './tabs';
+import { TransactionGraphLazy, AccountTabsLazy, PerformanceWrapper } from '@/components/LazyComponents';
+import { GraphErrorBoundary, TableErrorBoundary } from '@/components/ErrorBoundary';
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface AccountData {
   address: string;
@@ -34,7 +35,7 @@ async function getAccountData(address: string): Promise<AccountData> {
       if (!address || address.length < 32 || address.length > 44) {
         throw new Error('Invalid address format');
       }
-      
+
       if (!/^[1-9A-HJ-NP-Za-km-z]+$/.test(address)) {
         throw new Error('Invalid characters in address');
       }
@@ -45,9 +46,9 @@ async function getAccountData(address: string): Promise<AccountData> {
           setTimeout(() => reject(new Error('Connection timeout')), 3000)
         )
       ]) as Awaited<ReturnType<typeof getConnection>>;
-      
+
       const pubkey = validateSolanaAddress(address);
-      
+
       // Fetch basic account info with timeout protection
       const [accountInfo, balance] = await Promise.all([
         Promise.race([
@@ -67,12 +68,12 @@ async function getAccountData(address: string): Promise<AccountData> {
       // Fetch token accounts with timeout protection
       let tokenBalances: { mint: string; balance: number; }[] = [];
       let tokenAccountsForOverview: any[] = [];
-      
+
       try {
         const tokenAccountsPromise = connection.getParsedTokenAccountsByOwner(pubkey, {
           programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
         });
-        
+
         const tokenAccounts = await Promise.race([
           tokenAccountsPromise,
           new Promise((_, reject) =>
@@ -161,10 +162,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Check if already aborted
       if (signal?.aborted) return;
-      
+
       // Basic validation
       if (!address) {
         throw new Error('Address is required');
@@ -195,10 +196,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
           setTimeout(() => reject(new Error('Account data fetch timeout')), 8000)
         )
       ]);
-      
+
       // Check again if aborted after async operation
       if (signal?.aborted) return;
-      
+
       setAccountInfo(accountData);
       setCurrentAddress(cleanAddress);
 
@@ -206,7 +207,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       if (signal?.aborted) return;
       console.error('Error loading account data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Unknown error occurred';
-      
+
       // For timeout errors, provide fallback data instead of complete failure
       if (errorMessage.includes('timeout')) {
         setAccountInfo({
@@ -233,18 +234,18 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   // Single effect to handle all address changes
   useEffect(() => {
     let mounted = true;
-    
+
     const initializeComponent = async () => {
       try {
         // Cancel any ongoing requests
         if (abortControllerRef.current) {
           abortControllerRef.current.abort();
         }
-        
+
         // Create new abort controller
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
-        
+
         const { address: rawAddress } = await params;
         const resolvedSearchParams = await searchParams;
         const { tab } = resolvedSearchParams;
@@ -255,7 +256,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
         // Determine the address to load (prioritize URL params for client-side nav)
         const addressToLoad = (urlParams?.address as string) || rawAddress;
-        
+
         // Only load data if address has changed and is valid
         if (addressToLoad && addressToLoad !== currentAddress && mounted) {
           await loadAccountData(addressToLoad, signal);
@@ -271,7 +272,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
     };
 
     initializeComponent();
-    
+
     return () => {
       mounted = false;
       if (abortControllerRef.current) {
@@ -329,23 +330,27 @@ export default function AccountPage({ params, searchParams }: PageProps) {
               parsedOwner={accountInfo.parsedOwner}
             />
             <div ref={graphRef}>
-              <TransactionGraph
-                key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
-                initialAccount={accountInfo.address}
-                onTransactionSelect={(signature) => {
-                  // Navigate to transaction page
-                  window.open(`/tx/${signature}`, '_blank');
-                }}
-                onAccountSelect={(accountAddress: string) => {
-                  // Smooth client-side navigation to account page
-                  if (accountAddress !== accountInfo.address) {
-                    navigateToAccount(accountAddress);
-                  }
-                }}
-                clientSideNavigation={true}
-                width="100%"
-                height="400px"
-              />
+              <GraphErrorBoundary>
+                <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-[400px]" />}>
+                  <TransactionGraphLazy
+                    key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
+                    initialAccount={accountInfo.address}
+                    onTransactionSelect={(signature: string) => {
+                      // Client-side navigation to transaction page
+                      router.push(`/tx/${signature}`);
+                    }}
+                    onAccountSelect={(accountAddress: string) => {
+                      // Smooth client-side navigation to account page
+                      if (accountAddress !== accountInfo.address) {
+                        navigateToAccount(accountAddress);
+                      }
+                    }}
+                    clientSideNavigation={true}
+                    width="100%"
+                    height="400px"
+                  />
+                </PerformanceWrapper>
+              </GraphErrorBoundary>
             </div>
           </div>
         </div>
@@ -360,12 +365,16 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       </div>
       {/* Full-width tabs and table */}
       <div className="mt-6 w-full">
-        <AccountTabs
-          address={accountInfo.address}
-          solBalance={accountInfo.solBalance}
-          tokenBalances={accountInfo.tokenBalances}
-          activeTab={activeTab as string}
-        />
+        <TableErrorBoundary>
+          <PerformanceWrapper priority="low" fallback={<Skeleton className="w-full h-[300px]" />}>
+            <AccountTabsLazy
+              address={accountInfo.address}
+              solBalance={accountInfo.solBalance}
+              tokenBalances={accountInfo.tokenBalances}
+              activeTab={activeTab as string}
+            />
+          </PerformanceWrapper>
+        </TableErrorBoundary>
       </div>
     </div>
   );

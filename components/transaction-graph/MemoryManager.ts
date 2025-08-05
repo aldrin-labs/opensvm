@@ -30,7 +30,7 @@ export class MemoryManager {
   private static instance: MemoryManager | null = null;
   private resources = new Map<string, ResourceTracker>();
   private memoryHistory: MemoryMetrics[] = [];
-  private monitoringInterval: NodeJS.Timeout | null = null;
+  private monitoringInterval: string | null = null;
   private leakDetectionConfig: MemoryLeakDetection | null = null;
   private readonly MAX_HISTORY_SIZE = 100;
   private readonly MEMORY_PRESSURE_THRESHOLD = 50 * 1024 * 1024; // 50MB
@@ -87,7 +87,7 @@ export class MemoryManager {
   cleanupResourcesByType(type: ResourceTracker['type']): void {
     const resourcesToCleanup = Array.from(this.resources.values())
       .filter(resource => resource.type === type);
-    
+
     resourcesToCleanup.forEach(resource => {
       this.unregisterResource(resource.id);
     });
@@ -108,7 +108,7 @@ export class MemoryManager {
    */
   safeSetTimeout(callback: () => void, delay: number, description?: string): string {
     const id = `timeout_${Date.now()}_${Math.random()}`;
-    
+
     const timeoutId = setTimeout(() => {
       try {
         callback();
@@ -134,7 +134,7 @@ export class MemoryManager {
    */
   safeSetInterval(callback: () => void, interval: number, description?: string): string {
     const id = `interval_${Date.now()}_${Math.random()}`;
-    
+
     const intervalId = setInterval(() => {
       try {
         callback();
@@ -165,7 +165,7 @@ export class MemoryManager {
     description?: string
   ): string {
     const id = `listener_${Date.now()}_${Math.random()}`;
-    
+
     // Type-safe event listener binding
     if ('addEventListener' in target) {
       (target as any).addEventListener(type, listener, options);
@@ -199,7 +199,7 @@ export class MemoryManager {
    */
   safeRequestAnimationFrame(callback: FrameRequestCallback, description?: string): string {
     const id = `animation_${Date.now()}_${Math.random()}`;
-    
+
     const frameId = requestAnimationFrame((time) => {
       try {
         callback(time);
@@ -228,7 +228,7 @@ export class MemoryManager {
     description?: string
   ): string {
     const id = `observer_${Date.now()}_${Math.random()}`;
-    
+
     this.registerResource(
       id,
       'observer',
@@ -244,7 +244,7 @@ export class MemoryManager {
    */
   registerWorker(worker: Worker, description?: string): string {
     const id = `worker_${Date.now()}_${Math.random()}`;
-    
+
     this.registerResource(
       id,
       'worker',
@@ -262,7 +262,7 @@ export class MemoryManager {
    */
   registerCytoscape(cy: cytoscape.Core, description?: string): string {
     const id = `cytoscape_${Date.now()}_${Math.random()}`;
-    
+
     this.registerResource(
       id,
       'cytoscape',
@@ -308,23 +308,23 @@ export class MemoryManager {
    */
   startMemoryMonitoring(): void {
     if (this.isMonitoring) return;
-    
+
     this.isMonitoring = true;
     this.monitoringInterval = this.safeSetInterval(() => {
       const metrics = this.getMemoryMetrics();
       if (metrics) {
         this.memoryHistory.push(metrics);
-        
+
         // Keep history size manageable
         if (this.memoryHistory.length > this.MAX_HISTORY_SIZE) {
           this.memoryHistory.shift();
         }
-        
+
         // Check for memory pressure
         if (metrics.usedJSHeapSize > this.MEMORY_PRESSURE_THRESHOLD) {
           this.handleMemoryPressure(metrics);
         }
-        
+
         // Check for memory leaks
         this.checkForMemoryLeaks(metrics);
       }
@@ -359,19 +359,19 @@ export class MemoryManager {
 
     const { threshold, onLeakDetected } = this.leakDetectionConfig;
     const thresholdBytes = threshold * 1024 * 1024; // Convert MB to bytes
-    
+
     // Check if memory usage has consistently increased
     const recentHistory = this.memoryHistory.slice(-10);
     const oldestMetric = recentHistory[0];
     const increase = currentMetrics.usedJSHeapSize - oldestMetric.usedJSHeapSize;
-    
+
     if (increase > thresholdBytes) {
       // Check if this is a sustained increase (not just temporary)
       const isIncreasing = recentHistory.every((metric, index) => {
         if (index === 0) return true;
         return metric.usedJSHeapSize >= recentHistory[index - 1].usedJSHeapSize;
       });
-      
+
       if (isIncreasing) {
         onLeakDetected(currentMetrics);
         this.performGarbageCollection();
@@ -384,14 +384,14 @@ export class MemoryManager {
    */
   private handleMemoryPressure(metrics: MemoryMetrics): void {
     console.warn('Memory pressure detected:', metrics);
-    
+
     if (this.leakDetectionConfig?.onMemoryPressure) {
       this.leakDetectionConfig.onMemoryPressure(metrics);
     }
-    
+
     // Attempt garbage collection
     this.performGarbageCollection();
-    
+
     // Clean up old resources
     this.cleanupOldResources();
   }
@@ -417,7 +417,7 @@ export class MemoryManager {
     const now = Date.now();
     const resourcesToCleanup = Array.from(this.resources.values())
       .filter(resource => now - resource.createdAt > maxAge);
-    
+
     resourcesToCleanup.forEach(resource => {
       console.warn(`Cleaning up old resource: ${resource.id} (${resource.type})`);
       this.unregisterResource(resource.id);
@@ -436,16 +436,16 @@ export class MemoryManager {
     const now = Date.now();
     const byType: Record<string, number> = {};
     let oldestResource: { id: string; age: number } | null = null;
-    
+
     this.resources.forEach(resource => {
       byType[resource.type] = (byType[resource.type] || 0) + 1;
-      
+
       const age = now - resource.createdAt;
       if (!oldestResource || age > oldestResource.age) {
         oldestResource = { id: resource.id, age };
       }
     });
-    
+
     return {
       totalResources: this.resources.size,
       byType,
@@ -463,10 +463,10 @@ export class MemoryManager {
         this.cleanupAllResources();
         this.stopMemoryMonitoring();
       };
-      
+
       window.addEventListener('beforeunload', cleanup);
       window.addEventListener('pagehide', cleanup);
-      
+
       // Also cleanup on visibility change for mobile browsers
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') {
@@ -490,7 +490,7 @@ export class MemoryManager {
 
 // Type-safe event emitter with automatic cleanup
 export class TypeSafeEventEmitter<TEvents extends Record<string, any>> {
-  private listeners = new Map<keyof TEvents, Set<Function>>();
+  private listeners = new Map<keyof TEvents, Set<(data: any) => void>>();
   private memoryManager = MemoryManager.getInstance();
   private listenerId: string;
 
@@ -511,9 +511,9 @@ export class TypeSafeEventEmitter<TEvents extends Record<string, any>> {
     if (!this.listeners.has(event)) {
       this.listeners.set(event, new Set());
     }
-    
+
     this.listeners.get(event)!.add(listener);
-    
+
     // Return unsubscribe function
     return () => this.off(event, listener);
   }
@@ -576,26 +576,26 @@ export class WeakReferenceManager<T extends object> {
 
   cleanup(): void {
     const toDelete = new Set<WeakRef<T>>();
-    
+
     this.refs.forEach(ref => {
       if (ref.deref() === undefined) {
         toDelete.add(ref);
       }
     });
-    
+
     toDelete.forEach(ref => this.refs.delete(ref));
   }
 
   getAliveReferences(): T[] {
     const alive: T[] = [];
-    
+
     this.refs.forEach(ref => {
       const obj = ref.deref();
       if (obj !== undefined) {
         alive.push(obj);
       }
     });
-    
+
     return alive;
   }
 

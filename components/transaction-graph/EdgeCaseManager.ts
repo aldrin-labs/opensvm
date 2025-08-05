@@ -48,7 +48,7 @@ export interface EdgeCaseConfig {
 export class EdgeCaseManager {
   private static instance: EdgeCaseManager | null = null;
   private memoryManager = MemoryManager.getInstance();
-  
+
   // Tracking state
   private circularReferences = new Map<string, CircularReference>();
   private raceConditions = new Map<string, RaceConditionTracker>();
@@ -60,7 +60,7 @@ export class EdgeCaseManager {
     priority: number;
     timeout: number;
   }> = [];
-  
+
   // Configuration
   private config: EdgeCaseConfig = {
     maxCircularDepth: 10,
@@ -73,12 +73,12 @@ export class EdgeCaseManager {
 
   // Event callbacks
   private eventHandlers = {
-    onCircularReference: (ref: CircularReference) => {},
-    onRaceCondition: (tracker: RaceConditionTracker) => {},
-    onNetworkFailure: (context: NetworkFailureContext) => {},
-    onStateCorruption: (corruption: StateCorruption) => {},
-    onRecoverySuccess: (type: string, context: any) => {},
-    onRecoveryFailure: (type: string, error: Error) => {}
+    onCircularReference: (_ref: CircularReference) => { },
+    onRaceCondition: (_tracker: RaceConditionTracker) => { },
+    onNetworkFailure: (_context: NetworkFailureContext) => { },
+    onStateCorruption: (_corruption: StateCorruption) => { },
+    onRecoverySuccess: (_type: string, _context: any) => { },
+    onRecoveryFailure: (_type: string, _error: Error) => { }
   };
 
   private constructor() {
@@ -111,9 +111,8 @@ export class EdgeCaseManager {
    * Circular reference detection and handling
    */
   detectCircularReference(nodeId: string, path: string[]): CircularReference | null {
-    const currentPath = [...path, nodeId];
     const circularIndex = path.indexOf(nodeId);
-    
+
     if (circularIndex !== -1) {
       const circularPath = path.slice(circularIndex);
       const reference: CircularReference = {
@@ -122,13 +121,13 @@ export class EdgeCaseManager {
         depth: circularPath.length,
         detectedAt: Date.now()
       };
-      
+
       this.circularReferences.set(nodeId, reference);
       this.eventHandlers.onCircularReference(reference);
-      
+
       return reference;
     }
-    
+
     return null;
   }
 
@@ -138,21 +137,21 @@ export class EdgeCaseManager {
   breakCircularReference(nodeId: string, targetId: string, allNodes: Map<string, any>): string[] | null {
     const visited = new Set<string>();
     const queue: Array<{ node: string; path: string[] }> = [{ node: nodeId, path: [nodeId] }];
-    
+
     while (queue.length > 0) {
       const { node, path } = queue.shift()!;
-      
+
       if (node === targetId && path.length > 1) {
         return path;
       }
-      
+
       if (visited.has(node) || path.length > this.config.maxCircularDepth) {
         continue;
       }
-      
+
       visited.add(node);
       const nodeData = allNodes.get(node);
-      
+
       if (nodeData?.connections) {
         for (const connection of nodeData.connections) {
           if (!visited.has(connection) && !path.includes(connection)) {
@@ -164,7 +163,7 @@ export class EdgeCaseManager {
         }
       }
     }
-    
+
     return null;
   }
 
@@ -183,10 +182,10 @@ export class EdgeCaseManager {
       this.eventHandlers.onRaceCondition(existing);
       return false;
     }
-    
+
     // Cancel lower priority operations of same type
     this.cancelLowerPriorityOperations(type, priority);
-    
+
     const tracker: RaceConditionTracker = {
       operationId,
       type,
@@ -194,9 +193,9 @@ export class EdgeCaseManager {
       status: 'pending',
       priority
     };
-    
+
     this.raceConditions.set(operationId, tracker);
-    
+
     // Auto-timeout after configured time
     this.memoryManager.safeSetTimeout(() => {
       const current = this.raceConditions.get(operationId);
@@ -205,7 +204,7 @@ export class EdgeCaseManager {
         this.eventHandlers.onRaceCondition(current);
       }
     }, this.config.raceConditionTimeout, `Race condition timeout for ${operationId}`);
-    
+
     return true;
   }
 
@@ -216,7 +215,7 @@ export class EdgeCaseManager {
     const tracker = this.raceConditions.get(operationId);
     if (tracker) {
       tracker.status = success ? 'completed' : 'failed';
-      
+
       // Clean up after a delay
       this.memoryManager.safeSetTimeout(() => {
         this.raceConditions.delete(operationId);
@@ -228,7 +227,7 @@ export class EdgeCaseManager {
    * Cancel lower priority operations
    */
   private cancelLowerPriorityOperations(type: RaceConditionTracker['type'], priority: number): void {
-    for (const [id, tracker] of this.raceConditions.entries()) {
+    for (const [_id, tracker] of this.raceConditions.entries()) {
       if (tracker.type === type && tracker.priority < priority && tracker.status === 'pending') {
         tracker.status = 'cancelled';
         this.eventHandlers.onRaceCondition(tracker);
@@ -254,35 +253,35 @@ export class EdgeCaseManager {
       backoff: 2,
       ...retryConfig
     };
-    
+
     let lastError: Error = new Error('Unknown error');
-    
+
     for (let attempt = 1; attempt <= config.attempts; attempt++) {
       try {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.config.networkTimeout);
-        
+
         const response = await fetch(url, {
           ...options,
           signal: controller.signal
         });
-        
+
         clearTimeout(timeoutId);
-        
+
         if (!response.ok) {
           throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         // Clear any previous failure for this URL
         this.networkFailures.delete(url);
-        
+
         return data;
-        
+
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error));
-        
+
         const context: NetworkFailureContext = {
           url,
           method: options.method || 'GET',
@@ -291,16 +290,16 @@ export class EdgeCaseManager {
           timestamp: Date.now(),
           retryAfter: attempt < config.attempts ? config.delay * Math.pow(config.backoff, attempt - 1) : undefined
         };
-        
+
         this.networkFailures.set(url, context);
         this.eventHandlers.onNetworkFailure(context);
-        
+
         if (attempt < config.attempts) {
           await this.delay(context.retryAfter!);
         }
       }
     }
-    
+
     throw lastError;
   }
 
@@ -313,10 +312,10 @@ export class EdgeCaseManager {
     actualState: T,
     validator?: (expected: T, actual: T) => boolean
   ): boolean {
-    const isValid = validator 
+    const isValid = validator
       ? validator(expectedState, actualState)
       : JSON.stringify(expectedState) === JSON.stringify(actualState);
-    
+
     if (!isValid) {
       const corruption: StateCorruption = {
         componentId,
@@ -325,16 +324,16 @@ export class EdgeCaseManager {
         detectedAt: Date.now(),
         severity: this.calculateCorruptionSeverity(expectedState, actualState)
       };
-      
+
       this.stateCorruptions.push(corruption);
       this.eventHandlers.onStateCorruption(corruption);
-      
+
       // Keep only recent corruptions
       if (this.stateCorruptions.length > 100) {
         this.stateCorruptions = this.stateCorruptions.slice(-50);
       }
     }
-    
+
     return isValid;
   }
 
@@ -352,15 +351,15 @@ export class EdgeCaseManager {
     for (const strategy of recoveryStrategies) {
       try {
         const recoveredState = await strategy.recover(corruptedState);
-        
+
         this.eventHandlers.onRecoverySuccess(strategy.name, {
           componentId,
           originalState: corruptedState,
           recoveredState
         });
-        
+
         return recoveredState;
-        
+
       } catch (error) {
         this.eventHandlers.onRecoveryFailure(
           strategy.name,
@@ -368,7 +367,7 @@ export class EdgeCaseManager {
         );
       }
     }
-    
+
     throw new Error(`All recovery strategies failed for component: ${componentId}`);
   }
 
@@ -382,7 +381,7 @@ export class EdgeCaseManager {
   } {
     const missing: string[] = [];
     const warnings: string[] = [];
-    
+
     // Check for required features
     const requiredFeatures = [
       { name: 'fetch', check: () => typeof fetch !== 'undefined' },
@@ -392,26 +391,26 @@ export class EdgeCaseManager {
       { name: 'WeakRef', check: () => typeof WeakRef !== 'undefined' },
       { name: 'AbortController', check: () => typeof AbortController !== 'undefined' }
     ];
-    
+
     const optionalFeatures = [
       { name: 'IntersectionObserver', check: () => typeof IntersectionObserver !== 'undefined' },
       { name: 'ResizeObserver', check: () => typeof ResizeObserver !== 'undefined' },
       { name: 'Worker', check: () => typeof Worker !== 'undefined' },
       { name: 'performance.memory', check: () => typeof window !== 'undefined' && 'performance' in window && 'memory' in (window.performance as any) }
     ];
-    
+
     for (const feature of requiredFeatures) {
       if (!feature.check()) {
         missing.push(feature.name);
       }
     }
-    
+
     for (const feature of optionalFeatures) {
       if (!feature.check()) {
         warnings.push(feature.name);
       }
     }
-    
+
     return {
       isSupported: missing.length === 0,
       missing,
@@ -441,30 +440,30 @@ export class EdgeCaseManager {
    */
   handleMemoryPressure(): void {
     console.warn('Memory pressure detected - performing cleanup');
-    
+
     // Clear old tracking data
     const now = Date.now();
     const maxAge = 5 * 60 * 1000; // 5 minutes
-    
+
     // Clean up old circular references
     for (const [key, ref] of this.circularReferences.entries()) {
       if (now - ref.detectedAt > maxAge) {
         this.circularReferences.delete(key);
       }
     }
-    
+
     // Clean up old network failures
     for (const [key, failure] of this.networkFailures.entries()) {
       if (now - failure.timestamp > maxAge) {
         this.networkFailures.delete(key);
       }
     }
-    
+
     // Limit state corruption history
     this.stateCorruptions = this.stateCorruptions
       .filter(corruption => now - corruption.detectedAt < maxAge)
       .slice(-20);
-    
+
     // Force garbage collection if available
     if (typeof window !== 'undefined' && (window as any).gc) {
       try {
@@ -492,7 +491,7 @@ export class EdgeCaseManager {
             const result = await Promise.race([
               operation(),
               this.createTimeoutPromise(timeout)
-            ]);
+            ]) as T;
             resolve(result);
             return result;
           } catch (error) {
@@ -503,7 +502,7 @@ export class EdgeCaseManager {
         priority,
         timeout
       };
-      
+
       // Insert based on priority
       const insertIndex = this.operationQueue.findIndex(item => item.priority < priority);
       if (insertIndex === -1) {
@@ -511,7 +510,7 @@ export class EdgeCaseManager {
       } else {
         this.operationQueue.splice(insertIndex, 0, queueItem);
       }
-      
+
       this.processQueue();
     });
   }
@@ -521,15 +520,15 @@ export class EdgeCaseManager {
    */
   private async processQueue(): Promise<void> {
     if (this.operationQueue.length === 0) return;
-    
+
     const operation = this.operationQueue.shift()!;
-    
+
     try {
       await operation.operation();
     } catch (error) {
       console.error(`Queue operation ${operation.id} failed:`, error);
     }
-    
+
     // Process next operation
     if (this.operationQueue.length > 0) {
       this.memoryManager.safeSetTimeout(() => this.processQueue(), 0);
@@ -557,12 +556,12 @@ export class EdgeCaseManager {
     if (typeof expected !== typeof actual) return 'critical';
     if (expected === null && actual !== null) return 'high';
     if (Array.isArray(expected) !== Array.isArray(actual)) return 'high';
-    
+
     // Simple heuristic based on difference size
     const expectedStr = JSON.stringify(expected);
     const actualStr = JSON.stringify(actual);
     const diffRatio = Math.abs(expectedStr.length - actualStr.length) / expectedStr.length;
-    
+
     if (diffRatio > 0.5) return 'high';
     if (diffRatio > 0.2) return 'medium';
     return 'low';
@@ -588,7 +587,7 @@ export class EdgeCaseManager {
         undefined,
         'Global unhandled rejection handler'
       );
-      
+
       // Handle general errors
       this.memoryManager.safeAddEventListener(
         window,

@@ -8,18 +8,15 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useCurrentUser } from '@/contexts/AuthContext';
 import {
-  Key,
   Plus,
   Trash2,
-  Eye,
-  EyeOff,
-  Copy,
-  AlertCircle,
-  Loader2,
   Calendar,
   Activity,
   Shield,
-  CheckCircle
+  CheckCircle,
+  Copy,
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 
 interface APIKey {
@@ -88,7 +85,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [canManageKeys, walletAddress]);
+  }, [canManageKeys]);
 
   const createAPIKey = async () => {
     if (!newKeyName.trim() || !canManageKeys) return;
@@ -117,7 +114,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
       setNewlyCreatedKey(data.key);
       setNewKeyName('');
       setShowCreateForm(false);
-      
+
       // Refresh the list
       await fetchAPIKeys();
     } catch (err) {
@@ -183,7 +180,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
       <Card className="border-muted bg-muted/20">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-muted-foreground">
-            <Key className="h-5 w-5" />
+            <Shield className="h-5 w-5" />
             API Key Management
           </CardTitle>
         </CardHeader>
@@ -207,7 +204,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
           <div className="flex items-center justify-between">
             <div>
               <CardTitle className="flex items-center gap-2">
-                <Key className="h-5 w-5 text-primary" />
+                <Shield className="h-5 w-5 text-primary" />
                 API Key Management
               </CardTitle>
               <p className="text-sm text-muted-foreground mt-1">
@@ -351,7 +348,7 @@ export const APIKeyManager: React.FC<APIKeyManagerProps> = ({
             </div>
           ) : apiKeys.length === 0 ? (
             <div className="text-center py-8">
-              <Key className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <Shield className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
               <p className="text-muted-foreground mb-2">No API keys yet</p>
               <p className="text-sm text-muted-foreground">
                 Create your first API key to start using the OpenSVM API

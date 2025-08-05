@@ -1,9 +1,7 @@
 'use client';
 
 import { MemoryManager } from './MemoryManager';
-import { EdgeCaseManager } from './EdgeCaseManager';
 import { UXManager } from './UXManager';
-import { ScalabilityManager } from './ScalabilityManager';
 
 // Enhanced monitoring interfaces
 export interface PerformanceMetrics {
@@ -12,29 +10,29 @@ export interface PerformanceMetrics {
   renderTime: number;
   layoutTime: number;
   interactionLatency: number;
-  
+
   // Memory metrics
   memoryUsage: number;
   memoryPressure: number;
   gcCount: number;
-  
+
   // Network metrics
   networkLatency: number;
   dataTransferRate: number;
   cacheHitRatio: number;
-  
+
   // User experience
   loadingTimes: Record<string, number>;
   errorRate: number;
   taskCompletionRate: number;
   userSatisfaction: number;
-  
+
   // System metrics
   cpuUsage: number;
   batteryLevel?: number;
   connectionType: string;
   deviceMemory?: number;
-  
+
   // Graph-specific metrics
   nodeCount: number;
   edgeCount: number;
@@ -49,17 +47,17 @@ export interface UserBehaviorMetrics {
   backButtonUsage: number;
   searchUsage: number;
   filterUsage: number;
-  
+
   // Interaction patterns
   clickCount: number;
   scrollDistance: number;
   zoomOperations: number;
   keyboardShortcuts: number;
-  
+
   // Feature usage
   featureUsage: Record<string, number>;
   settingsChanges: Record<string, number>;
-  
+
   // Session data
   sessionDuration: number;
   pageViews: number;
@@ -73,17 +71,17 @@ export interface SystemHealthMetrics {
   errorCount: number;
   warningCount: number;
   criticalErrors: number;
-  
+
   // Performance health
   performanceScore: number;
   accessibilityScore: number;
   seoScore: number;
-  
+
   // Resource health
   memoryLeaks: number;
   resourceCleanup: number;
   cacheEfficiency: number;
-  
+
   // User experience health
   loadingFailures: number;
   renderingErrors: number;
@@ -194,7 +192,7 @@ class MetricsCollector {
 
   private collectMetrics(): void {
     const timestamp = Date.now();
-    
+
     for (const [name, collector] of this.collectors.entries()) {
       try {
         const value = collector();
@@ -205,7 +203,7 @@ class MetricsCollector {
     }
   }
 
-  private updateMetric(name: string, value: any, timestamp: number): void {
+  private updateMetric(name: string, value: any, _timestamp: number): void {
     switch (name) {
       case 'frameRate':
         this.metrics.frameRate = value;
@@ -233,7 +231,7 @@ class MetricsCollector {
       const recentEntries = entries.slice(-10);
       const totalTime = recentEntries.reduce((sum, entry) => sum + entry.duration, 0);
       const avgFrameTime = totalTime / recentEntries.length;
-      
+
       return avgFrameTime > 0 ? 1000 / avgFrameTime : 60;
     } catch (error) {
       return 60;
@@ -370,7 +368,7 @@ class AlertSystem {
 
   private triggerAlert(rule: AlertRule, value: number): void {
     console.warn(`Alert triggered: ${rule.name} (${rule.metric}: ${value})`);
-    
+
     rule.lastTriggered = Date.now();
     this.activeAlerts.set(rule.id, Date.now());
 
@@ -385,15 +383,15 @@ class AlertSystem {
       case 'log':
         console.error(`[ALERT] ${rule.name}: ${rule.metric} = ${value}`);
         break;
-        
+
       case 'notify':
         this.showNotification(rule, value);
         break;
-        
+
       case 'auto-fix':
         this.attemptAutoFix(rule, value);
         break;
-        
+
       default:
         console.warn(`Unknown alert action: ${action.type}`);
     }
@@ -410,26 +408,26 @@ class AlertSystem {
     }
   }
 
-  private attemptAutoFix(rule: AlertRule, value: number): void {
+  private attemptAutoFix(rule: AlertRule, _value: number): void {
     // Implement auto-fix strategies based on the metric
     switch (rule.metric) {
       case 'memoryUsage':
         // Trigger garbage collection and cleanup
         this.memoryManager.cleanupAllResources();
         break;
-        
+
       case 'frameRate':
         // Reduce visual complexity
         console.log('Auto-fix: Reducing visual complexity due to low frame rate');
         break;
-        
+
       default:
         console.log(`No auto-fix available for metric: ${rule.metric}`);
     }
   }
 
   getActiveAlerts(): AlertRule[] {
-    return Array.from(this.rules.values()).filter(rule => 
+    return Array.from(this.rules.values()).filter(rule =>
       this.activeAlerts.has(rule.id)
     );
   }
@@ -472,22 +470,24 @@ class EventTracker {
     this.memoryManager.safeAddEventListener(
       window,
       'error',
-      (event) => {
+      (event: ErrorEvent) => {
         this.trackEvent('error', 'unhandled-error', {
           message: event.message,
           filename: event.filename,
           lineno: event.lineno,
           colno: event.colno,
-          stack: event.error?.stack
+          error: event.error
         });
-      }
+      },
+      undefined,
+      'Global error handler'
     );
 
     // Track unhandled promise rejections
     this.memoryManager.safeAddEventListener(
       window,
       'unhandledrejection',
-      (event) => {
+      (event: PromiseRejectionEvent) => {
         this.trackEvent('error', 'unhandled-rejection', {
           reason: event.reason?.toString(),
           stack: event.reason?.stack
@@ -563,8 +563,8 @@ class EventTracker {
       if (filter.category) {
         filtered = filtered.filter(event => event.category === filter.category);
       }
-      if (filter.since) {
-        filtered = filtered.filter(event => event.timestamp >= filter.since);
+      if (filter.since !== undefined) {
+        filtered = filtered.filter(event => event.timestamp >= filter.since!);
       }
     }
 
@@ -584,12 +584,12 @@ class EventTracker {
 export class MonitoringManager {
   private static instance: MonitoringManager | null = null;
   private memoryManager = MemoryManager.getInstance();
-  
+
   // Components
   private metricsCollector: MetricsCollector;
   private alertSystem: AlertSystem;
   private eventTracker: EventTracker;
-  
+
   // Configuration
   private config: MonitoringConfig = {
     enabled: true,
@@ -612,7 +612,7 @@ export class MonitoringManager {
     this.metricsCollector = new MetricsCollector(this.config);
     this.alertSystem = new AlertSystem();
     this.eventTracker = new EventTracker(this.config);
-    
+
     this.setupDefaultAlerts();
     this.startRealtimeMonitoring();
     this.isInitialized = true;
@@ -630,7 +630,7 @@ export class MonitoringManager {
    */
   configure(config: Partial<MonitoringConfig>): void {
     this.config = { ...this.config, ...config };
-    
+
     // Recreate components with new config
     this.metricsCollector.destroy();
     this.metricsCollector = new MetricsCollector(this.config);
@@ -680,7 +680,7 @@ export class MonitoringManager {
     events: MonitoringEvent[];
   } {
     const metrics = this.metricsCollector.getMetrics();
-    
+
     return {
       ...metrics,
       alerts: this.alertSystem.getActiveAlerts(),
@@ -693,10 +693,10 @@ export class MonitoringManager {
    */
   subscribeToDashboard(callback: (data: any) => void): () => void {
     this.dashboardCallbacks.add(callback);
-    
+
     // Send initial data
     callback(this.getMetrics());
-    
+
     return () => {
       this.dashboardCallbacks.delete(callback);
     };
@@ -808,12 +808,12 @@ export class MonitoringManager {
   private startRealtimeMonitoring(): void {
     this.memoryManager.safeSetInterval(() => {
       const metrics = this.metricsCollector.getMetrics();
-      
+
       // Check alerts
       if (this.config.alertsEnabled) {
         this.alertSystem.checkAlerts(metrics.performance);
       }
-      
+
       // Update dashboard subscribers
       if (this.dashboardCallbacks.size > 0) {
         const dashboardData = this.getMetrics();
@@ -825,7 +825,7 @@ export class MonitoringManager {
           }
         });
       }
-      
+
     }, this.config.flushInterval, 'Real-time monitoring');
   }
 
@@ -871,20 +871,20 @@ export class MonitoringManager {
 
   private generateRecommendations(events: MonitoringEvent[]): string[] {
     const recommendations: string[] = [];
-    
+
     const errorEvents = events.filter(event => event.type === 'error');
     if (errorEvents.length > 10) {
       recommendations.push('High error rate detected. Consider implementing better error handling.');
     }
 
-    const performanceEvents = events.filter(event => 
+    const performanceEvents = events.filter(event =>
       event.type === 'performance' && event.data.duration > 1000
     );
     if (performanceEvents.length > 5) {
       recommendations.push('Slow operations detected. Consider optimizing performance-critical code.');
     }
 
-    const memoryEvents = events.filter(event => 
+    const memoryEvents = events.filter(event =>
       event.category === 'memory' && event.data.usage > 50 * 1024 * 1024
     );
     if (memoryEvents.length > 0) {
@@ -948,7 +948,7 @@ export class MonitoringManager {
     this.metricsCollector.destroy();
     this.eventTracker.clearEvents();
     this.dashboardCallbacks.clear();
-    
+
     MonitoringManager.instance = null;
   }
 }

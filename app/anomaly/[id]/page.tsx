@@ -1,11 +1,12 @@
 import { AnomalyProfilePage } from '@/components/AnomalyProfilePage';
 
 interface AnomalyPageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
-export default function AnomalyPage({ params }: AnomalyPageProps) {
-  return <AnomalyProfilePage anomalyId={params.id} />;
+export default async function AnomalyPage({ params }: AnomalyPageProps) {
+  const { id } = await params;
+  return <AnomalyProfilePage anomalyId={id} />;
 }

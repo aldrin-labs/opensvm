@@ -136,39 +136,5 @@
   },
   "resolutions": {
     "three": "^0.173.0"
-  },
-  "jest": {
-    "testEnvironment": "jsdom",
-    "setupFilesAfterEnv": [
-      "<rootDir>/jest.setup.ts"
-    ],
-    "modulePathIgnorePatterns": [
-      "<rootDir>/node_modules/canvas"
-    ],
-    "transform": {
-      "^.+\\.(t|j)sx?$": [
-        "@swc/jest",
-        {
-          "jsc": {
-            "transform": {
-              "react": {
-                "runtime": "automatic"
-              }
-            }
-          }
-        }
-      ]
-    },
-    "moduleNameMapper": {
-      "^@/(.*)$": "<rootDir>/$1"
-    },
-    "transformIgnorePatterns": [
-      "node_modules/(?!(uuid|@solana/web3.js|canvas|@qdrant)/)"
-    ],
-    "testPathIgnorePatterns": [
-      "<rootDir>/node_modules/",
-      "<rootDir>/.next/",
-      "<rootDir>/e2e/"
-    ]
   }
 }

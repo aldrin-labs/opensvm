@@ -42,7 +42,7 @@ export class GraphVirtualizer {
 
   constructor(
     private cy: cytoscape.Core,
-    private options: {
+    options: {
       maxVisibleNodes?: number;
       viewportBuffer?: number;
       priorityUpdateInterval?: number;
@@ -51,20 +51,20 @@ export class GraphVirtualizer {
     this.maxVisibleNodes = options.maxVisibleNodes || 500;
     this.viewportBuffer = options.viewportBuffer || 200;
     this.priorityUpdateInterval = options.priorityUpdateInterval || 100;
-    
+
     this.setupEventListeners();
   }
 
   private setupEventListeners(): void {
     // Listen for viewport changes
     this.cy.on('pan zoom', this.throttledUpdateViewport);
-    
+
     // Listen for node additions/removals
     this.cy.on('add', 'node', (event) => {
       const node = event.target;
       this.addNodeToCache(node);
     });
-    
+
     this.cy.on('remove', 'node', (event) => {
       const node = event.target;
       this.removeNodeFromCache(node.id());
@@ -91,28 +91,28 @@ export class GraphVirtualizer {
 
   public updateViewport(): void {
     const startTime = performance.now();
-    
+
     const extent = this.getViewportExtent();
-    const newVisibleNodes = new Set<string>();
+    let newVisibleNodes = new Set<string>();
     const now = Date.now();
-    
+
     // Update priority scores if enough time has passed
     const shouldUpdatePriorities = now - this.lastPriorityUpdate > this.priorityUpdateInterval;
-    
+
     // Find nodes in viewport
     this.cy.nodes().forEach((node) => {
       const id = node.id();
       const position = node.position();
-      
+
       if (this.isNodeInViewport(position, extent)) {
         newVisibleNodes.add(id);
-        
+
         // Update cache
         const cachedNode = this.nodeCache.get(id);
         if (cachedNode) {
           cachedNode.visible = true;
           cachedNode.lastVisible = now;
-          
+
           if (shouldUpdatePriorities) {
             cachedNode.priority = this.calculateNodePriority(node, extent);
           }
@@ -127,25 +127,25 @@ export class GraphVirtualizer {
         }
       }
     });
-    
+
     if (shouldUpdatePriorities) {
       this.lastPriorityUpdate = now;
     }
-    
+
     // Apply virtualization if we have too many visible nodes
     if (newVisibleNodes.size > this.maxVisibleNodes) {
       newVisibleNodes = this.cullNodesByPriority(newVisibleNodes);
     }
-    
+
     // Update visibility
     this.updateNodeVisibility(newVisibleNodes);
-    
+
     // Update stats
     this.stats.updateTime = performance.now() - startTime;
     this.stats.totalNodes = this.cy.nodes().length;
     this.stats.visibleNodes = newVisibleNodes.size;
     this.stats.culledNodes = this.stats.totalNodes - this.stats.visibleNodes;
-    
+
     this.visibleNodes = newVisibleNodes;
   }
 
@@ -153,19 +153,19 @@ export class GraphVirtualizer {
     const pan = this.cy.pan();
     const zoom = this.cy.zoom();
     const container = this.cy.container();
-    
+
     if (!container) {
       return { x1: 0, y1: 0, x2: 0, y2: 0 };
     }
-    
+
     const rect = container.getBoundingClientRect();
-    
+
     // Convert screen coordinates to graph coordinates
     const x1 = (-pan.x - this.viewportBuffer) / zoom;
     const y1 = (-pan.y - this.viewportBuffer) / zoom;
     const x2 = (-pan.x + rect.width + this.viewportBuffer) / zoom;
     const y2 = (-pan.y + rect.height + this.viewportBuffer) / zoom;
-    
+
     return { x1, y1, x2, y2 };
   }
 
@@ -181,10 +181,10 @@ export class GraphVirtualizer {
   private calculateNodePriority(node: cytoscape.NodeSingular, extent: ViewportExtent): number {
     const position = node.position();
     const nodeData = node.data();
-    
+
     // Base priority factors
     let priority = 0;
-    
+
     // Distance from viewport center
     const centerX = (extent.x1 + extent.x2) / 2;
     const centerY = (extent.y1 + extent.y2) / 2;
@@ -192,27 +192,27 @@ export class GraphVirtualizer {
       Math.pow(position.x - centerX, 2) + Math.pow(position.y - centerY, 2)
     );
     priority += Math.max(0, 1000 - distance); // Closer = higher priority
-    
+
     // Node type importance
     if (nodeData.type === 'transaction') {
       priority += 500; // Transactions are important
     } else if (nodeData.type === 'account') {
       priority += 300; // Accounts are somewhat important
     }
-    
+
     // Connection count (degree centrality)
-    const degree = node.degree();
+    const degree = node.degree(true);
     priority += degree * 10; // More connected = higher priority
-    
+
     // Special states
     if (node.hasClass('highlighted') || node.hasClass('active')) {
       priority += 1000; // Always render highlighted/active nodes
     }
-    
+
     if (nodeData.tracked) {
       priority += 800; // Tracked nodes are important
     }
-    
+
     return priority;
   }
 
@@ -228,13 +228,13 @@ export class GraphVirtualizer {
       })
       .sort((a, b) => b.priority - a.priority) // Sort by priority descending
       .slice(0, this.maxVisibleNodes); // Take top N nodes
-    
+
     return new Set(nodesWithPriority.map(item => item.id));
   }
 
   private updateNodeVisibility(newVisibleNodes: Set<string>): void {
     const renderStart = performance.now();
-    
+
     // Hide nodes that are no longer visible
     this.visibleNodes.forEach(id => {
       if (!newVisibleNodes.has(id)) {
@@ -246,7 +246,7 @@ export class GraphVirtualizer {
         }
       }
     });
-    
+
     // Show nodes that are now visible
     newVisibleNodes.forEach(id => {
       if (!this.visibleNodes.has(id)) {
@@ -264,7 +264,7 @@ export class GraphVirtualizer {
         }
       }
     });
-    
+
     this.stats.renderTime = performance.now() - renderStart;
   }
 
@@ -272,7 +272,7 @@ export class GraphVirtualizer {
     const id = node.id();
     const position = node.position();
     const extent = this.getViewportExtent();
-    
+
     this.nodeCache.set(id, {
       id,
       position,
@@ -307,7 +307,7 @@ export class GraphVirtualizer {
       cachedNode.priority = 10000; // Very high priority
       cachedNode.visible = true;
     }
-    
+
     const node = this.cy.getElementById(nodeId);
     if (node.length > 0) {
       node.style('display', 'element');
@@ -334,7 +334,7 @@ export class GraphPerformanceMonitor {
     nodeCount: 0,
     edgeCount: 0
   };
-  
+
   private frameCount = 0;
   private lastFrameTime = 0;
   private animationFrameId: number | null = null;
@@ -346,32 +346,32 @@ export class GraphPerformanceMonitor {
   private startMonitoring(): void {
     const measureFrame = () => {
       const now = performance.now();
-      
+
       if (this.lastFrameTime > 0) {
         const deltaTime = now - this.lastFrameTime;
         this.frameCount++;
-        
+
         // Calculate FPS every second
         if (this.frameCount >= 60) {
           this.metrics.frameRate = 1000 / (deltaTime / this.frameCount);
           this.frameCount = 0;
         }
       }
-      
+
       this.lastFrameTime = now;
-      
+
       // Update other metrics
       this.metrics.nodeCount = this.cy.nodes().length;
       this.metrics.edgeCount = this.cy.edges().length;
-      
+
       // Memory usage (if available)
       if ('memory' in performance) {
         this.metrics.memoryUsage = (performance as any).memory.usedJSHeapSize;
       }
-      
+
       this.animationFrameId = requestAnimationFrame(measureFrame);
     };
-    
+
     this.animationFrameId = requestAnimationFrame(measureFrame);
   }
 
@@ -408,25 +408,21 @@ export class GraphLazyLoader {
 
   constructor(
     private onLoadNode: (nodeId: string) => Promise<void>,
-    private options: IntersectionObserverInit = {}
+    options: IntersectionObserverInit = {}
   ) {
     this.observer = new IntersectionObserver(
       this.handleIntersection.bind(this),
-      {
-        rootMargin: '100px', // Load nodes 100px before they come into view
-        threshold: 0.1,
-        ...options
-      }
+      options
     );
   }
 
   private async handleIntersection(entries: IntersectionObserverEntry[]): Promise<void> {
     for (const entry of entries) {
       const nodeId = entry.target.getAttribute('data-node-id');
-      
+
       if (nodeId && entry.isIntersecting && !this.loadedNodes.has(nodeId)) {
         this.loadQueue.add(nodeId);
-        
+
         // Debounced loading to avoid overwhelming the system
         setTimeout(() => {
           if (this.loadQueue.has(nodeId)) {

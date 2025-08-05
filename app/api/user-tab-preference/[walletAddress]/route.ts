@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user-history-utils';
+import { calculateStats, validateWalletAddress } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
 import {
   getUserProfile,

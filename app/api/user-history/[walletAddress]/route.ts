@@ -7,11 +7,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserHistoryEntry } from '@/types/user-history';
 import { validateWalletAddress, sanitizeInput } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import { 
-  storeHistoryEntry, 
-  getUserHistory, 
+import {
+  storeHistoryEntry,
+  getUserHistory,
   deleteUserHistory,
-  checkQdrantHealth 
+  checkQdrantHealth
 } from '@/lib/qdrant';
 import { SSEManager } from '@/lib/sse-manager';
 
@@ -20,16 +20,16 @@ async function isValidRequest(_request: NextRequest, walletAddress: string): Pro
   try {
     const session = await getSessionFromCookie();
     if (!session) return { isValid: false };
-    
+
     // Check if session is expired
     if (Date.now() > session.expiresAt) return { isValid: false };
-    
+
     // Check if the authenticated user matches the requested wallet address
     if (session.walletAddress !== walletAddress) {
       console.log(`Session wallet ${session.walletAddress} doesn't match requested ${walletAddress}`);
       return { isValid: false };
     }
-    
+
     return { isValid: true, session };
   } catch (error) {
     console.error('Session validation error:', error);
@@ -55,7 +55,7 @@ export async function GET(
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
@@ -106,7 +106,7 @@ export async function POST(
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
@@ -114,7 +114,7 @@ export async function POST(
     }
 
     const body = await request.json();
-    
+
     // Sanitize input fields
     const entry: UserHistoryEntry = {
       ...body,
@@ -129,8 +129,8 @@ export async function POST(
 
     // Validate required fields
     if (!entry.path || !entry.pageType || !entry.pageTitle) {
-      return NextResponse.json({ 
-        error: 'Missing required fields: path, pageType, pageTitle' 
+      return NextResponse.json({
+        error: 'Missing required fields: path, pageType, pageTitle'
       }, { status: 400 });
     }
 
@@ -161,8 +161,8 @@ export async function POST(
     // Get updated total count
     const result = await getUserHistory(validatedAddress, { limit: 1 });
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       entry,
       total: result.total
     });
@@ -174,7 +174,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { walletAddress: string } }
+  { params }: { params: Promise<{ walletAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -183,14 +183,14 @@ export async function DELETE(
       return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
     }
 
-    const walletAddress = params.walletAddress;
+    const { walletAddress } = await params;
 
     // Authentication check
     const authResult = await isValidRequest(request, walletAddress);
     if (!authResult.isValid) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {

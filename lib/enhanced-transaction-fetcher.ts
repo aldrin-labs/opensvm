@@ -18,8 +18,8 @@ import {
   TokenBalance
 } from '@solana/web3.js';
 import { getConnection } from './solana-connection';
-import { instructionParserService } from './instruction-parser-service';
-import { transactionMetadataEnricher, type TransactionMetadataEnrichment } from './transaction-metadata-enricher';
+
+import type { TransactionMetadataEnrichment } from './transaction-metadata-enricher';
 
 // Enhanced transaction data types
 export interface EnhancedTransactionData {
@@ -337,77 +337,77 @@ export class EnhancedTransactionFetcher {
   /**
    * Get account states before and after transaction
    */
-  private async getAccountStates(tx: ParsedTransactionWithMeta): Promise<AccountStateData[]> {
-    const accountKeys = tx.transaction.message.accountKeys;
-    const preBalances = tx.meta?.preBalances || [];
-    const postBalances = tx.meta?.postBalances || [];
-    const preTokenBalances = tx.meta?.preTokenBalances || [];
-    const postTokenBalances = tx.meta?.postTokenBalances || [];
+  // private async getAccountStates(tx: ParsedTransactionWithMeta): Promise<AccountStateData[]> {
+  //   const accountKeys = tx.transaction.message.accountKeys;
+  //   const preBalances = tx.meta?.preBalances || [];
+  //   const postBalances = tx.meta?.postBalances || [];
+  //   const preTokenBalances = tx.meta?.preTokenBalances || [];
+  //   const postTokenBalances = tx.meta?.postTokenBalances || [];
 
-    const accountStates: AccountStateData[] = [];
+  //   const accountStates: AccountStateData[] = [];
 
-    for (let i = 0; i < accountKeys.length; i++) {
-      const accountKey = accountKeys[i];
-      const address = accountKey.pubkey.toString();
+  //   for (let i = 0; i < accountKeys.length; i++) {
+  //     const accountKey = accountKeys[i];
+  //     const address = accountKey.pubkey.toString();
 
-      // Calculate lamports difference
-      const preLamports = preBalances[i] || 0;
-      const postLamports = postBalances[i] || 0;
-      const lamportsDiff = postLamports - preLamports;
+  //     // Calculate lamports difference
+  //     const preLamports = preBalances[i] || 0;
+  //     const postLamports = postBalances[i] || 0;
+  //     const lamportsDiff = postLamports - preLamports;
 
-      // Find token changes for this account
-      const tokenChanges: TokenStateChange[] = [];
+  //     // Find token changes for this account
+  //     const tokenChanges: TokenStateChange[] = [];
 
-      // Match pre and post token balances
-      const preTokens = preTokenBalances.filter(tb => tb.accountIndex === i);
-      const postTokens = postTokenBalances.filter(tb => tb.accountIndex === i);
+  //     // Match pre and post token balances
+  //     const preTokens = preTokenBalances.filter(tb => tb.accountIndex === i);
+  //     const postTokens = postTokenBalances.filter(tb => tb.accountIndex === i);
 
-      // Create a map of token changes
-      const tokenChangeMap = new Map<string, TokenStateChange>();
+  //     // Create a map of token changes
+  //     const tokenChangeMap = new Map<string, TokenStateChange>();
 
-      preTokens.forEach(preToken => {
-        const postToken = postTokens.find(pt => pt.mint === preToken.mint);
-        tokenChangeMap.set(preToken.mint, {
-          mint: preToken.mint,
-          beforeAmount: preToken.uiTokenAmount.amount,
-          afterAmount: postToken?.uiTokenAmount.amount || '0',
-          difference: (BigInt(postToken?.uiTokenAmount.amount || '0') - BigInt(preToken.uiTokenAmount.amount)).toString(),
-          decimals: preToken.uiTokenAmount.decimals,
-          uiAmountBefore: preToken.uiTokenAmount.uiAmount,
-          uiAmountAfter: postToken?.uiTokenAmount.uiAmount || 0
-        });
-      });
+  //     preTokens.forEach(preToken => {
+  //       const postToken = postTokens.find(pt => pt.mint === preToken.mint);
+  //       tokenChangeMap.set(preToken.mint, {
+  //         mint: preToken.mint,
+  //         beforeAmount: preToken.uiTokenAmount.amount,
+  //         afterAmount: postToken?.uiTokenAmount.amount || '0',
+  //         difference: (BigInt(postToken?.uiTokenAmount.amount || '0') - BigInt(preToken.uiTokenAmount.amount)).toString(),
+  //         decimals: preToken.uiTokenAmount.decimals,
+  //         uiAmountBefore: preToken.uiTokenAmount.uiAmount,
+  //         uiAmountAfter: postToken?.uiTokenAmount.uiAmount || 0
+  //       });
+  //     });
 
-      postTokens.forEach(postToken => {
-        if (!tokenChangeMap.has(postToken.mint)) {
-          tokenChangeMap.set(postToken.mint, {
-            mint: postToken.mint,
-            beforeAmount: '0',
-            afterAmount: postToken.uiTokenAmount.amount,
-            difference: postToken.uiTokenAmount.amount,
-            decimals: postToken.uiTokenAmount.decimals,
-            uiAmountBefore: 0,
-            uiAmountAfter: postToken.uiTokenAmount.uiAmount
-          });
-        }
-      });
+  //     postTokens.forEach(postToken => {
+  //       if (!tokenChangeMap.has(postToken.mint)) {
+  //         tokenChangeMap.set(postToken.mint, {
+  //           mint: postToken.mint,
+  //           beforeAmount: '0',
+  //           afterAmount: postToken.uiTokenAmount.amount,
+  //           difference: postToken.uiTokenAmount.amount,
+  //           decimals: postToken.uiTokenAmount.decimals,
+  //           uiAmountBefore: 0,
+  //           uiAmountAfter: postToken.uiTokenAmount.uiAmount
+  //         });
+  //       }
+  //     });
 
-      tokenChanges.push(...tokenChangeMap.values());
+  //     tokenChanges.push(...tokenChangeMap.values());
 
-      // For now, we'll set beforeState and afterState to null
-      // In a full implementation, we would fetch account data at specific slots
-      accountStates.push({
-        address,
-        beforeState: null,
-        afterState: null,
-        lamportsDiff,
-        tokenChanges,
-        dataChanges: null
-      });
-    }
+  //     // For now, we'll set beforeState and afterState to null
+  //     // In a full implementation, we would fetch account data at specific slots
+  //     accountStates.push({
+  //       address,
+  //       beforeState: null,
+  //       afterState: null,
+  //       lamportsDiff,
+  //       tokenChanges,
+  //       dataChanges: null
+  //     });
+  //   }
 
-    return accountStates;
-  }
+  //   return accountStates;
+  // }
 
   /**
    * Parse instructions with basic data (faster version)
@@ -420,10 +420,10 @@ export class EnhancedTransactionFetcher {
 
     for (let i = 0; i < instructions.length; i++) {
       const instruction = instructions[i];
-      
+
       // Basic instruction parsing without heavy analysis
       const enhancedInstruction = this.parseInstructionBasic(instruction, i.toString(), logs);
-      
+
       // Skip inner instruction processing for performance
       enhancedInstruction.innerInstructions = [];
 
@@ -436,34 +436,34 @@ export class EnhancedTransactionFetcher {
   /**
    * Parse instructions with enhanced metadata
    */
-  private async parseInstructions(tx: ParsedTransactionWithMeta): Promise<EnhancedInstructionData[]> {
-    const instructions = tx.transaction.message.instructions;
-    const innerInstructions = tx.meta?.innerInstructions || [];
-    const logs = tx.meta?.logMessages || [];
+  // private async parseInstructions(tx: ParsedTransactionWithMeta): Promise<EnhancedInstructionData[]> {
+  //   const instructions = tx.transaction.message.instructions;
+  //   const innerInstructions = tx.meta?.innerInstructions || [];
+  //   const logs = tx.meta?.logMessages || [];
 
-    const enhancedInstructions: EnhancedInstructionData[] = [];
+  //   const enhancedInstructions: EnhancedInstructionData[] = [];
 
-    for (let i = 0; i < instructions.length; i++) {
-      const instruction = instructions[i];
-      const innerIxs = innerInstructions.find(inner => inner.index === i);
+  //   for (let i = 0; i < instructions.length; i++) {
+  //     const instruction = instructions[i];
+  //     const innerIxs = innerInstructions.find(inner => inner.index === i);
 
-      // Parse inner instructions recursively
-      const parsedInnerInstructions: EnhancedInstructionData[] = [];
-      if (innerIxs) {
-        for (let j = 0; j < innerIxs.instructions.length; j++) {
-          const innerIx = innerIxs.instructions[j];
-          parsedInnerInstructions.push(await this.parseInstruction(innerIx, `${i}.${j}`, logs));
-        }
-      }
+  //     // Parse inner instructions recursively
+  //     const parsedInnerInstructions: EnhancedInstructionData[] = [];
+  //     if (innerIxs) {
+  //       for (let j = 0; j < innerIxs.instructions.length; j++) {
+  //         const innerIx = innerIxs.instructions[j];
+  //         parsedInnerInstructions.push(await this.parseInstruction(innerIx, `${i}.${j}`, logs));
+  //       }
+  //     }
 
-      const enhancedInstruction = await this.parseInstruction(instruction, i.toString(), logs);
-      enhancedInstruction.innerInstructions = parsedInnerInstructions;
+  //     const enhancedInstruction = await this.parseInstruction(instruction, i.toString(), logs);
+  //     enhancedInstruction.innerInstructions = parsedInnerInstructions;
 
-      enhancedInstructions.push(enhancedInstruction);
-    }
+  //     enhancedInstructions.push(enhancedInstruction);
+  //   }
 
-    return enhancedInstructions;
-  }
+  //   return enhancedInstructions;
+  // }
 
   /**
    * Parse a single instruction with basic data (faster version)
@@ -530,79 +530,79 @@ export class EnhancedTransactionFetcher {
   /**
    * Parse a single instruction with enhanced data
    */
-  private async parseInstruction(
-    instruction: ParsedInstruction | PartiallyDecodedInstruction,
-    index: string,
-    logs: string[]
-  ): Promise<EnhancedInstructionData> {
-    const programId = instruction.programId.toString();
+  // private async parseInstruction(
+  //   instruction: ParsedInstruction | PartiallyDecodedInstruction,
+  //   index: string,
+  //   logs: string[]
+  // ): Promise<EnhancedInstructionData> {
+  //   const programId = instruction.programId.toString();
 
-    // Extract relevant logs for this instruction
-    const instructionLogs = logs.filter(log =>
-      log.includes(`Program ${programId}`) ||
-      log.includes(`invoke [${index}]`)
-    );
+  //   // Extract relevant logs for this instruction
+  //   const instructionLogs = logs.filter(log =>
+  //     log.includes(`Program ${programId}`) ||
+  //     log.includes(`invoke [${index}]`)
+  //   );
 
-    // Use instruction parser service for comprehensive analysis
-    // Handle different instruction types safely
-    let accounts: string[] = [];
-    let data: string = '';
-    let parsed: any = undefined;
+  //   // Use instruction parser service for comprehensive analysis
+  //   // Handle different instruction types safely
+  //   let accounts: string[] = [];
+  //   let data: string = '';
+  //   let parsed: any = undefined;
 
-    if ('accounts' in instruction && instruction.accounts) {
-      accounts = instruction.accounts.map((acc: any) => acc.toString());
-    }
+  //   if ('accounts' in instruction && instruction.accounts) {
+  //     accounts = instruction.accounts.map((acc: any) => acc.toString());
+  //   }
 
-    if ('data' in instruction && instruction.data) {
-      data = instruction.data;
-    }
+  //   if ('data' in instruction && instruction.data) {
+  //     data = instruction.data;
+  //   }
 
-    if ('parsed' in instruction) {
-      parsed = instruction.parsed;
-    }
+  //   if ('parsed' in instruction) {
+  //     parsed = instruction.parsed;
+  //   }
 
-    const parsedInfo = await instructionParserService.parseInstruction(
-      programId,
-      accounts,
-      data,
-      parsed
-    );
+  //   const parsedInfo = await instructionParserService.parseInstruction(
+  //     programId,
+  //     accounts,
+  //     data,
+  //     parsed
+  //   );
 
-    // Build enhanced account info with roles from parser and fallback detection
-    const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey: string, i: number) => {
-      const roleInfo = parsedInfo.accounts[i];
+  //   // Build enhanced account info with roles from parser and fallback detection
+  //   const enhancedAccounts: InstructionAccountInfo[] = accounts.map((accountPubkey: string, i: number) => {
+  //     const roleInfo = parsedInfo.accounts[i];
 
-      // Use determineAccountRole as fallback when parser doesn't provide role
-      const fallbackRole = roleInfo?.role || this.determineAccountRole(accountPubkey, instruction);
+  //     // Use determineAccountRole as fallback when parser doesn't provide role
+  //     const fallbackRole = roleInfo?.role || this.determineAccountRole(accountPubkey, instruction);
 
-      return {
-        pubkey: accountPubkey,
-        isSigner: roleInfo?.isSigner || false,
-        isWritable: roleInfo?.isWritable || false,
-        role: fallbackRole as any || undefined
-      };
-    });
+  //     return {
+  //       pubkey: accountPubkey,
+  //       isSigner: roleInfo?.isSigner || false,
+  //       isWritable: roleInfo?.isWritable || false,
+  //       role: fallbackRole as any || undefined
+  //     };
+  //   });
 
-    // Use helper functions as fallbacks for enhanced data
-    const programName = parsedInfo.programName || this.getProgramName(programId) || 'Unknown Program';
-    const description = parsedInfo.description || (parsed ? this.generateInstructionDescription(parsed) : 'Unknown instruction');
+  //   // Use helper functions as fallbacks for enhanced data
+  //   const programName = parsedInfo.programName || this.getProgramName(programId) || 'Unknown Program';
+  //   const description = parsedInfo.description || (parsed ? this.generateInstructionDescription(parsed) : 'Unknown instruction');
 
-    return {
-      index: parseInt(index.split('.')[0]),
-      programId,
-      programName,
-      instructionType: parsedInfo.instructionType,
-      description,
-      accounts: enhancedAccounts,
-      data: {
-        raw: data,
-        parsed,
-        discriminator: this.extractDiscriminator(data)
-      },
-      innerInstructions: [],
-      logs: instructionLogs
-    };
-  }
+  //   return {
+  //     index: parseInt(index.split('.')[0]),
+  //     programId,
+  //     programName,
+  //     instructionType: parsedInfo.instructionType,
+  //     description,
+  //     accounts: enhancedAccounts,
+  //     data: {
+  //       raw: data,
+  //       parsed,
+  //       discriminator: this.extractDiscriminator(data)
+  //     },
+  //     innerInstructions: [],
+  //     logs: instructionLogs
+  //   };
+  // }
 
   /**
    * Calculate comprehensive transaction metrics
@@ -743,20 +743,20 @@ export class EnhancedTransactionFetcher {
   /**
    * Determine account role in instruction
    */
-  private determineAccountRole(
-    accountPubkey: string,
-    instruction: ParsedInstruction | PartiallyDecodedInstruction
-  ): string | undefined {
-    if ('parsed' in instruction && instruction.parsed?.info) {
-      const info = instruction.parsed.info;
+  // private determineAccountRole(
+  //   accountPubkey: string,
+  //   instruction: ParsedInstruction | PartiallyDecodedInstruction
+  // ): string | undefined {
+  //   if ('parsed' in instruction && instruction.parsed?.info) {
+  //     const info = instruction.parsed.info;
 
-      if (info.source === accountPubkey) return 'payer';
-      if (info.destination === accountPubkey) return 'recipient';
-      if (info.authority === accountPubkey) return 'authority';
-    }
+  //     if (info.source === accountPubkey) return 'payer';
+  //     if (info.destination === accountPubkey) return 'recipient';
+  //     if (info.authority === accountPubkey) return 'authority';
+  //   }
 
-    return undefined;
-  }
+  //   return undefined;
+  // }
 
   /**
    * Extract instruction discriminator from data

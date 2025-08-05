@@ -1,15 +1,9 @@
 {
-    "editor.lightbulb.enabled": "onCode",
-    "editor.experimental.treeSitterTelemetry": false,
-    "editor.experimentalInlineEdit.enabled": true,
-    "mediaPreview.video.loop": true,
-    "mediaPreview.video.autoPlay": true,
-    "merge-conflict.autoNavigateNextConflict.enabled": true,
-    "github.copilot.advanced": {
-
-    },
-    "github.copilot.chat.languageContext.inline.typescript.enabled": true,
-    "vscode-kubernetes.log-viewer.autorun": true,
-    "terminal.integrated.tabs.defaultColor": "terminal.ansiBlack",
-    "files.autoSave": "onFocusChange"
+    "terminal.integrated.defaultProfile.linux": "bash",
+    "terminal.integrated.profiles.linux": {
+        "bash": {
+            "path": "/bin/bash",
+            "args": ["-l"]
+        }
+    }
 }

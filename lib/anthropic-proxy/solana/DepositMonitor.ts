@@ -384,7 +384,7 @@ export class DepositMonitor {
             // Store deposit in balance storage for tracking
             await this.balanceStorage.logTransaction({
                 id: deposit.signature,
-                userId: deposit.userId,
+                userId: deposit.userId || 'unknown-user',
                 type: 'deposit',
                 amount: deposit.amount,
                 balanceAfter: 0, // Will be calculated by balance manager
@@ -452,7 +452,7 @@ export class DepositMonitor {
             if (existingDeposit) {
                 await this.balanceStorage.logTransaction({
                     id: signature,
-                    userId: existingDeposit.userId,
+                    userId: existingDeposit.userId || 'unknown-user',
                     type: 'deposit',
                     amount: existingDeposit.amount,
                     balanceAfter: 0, // Will be calculated by balance manager
@@ -481,7 +481,7 @@ export class DepositMonitor {
     }> {
         try {
             // Implement deposit statistics by querying balance storage
-            const allTransactions = await this.balanceStorage.getTransactionHistory();
+            const allTransactions = await this.balanceStorage.getTransactionHistory('unknown-user');
 
             const deposits = allTransactions.filter(tx =>
                 tx.type === 'deposit' || (tx as any).signature

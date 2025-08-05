@@ -546,7 +546,7 @@ export class OffThreadAnomalyProcessor {
     }
   }
 
-  private processQueue(): void {
+  private async processQueue(): Promise<void> {
     if (this.isProcessing || this.taskQueue.length === 0) {
       return;
     }

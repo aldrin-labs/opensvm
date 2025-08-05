@@ -10,11 +10,11 @@ import { EntityType } from '@/types/share';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { walletAddress: string } }
+  { params }: { params: Promise<{ walletAddress: string }> }
 ) {
   try {
-    const { walletAddress } = params;
-    
+    const { walletAddress } = await params;
+
     // Validate wallet address
     const validatedAddress = validateWalletAddress(walletAddress);
     if (!validatedAddress) {
@@ -23,19 +23,19 @@ export async function GET(
         { status: 400 }
       );
     }
-    
+
     // Get shares for this user
     const { shares, total } = await getSharesByReferrer(validatedAddress);
-    
+
     // Calculate statistics
     const totalClicks = shares.reduce((sum, share) => sum + share.clicks, 0);
     const totalConversions = shares.reduce((sum, share) => sum + share.conversions, 0);
-    
+
     const sharesByType = shares.reduce((acc, share) => {
       acc[share.entityType] = (acc[share.entityType] || 0) + 1;
       return acc;
     }, {} as Record<EntityType, number>);
-    
+
     const stats = {
       totalShares: total,
       totalClicks,
@@ -49,9 +49,9 @@ export async function GET(
         .sort((a, b) => b.timestamp - a.timestamp)
         .slice(0, 10)
     };
-    
+
     return NextResponse.json(stats);
-    
+
   } catch (error) {
     console.error('Error fetching share stats:', error);
     return NextResponse.json(

@@ -11,7 +11,7 @@ export interface GraphState {
     edges: GraphEdge[];
     lastUpdated: number;
   };
-  
+
   // UI state
   isLoading: boolean;
   selectedNodes: Set<string>;
@@ -23,7 +23,7 @@ export interface GraphState {
     width: number;
     height: number;
   };
-  
+
   // Settings
   settings: {
     layoutType: 'force' | 'dagre' | 'grid' | 'circular';
@@ -32,11 +32,11 @@ export interface GraphState {
     enableGPU: boolean;
     theme: 'light' | 'dark' | 'auto';
   };
-  
+
   // Navigation
   navigationHistory: NavigationEntry[];
   navigationIndex: number;
-  
+
   // Performance
   performance: {
     renderTime: number;
@@ -44,10 +44,10 @@ export interface GraphState {
     edgeCount: number;
     memoryUsage: number;
   };
-  
+
   // Error state
   errors: ErrorState[];
-  
+
   // Metadata
   version: string;
   lastAction: string | null;
@@ -103,7 +103,7 @@ export type GraphAction =
   | { type: 'NAVIGATE_BACK' }
   | { type: 'NAVIGATE_FORWARD' }
   | { type: 'CLEAR_NAVIGATION_HISTORY' }
-  
+
   // Data actions
   | { type: 'UPDATE_GRAPH_DATA'; payload: { nodes?: GraphNode[]; edges?: GraphEdge[] } }
   | { type: 'ADD_NODES'; payload: { nodes: GraphNode[] } }
@@ -112,21 +112,21 @@ export type GraphAction =
   | { type: 'ADD_EDGES'; payload: { edges: GraphEdge[] } }
   | { type: 'REMOVE_EDGES'; payload: { edgeIds: string[] } }
   | { type: 'UPDATE_EDGE'; payload: { edgeId: string; data: Partial<GraphEdge> } }
-  
+
   // Selection actions
   | { type: 'SELECT_NODES'; payload: { nodeIds: string[]; append?: boolean } }
   | { type: 'SELECT_EDGES'; payload: { edgeIds: string[]; append?: boolean } }
   | { type: 'CLEAR_SELECTION' }
   | { type: 'TOGGLE_NODE_SELECTION'; payload: { nodeId: string } }
   | { type: 'TOGGLE_EDGE_SELECTION'; payload: { edgeId: string } }
-  
+
   // Viewport actions
   | { type: 'UPDATE_VIEWPORT'; payload: Partial<GraphState['viewport']> }
   | { type: 'FIT_TO_CONTENT'; payload?: { padding?: number } }
   | { type: 'CENTER_ON_NODES'; payload: { nodeIds: string[] } }
   | { type: 'ZOOM_TO_FIT' }
   | { type: 'RESET_VIEWPORT' }
-  
+
   // Settings actions
   | { type: 'UPDATE_SETTINGS'; payload: Partial<GraphState['settings']> }
   | { type: 'CHANGE_LAYOUT'; payload: { layoutType: GraphState['settings']['layoutType'] } }
@@ -134,18 +134,18 @@ export type GraphAction =
   | { type: 'CHANGE_NODE_SIZE'; payload: { size: GraphState['settings']['nodeSize'] } }
   | { type: 'TOGGLE_GPU'; payload?: { enabled?: boolean } }
   | { type: 'CHANGE_THEME'; payload: { theme: GraphState['settings']['theme'] } }
-  
+
   // Loading actions
   | { type: 'SET_LOADING'; payload: { isLoading: boolean; message?: string } }
-  
+
   // Error actions
   | { type: 'ADD_ERROR'; payload: Omit<ErrorState, 'id' | 'timestamp'> }
   | { type: 'REMOVE_ERROR'; payload: { errorId: string } }
   | { type: 'CLEAR_ERRORS' }
-  
+
   // Performance actions
   | { type: 'UPDATE_PERFORMANCE'; payload: Partial<GraphState['performance']> }
-  
+
   // State management actions
   | { type: 'RESET_STATE' }
   | { type: 'REHYDRATE_STATE'; payload: { state: Partial<GraphState> } }
@@ -184,17 +184,17 @@ export type StateSelector<T> = (state: GraphState) => T;
 export class StateManager {
   private static instance: StateManager | null = null;
   private memoryManager = MemoryManager.getInstance();
-  
+
   // State
   private state: GraphState;
   private commandHistory: CommandHistory;
   private middlewares: StateMiddleware[] = [];
   private selectors = new Map<string, { selector: StateSelector<any>; lastResult: any }>();
-  
+
   // Event handling
   private listeners = new Set<(state: GraphState, action: GraphAction) => void>();
   private selectorListeners = new Map<string, Set<(result: any) => void>>();
-  
+
   // Performance optimization
   private batchedActions: GraphAction[] = [];
   private batchTimeout: string | null = null;
@@ -207,7 +207,7 @@ export class StateManager {
       currentIndex: -1,
       maxSize: 50
     };
-    
+
     this.setupMiddlewares();
     this.setupSelectors();
     this.loadPersistedState();
@@ -301,10 +301,10 @@ export class StateManager {
   executeCommand(command: Command): void {
     try {
       command.execute();
-      
+
       // Add to command history
       this.addCommandToHistory(command);
-      
+
     } catch (error) {
       console.error('Command execution failed:', error);
       throw error;
@@ -340,7 +340,7 @@ export class StateManager {
 
     this.commandHistory.currentIndex++;
     const command = this.commandHistory.commands[this.commandHistory.currentIndex];
-    
+
     try {
       const redoAction = command.redo || command.execute;
       redoAction();
@@ -357,7 +357,7 @@ export class StateManager {
    */
   subscribe(listener: (state: GraphState, action: GraphAction) => void): () => void {
     this.listeners.add(listener);
-    
+
     return () => {
       this.listeners.delete(listener);
     };
@@ -408,7 +408,7 @@ export class StateManager {
   createCommand(action: GraphAction, description?: string): Command {
     const commandId = `cmd_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
     const prevState = { ...this.state };
-    
+
     return {
       id: commandId,
       type: action.type,
@@ -512,8 +512,8 @@ export class StateManager {
           graphData: {
             ...state.graphData,
             nodes: state.graphData.nodes.filter(node => !action.payload.nodeIds.includes(node.id)),
-            edges: state.graphData.edges.filter(edge => 
-              !action.payload.nodeIds.includes(edge.source) && 
+            edges: state.graphData.edges.filter(edge =>
+              !action.payload.nodeIds.includes(edge.source) &&
               !action.payload.nodeIds.includes(edge.target)
             ),
             lastUpdated: Date.now()
@@ -526,7 +526,7 @@ export class StateManager {
       case 'SELECT_NODES':
         return {
           ...newState,
-          selectedNodes: action.payload.append 
+          selectedNodes: action.payload.append
             ? new Set([...state.selectedNodes, ...action.payload.nodeIds])
             : new Set(action.payload.nodeIds)
         };
@@ -668,7 +668,7 @@ export class StateManager {
         }
         return action;
       },
-      afterAction: (action, prevState, nextState) => {
+      afterAction: (_action, _prevState, nextState) => {
         if (process.env.NODE_ENV === 'development') {
           console.log('Next State:', nextState);
           console.groupEnd();
@@ -687,7 +687,7 @@ export class StateManager {
     // Performance tracking middleware
     this.addMiddleware({
       name: 'performance',
-      afterAction: (action, prevState, nextState) => {
+      afterAction: (_action, _prevState, _nextState) => {
         const memoryInfo = this.memoryManager.getMemoryMetrics();
         if (memoryInfo) {
           // Update performance metrics
@@ -714,7 +714,7 @@ export class StateManager {
 
     // Visible nodes selector
     this.selectors.set('visibleNodes', {
-      selector: (state: GraphState) => state.graphData.nodes.filter(node => {
+      selector: (state: GraphState) => state.graphData.nodes.filter(() => {
         // Filter based on viewport and zoom level
         return true; // Simplified for now
       }),
@@ -748,28 +748,28 @@ export class StateManager {
     this.middlewares.push(middleware);
   }
 
-  private validateAction(action: GraphAction, state: GraphState): boolean {
+  private validateAction(action: GraphAction, _state: GraphState): boolean {
     // Add validation logic based on action type
     switch (action.type) {
       case 'NAVIGATE_TO_ACCOUNT':
         return Boolean((action.payload as any).address);
-      
+
       case 'ADD_NODES':
         return Array.isArray((action.payload as any).nodes);
-      
+
       default:
         return true;
     }
   }
 
-  private updateSelectors(prevState: GraphState, nextState: GraphState): void {
+  private updateSelectors(_prevState: GraphState, nextState: GraphState): void {
     for (const [key, { selector, lastResult }] of this.selectors.entries()) {
       const newResult = selector(nextState);
-      
+
       // Check if result changed (shallow comparison)
       if (newResult !== lastResult) {
         this.selectors.set(key, { selector, lastResult: newResult });
-        
+
         // Notify selector listeners
         const listeners = this.selectorListeners.get(key);
         if (listeners) {
@@ -788,11 +788,11 @@ export class StateManager {
   private addCommandToHistory(command: Command): void {
     // Remove commands after current index (for redo branches)
     this.commandHistory.commands = this.commandHistory.commands.slice(0, this.commandHistory.currentIndex + 1);
-    
+
     // Add new command
     this.commandHistory.commands.push(command);
     this.commandHistory.currentIndex = this.commandHistory.commands.length - 1;
-    
+
     // Limit history size
     if (this.commandHistory.commands.length > this.commandHistory.maxSize) {
       this.commandHistory.commands.shift();
@@ -814,7 +814,7 @@ export class StateManager {
             }
           }
         };
-      
+
       case 'ADD_NODES':
         return {
           type: 'REMOVE_NODES',
@@ -822,16 +822,16 @@ export class StateManager {
             nodeIds: (action.payload as any).nodes.map((node: GraphNode) => node.id)
           }
         };
-      
+
       case 'REMOVE_NODES':
-        const removedNodes = prevState.graphData.nodes.filter(node => 
+        const removedNodes = prevState.graphData.nodes.filter(node =>
           (action.payload as any).nodeIds.includes(node.id)
         );
         return {
           type: 'ADD_NODES',
           payload: { nodes: removedNodes }
         };
-      
+
       default:
         return {
           type: 'REHYDRATE_STATE',
@@ -852,7 +852,7 @@ export class StateManager {
 
   private scheduleBatchExecution(): void {
     if (this.batchTimeout) return;
-    
+
     this.batchTimeout = this.memoryManager.safeSetTimeout(() => {
       this.processBatchedActions();
     }, 0);
@@ -863,18 +863,18 @@ export class StateManager {
       this.memoryManager.unregisterResource(this.batchTimeout);
       this.batchTimeout = null;
     }
-    
+
     if (this.batchedActions.length > 0) {
       const actions = [...this.batchedActions];
       this.batchedActions = [];
-      
+
       actions.forEach(action => this.dispatch(action));
     }
   }
 
   private persistState(): void {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const persistableState = {
         settings: this.state.settings,
@@ -882,7 +882,7 @@ export class StateManager {
         navigationHistory: this.state.navigationHistory.slice(-10), // Keep last 10
         navigationIndex: Math.min(this.state.navigationIndex, 9)
       };
-      
+
       localStorage.setItem('graph-state', JSON.stringify(persistableState));
     } catch (error) {
       console.warn('Failed to persist state:', error);
@@ -891,7 +891,7 @@ export class StateManager {
 
   private loadPersistedState(): void {
     if (typeof window === 'undefined') return;
-    
+
     try {
       const persistedState = localStorage.getItem('graph-state');
       if (persistedState) {
@@ -938,11 +938,11 @@ export class StateManager {
     this.selectors.clear();
     this.middlewares = [];
     this.clearHistory();
-    
+
     if (this.batchTimeout) {
       this.memoryManager.unregisterResource(this.batchTimeout);
     }
-    
+
     StateManager.instance = null;
   }
 }

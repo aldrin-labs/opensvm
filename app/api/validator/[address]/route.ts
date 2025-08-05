@@ -5,11 +5,11 @@ const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.s
 
 export async function GET(
   _request: NextRequest,
-  { params: _params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
   try {
-    const validatorAddress = _params.address;
-    
+    const { address: validatorAddress } = await params;
+
     if (!validatorAddress) {
       return NextResponse.json({
         success: false,
@@ -18,16 +18,16 @@ export async function GET(
     }
 
     const connection = new Connection(SOLANA_RPC_URL, 'confirmed');
-    
+
     // Fetch validator data from Solana RPC
     const voteAccounts = await connection.getVoteAccounts('confirmed');
     const epochInfo = await connection.getEpochInfo('confirmed');
     const clusterNodes = await connection.getClusterNodes();
-    
+
     // Find the specific validator
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
     const validator = allValidators.find(v => v.votePubkey === validatorAddress);
-    
+
     if (!validator) {
       return NextResponse.json({
         success: false,
@@ -35,15 +35,15 @@ export async function GET(
       }, { status: 404 });
     }
 
-    const clusterNode = clusterNodes.find(node => 
+    const clusterNode = clusterNodes.find(node =>
       node.pubkey === validator.nodePubkey
     );
-    
+
     // Calculate performance metrics from real data
     const totalCredits = validator.epochCredits.reduce((sum, credit) => sum + credit[1], 0);
     const recentCredits = validator.epochCredits.slice(-5).reduce((sum, credit) => sum + credit[1], 0);
     const performanceScore = recentCredits > 0 ? Math.min(recentCredits / (5 * 440000), 1) : 0;
-    
+
     // Calculate APY estimate based on commission and performance
     const baseAPY = 7; // Base Solana staking APY
     const apy = baseAPY * (1 - validator.commission / 100) * performanceScore;
@@ -52,7 +52,7 @@ export async function GET(
     const generateHistoricalData = () => {
       const now = Date.now();
       const oneDay = 24 * 60 * 60 * 1000;
-      
+
       // Stake history for the last 30 days
       const stakeHistory = [];
       for (let i = 29; i >= 0; i--) {
@@ -216,11 +216,20 @@ export async function GET(
 
 export async function POST(
   _request: NextRequest,
-  { params: _params }: { params: { address: string } }
+  { params }: { params: Promise<{ address: string }> }
 ) {
-  // This is a placeholder for future functionality, e.g., staking or voting
-  return NextResponse.json({
-    success: false,
-    error: 'POST method not implemented for validator endpoint'
-  }, { status: 501 });
+  try {
+    const { address: _validatorAddress } = await params;
+    // This is a placeholder for future functionality, e.g., staking or voting
+    return NextResponse.json({
+      success: false,
+      error: 'POST method not implemented for validator endpoint'
+    }, { status: 501 });
+  } catch (error) {
+    console.error('Error in POST handler:', error);
+    return NextResponse.json({
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to process POST request'
+    }, { status: 500 });
+  }
 }

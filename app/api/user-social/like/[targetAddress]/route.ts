@@ -32,7 +32,7 @@ async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { targetAddress: string } }
+  { params }: { params: Promise<{ targetAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -47,7 +47,7 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetAddress = params.targetAddress;
+    const { targetAddress } = await params;
 
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
@@ -82,7 +82,7 @@ export async function POST(
 
 export async function DELETE(
   _request: NextRequest,
-  { params }: { params: { targetAddress: string } }
+  { params }: { params: Promise<{ targetAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -97,7 +97,7 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetAddress = params.targetAddress;
+    const { targetAddress } = await params;
 
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
@@ -119,7 +119,7 @@ export async function DELETE(
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { targetAddress: string } }
+  { params }: { params: Promise<{ targetAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -128,7 +128,7 @@ export async function GET(
       return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
     }
 
-    const targetAddress = params.targetAddress;
+    const { targetAddress } = await params;
 
     // Validate address
     const validatedTarget = validateWalletAddress(targetAddress);

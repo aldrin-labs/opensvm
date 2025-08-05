@@ -9,10 +9,7 @@ import {
     WalletIcon,
     InfoIcon,
     TrendingUpIcon,
-    CopyIcon,
-    ShieldIcon,
-    ClockIcon,
-    AlertTriangleIcon
+    CopyIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '@/lib/settings';
@@ -183,17 +180,6 @@ export default function SVMAIDepositModal({
             }
         } catch (error) {
             console.error('Error generating QR code:', error);
-        }
-    };
-
-    const getStatusIcon = (status: 'pending' | 'confirmed' | 'failed') => {
-        switch (status) {
-            case 'confirmed':
-                return <ShieldIcon className={`${themeClasses.statusIcon} text-success`} />;
-            case 'pending':
-                return <ClockIcon className={`${themeClasses.statusIcon} text-warning`} />;
-            case 'failed':
-                return <AlertTriangleIcon className={`${themeClasses.statusIcon} text-destructive`} />;
         }
     };
 

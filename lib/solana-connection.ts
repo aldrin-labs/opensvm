@@ -16,7 +16,7 @@ class ProxyConnection extends Connection {
   private readonly maxConcurrentRequests = 12; // Increased from 8
   private readonly maxRetries = 12; // Increased from 8
   private activeRequests = 0;
-  private _isClient: boolean = false;
+  // private _isClient: boolean = false;
 
   constructor(endpoint: string, config?: ConnectionConfig) {
     // Determine if we're running in the client and prepare the endpoint
@@ -31,24 +31,41 @@ class ProxyConnection extends Connection {
       }
     }
 
+    // Detect test environment for optimized timeouts
+    const isTestEnv = process.env.NODE_ENV === 'test' ||
+      process.env.PLAYWRIGHT_TEST === 'true' ||
+      (typeof global !== 'undefined' && (global as any).__PLAYWRIGHT__);
+
+    // Configure timeouts based on environment
+    const timeoutConfig = isTestEnv ? {
+      fetchTimeout: 3000,      // 3s for tests vs 8s for production
+      maxRetries: 3,           // 3 retries vs 12 for production
+      retryDelay: 200,         // 200ms vs 1000ms for production
+      confirmTimeout: 10000    // 10s vs 30s for production
+    } : {
+      fetchTimeout: 8000,
+      maxRetries: 12,
+      retryDelay: 1000,
+      confirmTimeout: 30000
+    };
+
     super(finalEndpoint, {
       ...config,
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
-      confirmTransactionInitialTimeout: 30000, // Further decreased to 30 seconds
+      confirmTransactionInitialTimeout: timeoutConfig.confirmTimeout,
       wsEndpoint: undefined,
       fetch: async (url, options) => {
         const headers = getRpcHeaders(endpoint);
-        const maxRetries = 12; // Increased from 8
         let lastError;
 
         // Initialize after super() call
-        this._isClient = _isClient;
+        // this._isClient = _isClient;
 
-        for (let i = 0; i < maxRetries; i++) {
+        for (let i = 0; i < timeoutConfig.maxRetries; i++) {
           try {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout to match API layer
+            const timeoutId = setTimeout(() => controller.abort(), timeoutConfig.fetchTimeout);
 
             const response = await fetch(url, {
               ...options,
@@ -69,12 +86,19 @@ class ProxyConnection extends Connection {
           } catch (error) {
             lastError = error;
             if (error instanceof Error && error.name === 'AbortError') {
-              console.warn('Request timed out, retrying...');
+              if (isTestEnv) {
+                console.debug(`Request timed out after ${timeoutConfig.fetchTimeout}ms (test env), retrying...`);
+              } else {
+                console.warn('Request timed out, retrying...');
+              }
             }
           }
 
-          // Exponential backoff with max delay of 2 seconds
-          await new Promise(resolve => setTimeout(resolve, Math.min(1000 * Math.pow(1.1, i), 2000))); // Changed from 1.25 to 1.1
+          // Faster backoff for tests
+          const baseDelay = isTestEnv ? timeoutConfig.retryDelay : 1000;
+          const maxDelay = isTestEnv ? 1000 : 2000;
+          const backoffMultiplier = isTestEnv ? 1.2 : 1.1;
+          await new Promise(resolve => setTimeout(resolve, Math.min(baseDelay * Math.pow(backoffMultiplier, i), maxDelay)));
         }
 
         throw lastError;
@@ -186,7 +210,7 @@ class ConnectionPool {
   private failedEndpoints: Set<string> = new Set();
   private lastHealthCheck: number = 0;
   private readonly healthCheckInterval = 60000; // Decreased from 120000
-  
+
   // Circuit breaker state
   private circuitBreakerState: Map<string, {
     failureCount: number;
@@ -197,10 +221,15 @@ class ConnectionPool {
   private readonly circuitBreakerTimeout = 30000; // 30 seconds before trying again
 
   private constructor() {
+    // Detect test environment for optimized configuration
+    const isTestEnv = process.env.NODE_ENV === 'test' ||
+      process.env.PLAYWRIGHT_TEST === 'true' ||
+      (typeof global !== 'undefined' && (global as any).__PLAYWRIGHT__);
+
     this.config = {
       commitment: 'confirmed',
       disableRetryOnRateLimit: false,
-      confirmTransactionInitialTimeout: 30000, // Further decreased to 30 seconds
+      confirmTransactionInitialTimeout: isTestEnv ? 10000 : 30000, // 10s for tests, 30s for production
       wsEndpoint: undefined
     };
 
@@ -244,32 +273,42 @@ class ConnectionPool {
 
   private async testConnection(connection: ProxyConnection): Promise<boolean> {
     const endpoint = connection.rpcEndpoint;
-    
+
     // Check circuit breaker state
     if (this.isCircuitBreakerOpen(endpoint)) {
       console.warn(`Circuit breaker is open for ${endpoint}`);
       return false;
     }
 
+    // Detect test environment for faster health checks
+    const isTestEnv = process.env.NODE_ENV === 'test' ||
+      process.env.PLAYWRIGHT_TEST === 'true' ||
+      (typeof global !== 'undefined' && (global as any).__PLAYWRIGHT__);
+    const healthCheckTimeout = isTestEnv ? 2000 : 5000; // 2s for tests, 5s for production
+
     try {
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout for health checks
+      const timeoutId = setTimeout(() => controller.abort(), healthCheckTimeout);
       const blockHeight = await connection.getBlockHeight();
       clearTimeout(timeoutId);
-      
+
       // Reset circuit breaker on success
       this.resetCircuitBreaker(endpoint);
       return blockHeight > 0;
     } catch (error) {
       // Record failure in circuit breaker
       this.recordFailure(endpoint);
-      
+
       if (error instanceof RateLimitError) {
         console.warn(`Rate limit hit during health check for ${endpoint}`);
         return true; // Don't fail just because of rate limit
       }
       if (error instanceof Error && error.name === 'AbortError') {
-        console.warn(`Health check timed out for ${endpoint}`);
+        if (isTestEnv) {
+          console.debug(`Health check timed out for ${endpoint} (test env)`);
+        } else {
+          console.warn(`Health check timed out for ${endpoint}`);
+        }
         return false;
       }
       console.error(`Error testing connection ${endpoint}:`, error);
@@ -283,7 +322,7 @@ class ConnectionPool {
   private isCircuitBreakerOpen(endpoint: string): boolean {
     const state = this.circuitBreakerState.get(endpoint);
     if (!state) return false;
-    
+
     if (state.isOpen) {
       // Check if enough time has passed to try again
       const timeSinceLastFailure = Date.now() - state.lastFailureTime;
@@ -295,7 +334,7 @@ class ConnectionPool {
       }
       return true;
     }
-    
+
     return false;
   }
 
@@ -308,15 +347,15 @@ class ConnectionPool {
       lastFailureTime: 0,
       isOpen: false
     };
-    
+
     state.failureCount++;
     state.lastFailureTime = Date.now();
-    
+
     if (state.failureCount >= this.circuitBreakerThreshold) {
       state.isOpen = true;
       console.warn(`Circuit breaker opened for ${endpoint} after ${state.failureCount} failures`);
     }
-    
+
     this.circuitBreakerState.set(endpoint, state);
   }
 
@@ -392,18 +431,18 @@ class ConnectionPool {
       // Try to find a connection that's not circuit broken
       let attempts = 0;
       const maxAttempts = this.connections.length;
-      
+
       while (attempts < maxAttempts) {
         const connection = this.connections[this.currentIndex];
         const endpoint = connection.rpcEndpoint;
-        
+
         // Skip if circuit breaker is open
         if (this.isCircuitBreakerOpen(endpoint)) {
           this.currentIndex = (this.currentIndex + 1) % this.connections.length;
           attempts++;
           continue;
         }
-        
+
         try {
           await rateLimit(`rpc-${endpoint}`, {
             limit: 100, // Increased from 80
@@ -417,7 +456,7 @@ class ConnectionPool {
           return connection;
         } catch (error) {
           this.recordFailure(endpoint);
-          
+
           if (error instanceof RateLimitError) {
             console.warn(`Rate limit exceeded for ${endpoint}, switching endpoints`);
             this.currentIndex = (this.currentIndex + 1) % this.connections.length;
@@ -427,7 +466,7 @@ class ConnectionPool {
           throw error;
         }
       }
-      
+
       // If all connections are circuit broken, return the first one anyway
       console.warn('All connections are circuit broken, using first connection anyway');
       return this.connections[0];
@@ -435,11 +474,11 @@ class ConnectionPool {
 
     const connection = this.connections[0];
     const endpoint = connection.rpcEndpoint;
-    
+
     if (this.isCircuitBreakerOpen(endpoint)) {
       throw new Error(`All connections are circuit broken`);
     }
-    
+
     try {
       await rateLimit(`rpc-single-${endpoint}`, {
         limit: 50, // Increased from 40

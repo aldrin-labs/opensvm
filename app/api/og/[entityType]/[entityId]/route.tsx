@@ -14,15 +14,16 @@ interface Params {
 }
 
 export async function GET(
-  { params }: { params: Params }
+  _request: Request,
+  { params }: { params: Promise<Params> }
 ) {
   try {
-    const { entityType, entityId } = params;
-    
+    const { entityType, entityId } = await params;
+
     // Fetch entity data based on type
     // For now, we'll use mock data - in production, fetch from blockchain/database
     const entityData = await fetchEntityDataForOG(entityType, entityId);
-    
+
     // Select appropriate template based on entity type
     switch (entityType) {
       case 'transaction':
@@ -50,15 +51,15 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
         const connection = new (await import('@solana/web3.js')).Connection(
           process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
         );
-        
-        const tx = await connection.getTransaction(entityId, { 
-          maxSupportedTransactionVersion: 0 
+
+        const tx = await connection.getTransaction(entityId, {
+          maxSupportedTransactionVersion: 0
         });
-        
+
         if (!tx) {
           throw new Error('Transaction not found');
         }
-        
+
         return {
           hash: entityId,
           status: tx.meta?.err ? 'error' : 'success',
@@ -68,18 +69,18 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
           programCount: tx.transaction.message.compiledInstructions?.length || 0
         };
       }
-      
+
       case 'account': {
         // Fetch real account data from Solana
         const { Connection, PublicKey } = await import('@solana/web3.js');
         const connection = new Connection(
           process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
         );
-        
+
         const pubkey = new PublicKey(entityId);
         const balance = await connection.getBalance(pubkey);
         const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 1 });
-        
+
         return {
           address: entityId,
           balance: balance / 1e9,
@@ -88,7 +89,7 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
           lastActivity: Date.now()
         };
       }
-      
+
       case 'program': {
         // For programs, we need to query our own analytics
         // This would typically come from our database of program stats
@@ -100,16 +101,16 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
           successRate: 95
         };
       }
-      
+
       case 'user': {
         // Fetch user profile from our database
         const qdrantModule = await import('@/lib/qdrant');
         const profile = await qdrantModule.getUserProfile(entityId);
-        
+
         if (!profile) {
           throw new Error('User profile not found');
         }
-        
+
         return {
           walletAddress: profile.walletAddress,
           displayName: profile.displayName,
@@ -118,7 +119,7 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
           totalVisits: profile.stats?.totalVisits || 0
         };
       }
-      
+
       default:
         throw new Error('Unknown entity type');
     }
@@ -157,10 +158,10 @@ function generateTransactionOG(data: any) {
             Transaction Details
           </div>
         </div>
-        
+
         {/* Transaction Hash */}
-        <div style={{ 
-          fontSize: 24, 
+        <div style={{
+          fontSize: 24,
           color: '#a78bfa',
           fontFamily: 'monospace',
           marginBottom: 30,
@@ -171,7 +172,7 @@ function generateTransactionOG(data: any) {
         }}>
           {data.hash.slice(0, 8)}...{data.hash.slice(-6)}
         </div>
-        
+
         {/* Stats Grid */}
         <div style={{ display: 'flex', gap: 40, marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -187,9 +188,9 @@ function generateTransactionOG(data: any) {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
-        <div style={{ 
+        <div style={{
           position: 'absolute',
           bottom: 40,
           display: 'flex',
@@ -234,10 +235,10 @@ function generateAccountOG(data: any) {
             Account Overview
           </div>
         </div>
-        
+
         {/* Account Address */}
-        <div style={{ 
-          fontSize: 24, 
+        <div style={{
+          fontSize: 24,
           color: '#a78bfa',
           fontFamily: 'monospace',
           marginBottom: 30,
@@ -248,7 +249,7 @@ function generateAccountOG(data: any) {
         }}>
           {data.address.slice(0, 8)}...{data.address.slice(-6)}
         </div>
-        
+
         {/* Stats Grid */}
         <div style={{ display: 'flex', gap: 60, marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -270,9 +271,9 @@ function generateAccountOG(data: any) {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
-        <div style={{ 
+        <div style={{
           position: 'absolute',
           bottom: 40,
           display: 'flex',
@@ -317,10 +318,10 @@ function generateProgramOG(data: any) {
             {data.name}
           </div>
         </div>
-        
+
         {/* Program ID */}
-        <div style={{ 
-          fontSize: 20, 
+        <div style={{
+          fontSize: 20,
           color: '#a78bfa',
           fontFamily: 'monospace',
           marginBottom: 40,
@@ -331,7 +332,7 @@ function generateProgramOG(data: any) {
         }}>
           {data.programId.slice(0, 8)}...{data.programId.slice(-6)}
         </div>
-        
+
         {/* Stats Grid */}
         <div style={{ display: 'flex', gap: 50, marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -353,9 +354,9 @@ function generateProgramOG(data: any) {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
-        <div style={{ 
+        <div style={{
           position: 'absolute',
           bottom: 40,
           display: 'flex',
@@ -400,10 +401,10 @@ function generateUserOG(data: any) {
             {data.displayName || 'Solana Explorer'}
           </div>
         </div>
-        
+
         {/* Wallet Address */}
-        <div style={{ 
-          fontSize: 20, 
+        <div style={{
+          fontSize: 20,
           color: '#a78bfa',
           fontFamily: 'monospace',
           marginBottom: 40,
@@ -414,7 +415,7 @@ function generateUserOG(data: any) {
         }}>
           {data.walletAddress.slice(0, 8)}...{data.walletAddress.slice(-6)}
         </div>
-        
+
         {/* Stats Grid */}
         <div style={{ display: 'flex', gap: 50, marginTop: 20 }}>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -436,9 +437,9 @@ function generateUserOG(data: any) {
             </div>
           </div>
         </div>
-        
+
         {/* Footer */}
-        <div style={{ 
+        <div style={{
           position: 'absolute',
           bottom: 40,
           display: 'flex',

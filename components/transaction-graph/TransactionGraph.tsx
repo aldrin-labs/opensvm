@@ -9,7 +9,6 @@ import { GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
 
 
 import type { TransactionGraphProps } from './types';
-import type { DetailedTransactionInfo } from '@/lib/solana';
 import {
   resizeGraph,
   fetchTransactionData,
@@ -59,50 +58,101 @@ const EXCLUDED_ACCOUNTS = new Set([
 const CytoscapeContainer = React.memo(() => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isInitializedRef = useRef(false);
+  const initializationPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || isInitializedRef.current) return;
 
-    // Create the container div programmatically to isolate from React
-    const cytoscapeDiv = document.createElement('div');
-    cytoscapeDiv.id = 'cy-container';
-    cytoscapeDiv.className = 'w-full h-full';
-    cytoscapeDiv.setAttribute('data-testid', 'cytoscape-container');
-    cytoscapeDiv.setAttribute('data-graph-ready', 'false');
-    cytoscapeDiv.style.cssText = `
-      width: 100%;
-      height: 100%;
-      min-height: 400px;
-      will-change: transform;
-      transform: translateZ(0);
-      isolation: isolate;
-      position: relative;
-      background: transparent;
-      border: 1px solid hsl(var(--border));
-      border-radius: 8px;
-    `;
+    // Prevent multiple simultaneous initializations
+    if (initializationPromiseRef.current) {
+      return;
+    }
 
-    // Clear any existing content and append the isolated div
-    containerRef.current.innerHTML = '';
-    containerRef.current.appendChild(cytoscapeDiv);
-    
-    isInitializedRef.current = true;
+    initializationPromiseRef.current = new Promise<void>((resolve, reject) => {
+      try {
+        // Create the container div programmatically to isolate from React
+        const cytoscapeDiv = document.createElement('div');
+        cytoscapeDiv.id = 'cy-container';
+        cytoscapeDiv.className = 'w-full h-full';
+        cytoscapeDiv.setAttribute('data-testid', 'cytoscape-container');
+        cytoscapeDiv.setAttribute('data-graph-ready', 'false');
+        cytoscapeDiv.setAttribute('data-initialization-state', 'creating');
+        
+        // Store reference to cytoscape instance on the container for reliable access
+        (cytoscapeDiv as any)._cytoscapeInitialized = false;
+        (cytoscapeDiv as any)._cytoscapeError = null;
+        
+        cytoscapeDiv.style.cssText = `
+          width: 100%;
+          height: 100%;
+          min-height: 400px;
+          will-change: transform;
+          transform: translateZ(0);
+          isolation: isolate;
+          position: relative;
+          background: transparent;
+          border: 1px solid hsl(var(--border));
+          border-radius: 8px;
+        `;
 
-    // Dispatch event to signal container is ready with a slight delay for test stability
-    setTimeout(() => {
-      const containerReadyEvent = new CustomEvent('cytoscapeContainerReady', {
-        detail: { containerId: 'cy-container' }
-      });
-      document.dispatchEvent(containerReadyEvent);
-      console.log('Cytoscape container ready event dispatched');
-    }, 50);
+        // Clear any existing content and append the isolated div
+        if (containerRef.current) {
+          containerRef.current.innerHTML = '';
+          containerRef.current.appendChild(cytoscapeDiv);
+        }
+
+        isInitializedRef.current = true;
+        cytoscapeDiv.setAttribute('data-initialization-state', 'ready');
+
+        // Dispatch event to signal container is ready - use requestAnimationFrame for better timing
+        requestAnimationFrame(() => {
+          const containerReadyEvent = new CustomEvent('cytoscapeContainerReady', {
+            detail: {
+              containerId: 'cy-container',
+              timestamp: Date.now(),
+              initialized: true
+            }
+          });
+          document.dispatchEvent(containerReadyEvent);
+          console.log('Cytoscape container ready event dispatched');
+          resolve();
+        });
+
+      } catch (error) {
+        console.error('Failed to create cytoscape container:', error);
+        reject(error);
+      }
+    });
+
+    // Handle promise completion
+    initializationPromiseRef.current.catch((error) => {
+      console.error('Cytoscape container initialization failed:', error);
+      isInitializedRef.current = false;
+      initializationPromiseRef.current = null;
+    });
 
     return () => {
       // Clean up by removing the programmatically created div
-      if (containerRef.current) {
-        containerRef.current.innerHTML = '';
+      const container = containerRef.current;
+      if (container) {
+        // Mark as cleaning up
+        const cytoscapeDiv = container.querySelector('#cy-container');
+        if (cytoscapeDiv) {
+          cytoscapeDiv.setAttribute('data-initialization-state', 'cleanup');
+          // Clean up cytoscape instance if it exists
+          const cy = (cytoscapeDiv as any)._cytoscape;
+          if (cy && typeof cy.destroy === 'function') {
+            try {
+              cy.destroy();
+            } catch (error) {
+              console.warn('Error destroying cytoscape instance:', error);
+            }
+          }
+        }
+        container.innerHTML = '';
       }
       isInitializedRef.current = false;
+      initializationPromiseRef.current = null;
     };
   }, []);
 
@@ -130,7 +180,6 @@ const TransactionGraph = React.memo(function TransactionGraph({
   initialTransactionData,
   onTransactionSelect,
   onAccountSelect,
-  clientSideNavigation = false,
   width = '100%',
   height = '100%',
   maxDepth: _maxDepth = 2
@@ -141,14 +190,9 @@ const TransactionGraph = React.memo(function TransactionGraph({
   // Use custom hooks
   const { isFullscreen, toggleFullscreen, containerRef } = useFullscreenMode();
   const {
-    trackedAddress: _trackedAddress,
     isTrackingMode,
     trackingStats,
-    startTrackingAddress: _startTrackingAddress,
-    stopTrackingAddress,
-    updateTrackingStats: _updateTrackingStats,
-    trackedTransactionsRef: _trackedTransactionsRef,
-    MAX_TRACKED_TRANSACTIONS: _MAX_TRACKED_TRANSACTIONS
+    stopTrackingAddress
   } = useAddressTracking();
   const {
     useGPUGraph,
@@ -163,21 +207,16 @@ const TransactionGraph = React.memo(function TransactionGraph({
   const {
     isCloudView,
     toggleCloudView,
-    switchToGraphView: _switchToGraphView,
-    switchToCloudView: _switchToCloudView,
     cloudViewRef
   } = useCloudView();
   const {
-    isLayoutRunning: _isLayoutRunning,
     runLayout,
-    debouncedLayout: _debouncedLayout,
     cleanupLayout
   } = useLayoutManager();
   // Graph initialization hook
   const {
     cyRef,
     isInitialized,
-    isInitializing: _isInitializing,
     initializeGraph,
     cleanupGraph,
     isGraphReady
@@ -186,7 +225,6 @@ const TransactionGraph = React.memo(function TransactionGraph({
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
-  const [_isEmpty, _setIsEmpty] = useState<boolean>(false);
   const [progress, setProgress] = useState<number>(0);
   const [progressMessage, setProgressMessage] = useState<string>('');
 
@@ -217,14 +255,11 @@ const TransactionGraph = React.memo(function TransactionGraph({
 
   // Navigation history
   const {
-    navigationHistory,
-    currentHistoryIndex,
     canGoBack,
     canGoForward,
     navigateBack,
     navigateForward,
-    addToHistory,
-    isNavigatingHistory
+    addToHistory
   } = useNavigationHistory({
     initialSignature,
     onNavigate: (signature) => {
@@ -257,7 +292,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
   const handleGPULinkClickWithHistory = (link: any) => {
     // Extract transaction ID from link and add to history
     let transactionId = null;
-    
+
     if (link.source && link.target) {
       if (typeof link.source === 'object' && link.source.type === 'transaction') {
         transactionId = link.source.id;
@@ -267,11 +302,11 @@ const TransactionGraph = React.memo(function TransactionGraph({
         transactionId = link.source.length > 50 ? link.source : link.target;
       }
     }
-    
+
     if (transactionId) {
       addToHistory(transactionId);
     }
-    
+
     handleGPULinkClick(link);
   };
 
@@ -297,7 +332,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
       setError(`Layout failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       setProgress(0);
     }
-  }, [isGraphReady, runLayout, setProgressMessage, setProgress]);
+  }, [isGraphReady, runLayout, setProgressMessage, setProgress, cyRef]);
 
   // Enhanced fetch function
   const fetchData = useCallback(async (signature: string, account: string | null = null) => {
@@ -329,7 +364,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
       cyRef.current.batch(() => {
         let newNodesCount = 0;
         debugLog(`Adding ${elements.nodes.length} nodes and ${elements.edges.length} edges to cytoscape`);
-        
+
         elements.nodes.forEach(node => {
           if (!cyRef.current!.getElementById(node.data.id).length) {
             debugLog('Adding node:', node.data.id, node.data.type);
@@ -361,7 +396,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
       if (nodeCount > 15) {
         debugLog('Large transaction detected, skipping layout to prevent hanging');
         setProgressMessage('Large transaction - using simple positioning...');
-        
+
         // Use simple grid layout for large transactions
         if (cyRef.current) {
           const nodes = cyRef.current.nodes();
@@ -464,7 +499,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
 
     accountsToProcess.forEach((account: any, _index: number) => {
       const accountPubkey = account.pubkey || account.id || account;
-      
+
       if (!accountPubkey || typeof accountPubkey !== 'string') {
         debugLog('Skipping invalid account:', account);
         return;
@@ -516,17 +551,39 @@ const TransactionGraph = React.memo(function TransactionGraph({
     onTransactionSelect(signature);
   }, [addToHistory, onTransactionSelect]);
 
-  // Memoized wrapper for account selection
+  // Memoized wrapper for account selection with client-side navigation priority
   const wrappedOnAccountSelect = useCallback((accountAddress: string) => {
-    if (onAccountSelect) {
+    debugLog('Account selected:', accountAddress, 'clientSideNavigation:', clientSideNavigation);
+    
+    if (onAccountSelect && typeof onAccountSelect === 'function') {
+      // Always use the provided callback for client-side navigation
       onAccountSelect(accountAddress);
+    } else {
+      // Fallback to page navigation
+      console.warn('No onAccountSelect callback provided, falling back to page navigation');
+      if (typeof window !== 'undefined') {
+        window.location.href = `/account/${accountAddress}`;
+      }
     }
-  }, [onAccountSelect]);
+  }, [onAccountSelect, clientSideNavigation]);
 
-  // Set GPU callbacks when component mounts or callbacks change
+  // Enhanced GPU callbacks and mode synchronization
   useEffect(() => {
     setGPUCallbacks(wrappedOnTransactionSelect, wrappedOnAccountSelect);
-  }, [setGPUCallbacks, wrappedOnTransactionSelect, wrappedOnAccountSelect]);
+    
+    // Ensure GPU graph data is synchronized when switching modes
+    if (useGPUGraph && cyRef.current) {
+      debugLog('GPU mode enabled, updating GPU graph data from cytoscape');
+      updateGPUGraphData(cyRef.current);
+    } else if (!useGPUGraph && !isCloudView) {
+      debugLog('Cytoscape mode enabled, ensuring container is ready');
+      // Ensure cytoscape container is in correct state
+      const cytoscapeContainer = document.getElementById('cy-container');
+      if (cytoscapeContainer && (cytoscapeContainer as any)._cytoscapeInitialized) {
+        cytoscapeContainer.setAttribute('data-graph-ready', 'true');
+      }
+    }
+  }, [setGPUCallbacks, wrappedOnTransactionSelect, wrappedOnAccountSelect, useGPUGraph, isCloudView, updateGPUGraphData, cyRef]);
 
   // Memoized debug panel to avoid expensive cytoscape queries on every render
   const DebugPanel = React.memo(() => {
@@ -579,6 +636,56 @@ const TransactionGraph = React.memo(function TransactionGraph({
       </div>
     );
   });
+
+  // Memoized account transactions processing to avoid expensive recalculations
+  const processAccountTransactions = useCallback((transactions: AccountTransaction[], account: string) => {
+    const nodes: CytoscapeNode[] = [];
+    const edges: CytoscapeEdge[] = [];
+
+    // Add account node
+    nodes.push({
+      data: {
+        id: account,
+        label: `${account.substring(0, 8)}...`,
+        type: 'account',
+        pubkey: account,
+        size: 25,
+        color: '#8b5cf6'
+      }
+    });
+
+    // Add transaction nodes
+    transactions.forEach((tx: AccountTransaction) => {
+      if (!tx.signature) return;
+
+      // Safe non-null signature
+      const txSignature: string = tx.signature;
+
+      nodes.push({
+        data: {
+          id: txSignature,
+          label: `${txSignature.substring(0, 8)}...`,
+          type: 'transaction',
+          signature: txSignature,
+          success: !tx.err,
+          size: 15,
+          color: tx.err ? '#ef4444' : '#10b981'
+        }
+      });
+
+      edges.push({
+        data: {
+          id: `${account}-${txSignature}`,
+          source: account,
+          target: txSignature,
+          type: 'account_transaction',
+          color: '#6b7280'
+        }
+      });
+    });
+
+    return { nodes, edges };
+  }, []); // No dependencies needed as this is a pure function
 
   // Fetch account data
   const fetchAccountData = useCallback(async (account: string) => {
@@ -640,7 +747,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
       if (nodeCount > 15) {
         debugLog('Large transaction detected, skipping layout to prevent hanging');
         setProgressMessage('Large transaction - using simple positioning...');
-        
+
         // Use simple grid layout for large transactions
         if (cyRef.current) {
           const nodes = cyRef.current.nodes();
@@ -669,9 +776,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
     } finally {
       setIsLoading(false);
     }
-  }, [cyRef, runLayoutWithProgress]);
-  // Note: processAccountTransactions is a stable function defined after this useCallback
-  // updateGPUGraphData intentionally omitted to prevent infinite loops
+  }, [cyRef, runLayoutWithProgress, processAccountTransactions, updateGPUGraphData]);
+  // Note: processAccountTransactions and updateGPUGraphData are included as dependencies
+
+
 
   // Define a more specific type for transactions
   interface AccountTransaction {
@@ -708,90 +816,64 @@ const TransactionGraph = React.memo(function TransactionGraph({
     [key: string]: any; // For any other properties cytoscape might need
   }
 
-  // Memoized account transactions processing to avoid expensive recalculations
-  const processAccountTransactions = useCallback((transactions: AccountTransaction[], account: string) => {
-    const nodes: CytoscapeNode[] = [];
-    const edges: CytoscapeEdge[] = [];
 
-    // Add account node
-    nodes.push({
-      data: {
-        id: account,
-        label: `${account.substring(0, 8)}...`,
-        type: 'account',
-        pubkey: account,
-        size: 25,
-        color: '#8b5cf6'
-      }
-    });
-
-    // Add transaction nodes
-    transactions.forEach((tx: AccountTransaction) => {
-      if (!tx.signature) return;
-
-      // Safe non-null signature
-      const txSignature: string = tx.signature;
-
-      nodes.push({
-        data: {
-          id: txSignature,
-          label: `${txSignature.substring(0, 8)}...`,
-          type: 'transaction',
-          signature: txSignature,
-          success: !tx.err,
-          size: 15,
-          color: tx.err ? '#ef4444' : '#10b981'
-        }
-      });
-
-      edges.push({
-        data: {
-          id: `${account}-${txSignature}`,
-          source: account,
-          target: txSignature,
-          type: 'account_transaction',
-          color: '#6b7280'
-        }
-      });
-    });
-
-    return { nodes, edges };
-  }, []); // No dependencies needed as this is a pure function
 
   /**
    * Improved graph initialization effect with React Strict Mode protection:
    * - Finds the programmatically created cy-container
    * - Prevents race conditions and double initialization
    * - Compatible with React Strict Mode double-invocation
+   * - Enhanced error recovery and state management
    */
   useEffect(() => {
     if (isInitialized || useGPUGraph || isCloudView) return;
-  
+
     let isMounted = true;
     let initPromise: Promise<any> | null = null;
-  
+    const abortController = new AbortController();
+
+    const waitForContainerWithRetry = async (): Promise<HTMLElement | null> => {
+      const maxAttempts = 50; // Increased for CI/CD compatibility
+      const baseDelay = 100; // Start with shorter delay
+      
+      for (let attempts = 0; attempts < maxAttempts && isMounted; attempts++) {
+        const cytoscapeContainer = document.getElementById('cy-container');
+        
+        if (cytoscapeContainer) {
+          // Verify container is properly initialized
+          const initState = cytoscapeContainer.getAttribute('data-initialization-state');
+          if (initState === 'ready') {
+            debugLog(`Container found and ready after ${attempts + 1} attempts`);
+            return cytoscapeContainer;
+          } else if (initState === 'creating') {
+            // Container is still being created, wait a bit more
+            debugLog(`Container creating, waiting... (attempt ${attempts + 1})`);
+          }
+        }
+        
+        // Use exponential backoff for better performance
+        const delay = Math.min(baseDelay * Math.pow(1.2, attempts), 500);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        
+        if (attempts % 10 === 9) {
+          debugLog(`Still waiting for cytoscape container, attempt ${attempts + 1}/${maxAttempts}`);
+        }
+      }
+      
+      return null;
+    };
+
     const initAsync = async () => {
       try {
         debugLog('Starting graph initialization...');
         setIsLoading(true);
         setError(null);
 
-        // Wait for the programmatically created container with better timeout handling
-        let cytoscapeContainer: HTMLElement | null = null;
-        let attempts = 0;
-        const maxAttempts = 30; // Increased for better test compatibility
-        
-        while (!cytoscapeContainer && attempts < maxAttempts && isMounted) {
-          cytoscapeContainer = document.getElementById('cy-container');
-          if (!cytoscapeContainer) {
-            await new Promise(resolve => setTimeout(resolve, 200)); // Longer wait between attempts
-            attempts++;
-            debugLog(`Waiting for cytoscape container, attempt ${attempts}/${maxAttempts}`);
-          }
-        }
+        // Wait for the container with improved retry logic
+        const cytoscapeContainer = await waitForContainerWithRetry();
 
         if (!cytoscapeContainer || !isMounted) {
-          debugLog(`Cytoscape container not found after ${attempts} attempts or component unmounted`);
+          debugLog('Cytoscape container not found or component unmounted');
           if (isMounted) {
             setError('Graph container could not be initialized. This may be expected in some test environments.');
           }
@@ -799,60 +881,75 @@ const TransactionGraph = React.memo(function TransactionGraph({
         }
 
         debugLog('Found cytoscape container, initializing...');
-        
+
         // Mark container as initializing for tests
         cytoscapeContainer.setAttribute('data-graph-ready', 'initializing');
-  
+        (cytoscapeContainer as any)._cytoscapeInitialized = false;
+
         // Protect against multiple simultaneous initializations
         if (initPromise) {
           debugLog('Initialization already in progress, waiting...');
           try {
             await initPromise;
+            if ((cytoscapeContainer as any)._cytoscapeInitialized) {
+              debugLog('Previous initialization completed successfully');
+              return;
+            }
           } catch (error) {
             debugLog('Previous initialization failed, retrying...');
             initPromise = null; // Reset to allow retry
           }
-          if (initPromise) return; // If successful, return
         }
-  
+
         try {
+          // Enhanced initialization with proper error handling
           initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect, wrappedOnAccountSelect);
           await initPromise;
-          
-          // Mark container as ready for tests
+
+          // Verify cytoscape instance was properly created
+          const cy = (cytoscapeContainer as any)._cytoscape;
+          if (!cy) {
+            throw new Error('Cytoscape instance not found after initialization');
+          }
+
+          // Mark container as ready for tests with proper state
           if (cytoscapeContainer && isMounted) {
             cytoscapeContainer.setAttribute('data-graph-ready', 'true');
-            debugLog('Graph initialization completed successfully');
+            (cytoscapeContainer as any)._cytoscapeInitialized = true;
+            (cytoscapeContainer as any)._cytoscapeError = null;
+            debugLog('Graph initialization completed successfully with cytoscape instance');
           }
         } catch (error) {
           debugLog('Graph initialization failed:', error);
           if (cytoscapeContainer && isMounted) {
             cytoscapeContainer.setAttribute('data-graph-ready', 'error');
+            (cytoscapeContainer as any)._cytoscapeInitialized = false;
+            (cytoscapeContainer as any)._cytoscapeError = error;
           }
           throw error;
         }
-  
-        if (!isMounted) {
+
+        if (!isMounted || abortController.signal.aborted) {
           debugLog('Component unmounted during initialization, cleaning up...');
           return;
         }
-  
+
         debugLog('Graph initialized, loading initial data...');
-  
+
         // Load initial data if provided
         if (initialTransactionData && initialSignature) {
           setCurrentSignature(initialSignature);
-  
+
           setProgress(50);
           setProgressMessage('Processing transaction data...');
-  
+
           const elements = processTransactionData(initialTransactionData, initialAccount);
           debugLog('Elements processed:', elements);
-  
+
           setProgress(80);
           setProgressMessage('Updating graph...');
-  
-          if (cyRef.current) {
+
+          if (cyRef.current && isMounted) {
             cyRef.current.batch(() => {
               let newNodesCount = 0;
               elements.nodes.forEach(node => {
@@ -868,7 +965,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
                   cyRef.current!.add(edge);
                 }
               });
-  
+
               if (newNodesCount > 0) {
                 setExpandedNodesCount(prev => prev + newNodesCount);
               }
@@ -878,15 +975,15 @@ const TransactionGraph = React.memo(function TransactionGraph({
             debugLog('Updating GPU graph data after initial load...');
             updateGPUGraphData(cyRef.current);
           }
-  
+
           // Run layout with large transaction protection
-          const nodeCount = elements.nodes.length;
-          if (nodeCount > 15) {
-            debugLog('Large initial transaction detected, skipping layout to prevent hanging');
-            setProgressMessage('Large transaction - using simple positioning...');
-            
-            // Use simple grid layout for large transactions
-            if (cyRef.current) {
+          if (isMounted && cyRef.current) {
+            const nodeCount = elements.nodes.length;
+            if (nodeCount > 15) {
+              debugLog('Large initial transaction detected, skipping layout to prevent hanging');
+              setProgressMessage('Large transaction - using simple positioning...');
+
+              // Use simple grid layout for large transactions
               const nodes = cyRef.current.nodes();
               nodes.forEach((node, index) => {
                 const row = Math.floor(index / 5);
@@ -896,28 +993,32 @@ const TransactionGraph = React.memo(function TransactionGraph({
                   y: row * 100
                 });
               });
+            } else {
+              await runLayoutWithProgress('dagre', true);
             }
-          } else {
-            await runLayoutWithProgress('dagre', true);
           }
-  
-          setProgress(100);
-          setTimeout(() => {
-            setProgress(0);
-            setProgressMessage('');
-          }, 1000);
-        } else if (initialSignature) {
+
+          if (isMounted) {
+            setProgress(100);
+            setTimeout(() => {
+              if (isMounted) {
+                setProgress(0);
+                setProgressMessage('');
+              }
+            }, 1000);
+          }
+        } else if (initialSignature && isMounted) {
           setCurrentSignature(initialSignature);
           await fetchData(initialSignature, initialAccount);
-        } else if (initialAccount) {
+        } else if (initialAccount && isMounted) {
           await fetchAccountData(initialAccount);
         }
-  
+
         if (isMounted) {
           debugLog('Graph initialization completed successfully');
         }
       } catch (error) {
-        if (isMounted) {
+        if (isMounted && !abortController.signal.aborted) {
           errorLog('Graph initialization failed:', error);
           setError(`Failed to initialize graph: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
@@ -927,13 +1028,14 @@ const TransactionGraph = React.memo(function TransactionGraph({
         }
       }
     };
-  
+
     initAsync();
-  
+
     return () => {
       isMounted = false;
+      abortController.abort();
     };
-  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress]);
+  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress, cyRef, fetchAccountData, fetchData, initialTransactionData]);
 
   // Enhanced timeout protection for loading with recovery
   useEffect(() => {
@@ -945,12 +1047,12 @@ const TransactionGraph = React.memo(function TransactionGraph({
         errorLog('Graph loading timeout - forcing completion');
         setIsLoading(false);
         setProgress(0);
-        
+
         // Try to show whatever graph data we have
         if (cyRef.current) {
           const nodes = cyRef.current.nodes();
           const edges = cyRef.current.edges();
-          
+
           if (nodes.length > 0) {
             setError(`Loading completed with timeout. Showing ${nodes.length} nodes and ${edges.length} edges.`);
             // Force GPU graph update using existing hook function
@@ -967,22 +1069,43 @@ const TransactionGraph = React.memo(function TransactionGraph({
     return () => {
       clearTimeout(completionTimeout);
     };
-  }, [isLoading]); // Removed updateGPUGraphData to keep dependency array stable
+  }, [isLoading, cyRef, updateGPUGraphData]); // Include cyRef and updateGPUGraphData as they're used in the effect
 
-  // Cleanup on unmount
+  // Enhanced cleanup on unmount with cytoscape-specific logic
   useEffect(() => {
     // Capture timeoutIds ref for cleanup
     const timeoutIdsCurrent = timeoutIds.current;
 
     return () => {
       timeoutIdsCurrent.forEach(id => clearTimeout(id));
-      // Note: Our debounce implementation doesn't have cancel method
-      // The functions will naturally clean up when component unmounts
+      
+      // Enhanced cytoscape cleanup
+      const cytoscapeContainer = document.getElementById('cy-container');
+      if (cytoscapeContainer) {
+        const cy = (cytoscapeContainer as any)._cytoscape;
+        if (cy && typeof cy.destroy === 'function') {
+          try {
+            console.log('Cleaning up cytoscape instance...');
+            cy.destroy();
+            (cytoscapeContainer as any)._cytoscape = null;
+            (cytoscapeContainer as any)._cytoscapeInitialized = false;
+            cytoscapeContainer.setAttribute('data-graph-ready', 'false');
+            cytoscapeContainer.setAttribute('data-initialization-state', 'cleanup');
+          } catch (error) {
+            console.warn('Error during cytoscape cleanup:', error);
+          }
+        }
+      }
+      
+      // Clear GPU graph data
+      updateGPUGraphData(null);
+      
+      // Standard cleanup
       cleanupLayout();
       cleanupGraph();
       stopTrackingAddress();
     };
-  }, [cleanupGraph, cleanupLayout, stopTrackingAddress]);
+  }, [cleanupGraph, cleanupLayout, stopTrackingAddress, updateGPUGraphData]);
 
   // Handle window resize
   useEffect(() => {
@@ -1000,8 +1123,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
         window.removeEventListener('resize', handleResize);
       }
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // No dependencies needed - cyRef is stable ref
+  }, [cyRef]); // Include cyRef as it's used in the resize handler
 
   return (
     <div
@@ -1086,11 +1208,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
           <button
             onClick={navigateBack}
             disabled={!canGoBack}
-            className={`p-2.5 rounded-lg transition-all duration-200 ${
-              canGoBack
-                ? 'hover:bg-muted text-foreground hover:scale-105'
-                : 'opacity-40 cursor-not-allowed text-muted-foreground'
-            }`}
+            className={`p-2.5 rounded-lg transition-all duration-200 ${canGoBack
+              ? 'hover:bg-muted text-foreground hover:scale-105'
+              : 'opacity-40 cursor-not-allowed text-muted-foreground'
+              }`}
             title="Navigate Back (Alt+←)"
             aria-label="Navigate Back"
           >
@@ -1102,11 +1223,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
           <button
             onClick={navigateForward}
             disabled={!canGoForward}
-            className={`p-2.5 rounded-lg transition-all duration-200 ${
-              canGoForward
-                ? 'hover:bg-muted text-foreground hover:scale-105'
-                : 'opacity-40 cursor-not-allowed text-muted-foreground'
-            }`}
+            className={`p-2.5 rounded-lg transition-all duration-200 ${canGoForward
+              ? 'hover:bg-muted text-foreground hover:scale-105'
+              : 'opacity-40 cursor-not-allowed text-muted-foreground'
+              }`}
             title="Navigate Forward (Alt+→)"
             aria-label="Navigate Forward"
           >

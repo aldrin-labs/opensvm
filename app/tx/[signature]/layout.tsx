@@ -1,5 +1,5 @@
 import { ReactNode } from 'react';
-import { notFound, redirect } from 'next/navigation';
+import { notFound } from 'next/navigation';
 
 interface Props {
   children: ReactNode;

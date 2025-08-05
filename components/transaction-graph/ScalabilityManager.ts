@@ -371,7 +371,7 @@ export class ScalabilityManager {
         maxX: 10000,
         maxY: 10000
       };
-      
+
       this.spatialIndex = new QuadTree(bounds);
     }
   }
@@ -387,7 +387,7 @@ export class ScalabilityManager {
     zoom: number
   ): void {
     this.currentZoom = zoom;
-    
+
     const bufferZone = this.virtualizationConfig.bufferZone;
     this.currentViewport = {
       minX: x - bufferZone,
@@ -398,7 +398,7 @@ export class ScalabilityManager {
 
     // Update visible elements
     this.updateVisibleElements();
-    
+
     // Trigger data loading for new chunks
     this.loadVisibleChunks();
   }
@@ -445,18 +445,18 @@ export class ScalabilityManager {
 
     // Query spatial index for visible nodes
     const visibleNodeObjects = this.spatialIndex.query(this.currentViewport);
-    
+
     // Apply level of detail filtering
     const filteredNodes = this.applyLevelOfDetail(visibleNodeObjects);
-    
+
     // Limit maximum visible nodes for performance
     const limitedNodes = filteredNodes.slice(0, this.virtualizationConfig.maxVisibleNodes);
-    
+
     for (const node of limitedNodes) {
       this.visibleNodes.add(node.id);
       node.isVisible = true;
       node.lastRenderTime = Date.now();
-      
+
       // Add connected edges to visible set
       for (const connectionId of node.connections) {
         if (this.visibleNodes.has(connectionId)) {
@@ -468,12 +468,12 @@ export class ScalabilityManager {
 
     const endTime = performance.now();
     this.renderTimeBuffer.push(endTime - startTime);
-    
+
     // Keep buffer size manageable
     if (this.renderTimeBuffer.length > 100) {
       this.renderTimeBuffer.shift();
     }
-    
+
     this.performanceMetrics.renderTime = this.renderTimeBuffer.reduce((a, b) => a + b, 0) / this.renderTimeBuffer.length;
   }
 
@@ -494,12 +494,12 @@ export class ScalabilityManager {
     ];
 
     const currentLod = lodThresholds.find(lod => this.currentZoom >= lod.zoom) || lodThresholds[0];
-    
+
     // Filter nodes based on level and importance
     const filteredNodes = nodes.filter(node => {
       // Keep important nodes at all zoom levels
       if (node.level === 0) return true;
-      
+
       // Skip nodes based on level of detail
       return node.level <= currentLod.skipLevel;
     });
@@ -554,7 +554,7 @@ export class ScalabilityManager {
 
       // Simulate data loading (replace with actual API call)
       const data = await this.fetchChunkData(chunkId, bounds);
-      
+
       chunk.nodes = data.nodes;
       chunk.edges = data.edges;
       chunk.isLoaded = true;
@@ -589,7 +589,7 @@ export class ScalabilityManager {
     for (let x = startChunkX - prefetch; x <= endChunkX + prefetch; x++) {
       for (let y = startChunkY - prefetch; y <= endChunkY + prefetch; y++) {
         const chunkId = `chunk_${x}_${y}`;
-        
+
         if (!this.dataChunks.has(chunkId) && !this.loadingChunks.has(chunkId)) {
           chunksToLoad.push(chunkId);
         }
@@ -624,12 +624,12 @@ export class ScalabilityManager {
     const viewportCenterY = (this.currentViewport.minY + this.currentViewport.maxY) / 2;
     const chunkCenterX = (bounds.minX + bounds.maxX) / 2;
     const chunkCenterY = (bounds.minY + bounds.maxY) / 2;
-    
+
     const distance = Math.sqrt(
       Math.pow(viewportCenterX - chunkCenterX, 2) +
       Math.pow(viewportCenterY - chunkCenterY, 2)
     );
-    
+
     return 1 / (1 + distance); // Higher priority for closer chunks
   }
 
@@ -666,11 +666,11 @@ export class ScalabilityManager {
       case 'CACHE_UPDATE':
         console.log('Cache updated:', data.payload);
         break;
-        
+
       case 'BACKGROUND_SYNC':
         console.log('Background sync completed:', data.payload);
         break;
-        
+
       case 'OFFLINE_FALLBACK':
         console.log('Offline fallback activated:', data.payload);
         break;
@@ -693,15 +693,15 @@ export class ScalabilityManager {
       if (this.lastFrameTime > 0) {
         const frameTime = now - this.lastFrameTime;
         this.frameTimeBuffer.push(frameTime);
-        
+
         if (this.frameTimeBuffer.length > 60) {
           this.frameTimeBuffer.shift();
         }
-        
+
         const avgFrameTime = this.frameTimeBuffer.reduce((a, b) => a + b, 0) / this.frameTimeBuffer.length;
         this.performanceMetrics.frameRate = 1000 / avgFrameTime;
       }
-      
+
       this.lastFrameTime = now;
       this.memoryManager.safeRequestAnimationFrame(trackFrameRate, 'Frame rate tracking');
     };
@@ -733,17 +733,17 @@ export class ScalabilityManager {
   /**
    * Utility methods
    */
-  private async fetchChunkData(chunkId: string, bounds: BoundingBox): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
+  private async fetchChunkData(chunkId: string, _bounds: BoundingBox): Promise<{ nodes: GraphNode[]; edges: GraphEdge[] }> {
     // Simulate API call with compression support
     const url = `/api/graph/chunk/${chunkId}`;
     const headers: HeadersInit = {};
-    
+
     if (this.streamingConfig.compressionEnabled) {
       headers['Accept-Encoding'] = 'gzip, deflate, br';
     }
 
-    const data = await this.edgeCaseManager.safeNetworkRequest(url, { headers });
-    
+    const data = await this.edgeCaseManager.safeNetworkRequest(url, { headers }) as any;
+
     return {
       nodes: data.nodes || [],
       edges: data.edges || []
@@ -753,7 +753,7 @@ export class ScalabilityManager {
   private getChunkBoundsFromId(chunkId: string): BoundingBox {
     const [, x, y] = chunkId.split('_').map(Number);
     const size = this.streamingConfig.chunkSize;
-    
+
     return {
       minX: x * size,
       minY: y * size,
@@ -796,12 +796,12 @@ export class ScalabilityManager {
   cleanupOldChunks(): void {
     const now = Date.now();
     const expiration = this.streamingConfig.cacheExpiration;
-    
+
     for (const [chunkId, chunk] of this.dataChunks.entries()) {
       if (now - chunk.loadedAt > expiration) {
         // Remove nodes from spatial index
         this.removeNodes(chunk.nodes.map(node => node.id));
-        
+
         // Remove chunk
         this.dataChunks.delete(chunkId);
       }
@@ -816,11 +816,11 @@ export class ScalabilityManager {
     this.loadingChunks.clear();
     this.visibleNodes.clear();
     this.visibleEdges.clear();
-    
+
     if (this.spatialIndex) {
       this.spatialIndex.clear();
     }
-    
+
     ScalabilityManager.instance = null;
   }
 }

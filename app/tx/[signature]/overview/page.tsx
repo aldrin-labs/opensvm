@@ -1,7 +1,7 @@
 import { Suspense } from 'react';
 import TransactionTabLayout from '../TransactionTabLayout';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { ErrorBoundary } from '@/components/ErrorBoundary';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import TransactionRedirectHandler from '../TransactionRedirectHandler';
 
 interface Props {

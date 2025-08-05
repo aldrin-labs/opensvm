@@ -34,10 +34,10 @@ function extractUserId(request: NextRequest): string | null {
         try {
             const token = authHeader.substring(7); // Remove 'Bearer ' prefix
             const jwtSecret = process.env.JWT_SECRET || 'default-secret-change-in-production';
-            
+
             // Verify and decode the JWT token
             const decoded = jwt.verify(token, jwtSecret) as jwt.JwtPayload;
-            
+
             if (decoded && decoded.userId) {
                 console.log(`Extracted user ID from JWT: ${decoded.userId}`);
                 return decoded.userId;
@@ -59,7 +59,7 @@ function extractUserId(request: NextRequest): string | null {
  */
 export async function GET(
     request: NextRequest,
-    { params }: { params: { keyId: string } }
+    { params }: { params: Promise<{ keyId: string }> }
 ) {
     try {
         await ensureInitialized();
@@ -72,7 +72,7 @@ export async function GET(
             );
         }
 
-        const { keyId } = params;
+        const { keyId } = await params;
         if (!keyId) {
             return NextResponse.json(
                 { error: 'Key ID is required' },
@@ -139,7 +139,7 @@ export async function GET(
  */
 export async function DELETE(
     request: NextRequest,
-    { params }: { params: { keyId: string } }
+    { params }: { params: Promise<{ keyId: string }> }
 ) {
     try {
         await ensureInitialized();
@@ -152,7 +152,7 @@ export async function DELETE(
             );
         }
 
-        const { keyId } = params;
+        const { keyId } = await params;
         if (!keyId) {
             return NextResponse.json(
                 { error: 'Key ID is required' },

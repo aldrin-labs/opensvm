@@ -83,7 +83,14 @@ export function useGraphInitialization() {
           onTransactionSelect(signature);
         }
       };
-      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState, onAccountSelect);
+      
+      // Debug callback availability
+      console.log('Setting up graph interactions with callbacks:', {
+        hasTransactionCallback: !!wrappedOnTransactionSelect,
+        hasAccountCallback: !!onAccountSelect
+      });
+      
+      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState, onAccountSelect, onTransactionSelect);
 
       // Mark as initialized
       isInitialized.current = true;

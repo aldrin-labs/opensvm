@@ -80,12 +80,12 @@ interface ExplainTransactionResponse {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse<ExplainTransactionResponse>> {
   const startTime = Date.now();
 
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const { searchParams } = new URL(request.url);
 
     // Validate signature format
@@ -232,10 +232,10 @@ export async function GET(
 // POST method for streaming explanations
 export async function POST(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ): Promise<NextResponse> {
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const body = await request.json();
 
     // Validate request body

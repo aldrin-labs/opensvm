@@ -99,57 +99,103 @@ export async function waitForReactHydration(page: Page, timeout = 10000) {
 // Enhanced wait for transaction tab layout to be fully ready
 export async function waitForTransactionTabLayout(page: Page, timeout = 15000) {
     try {
-        // First wait for transaction data to load (this is when tabs appear in TransactionTabLayout)
-        await page.waitForSelector('[data-testid="transaction-tab-content"]', { timeout: Math.min(timeout, 12000) });
+        // Strategy 1: Wait for the content to appear (either loaded content or hidden fallback)
+        await page.waitForSelector('[data-testid="transaction-tab-content"]', {
+            timeout: Math.min(timeout, 8000),
+            state: 'attached'
+        });
         
-        // Wait for any tab buttons to appear with multiple strategies
+        // Strategy 2: Check if we're in a loading state or error state
+        const isLoading = await page.locator('[data-testid="transaction-loading"]').isVisible().catch(() => false);
+        const hasError = await page.locator('[data-testid="transaction-error"]').isVisible().catch(() => false);
+        
+        if (isLoading) {
+            console.debug('Transaction is loading, waiting for completion...');
+            // Wait for loading to complete
+            await page.waitForSelector('[data-testid="transaction-loading"]', {
+                state: 'detached',
+                timeout: Math.min(timeout, 10000)
+            }).catch(() => {
+                console.debug('Loading state did not clear within timeout');
+            });
+        }
+        
+        if (hasError) {
+            console.debug('Transaction error detected, tabs may be disabled');
+            return; // Error state is valid for tests
+        }
+        
+        // Strategy 3: Wait for actual tab buttons to be functional (not disabled)
         const tabSelectors = [
-            '.grid button[data-value]',
-            'button[data-testid^="tab-"]',
-            'button[role="tab"]',
-            'button:has-text("Overview")'
+            'button[data-testid="tab-overview"]:not([disabled])',
+            'button[data-value="overview"]:not([disabled])',
+            'button[data-testid="tab-instructions"]:not([disabled])',
+            'button[data-value="instructions"]:not([disabled])'
         ];
         
-        let tabsFound = false;
+        let functionalTabsFound = false;
         for (const selector of tabSelectors) {
             try {
-                await page.waitForSelector(selector, { timeout: 3000 });
-                tabsFound = true;
+                await page.waitForSelector(selector, { timeout: 2000 });
+                functionalTabsFound = true;
+                console.debug(`Found functional tab with selector: ${selector}`);
                 break;
             } catch (e) {
                 continue;
             }
         }
         
-        if (!tabsFound) {
-            console.debug('No tab buttons found with any selector');
-            return;
+        if (!functionalTabsFound) {
+            console.debug('No functional tabs found, checking for any tabs...');
+            // Fallback: just check that tab elements exist (even if disabled)
+            const anyTabExists = await page.locator('[data-testid^="tab-"]').count() > 0;
+            if (!anyTabExists) {
+                console.debug('No tab elements found at all');
+                return;
+            }
         }
         
-        // Wait for at least some essential tab buttons to be visible and interactive
+        // Strategy 4: Wait for tab navigation to be interactive
         await page.waitForFunction(() => {
-            // Try multiple selector strategies
-            const overviewBtn = document.querySelector('button[data-value="overview"]') ||
-                               document.querySelector('button:has-text("Overview")') ||
-                               document.querySelector('button[data-testid="tab-overview"]');
-            
-            const anyOtherBtn = document.querySelector('button[data-value="instructions"]') ||
-                               document.querySelector('button[data-value="accounts"]') ||
-                               document.querySelector('button:has-text("Instructions")') ||
-                               document.querySelector('button[data-testid^="tab-"]');
+            const overviewBtn = document.querySelector('button[data-testid="tab-overview"]') ||
+                               document.querySelector('button[data-value="overview"]');
             
             if (!overviewBtn) return false;
             
-            // Check if buttons are actually visible and clickable
-            const overviewRect = overviewBtn.getBoundingClientRect();
-            const overviewVisible = overviewRect.width > 0 && overviewRect.height > 0;
+            // Check if button is visible and not disabled
+            const rect = overviewBtn.getBoundingClientRect();
+            const isVisible = rect.width > 0 && rect.height > 0;
+            const isEnabled = !overviewBtn.hasAttribute('disabled');
             
-            return overviewVisible && !!anyOtherBtn;
-        }, { timeout: 8000 });
+            // Safe style check with proper typing
+            const htmlElement = overviewBtn as HTMLElement;
+            const isVisibleStyle = !htmlElement.style || htmlElement.style.visibility !== 'hidden';
+            
+            return isVisible && (isEnabled || isVisibleStyle);
+        }, { timeout: 5000 }).catch(() => {
+            console.debug('Tab interactivity check timed out');
+        });
         
         console.debug('Transaction tab layout ready');
     } catch (error) {
         console.debug('Transaction tab layout timeout - continuing with test:', error.message);
+        
+        // Debug: Log what we can find
+        try {
+            const tabContentExists = await page.locator('[data-testid="transaction-tab-content"]').count();
+            const tabCount = await page.locator('[data-testid^="tab-"]').count();
+            const loadingExists = await page.locator('[data-testid="transaction-loading"]').count();
+            const errorExists = await page.locator('[data-testid="transaction-error"]').count();
+            
+            console.debug('Debug info:', {
+                tabContentExists,
+                tabCount,
+                loadingExists,
+                errorExists
+            });
+        } catch (debugError) {
+            console.debug('Could not get debug info:', debugError.message);
+        }
     }
 }
 

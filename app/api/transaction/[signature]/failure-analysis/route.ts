@@ -4,10 +4,10 @@ import { getTransactionDetails } from '@/lib/solana';
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ) {
   try {
-    const { signature } = params;
+    const { signature } = await params;
 
     if (!signature) {
       return NextResponse.json(
@@ -80,10 +80,10 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ) {
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const body = await request.json();
 
     if (!signature) {

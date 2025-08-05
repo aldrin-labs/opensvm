@@ -74,23 +74,38 @@ export function useGPUForceGraph() {
 
   // GPU Graph event handlers
   const handleGPUNodeClick = useCallback((node: any) => {
-    debugLog('GPU node clicked:', node);
+    debugLog('GPU node clicked:', node, 'Callbacks available:', {
+      account: !!onAccountSelect,
+      transaction: !!onTransactionSelect
+    });
     
     if (node.type === 'account') {
       // Handle account click - use callback if available, otherwise fallback
       const address = node.id;
-      if (onAccountSelect) {
+      console.log('GPU: Account node clicked:', address, 'Callback available:', !!onAccountSelect);
+      
+      if (onAccountSelect && typeof onAccountSelect === 'function') {
+        console.log('GPU: Using account callback for navigation');
         onAccountSelect(address);
-      } else if (typeof window !== 'undefined') {
-        window.open(`/account/${address}`, '_blank');
+      } else {
+        console.log('GPU: No callback available, using page navigation fallback');
+        if (typeof window !== 'undefined') {
+          window.location.href = `/account/${address}`;
+        }
       }
     } else if (node.type === 'transaction') {
       // Handle transaction click - use callback if available, otherwise fallback
       const signature = node.id;
-      if (onTransactionSelect) {
+      console.log('GPU: Transaction node clicked:', signature, 'Callback available:', !!onTransactionSelect);
+      
+      if (onTransactionSelect && typeof onTransactionSelect === 'function') {
+        console.log('GPU: Using transaction callback');
         onTransactionSelect(signature);
-      } else if (typeof window !== 'undefined') {
-        window.open(`/tx/${signature}`, '_blank');
+      } else {
+        console.log('GPU: No callback available, using page navigation fallback');
+        if (typeof window !== 'undefined') {
+          window.open(`/tx/${signature}`, '_blank');
+        }
       }
     }
   }, [onAccountSelect, onTransactionSelect]);

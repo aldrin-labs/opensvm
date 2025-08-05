@@ -21,10 +21,10 @@ import {
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { programId: string } }
+  { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { programId } = params;
+    const { programId } = await params;
     const { searchParams } = new URL(request.url);
     const include = searchParams.get('include')?.split(',') || [];
     const instructionName = searchParams.get('instruction');
@@ -174,10 +174,10 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { programId: string } }
+  { params }: { params: Promise<{ programId: string }> }
 ) {
   try {
-    const { programId } = params;
+    const { programId } = await params;
     const body = await request.json();
     const { action, data } = body;
 

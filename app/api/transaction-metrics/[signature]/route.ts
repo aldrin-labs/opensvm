@@ -18,10 +18,10 @@ import type { DetailedTransactionInfo } from '@/lib/solana';
  */
 export async function GET(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ) {
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const { searchParams } = new URL(request.url);
     const include = searchParams.get('include')?.split(',') || [];
 
@@ -114,7 +114,7 @@ export async function GET(
 
     return NextResponse.json({
       error: message,
-      details: { signature: params.signature }
+      details: { signature: await params.then(p => p.signature) }
     }, { status });
   }
 }
@@ -126,14 +126,14 @@ export async function GET(
  */
 export async function POST(
   request: NextRequest,
-  { params }: { params: { signature: string } }
+  { params }: { params: Promise<{ signature: string }> }
 ) {
   const timeoutId = setTimeout(() => {
-    console.warn('Transaction metrics analysis timeout for signature:', params.signature);
+    console.warn('Transaction metrics analysis timeout for signature:', "unknown");
   }, 30000);
 
   try {
-    const { signature } = params;
+    const { signature } = await params;
     const data = await request.json();
 
     // Validate signature
@@ -366,7 +366,7 @@ export async function POST(
 
     return NextResponse.json({
       error: message,
-      details: { signature: params.signature }
+      details: { signature: "unknown" }
     }, { status });
   }
 }

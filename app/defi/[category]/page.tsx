@@ -92,14 +92,15 @@ const categoryConfig = {
 };
 
 interface PageProps {
-  params: {
+  params: Promise<{
     category: string;
-  };
+  }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const config = categoryConfig[params.category as keyof typeof categoryConfig];
-  
+  const { category } = await params;
+  const config = categoryConfig[category as keyof typeof categoryConfig];
+
   if (!config) {
     return {
       title: 'DeFi Category Not Found',
@@ -110,7 +111,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title: `${config.title} | OpenSVM DeFi Analytics`,
     description: config.description,
-    keywords: `defi, solana, analytics, ${params.category.replace('-', ' ')}`,
+    keywords: `defi, solana, analytics, ${category.replace('-', ' ')}`,
     openGraph: {
       title: config.title,
       description: config.description,
@@ -119,9 +120,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-export default function DeFiCategoryPage({ params }: PageProps) {
-  const config = categoryConfig[params.category as keyof typeof categoryConfig];
-  
+export default async function DeFiCategoryPage({ params }: PageProps) {
+  const { category } = await params;
+  const config = categoryConfig[category as keyof typeof categoryConfig];
+
   if (!config) {
     notFound();
   }
@@ -139,7 +141,7 @@ export default function DeFiCategoryPage({ params }: PageProps) {
             {config.description}
           </p>
         </div>
-        
+
         <ErrorBoundary componentName={config.title}>
           <Suspense fallback={
             <div className="flex items-center justify-center py-20">

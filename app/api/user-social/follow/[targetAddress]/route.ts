@@ -7,7 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { UserFollowEntry } from '@/types/user-history';
 import { validateWalletAddress, generateId } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import { 
+import {
   storeUserFollow,
   removeUserFollow,
   getUserFollowers,
@@ -20,10 +20,10 @@ async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean
   try {
     const session = await getSessionFromCookie();
     if (!session) return { isValid: false };
-    
+
     // Check if session is expired
     if (Date.now() > session.expiresAt) return { isValid: false };
-    
+
     return { isValid: true, walletAddress: session.walletAddress };
   } catch (error) {
     console.error('Session validation error:', error);
@@ -33,7 +33,7 @@ async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean
 
 export async function POST(
   _request: NextRequest,
-  { params }: { params: { targetAddress: string } }
+  { params }: { params: Promise<{ targetAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -48,12 +48,12 @@ export async function POST(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetAddress = params.targetAddress;
-    
+    const { targetAddress } = await params;
+
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
     const validatedFollower = validateWalletAddress(auth.walletAddress);
-    
+
     if (!validatedTarget || !validatedFollower) {
       return NextResponse.json({ error: 'Invalid wallet address format' }, { status: 400 });
     }
@@ -83,7 +83,7 @@ export async function POST(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { targetAddress: string } }
+  { params }: { params: Promise<{ targetAddress: string }> }
 ) {
   try {
     // Check Qdrant health first
@@ -98,12 +98,12 @@ export async function DELETE(
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const targetAddress = params.targetAddress;
-    
+    const { targetAddress } = await params;
+
     // Validate both addresses
     const validatedTarget = validateWalletAddress(targetAddress);
     const validatedFollower = validateWalletAddress(auth.walletAddress);
-    
+
     if (!validatedTarget || !validatedFollower) {
       return NextResponse.json({ error: 'Invalid wallet address format' }, { status: 400 });
     }
@@ -130,7 +130,7 @@ export async function GET(
     }
 
     const { targetAddress } = await context.params;
-    
+
     // Validate address
     const validatedTarget = validateWalletAddress(targetAddress);
     if (!validatedTarget) {

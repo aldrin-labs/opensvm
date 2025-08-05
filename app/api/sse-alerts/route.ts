@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
 import { SSEManager, startSSECleanup } from '@/lib/sse-manager';
-import { 
-  createSuccessResponse, 
-  createErrorResponse, 
-  CommonErrors, 
-  ErrorCodes 
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  CommonErrors,
+  ErrorCodes
 } from '@/lib/api-response';
 
 // Start SSE cleanup on module load
@@ -30,7 +30,7 @@ export async function GET(request: NextRequest) {
           // Import EventStreamManager dynamically
           const { EventStreamManager } = await import('@/app/api/stream/route');
           const streamManager = EventStreamManager.getInstance();
-          
+
           // Create a mock client for the stream manager to trigger monitoring
           const mockClient = {
             id: clientId,
@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
                 console.error('Failed to parse blockchain event for SSE:', error);
               }
             },
-            close: () => {},
+            close: () => { },
             subscriptions: new Set(['transaction', 'block']),
             authenticated: true,
             connectionTime: Date.now(),
@@ -55,9 +55,18 @@ export async function GET(request: NextRequest) {
         } catch (error) {
           console.warn('Failed to start blockchain monitoring:', error);
         }
-        
+
         // Return SSE stream
-        return sseManager.addClient(clientId);
+        const stream = sseManager.addClient(clientId);
+        return new Response(stream, {
+          headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Headers': 'Cache-Control',
+          },
+        });
 
       case 'stats':
         // Return SSE statistics
@@ -92,8 +101,8 @@ export async function DELETE(request: NextRequest) {
     const sseManager = SSEManager.getInstance();
     sseManager.removeClient(clientId);
 
-    return Response.json(createSuccessResponse({ 
-      message: 'Client disconnected successfully' 
+    return Response.json(createSuccessResponse({
+      message: 'Client disconnected successfully'
     }));
   } catch (error) {
     console.error('SSE disconnect error:', error);
