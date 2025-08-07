@@ -1,5 +1,5 @@
 [build]
-  command = "./fix-build.sh"
+  command = "next run build"
   publish = ".next"
 
 [build.environment]
