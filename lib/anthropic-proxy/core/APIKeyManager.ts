@@ -32,7 +32,7 @@ export class APIKeyManager {
       const apiKey = generateAPIKey();
       const keyId = generateKeyId();
       const keyHash = hashAPIKey(apiKey);
-      const keyPrefix = getKeyPrefix(apiKey);
+      const keyPrefix = getKeyPrefix();
       const createdAt = new Date();
 
       const keyRecord: APIKeyRecord = {
@@ -123,6 +123,7 @@ export class APIKeyManager {
       totalRequests: keyRecord.usageStats.totalRequests + 1,
       totalTokensConsumed: keyRecord.usageStats.totalTokensConsumed + tokensConsumed,
       totalSVMAISpent: keyRecord.usageStats.totalSVMAISpent + svmaiSpent,
+      lastRequestAt: new Date(),
       averageTokensPerRequest: Math.round((keyRecord.usageStats.totalTokensConsumed + tokensConsumed) / (keyRecord.usageStats.totalRequests + 1))
     };
 

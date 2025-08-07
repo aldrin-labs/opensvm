@@ -26,7 +26,7 @@ module.exports = {
   // Explicitly exclude canvas from transformation and include ESM packages
   // Updated for better NPM dependency resolution
   transformIgnorePatterns: [
-    "node_modules/(?!(uuid|@solana/web3.js|@qdrant/js-client-rest|react-markdown|remark-gfm|lucide-react|devlop|canvas|react-force-graph|react-force-graph-2d|react-force-graph-3d|hast-util-to-jsx-runtime|micromark|unist-util|mdast-util|remark-parse|unified|@anthropic-ai|@coral-xyz|@debridge-finance|@mlc-ai|@radix-ui|@solana|@swc|@tanstack|@vercel|@visactor|comma-separated-tokens|property-information|space-separated-tokens|web-namespaces|zwitch|bail|is-plain-obj|trough|vfile|vfile-message|extend|estree-walker|estree-util-is-identifier-name)/)"
+    "node_modules/(?!(uuid|@solana/web3.js|@qdrant/js-client-rest|react-markdown|remark-gfm|lucide-react|devlop|canvas|react-force-graph|react-force-graph-2d|react-force-graph-3d|hast-util-to-jsx-runtime|hast-util-whitespace|micromark|unist-util|mdast-util|remark-parse|unified|@anthropic-ai|@coral-xyz|@debridge-finance|@mlc-ai|@radix-ui|@solana|@swc|@tanstack|@vercel|@visactor|comma-separated-tokens|property-information|space-separated-tokens|web-namespaces|zwitch|bail|is-plain-obj|trough|vfile|vfile-message|extend|estree-walker|estree-util-is-identifier-name)/)"
   ],
   // Prevent Jest from loading canvas module during tests
   modulePathIgnorePatterns: [

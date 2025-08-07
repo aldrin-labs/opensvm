@@ -40,13 +40,14 @@ describe('UsageTracker', () => {
     describe('trackResponse', () => {
         it('should correctly extract and log usage for a successful response', async () => {
             const mockProxyResponse: ProxyResponse = {
+                status: 200,
+                headers: {},
+                body: {},
                 keyId: 'test-key-id',
                 userId: 'test-user-id',
                 anthropicResponse: {
                     id: 'msg_123',
-                    type: 'message',
-                    role: 'assistant',
-                    content: [{ type: 'text', text: 'hello' }],
+                    content: [{ text: 'hello' }],
                     model: 'claude-3-haiku-20240307',
                     stop_reason: 'end_turn',
                     usage: {
@@ -81,16 +82,20 @@ describe('UsageTracker', () => {
                 outputTokens: 20,
                 totalTokens: 30,
                 svmaiCost: 10, // Mocked value
+                cost: 10,
                 responseTime: 150,
                 success: true,
                 errorType: undefined,
-                timestamp: expect.any(Date),
+                timestamp: mockProxyResponse.timestamp!,
             };
             expect(mockUsageStorage.logUsage).toHaveBeenCalledWith(expectedUsageLog);
         });
 
         it('should correctly log usage for a failed response', async () => {
             const mockProxyResponse: ProxyResponse = {
+                status: 400,
+                headers: {},
+                body: {},
                 keyId: 'test-key-id-fail',
                 userId: 'test-user-id-fail',
                 anthropicResponse: null, // No response for failure
@@ -121,10 +126,11 @@ describe('UsageTracker', () => {
                 outputTokens: 0,
                 totalTokens: 0,
                 svmaiCost: 10, // Mocked value (minimum charge might apply, but mock simplifies)
+                cost: 10,
                 responseTime: 50,
                 success: false,
                 errorType: 'anthropic_error',
-                timestamp: expect.any(Date),
+                timestamp: mockProxyResponse.timestamp!,
             };
             expect(mockUsageStorage.logUsage).toHaveBeenCalledWith(expectedUsageLog);
         });
@@ -154,7 +160,7 @@ describe('UsageTracker', () => {
                 {
                     id: 'log1', keyId: 'k1', userId: 'u1', endpoint: '/v1/messages',
                     model: 'haiku', inputTokens: 5, outputTokens: 10, totalTokens: 15,
-                    svmaiCost: 1.5, responseTime: 100, success: true, timestamp: new Date(),
+                    svmaiCost: 1.5, cost: 1.5, responseTime: 100, success: true, timestamp: new Date(),
                 },
             ];
             mockUsageStorage.fetchUsageLogs.mockResolvedValue(mockUsageLogs);

@@ -8,7 +8,9 @@ export interface AnthropicRequest {
 
 export interface AnthropicResponse {
   id: string;
-  content: Array<{ text: string }>;
+  type?: string;
+  role?: string;
+  content: Array<{ type?: string; text: string }>;
   usage: { input_tokens: number; output_tokens: number };
   model: string;
   stop_reason?: string;

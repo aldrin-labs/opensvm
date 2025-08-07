@@ -19,8 +19,20 @@ describe('AnthropicClient', () => {
       expect(client.getMaskedApiKey()).toBe('test***-key');
     });
 
-    it('should throw error if no OpenRouter API key provided', () => {
+    it('should throw error if no OpenRouter API key provided in non-test environment', () => {
+      // Mock process.env for this test
+      const originalEnv = process.env.NODE_ENV;
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: 'production',
+        writable: true
+      });
+      
       expect(() => new AnthropicClient('', undefined, [])).toThrow('At least one OpenRouter API key is required');
+      
+      Object.defineProperty(process.env, 'NODE_ENV', {
+        value: originalEnv,
+        writable: true
+      });
     });
   });
 
@@ -189,15 +201,6 @@ describe('AnthropicClient', () => {
 
       // Should not make any HTTP calls since it returns static data
       expect(fetch).not.toHaveBeenCalled();
-      expect(fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/models',
-        expect.objectContaining({
-          method: 'GET',
-          headers: expect.objectContaining({
-            'Authorization': `Bearer ${mockApiKey}`
-          })
-        })
-      );
     });
   });
 

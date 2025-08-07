@@ -1,18 +1,24 @@
-import { UsageStorage, UsageLog } from '../storage/UsageStorage';
+import { UsageStorage, UsageLog, KeyUsageStats } from '../storage/UsageStorage';
 import { SVMAIBalanceManager } from '../billing/SVMAIBalanceManager';
-import { UserBalance, KeyUsageStats } from '../types/ProxyTypes';
+import { UserBalance } from '../types/ProxyTypes';
 
 export interface UserUsageReport {
   userId: string;
-  period: { start: number; end: number };
+  period?: { start: number; end: number };
   totalRequests: number;
-  totalTokens: number;
-  totalCost: number;
-  successRate: number;
-  averageLatency: number;
-  modelUsage: Record<string, number>;
-  costBreakdown: Record<string, number>;
-  balance: UserBalance | null;
+  successfulRequests: number;
+  errorRequests: number;
+  errorRate: number;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalTokensConsumed: number;
+  totalSVMAISpent: number;
+  averageResponseTime: number;
+  currentSVMAIBalance: number;
+  availableSVMAIBalance: number;
+  topModels: Array<{ model: string; tokens: number }>;
+  costBreakdownByModel: Array<{ model: string; svmaiCost: number }>;
+  dailyUsage: Array<{ date: string; requests: number; tokens: number; cost: number }>;
 }
 
 export class UsageReporter {
@@ -24,6 +30,11 @@ export class UsageReporter {
     this.balanceManager = new SVMAIBalanceManager();
   }
 
+  async initialize(): Promise<void> {
+    await this.usageStorage.initialize();
+    await this.balanceManager.initialize();
+  }
+
   async generateUserReport(
     userId: string,
     startTime: number,
@@ -31,27 +42,46 @@ export class UsageReporter {
   ): Promise<UserUsageReport> {
     const usage = await this.usageStorage.getUserUsage(userId, startTime, endTime);
     const stats = await this.usageStorage.getUsageStats(userId, startTime, endTime);
-    const balance = await this.balanceManager.getUserBalance(userId);
+    const balance = await this.balanceManager.getBalance(userId);
 
-    const modelUsage: Record<string, number> = {};
-    const costBreakdown: Record<string, number> = {};
+    const modelTokens = new Map<string, number>();
+    const modelCosts = new Map<string, number>();
 
     usage.forEach(log => {
-      modelUsage[log.model] = (modelUsage[log.model] || 0) + 1;
-      costBreakdown[log.model] = (costBreakdown[log.model] || 0) + log.cost;
+      const tokens = log.totalTokens || (log.inputTokens + log.outputTokens);
+      const cost = log.svmaiCost || log.cost;
+      
+      modelTokens.set(log.model, (modelTokens.get(log.model) || 0) + tokens);
+      modelCosts.set(log.model, (modelCosts.get(log.model) || 0) + cost);
     });
+
+    const topModels = Array.from(modelTokens.entries())
+      .map(([model, tokens]) => ({ model, tokens }))
+      .sort((a, b) => b.tokens - a.tokens);
+      
+    const costBreakdownByModel = Array.from(modelCosts.entries())
+      .map(([model, svmaiCost]) => ({ model, svmaiCost }));
+
+    const totalResponseTime = usage.reduce((sum, log) => sum + (log.responseTime || log.latency || 0), 0);
+    const averageResponseTime = usage.length > 0 ? totalResponseTime / usage.length : 0;
 
     return {
       userId,
       period: { start: startTime, end: endTime },
       totalRequests: stats.totalRequests,
-      totalTokens: stats.totalInputTokens + stats.totalOutputTokens,
-      totalCost: stats.totalCost,
-      successRate: stats.totalRequests > 0 ? stats.successfulRequests / stats.totalRequests : 0,
-      averageLatency: stats.averageLatency,
-      modelUsage,
-      costBreakdown,
-      balance
+      successfulRequests: stats.successfulRequests || 0,
+      errorRequests: stats.totalRequests - (stats.successfulRequests || 0),
+      errorRate: stats.totalRequests > 0 ? ((stats.totalRequests - (stats.successfulRequests || 0)) / stats.totalRequests) * 100 : 0,
+      totalInputTokens: stats.totalInputTokens,
+      totalOutputTokens: stats.totalOutputTokens,
+      totalTokensConsumed: stats.totalInputTokens + stats.totalOutputTokens,
+      totalSVMAISpent: stats.totalCost,
+      averageResponseTime,
+      currentSVMAIBalance: balance,
+      availableSVMAIBalance: balance,
+      topModels,
+      costBreakdownByModel,
+      dailyUsage: [] // Simple implementation for now
     };
   }
 
@@ -72,7 +102,7 @@ export class UsageReporter {
       const existing = userStats.get(log.userId) || { requests: 0, cost: 0, latency: 0 };
       existing.requests += 1;
       existing.cost += log.cost;
-      existing.latency += log.latency;
+      existing.latency += log.latency || 0;
       userStats.set(log.userId, existing);
     });
 
@@ -81,7 +111,7 @@ export class UsageReporter {
       .sort((a, b) => b.cost - a.cost)
       .slice(0, 10);
 
-    const totalLatency = allUsage.reduce((sum, log) => sum + log.latency, 0);
+    const totalLatency = allUsage.reduce((sum, log) => sum + (log.latency || 0), 0);
 
     return {
       totalUsers: userStats.size,
@@ -92,15 +122,108 @@ export class UsageReporter {
     };
   }
 
-  async getKeyUsageStats(apiKeyId: string, startTime?: number, endTime?: number): Promise<KeyUsageStats> {
-    const allUsage = await this.usageStorage.getAllUsage(startTime, endTime);
-    const keyUsage = allUsage.filter(log => log.apiKeyId === apiKeyId);
+  async getKeyUsageStats(keyId: string): Promise<KeyUsageStats> {
+    return await this.usageStorage.aggregateKeyUsage(keyId);
+  }
 
+  async getUserUsageReport(userId: string, period?: string): Promise<UserUsageReport> {
+    // Determine time range based on period
+    let startDate: Date | undefined;
+    const now = new Date();
+    
+    if (period === 'day') {
+      startDate = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    } else if (period === 'week') {
+      startDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    } else if (period === 'month') {
+      startDate = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    }
+    
+    // Fetch logs
+    const logs = await this.usageStorage.fetchUsageLogs({
+      userId,
+      limit: 10000,
+      startDate
+    });
+    
+    // Filter logs by period if specified
+    const filteredLogs = period ? logs.filter(log => {
+      const logDate = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+      return startDate ? logDate >= startDate : true;
+    }) : logs;
+    
+    // Get balance - handle both number and object responses
+    const balanceResult = await this.balanceManager.getBalance(userId);
+    const balance = typeof balanceResult === 'number' ? balanceResult : (balanceResult as any)?.svmaiBalance || 0;
+    
+    // Calculate statistics
+    const totalRequests = filteredLogs.length;
+    const successfulRequests = filteredLogs.filter(log => log.success).length;
+    const errorRequests = totalRequests - successfulRequests;
+    const errorRate = totalRequests > 0 ? (errorRequests / totalRequests) * 100 : 0;
+    
+    const totalInputTokens = filteredLogs.reduce((sum, log) => sum + log.inputTokens, 0);
+    const totalOutputTokens = filteredLogs.reduce((sum, log) => sum + log.outputTokens, 0);
+    const totalTokensConsumed = totalInputTokens + totalOutputTokens;
+    const totalSVMAISpent = filteredLogs.reduce((sum, log) => sum + (log.svmaiCost || log.cost), 0);
+    
+    const totalResponseTime = filteredLogs.reduce((sum, log) => sum + (log.responseTime || log.latency || 0), 0);
+    const averageResponseTime = totalRequests > 0 ? totalResponseTime / totalRequests : 0;
+    
+    // Model usage analysis
+    const modelTokens = new Map<string, number>();
+    const modelCosts = new Map<string, number>();
+    
+    filteredLogs.forEach(log => {
+      const tokens = log.totalTokens || (log.inputTokens + log.outputTokens);
+      const cost = log.svmaiCost || log.cost;
+      
+      modelTokens.set(log.model, (modelTokens.get(log.model) || 0) + tokens);
+      modelCosts.set(log.model, (modelCosts.get(log.model) || 0) + cost);
+    });
+    
+    const topModels = Array.from(modelTokens.entries())
+      .map(([model, tokens]) => ({ model, tokens }))
+      .sort((a, b) => b.tokens - a.tokens);
+      
+    const costBreakdownByModel = Array.from(modelCosts.entries())
+      .map(([model, svmaiCost]) => ({ model, svmaiCost }));
+    
+    // Daily usage breakdown
+    const dailyUsageMap = new Map<string, { requests: number; tokens: number; cost: number }>();
+    
+    filteredLogs.forEach(log => {
+      const logDate = log.timestamp instanceof Date ? log.timestamp : new Date(log.timestamp);
+      const dateKey = logDate.toISOString().split('T')[0];
+      
+      const existing = dailyUsageMap.get(dateKey) || { requests: 0, tokens: 0, cost: 0 };
+      existing.requests += 1;
+      existing.tokens += log.totalTokens || (log.inputTokens + log.outputTokens);
+      existing.cost += log.svmaiCost || log.cost;
+      
+      dailyUsageMap.set(dateKey, existing);
+    });
+    
+    const dailyUsage = Array.from(dailyUsageMap.entries())
+      .map(([date, stats]) => ({ date, ...stats }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+    
     return {
-      totalRequests: keyUsage.length,
-      totalTokens: keyUsage.reduce((sum, log) => sum + log.inputTokens + log.outputTokens, 0),
-      totalCost: keyUsage.reduce((sum, log) => sum + log.cost, 0),
-      lastUsed: keyUsage.length > 0 ? Math.max(...keyUsage.map(log => log.timestamp)) : 0
+      userId,
+      totalRequests,
+      successfulRequests,
+      errorRequests,
+      errorRate,
+      totalInputTokens,
+      totalOutputTokens,
+      totalTokensConsumed,
+      totalSVMAISpent,
+      averageResponseTime,
+      currentSVMAIBalance: balance,
+      availableSVMAIBalance: balance,
+      topModels,
+      costBreakdownByModel,
+      dailyUsage
     };
   }
 }
