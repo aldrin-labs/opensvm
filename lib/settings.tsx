@@ -215,7 +215,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 export function useSettings(): SettingsContextType {
   const context = useContext(SettingsContext);
   if (context === undefined) {
-    throw new Error('useSettings must be used within a SettingsProvider');
+    // Return default settings when no context is available (during SSR/build)
+    return {
+      ...defaultSettings,
+      setTheme: () => {},
+      setFontFamily: () => {},
+      setFontSize: () => {},
+      setRpcEndpoint: async () => {},
+      setCustomRpcEndpoint: () => {},
+      addCustomRpcEndpoint: async () => {}
+    };
   }
   return context;
 }

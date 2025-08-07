@@ -601,7 +601,19 @@ export function I18nProvider({
 export function useI18n() {
   const context = useContext(I18nContext);
   if (context === undefined) {
-    throw new Error('useI18n must be used within an I18nProvider');
+    // Return default values during SSR/build time
+    return {
+      language: 'en' as LanguageCode,
+      languages: SUPPORTED_LANGUAGES,
+      translations: defaultTranslations.en,
+      setLanguage: () => {},
+      t: (key: string, params?: Record<string, any>, count?: number) => key,
+      formatNumber: (number: number) => number.toString(),
+      formatDate: (date: Date | number) => new Date(date).toString(),
+      formatCurrency: (amount: number, currency = 'USD') => `${currency} ${amount}`,
+      direction: 'ltr' as const,
+      isRTL: false,
+    };
   }
   return context;
 }
