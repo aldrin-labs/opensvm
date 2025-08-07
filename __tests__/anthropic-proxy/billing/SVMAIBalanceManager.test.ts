@@ -2,10 +2,8 @@ import { SVMAIBalanceManager } from '../../../lib/anthropic-proxy/billing/SVMAIB
 import { BalanceStorage } from '../../../lib/anthropic-proxy/storage/BalanceStorage';
 import { UserBalance } from '../../../lib/anthropic-proxy/types/ProxyTypes';
 
-// Mock the BalanceStorage
-jest.mock('../../../lib/anthropic-proxy/storage/BalanceStorage');
-
-const MockedBalanceStorage = BalanceStorage as jest.MockedClass<typeof BalanceStorage>;
+// Unmock the global SVMAIBalanceManager mock for this test
+jest.unmock('../../../lib/anthropic-proxy/billing/SVMAIBalanceManager');
 
 describe('SVMAIBalanceManager', () => {
   let balanceManager: SVMAIBalanceManager;
@@ -13,7 +11,24 @@ describe('SVMAIBalanceManager', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
-    mockStorage = new MockedBalanceStorage() as jest.Mocked<BalanceStorage>;
+    
+    // Create a proper mock with all required methods
+    mockStorage = {
+      initialize: jest.fn(),
+      getBalance: jest.fn(),
+      updateBalance: jest.fn(),
+      addToBalance: jest.fn(),
+      subtractFromBalance: jest.fn(),
+      createUser: jest.fn(),
+      userExists: jest.fn(),
+      getAllUsers: jest.fn(),
+      deleteUser: jest.fn(),
+      clear: jest.fn(),
+      logTransaction: jest.fn(),
+      getTransactionHistory: jest.fn(),
+      getTransactionById: jest.fn()
+    } as unknown as jest.Mocked<BalanceStorage>;
+    
     balanceManager = new SVMAIBalanceManager();
     (balanceManager as any).balanceStorage = mockStorage;
   });

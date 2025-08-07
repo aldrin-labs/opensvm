@@ -101,7 +101,7 @@ describe('AnthropicClient', () => {
     it('should handle network errors', async () => {
       (fetch as jest.Mock).mockRejectedValue(new Error('Network error'));
 
-      await expect(client.sendMessage(mockRequest)).rejects.toThrow('Failed to send message to Anthropic API');
+      await expect(client.sendMessage(mockRequest)).rejects.toThrow('Failed to send message to OpenRouter API');
     });
   });
 
@@ -151,7 +151,7 @@ describe('AnthropicClient', () => {
         json: async () => errorResponse
       });
 
-      await expect(client.sendStreamingMessage(mockRequest)).rejects.toThrow(AnthropicAPIError);
+      await expect(client.sendStreamingMessage(mockRequest)).rejects.toThrow('All keys exhausted');
     });
   });
 

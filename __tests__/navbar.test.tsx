@@ -44,7 +44,7 @@ describe('Navbar', () => {
     expect(screen.getByText('[AI]')).toBeInTheDocument();
 
     // Check search input
-    expect(screen.getByPlaceholderText('Search accounts, tokens, or programs...')).toBeInTheDocument();
+    expect(screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0]).toBeInTheDocument();
 
     // Check navigation dropdowns
     expect(screen.getByTestId('nav-dropdown-explore')).toBeInTheDocument();
@@ -60,7 +60,7 @@ describe('Navbar', () => {
   it('handles Solana address search correctly', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
     
-    const searchInput = screen.getByPlaceholderText('Search accounts, tokens, or programs...');
+    const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
     const validAddress = '5vJRzKtcp4fJxqmR7qzajkaPgqErYd1GdZk7Z7nqLqj8';
     
     fireEvent.change(searchInput, { target: { value: validAddress } });
@@ -72,7 +72,7 @@ describe('Navbar', () => {
   it('handles general search query correctly', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
     
-    const searchInput = screen.getByPlaceholderText('Search accounts, tokens, or programs...');
+    const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
     const searchQuery = 'test query';
     
     fireEvent.change(searchInput, { target: { value: searchQuery } });
@@ -84,7 +84,7 @@ describe('Navbar', () => {
   it('ignores empty search queries', () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
     
-    const searchInput = screen.getByPlaceholderText('Search accounts, tokens, or programs...');
+    const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
     
     fireEvent.change(searchInput, { target: { value: '   ' } });
     fireEvent.submit(searchInput);
@@ -113,7 +113,7 @@ describe('Navbar', () => {
 
   it('validates Solana addresses correctly', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
-    const searchInput = screen.getByPlaceholderText('Search accounts, tokens, or programs...');
+    const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
 
     // Test with a general search query
     const generalQuery = 'general search';

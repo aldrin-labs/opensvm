@@ -170,7 +170,7 @@ export interface NLPQuery {
 }
 
 export interface NLPEntity {
-  type: 'address' | 'token' | 'amount' | 'time' | 'protocol' | 'action';
+  type: 'address' | 'token' | 'amount' | 'time' | 'protocol' | 'action' | 'transaction_hash';
   value: string;
   start: number;
   end: number;

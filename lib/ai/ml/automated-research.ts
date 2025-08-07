@@ -2833,6 +2833,11 @@ export class AutomatedResearchEngine {
       )
     };
 
+    // Set the correct type for token research
+    if (protocolReport.target_info) {
+      protocolReport.target_info.type = 'token';
+    }
+
     return protocolReport;
   }
 

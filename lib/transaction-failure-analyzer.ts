@@ -417,7 +417,18 @@ export class TransactionFailureAnalyzer {
    * Check if transaction is a failure
    */
   private isTransactionFailure(transaction: DetailedTransactionInfo): boolean {
-    return !transaction.success;
+    // Check if transaction has error in meta
+    if (transaction.meta?.err) {
+      return true;
+    }
+    
+    // Check if transaction has success property
+    if ('success' in transaction) {
+      return !transaction.success;
+    }
+    
+    // If no explicit success/error indicators, assume success
+    return false;
   }
 
   /**
@@ -517,8 +528,8 @@ export class TransactionFailureAnalyzer {
    * Assess failure impact
    */
   private async assessImpact(transaction: DetailedTransactionInfo): Promise<FailureImpact> {
-    // Estimate fee based on transaction complexity since we don't have meta.fee
-    const fee = this.estimateTransactionFee(transaction);
+    // Use actual fee from meta if available, otherwise estimate
+    const fee = transaction.meta?.fee ?? this.estimateTransactionFee(transaction);
     const feeUSD = this.config.solPriceUSD ? (fee / 1e9) * this.config.solPriceUSD : null;
 
     const accounts = transaction.details?.accounts?.map(acc => acc.pubkey) || [];
@@ -1295,7 +1306,7 @@ export class TransactionFailureAnalyzer {
     if (fee > 50000) {
       return 'moderate';
     }
-    if (fee > 10000) {
+    if (fee > 1000) { // Lowered threshold - any meaningful fee is at least minor impact
       return 'minor';
     }
     return 'none';
@@ -1357,7 +1368,28 @@ export class TransactionFailureAnalyzer {
 
   // Recovery analysis methods
   private isRecoverable(errorClassification: ErrorClassification): boolean {
-    return errorClassification.isTransient || !errorClassification.isDeterministic;
+    // Most errors are recoverable with appropriate changes
+    if (errorClassification.isTransient) {
+      return true;
+    }
+    
+    // Resource-related errors are typically recoverable
+    if (errorClassification.isResourceRelated) {
+      return true;
+    }
+    
+    // User errors are usually recoverable with corrections
+    if (errorClassification.isUserError) {
+      return true;
+    }
+    
+    // System errors might not be recoverable
+    if (errorClassification.isSystemError && !errorClassification.isTransient) {
+      return false;
+    }
+    
+    // Default to recoverable for most cases
+    return !errorClassification.isDeterministic || errorClassification.isTransient;
   }
 
   private assessRecoveryComplexity(_transaction: DetailedTransactionInfo, errorClassification: ErrorClassification): RecoveryAnalysis['recoveryComplexity'] {
@@ -1618,6 +1650,10 @@ export class TransactionFailureAnalyzer {
     if (analysis.errorClassification.isProgramError) severityScore += 1;
     if (analysis.errorClassification.isSystemError) severityScore += 1;
 
+    // Fee-based severity adjustment
+    if (analysis.impact.feesLost > 100000) severityScore += 2; // High fee losses
+    else if (analysis.impact.feesLost > 50000) severityScore += 1;
+
     if (severityScore >= 7) return 'critical';
     if (severityScore >= 5) return 'high';
     if (severityScore >= 3) return 'medium';
@@ -1627,6 +1663,13 @@ export class TransactionFailureAnalyzer {
   private calculateRecoverability(analysis: TransactionFailureAnalysis): TransactionFailureAnalysis['recoverability'] {
     if (!analysis.recovery.isRecoverable) {
       return 'impossible';
+    }
+
+    // Check for specific error categories that have known recovery paths
+    if (analysis.errorClassification.primaryCategory === 'insufficient_funds' ||
+        analysis.errorClassification.primaryCategory === 'blockhash_not_found' ||
+        analysis.errorClassification.primaryCategory === 'compute_budget_exceeded') {
+      return 'with_changes';
     }
 
     if (analysis.recovery.recoveryComplexity === 'simple' && analysis.recovery.successProbability > 80) {

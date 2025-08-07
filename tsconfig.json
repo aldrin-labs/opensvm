@@ -48,7 +48,6 @@
   "exclude": [
     "node_modules",
     "agent_notes/**/*",
-    "__tests__/**/*",
     "e2e/**/*"
   ]
 }

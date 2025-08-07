@@ -586,6 +586,7 @@ declare global {
   namespace jest {
     interface Matchers<R> {
       toMatchPerformanceMetrics: (expected: number, tolerance?: number) => R;
+      toBeOneOf: (expectedValues: any[]) => R;
     }
   }
 }
@@ -597,6 +598,16 @@ expect.extend({
       pass,
       message: () =>
         `expected ${received} to be within ${tolerance * 100}% of ${expected}`,
+    };
+  },
+  toBeOneOf(received: any, expectedValues: any[]) {
+    const pass = expectedValues.includes(received);
+    return {
+      pass,
+      message: () =>
+        pass
+          ? `expected ${received} not to be one of ${expectedValues.join(', ')}`
+          : `expected ${received} to be one of ${expectedValues.join(', ')}`,
     };
   },
 });

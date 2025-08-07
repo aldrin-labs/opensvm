@@ -32,10 +32,10 @@ describe('SentimentAnalysisEngine', () => {
 
     it('should handle multiple assets', async () => {
       const assets = ['SOL', 'ETH', 'BTC'];
-      const requests = assets.map(asset => ({
+      const requests: SentimentAnalysisRequest[] = assets.map(asset => ({
         asset,
-        sources: ['twitter'] as const,
-        time_range: '24h' as const
+        sources: ['twitter'],
+        time_range: '24h'
       }));
 
       const results = await Promise.all(
@@ -197,10 +197,10 @@ describe('SentimentAnalysisEngine', () => {
   describe('Batch Processing', () => {
     it('should handle batch sentiment analysis', async () => {
       const assets = ['SOL', 'ETH', 'BTC', 'BONK'];
-      const requests = assets.map(asset => ({
+      const requests: SentimentAnalysisRequest[] = assets.map(asset => ({
         asset,
-        sources: ['twitter'] as const,
-        time_range: '24h' as const
+        sources: ['twitter'],
+        time_range: '24h'
       }));
 
       const results = await Promise.all(

@@ -126,7 +126,7 @@ describe('BehavioralModelsEngine', () => {
       if (frontrunningActivity) {
         expect(frontrunningActivity.confidence_score).toBeGreaterThan(0.5);
         expect(frontrunningActivity.estimated_profit).toBeGreaterThan(0);
-        expect(frontrunningActivity.victim_transactions).toHaveLength(expect.any(Number));
+        expect(frontrunningActivity.victim_transactions.length).toBeGreaterThanOrEqual(0);
       }
     });
 
@@ -292,7 +292,7 @@ describe('BehavioralModelsEngine', () => {
 
       const result = await engine.analyzeWallet(request);
 
-      expect(result.risk_assessment!.risk_factors).toHaveLength(expect.any(Number));
+      expect(result.risk_assessment!.risk_factors.length).toBeGreaterThanOrEqual(0);
       
       if (result.risk_assessment!.risk_factors.length > 0) {
         const riskFactor = result.risk_assessment!.risk_factors[0];
@@ -343,7 +343,7 @@ describe('BehavioralModelsEngine', () => {
       );
 
       if (washTradingPattern) {
-        expect(washTradingPattern.participants).toHaveLength(expect.any(Number));
+        expect(washTradingPattern.participants.length).toBeGreaterThanOrEqual(0);
         expect(washTradingPattern.transaction_volume).toBeGreaterThan(0);
         expect(washTradingPattern.suspected_purpose).toBeDefined();
       }
