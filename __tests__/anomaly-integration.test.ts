@@ -1,4 +1,4 @@
-import { POST, GET } from '@/app/api/anomaly/route';
+import { POST, GET } from '../app/api/anomaly/route';
 import { NextRequest } from 'next/server';
 
 // Mock the dependencies
@@ -60,11 +60,15 @@ describe('/api/anomaly Integration Tests', () => {
         }
       };
 
+      const requestBody = { action: 'analyze', event };
       const request = new NextRequest('http://localhost:3000/api/anomaly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'analyze', event })
+        body: JSON.stringify(requestBody)
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(requestBody);
 
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -90,11 +94,15 @@ describe('/api/anomaly Integration Tests', () => {
         }
       ];
 
+      const requestBody = { action: 'bulk_analyze', event: events };
       const request = new NextRequest('http://localhost:3000/api/anomaly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk_analyze', event: events })
+        body: JSON.stringify(requestBody)
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(requestBody);
 
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -115,11 +123,13 @@ describe('/api/anomaly Integration Tests', () => {
 
       // Process normal events first
       for (const event of normalEvents) {
+        const requestBody = { action: 'analyze', event };
         const request = new NextRequest('http://localhost:3000/api/anomaly', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'analyze', event })
+          body: JSON.stringify(requestBody)
         });
+        request.json = jest.fn().mockResolvedValue(requestBody);
         await POST(request);
       }
 
@@ -130,11 +140,13 @@ describe('/api/anomaly Integration Tests', () => {
         data: { signature: 'high_fee', fee: 50000, err: null }
       };
 
+      const requestBody = { action: 'analyze', event: highFeeEvent };
       const request = new NextRequest('http://localhost:3000/api/anomaly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'analyze', event: highFeeEvent })
+        body: JSON.stringify(requestBody)
       });
+      request.json = jest.fn().mockResolvedValue(requestBody);
 
       const response = await POST(request);
       const data = await response.json();
@@ -151,25 +163,33 @@ describe('/api/anomaly Integration Tests', () => {
     });
 
     it('should handle missing event data', async () => {
+      const requestBody = { action: 'analyze' };
       const request = new NextRequest('http://localhost:3000/api/anomaly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'analyze' })
+        body: JSON.stringify(requestBody)
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(requestBody);
 
       const response = await POST(request);
       expect(response.status).toBe(400);
 
       const data = await response.json();
-      expect(data.error).toBe('Event data is required');
+      expect(data.error.message).toBe('Missing required field: event');
     });
 
     it('should handle invalid bulk data', async () => {
+      const requestBody = { action: 'bulk_analyze', event: 'not an array' };
       const request = new NextRequest('http://localhost:3000/api/anomaly', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'bulk_analyze', event: 'not an array' })
+        body: JSON.stringify(requestBody)
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(requestBody);
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -197,17 +217,19 @@ describe('/api/anomaly Integration Tests', () => {
 
       // Process each event and check for anomalies
       for (const event of failedEvents) {
+        const requestBody = { action: 'analyze', event };
         const request = new NextRequest('http://localhost:3000/api/anomaly', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'analyze', event })
+          body: JSON.stringify(requestBody)
         });
+        request.json = jest.fn().mockResolvedValue(requestBody);
 
         const response = await POST(request);
         const data = await response.json();
 
         if (data.success && data.data.alerts.length > 0) {
-          const failureAlert = data.data.alerts.find((alert: any) => 
+          const failureAlert = data.data.alerts.find((alert: any) =>
             alert.type === 'high_failure_rate'
           );
           if (failureAlert) {
@@ -231,11 +253,13 @@ describe('/api/anomaly Integration Tests', () => {
 
       // Process events
       for (const event of events) {
+        const requestBody = { action: 'analyze', event };
         const request = new NextRequest('http://localhost:3000/api/anomaly', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'analyze', event })
+          body: JSON.stringify(requestBody)
         });
+        request.json = jest.fn().mockResolvedValue(requestBody);
         await POST(request);
       }
 

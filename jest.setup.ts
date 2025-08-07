@@ -6,34 +6,89 @@ import { jest, expect } from '@jest/globals';
 global.TextEncoder = NodeTextEncoder;
 global.TextDecoder = NodeTextDecoder as typeof global.TextDecoder;
 
+// Mock Web Crypto API for Solana operations
+const mockCrypto = {
+  subtle: {
+    digest: jest.fn().mockImplementation(async (...args: any[]) => {
+      // Mock SHA-256 hash - return a consistent 32-byte array for testing
+      const algorithm = args[0];
+      const data = args[1];
+      const mockHash = new Uint8Array(32);
+      // Fill with deterministic values based on input
+      const input = new Uint8Array(data);
+      for (let i = 0; i < 32; i++) {
+        mockHash[i] = (input[i % input.length] || 0) + i;
+      }
+      return Promise.resolve(mockHash.buffer);
+    }),
+    generateKey: jest.fn(),
+    importKey: jest.fn(),
+    exportKey: jest.fn(),
+    sign: jest.fn(),
+    verify: jest.fn(),
+    encrypt: jest.fn(),
+    decrypt: jest.fn(),
+    deriveBits: jest.fn(),
+    deriveKey: jest.fn(),
+  },
+  getRandomValues: jest.fn().mockImplementation((...args: any[]) => {
+    // Fill with deterministic pseudo-random values for testing
+    const array = args[0];
+    for (let i = 0; i < array.length; i++) {
+      array[i] = Math.floor(Math.random() * 256);
+    }
+    return array;
+  }),
+};
+
+// Ensure global crypto is properly set with fallback
+global.crypto = mockCrypto as any;
+
+// Add additional fallback for Web Crypto API access
+if (!global.crypto) {
+  global.crypto = mockCrypto as any;
+}
+
+// Override any existing crypto to ensure our mock is used
+Object.defineProperty(globalThis, 'crypto', {
+  value: mockCrypto,
+  writable: true,
+  configurable: true
+});
+
+// Backup fallback - assign to window if it exists
+if (typeof window !== 'undefined') {
+  (window as any).crypto = mockCrypto;
+}
+
 // ReadableStream polyfill for Node.js environment
 class MockReadableStream {
   constructor(underlyingSource?: any) {
     this.underlyingSource = underlyingSource;
   }
-  
+
   private underlyingSource: any;
-  
+
   getReader() {
     return {
       read: () => Promise.resolve({ done: true, value: undefined }),
-      releaseLock: () => {},
+      releaseLock: () => { },
       closed: Promise.resolve(undefined)
     };
   }
-  
+
   cancel() {
     return Promise.resolve();
   }
-  
+
   pipeTo() {
     return Promise.resolve();
   }
-  
+
   pipeThrough() {
     return this;
   }
-  
+
   tee() {
     return [this, this];
   }
@@ -207,8 +262,29 @@ global.Response = MockResponse as unknown as typeof Response;
 global.Headers = class Headers {
   private headers: Record<string, string>;
 
-  constructor(init?: Record<string, string>) {
-    this.headers = init || {};
+  constructor(init?: HeadersInit) {
+    this.headers = {};
+
+    if (init) {
+      if (init instanceof Headers) {
+        // Copy from another Headers instance
+        for (const [key, value] of init.entries()) {
+          this.headers[String(key).toLowerCase()] = String(value);
+        }
+      } else if (Array.isArray(init)) {
+        // Handle array of [name, value] pairs
+        for (const pair of init) {
+          if (Array.isArray(pair) && pair.length >= 2) {
+            this.headers[String(pair[0]).toLowerCase()] = String(pair[1]);
+          }
+        }
+      } else if (typeof init === 'object' && init !== null) {
+        // Handle plain object
+        for (const [name, value] of Object.entries(init)) {
+          this.headers[String(name).toLowerCase()] = String(value);
+        }
+      }
+    }
   }
 
   get(name: string): string | null {
@@ -219,8 +295,44 @@ global.Headers = class Headers {
     this.headers[name.toLowerCase()] = value;
   }
 
+  has(name: string): boolean {
+    return name.toLowerCase() in this.headers;
+  }
+
+  append(name: string, value: string): void {
+    const key = String(name).toLowerCase();
+    const existingValue = this.headers[key];
+    if (existingValue) {
+      this.headers[key] = String(existingValue) + ', ' + String(value);
+    } else {
+      this.headers[key] = String(value);
+    }
+  }
+
+  delete(name: string): void {
+    delete this.headers[name.toLowerCase()];
+  }
+
+  forEach(callback: (value: string, name: string, parent: Headers) => void): void {
+    for (const [name, value] of this.entries()) {
+      callback(value, name, this);
+    }
+  }
+
   entries(): IterableIterator<[string, string]> {
     return Object.entries(this.headers)[Symbol.iterator]();
+  }
+
+  keys(): IterableIterator<string> {
+    return Object.keys(this.headers)[Symbol.iterator]();
+  }
+
+  values(): IterableIterator<string> {
+    return Object.values(this.headers)[Symbol.iterator]();
+  }
+
+  [Symbol.iterator](): IterableIterator<[string, string]> {
+    return this.entries();
   }
 } as unknown as typeof Headers;
 
@@ -250,9 +362,13 @@ const mockConnectionMethods = {
     meta: { err: null },
     transaction: { message: { instructions: [] } }
   })),
+  getParsedTransaction: jest.fn(() => Promise.resolve(null)),
   getParsedAccountInfo: jest.fn(() => Promise.resolve({
     value: null
   })),
+  getAccountInfo: jest.fn(() => Promise.resolve(null)),
+  getSignaturesForAddress: jest.fn(() => Promise.resolve([])),
+  getParsedTokenAccountsByOwner: jest.fn(() => Promise.resolve({ value: [] })),
   getVoteAccounts: jest.fn(() => Promise.resolve({ current: [], delinquent: [] })),
   getMinimumBalanceForRentExemption: jest.fn(() => Promise.resolve(2282880)),
   getBalance: jest.fn(() => Promise.resolve(5000000000)),
@@ -278,13 +394,37 @@ type PublicKeyMock = {
 
 type PublicKeyConstructor = (key: string) => PublicKeyMock;
 
-jest.mock('@solana/web3.js', () => ({
-  Connection: jest.fn().mockImplementation(() => mockConnectionMethods),
-  PublicKey: jest.fn().mockImplementation((key: any) => ({
+// Create proper PublicKey constructor mock that creates instances
+const MockedPublicKey = jest.fn().mockImplementation((key: any) => {
+  const instance = Object.create(MockedPublicKey.prototype);
+  Object.assign(instance, {
     toString: () => key,
     toBase58: () => key,
-    toBuffer: () => Buffer.from(key)
-  })) as any,
+    toBuffer: () => Buffer.from(key),
+    equals: jest.fn(() => true),
+  });
+  return instance;
+});
+
+// Set up prototype and constructor property for Jest instance checks
+MockedPublicKey.prototype.constructor = MockedPublicKey;
+
+jest.mock('@solana/web3.js', () => ({
+  Connection: jest.fn().mockImplementation(() => mockConnectionMethods),
+  PublicKey: MockedPublicKey,
+  Keypair: {
+    fromSeed: jest.fn().mockImplementation((...args: any[]) => {
+      const seed = args[0] as Uint8Array;
+      return {
+        publicKey: new MockedPublicKey(`GeneratedAddress${seed[0]}${seed[1]}${seed[2]}`),
+        secretKey: seed
+      };
+    }),
+    generate: jest.fn().mockImplementation(() => ({
+      publicKey: new MockedPublicKey('GeneratedRandomAddress'),
+      secretKey: new Uint8Array(64)
+    }))
+  },
   Transaction: jest.fn().mockImplementation(() => ({
     add: jest.fn(),
     recentBlockhash: '',
@@ -305,9 +445,71 @@ jest.mock('@solana/web3.js', () => ({
   Lockup: jest.fn(),
   LAMPORTS_PER_SOL: 1000000000,
   findProgramAddress: jest.fn(() => Promise.resolve([
-    { toBase58: () => 'mock_pda' },
+    new MockedPublicKey('mock_pda'),
     255
   ]))
+}));
+
+// Mock SPL Token library
+jest.mock('@solana/spl-token', () => ({
+  getAssociatedTokenAddress: jest.fn().mockImplementation(() =>
+    Promise.resolve(new MockedPublicKey('mock_associated_token_address'))
+  ),
+  TOKEN_PROGRAM_ID: new MockedPublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
+  ASSOCIATED_TOKEN_PROGRAM_ID: new MockedPublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL'),
+  createAssociatedTokenAccountInstruction: jest.fn(),
+  createTransferInstruction: jest.fn(),
+  getAccount: jest.fn(),
+  getMint: jest.fn(),
+}));
+
+// Add isOnCurve mock to the global object after PublicKey creation
+(global as any).web3_js_1 = {
+  PublicKey: {
+    isOnCurve: jest.fn().mockReturnValue(true)
+  }
+};
+
+// Mock SVMAIBalanceManager
+jest.mock('./lib/anthropic-proxy/billing/SVMAIBalanceManager', () => ({
+  SVMAIBalanceManager: jest.fn().mockImplementation(() => ({
+    initialize: jest.fn<() => Promise<void>>().mockResolvedValue(undefined as void),
+    addBalance: jest.fn<(userId: string, amount: number, signature: string) => Promise<any>>().mockImplementation(
+      (userId: string, amount: number, signature: string) =>
+        Promise.resolve({
+          svmaiBalance: amount + 1000, // Mock existing balance + new amount
+          availableBalance: amount + 800, // Mock available balance
+          lockedBalance: 200,
+          lastUpdated: new Date()
+        })
+    ),
+    getBalance: jest.fn<() => Promise<any>>().mockResolvedValue({
+      svmaiBalance: 1000,
+      availableBalance: 800,
+      lockedBalance: 200
+    }),
+    deductBalance: jest.fn<() => Promise<any>>().mockResolvedValue({
+      svmaiBalance: 900,
+      availableBalance: 700,
+      lockedBalance: 200
+    }),
+    hasBalance: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+    hasSufficientBalance: jest.fn<() => Promise<boolean>>().mockResolvedValue(true),
+  }))
+}));
+
+// Mock BalanceStorage
+jest.mock('./lib/anthropic-proxy/storage/BalanceStorage', () => ({
+  BalanceStorage: jest.fn().mockImplementation(() => ({
+    initialize: jest.fn<() => Promise<void>>().mockResolvedValue(undefined as void),
+    logTransaction: jest.fn<(transaction: any) => Promise<void>>().mockResolvedValue(undefined as void),
+    getTransactionHistory: jest.fn<(userId?: string) => Promise<any[]>>().mockResolvedValue([]),
+    getTransactionById: jest.fn<(id: string) => Promise<any>>().mockResolvedValue(null),
+    getUserBalance: jest.fn<(userId: string) => Promise<any>>().mockResolvedValue({
+      balance: 1000,
+      lastUpdated: new Date()
+    }),
+  }))
 }));
 
 // Mock rate limiter
@@ -437,7 +639,7 @@ const originalFetch = global.fetch;
 global.fetch = (async (...args: Parameters<typeof fetch>) => {
   const promise = originalFetch(...args);
   pendingPromises.add(promise);
-  
+
   try {
     const result = await promise;
     pendingPromises.delete(promise);
@@ -476,7 +678,7 @@ export function cleanupTestResources() {
   // Reset all mocks
   jest.clearAllMocks();
   jest.restoreAllMocks();
-  
+
   // Force garbage collection if available
   if (global.gc) {
     global.gc();

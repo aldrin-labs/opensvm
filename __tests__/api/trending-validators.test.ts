@@ -250,6 +250,21 @@ describe('/api/analytics/trending-validators', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
+
       const response = await POST(request);
       const data = await response.json();
 
@@ -278,6 +293,12 @@ describe('/api/analytics/trending-validators', () => {
         body: JSON.stringify(invalidRequest),
         headers: { 'Content-Type': 'application/json' }
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(invalidRequest);
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(invalidRequest);
 
       const response = await POST(request);
       const data = await response.json();
@@ -337,6 +358,9 @@ describe('/api/analytics/trending-validators', () => {
         body: JSON.stringify(validBurnRequest),
         headers: { 'Content-Type': 'application/json' }
       });
+
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(validBurnRequest);
 
       const response = await POST(request);
       const data = await response.json();
@@ -482,6 +506,9 @@ describe('/api/analytics/trending-validators', () => {
         headers: { 'Content-Type': 'application/json' }
       });
 
+      // Mock the request.json() method to return the expected body
+      request.json = jest.fn().mockResolvedValue(incompleteRequest);
+
       const response = await POST(request);
       const data = await response.json();
 
@@ -533,6 +560,9 @@ describe('/api/analytics/trending-validators', () => {
         body: 'invalid json',
         headers: { 'Content-Type': 'application/json' }
       });
+
+      // Mock the request.json() method to throw an error for malformed JSON
+      request.json = jest.fn().mockRejectedValue(new Error('Invalid JSON'));
 
       const response = await POST(request);
       const data = await response.json();

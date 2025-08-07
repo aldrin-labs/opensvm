@@ -600,7 +600,7 @@ export async function POST(request: NextRequest) {
       return Response.json(response, { status });
     }
 
-    // Validate request structure with Zod
+    // Validate request structure
     const validationResult = validateStreamRequest(requestBody);
     if (!validationResult.success) {
       const { response, status } = createErrorResponse(
@@ -614,6 +614,28 @@ export async function POST(request: NextRequest) {
 
     const { action, clientId, eventTypes, authToken } = validationResult.data;
     const manager = EventStreamManager.getInstance();
+
+    // Validate action first
+    if (!action) {
+      const { response, status } = createErrorResponse(
+        ErrorCodes.INVALID_REQUEST,
+        'Invalid request format',
+        { message: 'Action is required' },
+        400
+      );
+      return Response.json(response, { status });
+    }
+
+    const validActions = ['authenticate', 'subscribe', 'unsubscribe', 'start_monitoring', 'status'];
+    if (!validActions.includes(action)) {
+      const { response, status } = createErrorResponse(
+        ErrorCodes.INVALID_REQUEST,
+        `Invalid action: ${action}. Valid actions: ${validActions.join(', ')}`,
+        { validActions },
+        400
+      );
+      return Response.json(response, { status });
+    }
 
     // Validate input
     if (!clientId && action !== 'status') {
@@ -689,7 +711,12 @@ export async function POST(request: NextRequest) {
 
       case 'subscribe':
         if (!eventTypes || !Array.isArray(eventTypes) || eventTypes.length === 0) {
-          const { response, status } = CommonErrors.missingField('eventTypes');
+          const { response, status } = createErrorResponse(
+            ErrorCodes.INVALID_REQUEST,
+            'Valid event types array is required',
+            {},
+            400
+          );
           return Response.json(response, { status });
         }
 

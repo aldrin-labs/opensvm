@@ -5,6 +5,22 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
  * Validate if a string is a valid Solana address
  */
 export function validateSolanaAddress(address: string): boolean {
+    if (!address || typeof address !== 'string') {
+        return false;
+    }
+    
+    // Check length - Solana addresses are typically 32-44 characters when base58 encoded
+    if (address.length < 32 || address.length > 44) {
+        return false;
+    }
+    
+    // Check for valid base58 characters (excludes 0, O, I, l)
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (!base58Regex.test(address)) {
+        return false;
+    }
+    
+    // Finally, try to create a PublicKey to ensure it's properly formed
     try {
         new PublicKey(address);
         return true;

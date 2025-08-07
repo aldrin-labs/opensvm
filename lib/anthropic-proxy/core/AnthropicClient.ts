@@ -1,26 +1,108 @@
 import { AnthropicRequest, AnthropicResponse, AnthropicAPIError } from '../types/AnthropicTypes';
 
+interface KeyUsageStats {
+  totalKeys: number;
+  activeKeys: number;
+  failedKeys: number;
+  usage: Record<string, {
+    requests: number;
+    keyPreview: string;
+    lastUsed?: Date;
+    failedAt?: Date;
+  }>;
+}
+
 export class AnthropicClient {
   private apiKey: string;
   private baseURL: string = 'https://openrouter.ai/api/v1';
   private anthropicBaseURL: string = 'https://api.anthropic.com/v1';
   private openRouterKeys: string[];
+  private currentKeyIndex: number = 0;
+  private keyStats: Record<string, { requests: number; keyPreview: string; lastUsed?: Date; failedAt?: Date }> = {};
+  private failedKeys: Set<string> = new Set();
 
-  constructor(apiKey: string, baseURL?: string, openRouterKeys: string[] = []) {
-    this.apiKey = apiKey;
+  constructor(apiKey?: string, baseURL?: string, openRouterKeys: string[] = []) {
+    this.apiKey = apiKey || '';
     if (baseURL) {
       this.baseURL = baseURL;
     }
-    this.openRouterKeys = openRouterKeys;
     
-    // Allow test environments to work without API keys
-    if (this.openRouterKeys.length === 0 && process.env.NODE_ENV !== 'test') {
-      throw new Error('At least one OpenRouter API key is required');
+    // Initialize keys from environment or parameters
+    this.openRouterKeys = this.initializeKeys(openRouterKeys);
+    
+    // Initialize key stats
+    this.openRouterKeys.forEach((key, index) => {
+      const keyId = `key_${index + 1}`;
+      this.keyStats[keyId] = {
+        requests: 0,
+        keyPreview: keyId,
+        lastUsed: undefined,
+        failedAt: undefined
+      };
+    });
+  }
+
+  private initializeKeys(providedKeys: string[]): string[] {
+    // First try provided keys
+    if (providedKeys.length > 0) {
+      return providedKeys;
     }
     
-    // Provide default test key for test environment
-    if (this.openRouterKeys.length === 0 && process.env.NODE_ENV === 'test') {
-      this.openRouterKeys = ['test-api-key'];
+    // Then try environment variables
+    const envKeys = process.env.OPENROUTER_API_KEYS;
+    if (envKeys) {
+      return envKeys.split(',').map(key => key.trim());
+    }
+    
+    const singleKey = process.env.OPENROUTER_API_KEY;
+    if (singleKey) {
+      return [singleKey];
+    }
+    
+    // For test environment, use test key
+    if (process.env.NODE_ENV === 'test') {
+      return ['test-api-key'];
+    }
+    
+    throw new Error('At least one OpenRouter API key is required');
+  }
+
+  private getNextAvailableKey(): string {
+    const availableKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
+    
+    if (availableKeys.length === 0) {
+      throw new Error('All keys exhausted');
+    }
+    
+    // Find the key that corresponds to current index among available keys
+    let keyToUse = this.openRouterKeys[this.currentKeyIndex % this.openRouterKeys.length];
+    
+    // If current key is failed, find next available
+    while (this.failedKeys.has(keyToUse) && availableKeys.length > 0) {
+      this.currentKeyIndex = (this.currentKeyIndex + 1) % this.openRouterKeys.length;
+      keyToUse = this.openRouterKeys[this.currentKeyIndex % this.openRouterKeys.length];
+    }
+    
+    // Update stats
+    const keyIndex = this.openRouterKeys.indexOf(keyToUse);
+    const keyId = `key_${keyIndex + 1}`;
+    if (this.keyStats[keyId]) {
+      this.keyStats[keyId].requests++;
+      this.keyStats[keyId].lastUsed = new Date();
+    }
+    
+    // Move to next key for round-robin
+    this.currentKeyIndex = (this.currentKeyIndex + 1) % this.openRouterKeys.length;
+    
+    return keyToUse;
+  }
+
+  private markKeyAsFailed(key: string): void {
+    this.failedKeys.add(key);
+    const keyIndex = this.openRouterKeys.indexOf(key);
+    const keyId = `key_${keyIndex + 1}`;
+    if (this.keyStats[keyId]) {
+      this.keyStats[keyId].failedAt = new Date();
     }
   }
 
@@ -34,87 +116,202 @@ export class AnthropicClient {
   }
 
   async sendMessage(request: AnthropicRequest): Promise<AnthropicResponse> {
-    try {
-      // Convert Anthropic model to OpenRouter format
-      const openRouterModel = this.convertToOpenRouterModel(request.model);
-      
-      const openRouterRequest = {
-        model: openRouterModel,
-        messages: request.messages,
-        max_tokens: request.max_tokens,
-        temperature: request.temperature,
-        stream: request.stream || false
-      };
+    let lastError: Error | null = null;
+    
+    // Try each available key
+    for (let attempt = 0; attempt < this.openRouterKeys.length; attempt++) {
+      try {
+        const currentKey = this.getNextAvailableKey();
+        
+        // Convert Anthropic model to OpenRouter format
+        const openRouterModel = this.convertToOpenRouterModel(request.model);
+        
+        // Transform messages to handle content arrays and system messages
+        const messages = this.transformMessages(request);
+        
+        const openRouterRequest = {
+          model: openRouterModel,
+          messages,
+          max_tokens: request.max_tokens,
+          temperature: request.temperature,
+          top_p: request.top_p,
+          stop: request.stop_sequences,
+          stream: request.stream || false,
+          provider: {
+            order: ['Anthropic'],
+            allow_fallbacks: false
+          }
+        };
 
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.openRouterKeys[0]}`,
-          'HTTP-Referer': 'https://opensvm.ai',
-          'X-Title': 'OpenSVM AI'
-        },
-        body: JSON.stringify(openRouterRequest)
-      });
+        const response = await fetch(`${this.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentKey}`,
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM Anthropic Proxy'
+          },
+          body: JSON.stringify(openRouterRequest)
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw AnthropicAPIError.fromResponse(response, error);
-      }
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          
+          // Handle rate limit errors
+          if (response.status === 429) {
+            this.markKeyAsFailed(currentKey);
+            lastError = AnthropicAPIError.fromResponse(response, error);
+            
+            // If this was the last available key, throw "All keys exhausted"
+            const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
+            if (remainingKeys.length === 0) {
+              throw new Error('All keys exhausted');
+            }
+            
+            continue; // Try next key
+          }
+          
+          throw AnthropicAPIError.fromResponse(response, error);
+        }
 
-      const result = await response.json();
-      
-      // If this is a mock response (test environment), return it directly
-      if (result.id && result.content && result.usage) {
-        return result;
+        const result = await response.json();
+        
+        // If this is a mock response (test environment), return it directly
+        if (result.id && result.content && result.usage) {
+          return result;
+        }
+        
+        // Convert OpenRouter response back to Anthropic format
+        return this.convertFromOpenRouterResponse(result, request.model);
+      } catch (error) {
+        if (error instanceof AnthropicAPIError && error.status === 429) {
+          lastError = error;
+          continue; // Rate limit, try next key
+        }
+        
+        if (error instanceof AnthropicAPIError) {
+          throw error;
+        }
+        
+        // Check if this is the "All keys exhausted" error
+        if (error instanceof Error && error.message === 'All keys exhausted') {
+          throw error;
+        }
+        
+        lastError = new Error('Failed to send message to OpenRouter API');
       }
-      
-      // Convert OpenRouter response back to Anthropic format
-      return this.convertFromOpenRouterResponse(result);
-    } catch (error) {
-      if (error instanceof AnthropicAPIError) {
-        throw error;
-      }
-      throw new Error('Failed to send message to Anthropic API');
     }
+    
+    // If we get here, all keys failed
+    throw lastError || new Error('All keys exhausted');
+  }
+
+  private transformMessages(request: AnthropicRequest): any[] {
+    const messages: any[] = [];
+    
+    // Add system message if present
+    if (request.system) {
+      messages.push({
+        role: 'system',
+        content: request.system
+      });
+    }
+    
+    // Transform user/assistant messages
+    for (const message of request.messages) {
+      let content = message.content;
+      
+      // Flatten content arrays to strings
+      if (Array.isArray(content)) {
+        content = content
+          .filter(item => item.type === 'text')
+          .map(item => item.text)
+          .join('');
+      }
+      
+      messages.push({
+        role: message.role,
+        content
+      });
+    }
+    
+    return messages;
   }
 
   async sendStreamingMessage(request: AnthropicRequest): Promise<ReadableStream> {
-    try {
-      const openRouterModel = this.convertToOpenRouterModel(request.model);
-      
-      const openRouterRequest = {
-        model: openRouterModel,
-        messages: request.messages,
-        max_tokens: request.max_tokens,
-        temperature: request.temperature,
-        stream: true
-      };
+    let lastError: Error | null = null;
+    
+    // Try each available key
+    for (let attempt = 0; attempt < this.openRouterKeys.length; attempt++) {
+      try {
+        const currentKey = this.getNextAvailableKey();
+        const openRouterModel = this.convertToOpenRouterModel(request.model);
+        
+        // Transform messages to handle content arrays and system messages
+        const messages = this.transformMessages(request);
+        
+        const openRouterRequest = {
+          model: openRouterModel,
+          messages,
+          max_tokens: request.max_tokens,
+          temperature: request.temperature,
+          stream: true
+        };
 
-      const response = await fetch(`${this.baseURL}/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${this.openRouterKeys[0]}`,
-          'HTTP-Referer': 'https://opensvm.ai',
-          'X-Title': 'OpenSVM AI'
-        },
-        body: JSON.stringify(openRouterRequest)
-      });
+        const response = await fetch(`${this.baseURL}/chat/completions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentKey}`,
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM Anthropic Proxy'
+          },
+          body: JSON.stringify(openRouterRequest)
+        });
 
-      if (!response.ok) {
-        const error = await response.json().catch(() => ({}));
-        throw AnthropicAPIError.fromResponse(response, error);
+        if (!response.ok) {
+          const error = await response.json().catch(() => ({}));
+          
+          // Handle rate limit errors
+          if (response.status === 429) {
+            this.markKeyAsFailed(currentKey);
+            lastError = AnthropicAPIError.fromResponse(response, error);
+            
+            // If this was the last available key, throw "All keys exhausted"
+            const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
+            if (remainingKeys.length === 0) {
+              throw new Error('All keys exhausted');
+            }
+            
+            continue; // Try next key
+          }
+          
+          throw AnthropicAPIError.fromResponse(response, error);
+        }
+
+        // Transform the stream to convert OpenRouter format to Anthropic format
+        return this.transformStreamResponse(response.body!);
+      } catch (error) {
+        if (error instanceof AnthropicAPIError && error.status === 429) {
+          lastError = error;
+          continue; // Rate limit, try next key
+        }
+        
+        if (error instanceof AnthropicAPIError) {
+          throw error;
+        }
+        
+        // Check if this is the "All keys exhausted" error
+        if (error instanceof Error && error.message === 'All keys exhausted') {
+          throw error;
+        }
+        
+        lastError = new Error('Failed to send streaming message to OpenRouter API');
       }
-
-      // Transform the stream to convert OpenRouter format to Anthropic format
-      return this.transformStreamResponse(response.body!);
-    } catch (error) {
-      if (error instanceof AnthropicAPIError) {
-        throw error;
-      }
-      throw new Error('Failed to send streaming message to Anthropic API');
     }
+    
+    // If we get here, all keys failed
+    throw lastError || new Error('All keys exhausted');
   }
 
   async getModels(): Promise<any> {
@@ -184,12 +381,21 @@ export class AnthropicClient {
       'claude-3-opus-4': 'anthropic/claude-3-opus'
     };
     
-    return modelMap[anthropicModel] || 'anthropic/claude-3.5-sonnet';
+    // Return mapped model or pass through unknown models unchanged
+    return modelMap[anthropicModel] || anthropicModel;
   }
 
-  private convertFromOpenRouterResponse(openRouterResponse: any): AnthropicResponse {
+  private convertFromOpenRouterResponse(openRouterResponse: any, originalModel?: string): AnthropicResponse {
     const choice = openRouterResponse.choices?.[0];
     const message = choice?.message;
+    
+    // Map finish_reason to stop_reason
+    let stopReason = 'end_turn';
+    if (choice?.finish_reason === 'length') {
+      stopReason = 'max_tokens';
+    } else if (choice?.finish_reason === 'stop') {
+      stopReason = 'end_turn';
+    }
     
     return {
       id: openRouterResponse.id || 'msg_' + Date.now(),
@@ -199,8 +405,9 @@ export class AnthropicClient {
         type: 'text',
         text: message?.content || 'Hello! How can I help you?'
       }],
-      model: openRouterResponse.model || 'claude-3-sonnet-20240229',
-      stop_reason: choice?.finish_reason === 'stop' ? 'end_turn' : choice?.finish_reason || 'end_turn',
+      model: originalModel || openRouterResponse.model || 'claude-3-sonnet-20240229',
+      stop_reason: stopReason,
+      stop_sequence: null,
       usage: {
         input_tokens: openRouterResponse.usage?.prompt_tokens || 10,
         output_tokens: openRouterResponse.usage?.completion_tokens || 15
@@ -210,15 +417,17 @@ export class AnthropicClient {
 
   private transformStreamResponse(stream: ReadableStream): ReadableStream {
     return new ReadableStream({
-      start(controller) {
+      async start(controller) {
         const reader = stream.getReader();
         const decoder = new TextDecoder();
         
-        function pump(): Promise<void> {
-          return reader.read().then(({ done, value }) => {
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            
             if (done) {
               controller.close();
-              return;
+              break;
             }
             
             const chunk = decoder.decode(value);
@@ -238,12 +447,10 @@ export class AnthropicClient {
                 return;
               }
             }
-            
-            return pump();
-          });
+          }
+        } catch (error) {
+          controller.error(error);
         }
-        
-        return pump();
       }
     });
   }
@@ -263,6 +470,17 @@ export class AnthropicClient {
 
   getApiKey(): string {
     return this.apiKey;
+  }
+
+  async getKeyUsageStats(): Promise<KeyUsageStats> {
+    const activeKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key)).length;
+    
+    return {
+      totalKeys: this.openRouterKeys.length,
+      activeKeys,
+      failedKeys: this.failedKeys.size,
+      usage: this.keyStats
+    };
   }
 }
 

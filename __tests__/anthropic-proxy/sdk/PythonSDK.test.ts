@@ -1,5 +1,48 @@
 import { jest } from '@jest/globals';
 
+// Simple fetch mock setup with proper typing
+const mockFetch = jest.fn() as jest.MockedFunction<typeof fetch>;
+(global as any).fetch = mockFetch;
+
+// Headers polyfill for Jest
+class MockHeaders {
+    private headers: Record<string, string>;
+
+    constructor(init?: Record<string, string> | [string, string][]) {
+        this.headers = {};
+        if (init) {
+            if (Array.isArray(init)) {
+                init.forEach(([key, value]) => {
+                    this.headers[key.toLowerCase()] = value;
+                });
+            } else {
+                Object.entries(init).forEach(([key, value]) => {
+                    this.headers[key.toLowerCase()] = value;
+                });
+            }
+        }
+    }
+
+    get(name: string): string | null {
+        return this.headers[name.toLowerCase()] || null;
+    }
+
+    set(name: string, value: string): void {
+        this.headers[name.toLowerCase()] = value;
+    }
+
+    has(name: string): boolean {
+        return name.toLowerCase() in this.headers;
+    }
+
+    entries(): IterableIterator<[string, string]> {
+        return Object.entries(this.headers)[Symbol.iterator]();
+    }
+}
+
+// Replace global Headers with our mock
+(global as any).Headers = MockHeaders;
+
 // Mock Python SDK request patterns
 describe('Python Anthropic SDK Compatibility Tests', () => {
     let mockAnthropicResponse: any;
@@ -93,10 +136,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({
+                headers: new MockHeaders({
                     'Content-Type': 'application/json',
                     'x-request-id': 'req_python_123'
                 }),
@@ -130,10 +173,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -158,10 +201,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -172,10 +215,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
 
     describe('Python SDK Messages API', () => {
         beforeEach(() => {
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
         });
@@ -310,10 +353,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 stop_sequence: 'END'
             };
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => stoppedResponse
             });
 
@@ -364,10 +407,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 }
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({
+                headers: new MockHeaders({
                     'Content-Type': 'text/event-stream',
                     'Cache-Control': 'no-cache',
                     'Connection': 'keep-alive'
@@ -422,10 +465,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 }
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({
+                headers: new MockHeaders({
                     'Content-Type': 'text/event-stream'
                 }),
                 body: mockAsyncStream
@@ -455,10 +498,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: false,
                 status: 401,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => ({
                     error: {
                         type: 'authentication_error',
@@ -491,10 +534,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: false,
                 status: 429,
-                headers: new Headers({
+                headers: new MockHeaders({
                     'Content-Type': 'application/json',
                     'Retry-After': '60'
                 }),
@@ -531,10 +574,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: false,
                 status: 400,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => ({
                     error: {
                         type: 'invalid_request_error',
@@ -568,10 +611,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: false,
                 status: 402,
-                headers: new Headers({
+                headers: new MockHeaders({
                     'Content-Type': 'application/json',
                     'x-svmai-balance': '5',
                     'x-svmai-required': '25',
@@ -627,10 +670,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 }]
             };
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => contextualResponse
             });
 
@@ -663,10 +706,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => ({
                     ...mockAnthropicResponse,
                     usage: { input_tokens: 12500, output_tokens: 150 }
@@ -699,10 +742,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -731,10 +774,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -761,10 +804,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -807,10 +850,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'application/json' }),
+                headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                 json: async () => mockAnthropicResponse
             });
 
@@ -844,11 +887,11 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 })
             );
 
-            global.fetch = jest.fn().mockImplementation(() =>
+            mockFetch.mockImplementation(() =>
                 Promise.resolve({
                     ok: true,
                     status: 200,
-                    headers: new Headers({ 'Content-Type': 'application/json' }),
+                    headers: new MockHeaders({ 'Content-Type': 'application/json' }),
                     json: async () => mockAnthropicResponse
                 })
             );
@@ -899,10 +942,10 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
                 }
             });
 
-            global.fetch = jest.fn().mockResolvedValue({
+            mockFetch.mockResolvedValue({
                 ok: true,
                 status: 200,
-                headers: new Headers({ 'Content-Type': 'text/event-stream' }),
+                headers: new MockHeaders({ 'Content-Type': 'text/event-stream' }),
                 body: mockLargeStream
             });
 
@@ -911,4 +954,4 @@ describe('Python Anthropic SDK Compatibility Tests', () => {
             expect(response.headers.get('Content-Type')).toBe('text/event-stream');
         });
     });
-}); 
+});

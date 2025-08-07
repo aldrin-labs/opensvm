@@ -171,19 +171,28 @@ export class TensorUtils {
   /**
    * Activation functions
    */
-  static relu(tensor: TensorData): TensorData {
-    const result = tensor.data.map(x => Math.max(0, x));
-    return { ...tensor, data: result };
+  static relu(input: TensorData | number): TensorData | number {
+    if (typeof input === 'number') {
+      return Math.max(0, input);
+    }
+    const result = input.data.map(x => Math.max(0, x));
+    return { ...input, data: result };
   }
 
-  static sigmoid(tensor: TensorData): TensorData {
-    const result = tensor.data.map(x => 1 / (1 + Math.exp(-x)));
-    return { ...tensor, data: result };
+  static sigmoid(input: TensorData | number): TensorData | number {
+    if (typeof input === 'number') {
+      return 1 / (1 + Math.exp(-input));
+    }
+    const result = input.data.map(x => 1 / (1 + Math.exp(-x)));
+    return { ...input, data: result };
   }
 
-  static tanh(tensor: TensorData): TensorData {
-    const result = tensor.data.map(x => Math.tanh(x));
-    return { ...tensor, data: result };
+  static tanh(input: TensorData | number): TensorData | number {
+    if (typeof input === 'number') {
+      return Math.tanh(input);
+    }
+    const result = input.data.map(x => Math.tanh(x));
+    return { ...input, data: result };
   }
 
   static softmax(tensor: TensorData): TensorData {
@@ -233,24 +242,65 @@ export class TensorUtils {
     return variance;
   }
 
-  static std(tensor: TensorData): number {
-    return Math.sqrt(this.variance(tensor));
+  static std(input: TensorData | number[]): number {
+    if (Array.isArray(input)) {
+      const n = input.length;
+      if (n <= 1) return 0;
+      const mean = input.reduce((sum, x) => sum + x, 0) / n;
+      const variance = input.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / (n - 1); // Sample standard deviation
+      return Math.sqrt(variance);
+    }
+    const data = input.data;
+    const n = data.length;
+    if (n <= 1) return 0;
+    const mean = data.reduce((sum, x) => sum + x, 0) / n;
+    const variance = data.reduce((sum, x) => sum + Math.pow(x - mean, 2), 0) / (n - 1); // Sample standard deviation
+    return Math.sqrt(variance);
   }
 
-  static correlation(a: TensorData, b: TensorData): number {
-    this.validateSameShape(a, b);
+  static correlation(a: TensorData | number[], b: TensorData | number[]): number {
+    if (Array.isArray(a) && Array.isArray(b)) {
+      if (a.length !== b.length) {
+        throw new Error('Arrays must have the same length');
+      }
+      
+      const n = a.length;
+      const meanA = a.reduce((sum, val) => sum + val, 0) / n;
+      const meanB = b.reduce((sum, val) => sum + val, 0) / n;
+      
+      let numerator = 0;
+      let sumSquareA = 0;
+      let sumSquareB = 0;
+      
+      for (let i = 0; i < n; i++) {
+        const diffA = a[i] - meanA;
+        const diffB = b[i] - meanB;
+        
+        numerator += diffA * diffB;
+        sumSquareA += diffA * diffA;
+        sumSquareB += diffB * diffB;
+      }
+      
+      const denominator = Math.sqrt(sumSquareA * sumSquareB);
+      return denominator === 0 ? 0 : numerator / denominator;
+    }
     
-    const n = a.data.length;
-    const meanA = a.data.reduce((sum, x) => sum + x, 0) / n;
-    const meanB = b.data.reduce((sum, x) => sum + x, 0) / n;
+    // Handle tensor case
+    this.validateSameShape(a as TensorData, b as TensorData);
+    const tensorA = a as TensorData;
+    const tensorB = b as TensorData;
+    
+    const n = tensorA.data.length;
+    const meanA = tensorA.data.reduce((sum, x) => sum + x, 0) / n;
+    const meanB = tensorB.data.reduce((sum, x) => sum + x, 0) / n;
     
     let numerator = 0;
     let sumSquareA = 0;
     let sumSquareB = 0;
     
     for (let i = 0; i < n; i++) {
-      const diffA = a.data[i] - meanA;
-      const diffB = b.data[i] - meanB;
+      const diffA = tensorA.data[i] - meanA;
+      const diffB = tensorB.data[i] - meanB;
       
       numerator += diffA * diffB;
       sumSquareA += diffA * diffA;
@@ -314,6 +364,29 @@ export class TensorUtils {
       data: convertedData,
       dtype
     };
+  }
+
+  /**
+   * Create rolling windows from array data (static version for direct array input)
+   */
+  static createRollingWindows(data: number[], windowSize: number): number[][] {
+    const windows: number[][] = [];
+    for (let i = 0; i <= data.length - windowSize; i++) {
+      windows.push(data.slice(i, i + windowSize));
+    }
+    return windows;
+  }
+
+  /**
+   * Calculate moving average from array data (static version for direct array input)
+   */
+  static movingAverage(data: number[], windowSize: number): number[] {
+    const ma: number[] = [];
+    for (let i = windowSize - 1; i < data.length; i++) {
+      const sum = data.slice(i - windowSize + 1, i + 1).reduce((a, b) => a + b, 0);
+      ma.push(sum / windowSize);
+    }
+    return ma;
   }
 
   /**

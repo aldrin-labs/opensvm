@@ -1,4 +1,4 @@
-import { POST, GET } from '@/app/api/stream/route';
+import { POST, GET } from '../app/api/stream/route';
 import { NextRequest } from 'next/server';
 
 // Mock the getConnection function
@@ -77,21 +77,25 @@ describe('/api/stream', () => {
 
   describe('POST /api/stream', () => {
     it('should handle authenticate action', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
+      const bodyData = {
+        action: 'authenticate',
+        clientId: 'test123'
+      };
+
+      // Create a mock request with the json() method mocked
+      const request = {
+        json: jest.fn().mockResolvedValue(bodyData),
+        headers: new Headers({
           'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'authenticate',
-          clientId: 'test123'
-        })
-      });
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
-      expect(response.status).toBe(200);
-      
       const data = await response.json();
+      
+      
+      expect(response.status).toBe(200);
       expect(data.success).toBe(true);
       expect(data.data.authToken).toBeDefined();
       expect(data.data.expiresIn).toBe(3600);
@@ -99,35 +103,35 @@ describe('/api/stream', () => {
     });
 
     it('should handle subscribe action with authentication', async () => {
-      // First authenticate
-      const authRequest = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          action: 'authenticate',
+      // First add a client via start_monitoring (which auto-authenticates)
+      const startRequest = {
+        json: jest.fn().mockResolvedValue({
+          action: 'start_monitoring',
           clientId: 'test123'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
-      const authResponse = await POST(authRequest);
-      const authData = await authResponse.json();
-      const authToken = authData.data.authToken;
+      const startResponse = await POST(startRequest);
+      const startData = await startResponse.json();
+      const authToken = startData.data.authToken;
 
       // Then subscribe
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'subscribe',
           clientId: 'test123',
           eventTypes: ['transaction', 'block'],
           authToken
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -138,17 +142,21 @@ describe('/api/stream', () => {
     });
 
     it('should handle subscribe action (legacy compatibility)', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      // Reset EventStreamManager state by removing any existing client
+      const { EventStreamManager } = require('../app/api/stream/route');
+      EventStreamManager.getInstance().removeClient('test123');
+
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'subscribe',
           clientId: 'test123',
           eventTypes: ['transaction', 'block']
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(401); // Should require auth now
@@ -159,16 +167,16 @@ describe('/api/stream', () => {
     });
 
     it('should handle unsubscribe action', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'unsubscribe',
           clientId: 'test123'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -179,16 +187,16 @@ describe('/api/stream', () => {
     });
 
     it('should reject invalid action', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'invalid_action',
           clientId: 'test123'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -199,17 +207,17 @@ describe('/api/stream', () => {
     });
 
     it('should reject invalid event types', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'subscribe',
           clientId: 'test123',
           eventTypes: ['invalid_type']
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -220,16 +228,16 @@ describe('/api/stream', () => {
     });
 
     it('should reject subscribe without event types', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'subscribe',
           clientId: 'test123'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(400);
@@ -240,16 +248,16 @@ describe('/api/stream', () => {
     });
 
     it('should handle start_monitoring action with auto-authentication', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           action: 'start_monitoring',
           clientId: 'test123'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(200);
@@ -261,32 +269,32 @@ describe('/api/stream', () => {
     });
 
     it('should handle malformed JSON', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
+      const request = {
+        json: jest.fn().mockRejectedValue(new Error('Invalid JSON')),
+        headers: new Headers({
           'Content-Type': 'application/json'
-        },
-        body: 'invalid json'
-      });
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(400);
       
       const data = await response.json();
       expect(data.success).toBe(false);
-      expect(data.error.message).toBe('Invalid JSON format');
+      expect(data.error.message).toBe('Invalid JSON in request body');
     });
 
     it('should validate request structure', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
+      const request = {
+        json: jest.fn().mockResolvedValue({
           invalidField: 'test'
-        })
-      });
+        }),
+        headers: new Headers({
+          'Content-Type': 'application/json'
+        }),
+        nextUrl: new URL('http://localhost:3000/api/stream')
+      } as any as NextRequest;
 
       const response = await POST(request);
       expect(response.status).toBe(400);

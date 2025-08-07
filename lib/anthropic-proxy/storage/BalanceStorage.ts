@@ -3,6 +3,11 @@ import { UserBalance } from '../types/ProxyTypes';
 export class BalanceStorage {
   private balances = new Map<string, UserBalance>();
 
+  async initialize(): Promise<void> {
+    // Initialize the storage system - for in-memory storage, this is a no-op
+    // but could be used for database connections, file system setup, etc.
+  }
+
   async getBalance(userId: string): Promise<UserBalance | null> {
     return this.balances.get(userId) || null;
   }
@@ -67,5 +72,32 @@ export class BalanceStorage {
 
   async clear(): Promise<void> {
     this.balances.clear();
+  }
+
+  // Transaction logging methods
+  private transactions: Map<string, any> = new Map();
+
+  async logTransaction(transaction: {
+    id: string;
+    userId: string;
+    type: string;
+    amount: number;
+    balanceAfter: number;
+    timestamp: Date;
+    metadata?: Record<string, any>;
+  }): Promise<void> {
+    this.transactions.set(transaction.id, transaction);
+  }
+
+  async getTransactionHistory(userId: string): Promise<any[]> {
+    const userTransactions = Array.from(this.transactions.values())
+      .filter(tx => tx.userId === userId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    return userTransactions;
+  }
+
+  async getTransactionById(transactionId: string): Promise<any | null> {
+    return this.transactions.get(transactionId) || null;
   }
 }

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { 
-  MIN_TRANSFER_SOL, 
+import {
+  MIN_TRANSFER_SOL,
   MAX_TRANSFER_COUNT,
   isSpamAddress,
   isSpamToken,
@@ -10,7 +10,7 @@ import {
   AI_MAX_TOKENS,
   AI_TEMPERATURE,
   SPAM_TOKEN_KEYWORDS
-} from '@/lib/transaction-constants';
+} from '../../../lib/transaction-constants';
 
 export async function POST(request: Request) {
   try {
@@ -52,7 +52,7 @@ export async function POST(request: Request) {
 
     // If too many transactions were filtered, use the pre-filtered results (already limited to top 10)
     if (preFiltered.length < transactions.length * 0.5 || preFiltered.length <= 10) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         filteredTransactions: preFiltered,
         aiAnalysis: false,
         preFiltered: true,
@@ -185,7 +185,7 @@ Return only a JSON array of transaction IDs for the top ${MAX_TRANSFER_COUNT} tr
       filteredCount: filteredTransactions.length
     });
   } catch (error) {
-    console.error('Error filtering transactions:', error);
+    console.error('API: Error filtering transactions:', error);
     
     // Fallback to basic filtering if anything fails
     try {

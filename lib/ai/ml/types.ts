@@ -19,7 +19,8 @@ export interface TimeSeriesPoint {
 }
 
 export interface PredictionResult {
-  prediction: number;
+  value: number;
+  prediction: number; // Keep for backward compatibility
   confidence: number;
   timestamp: number;
   horizon: number; // prediction horizon in milliseconds
@@ -369,6 +370,8 @@ export interface ProcessingConfig {
 export interface RiskMetrics {
   value_at_risk: number; // VaR at 95% confidence
   conditional_value_at_risk: number; // CVaR
+  expected_shortfall: number; // Same as CVaR
+  maximum_drawdown: number;
   max_drawdown: number;
   sharpe_ratio: number;
   sortino_ratio: number;
@@ -385,4 +388,38 @@ export interface LiquidityMetrics {
   slippage_5_percent: number;
   volume_weighted_price: number;
   price_impact: number;
+}
+
+// Prediction Request Types
+export interface PredictionRequest {
+  asset: string;
+  prediction_type: 'price' | 'volatility' | 'volume' | 'sentiment';
+  time_horizon: '1hour' | '1day' | '1week' | '1month';
+  confidence_level: number;
+  include_risk_metrics?: boolean;
+  include_scenarios?: boolean;
+  include_market_sentiment?: boolean;
+  include_model_metrics?: boolean;
+}
+
+export interface PredictionResponse {
+  asset: string;
+  prediction_type: string;
+  predictions: PredictionResult[];
+  risk_metrics?: RiskMetrics;
+  market_context?: {
+    sentiment_score: number;
+    sentiment_impact: number;
+    volatility_regime: string;
+    liquidity_conditions: string;
+  };
+  model_metrics?: ModelMetrics;
+  scenarios?: PredictionScenario[];
+}
+
+export interface PredictionScenario {
+  name: string;
+  probability: number;
+  prediction: number;
+  conditions: string[];
 }

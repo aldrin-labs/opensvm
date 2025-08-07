@@ -1,8 +1,11 @@
 export interface AnthropicRequest {
   model: string;
-  messages: Array<{ role: string; content: string }>;
+  messages: Array<{ role: string; content: string | Array<{ type: string; text: string }> }>;
   max_tokens: number;
   temperature?: number;
+  top_p?: number;
+  stop_sequences?: string[];
+  system?: string;
   stream?: boolean;
 }
 
@@ -14,6 +17,7 @@ export interface AnthropicResponse {
   usage: { input_tokens: number; output_tokens: number };
   model: string;
   stop_reason?: string;
+  stop_sequence?: string | null;
 }
 
 export class AnthropicAPIError extends Error {
