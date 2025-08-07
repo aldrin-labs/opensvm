@@ -31,7 +31,7 @@
     "@duckdb/duckdb-wasm": "^1.29.1-dev132.0",
     "@flipsidecrypto/sdk": "^2.1.0",
     "@mlc-ai/web-llm": "^0.2.78",
-    "@mozilla/readability": "^0.5.0",
+    "@mozilla/readability": "^0.6.0",
     "@netlify/plugin-nextjs": "^5.11.0",
     "@qdrant/js-client-rest": "^1.13.0",
     "@radix-ui/react-avatar": "^1.1.10",
@@ -103,11 +103,7 @@
     "whatwg-url": "^5.0.0",
     "xstate": "^5.19.2",
     "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.23.0",
-    "ethers": "^6.13.0",
-    "bitcoin-core": "^4.2.0",
-    "@polygon/sdk": "^1.0.0",
-    "web3": "^4.15.0"
+    "zod-to-json-schema": "^3.23.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",
