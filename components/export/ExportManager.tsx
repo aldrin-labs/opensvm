@@ -55,7 +55,7 @@ function ExportJobCard({ job, onDownload, onRetry, onCancel, onDelete }: ExportJ
         return <Table className="w-4 h-4" />;
       case 'png':
       case 'svg':
-        return <Image className="w-4 h-4" />;
+        return <Image className="w-4 h-4" aria-label="Image format icon" />;
       default:
         return <FileText className="w-4 h-4" />;
     }

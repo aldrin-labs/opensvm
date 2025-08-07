@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback, useMemo } from 'react';
 import { useErrorHandling } from '@/lib/error-handling';
 import { useAccessibility } from '@/lib/accessibility';
 
@@ -72,26 +72,26 @@ const defaultCacheConfig: CacheConfig = {
 interface CacheContextType {
   config: CacheConfig;
   stats: CacheStats;
-  
+
   // Core cache operations
   get: <T>(key: string) => Promise<T | null>;
   set: <T>(key: string, data: T, options?: Partial<CacheItem>) => Promise<void>;
   has: (key: string) => Promise<boolean>;
   delete: (key: string) => Promise<boolean>;
   clear: (location?: CacheLocation) => Promise<void>;
-  
+
   // Advanced operations
   prefetch: (keys: string[], fetcher: (key: string) => Promise<any>) => Promise<void>;
   warmup: (keys: string[], fetcher: (key: string) => Promise<any>) => Promise<void>;
   invalidate: (pattern: string | RegExp) => Promise<void>;
-  
+
   // Configuration
   updateConfig: (newConfig: Partial<CacheConfig>) => void;
-  
+
   // Analytics
   getStats: () => CacheStats;
   resetStats: () => void;
-  
+
   // Maintenance
   cleanup: () => Promise<void>;
   optimize: () => Promise<void>;
@@ -208,7 +208,7 @@ class IndexedDBCache {
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        
+
         if (!db.objectStoreNames.contains('cache')) {
           const store = db.createObjectStore('cache', { keyPath: 'key' });
           store.createIndex('timestamp', 'timestamp');
@@ -220,7 +220,7 @@ class IndexedDBCache {
 
   async get<T>(key: string): Promise<CacheItem<T> | null> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readonly');
       const store = transaction.objectStore('cache');
@@ -244,10 +244,10 @@ class IndexedDBCache {
         // Update access metadata
         item.metadata.accessCount++;
         item.metadata.lastAccessed = Date.now();
-        
+
         // Save updated metadata
         this.set(key, item);
-        
+
         resolve(item);
       };
     });
@@ -255,7 +255,7 @@ class IndexedDBCache {
 
   async set<T>(key: string, item: CacheItem<T>): Promise<void> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readwrite');
       const store = transaction.objectStore('cache');
@@ -268,7 +268,7 @@ class IndexedDBCache {
 
   async has(key: string): Promise<boolean> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readonly');
       const store = transaction.objectStore('cache');
@@ -281,7 +281,7 @@ class IndexedDBCache {
 
   async delete(key: string): Promise<boolean> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readwrite');
       const store = transaction.objectStore('cache');
@@ -294,7 +294,7 @@ class IndexedDBCache {
 
   async clear(): Promise<void> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readwrite');
       const store = transaction.objectStore('cache');
@@ -307,7 +307,7 @@ class IndexedDBCache {
 
   async getAllKeys(): Promise<string[]> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readonly');
       const store = transaction.objectStore('cache');
@@ -320,7 +320,7 @@ class IndexedDBCache {
 
   async getSize(): Promise<number> {
     if (!this.db) await this.init();
-    
+
     return new Promise((resolve, reject) => {
       const transaction = this.db!.transaction(['cache'], 'readonly');
       const store = transaction.objectStore('cache');
@@ -362,7 +362,7 @@ class StorageCache {
       // Update access metadata
       parsed.metadata.accessCount++;
       parsed.metadata.lastAccessed = Date.now();
-      
+
       // Save updated metadata
       this.storage.setItem(this.prefix + key, JSON.stringify(parsed));
 
@@ -421,7 +421,7 @@ class StorageCache {
   async getSize(): Promise<number> {
     let totalSize = 0;
     const keys = await this.getAllKeys();
-    
+
     for (const key of keys) {
       try {
         const item = this.storage.getItem(this.prefix + key);
@@ -433,13 +433,13 @@ class StorageCache {
         // Skip invalid items
       }
     }
-    
+
     return totalSize;
   }
 
   private async cleanup(): Promise<void> {
     const items: Array<{ key: string; item: CacheItem }> = [];
-    
+
     // Collect all cache items
     for (let i = 0; i < this.storage.length; i++) {
       const key = this.storage.key(i);
@@ -483,11 +483,11 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
   const { reportError } = useErrorHandling();
   const { announceToScreenReader } = useAccessibility();
 
-  // Cache implementations
-  const memoryCache = new MemoryCache(config.maxMemorySize);
-  const indexedDBCache = new IndexedDBCache();
-  const localStorageCache = new StorageCache(localStorage);
-  const sessionStorageCache = new StorageCache(sessionStorage);
+  // Cache implementations - memoize to prevent recreation on every render
+  const memoryCache = useMemo(() => new MemoryCache(config.maxMemorySize), [config.maxMemorySize]);
+  const indexedDBCache = useMemo(() => new IndexedDBCache(), []);
+  const localStorageCache = useMemo(() => new StorageCache(localStorage), []);
+  const sessionStorageCache = useMemo(() => new StorageCache(sessionStorage), []);
 
   // Initialize IndexedDB on mount
   useEffect(() => {
@@ -496,23 +496,24 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
         reportError(error, { component: 'CacheProvider', operation: 'indexedDB-init' });
       });
     }
-  }, [config.locations, reportError]);
+  }, [config.locations, reportError, indexedDBCache]);
 
-  const getCacheByLocation = (location: CacheLocation) => {
+  // getCacheByLocation function memoized to prevent recreation
+  const getCacheByLocation = useCallback((location: CacheLocation) => {
     switch (location) {
       case 'memory': return memoryCache;
       case 'localStorage': return localStorageCache;
       case 'sessionStorage': return sessionStorageCache;
       case 'indexedDB': return indexedDBCache;
     }
-  };
+  }, [memoryCache, localStorageCache, sessionStorageCache, indexedDBCache]);
 
   const updateStats = useCallback((isHit: boolean, responseTime: number) => {
     setStats(prev => {
       const totalRequests = prev.totalRequests + 1;
       const totalHits = prev.totalHits + (isHit ? 1 : 0);
       const totalMisses = prev.totalMisses + (isHit ? 0 : 1);
-      
+
       return {
         ...prev,
         totalRequests,
@@ -531,10 +532,10 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
 
   const compress = async (data: any): Promise<{ data: any; compressed: boolean }> => {
     if (!config.enableCompression) return { data, compressed: false };
-    
+
     const size = calculateSize(data);
     if (size < config.compressionThreshold) return { data, compressed: false };
-    
+
     // Simple compression simulation - in real implementation, use actual compression
     return { data: JSON.stringify(data), compressed: true };
   };
@@ -554,7 +555,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
       for (const location of config.locations) {
         const cache = getCacheByLocation(location);
         const item = await cache.get<T>(key);
-        
+
         if (item) {
           const decompressed = await decompress(item.data, item.compressed);
           found = true;
@@ -562,7 +563,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
           return decompressed;
         }
       }
-      
+
       updateStats(false, performance.now() - startTime);
       return null;
     } catch (error) {
@@ -576,7 +577,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
     try {
       const { data: compressedData, compressed } = await compress(data);
       const size = calculateSize(compressedData);
-      
+
       const item: CacheItem<T> = {
         key,
         data: compressedData,
@@ -600,9 +601,9 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
       const promises = config.locations.map(location =>
         getCacheByLocation(location).set(key, item)
       );
-      
+
       await Promise.allSettled(promises);
-      
+
       // Update stats
       setStats(prev => ({
         ...prev,
@@ -629,23 +630,23 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
   const deleteItem = async (key: string): Promise<boolean> => {
     try {
       let deleted = false;
-      
+
       const promises = config.locations.map(async location => {
         const cache = getCacheByLocation(location);
         const result = await cache.delete(key);
         if (result) deleted = true;
         return result;
       });
-      
+
       await Promise.allSettled(promises);
-      
+
       if (deleted) {
         setStats(prev => ({
           ...prev,
           itemCount: Math.max(0, prev.itemCount - 1)
         }));
       }
-      
+
       return deleted;
     } catch (error) {
       reportError(error as Error, { component: 'Cache', operation: 'delete', key });
@@ -656,13 +657,13 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
   const clear = async (location?: CacheLocation): Promise<void> => {
     try {
       const locations = location ? [location] : config.locations;
-      
+
       const promises = locations.map(loc =>
         getCacheByLocation(loc).clear()
       );
-      
+
       await Promise.allSettled(promises);
-      
+
       if (!location) {
         setStats(prev => ({
           ...prev,
@@ -670,7 +671,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
           memoryUsage: 0,
           storageUsage: 0
         }));
-        
+
         announceToScreenReader('Cache cleared successfully', 'polite');
       }
     } catch (error) {
@@ -680,18 +681,18 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
 
   const prefetch = async (keys: string[], fetcher: (key: string) => Promise<any>): Promise<void> => {
     if (!config.enablePrefetch) return;
-    
+
     const promises = keys.map(async key => {
       if (await has(key)) return; // Skip if already cached
-      
+
       try {
         const data = await fetcher(key);
-        await set(key, data, { metadata: { source: 'prefetch' } });
+        await set(key, data, { metadata: { source: 'prefetch', accessCount: 0, lastAccessed: Date.now() } });
       } catch (error) {
         // Ignore prefetch errors
       }
     });
-    
+
     await Promise.allSettled(promises);
   };
 
@@ -700,19 +701,19 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
     const promises = keys.map(async key => {
       try {
         const data = await fetcher(key);
-        await set(key, data, { metadata: { source: 'warmup' } });
+        await set(key, data, { metadata: { source: 'warmup', accessCount: 0, lastAccessed: Date.now() } });
       } catch (error) {
         reportError(error as Error, { component: 'Cache', operation: 'warmup', key });
       }
     });
-    
+
     await Promise.allSettled(promises);
   };
 
   const invalidate = async (pattern: string | RegExp): Promise<void> => {
     try {
       const allKeys: string[] = [];
-      
+
       // Collect all keys from all cache locations
       for (const location of config.locations) {
         const cache = getCacheByLocation(location);
@@ -721,7 +722,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
           allKeys.push(...keys);
         }
       }
-      
+
       // Filter keys based on pattern
       const keysToDelete = allKeys.filter(key => {
         if (typeof pattern === 'string') {
@@ -730,25 +731,25 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
           return pattern.test(key);
         }
       });
-      
+
       // Delete matching keys
       const promises = keysToDelete.map(key => deleteItem(key));
       await Promise.allSettled(promises);
-      
+
       announceToScreenReader(`Invalidated ${keysToDelete.length} cache entries`, 'polite');
     } catch (error) {
       reportError(error as Error, { component: 'Cache', operation: 'invalidate', pattern });
     }
   };
 
-  const cleanup = async (): Promise<void> => {
+  const cleanup = useCallback(async (): Promise<void> => {
     try {
       // Remove expired items from all cache locations
       for (const location of config.locations) {
         const cache = getCacheByLocation(location);
         if (cache.getAllKeys) {
           const keys = await cache.getAllKeys();
-          
+
           for (const key of keys) {
             const item = await cache.get(key);
             if (item && Date.now() > item.timestamp + item.ttl) {
@@ -757,28 +758,28 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
           }
         }
       }
-      
+
       announceToScreenReader('Cache cleanup completed', 'polite');
     } catch (error) {
       reportError(error as Error, { component: 'Cache', operation: 'cleanup' });
     }
-  };
+  }, [config.locations, getCacheByLocation, announceToScreenReader, reportError]);
 
   const optimize = async (): Promise<void> => {
     try {
       // Run cleanup first
       await cleanup();
-      
+
       // Update memory usage stats
       const memoryUsage = memoryCache.getSize();
       const itemCount = memoryCache.getItemCount();
-      
+
       setStats(prev => ({
         ...prev,
         memoryUsage,
         itemCount
       }));
-      
+
       announceToScreenReader('Cache optimization completed', 'polite');
     } catch (error) {
       reportError(error as Error, { component: 'Cache', operation: 'optimize' });
@@ -792,7 +793,7 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
     }, 5 * 60 * 1000); // Every 5 minutes
 
     return () => clearInterval(interval);
-  }, []);
+  }, [cleanup]);
 
   const contextValue: CacheContextType = {
     config,

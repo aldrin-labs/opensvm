@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState, useRef } from 'react';
+
+export const dynamic = 'force-dynamic';
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from '@/components/ui/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -109,4 +111,4 @@ export default function ScanPage() {
             </Card>
         </div>
     );
-} 
+}

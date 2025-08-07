@@ -485,7 +485,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         clearTimeout(retryTimeout);
       }
     };
-  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, filters.sortOrder, shouldShowEvent]);
+  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, filters.sortOrder, shouldShowEvent, connectionStatus, eventSource, retryCount, retryTimeout]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {

@@ -465,7 +465,7 @@ export function createRuntimeTestSuite(): PerformanceTestSuite {
           document.body.appendChild(element);
           
           // Force reflow
-          element.offsetHeight;
+          void element.offsetHeight;
           
           const endTime = performance.now();
           const value = endTime - startTime;

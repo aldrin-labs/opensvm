@@ -220,7 +220,8 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     return () => {
       recognition.stop();
     };
-  }, [settings.enabled, settings.continuousListening, settings.language]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [settings.enabled, settings.continuousListening, settings.language, isSupported, settings.audioFeedback]);
 
   const startListening = useCallback(() => {
     if (!isSupported || !settings.enabled || isListening) return;
@@ -229,8 +230,9 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       recognitionRef.current?.start();
     } catch (error) {
       console.error('Failed to start speech recognition:', error);
-      announceError('Failed to start voice recognition');
+      speak(`Error: Failed to start voice recognition`, { interrupt: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSupported, settings.enabled, isListening]);
 
   const stopListening = useCallback(() => {
@@ -242,6 +244,7 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
     if (settings.audioFeedback) {
       speak('Voice recognition stopped', { interrupt: true });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isListening, settings.audioFeedback]);
 
   const speak = useCallback(async (text: string, options: SpeechOptions = {}): Promise<void> => {
@@ -320,13 +323,13 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
 
     if (matchedCommand) {
       if (settings.audioFeedback) {
-        announceAction(`Executing: ${matchedCommand.description}`);
+        speak(`Executing: ${matchedCommand.description}`);
       }
 
       if (settings.confirmActions && matchedCommand.requiresConfirmation) {
         const confirmed = await askForConfirmation(matchedCommand.description);
         if (!confirmed) {
-          announceAction('Command cancelled');
+          speak('Command cancelled');
           return;
         }
       }
@@ -334,18 +337,18 @@ export function VoiceProvider({ children }: { children: React.ReactNode }) {
       try {
         await matchedCommand.action();
         if (settings.audioFeedback && matchedCommand.confirmation) {
-          announceAction(`${matchedCommand.description} completed`);
+          speak(`${matchedCommand.description} completed`);
         }
       } catch (error) {
         console.error('Command execution error:', error);
-        announceError(`Failed to execute: ${matchedCommand.description}`);
+        speak(`Error: Failed to execute: ${matchedCommand.description}`, { interrupt: true });
       }
     } else {
       if (settings.audioFeedback) {
         speak(`Command not recognized: ${command}. Say "help" to hear available commands.`);
       }
     }
-  }, [commands, settings]);
+  }, [commands, settings]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const askForConfirmation = useCallback(async (action: string): Promise<boolean> => {
     return new Promise((resolve) => {

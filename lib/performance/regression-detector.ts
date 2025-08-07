@@ -1,5 +1,5 @@
 import { PerformanceMetrics, PerformanceAlert } from './types';
-import { logger } from '../logging/logger';
+import logger from '../logging/logger';
 
 export interface PerformanceBaseline {
   id: string;
@@ -152,8 +152,10 @@ export class PerformanceRegressionDetector {
     if (this.currentMetricsBuffer.length < this.config.minSampleSizeForBaseline) {
       logger.warn('Insufficient metrics for baseline creation', {
         component: 'RegressionDetector',
-        bufferSize: this.currentMetricsBuffer.length,
-        minRequired: this.config.minSampleSizeForBaseline
+        metadata: {
+          bufferSize: this.currentMetricsBuffer.length,
+          minRequired: this.config.minSampleSizeForBaseline
+        }
       });
       return null;
     }
@@ -173,9 +175,11 @@ export class PerformanceRegressionDetector {
 
     logger.info('Performance baseline created', {
       component: 'RegressionDetector',
-      baselineId: baseline.id,
-      sampleSize: baseline.sampleSize,
-      environment
+      metadata: {
+        baselineId: baseline.id,
+        sampleSize: baseline.sampleSize,
+        environment
+      }
     });
 
     return baseline;
@@ -183,15 +187,13 @@ export class PerformanceRegressionDetector {
 
   private calculateBaselineMetrics(): PerformanceBaseline['metrics'] {
     const fps = this.currentMetricsBuffer.map(m => m.fps).filter(v => v > 0);
-    const memory = this.currentMetricsBuffer.map(m => m.memory?.usedJSHeapSize || 0).filter(v => v > 0);
-    const apiTimes = this.currentMetricsBuffer.flatMap(m => 
-      Object.values(m.apiResponseTimes || {})
-    ).filter(v => v > 0);
-    const renderTimes = this.currentMetricsBuffer.map(m => m.renderTime || 0).filter(v => v > 0);
+    const memory = this.currentMetricsBuffer.map(m => m.memoryUsage?.used || 0).filter(v => v > 0);
+    const apiTimes = this.currentMetricsBuffer.map(m => m.apiResponseTime).filter(v => v > 0);
+    const renderTimes = this.currentMetricsBuffer.map(m => m.graphRenderTime || 0).filter(v => v > 0);
 
-    const webVitalsLcp = this.currentMetricsBuffer.map(m => m.webVitals?.lcp || 0).filter(v => v > 0);
-    const webVitalsFid = this.currentMetricsBuffer.map(m => m.webVitals?.fid || 0).filter(v => v > 0);
-    const webVitalsCls = this.currentMetricsBuffer.map(m => m.webVitals?.cls || 0).filter(v => v > 0);
+    const webVitalsLcp = this.currentMetricsBuffer.map(m => m.largestContentfulPaint || 0).filter(v => v > 0);
+    const webVitalsFid = this.currentMetricsBuffer.map(m => m.timeToInteractive || 0).filter(v => v > 0);
+    const webVitalsCls = this.currentMetricsBuffer.map(m => m.cumulativeLayoutShift || 0).filter(v => v > 0);
 
     return {
       fps: this.calculateStatistics(fps),
@@ -251,7 +253,9 @@ export class PerformanceRegressionDetector {
 
     logger.info('Regression detection started', {
       component: 'RegressionDetector',
-      interval: this.config.detectionIntervalMs
+      metadata: {
+        interval: this.config.detectionIntervalMs
+      }
     });
   }
 
@@ -290,12 +294,12 @@ export class PerformanceRegressionDetector {
 
   private calculateCurrentStats(metrics: PerformanceMetrics[]): any {
     const fps = metrics.map(m => m.fps).filter(v => v > 0);
-    const memory = metrics.map(m => m.memory?.usedJSHeapSize || 0).filter(v => v > 0);
-    const apiTimes = metrics.flatMap(m => Object.values(m.apiResponseTimes || {})).filter(v => v > 0);
-    const renderTimes = metrics.map(m => m.renderTime || 0).filter(v => v > 0);
-    const lcp = metrics.map(m => m.webVitals?.lcp || 0).filter(v => v > 0);
-    const fid = metrics.map(m => m.webVitals?.fid || 0).filter(v => v > 0);
-    const cls = metrics.map(m => m.webVitals?.cls || 0).filter(v => v > 0);
+    const memory = metrics.map(m => m.memoryUsage?.used || 0).filter(v => v > 0);
+    const apiTimes = metrics.map(m => m.apiResponseTime).filter(v => v > 0);
+    const renderTimes = metrics.map(m => m.graphRenderTime || 0).filter(v => v > 0);
+    const lcp = metrics.map(m => m.largestContentfulPaint || 0).filter(v => v > 0);
+    const fid = metrics.map(m => m.timeToInteractive || 0).filter(v => v > 0);
+    const cls = metrics.map(m => m.cumulativeLayoutShift || 0).filter(v => v > 0);
 
     return {
       fps: this.calculateMean(fps),
@@ -384,11 +388,13 @@ export class PerformanceRegressionDetector {
   private handleRegressionDetection(detection: RegressionDetection): void {
     logger.warn('Performance regression detected', {
       component: 'RegressionDetector',
-      metric: detection.metric,
-      degradation: `${detection.degradationPercent.toFixed(2)}%`,
-      severity: detection.severity,
-      currentValue: detection.currentValue,
-      baselineValue: detection.baselineValue
+      metadata: {
+        metric: detection.metric,
+        degradation: `${detection.degradationPercent.toFixed(2)}%`,
+        severity: detection.severity,
+        currentValue: detection.currentValue,
+        baselineValue: detection.baselineValue
+      }
     });
 
     // Notify listeners
@@ -396,7 +402,13 @@ export class PerformanceRegressionDetector {
       try {
         listener(detection);
       } catch (error) {
-        logger.error('Error in regression detection listener', error);
+        logger.error('Error in regression detection listener', {
+          component: 'RegressionDetector',
+          metadata: {
+            error: error instanceof Error ? error.message : String(error),
+            errorStack: error instanceof Error ? error.stack : undefined
+          }
+        });
       }
     });
 
@@ -444,7 +456,13 @@ export class PerformanceRegressionDetector {
         localStorage.setItem('opensvm_performance_baselines', JSON.stringify(baselines));
       }
     } catch (error) {
-      logger.error('Failed to save baselines to storage', error);
+      logger.error('Failed to save baselines to storage', {
+        component: 'RegressionDetector',
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined
+        }
+      });
     }
   }
 
@@ -461,7 +479,13 @@ export class PerformanceRegressionDetector {
         }
       }
     } catch (error) {
-      logger.error('Failed to load baselines from storage', error);
+      logger.error('Failed to load baselines from storage', {
+        component: 'RegressionDetector',
+        metadata: {
+          error: error instanceof Error ? error.message : String(error),
+          errorStack: error instanceof Error ? error.stack : undefined
+        }
+      });
     }
   }
 

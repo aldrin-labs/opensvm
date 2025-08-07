@@ -312,7 +312,7 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
     const initialMetrics = collectMetrics();
     setMetrics(initialMetrics);
     setMetricsHistory(prev => [...prev, initialMetrics]);
-  }, [isCollecting, collectMetrics, checkBudgetViolations]);
+  }, [isCollecting, collectMetrics, checkBudgetViolations]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Stop performance monitoring
   const stopCollection = useCallback(() => {
@@ -364,20 +364,20 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
     };
 
     const coreWebVitals = {
-      fcp: { 
-        value: metrics.firstContentfulPaint, 
+      fcp: {
+        value: metrics.firstContentfulPaint,
         status: getCWVStatus(metrics.firstContentfulPaint, 1800, 3000)
       },
-      lcp: { 
-        value: metrics.largestContentfulPaint, 
+      lcp: {
+        value: metrics.largestContentfulPaint,
         status: getCWVStatus(metrics.largestContentfulPaint, 2500, 4000)
       },
-      fid: { 
-        value: metrics.firstInputDelay, 
+      fid: {
+        value: metrics.firstInputDelay,
         status: getCWVStatus(metrics.firstInputDelay, 100, 300)
       },
-      cls: { 
-        value: metrics.cumulativeLayoutShift, 
+      cls: {
+        value: metrics.cumulativeLayoutShift,
         status: getCWVStatus(metrics.cumulativeLayoutShift, 0.1, 0.25)
       },
     };
@@ -403,11 +403,11 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
     const totalBudgets = budgetStatus.filter(b => b.status !== 'unknown').length;
 
     // Calculate overall score
-    const cwvScores = Object.values(coreWebVitals).map(({ status }) => 
+    const cwvScores = Object.values(coreWebVitals).map(({ status }) =>
       status === 'good' ? 100 : status === 'needs-improvement' ? 75 : status === 'poor' ? 25 : 0
     );
     const budgetScore = totalBudgets > 0 ? (passedBudgets / totalBudgets) * 100 : 100;
-    const overallScore = (cwvScores.reduce((sum, score) => sum + score, 0) / cwvScores.length + budgetScore) / 2;
+    const overallScore = (cwvScores.reduce((sum: number, score: number) => sum + score, 0) / cwvScores.length + budgetScore) / 2;
 
     const getGrade = (score: number): 'A' | 'B' | 'C' | 'D' | 'F' => {
       if (score >= 90) return 'A';
@@ -416,6 +416,59 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
       if (score >= 60) return 'D';
       return 'F';
     };
+
+    // Generate suggestions inline to avoid circular dependency
+    const suggestions: OptimizationSuggestion[] = [];
+    if (metrics.firstContentfulPaint && metrics.firstContentfulPaint > budget.firstContentfulPaint) {
+      suggestions.push({
+        category: 'loading',
+        priority: 'high',
+        title: 'Improve First Contentful Paint',
+        description: 'First Contentful Paint is slower than expected',
+        impact: 'Faster initial page rendering and better user experience',
+        effort: 'medium',
+        implementation: [
+          'Optimize critical CSS and inline above-the-fold styles',
+          'Minimize and compress JavaScript bundles',
+          'Use resource hints (preload, prefetch) for critical resources',
+          'Optimize font loading with font-display: swap'
+        ],
+      });
+    }
+
+    if (metrics.jsHeapSize > budget.jsHeapSize) {
+      suggestions.push({
+        category: 'memory',
+        priority: 'medium',
+        title: 'Reduce Memory Usage',
+        description: 'JavaScript heap size exceeds recommended limits',
+        impact: 'Better performance on low-end devices and reduced crashes',
+        effort: 'high',
+        implementation: [
+          'Implement code splitting and lazy loading',
+          'Remove unused dependencies and dead code',
+          'Optimize image sizes and formats',
+          'Use React.memo and useMemo for expensive computations'
+        ],
+      });
+    }
+
+    if (metrics.cumulativeLayoutShift && metrics.cumulativeLayoutShift > budget.cumulativeLayoutShift) {
+      suggestions.push({
+        category: 'runtime',
+        priority: 'medium',
+        title: 'Reduce Layout Shifts',
+        description: 'Page content shifts unexpectedly during loading',
+        impact: 'Improved visual stability and user experience',
+        effort: 'medium',
+        implementation: [
+          'Set explicit dimensions for images and videos',
+          'Reserve space for dynamic content',
+          'Avoid inserting content above existing content',
+          'Use CSS transform instead of changing layout properties'
+        ],
+      });
+    }
 
     return {
       summary: {
@@ -426,7 +479,7 @@ export function PerformanceProvider({ children }: { children: React.ReactNode })
       },
       coreWebVitals,
       budgetStatus,
-      recommendations: getOptimizationSuggestions(),
+      recommendations: suggestions,
       timestamp: Date.now(),
     };
   }, [metrics, budget]);

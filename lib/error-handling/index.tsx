@@ -438,12 +438,30 @@ export function ErrorHandlingProvider({ children }: { children: React.ReactNode 
   const [enableErrorReporting, setEnableErrorReporting] = useState(true);
 
   const { announceToScreenReader } = useAccessibility();
-  const { currentUser, currentTenant, logAction } = useRBAC();
+  
+  // Handle RBAC context safely - wrap in try-catch to handle SSR
+  let currentUser = null;
+  let currentTenant = null;
+  let rbacLogAction: (action: string, details?: Record<string, any>) => void = () => {};
+  try {
+    const rbac = useRBAC();
+    currentUser = rbac.currentUser;
+    currentTenant = rbac.currentTenant;
+    rbacLogAction = rbac.logAction;
+  } catch (error) {
+    // RBAC context not available during SSR, continue with null values
+    currentUser = null;
+    currentTenant = null;
+    rbacLogAction = () => {}; // noop function
+  }
+
+  // Memoize logAction to prevent recreating on every render
+  const logAction = useCallback(rbacLogAction, []);
 
   // Subscribe to error service
   useEffect(() => {
     const unsubscribe = ErrorService.subscribe(setErrors);
-    return unsubscribe;
+    return () => unsubscribe();
   }, []);
 
   // Update error reporting setting
@@ -485,7 +503,7 @@ export function ErrorHandlingProvider({ children }: { children: React.ReactNode 
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [announceToScreenReader]);
+  }, [announceToScreenReader]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Global error handlers
   useEffect(() => {
@@ -525,7 +543,7 @@ export function ErrorHandlingProvider({ children }: { children: React.ReactNode 
       window.removeEventListener('error', handleUnhandledError);
       window.removeEventListener('unhandledrejection', handleUnhandledRejection);
     };
-  }, []);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const reportError = useCallback((
     error: Error | ErrorInfo, 

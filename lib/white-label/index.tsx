@@ -12,7 +12,7 @@ export interface BrandingConfig {
   companyLogoLight?: string; // Alternative logo for light themes
   companyLogoDark?: string;  // Alternative logo for dark themes
   favicon: string;
-  
+
   // Colors and Theming
   primaryColor: string;
   secondaryColor: string;
@@ -22,10 +22,10 @@ export interface BrandingConfig {
   textColor: string;
   mutedTextColor: string;
   borderColor: string;
-  
+
   // Custom CSS Variables
   customCSS?: Record<string, string>;
-  
+
   // Typography
   fontFamily: string;
   headingFontFamily?: string;
@@ -39,7 +39,7 @@ export interface BrandingConfig {
     '3xl': string;
     '4xl': string;
   };
-  
+
   // Layout
   borderRadius: string;
   spacing: {
@@ -50,7 +50,7 @@ export interface BrandingConfig {
     xl: string;
     '2xl': string;
   };
-  
+
   // Shadows
   shadows: {
     sm: string;
@@ -63,7 +63,7 @@ export interface BrandingConfig {
 export interface CustomizationConfig {
   // Branding
   branding: BrandingConfig;
-  
+
   // Feature Customization
   features: {
     showBranding: boolean;
@@ -74,7 +74,7 @@ export interface CustomizationConfig {
     customLoginPage: boolean;
     customDashboard: boolean;
   };
-  
+
   // Content Customization
   content: {
     welcomeMessage?: string;
@@ -85,12 +85,12 @@ export interface CustomizationConfig {
     footerText?: string;
     copyrightText?: string;
   };
-  
+
   // Domain and URLs
   domain?: string;
   customDomain?: string;
   baseUrl?: string;
-  
+
   // Advanced Customization
   customComponents?: {
     header?: React.ComponentType;
@@ -99,7 +99,7 @@ export interface CustomizationConfig {
     loginForm?: React.ComponentType;
     dashboard?: React.ComponentType;
   };
-  
+
   // Metadata
   createdAt: Date;
   updatedAt: Date;
@@ -175,27 +175,27 @@ interface WhiteLabelContextType {
   config: CustomizationConfig;
   isLoading: boolean;
   error: Error | null;
-  
+
   // Configuration management
   updateConfig: (updates: Partial<CustomizationConfig>) => Promise<void>;
   updateBranding: (branding: Partial<BrandingConfig>) => Promise<void>;
   resetToDefaults: () => Promise<void>;
-  
+
   // Preview mode
   previewMode: boolean;
   previewConfig: CustomizationConfig | null;
   enablePreview: (config: CustomizationConfig) => void;
   disablePreview: () => void;
-  
+
   // Theme application
   applyTheme: () => void;
   injectCustomCSS: (css: string) => void;
-  
+
   // Utilities
   getComputedStyles: () => Record<string, string>;
   exportConfig: () => string;
   importConfig: (configJson: string) => Promise<void>;
-  
+
   // Tenant-specific
   switchTenant: (tenantId: string) => Promise<void>;
   getTenantConfig: (tenantId: string) => Promise<CustomizationConfig | null>;
@@ -209,10 +209,10 @@ class ConfigurationStore {
   private static readonly TENANT_CONFIG_PREFIX = 'opensvm_tenant_config_';
 
   static async saveConfig(config: CustomizationConfig, tenantId?: string): Promise<void> {
-    const key = tenantId 
+    const key = tenantId
       ? `${this.TENANT_CONFIG_PREFIX}${tenantId}`
       : this.STORAGE_KEY;
-    
+
     try {
       if (typeof window !== 'undefined') {
         localStorage.setItem(key, JSON.stringify({
@@ -220,7 +220,7 @@ class ConfigurationStore {
           updatedAt: new Date().toISOString(),
         }));
       }
-      
+
       // Also save to server if tenant-specific
       if (tenantId) {
         await fetch('/api/white-label/config', {
@@ -244,10 +244,10 @@ class ConfigurationStore {
   }
 
   static async loadConfig(tenantId?: string): Promise<CustomizationConfig> {
-    const key = tenantId 
+    const key = tenantId
       ? `${this.TENANT_CONFIG_PREFIX}${tenantId}`
       : this.STORAGE_KEY;
-    
+
     try {
       // Try server first for tenant configs
       if (tenantId) {
@@ -266,7 +266,7 @@ class ConfigurationStore {
           console.warn('Failed to load config from server, falling back to local storage');
         }
       }
-      
+
       // Fallback to localStorage
       if (typeof window !== 'undefined') {
         const stored = localStorage.getItem(key);
@@ -280,7 +280,7 @@ class ConfigurationStore {
           };
         }
       }
-      
+
       return { ...DEFAULT_CUSTOMIZATION_CONFIG };
     } catch (error) {
       console.error('Failed to load white-label configuration:', error);
@@ -289,14 +289,14 @@ class ConfigurationStore {
   }
 
   static async deleteConfig(tenantId?: string): Promise<void> {
-    const key = tenantId 
+    const key = tenantId
       ? `${this.TENANT_CONFIG_PREFIX}${tenantId}`
       : this.STORAGE_KEY;
-    
+
     if (typeof window !== 'undefined') {
       localStorage.removeItem(key);
     }
-    
+
     if (tenantId) {
       try {
         await fetch(`/api/white-label/config/${tenantId}`, {
@@ -325,10 +325,10 @@ class StyleInjector {
     // Create new style element
     this.styleElement = document.createElement('style');
     this.styleElement.setAttribute('data-white-label-theme', 'true');
-    
+
     const cssVariables = this.generateCSSVariables(config);
     this.styleElement.textContent = cssVariables;
-    
+
     document.head.appendChild(this.styleElement);
   }
 
@@ -344,7 +344,7 @@ class StyleInjector {
     this.customStyleElement = document.createElement('style');
     this.customStyleElement.setAttribute('data-white-label-custom', 'true');
     this.customStyleElement.textContent = css;
-    
+
     document.head.appendChild(this.customStyleElement);
   }
 
@@ -359,11 +359,11 @@ class StyleInjector {
       '--foreground': branding.textColor,
       '--muted-foreground': branding.mutedTextColor,
       '--border': branding.borderColor,
-      
+
       // Typography
       '--font-family': branding.fontFamily,
       '--font-family-heading': branding.headingFontFamily || branding.fontFamily,
-      
+
       // Font sizes
       '--text-xs': branding.fontSize.xs,
       '--text-sm': branding.fontSize.sm,
@@ -373,7 +373,7 @@ class StyleInjector {
       '--text-2xl': branding.fontSize['2xl'],
       '--text-3xl': branding.fontSize['3xl'],
       '--text-4xl': branding.fontSize['4xl'],
-      
+
       // Spacing
       '--spacing-xs': branding.spacing.xs,
       '--spacing-sm': branding.spacing.sm,
@@ -381,16 +381,16 @@ class StyleInjector {
       '--spacing-lg': branding.spacing.lg,
       '--spacing-xl': branding.spacing.xl,
       '--spacing-2xl': branding.spacing['2xl'],
-      
+
       // Border radius
       '--radius': branding.borderRadius,
-      
+
       // Shadows
       '--shadow-sm': branding.shadows.sm,
       '--shadow-md': branding.shadows.md,
       '--shadow-lg': branding.shadows.lg,
       '--shadow-xl': branding.shadows.xl,
-      
+
       // Custom CSS Variables
       ...branding.customCSS,
     };
@@ -432,23 +432,34 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   const [previewMode, setPreviewMode] = useState(false);
   const [previewConfig, setPreviewConfig] = useState<CustomizationConfig | null>(null);
 
-  const { currentTenant } = useRBAC();
   const { t } = useI18n();
+
+  // Handle RBAC context safely - wrap in try-catch to handle SSR
+  let currentTenant = null;
+  try {
+    const rbac = useRBAC();
+    currentTenant = rbac.currentTenant;
+  } catch (error) {
+    // RBAC context not available during SSR, continue with null tenant
+    currentTenant = null;
+  }
 
   // Load configuration on mount and tenant change
   useEffect(() => {
     loadConfiguration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTenant?.id]);
 
   // Apply theme when config changes
   useEffect(() => {
     applyTheme();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [config, previewConfig, previewMode]);
 
   const loadConfiguration = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const loadedConfig = await ConfigurationStore.loadConfig(currentTenant?.id);
       setConfig(loadedConfig);
@@ -467,7 +478,7 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
         ...updates,
         updatedAt: new Date(),
       };
-      
+
       await ConfigurationStore.saveConfig(newConfig, currentTenant?.id);
       setConfig(newConfig);
     } catch (err) {
@@ -477,20 +488,30 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   }, [config, currentTenant?.id]);
 
   const updateBranding = useCallback(async (branding: Partial<BrandingConfig>) => {
-    await updateConfig({
+    const newConfig = {
+      ...config,
       branding: {
         ...config.branding,
         ...branding,
       },
-    });
-  }, [config.branding, updateConfig]);
+      updatedAt: new Date(),
+    };
+
+    try {
+      await ConfigurationStore.saveConfig(newConfig, currentTenant?.id);
+      setConfig(newConfig);
+    } catch (err) {
+      setError(err as Error);
+      throw err;
+    }
+  }, [config, currentTenant?.id]);
 
   const resetToDefaults = useCallback(async () => {
     const defaultConfig = {
       ...DEFAULT_CUSTOMIZATION_CONFIG,
       tenantId: currentTenant?.id,
     };
-    
+
     await ConfigurationStore.saveConfig(defaultConfig, currentTenant?.id);
     setConfig(defaultConfig);
   }, [currentTenant?.id]);
@@ -508,12 +529,12 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   const applyTheme = useCallback(() => {
     const activeConfig = previewMode && previewConfig ? previewConfig : config;
     StyleInjector.injectThemeStyles(activeConfig.branding);
-    
+
     // Update document title
     if (activeConfig.branding.companyName) {
       document.title = `${activeConfig.branding.companyName} - OpenSVM`;
     }
-    
+
     // Update favicon
     const favicon = document.querySelector('link[rel="icon"]') as HTMLLinkElement;
     if (favicon && activeConfig.branding.favicon) {
@@ -527,10 +548,10 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
 
   const getComputedStyles = useCallback((): Record<string, string> => {
     if (typeof window === 'undefined') return {};
-    
+
     const computedStyle = window.getComputedStyle(document.documentElement);
     const styles: Record<string, string> = {};
-    
+
     // Get all CSS custom properties
     Array.from(document.styleSheets).forEach(styleSheet => {
       try {
@@ -547,7 +568,7 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
         // Ignore cross-origin stylesheet errors
       }
     });
-    
+
     return styles;
   }, []);
 
@@ -558,7 +579,7 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
   const importConfig = useCallback(async (configJson: string) => {
     try {
       const importedConfig = JSON.parse(configJson);
-      
+
       // Validate imported config
       const validatedConfig = {
         ...DEFAULT_CUSTOMIZATION_CONFIG,
@@ -566,7 +587,7 @@ export function WhiteLabelProvider({ children }: { children: React.ReactNode }) 
         tenantId: currentTenant?.id,
         updatedAt: new Date(),
       };
-      
+
       await updateConfig(validatedConfig);
     } catch (err) {
       setError(new Error('Invalid configuration format'));
@@ -639,12 +660,12 @@ export function useWhiteLabel() {
 }
 
 // Utility components
-export const BrandedLogo: React.FC<{ className?: string; size?: 'sm' | 'md' | 'lg' }> = ({ 
-  className = '', 
-  size = 'md' 
+export const BrandedLogo: React.FC<{ className?: string; size?: 'sm' | 'md' | 'lg' }> = ({
+  className = '',
+  size = 'md'
 }) => {
   const { config } = useWhiteLabel();
-  
+
   const sizeClasses = {
     sm: 'h-8 w-auto',
     md: 'h-12 w-auto',
@@ -660,22 +681,22 @@ export const BrandedLogo: React.FC<{ className?: string; size?: 'sm' | 'md' | 'l
   );
 };
 
-export const BrandedText: React.FC<{ 
-  children?: React.ReactNode; 
-  fallback?: string; 
-  className?: string; 
-}> = ({ 
-  children, 
-  fallback = 'OpenSVM', 
-  className = '' 
+export const BrandedText: React.FC<{
+  children?: React.ReactNode;
+  fallback?: string;
+  className?: string;
+}> = ({
+  children,
+  fallback = 'OpenSVM',
+  className = ''
 }) => {
-  const { config } = useWhiteLabel();
-  
-  return (
-    <span className={className}>
-      {children || config.branding.companyName || fallback}
-    </span>
-  );
-};
+    const { config } = useWhiteLabel();
+
+    return (
+      <span className={className}>
+        {children || config.branding.companyName || fallback}
+      </span>
+    );
+  };
 
 export default WhiteLabelProvider;

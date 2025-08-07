@@ -532,14 +532,15 @@ export const GraphProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // Cleanup effect
   useEffect(() => {
+    // Copy ref to variable to avoid stale closure in cleanup
+    const currentCy = cyRef.current;
     return () => {
       // Clean up any ongoing operations
-      const cy = cyRef.current;
-      if (cy) {
-        cy.destroy();
+      if (currentCy) {
+        currentCy.destroy();
       }
     };
-  }, [cyRef]);
+  }, []);
 
   const contextValue: GraphContextValue = {
     state,

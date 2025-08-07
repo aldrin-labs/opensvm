@@ -580,7 +580,20 @@ class ExportEngines {
 // Export provider component
 export function ExportProvider({ children }: { children: React.ReactNode }) {
   const [jobs, setJobs] = useState<ExportJob[]>([]);
-  const { currentUser, currentTenant } = useRBAC();
+  
+  // Handle RBAC context safely - wrap in try-catch to handle SSR
+  let currentUser = null;
+  let currentTenant = null;
+  try {
+    const rbac = useRBAC();
+    currentUser = rbac.currentUser;
+    currentTenant = rbac.currentTenant;
+  } catch (error) {
+    // RBAC context not available during SSR, continue with null values
+    currentUser = null;
+    currentTenant = null;
+  }
+  
   const { reportError } = useErrorHandling();
   const { t } = useI18n();
 

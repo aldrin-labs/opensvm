@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { X, AlertCircle, AlertTriangle, Info, CheckCircle, RefreshCw } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAccessibility } from '@/lib/accessibility';
@@ -82,6 +82,13 @@ export function ErrorToast({
 
   const Icon = getIconForSeverity(severity);
 
+  const handleDismiss = useCallback(() => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onDismiss?.();
+    }, 300); // Wait for animation to complete
+  }, [onDismiss]);
+
   // Auto-hide functionality
   useEffect(() => {
     if (autoHide && autoHide > 0) {
@@ -91,20 +98,13 @@ export function ErrorToast({
 
       return () => clearTimeout(timer);
     }
-  }, [autoHide]);
+  }, [autoHide, handleDismiss]);
 
   // Announce to screen reader when toast appears
   useEffect(() => {
     const announcement = `${severity} error: ${title}. ${message}`;
     announceToScreenReader(announcement, severity === 'critical' ? 'assertive' : 'polite');
   }, [title, message, severity, announceToScreenReader]);
-
-  const handleDismiss = () => {
-    setIsVisible(false);
-    setTimeout(() => {
-      onDismiss();
-    }, 300); // Wait for exit animation
-  };
 
   const handleRetry = async () => {
     if (onRetry) {
@@ -173,7 +173,7 @@ export function ErrorToast({
             <button
               onClick={handleDismiss}
               className="flex-shrink-0 p-1 rounded-md hover:bg-muted transition-colors"
-              aria-label={t('error.dismiss', 'Dismiss error')}
+              aria-label={t('error.dismiss') || 'Dismiss error'}
             >
               <X className="h-4 w-4 text-muted-foreground" />
             </button>
@@ -195,8 +195,8 @@ export function ErrorToast({
                 />
                 <span>
                   {isRetrying 
-                    ? t('error.retrying', 'Retrying...') 
-                    : t('error.retry', 'Retry')
+                    ? t('error.retrying') || 'Retrying...' 
+                    : t('error.retry') || 'Retry'
                   }
                 </span>
               </button>

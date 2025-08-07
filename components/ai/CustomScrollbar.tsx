@@ -1,3 +1,5 @@
+'use client';
+
 import React, { forwardRef } from 'react';
 import { useScrollbar } from './hooks/useScrollbar';
 import { cn } from '@/lib/utils';

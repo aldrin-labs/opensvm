@@ -573,14 +573,3 @@ if (typeof document !== 'undefined') {
   styleElement.textContent = customAnimations;
   document.head.appendChild(styleElement);
 }
-
-export default {
-  AnimatedButton,
-  ExpandableCard,
-  AnimatedInput,
-  AnimatedBadge,
-  FloatingActionButton,
-  AnimatedCounter,
-  AnimatedLikeButton,
-  PageTransition,
-};

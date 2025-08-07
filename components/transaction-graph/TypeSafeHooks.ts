@@ -102,7 +102,8 @@ export function useSafeAsync<T>(
     return () => {
       abort();
     };
-  }, dependencies);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [...dependencies, abort, execute]);
 
   return {
     ...state,
@@ -266,7 +267,8 @@ export function useSafeEventListener<
         listenerIdRef.current = null;
       }
     };
-  }, [elementRef, eventName, handler, options, memoryManager, ...dependencies]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [elementRef, eventName, handler, memoryManager, options, ...dependencies]);
 }
 
 // Type-safe Cytoscape hook with comprehensive cleanup
@@ -428,6 +430,7 @@ export function useSafeObserver<T extends IntersectionObserver | MutationObserve
     return () => {
       stop();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [start, stop, ...dependencies]);
 
   return {

@@ -75,9 +75,11 @@ const nextConfig = {
       },
     });
 
-    // Resolve Three.js to a single instance to prevent multiple imports
+    // Ensure React is properly resolved to prevent useEffect issues during prerendering
     config.resolve.alias = {
       ...config.resolve.alias,
+      'react': 'react',
+      'react-dom': 'react-dom',
       'three': 'three',
       'three/examples/jsm/controls/OrbitControls': 'three/examples/jsm/controls/OrbitControls',
       'three/examples/jsm/controls/OrbitControls.js': 'three/examples/jsm/controls/OrbitControls.js',
@@ -98,9 +100,20 @@ const nextConfig = {
       };
     }
 
-    // Handle native modules properly
+    // Handle native modules properly - avoid externalizing React to prevent hook issues
     config.externals = config.externals || [];
     if (isServer) {
+      // Don't externalize React to avoid useEffect issues during prerendering
+      config.externals = config.externals.filter(external => {
+        if (typeof external === 'string') {
+          return !external.includes('react');
+        }
+        if (typeof external === 'object') {
+          return !Object.keys(external).some(key => key.includes('react'));
+        }
+        return true;
+      });
+      
       config.externals.push({
         'bigint_buffer': 'commonjs bigint_buffer',
       });

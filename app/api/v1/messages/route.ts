@@ -70,14 +70,6 @@ const apiKeyManager = new APIKeyManager();
 const billingProcessor = new BillingProcessor();
 const errorHandler = new ProxyErrorHandler();
 
-// Initialize components
-Promise.all([
-    apiKeyManager.initialize(),
-    billingProcessor.initialize()
-]).catch(error => {
-    console.error('Failed to initialize proxy components:', error);
-});
-
 export async function POST(request: NextRequest) {
     const requestId = generateRequestId();
     const startTime = Date.now();

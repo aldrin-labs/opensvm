@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 // Image optimization utilities
 export interface ImageOptimizationOptions {
@@ -93,7 +93,7 @@ export function useLazyComponent<T>(
 }
 
 // Code splitting helper
-export function createAsyncComponent<T>(
+export function createAsyncComponent<T extends Record<string, any>>(
   importFn: () => Promise<{ default: React.ComponentType<T> }>,
   fallback?: React.ComponentType
 ) {
@@ -105,11 +105,11 @@ export function createAsyncComponent<T>(
     }, [loadComponent]);
 
     if (error) {
-      return fallback ? <fallback /> : <div>Error loading component</div>;
+      return fallback ? React.createElement(fallback) : <div>Error loading component</div>;
     }
 
     if (loading || !Component) {
-      return fallback ? <fallback /> : <div>Loading...</div>;
+      return fallback ? React.createElement(fallback) : <div>Loading...</div>;
     }
 
     return <Component {...props} />;
@@ -270,10 +270,7 @@ export function usePerformanceMeasurement() {
     };
   }, [markStart, markEnd]);
 
-  const measureAsync = useCallback(async <T>(
-    promise: Promise<T>,
-    name: string
-  ): Promise<T> => {
+  const measureAsync = useCallback(async <T,>(promise: Promise<T>, name: string): Promise<T> => {
     markStart(name);
     try {
       const result = await promise;
@@ -469,7 +466,3 @@ export function useBundleAnalysis() {
     analyzeBundle,
   };
 }
-
-export type {
-  ImageOptimizationOptions,
-};

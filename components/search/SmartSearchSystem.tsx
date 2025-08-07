@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Search, Mic, MicOff, Loader2, X, Clock, Trending, Filter } from 'lucide-react';
+import { Search, Mic, MicOff, Loader2, X, Clock, TrendingUp, Filter } from 'lucide-react';
 import { useI18n } from '@/lib/i18n';
 import { useAccessibility } from '@/lib/accessibility';
 import { useResponsive } from '@/lib/design-system/responsive';
@@ -315,7 +315,7 @@ export function SmartSearchSystem({
         setIsVoiceActive(false);
       }
     }
-  }, [voice.transcript, voice.isListening, isVoiceActive]);
+  }, [voice.transcript, voice.isListening, isVoiceActive, handleSearch]);
 
   // Debounced search
   const debouncedSearch = useCallback(async (searchQuery: string) => {
@@ -601,7 +601,7 @@ export function SmartSearchSystem({
             {query.length === 0 && trendingSearches.length > 0 && (
               <div className="px-3 py-2 border-t">
                 <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground mb-2">
-                  <Trending className="h-3 w-3" />
+                  <TrendingUp className="h-3 w-3" />
                   {t('search.trending', 'Trending')}
                 </div>
                 {trendingSearches.slice(0, 3).map((suggestion, index) => {

@@ -2,7 +2,14 @@
  * Test suite for Portfolio Optimization Engine
  */
 
-import { PortfolioOptimizationEngine, PortfolioAnalysisRequest } from '../portfolio-optimization';
+import {
+  PortfolioOptimizationEngine,
+  PortfolioAnalysisRequest,
+  formatCurrency,
+  formatPercentage,
+  getRiskColor,
+  getStrategyIcon
+} from '../portfolio-optimization';
 import { portfolioOptimizationEngine } from '../portfolio-optimization';
 
 describe('PortfolioOptimizationEngine', () => {
@@ -588,8 +595,6 @@ describe('PortfolioOptimizationEngine', () => {
 describe('Portfolio Utility Functions', () => {
   describe('formatCurrency', () => {
     it('should format currency correctly', () => {
-      const { formatCurrency } = require('../portfolio-optimization');
-      
       expect(formatCurrency(1234.56)).toBe('$1,234.56');
       expect(formatCurrency(1000000)).toBe('$1,000,000.00');
       expect(formatCurrency(0.99)).toBe('$0.99');
@@ -598,8 +603,6 @@ describe('Portfolio Utility Functions', () => {
 
   describe('formatPercentage', () => {
     it('should format percentages correctly', () => {
-      const { formatPercentage } = require('../portfolio-optimization');
-      
       expect(formatPercentage(0.1234)).toBe('12.34%');
       expect(formatPercentage(1.0)).toBe('100.00%');
       expect(formatPercentage(0.005)).toBe('0.50%');
@@ -608,8 +611,6 @@ describe('Portfolio Utility Functions', () => {
 
   describe('getRiskColor', () => {
     it('should return appropriate risk colors', () => {
-      const { getRiskColor } = require('../portfolio-optimization');
-      
       expect(getRiskColor(0.9)).toBe('#E74C3C'); // High risk - red
       expect(getRiskColor(0.7)).toBe('#F39C12'); // Medium-high risk - orange
       expect(getRiskColor(0.5)).toBe('#F1C40F'); // Medium risk - yellow
@@ -620,8 +621,6 @@ describe('Portfolio Utility Functions', () => {
 
   describe('getStrategyIcon', () => {
     it('should return appropriate strategy icons', () => {
-      const { getStrategyIcon } = require('../portfolio-optimization');
-      
       expect(getStrategyIcon('hold')).toBe('💎');
       expect(getStrategyIcon('stake')).toBe('🔒');
       expect(getStrategyIcon('lend')).toBe('🏦');

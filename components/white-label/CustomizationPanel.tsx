@@ -14,7 +14,6 @@ import {
   Download,
   Settings,
   Brush,
-  Spacing,
   Layers
 } from 'lucide-react';
 import { useWhiteLabel, BrandingConfig, CustomizationConfig } from '@/lib/white-label';
@@ -99,7 +98,7 @@ function ImageUpload({ label, value, onChange, accept = "image/*", className = '
           <div className="w-16 h-16 rounded-lg border border-border overflow-hidden bg-muted">
             <img 
               src={value} 
-              alt="Preview" 
+              alt={`${label} preview`}
               className="w-full h-full object-contain"
             />
           </div>
@@ -163,16 +162,16 @@ function TabButton({ active, onClick, icon, label }: TabButtonProps) {
 }
 
 export function CustomizationPanel() {
-  const { 
-    config, 
-    updateBranding, 
-    updateConfig, 
-    resetToDefaults, 
-    previewMode, 
-    enablePreview, 
+  const {
+    config,
+    updateBranding,
+    updateConfig,
+    resetToDefaults,
+    previewMode,
+    enablePreview,
     disablePreview,
     exportConfig,
-    importConfig 
+    importConfig
   } = useWhiteLabel();
   const { t } = useI18n();
   const { hasPermission } = useRBAC();
@@ -182,25 +181,7 @@ export function CustomizationPanel() {
   const [tempConfig, setTempConfig] = useState<CustomizationConfig>(config);
   const [isModified, setIsModified] = useState(false);
 
-  // Check permissions
-  const canEdit = hasPermission('white_label', 'write') || hasPermission('admin', 'write');
-
-  if (!canEdit) {
-    return (
-      <div className="p-6 text-center">
-        <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
-          <Settings className="w-8 h-8 text-muted-foreground" />
-        </div>
-        <h3 className="text-lg font-semibold text-foreground mb-2">
-          {t('rbac.accessDenied', 'Access Denied')}
-        </h3>
-        <p className="text-muted-foreground">
-          {t('rbac.insufficientPermissions', "You don't have sufficient permissions to customize branding.")}
-        </p>
-      </div>
-    );
-  }
-
+  // All hooks must be called before any conditional logic
   const updateTempBranding = useCallback((updates: Partial<BrandingConfig>) => {
     const newConfig = {
       ...tempConfig,
@@ -292,12 +273,31 @@ export function CustomizationPanel() {
     input.click();
   }, [importConfig, announceToScreenReader]);
 
+  // Check permissions after all hooks
+  const canEdit = hasPermission('white_label', 'write') || hasPermission('admin', 'write');
+
+  if (!canEdit) {
+    return (
+      <div className="p-6 text-center">
+        <div className="w-16 h-16 mx-auto mb-4 bg-muted rounded-full flex items-center justify-center">
+          <Settings className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <h3 className="text-lg font-semibold text-foreground mb-2">
+          {t('rbac.accessDenied', 'Access Denied')}
+        </h3>
+        <p className="text-muted-foreground">
+          {t('rbac.insufficientPermissions', "You don't have sufficient permissions to customize branding.")}
+        </p>
+      </div>
+    );
+  }
+
   const tabs = [
-    { id: 'branding' as const, label: 'Branding', icon: <Image className="w-4 h-4" /> },
-    { id: 'colors' as const, label: 'Colors', icon: <Palette className="w-4 h-4" /> },
-    { id: 'typography' as const, label: 'Typography', icon: <Type className="w-4 h-4" /> },
-    { id: 'layout' as const, label: 'Layout', icon: <Layout className="w-4 h-4" /> },
-    { id: 'content' as const, label: 'Content', icon: <Brush className="w-4 h-4" /> },
+    { id: 'branding' as const, label: 'Branding', icon: <Image className="w-4 h-4" aria-label="Branding icon" /> },
+    { id: 'colors' as const, label: 'Colors', icon: <Palette className="w-4 h-4" aria-label="Colors icon" /> },
+    { id: 'typography' as const, label: 'Typography', icon: <Type className="w-4 h-4" aria-label="Typography icon" /> },
+    { id: 'layout' as const, label: 'Layout', icon: <Layout className="w-4 h-4" aria-label="Layout icon" /> },
+    { id: 'content' as const, label: 'Content', icon: <Brush className="w-4 h-4" aria-label="Content icon" /> },
   ];
 
   return (

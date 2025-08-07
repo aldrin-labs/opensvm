@@ -1,6 +1,6 @@
 import { PublicKey, Connection } from '@solana/web3.js';
 import { CapabilityType, Message, Tool, ToolParams, ExecutionMode } from '../types';
-import { walletPathFindingAction } from '@/components/ai/actions';
+import { walletPathFindingAction } from '@/components/ai/actions/index';
 import { BaseCapability } from './base';
 import { isValidSolanaAddress } from '@/lib/utils';
 

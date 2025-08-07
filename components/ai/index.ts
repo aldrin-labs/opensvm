@@ -9,4 +9,4 @@ export { AIChatSidebar } from './AIChatSidebar';
 export { AIChatDialog } from './AIChatDialog';
 
 // Types
-export type { Message, Note, AgentAction } from '@/lib/ai/types'; 
+export type { Message, Note, AgentAction } from '@/lib/ai/types';

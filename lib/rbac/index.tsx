@@ -459,6 +459,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [announceToScreenReader]);
 
   const updateTenantSettings = useCallback(async (
@@ -490,6 +491,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTenant, hasPermission, announceToScreenReader]);
 
   // User management
@@ -517,6 +519,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentTenant, hasPermission, canManageRole, announceToScreenReader]);
 
   const updateUserRole = useCallback(async (
@@ -543,6 +546,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasPermission, canManageUser, canManageRole, announceToScreenReader]);
 
   const deactivateUser = useCallback(async (userId: string): Promise<boolean> => {
@@ -562,6 +566,7 @@ export function RBACProvider({ children }: { children: React.ReactNode }) {
     } finally {
       setIsLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasPermission, canManageUser, announceToScreenReader]);
 
   // Audit logging

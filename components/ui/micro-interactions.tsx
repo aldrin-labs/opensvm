@@ -522,18 +522,3 @@ export function CountUp({
     </span>
   );
 }
-
-export default {
-  AnimatedContainer,
-  HoverScale,
-  ClickRipple,
-  StaggerList,
-  Floating,
-  Parallax,
-  MagneticHover,
-  MorphShape,
-  TextReveal,
-  Shimmer,
-  Breath,
-  CountUp,
-};

@@ -455,10 +455,12 @@ export function useCacheInvalidation() {
   };
 }
 
-export default {
+const CachingHooks = {
   useCachedQuery,
   useCachedInfiniteQuery,
   useCachedMutation,
   useCachePrefetch,
   useCacheInvalidation
 };
+
+export default CachingHooks;

@@ -503,12 +503,3 @@ export function OptimisticComments({
     </div>
   );
 }
-
-export default {
-  ActionStatus,
-  OptimisticListItem,
-  OptimisticForm,
-  OptimisticCounter,
-  OptimisticLikeButton,
-  OptimisticComments
-};

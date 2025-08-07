@@ -68,6 +68,9 @@ const CytoscapeContainer = React.memo(() => {
       return;
     }
 
+    // Copy the current container ref value for cleanup
+    const currentContainer = containerRef.current;
+
     initializationPromiseRef.current = new Promise<void>((resolve, reject) => {
       try {
         // Create the container div programmatically to isolate from React
@@ -96,9 +99,9 @@ const CytoscapeContainer = React.memo(() => {
         `;
 
         // Clear any existing content and append the isolated div
-        if (containerRef.current) {
-          containerRef.current.innerHTML = '';
-          containerRef.current.appendChild(cytoscapeDiv);
+        if (currentContainer) {
+          currentContainer.innerHTML = '';
+          currentContainer.appendChild(cytoscapeDiv);
         }
 
         isInitializedRef.current = true;
@@ -133,10 +136,10 @@ const CytoscapeContainer = React.memo(() => {
 
     return () => {
       // Clean up by removing the programmatically created div
-      const container = containerRef.current;
-      if (container) {
+      // Use the captured container reference instead of current ref
+      if (currentContainer) {
         // Mark as cleaning up
-        const cytoscapeDiv = container.querySelector('#cy-container');
+        const cytoscapeDiv = currentContainer.querySelector('#cy-container');
         if (cytoscapeDiv) {
           cytoscapeDiv.setAttribute('data-initialization-state', 'cleanup');
           // Clean up cytoscape instance if it exists
@@ -149,7 +152,7 @@ const CytoscapeContainer = React.memo(() => {
             }
           }
         }
-        container.innerHTML = '';
+        currentContainer.innerHTML = '';
       }
       isInitializedRef.current = false;
       initializationPromiseRef.current = null;

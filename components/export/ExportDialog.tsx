@@ -113,7 +113,7 @@ export function ExportDialog({
       default:
         setConfig(baseConfig);
     }
-  }, [selectedFormat]);
+  }, [selectedFormat, config.filename, config.timestamp]);
 
   // Validate config and estimate size
   useEffect(() => {
