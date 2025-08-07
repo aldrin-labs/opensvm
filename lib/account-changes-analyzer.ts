@@ -633,7 +633,7 @@ class AccountChangesAnalyzer {
 export const accountChangesAnalyzer = new AccountChangesAnalyzer();
 
 // Export main analysis function
-export function analyzeAccountChanges(transaction: any) {
+export function analyzeAccountChanges(transaction: DetailedTransactionInfo): Promise<AccountChangesAnalysis> {
   return accountChangesAnalyzer.analyzeTransaction(transaction);
 }
 

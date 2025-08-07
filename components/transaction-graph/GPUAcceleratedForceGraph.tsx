@@ -145,7 +145,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     );
     
     // Create GPU-accelerated particle system
-    const particleCount = Math.min(activeNodes.length * 10, 500); // Limit particles for performance
+    const particleCount = Math.min(activeNodes.length * 10, 500);
     const particles = new Float32Array(particleCount * 3);
     
     // Initialize particle positions around active nodes
@@ -288,13 +288,11 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     onNodeClick,
     onNodeHover: throttledHoverHandler,
     ...forceSimulationConfig,
-    // Performance optimizations
     enableZoomInteraction: true,
     enablePanInteraction: true,
     enableNodeDrag: true,
     cooldownTicks: 100,
     onEngineStop: () => {
-      // Cleanup after simulation stops
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
@@ -303,7 +301,6 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
 
   // Calculate actual dimensions for the canvas
   const containerDimensions = useMemo(() => {
-    // If width/height are not numbers or are invalid, use container dimensions
     const actualWidth = typeof width === 'number' && width > 0 ? width : 800;
     const actualHeight = typeof height === 'number' && height > 0 ? height : 600;
     

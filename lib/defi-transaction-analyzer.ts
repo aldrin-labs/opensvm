@@ -1,6 +1,4 @@
-'use client';
-
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from './solana';
 import type { ParsedInstruction } from '@solana/web3.js';
 
 // DeFi Protocol Registry

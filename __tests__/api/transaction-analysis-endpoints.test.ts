@@ -39,16 +39,13 @@ jest.mock('@/lib/ai-transaction-analyzer', () => ({
   analyzeTransactionWithAI: jest.fn()
 }));
 
-jest.mock('@/lib/transaction-cache', () => ({
-  cacheHelpers: {
-    getTransaction: jest.fn(),
-    setTransaction: jest.fn(),
-    getRelatedTransactions: jest.fn(),
-    setRelatedTransactions: jest.fn(),
-    getAIExplanation: jest.fn(),
-    setAIExplanation: jest.fn(),
-    getMetrics: jest.fn(),
-    setMetrics: jest.fn()
+jest.mock('@/lib/transaction-cache-server', () => ({
+  cacheHelpersServer: {
+    get: jest.fn(),
+    set: jest.fn(),
+    remove: jest.fn(),
+    clear: jest.fn(),
+    stats: jest.fn()
   }
 }));
 
@@ -90,7 +87,7 @@ describe('Transaction Analysis Endpoints', () => {
       const { parseInstructions } = require('@/lib/instruction-parser-service');
       const { analyzeAccountChanges } = require('@/lib/account-changes-analyzer');
       const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       parseInstructions.mockResolvedValue([{
@@ -116,7 +113,7 @@ describe('Transaction Analysis Endpoints', () => {
         performanceScore: 85,
         recommendations: ['Test recommendation']
       });
-      cacheHelpers.getTransaction.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
       const response = await analysisGET(request, { params: { signature: validSignature } });
@@ -142,10 +139,10 @@ describe('Transaction Analysis Endpoints', () => {
 
     it('should return 404 for non-existent transaction', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
       
       getTransactionDetails.mockResolvedValue(null);
-      cacheHelpers.getTransaction.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
       const response = await analysisGET(request, { params: { signature: validSignature } });
@@ -157,7 +154,7 @@ describe('Transaction Analysis Endpoints', () => {
     });
 
     it('should return cached data when available', async () => {
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
       
       const cachedData = {
         ...mockTransaction,
@@ -165,7 +162,7 @@ describe('Transaction Analysis Endpoints', () => {
           instructions: { parsed: [], summary: { totalInstructions: 0, programsInvolved: [], instructionTypes: {} } }
         }
       };
-      cacheHelpers.getTransaction.mockReturnValue(cachedData);
+      cacheHelpersServer.get.mockReturnValue(cachedData);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
       const response = await analysisGET(request, { params: { signature: validSignature } });
@@ -182,7 +179,7 @@ describe('Transaction Analysis Endpoints', () => {
       const { getTransactionDetails } = require('@/lib/solana');
       const { findRelatedTransactions } = require('@/lib/related-transaction-finder');
       const { scoreRelationshipStrength } = require('@/lib/relationship-strength-scorer');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       findRelatedTransactions.mockResolvedValue([{
@@ -194,7 +191,7 @@ describe('Transaction Analysis Endpoints', () => {
         explanation: 'Shares accounts',
         details: { sharedAccounts: ['test-account'] }
       });
-      cacheHelpers.getRelatedTransactions.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/related`);
       const response = await relatedGET(request, { params: { signature: validSignature } });
@@ -211,7 +208,7 @@ describe('Transaction Analysis Endpoints', () => {
     it('should return AI explanation for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
       const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockResolvedValue({
@@ -221,7 +218,7 @@ describe('Transaction Analysis Endpoints', () => {
         riskLevel: 'low',
         recommendations: ['Transaction looks good']
       });
-      cacheHelpers.getAIExplanation.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);
       const response = await explainGET(request, { params: { signature: validSignature } });
@@ -236,7 +233,7 @@ describe('Transaction Analysis Endpoints', () => {
     it('should handle different explanation levels', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
       const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockResolvedValue({
@@ -246,7 +243,7 @@ describe('Transaction Analysis Endpoints', () => {
         technicalDetails: { programsUsed: [] },
         relatedConcepts: []
       });
-      cacheHelpers.getAIExplanation.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain?level=advanced&focus=technical`);
       const response = await explainGET(request, { params: { signature: validSignature } });
@@ -263,7 +260,7 @@ describe('Transaction Analysis Endpoints', () => {
     it('should return transaction metrics for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
       const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       calculateTransactionMetrics.mockResolvedValue({
@@ -275,7 +272,7 @@ describe('Transaction Analysis Endpoints', () => {
         performanceScore: 85,
         recommendations: ['Optimize compute units']
       });
-      cacheHelpers.getMetrics.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/metrics`);
       const response = await metricsGET(request, { params: { signature: validSignature } });
@@ -292,10 +289,10 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Batch Processing Endpoint', () => {
     it('should process multiple transactions in batch', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
-      cacheHelpers.getTransaction.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const requestBody = {
         signatures: [validSignature, 'another-valid-signature'],
@@ -364,10 +361,10 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Error Handling', () => {
     it('should handle service errors gracefully', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
       
       getTransactionDetails.mockRejectedValue(new Error('Service unavailable'));
-      cacheHelpers.getTransaction.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/analysis`);
       const response = await analysisGET(request, { params: { signature: validSignature } });
@@ -381,11 +378,11 @@ describe('Transaction Analysis Endpoints', () => {
     it('should handle AI service rate limits', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
       const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpers } = require('@/lib/transaction-cache');
+      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockRejectedValue(new Error('rate limit exceeded'));
-      cacheHelpers.getAIExplanation.mockReturnValue(null);
+      cacheHelpersServer.get.mockReturnValue(null);
 
       const request = new NextRequest(`http://localhost/api/transaction/${validSignature}/explain`);
       const response = await explainGET(request, { params: { signature: validSignature } });

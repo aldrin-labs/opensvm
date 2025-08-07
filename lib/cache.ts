@@ -13,6 +13,11 @@ class MemoryCache {
   }
 
   set<T>(key: string, value: T, ttlSeconds: number): void {
+    // Handle zero or negative TTL - don't store the value
+    if (ttlSeconds <= 0) {
+      return;
+    }
+    
     const expiresAt = Date.now() + ttlSeconds * 1000;
     
     // If key exists, delete it first to update position (LRU)
@@ -35,6 +40,9 @@ class MemoryCache {
   }
 
   get<T>(key: string): T | null {
+    // Clean up expired entries opportunistically
+    this.cleanupExpired();
+    
     const entry = this.cache.get(key);
     if (!entry) return null;
 
@@ -50,6 +58,21 @@ class MemoryCache {
     return entry.value;
   }
 
+  private cleanupExpired(): void {
+    const now = Date.now();
+    const keysToDelete: string[] = [];
+    
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiresAt) {
+        keysToDelete.push(key);
+      }
+    }
+    
+    for (const key of keysToDelete) {
+      this.cache.delete(key);
+    }
+  }
+
   delete(key: string): void {
     this.cache.delete(key);
   }
@@ -60,4 +83,4 @@ class MemoryCache {
 }
 
 const memoryCache = new MemoryCache();
-export { memoryCache };
+export { memoryCache, MemoryCache };

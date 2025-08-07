@@ -1479,11 +1479,17 @@ export const RISK_LEVELS = {
  * Search programs by name or description
  */
 export function searchPrograms(query: string): ProgramDefinition[] {
-  const lowercaseQuery = query.toLowerCase();
+  // Return empty array for empty or whitespace-only queries
+  const trimmedQuery = query.trim();
+  if (!trimmedQuery) {
+    return [];
+  }
+  
+  const lowercaseQuery = trimmedQuery.toLowerCase();
   return getAllProgramDefinitions().filter(program =>
     program.name.toLowerCase().includes(lowercaseQuery) ||
     program.description.toLowerCase().includes(lowercaseQuery) ||
-    program.programId.includes(query)
+    program.programId.includes(trimmedQuery)
   );
 }
 

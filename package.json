@@ -9,11 +9,11 @@
     "build:analyze": "node scripts/optimize-build.js --analyze",
     "build:fast": "node scripts/optimize-build.js --skip-optimize",
     "start": "next start",
-    "build:fixed": "bun install --force && next build",
+    "build:fixed": "npm install --force && next build",
     "build:legacy": "npm install --legacy-peer-deps && next build",
     "build:force": "npm install --force && next build",
     "lint": "next lint",
-    "install:fixed": "bun install --force",
+    "install:fixed": "npm install --force",
     "install:legacy": "npm install --legacy-peer-deps",
     "install:force": "npm install --force",
     "test": "NODE_OPTIONS=--max_old_space_size=4096 jest",
@@ -103,7 +103,11 @@
     "whatwg-url": "^5.0.0",
     "xstate": "^5.19.2",
     "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.23.0"
+    "zod-to-json-schema": "^3.23.0",
+    "ethers": "^6.13.0",
+    "bitcoin-core": "^4.2.0",
+    "@polygon/sdk": "^1.0.0",
+    "web3": "^4.15.0"
   },
   "devDependencies": {
     "@playwright/test": "^1.54.1",

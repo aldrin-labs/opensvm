@@ -61,29 +61,6 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   // Mobile detection
   const { isMobile } = useMobileDetection();
 
-  // Swipe gestures for mobile navigation
-  useSwipeGestures(containerRef, {
-    onSwipeLeft: () => {
-      if (isMobile && expandedAccounts.size > 0) {
-        // Collapse all accounts on swipe left
-        setExpandedAccounts(new Set());
-        announceToScreenReader('All account details collapsed');
-      }
-    },
-    onSwipeRight: () => {
-      if (isMobile && expandedAccounts.size === 0 && filteredChanges.length > 0) {
-        // Expand first account on swipe right
-        setExpandedAccounts(new Set([filteredChanges[0].accountIndex]));
-        announceToScreenReader('First account details expanded');
-      }
-    }
-  });
-
-  // Keyboard navigation
-  useKeyboardNavigation(containerRef, {
-    roving: true
-  });
-
   // Load account changes analysis
   React.useEffect(() => {
     let isMounted = true;
@@ -136,6 +113,29 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
 
     return filtered;
   }, [accountChanges, showOnlyChanged, selectedChangeType]);
+
+  // Swipe gestures for mobile navigation
+  useSwipeGestures(containerRef, {
+    onSwipeLeft: () => {
+      if (isMobile && expandedAccounts.size > 0) {
+        // Collapse all accounts on swipe left
+        setExpandedAccounts(new Set());
+        announceToScreenReader('All account details collapsed');
+      }
+    },
+    onSwipeRight: () => {
+      if (isMobile && expandedAccounts.size === 0 && filteredChanges.length > 0) {
+        // Expand first account on swipe right
+        setExpandedAccounts(new Set([filteredChanges[0].accountIndex]));
+        announceToScreenReader('First account details expanded');
+      }
+    }
+  });
+
+  // Keyboard navigation
+  useKeyboardNavigation(containerRef, {
+    roving: true
+  });
 
   const toggleAccount = (index: number) => {
     const newExpanded = new Set(expandedAccounts);

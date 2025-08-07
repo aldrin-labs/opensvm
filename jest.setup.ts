@@ -6,6 +6,54 @@ import { jest, expect } from '@jest/globals';
 global.TextEncoder = NodeTextEncoder;
 global.TextDecoder = NodeTextDecoder as typeof global.TextDecoder;
 
+// ReadableStream polyfill for Node.js environment
+class MockReadableStream {
+  constructor(underlyingSource?: any) {
+    this.underlyingSource = underlyingSource;
+  }
+  
+  private underlyingSource: any;
+  
+  getReader() {
+    return {
+      read: () => Promise.resolve({ done: true, value: undefined }),
+      releaseLock: () => {},
+      closed: Promise.resolve(undefined)
+    };
+  }
+  
+  cancel() {
+    return Promise.resolve();
+  }
+  
+  pipeTo() {
+    return Promise.resolve();
+  }
+  
+  pipeThrough() {
+    return this;
+  }
+  
+  tee() {
+    return [this, this];
+  }
+}
+
+class MockWritableStream {
+  write = jest.fn();
+  close = jest.fn();
+  abort = jest.fn();
+}
+
+global.ReadableStream = MockReadableStream as any;
+global.WritableStream = MockWritableStream as any;
+
+// Additional Web API polyfills
+global.TransformStream = class MockTransformStream {
+  readable = new MockReadableStream();
+  writable = new MockWritableStream();
+} as any;
+
 // Mock Request for Next.js API routes
 export class MockRequest {
   public url: string;
@@ -191,12 +239,36 @@ jest.mock('next/navigation', () => ({
   usePathname: () => '',
 }));
 
-// Mock Solana Connection
+// Mock Solana Connection - fix initialization order
 type AsyncFunction<T> = (...args: any[]) => Promise<T>;
-const mockConnection = {
-  getBlockHeight: jest.fn<AsyncFunction<number>>().mockResolvedValue(100),
-  getProgramAccounts: jest.fn<AsyncFunction<any[]>>().mockResolvedValue([]),
+
+// Pre-define the mock connection before using it
+const mockConnectionMethods = {
+  getBlockHeight: jest.fn(() => Promise.resolve(100)),
+  getProgramAccounts: jest.fn(() => Promise.resolve([])),
+  getTransaction: jest.fn(() => Promise.resolve({
+    meta: { err: null },
+    transaction: { message: { instructions: [] } }
+  })),
+  getParsedAccountInfo: jest.fn(() => Promise.resolve({
+    value: null
+  })),
+  getVoteAccounts: jest.fn(() => Promise.resolve({ current: [], delinquent: [] })),
+  getMinimumBalanceForRentExemption: jest.fn(() => Promise.resolve(2282880)),
+  getBalance: jest.fn(() => Promise.resolve(5000000000)),
+  getLatestBlockhash: jest.fn(() => Promise.resolve({
+    blockhash: 'test_blockhash',
+    lastValidBlockHeight: 1000
+  })),
+  confirmTransaction: jest.fn(() => Promise.resolve({ value: { err: null } })),
+  getTokenAccountBalance: jest.fn(() => Promise.resolve({
+    value: { amount: '150000000000', decimals: 6 }
+  })),
+  getParsedProgramAccounts: jest.fn(() => Promise.resolve([])),
 };
+
+// Export the mock connection for use in tests
+export const mockConnection = mockConnectionMethods;
 
 // Type for PublicKey mock
 type PublicKeyMock = {
@@ -207,11 +279,35 @@ type PublicKeyMock = {
 type PublicKeyConstructor = (key: string) => PublicKeyMock;
 
 jest.mock('@solana/web3.js', () => ({
-  Connection: jest.fn().mockImplementation(() => mockConnection),
-  PublicKey: jest.fn<PublicKeyConstructor>().mockImplementation((key: string) => ({
+  Connection: jest.fn().mockImplementation(() => mockConnectionMethods),
+  PublicKey: jest.fn().mockImplementation((key: any) => ({
     toString: () => key,
     toBase58: () => key,
+    toBuffer: () => Buffer.from(key)
+  })) as any,
+  Transaction: jest.fn().mockImplementation(() => ({
+    add: jest.fn(),
+    recentBlockhash: '',
+    feePayer: null
   })),
+  StakeProgram: {
+    programId: 'Stake11111111111111111111111111111111111111',
+    space: 200,
+    initialize: jest.fn(),
+    delegate: jest.fn()
+  },
+  SystemProgram: {
+    createAccountWithSeed: jest.fn(),
+    transfer: jest.fn(),
+    createAccount: jest.fn()
+  },
+  Authorized: jest.fn(),
+  Lockup: jest.fn(),
+  LAMPORTS_PER_SOL: 1000000000,
+  findProgramAddress: jest.fn(() => Promise.resolve([
+    { toBase58: () => 'mock_pda' },
+    255
+  ]))
 }));
 
 // Mock rate limiter
@@ -302,3 +398,133 @@ expect.extend({
     };
   },
 });
+
+// Global test cleanup and setup
+let activeTimers: Set<any> = new Set();
+let activeIntervals: Set<any> = new Set();
+let pendingPromises: Set<Promise<any>> = new Set();
+
+// Override timer functions to track active timers
+const originalSetTimeout = global.setTimeout;
+const originalSetInterval = global.setInterval;
+const originalClearTimeout = global.clearTimeout;
+const originalClearInterval = global.clearInterval;
+
+global.setTimeout = ((fn: (...args: any[]) => void, delay?: number) => {
+  const timerId = originalSetTimeout(fn, delay);
+  activeTimers.add(timerId);
+  return timerId;
+}) as typeof setTimeout;
+
+global.setInterval = ((fn: (...args: any[]) => void, delay?: number) => {
+  const intervalId = originalSetInterval(fn, delay);
+  activeIntervals.add(intervalId);
+  return intervalId;
+}) as typeof setInterval;
+
+global.clearTimeout = ((timerId: any) => {
+  activeTimers.delete(timerId);
+  return originalClearTimeout(timerId);
+}) as typeof clearTimeout;
+
+global.clearInterval = ((intervalId: any) => {
+  activeIntervals.delete(intervalId);
+  return originalClearInterval(intervalId);
+}) as typeof clearInterval;
+
+// Track fetch requests
+const originalFetch = global.fetch;
+global.fetch = (async (...args: Parameters<typeof fetch>) => {
+  const promise = originalFetch(...args);
+  pendingPromises.add(promise);
+  
+  try {
+    const result = await promise;
+    pendingPromises.delete(promise);
+    return result;
+  } catch (error) {
+    pendingPromises.delete(promise);
+    throw error;
+  }
+}) as typeof fetch;
+
+// Global cleanup function
+export function cleanupTestResources() {
+  // Clear all active timers
+  activeTimers.forEach(timerId => {
+    try {
+      originalClearTimeout(timerId);
+    } catch (e) {
+      // Ignore errors
+    }
+  });
+  activeTimers.clear();
+
+  // Clear all active intervals
+  activeIntervals.forEach(intervalId => {
+    try {
+      originalClearInterval(intervalId);
+    } catch (e) {
+      // Ignore errors
+    }
+  });
+  activeIntervals.clear();
+
+  // Clear pending promises (they will resolve/reject naturally)
+  pendingPromises.clear();
+
+  // Reset all mocks
+  jest.clearAllMocks();
+  jest.restoreAllMocks();
+  
+  // Force garbage collection if available
+  if (global.gc) {
+    global.gc();
+  }
+}
+
+// Setup cleanup after each test
+afterEach(() => {
+  cleanupTestResources();
+});
+
+// Setup cleanup before each test
+beforeEach(() => {
+  // Reset network conditions to normal
+  mockNetworkConditions.normal();
+});
+
+// Global error handler for unhandled promises
+process.on('unhandledRejection', (reason, promise) => {
+  console.warn('Unhandled promise rejection:', reason);
+  pendingPromises.delete(promise);
+});
+
+// Mock console methods that might cause issues in tests
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.error = (...args: any[]) => {
+  // Filter out known harmless errors
+  const message = args[0]?.toString() || '';
+  if (
+    message.includes('ResizeObserver loop limit exceeded') ||
+    message.includes('Warning: ReactDOM.render is deprecated') ||
+    message.includes('Warning: findDOMNode is deprecated')
+  ) {
+    return;
+  }
+  originalConsoleError(...args);
+};
+
+console.warn = (...args: any[]) => {
+  // Filter out known harmless warnings
+  const message = args[0]?.toString() || '';
+  if (
+    message.includes('componentWillReceiveProps has been renamed') ||
+    message.includes('componentWillMount has been renamed')
+  ) {
+    return;
+  }
+  originalConsoleWarn(...args);
+};

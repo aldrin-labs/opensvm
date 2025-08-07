@@ -40,6 +40,6 @@ export default function TestPage() {
 describe('TestPage', () => {
   it('renders program visualizer', () => {
     render(<TestPage />);
-    expect(screen.getByText('Test')).toBeInTheDocument();
+    expect(screen.getByText('Program Data Visualizer')).toBeInTheDocument();
   });
 });

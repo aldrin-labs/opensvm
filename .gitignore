@@ -10,6 +10,17 @@ agent_notes/vtable_study
 .pnp.js
 .yarn/install-state.gz
 
+# Package Manager Standardization - Prevent Conflicts
+# This project uses NPM only (package-lock.json)
+# Exclude other package manager lock files to prevent conflicts
+yarn.lock
+bun.lock
+bun.lockb
+pnpm-lock.yaml
+.pnpm-store/
+.yarn/
+.yarnrc.yml
+
 # testing
 /coverage
 /test-results/

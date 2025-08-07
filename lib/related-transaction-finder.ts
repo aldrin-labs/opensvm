@@ -1319,7 +1319,8 @@ class RelatedTransactionFinder {
   }
 }
 
-// Export singleton instance
+// Export class and singleton instance
+export { RelatedTransactionFinder };
 export const relatedTransactionFinder = new RelatedTransactionFinder();
 
 // Export main finder function

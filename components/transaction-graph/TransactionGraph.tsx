@@ -553,6 +553,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
 
   // Memoized wrapper for account selection with client-side navigation priority
   const wrappedOnAccountSelect = useCallback((accountAddress: string) => {
+    const clientSideNavigation = !!onAccountSelect;
     debugLog('Account selected:', accountAddress, 'clientSideNavigation:', clientSideNavigation);
     
     if (onAccountSelect && typeof onAccountSelect === 'function') {
@@ -565,7 +566,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
         window.location.href = `/account/${accountAddress}`;
       }
     }
-  }, [onAccountSelect, clientSideNavigation]);
+  }, [onAccountSelect]);
 
   // Enhanced GPU callbacks and mode synchronization
   useEffect(() => {
@@ -1336,7 +1337,6 @@ const TransactionGraph = React.memo(function TransactionGraph({
     prevProps.initialAccount === nextProps.initialAccount &&
     prevProps.onTransactionSelect === nextProps.onTransactionSelect &&
     prevProps.onAccountSelect === nextProps.onAccountSelect &&
-    prevProps.clientSideNavigation === nextProps.clientSideNavigation &&
     prevProps.width === nextProps.width &&
     prevProps.height === nextProps.height &&
     prevProps.maxDepth === nextProps.maxDepth

@@ -823,14 +823,45 @@ export class TransactionFailureAnalyzer {
   }
 
   private matchErrorPattern(errorInfo: { code: string | null; message: string; details: any }): ErrorPattern {
-    // Try to match against known patterns
+    // First try to match based on error details structure
+    if (errorInfo.details) {
+      if (errorInfo.details.BlockhashNotFound) {
+        return this.errorPatterns.get('blockhash_not_found') || this.getDefaultErrorPattern(errorInfo);
+      }
+      if (errorInfo.details.ComputeBudgetExceeded) {
+        return this.errorPatterns.get('compute_budget_exceeded') || this.getDefaultErrorPattern(errorInfo);
+      }
+      if (errorInfo.details.InsufficientFundsForFee) {
+        return this.errorPatterns.get('insufficient_funds') || this.getDefaultErrorPattern(errorInfo);
+      }
+      if (errorInfo.details.AccountNotFound) {
+        return this.errorPatterns.get('account_not_found') || this.getDefaultErrorPattern(errorInfo);
+      }
+      if (errorInfo.details.InstructionError) {
+        return {
+          category: 'custom_program_error',
+          secondaryCategories: [],
+          technicalDescription: 'Program instruction execution failed',
+          userFriendlyDescription: 'The program encountered an error during execution',
+          isSystemError: false,
+          isProgramError: true,
+          isUserError: false,
+          isNetworkError: false,
+          isTransient: false,
+          isDeterministic: true,
+          isResourceRelated: false,
+          isDataRelated: true,
+          errorCodes: ['InstructionError'],
+          messagePatterns: ['instruction error']
+        };
+      }
+    }
+
+    // Try to match against known patterns using error codes and messages
     const patterns = Array.from(this.errorPatterns.entries());
     for (const [patternKey, pattern] of patterns) {
       if (this.matchesPattern(errorInfo, pattern)) {
-        // Log which pattern was matched for debugging and analytics
         console.log(`Transaction failure matched pattern: ${patternKey}`);
-        // Log pattern match and return original pattern
-        // Note: matchedPatternKey would need to be added to ErrorPattern type
         return pattern;
       }
     }
@@ -840,14 +871,34 @@ export class TransactionFailureAnalyzer {
   }
 
   private matchesPattern(errorInfo: { code: string | null; message: string; details: any }, pattern: ErrorPattern): boolean {
+    // Check error codes first
     if (pattern.errorCodes && errorInfo.code) {
-      return pattern.errorCodes.includes(errorInfo.code);
+      if (pattern.errorCodes.includes(errorInfo.code)) {
+        return true;
+      }
     }
 
+    // Check message patterns
     if (pattern.messagePatterns) {
-      return pattern.messagePatterns.some(msgPattern =>
+      const messageMatch = pattern.messagePatterns.some(msgPattern =>
         errorInfo.message.toLowerCase().includes(msgPattern.toLowerCase())
       );
+      if (messageMatch) {
+        return true;
+      }
+    }
+
+    // Check details structure for specific error types
+    if (errorInfo.details && typeof errorInfo.details === 'object') {
+      const errorKeys = Object.keys(errorInfo.details);
+      if (pattern.errorCodes) {
+        const hasMatchingErrorKey = pattern.errorCodes.some(code =>
+          errorKeys.includes(code) || errorKeys.some(key => key.includes(code))
+        );
+        if (hasMatchingErrorKey) {
+          return true;
+        }
+      }
     }
 
     return false;
@@ -925,26 +976,68 @@ export class TransactionFailureAnalyzer {
       errorCodes: ['ComputeBudgetExceeded'],
       messagePatterns: ['compute budget exceeded']
     });
+
+    this.errorPatterns.set('account_not_found', {
+      category: 'account_not_found',
+      secondaryCategories: [],
+      technicalDescription: 'Referenced account does not exist on the blockchain',
+      userFriendlyDescription: 'The required account was not found',
+      isSystemError: false,
+      isProgramError: false,
+      isUserError: true,
+      isNetworkError: false,
+      isTransient: false,
+      isDeterministic: true,
+      isResourceRelated: false,
+      isDataRelated: true,
+      errorCodes: ['AccountNotFound'],
+      messagePatterns: ['account not found']
+    });
+
+    this.errorPatterns.set('unknown_error', {
+      category: 'unknown_error',
+      secondaryCategories: [],
+      technicalDescription: 'An unknown error occurred during transaction processing',
+      userFriendlyDescription: 'An unexpected error occurred',
+      isSystemError: true,
+      isProgramError: false,
+      isUserError: false,
+      isNetworkError: false,
+      isTransient: false,
+      isDeterministic: true,
+      isResourceRelated: false,
+      isDataRelated: false,
+      errorCodes: [],
+      messagePatterns: []
+    });
   }
 
   // Helper method to infer error from transaction data
   private inferErrorFromTransaction(transaction: DetailedTransactionInfo): any {
-    // Since we don't have meta.err, we need to infer the error type
-    // This is a simplified approach - in a real implementation, we'd have more sophisticated logic
+    // Check if transaction has meta.err data
+    if (transaction.meta?.err) {
+      return transaction.meta.err;
+    }
 
+    // If we don't have meta.err, we need to infer the error type
     if (!transaction.success) {
       // Check for common failure patterns based on available data
       const instructions = transaction.details?.instructions || [];
       const accounts = transaction.details?.accounts || [];
 
-      // If transaction has no instructions, it might be a system error
-      if (instructions.length === 0) {
-        return { InsufficientFundsForFee: {} };
-      }
-
-      // If transaction has many instructions, it might be compute budget exceeded
+      // Analyze instruction count for compute budget issues
       if (instructions.length > 10) {
         return { ComputeBudgetExceeded: {} };
+      }
+
+      // Check for blockhash-related issues based on timing
+      const currentTime = Date.now();
+      const blockTime = transaction.blockTime || currentTime;
+      const timeDiff = currentTime - blockTime;
+      
+      // If transaction is older than 2 minutes, likely blockhash expired
+      if (timeDiff > 120000) {
+        return { BlockhashNotFound: {} };
       }
 
       // Check account-related error patterns

@@ -1,5 +1,5 @@
 import { Loader, Mic, Send, Trash2 } from 'lucide-react';
-import type { Message, Note, AgentAction } from '@/lib/ai/types';
+import type { Message, Note, AgentAction } from './types';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { useEffect, useRef, useState, useCallback } from 'react';

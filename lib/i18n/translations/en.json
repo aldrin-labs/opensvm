@@ -1,0 +1,208 @@
+{
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Information",
+    "close": "Close",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "save": "Save",
+    "edit": "Edit",
+    "delete": "Delete",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "submit": "Submit",
+    "reset": "Reset",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "export": "Export",
+    "import": "Import",
+    "settings": "Settings",
+    "help": "Help",
+    "about": "About"
+  },
+  "error": {
+    "somethingWentWrong": "Something went wrong",
+    "unexpectedError": "An unexpected error occurred. Our team has been notified and is working on a fix.",
+    "tryAgain": "Try Again",
+    "goHome": "Go Home",
+    "technicalDetails": "Technical Details",
+    "developmentDetails": "Development Details",
+    "errorCode": "Error Code",
+    "occurred": "Occurred",
+    "errorOccurred": "An Error Occurred",
+    "closeDialog": "Close error dialog",
+    "dismiss": "Dismiss error",
+    "retry": "Retry",
+    "retrying": "Retrying...",
+    "refresh": "Refresh Page",
+    "logout": "Sign Out",
+    "offlineMode": "Continue Offline",
+    "reconnect": "Try to Reconnect",
+    "reportError": "Report Error",
+    "contactSupport": "Contact Support",
+    "helpCenter": "Help Center",
+    "copied": "Copied!",
+    "copyDetails": "Copy Details",
+    "hideTechnicalDetails": "Hide Technical Details",
+    "showTechnicalDetails": "Show Technical Details",
+    "needHelp": "Need Help?",
+    "supportDescription": "If this problem continues, please contact our support team. Include the error code above in your message.",
+    "networkError": "Network Connection Error",
+    "networkErrorDescription": "Unable to connect to our servers. Please check your internet connection and try again.",
+    "maintenance": "Under Maintenance",
+    "maintenanceDescription": "Our service is temporarily unavailable due to scheduled maintenance. Please try again later.",
+    "pageNotFound": "Page Not Found",
+    "pageNotFoundDescription": "The page you are looking for does not exist or has been moved.",
+    "unauthorized": "Access Denied",
+    "unauthorizedDescription": "You do not have permission to access this resource. Please contact your administrator if you believe this is an error.",
+    "settings": "Settings"
+  },
+  "accessibility": {
+    "skipToMain": "Skip to main content",
+    "skipToNavigation": "Skip to navigation",
+    "mainContent": "Main content",
+    "navigation": "Navigation",
+    "sidebar": "Sidebar",
+    "footer": "Footer",
+    "closeMenu": "Close menu",
+    "openMenu": "Open menu",
+    "toggleTheme": "Toggle theme",
+    "increaseTextSize": "Increase text size",
+    "decreaseTextSize": "Decrease text size",
+    "toggleHighContrast": "Toggle high contrast",
+    "screenReaderOnly": "Screen reader only",
+    "loading": "Loading",
+    "loadingComplete": "Loading complete",
+    "errorAnnouncement": "Error occurred",
+    "successAnnouncement": "Success"
+  },
+  "theme": {
+    "light": "Light",
+    "dark": "Dark",
+    "system": "System",
+    "toggleTheme": "Toggle theme",
+    "themeSettings": "Theme Settings",
+    "colorScheme": "Color Scheme",
+    "fontSize": "Font Size",
+    "reducedMotion": "Reduced Motion",
+    "highContrast": "High Contrast"
+  },
+  "search": {
+    "placeholder": "Search for transactions, addresses, or blocks...",
+    "searchFor": "Search for",
+    "noResults": "No results found",
+    "suggestions": "Suggestions",
+    "recentSearches": "Recent Searches",
+    "clearHistory": "Clear History",
+    "voiceSearch": "Voice Search",
+    "listening": "Listening...",
+    "speechNotSupported": "Speech recognition is not supported in this browser",
+    "searchHistory": "Search History",
+    "filters": "Filters",
+    "results": "Results",
+    "searchResults": "Search Results"
+  },
+  "onboarding": {
+    "welcome": "Welcome to OpenSVM",
+    "welcomeDescription": "Let's get you started with the basics",
+    "skip": "Skip",
+    "next": "Next",
+    "previous": "Previous",
+    "finish": "Get Started",
+    "step": "Step {{current}} of {{total}}",
+    "completed": "Tutorial completed",
+    "expertiseLevel": "What's your expertise level?",
+    "beginner": "Beginner",
+    "intermediate": "Intermediate",
+    "advanced": "Advanced",
+    "expert": "Expert",
+    "selectExpertise": "Select your expertise level to customize your experience"
+  },
+  "rbac": {
+    "accessDenied": "Access Denied",
+    "insufficientPermissions": "You don't have sufficient permissions to perform this action",
+    "loginRequired": "Login Required",
+    "sessionExpired": "Your session has expired. Please log in again.",
+    "roles": {
+      "owner": "Owner",
+      "admin": "Administrator",
+      "developer": "Developer",
+      "analyst": "Analyst",
+      "viewer": "Viewer"
+    },
+    "permissions": {
+      "read": "Read",
+      "write": "Write",
+      "delete": "Delete",
+      "manage": "Manage",
+      "admin": "Admin"
+    }
+  },
+  "optimistic": {
+    "status": {
+      "pending": "Processing...",
+      "success": "Completed",
+      "error": "Failed"
+    },
+    "actions": {
+      "retry": "Retry",
+      "rollback": "Undo",
+      "cancel": "Cancel"
+    },
+    "messages": {
+      "saving": "Saving changes...",
+      "saved": "Changes saved",
+      "failed": "Save failed",
+      "retrying": "Retrying...",
+      "rolledBack": "Changes undone",
+      "pendingChanges": "You have unsaved changes"
+    },
+    "loading": {
+      "processing": "Processing your request...",
+      "almostDone": "Almost done...",
+      "pleaseWait": "Please wait...",
+      "updating": "Updating..."
+    }
+  },
+  "animations": {
+    "settings": {
+      "title": "Animation Settings",
+      "description": "Customize animation behavior and performance",
+      "reducedMotion": "Reduce motion",
+      "reducedMotionDesc": "Minimize animations for accessibility",
+      "enableInteractions": "Enable micro-interactions",
+      "enableTransitions": "Enable transitions",
+      "enableScrollAnimations": "Enable scroll animations",
+      "animationSpeed": "Animation Speed",
+      "duration": {
+        "instant": "Instant",
+        "fast": "Fast",
+        "normal": "Normal",
+        "slow": "Slow"
+      },
+      "easing": {
+        "linear": "Linear",
+        "easeIn": "Ease In",
+        "easeOut": "Ease Out",
+        "easeInOut": "Ease In Out",
+        "bounce": "Bounce",
+        "elastic": "Elastic"
+      }
+    },
+    "performance": {
+      "good": "Animation performance is good",
+      "poor": "Animation performance is poor",
+      "fps": "FPS: {fps}",
+      "optimizing": "Optimizing animations for performance..."
+    },
+    "accessibility": {
+      "reducedMotionEnabled": "Animations have been reduced for accessibility",
+      "motionRestored": "Full animations have been restored"
+    }
+  }
+}

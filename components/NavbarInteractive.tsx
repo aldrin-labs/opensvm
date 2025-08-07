@@ -17,9 +17,11 @@ import { X, User } from 'lucide-react';
 import { AIChatSidebar } from './ai/AIChatSidebar';
 import { useWallet } from '@solana/wallet-adapter-react';
 
-interface NavbarInteractiveProps { }
+interface NavbarInteractiveProps {
+  children: React.ReactNode;
+}
 
-export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
+export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
@@ -690,6 +692,11 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = () => {
         onResizeEnd={handleResizeEnd}
         initialWidth={sidebarWidth}
       />
+
+      {/* Main content */}
+      <div className="pt-14">
+        {children}
+      </div>
     </>
   );
 };

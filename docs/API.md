@@ -1,574 +1,916 @@
-# OpenSVM API Reference
+# OpenSVM Enterprise UI/UX API Documentation
 
-This document provides detailed information about the API endpoints available in the OpenSVM explorer.
+## Overview
 
-## API Overview
+The OpenSVM Enterprise UI/UX system provides a comprehensive set of APIs and hooks for building accessible, performant, and internationalized applications. This documentation covers all major APIs, their usage patterns, and integration examples.
 
-OpenSVM provides a set of RESTful API endpoints that allow developers to access blockchain data programmatically. These endpoints are organized by resource type and follow consistent patterns for request and response formats.
+## Core APIs
 
-## Base URL
+### Design System API
 
-All API endpoints are relative to the base URL of your OpenSVM deployment:
+#### Theme Provider
+```typescript
+import { useTheme } from '@/lib/design-system/theme-provider';
 
-```
-https://your-opensvm-instance.com/api
-```
-
-## Authentication
-
-Most API endpoints are publicly accessible without authentication. Rate limiting may apply to prevent abuse.
-
-## Common Response Formats
-
-All API responses follow a consistent JSON format:
-
-```json
-{
-  "success": true,
-  "data": { ... },
-  "error": null
-}
+const MyComponent = () => {
+  const { theme, setTheme, isDark, isHighContrast } = useTheme();
+  
+  return (
+    <div className={theme.className}>
+      <button onClick={() => setTheme({ mode: 'dark' })}>
+        Switch to Dark Mode
+      </button>
+    </div>
+  );
+};
 ```
 
-Or in case of an error:
+#### Responsive Hooks
+```typescript
+import { useResponsive } from '@/lib/design-system/responsive';
 
-```json
-{
-  "success": false,
-  "data": null,
-  "error": {
-    "code": "ERROR_CODE",
-    "message": "Error description"
-  }
-}
+const MyComponent = () => {
+  const { 
+    breakpoint, 
+    isMobile, 
+    isTablet, 
+    isDesktop,
+    screenSize 
+  } = useResponsive();
+  
+  return (
+    <div>
+      {isMobile ? <MobileLayout /> : <DesktopLayout />}
+    </div>
+  );
+};
 ```
 
-## API Endpoints
+### Accessibility API
 
-### Block Data
+#### Accessibility Provider
+```typescript
+import { useAccessibility } from '@/lib/accessibility';
 
-#### Get Block Details
-
-```
-GET /block?slot={slot}
-```
-
-Retrieves detailed information about a specific block.
-
-**Parameters:**
-- `slot` (required): The slot number of the block
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "slot": 123456789,
-    "blockhash": "hash123...",
-    "parentSlot": 123456788,
-    "blockTime": 1632150000,
-    "previousBlockhash": "hash122...",
-    "transactions": [
-      {
-        "signature": "sig123...",
-        "type": "Success",
-        "timestamp": 1632150000
-      }
-    ],
-    "transactionCount": 100,
-    "successCount": 95,
-    "failureCount": 5,
-    "totalSolVolume": 1000.5,
-    "totalFees": 0.01,
-    "rewards": [
-      {
-        "pubkey": "val123...",
-        "lamports": 1000000,
-        "postBalance": 100000000,
-        "rewardType": "Fee"
-      }
-    ],
-    "programs": [
-      {
-        "address": "prog123...",
-        "count": 50,
-        "name": "Token Program"
-      }
-    ]
-  },
-  "error": null
-}
+const MyComponent = () => {
+  const { 
+    preferences,
+    announceToScreenReader,
+    focusElement,
+    trapFocus,
+    releaseFocus 
+  } = useAccessibility();
+  
+  const handleClick = () => {
+    announceToScreenReader('Action completed successfully');
+  };
+  
+  return (
+    <button 
+      onClick={handleClick}
+      aria-describedby="instructions"
+    >
+      Submit
+    </button>
+  );
+};
 ```
 
-#### Get Recent Blocks
+#### Focus Management
+```typescript
+import { useFocusManagement } from '@/lib/accessibility/focus';
 
-```
-GET /blocks?limit={limit}&before={slot}
-```
-
-Retrieves a list of recent blocks.
-
-**Parameters:**
-- `limit` (optional): Number of blocks to return (default: 10, max: 100)
-- `before` (optional): Return blocks before this slot
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "blocks": [
-      {
-        "slot": 123456789,
-        "blockhash": "hash123...",
-        "blockTime": 1632150000,
-        "transactionCount": 100
-      }
-    ]
-  },
-  "error": null
-}
-```
-
-### Transaction Data
-
-#### Get Transaction Details
-
-```
-GET /transaction?signature={signature}
-```
-
-Retrieves detailed information about a specific transaction.
-
-**Parameters:**
-- `signature` (required): The transaction signature
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "signature": "sig123...",
-    "timestamp": 1632150000,
-    "slot": 123456789,
-    "success": true,
-    "type": "sol",
-    "details": {
-      "instructions": [
-        {
-          "program": "System Program",
-          "programId": "11111111111111111111111111111111",
-          "parsed": {
-            "type": "transfer",
-            "info": {
-              "source": "src123...",
-              "destination": "dst123...",
-              "lamports": 1000000000
-            }
-          }
-        }
-      ],
-      "accounts": [
-        {
-          "pubkey": "acc123...",
-          "signer": true,
-          "writable": true
-        }
-      ],
-      "preBalances": [10000000000],
-      "postBalances": [9000000000],
-      "logs": ["Program 11111111111111111111111111111111 invoke [1]", "..."]
+const Modal = ({ isOpen, onClose, children }) => {
+  const { trapFocus, releaseFocus } = useFocusManagement();
+  
+  useEffect(() => {
+    if (isOpen) {
+      trapFocus();
+    } else {
+      releaseFocus();
     }
-  },
-  "error": null
-}
+  }, [isOpen]);
+  
+  return isOpen ? (
+    <div className="modal">
+      {children}
+    </div>
+  ) : null;
+};
 ```
 
-#### Analyze Transaction
+### Internationalization API
 
-```
-POST /analyze-transaction
-```
+#### Translation Hooks
+```typescript
+import { useTranslation } from '@/lib/i18n';
 
-Provides an AI-generated analysis of a transaction.
-
-**Request Body:**
-```json
-{
-  "logs": ["Program 11111111111111111111111111111111 invoke [1]", "..."],
-  "type": "sol",
-  "status": "success",
-  "amount": 1.0,
-  "from": "src123...",
-  "to": "dst123..."
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "analysis": "This transaction represents a transfer of 1 SOL from wallet src123... to wallet dst123... The transaction was successful and executed through the System Program."
-  },
-  "error": null
-}
+const MyComponent = () => {
+  const { t, locale, setLocale, isRTL } = useTranslation();
+  
+  return (
+    <div dir={isRTL ? 'rtl' : 'ltr'}>
+      <h1>{t('welcome.title')}</h1>
+      <p>{t('welcome.description', { name: 'User' })}</p>
+      
+      <select 
+        value={locale} 
+        onChange={(e) => setLocale(e.target.value)}
+      >
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="ar">العربية</option>
+      </select>
+    </div>
+  );
+};
 ```
 
-### Account Data
-
-#### Get Account Information
-
-```
-GET /account-stats?address={address}
-```
-
-Retrieves information about a specific account.
-
-**Parameters:**
-- `address` (required): The account address
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "address": "acc123...",
-    "lamports": 1000000000,
-    "owner": "11111111111111111111111111111111",
-    "executable": false,
-    "rentEpoch": 123,
-    "txCount": 50,
-    "solTransfers": 10,
-    "tokenTransfers": 40
-  },
-  "error": null
-}
+#### Pluralization
+```typescript
+const MyComponent = ({ count }) => {
+  const { t, formatPlural } = useTranslation();
+  
+  return (
+    <p>
+      {formatPlural(count, {
+        zero: t('items.zero'),
+        one: t('items.one'),
+        other: t('items.other', { count })
+      })}
+    </p>
+  );
+};
 ```
 
-#### Get Account Transactions
+### Voice Navigation API
 
-```
-GET /account-transactions?address={address}&limit={limit}&before={signature}
-```
+#### Voice Provider
+```typescript
+import { useVoice } from '@/lib/voice';
 
-Retrieves transactions associated with an account.
-
-**Parameters:**
-- `address` (required): The account address
-- `limit` (optional): Number of transactions to return (default: 10, max: 100)
-- `before` (optional): Return transactions before this signature (for pagination)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "transactions": [
-      {
-        "signature": "sig123...",
-        "timestamp": 1632150000,
-        "slot": 123456789,
-        "success": true,
-        "type": "sol"
+const MyComponent = () => {
+  const {
+    isListening,
+    startListening,
+    stopListening,
+    speak,
+    registerCommand,
+    announceElement
+  } = useVoice();
+  
+  useEffect(() => {
+    registerCommand('my-action', {
+      patterns: ['execute action', 'do something'],
+      description: 'Execute custom action',
+      category: 'Custom',
+      action: () => {
+        // Custom action logic
+        speak('Action executed successfully');
       }
-    ]
-  },
-  "error": null
-}
+    });
+  }, [registerCommand, speak]);
+  
+  return (
+    <button onClick={() => announceElement('Button clicked')}>
+      {isListening ? 'Listening...' : 'Start Voice Control'}
+    </button>
+  );
+};
 ```
 
-### Token Data
+#### Voice Commands
+```typescript
+import { useVoiceCommands } from '@/lib/voice/commands';
 
-#### Get Token Information
-
-```
-GET /token?address={address}
-```
-
-Retrieves information about a specific token.
-
-**Parameters:**
-- `address` (required): The token mint address
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "address": "mint123...",
-    "symbol": "TOKEN",
-    "name": "Example Token",
-    "decimals": 9,
-    "totalSupply": 1000000000,
-    "owner": "auth123...",
-    "frozen": false
-  },
-  "error": null
-}
+const NavigationComponent = () => {
+  // Automatically registers navigation voice commands
+  useVoiceCommands();
+  
+  return <nav>/* Navigation content */</nav>;
+};
 ```
 
-#### Get Token Statistics
+### Caching API
 
-```
-GET /token-stats?address={address}
-```
+#### Cache Provider
+```typescript
+import { useCachedQuery, useCachedMutation } from '@/lib/caching/hooks';
 
-Retrieves statistics about a specific token.
-
-**Parameters:**
-- `address` (required): The token mint address
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "address": "mint123...",
-    "holders": 1000,
-    "transactions": 5000,
-    "volume24h": 100000,
-    "priceUsd": 1.23
-  },
-  "error": null
-}
-```
-
-### Program Data
-
-#### Get Program Information
-
-```
-GET /program?address={address}
-```
-
-Retrieves information about a specific program.
-
-**Parameters:**
-- `address` (required): The program address
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "address": "prog123...",
-    "name": "Example Program",
-    "version": "1.0.0",
-    "executable": true,
-    "owner": "BPFLoaderUpgradeab1e11111111111111111111111",
-    "invocations": 10000,
-    "accounts": 500
-  },
-  "error": null
-}
-```
-
-### Search
-
-#### Search Blockchain Data
-
-```
-GET /search?q={query}
-```
-
-Searches for blockchain data matching the query.
-
-**Parameters:**
-- `q` (required): The search query (transaction signature, account address, etc.)
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "type": "transaction",
-    "result": {
-      "signature": "sig123...",
-      "timestamp": 1632150000,
-      "slot": 123456789,
-      "success": true
+const MyComponent = () => {
+  const { 
+    data, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useCachedQuery({
+    key: ['user-data', userId],
+    fetcher: () => fetchUserData(userId),
+    options: {
+      staleTime: 5 * 60 * 1000, // 5 minutes
+      cacheTime: 10 * 60 * 1000, // 10 minutes
     }
-  },
-  "error": null
+  });
+  
+  const updateUser = useCachedMutation({
+    mutationFn: updateUserData,
+    onSuccess: () => {
+      // Invalidate related cache entries
+      invalidateQueries(['user-data']);
+    }
+  });
+  
+  return (
+    <div>
+      {isLoading ? <LoadingSkeleton /> : <UserProfile data={data} />}
+    </div>
+  );
+};
+```
+
+#### Cache Management
+```typescript
+import { useCache } from '@/lib/caching';
+
+const AdminPanel = () => {
+  const { 
+    getCacheStats, 
+    clearCache, 
+    optimizeCache 
+  } = useCache();
+  
+  const handleClearCache = async () => {
+    await clearCache();
+    announceToScreenReader('Cache cleared successfully');
+  };
+  
+  return (
+    <div>
+      <CacheStatsDisplay stats={getCacheStats()} />
+      <button onClick={handleClearCache}>Clear Cache</button>
+    </div>
+  );
+};
+```
+
+### Performance API
+
+#### Performance Monitoring
+```typescript
+import { usePerformance } from '@/lib/performance';
+
+const PerformanceDashboard = () => {
+  const {
+    metrics,
+    isCollecting,
+    startCollection,
+    generateReport,
+    getOptimizationSuggestions
+  } = usePerformance();
+  
+  const handleStartMonitoring = () => {
+    startCollection();
+    announceToScreenReader('Performance monitoring started');
+  };
+  
+  return (
+    <div>
+      <button onClick={handleStartMonitoring}>
+        Start Monitoring
+      </button>
+      {metrics && (
+        <MetricsDisplay 
+          metrics={metrics}
+          suggestions={getOptimizationSuggestions()}
+        />
+      )}
+    </div>
+  );
+};
+```
+
+#### Performance Testing
+```typescript
+import { usePerformanceTesting, createCoreWebVitalsTestSuite } from '@/lib/performance/testing';
+
+const TestRunner = () => {
+  const { runTestSuite, results, isRunning } = usePerformanceTesting();
+  
+  const runTests = async () => {
+    const testSuite = createCoreWebVitalsTestSuite();
+    const result = await runTestSuite(testSuite);
+    console.log('Test results:', result);
+  };
+  
+  return (
+    <button onClick={runTests} disabled={isRunning}>
+      {isRunning ? 'Running Tests...' : 'Run Performance Tests'}
+    </button>
+  );
+};
+```
+
+### Dashboard API
+
+#### Dashboard Provider
+```typescript
+import { useDashboard } from '@/lib/dashboard';
+
+const DashboardApp = () => {
+  const {
+    dashboards,
+    currentDashboard,
+    createDashboard,
+    addWidget,
+    updateWidget,
+    exportDashboard
+  } = useDashboard();
+  
+  const handleAddWidget = () => {
+    addWidget(currentDashboard.id, {
+      type: 'metrics-card',
+      title: 'New Metric',
+      position: { x: 0, y: 0, w: 2, h: 2 },
+      config: { /* widget config */ }
+    });
+  };
+  
+  return (
+    <div>
+      <button onClick={handleAddWidget}>Add Widget</button>
+      <DashboardGrid dashboard={currentDashboard} />
+    </div>
+  );
+};
+```
+
+#### Widget Development
+```typescript
+import { WidgetProps } from '@/lib/dashboard/types';
+
+interface MyWidgetProps extends WidgetProps {
+  config: {
+    title: string;
+    dataSource: any[];
+    customOption: boolean;
+  };
 }
-```
 
-### Wallet Path Finding
-
-#### Find Path Between Wallets
-
-```
-POST /wallet-path-finding
-```
-
-Finds a path between two wallet addresses through token transfers.
-
-**Request Body:**
-```json
-{
-  "sourceWallet": "src123...",
-  "targetWallet": "dst123...",
-  "maxDepth": 42
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "found": true,
-    "path": ["src123...", "intermediate123...", "dst123..."],
-    "transferIds": ["tx1...", "tx2..."],
-    "visitedCount": 42,
-    "depth": 2
-  },
-  "error": null
-}
-```
-
-### AI Assistant
-
-#### Chat with AI
-
-```
-POST /chat
-```
-
-Sends a message to the AI assistant and receives a response.
-
-**Request Body:**
-```json
-{
-  "message": "Explain how Solana transactions work",
-  "history": [
-    {"role": "user", "content": "Hello"},
-    {"role": "assistant", "content": "Hi! How can I help you with Solana today?"}
-  ]
-}
-```
-
-**Response:**
-```json
-{
-  "success": true,
-  "data": {
-    "response": "Solana transactions work by...",
-    "actions": [
-      {
-        "type": "link",
-        "text": "View Transaction Structure",
-        "url": "/docs/transactions"
-      }
-    ]
-  },
-  "error": null
-}
-```
-
-## Error Codes
-
-| Code | Description |
-|------|-------------|
-| `INVALID_PARAMETER` | One or more parameters are invalid |
-| `RESOURCE_NOT_FOUND` | The requested resource was not found |
-| `RATE_LIMIT_EXCEEDED` | Too many requests, please try again later |
-| `INTERNAL_ERROR` | An internal server error occurred |
-| `RPC_ERROR` | Error communicating with Solana RPC |
-
-## Rate Limiting
-
-API requests are rate-limited to prevent abuse. The current limits are:
-
-- 100 requests per minute per IP address
-- 1000 requests per hour per IP address
-
-When rate limits are exceeded, the API will return a 429 Too Many Requests status code.
-
-## Streaming Responses
-
-Some endpoints support streaming responses for long-running operations:
-
-- `/wallet-path-finding` - Streams progress updates during path finding
-- `/chat` - Streams AI assistant responses as they are generated
-
-Streaming responses use newline-delimited JSON objects.
-
-## Websocket API
-
-OpenSVM provides a WebSocket API for real-time updates and event streaming:
-
-```
-wss://your-opensvm-instance.com/api/stream
-```
-
-Available channels:
-- `blocks` - Real-time block updates
-- `transactions` - Real-time transaction updates  
-- `network` - Real-time network statistics
-
-### Real-Time Event Streaming
-
-The WebSocket API supports real-time blockchain event streaming with built-in anomaly detection:
-
-```javascript
-// Example WebSocket connection
-const ws = new WebSocket('wss://your-opensvm-instance.com/api/stream?clientId=my-client');
-
-ws.onmessage = (event) => {
-  const blockchainEvent = JSON.parse(event.data);
-  console.log('Blockchain event:', blockchainEvent);
+const MyCustomWidget: React.FC<MyWidgetProps> = ({ config, size, data }) => {
+  return (
+    <Card className="h-full">
+      <CardHeader>
+        <CardTitle>{config.title}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {/* Widget content based on config and size */}
+      </CardContent>
+    </Card>
+  );
 };
 
-// Subscribe to specific event types
-fetch('/api/stream', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    action: 'subscribe',
-    clientId: 'my-client',
-    eventTypes: ['transaction', 'block']
-  })
+// Register the widget
+export const myWidgetTemplate = {
+  type: 'my-widget',
+  name: 'My Custom Widget',
+  description: 'A custom widget for specific use case',
+  component: MyCustomWidget,
+  defaultConfig: {
+    title: 'Custom Widget',
+    dataSource: [],
+    customOption: false,
+  },
+  category: 'Custom',
+  defaultSize: { w: 3, h: 2 },
+};
+```
+
+### Authentication & Authorization API
+
+#### RBAC Provider
+```typescript
+import { useRBAC } from '@/lib/rbac';
+
+const ProtectedComponent = () => {
+  const {
+    user,
+    permissions,
+    hasPermission,
+    hasRole,
+    switchOrganization
+  } = useRBAC();
+  
+  if (!hasPermission('dashboard.read')) {
+    return <AccessDenied />;
+  }
+  
+  return (
+    <div>
+      {hasRole('admin') && <AdminPanel />}
+      {hasPermission('dashboard.write') && <EditControls />}
+    </div>
+  );
+};
+```
+
+#### SSO Integration
+```typescript
+import { useSSO } from '@/lib/sso';
+
+const LoginComponent = () => {
+  const {
+    loginWithSAML,
+    loginWithOAuth,
+    loginWithAzureAD,
+    logout,
+    isAuthenticated,
+    user
+  } = useSSO();
+  
+  const handleSSOLogin = (provider: string) => {
+    switch (provider) {
+      case 'saml':
+        loginWithSAML();
+        break;
+      case 'oauth':
+        loginWithOAuth();
+        break;
+      case 'azure':
+        loginWithAzureAD();
+        break;
+    }
+  };
+  
+  return (
+    <div>
+      {!isAuthenticated ? (
+        <div>
+          <button onClick={() => handleSSOLogin('saml')}>
+            Login with SAML
+          </button>
+          <button onClick={() => handleSSOLogin('oauth')}>
+            Login with OAuth
+          </button>
+        </div>
+      ) : (
+        <div>
+          Welcome, {user.name}!
+          <button onClick={logout}>Logout</button>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### Export API
+
+#### Export Provider
+```typescript
+import { useExport } from '@/lib/export';
+
+const ExportComponent = () => {
+  const {
+    exportToPDF,
+    exportToCSV,
+    exportToExcel,
+    isExporting,
+    progress
+  } = useExport();
+  
+  const handleExport = async (format: string) => {
+    const data = /* your data */;
+    const options = {
+      filename: `export-${Date.now()}`,
+      includeHeaders: true,
+      customStyles: { /* custom styling */ }
+    };
+    
+    switch (format) {
+      case 'pdf':
+        await exportToPDF(data, options);
+        break;
+      case 'csv':
+        await exportToCSV(data, options);
+        break;
+      case 'excel':
+        await exportToExcel(data, options);
+        break;
+    }
+  };
+  
+  return (
+    <div>
+      {isExporting && <ProgressBar progress={progress} />}
+      <button onClick={() => handleExport('pdf')}>Export PDF</button>
+      <button onClick={() => handleExport('csv')}>Export CSV</button>
+    </div>
+  );
+};
+```
+
+### Error Handling API
+
+#### Error Provider
+```typescript
+import { useErrorHandling } from '@/lib/error-handling';
+
+const MyComponent = () => {
+  const {
+    reportError,
+    clearErrors,
+    retryLastAction,
+    showUserFriendlyError
+  } = useErrorHandling();
+  
+  const handleAsyncAction = async () => {
+    try {
+      await riskyOperation();
+    } catch (error) {
+      reportError(error, {
+        context: 'user-action',
+        severity: 'medium',
+        recoverable: true
+      });
+      
+      showUserFriendlyError(
+        'Something went wrong, but we\'ve saved your progress.',
+        {
+          action: 'Retry',
+          onAction: retryLastAction
+        }
+      );
+    }
+  };
+  
+  return (
+    <button onClick={handleAsyncAction}>
+      Perform Action
+    </button>
+  );
+};
+```
+
+### Animation API
+
+#### Animation Provider
+```typescript
+import { useAnimations, AnimatedBox } from '@/lib/animations';
+
+const MyComponent = () => {
+  const {
+    prefersReducedMotion,
+    animateElement,
+    createStaggeredAnimation
+  } = useAnimations();
+  
+  const items = ['Item 1', 'Item 2', 'Item 3'];
+  
+  return (
+    <div>
+      <AnimatedBox
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: prefersReducedMotion ? 0 : 0.3 }}
+      >
+        Content with animation
+      </AnimatedBox>
+      
+      {items.map((item, index) => (
+        <AnimatedBox
+          key={index}
+          {...createStaggeredAnimation(index, 0.1)}
+        >
+          {item}
+        </AnimatedBox>
+      ))}
+    </div>
+  );
+};
+```
+
+## Advanced Usage Patterns
+
+### Compound Components
+
+```typescript
+// Dashboard compound component pattern
+const Dashboard = ({ children }) => {
+  return (
+    <DashboardProvider>
+      <div className="dashboard">
+        {children}
+      </div>
+    </DashboardProvider>
+  );
+};
+
+const DashboardHeader = ({ children }) => {
+  const { currentDashboard } = useDashboard();
+  return <header>{children}</header>;
+};
+
+const DashboardGrid = () => {
+  const { currentDashboard } = useDashboard();
+  return <GridLayout dashboard={currentDashboard} />;
+};
+
+Dashboard.Header = DashboardHeader;
+Dashboard.Grid = DashboardGrid;
+
+// Usage
+<Dashboard>
+  <Dashboard.Header>
+    <h1>My Dashboard</h1>
+  </Dashboard.Header>
+  <Dashboard.Grid />
+</Dashboard>
+```
+
+### Higher-Order Components
+
+```typescript
+// HOC for adding voice announcements
+export function withVoiceAnnouncements<T extends {}>(
+  Component: React.ComponentType<T>
+) {
+  return function VoiceAnnouncedComponent(props: T) {
+    const { announceNavigation } = useVoice();
+    
+    useEffect(() => {
+      const title = document.title || 'Page loaded';
+      announceNavigation(title);
+    }, [announceNavigation]);
+
+    return <Component {...props} />;
+  };
+}
+
+// HOC for adding accessibility features
+export function withAccessibility<T extends {}>(
+  Component: React.ComponentType<T>
+) {
+  return function AccessibleComponent(props: T) {
+    const { trapFocus, releaseFocus } = useAccessibility();
+    
+    // Add accessibility enhancements
+    return <Component {...props} />;
+  };
+}
+
+// Usage
+const MyPageWithVoice = withVoiceAnnouncements(MyPage);
+const AccessibleModal = withAccessibility(Modal);
+```
+
+### Custom Hooks
+
+```typescript
+// Custom hook combining multiple features
+export function useEnterpriseFeatures() {
+  const { user, hasPermission } = useRBAC();
+  const { speak } = useVoice();
+  const { reportError } = useErrorHandling();
+  const { exportToPDF } = useExport();
+  
+  const performSecureAction = useCallback(async (action: () => Promise<void>) => {
+    if (!hasPermission('advanced.actions')) {
+      speak('Access denied. Insufficient permissions.');
+      return;
+    }
+    
+    try {
+      await action();
+      speak('Action completed successfully');
+    } catch (error) {
+      reportError(error);
+      speak('Action failed. Please try again.');
+    }
+  }, [hasPermission, speak, reportError]);
+  
+  return {
+    user,
+    performSecureAction,
+    exportToPDF,
+  };
+}
+```
+
+### Context Composition
+
+```typescript
+// Composing multiple contexts
+export function AppProviders({ children }: { children: React.ReactNode }) {
+  return (
+    <ErrorBoundary>
+      <ThemeProvider>
+        <I18nProvider>
+          <AccessibilityProvider>
+            <VoiceProvider>
+              <CacheProvider>
+                <RBACProvider>
+                  <PerformanceProvider>
+                    {children}
+                  </PerformanceProvider>
+                </RBACProvider>
+              </CacheProvider>
+            </VoiceProvider>
+          </AccessibilityProvider>
+        </I18nProvider>
+      </ThemeProvider>
+    </ErrorBoundary>
+  );
+}
+```
+
+## Type Definitions
+
+### Core Types
+
+```typescript
+// Theme types
+interface Theme {
+  mode: 'light' | 'dark' | 'system';
+  variant: 'default' | 'blue' | 'green' | 'purple';
+  fontSize: 'sm' | 'base' | 'lg';
+  reducedMotion: boolean;
+  highContrast: boolean;
+}
+
+// User types
+interface User {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  organization: Organization;
+  preferences: UserPreferences;
+}
+
+// RBAC types
+interface Permission {
+  resource: string;
+  action: 'create' | 'read' | 'update' | 'delete';
+}
+
+interface Role {
+  id: string;
+  name: string;
+  permissions: Permission[];
+  hierarchy: number;
+}
+
+// Dashboard types
+interface Widget {
+  id: string;
+  type: string;
+  title: string;
+  position: { x: number; y: number; w: number; h: number };
+  config: Record<string, any>;
+  locked: boolean;
+  visible: boolean;
+}
+
+interface Dashboard {
+  id: string;
+  name: string;
+  description?: string;
+  widgets: Widget[];
+  settings: DashboardSettings;
+  metadata: DashboardMetadata;
+}
+
+// Voice types
+interface VoiceCommand {
+  patterns: string[];
+  description: string;
+  category: string;
+  action: (params?: any) => void | Promise<void>;
+  requiresConfirmation?: boolean;
+}
+
+// Performance types
+interface PerformanceMetrics {
+  firstContentfulPaint: number | null;
+  largestContentfulPaint: number | null;
+  firstInputDelay: number | null;
+  cumulativeLayoutShift: number | null;
+  jsHeapSize: number;
+  timestamp: number;
+}
+```
+
+## Event System
+
+### Custom Events
+
+```typescript
+// Performance events
+document.addEventListener('performance:threshold-exceeded', (event) => {
+  const { metric, value, threshold } = event.detail;
+  console.log(`Performance alert: ${metric} exceeded threshold`);
+});
+
+// Voice events
+document.addEventListener('voice:command-recognized', (event) => {
+  const { command, confidence } = event.detail;
+  console.log(`Voice command recognized: ${command}`);
+});
+
+// Cache events
+document.addEventListener('cache:invalidated', (event) => {
+  const { key, reason } = event.detail;
+  console.log(`Cache invalidated: ${key} (${reason})`);
 });
 ```
 
-### Anomaly Detection API
+### Event Dispatchers
 
-The anomaly detection system provides AI-driven monitoring for suspicious blockchain activities:
+```typescript
+// Custom event dispatching
+export function dispatchPerformanceEvent(type: string, detail: any) {
+  const event = new CustomEvent(`performance:${type}`, { detail });
+  document.dispatchEvent(event);
+}
 
-```
-GET /api/anomaly?action=alerts
-GET /api/anomaly?action=stats
-POST /api/anomaly (for event analysis)
-```
-
-**Example: Get Recent Anomaly Alerts**
-```javascript
-const response = await fetch('/api/anomaly?action=alerts');
-const data = await response.json();
-console.log('Recent alerts:', data.data.alerts);
+export function dispatchVoiceEvent(type: string, detail: any) {
+  const event = new CustomEvent(`voice:${type}`, { detail });
+  document.dispatchEvent(event);
+}
 ```
 
-**Example: Analyze Event for Anomalies**
-```javascript
-const event = {
-  type: 'transaction',
-  timestamp: Date.now(),
-  data: {
-    signature: 'abc123...',
-    fee: 50000, // High fee - might trigger anomaly
-    logs: ['Program log: success'],
-    err: null
-  }
+## Best Practices
+
+### Performance
+
+1. **Lazy Loading**: Use dynamic imports for heavy components
+2. **Memoization**: Wrap expensive computations with `useMemo`
+3. **Virtualization**: Use virtual scrolling for large lists
+4. **Code Splitting**: Split routes and features into separate bundles
+5. **Image Optimization**: Use Next.js Image component with proper sizing
+
+### Accessibility
+
+1. **Semantic HTML**: Use proper HTML elements for content structure
+2. **ARIA Labels**: Provide descriptive labels for interactive elements
+3. **Focus Management**: Implement proper focus trapping in modals
+4. **Color Contrast**: Ensure sufficient contrast for all text
+5. **Keyboard Navigation**: Support all interactions via keyboard
+
+### Internationalization
+
+1. **String Externalization**: Never hardcode user-facing strings
+2. **Pluralization**: Use proper plural forms for different languages
+3. **Date/Number Formatting**: Use locale-aware formatting
+4. **RTL Support**: Test and support right-to-left languages
+5. **Cultural Sensitivity**: Consider cultural differences in UX
+
+### Voice Interface
+
+1. **Clear Commands**: Use simple, memorable voice patterns
+2. **Confirmation**: Confirm destructive actions verbally
+3. **Error Handling**: Provide helpful error messages for unrecognized commands
+4. **Accessibility**: Ensure voice features don't interfere with screen readers
+5. **Privacy**: Respect user privacy regarding voice data
+
+## Migration Guide
+
+### Upgrading from Legacy Systems
+
+```typescript
+// Before (legacy)
+const theme = localStorage.getItem('theme');
+document.body.className = theme === 'dark' ? 'dark' : 'light';
+
+// After (enterprise system)
+const { theme, setTheme } = useTheme();
+// Theme is automatically applied and persisted
+```
+
+```typescript
+// Before (basic i18n)
+const messages = {
+  en: { welcome: 'Welcome' },
+  es: { welcome: 'Bienvenido' }
 };
 
-const response = await fetch('/api/anomaly', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ action: 'analyze', event })
-});
-
-const result = await response.json();
-console.log('Anomalies detected:', result.data.alerts);
+// After (enterprise i18n)
+const { t } = useTranslation();
+return <h1>{t('welcome.title')}</h1>;
 ```
+
+### Integration Checklist
+
+- [ ] Wrap app in `AppProviders`
+- [ ] Update theme usage to use `useTheme()`
+- [ ] Replace hardcoded strings with `t()` calls
+- [ ] Add accessibility attributes to interactive elements
+- [ ] Register voice commands for key actions
+- [ ] Implement error boundaries and error handling
+- [ ] Add performance monitoring to critical paths
+- [ ] Update authentication to use RBAC system
+- [ ] Convert static content to dashboard widgets
+
+---
+
+This API documentation provides comprehensive coverage of all major APIs and integration patterns in the OpenSVM Enterprise UI/UX system. For specific implementation details, refer to the source code and TypeScript definitions.

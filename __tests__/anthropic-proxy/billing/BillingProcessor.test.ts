@@ -21,12 +21,11 @@ describe('BillingProcessor', () => {
         // Create proper mock objects with all required methods
         mockBalanceManager = {
             initialize: jest.fn().mockResolvedValue(undefined),
-            deductBalance: jest.fn().mockResolvedValue(undefined),
+            consumeReservedBalance: jest.fn().mockResolvedValue(undefined),
             releaseReservedBalance: jest.fn().mockResolvedValue(undefined),
             reserveBalance: jest.fn().mockResolvedValue(true),
             getBalance: jest.fn().mockResolvedValue(1000),
             hasSufficientBalance: jest.fn().mockResolvedValue(true),
-            consumeReservedBalance: jest.fn().mockResolvedValue(undefined),
         } as any;
 
         mockUsageTracker = {
@@ -72,15 +71,17 @@ describe('BillingProcessor', () => {
             responseTime: 100,
         };
 
-        it('should track usage and deduct balance for a successful response', async () => {
+        it('should track usage and consume reserved balance for a successful response', async () => {
             await billingProcessor.processSuccessfulResponse(mockProxyResponse);
 
             expect(mockUsageTracker.trackResponse).toHaveBeenCalledWith(mockProxyResponse);
-            expect(mockBalanceManager.deductBalance).toHaveBeenCalledWith(
+            // Implementation calls consumeReservedBalance with estimated cost and actual cost
+            const expectedEstimatedCost = mockProxyResponse.inputTokens + mockProxyResponse.outputTokens; // 10 + 20 = 30
+            expect(mockBalanceManager.consumeReservedBalance).toHaveBeenCalledWith(
                 mockProxyResponse.userId,
+                expectedEstimatedCost,
                 mockProxyResponse.actualCost,
-                mockProxyResponse.keyId,
-                mockProxyResponse.model
+                mockProxyResponse.keyId
             );
         });
     });
@@ -103,10 +104,12 @@ describe('BillingProcessor', () => {
             await billingProcessor.processFailedResponse(mockProxyResponse);
 
             expect(mockUsageTracker.trackResponse).toHaveBeenCalledWith(mockProxyResponse);
+            // Implementation calls releaseReservedBalance with estimated amount
+            const expectedEstimatedAmount = mockProxyResponse.inputTokens + mockProxyResponse.outputTokens; // 0 + 0 = 0
             expect(mockBalanceManager.releaseReservedBalance).toHaveBeenCalledWith(
                 mockProxyResponse.userId,
-                mockProxyResponse.keyId,
-                mockProxyResponse.model
+                expectedEstimatedAmount,
+                mockProxyResponse.keyId
             );
         });
     });
@@ -130,8 +133,7 @@ describe('BillingProcessor', () => {
             expect(mockBalanceManager.reserveBalance).toHaveBeenCalledWith(
                 mockProxyRequest.userId,
                 mockProxyRequest.estimatedCost,
-                mockProxyRequest.keyId,
-                mockProxyRequest.anthropicRequest.model
+                mockProxyRequest.keyId
             );
         });
 
@@ -139,7 +141,7 @@ describe('BillingProcessor', () => {
             mockBalanceManager.reserveBalance.mockResolvedValue(false);
 
             await expect(billingProcessor.reserveBalance(mockProxyRequest)).rejects.toThrow(
-                'Insufficient balance to reserve tokens.'
+                'Insufficient balance to reserve 75 tokens for claude-3-opus-20240229 request.'
             );
         });
     });

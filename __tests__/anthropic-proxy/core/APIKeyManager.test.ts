@@ -1,16 +1,22 @@
 import { APIKeyManager } from '../../../lib/anthropic-proxy/core/APIKeyManager';
 import { KeyStorage } from '../../../lib/anthropic-proxy/storage/KeyStorage';
-import { validateKeyFormat, verifyKeyChecksum } from '../../../lib/anthropic-proxy/utils/KeyGenerator';
 
 // Mock the KeyStorage
 jest.mock('../../../lib/anthropic-proxy/storage/KeyStorage');
+
+// Mock all KeyGenerator functions
 jest.mock('../../../lib/anthropic-proxy/utils/KeyGenerator', () => ({
   ...jest.requireActual('../../../lib/anthropic-proxy/utils/KeyGenerator'),
+  validateKeyFormat: jest.fn(),
+  verifyKeyChecksum: jest.fn(),
   generateAPIKey: jest.fn(),
   generateKeyId: jest.fn(),
   hashAPIKey: jest.fn(),
   getKeyPrefix: jest.fn()
 }));
+
+// Import the mocked functions
+import { validateKeyFormat, verifyKeyChecksum } from '../../../lib/anthropic-proxy/utils/KeyGenerator';
 
 const MockedKeyStorage = KeyStorage as jest.MockedClass<typeof KeyStorage>;
 

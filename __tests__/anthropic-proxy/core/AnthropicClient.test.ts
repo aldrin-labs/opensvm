@@ -7,10 +7,11 @@ global.fetch = jest.fn();
 describe('AnthropicClient', () => {
   let client: AnthropicClient;
   const mockApiKey = 'test-api-key';
+  const mockOpenRouterKeys = ['sk-or-v1-testkey123456789'];
 
   beforeEach(() => {
     jest.clearAllMocks();
-    client = new AnthropicClient(mockApiKey);
+    client = new AnthropicClient(mockApiKey, undefined, mockOpenRouterKeys);
   });
 
   describe('constructor', () => {
@@ -18,8 +19,8 @@ describe('AnthropicClient', () => {
       expect(client.getMaskedApiKey()).toBe('test***-key');
     });
 
-    it('should throw error if no API key provided', () => {
-      expect(() => new AnthropicClient('')).toThrow('Anthropic API key is required');
+    it('should throw error if no OpenRouter API key provided', () => {
+      expect(() => new AnthropicClient('', undefined, [])).toThrow('At least one OpenRouter API key is required');
     });
   });
 
@@ -55,14 +56,14 @@ describe('AnthropicClient', () => {
 
       expect(result).toEqual(mockResponse);
       expect(fetch).toHaveBeenCalledWith(
-        'https://api.anthropic.com/v1/messages',
+        'https://openrouter.ai/api/v1/chat/completions',
         expect.objectContaining({
           method: 'POST',
           headers: expect.objectContaining({
-            'Authorization': `Bearer ${mockApiKey}`,
+            'Authorization': `Bearer ${mockOpenRouterKeys[0]}`,
             'Content-Type': 'application/json'
           }),
-          body: JSON.stringify(mockRequest)
+          body: expect.stringContaining('"model":"anthropic/claude-3.5-sonnet"')
         })
       );
     });
@@ -147,24 +148,47 @@ describe('AnthropicClient', () => {
 
   describe('getModels', () => {
     it('should get models successfully', async () => {
-      const mockModelsResponse = {
-        data: [
-          {
-            id: 'claude-3-sonnet-20240229',
-            type: 'model',
-            display_name: 'Claude 3 Sonnet'
-          }
-        ]
-      };
-
-      (fetch as jest.Mock).mockResolvedValue({
-        ok: true,
-        json: async () => mockModelsResponse
-      });
-
+      // getModels() returns a static list, doesn't make HTTP calls
       const result = await client.getModels();
 
-      expect(result).toEqual(mockModelsResponse);
+      expect(result).toEqual({
+        object: 'list',
+        data: [
+          {
+            id: 'claude-3-opus-20240229',
+            object: 'model',
+            created: 1708992000,
+            owned_by: 'anthropic'
+          },
+          {
+            id: 'claude-3-sonnet-20240229',
+            object: 'model',
+            created: 1708992000,
+            owned_by: 'anthropic'
+          },
+          {
+            id: 'claude-3-haiku-20240307',
+            object: 'model',
+            created: 1709769600,
+            owned_by: 'anthropic'
+          },
+          {
+            id: 'claude-3-sonnet-4',
+            object: 'model',
+            created: 1708992000,
+            owned_by: 'anthropic'
+          },
+          {
+            id: 'claude-3-opus-4',
+            object: 'model',
+            created: 1708992000,
+            owned_by: 'anthropic'
+          }
+        ]
+      });
+
+      // Should not make any HTTP calls since it returns static data
+      expect(fetch).not.toHaveBeenCalled();
       expect(fetch).toHaveBeenCalledWith(
         'https://api.anthropic.com/v1/models',
         expect.objectContaining({

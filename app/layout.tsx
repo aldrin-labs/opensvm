@@ -3,10 +3,12 @@ import { Inter, JetBrains_Mono } from 'next/font/google';
 import "./globals.css";
 import "./styles/custom-scrollbar.css";
 import "./styles/scrollbar-themes.css";
+import "../styles/rtl.css";
 import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
 // Import Navbar directly
 import { NavbarInteractive } from '@/components/NavbarInteractive';
+import { SkipLink } from '@/lib/accessibility';
 
 // Load fonts with preload
 const inter = Inter({
@@ -103,10 +105,11 @@ export default function RootLayout({
         <script src="/register-sw.js" defer></script>
       </head>
       <body className={inter.className}>
+        <SkipLink />
         <Providers>
           <Suspense fallback={<div className="min-h-screen bg-background" />}>
             <NavbarInteractive />
-            <main className="flex-1 pt-14">
+            <main id="main-content" className="flex-1 pt-14" role="main">
               {children}
             </main>
           </Suspense>

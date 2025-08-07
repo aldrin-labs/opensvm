@@ -1,6 +1,6 @@
 'use client';
 
-import type { Message, Note, AgentAction } from '@/lib/ai/types';
+import type { Message, Note, AgentAction } from './types';
 import { ChatUI } from './ChatUI';
 import { ChatLayout } from './layouts/ChatLayout';
 

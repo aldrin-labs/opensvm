@@ -19,7 +19,7 @@ describe('/api/stream', () => {
   });
 
   describe('GET /api/stream', () => {
-    it('should return WebSocket info for non-websocket requests', async () => {
+    it('should return API information for non-websocket requests', async () => {
       const request = new NextRequest('http://localhost:3000/api/stream', {
         method: 'GET',
         headers: {
@@ -28,14 +28,36 @@ describe('/api/stream', () => {
       });
 
       const response = await GET(request);
-      expect(response.status).toBe(400);
+      expect(response.status).toBe(200);
       
-      const text = await response.text();
-      expect(text).toBe('Expected WebSocket connection');
+      const data = await response.json();
+      expect(data.success).toBe(true);
+      expect(data.data.message).toBe('Blockchain Event Streaming API');
+      expect(data.data.streamingMethod).toBe('SSE');
+      expect(data.data.supportedEvents).toEqual(['transaction', 'block', 'account_change']);
     });
 
-    it('should handle websocket upgrade request', async () => {
+    it('should handle websocket upgrade request with proper error', async () => {
       const request = new NextRequest('http://localhost:3000/api/stream?clientId=test123', {
+        method: 'GET',
+        headers: {
+          'upgrade': 'websocket',
+          'connection': 'upgrade'
+        }
+      });
+
+      const response = await GET(request);
+      expect(response.status).toBe(426); // Upgrade Required
+      
+      const data = await response.json();
+      expect(data.success).toBe(false);
+      expect(data.error.code).toBe('WEBSOCKET_NOT_SUPPORTED');
+      expect(data.error.message).toBe('WebSocket connections are not supported by this endpoint');
+      expect(data.error.details.alternatives.sseEndpoint).toBe('/api/sse-alerts');
+    });
+
+    it('should explain websocket not supported without connection header', async () => {
+      const request = new NextRequest('http://localhost:3000/api/stream', {
         method: 'GET',
         headers: {
           'upgrade': 'websocket'
@@ -46,23 +68,10 @@ describe('/api/stream', () => {
       expect(response.status).toBe(200);
       
       const data = await response.json();
-      expect(data.message).toBe('WebSocket endpoint ready');
-      expect(data.clientId).toBe('test123');
-      expect(data.supportedEvents).toEqual(['transaction', 'block', 'account_change']);
-    });
-
-    it('should generate clientId if not provided', async () => {
-      const request = new NextRequest('http://localhost:3000/api/stream', {
-        method: 'GET',
-        headers: {
-          'upgrade': 'websocket'
-        }
-      });
-
-      const response = await GET(request);
-      const data = await response.json();
-      
-      expect(data.clientId).toMatch(/^client_\d+_[a-z0-9]+$/);
+      expect(data.success).toBe(true);
+      expect(data.data.message).toBe('Blockchain Event Streaming API');
+      expect(data.data.streamingMethod).toBe('SSE');
+      expect(data.data.clientId).toMatch(/^client_\d+_[a-z0-9]+$/);
     });
   });
 
@@ -84,8 +93,9 @@ describe('/api/stream', () => {
       
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.authToken).toBeDefined();
-      expect(data.expiresIn).toBe(3600);
+      expect(data.data.authToken).toBeDefined();
+      expect(data.data.expiresIn).toBe(3600);
+      expect(data.data.message).toBe('Client authenticated');
     });
 
     it('should handle subscribe action with authentication', async () => {
@@ -103,7 +113,7 @@ describe('/api/stream', () => {
 
       const authResponse = await POST(authRequest);
       const authData = await authResponse.json();
-      const authToken = authData.authToken;
+      const authToken = authData.data.authToken;
 
       // Then subscribe
       const request = new NextRequest('http://localhost:3000/api/stream', {
@@ -124,7 +134,7 @@ describe('/api/stream', () => {
       
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe('Subscribed to events');
+      expect(data.data.message).toBe('Subscribed to events');
     });
 
     it('should handle subscribe action (legacy compatibility)', async () => {
@@ -144,7 +154,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(401); // Should require auth now
       
       const data = await response.json();
-      expect(data.error).toBe('Authentication required or failed');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Authentication required or failed');
     });
 
     it('should handle unsubscribe action', async () => {
@@ -164,7 +175,7 @@ describe('/api/stream', () => {
       
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe('Unsubscribed from events');
+      expect(data.data.message).toBe('Unsubscribed from events');
     });
 
     it('should reject invalid action', async () => {
@@ -183,7 +194,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(400);
       
       const data = await response.json();
-      expect(data.error).toBe('Invalid action');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('Invalid action');
     });
 
     it('should reject invalid event types', async () => {
@@ -203,7 +215,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(400);
       
       const data = await response.json();
-      expect(data.error).toContain('Invalid event types');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toContain('Invalid event types');
     });
 
     it('should reject subscribe without event types', async () => {
@@ -222,7 +235,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(400);
       
       const data = await response.json();
-      expect(data.error).toBe('Valid event types array is required');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Valid event types array is required');
     });
 
     it('should handle start_monitoring action with auto-authentication', async () => {
@@ -242,8 +256,8 @@ describe('/api/stream', () => {
       
       const data = await response.json();
       expect(data.success).toBe(true);
-      expect(data.message).toBe('Started monitoring');
-      expect(data.authToken).toBeDefined();
+      expect(data.data.message).toBe('Started monitoring');
+      expect(data.data.authToken).toBeDefined();
     });
 
     it('should handle malformed JSON', async () => {
@@ -259,7 +273,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(400);
       
       const data = await response.json();
-      expect(data.error).toBe('Invalid JSON format');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Invalid JSON format');
     });
 
     it('should validate request structure', async () => {
@@ -277,7 +292,8 @@ describe('/api/stream', () => {
       expect(response.status).toBe(400);
       
       const data = await response.json();
-      expect(data.error).toBe('Invalid request format');
+      expect(data.success).toBe(false);
+      expect(data.error.message).toBe('Invalid request format');
     });
   });
 });

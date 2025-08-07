@@ -28,11 +28,10 @@ export interface RateLimitResult {
 }
 
 class AdvancedRateLimiter {
-  private config: Required<RateLimitConfig>;
   private cleanupInterval: NodeJS.Timeout;
 
   constructor(config: RateLimitConfig) {
-    this.config = {
+    this._config = {
       maxRequests: config.maxRequests,
       windowMs: config.windowMs,
       burstLimit: config.burstLimit || Math.ceil(config.maxRequests * 1.5),
@@ -49,12 +48,18 @@ class AdvancedRateLimiter {
   }
 
   // Public getter for config to avoid private property access
-  getConfig(): RateLimitConfig {
-    return { ...this.config };
+  get config(): Required<RateLimitConfig> {
+    return this._config;
   }
 
+  getConfig(): Required<RateLimitConfig> {
+    return { ...this._config };
+  }
+
+  private _config: Required<RateLimitConfig>;
+
   private getCacheKey(identifier: string): string {
-    return `${this.config.keyPrefix}:${identifier}`;
+    return `${this._config.keyPrefix}:${identifier}`;
   }
 
   private getEntry(identifier: string): RateLimitEntry {
@@ -70,28 +75,28 @@ class AdvancedRateLimiter {
       requests: [],
       totalRequests: 0,
       windowStart: now,
-      burstTokens: this.config.burstLimit,
+      burstTokens: this._config.burstLimit,
       lastRefill: now
     };
 
     // Cache for window duration + 10 minutes buffer
-    memoryCache.set(key, newEntry, Math.ceil((this.config.windowMs + 600000) / 1000));
+    memoryCache.set(key, newEntry, Math.ceil((this._config.windowMs + 600000) / 1000));
     return newEntry;
   }
 
   private updateEntry(identifier: string, entry: RateLimitEntry): void {
     const key = this.getCacheKey(identifier);
-    memoryCache.set(key, entry, Math.ceil((this.config.windowMs + 600000) / 1000));
+    memoryCache.set(key, entry, Math.ceil((this._config.windowMs + 600000) / 1000));
   }
 
   private refillBurstTokens(entry: RateLimitEntry): void {
     const now = Date.now();
     const timePassed = (now - entry.lastRefill) / 1000; // seconds
-    const tokensToAdd = Math.floor(timePassed * this.config.burstRefillRate);
+    const tokensToAdd = timePassed * this._config.burstRefillRate;
 
     if (tokensToAdd > 0) {
       entry.burstTokens = Math.min(
-        this.config.burstLimit,
+        this._config.burstLimit,
         entry.burstTokens + tokensToAdd
       );
       entry.lastRefill = now;
@@ -99,7 +104,7 @@ class AdvancedRateLimiter {
   }
 
   private cleanExpiredRequests(entry: RateLimitEntry, now: number): void {
-    const cutoff = now - this.config.windowMs;
+    const cutoff = now - this._config.windowMs;
     const originalLength = entry.requests.length;
 
     // Remove requests older than window
@@ -119,8 +124,38 @@ class AdvancedRateLimiter {
   }
 
   async checkLimit(identifier: string, cost: number = 1): Promise<RateLimitResult> {
+    // Handle invalid cost values gracefully
+    if (cost < 0) {
+      cost = 0;
+    }
+    if (cost === 0) {
+      // For cost 0, just return current state without consuming tokens
+      const entry = this.getEntry(identifier);
+      this.refillBurstTokens(entry);
+      const remaining = Math.max(0, this._config.maxRequests - entry.totalRequests);
+      return {
+        allowed: true,
+        remaining,
+        resetTime: entry.windowStart + this._config.windowMs,
+        burstRemaining: entry.burstTokens
+      };
+    }
+
     const now = Date.now();
-    const entry = this.getEntry(identifier);
+    let entry: RateLimitEntry;
+    
+    try {
+      entry = this.getEntry(identifier);
+    } catch (error) {
+      // If cache fails, create a new entry
+      entry = {
+        requests: [],
+        totalRequests: 0,
+        windowStart: now,
+        burstTokens: this._config.burstLimit,
+        lastRefill: now
+      };
+    }
 
     // Clean expired requests
     this.cleanExpiredRequests(entry, now);
@@ -129,19 +164,13 @@ class AdvancedRateLimiter {
     this.refillBurstTokens(entry);
 
     // Calculate remaining capacity
-    const remaining = Math.max(0, this.config.maxRequests - entry.totalRequests);
+    const remaining = Math.max(0, this._config.maxRequests - entry.totalRequests);
 
-    // Use remaining for rate limiting feedback and monitoring
-    if (remaining > 0) {
-      console.log(`Rate limiter allows ${remaining} more requests`);
-    } else {
-      console.warn(`Rate limit reached, no remaining requests (${remaining})`);
-    }
-    const windowEnd = entry.windowStart + this.config.windowMs;
+    const windowEnd = entry.windowStart + this._config.windowMs;
     const resetTime = windowEnd;
 
     // Check if request would exceed limits
-    const wouldExceedRegular = (entry.totalRequests + cost) > this.config.maxRequests;
+    const wouldExceedRegular = (entry.totalRequests + cost) > this._config.maxRequests;
     const wouldExceedBurst = cost > entry.burstTokens;
 
     let allowed = false;
@@ -150,7 +179,13 @@ class AdvancedRateLimiter {
     if (!wouldExceedBurst) {
       // Allow request - sufficient burst tokens available
       allowed = true;
-      entry.requests.push(...Array(cost).fill(now));
+      // Validate cost is reasonable before creating array
+      if (cost <= 1000) { // Reasonable upper limit
+        entry.requests.push(...Array(cost).fill(now));
+      } else {
+        // For very large costs, just add one entry per request
+        entry.requests.push(now);
+      }
       entry.totalRequests += cost;
       entry.burstTokens -= cost;
     } else {
@@ -161,20 +196,29 @@ class AdvancedRateLimiter {
       if (wouldExceedRegular) {
         // Wait until oldest request expires
         const oldestRequest = entry.requests[0];
-        retryAfter = Math.ceil((oldestRequest + this.config.windowMs - now) / 1000);
+        if (oldestRequest) {
+          retryAfter = Math.ceil((oldestRequest + this._config.windowMs - now) / 1000);
+        } else {
+          retryAfter = Math.ceil(this._config.windowMs / 1000);
+        }
       } else if (wouldExceedBurst) {
         // Wait until enough burst tokens refill
         const tokensNeeded = cost - entry.burstTokens;
-        retryAfter = Math.ceil(tokensNeeded / this.config.burstRefillRate);
+        retryAfter = Math.ceil(tokensNeeded / this._config.burstRefillRate);
       }
     }
 
     // Update entry in cache
-    this.updateEntry(identifier, entry);
+    try {
+      this.updateEntry(identifier, entry);
+    } catch (error) {
+      // If cache update fails, log but don't fail the request
+      console.warn('Failed to update rate limit entry in cache:', error);
+    }
 
     return {
       allowed,
-      remaining: Math.max(0, this.config.maxRequests - entry.totalRequests),
+      remaining: Math.max(0, this._config.maxRequests - entry.totalRequests),
       resetTime,
       retryAfter,
       burstRemaining: entry.burstTokens

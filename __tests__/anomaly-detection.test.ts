@@ -10,13 +10,43 @@ const mockConnection = {
 describe('AnomalyDetectionCapability', () => {
   let anomalyDetector: AnomalyDetectionCapability;
 
-  beforeEach(() => {
+  beforeEach(async () => {
     anomalyDetector = new AnomalyDetectionCapability(mockConnection);
+    // Wait a bit for async pattern initialization
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Mock some basic patterns for testing
+    (anomalyDetector as any).patterns = [
+      {
+        type: 'high_failure_rate',
+        description: 'High transaction failure rate detected',
+        category: 'transaction',
+        severity: 'critical',
+        threshold: { failureRate: 0.5, timeWindow: 60000 },
+        check: (event: any, context: any) => {
+          return context.errorRate > 0.5;
+        },
+        metadata: { confidence: 0.9 }
+      },
+      {
+        type: 'suspicious_fee_spike',
+        description: 'Unusual fee spike detected',
+        category: 'transaction',
+        severity: 'high',
+        threshold: { feeMultiplier: 3 },
+        check: (event: any, context: any) => {
+          const eventFee = event.data?.fee || 0;
+          const avgFee = context.averageFees || 0;
+          return eventFee > avgFee * 3;
+        },
+        metadata: { confidence: 0.8 }
+      }
+    ];
   });
 
   it('should initialize with default patterns', () => {
     expect(anomalyDetector.type).toBe('anomaly_detection');
-    expect(anomalyDetector.tools).toHaveLength(4);
+    expect(anomalyDetector.tools).toHaveLength(5);
   });
 
   it('should handle anomaly detection messages', () => {

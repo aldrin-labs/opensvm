@@ -1,81 +1,85 @@
-import { ProxyResponse, KeyUsageStats } from '../types/ProxyTypes';
 import { UsageStorage, UsageLog } from '../storage/UsageStorage';
-import { calculateSVMAICost } from '../utils/PricingCalculator';
-import { v4 as uuidv4 } from 'uuid';
+import { ProxyResponse } from '../types/ProxyTypes';
 
-/**
- * Manages the extraction, calculation, and tracking of token usage
- * from Anthropic API responses.
- */
 export class UsageTracker {
-    private usageStorage: UsageStorage;
+  private usageStorage: UsageStorage;
 
-    constructor() {
-        this.usageStorage = new UsageStorage();
+  constructor() {
+    this.usageStorage = new UsageStorage();
+  }
+
+  async trackUsage(
+    userId: string,
+    apiKeyId: string | undefined,
+    model: string,
+    inputTokens: number,
+    outputTokens: number,
+    cost: number,
+    latency: number,
+    success: boolean = true,
+    errorCode?: string,
+    requestId?: string
+  ): Promise<void> {
+    const usage: UsageLog = {
+      id: requestId || this.generateId(),
+      userId,
+      apiKeyId,
+      timestamp: Date.now(),
+      model,
+      inputTokens,
+      outputTokens,
+      cost,
+      requestId: requestId || this.generateId(),
+      success,
+      errorCode,
+      latency
+    };
+
+    await this.usageStorage.logUsage(usage);
+  }
+
+  async trackResponse(
+    userId: string,
+    apiKeyId: string | undefined,
+    model: string,
+    response: ProxyResponse,
+    latency: number,
+    requestId?: string
+  ): Promise<void> {
+    const usage = response.usage;
+    if (!usage) {
+      return;
     }
 
-    /**
-     * Initialize the usage storage collection.
-     */
-    async initialize(): Promise<void> {
-        await this.usageStorage.initialize();
-    }
+    await this.trackUsage(
+      userId,
+      apiKeyId,
+      model,
+      usage.inputTokens,
+      usage.outputTokens,
+      0, // Cost calculated elsewhere
+      latency,
+      response.status < 400,
+      response.status >= 400 ? `HTTP_${response.status}` : undefined,
+      requestId
+    );
+  }
 
-    /**
-     * Extracts token usage from an Anthropic API response,
-     * calculates SVMAI cost, and logs the usage.
-     *
-     * @param proxyResponse The full proxy response object.
-     */
-    async trackResponse(proxyResponse: ProxyResponse): Promise<void> {
-        const { keyId, userId, anthropicResponse, responseTime, success, model } = proxyResponse;
+  async getUserStats(userId: string, startTime?: number, endTime?: number) {
+    return await this.usageStorage.getUsageStats(userId, startTime, endTime);
+  }
 
-        const inputTokens = anthropicResponse?.usage?.input_tokens || 0;
-        const outputTokens = anthropicResponse?.usage?.output_tokens || 0;
-        const totalTokens = inputTokens + outputTokens;
+  async getUserUsage(userId: string, startTime?: number, endTime?: number): Promise<UsageLog[]> {
+    return await this.usageStorage.getUserUsage(userId, startTime, endTime);
+  }
 
-        const svmaiCost = calculateSVMAICost(model, inputTokens, outputTokens);
+  async getAllUsage(startTime?: number, endTime?: number): Promise<UsageLog[]> {
+    return await this.usageStorage.getAllUsage(startTime, endTime);
+  }
 
-        const usageLog: UsageLog = {
-            id: uuidv4(),
-            keyId,
-            userId,
-            endpoint: '/v1/messages', // Assuming this is for messages endpoint
-            model,
-            inputTokens,
-            outputTokens,
-            totalTokens,
-            svmaiCost,
-            responseTime,
-            success,
-            errorType: success ? undefined : 'anthropic_error', // Simplified error type
-            timestamp: new Date(),
-        };
+  private generateId(): string {
+    return Math.random().toString(36).substring(2) + Date.now().toString(36);
+  }
+}
 
-        await this.usageStorage.logUsage(usageLog);
-
-        // Note: APIKey usage stats are updated in BillingProcessor for consistency
-    }
-
-    /**
-     * Retrieves aggregated usage statistics for a specific API key.
-     *
-     * @param keyId The ID of the API key.
-     * @returns Aggregated usage statistics.
-     */
-    async getKeyUsageStats(keyId: string): Promise<KeyUsageStats> {
-        return this.usageStorage.aggregateKeyUsage(keyId);
-    }
-
-    /**
-     * Retrieves raw usage logs for a user.
-     *
-     * @param userId The ID of the user.
-     * @param limit Maximum number of logs to retrieve.
-     * @param offset Offset for pagination.
-     * @returns An array of usage logs.
-     */
-    async getUserUsageLogs(userId: string, limit?: number, offset?: number): Promise<UsageLog[]> {
-        return this.usageStorage.fetchUsageLogs({ userId, limit, offset });
-    }
-} 
+export const usageTracker = new UsageTracker();

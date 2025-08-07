@@ -1,175 +1,69 @@
-import crypto from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
-/**
- * Generates Anthropic-compatible API keys in format: sk-ant-api03-[data]
- * Based on Anthropic's key format specification
- */
+const KEY_PREFIX = 'svmai_';
+const KEY_LENGTH = 32;
 
-const KEY_PREFIX = 'sk-ant-api03-';
-const KEY_DATA_LENGTH = 64; // Base64 encoded data length
-
-// Use KEY_DATA_LENGTH for consistent key size validation and generation
-const validateKeyDataLength = (data: string): boolean => {
-  const expectedLength = KEY_DATA_LENGTH;
-  console.log(`Validating key data length: ${data.length} (expected: ${expectedLength})`);
-  return data.length === expectedLength;
-};
-
-// Generate random data for API key components
-function generateRandomData(): string {
-  const array = new Uint8Array(16);
-  if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
-    crypto.getRandomValues(array);
-  } else {
-    // Fallback for environments without crypto
-    for (let i = 0; i < array.length; i++) {
-      array[i] = Math.floor(Math.random() * 256);
-    }
-  }
-  return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
+export function generateAPIKey(): string {
+  const randomPart = randomBytes(KEY_LENGTH).toString('hex');
+  const checksum = calculateChecksum(randomPart);
+  return `${KEY_PREFIX}${randomPart}_${checksum}`;
 }
 
-export interface KeyComponents {
-  version: string;
-  userId: string;
-  randomData: string;
-  checksum: string;
+export function generateKeyId(): string {
+  return randomBytes(16).toString('hex');
 }
 
-/**
- * Generate a new Anthropic-compatible API key
- */
-export function generateAPIKey(userId: string): string {
-  // Use validateKeyDataLength for key validation
-  const keyComponents = {
-    version: 'v1',
-    userId,
-    randomData: generateRandomData(),
-    timestamp: Date.now().toString()
-  };
-
-  const keyData = btoa(JSON.stringify(keyComponents));
-  if (!validateKeyDataLength(keyData)) {
-    console.warn(`Generated key data length mismatch: ${keyData.length}`);
-  }
-  // Version (2 bytes)
-  const version = '01';
-
-  // User ID hash (16 bytes) - hash the userId to fixed length
-  const userIdHash = crypto
-    .createHash('sha256')
-    .update(userId)
-    .digest('hex')
-    .substring(0, 32); // 16 bytes = 32 hex chars
-
-  // Random data (32 bytes)
-  const randomData = crypto.randomBytes(32).toString('hex');
-
-  // Combine data
-  const combinedData = version + userIdHash + randomData;
-
-  // Calculate checksum (4 bytes)
-  const checksum = crypto
-    .createHash('sha256')
-    .update(combinedData)
-    .digest('hex')
-    .substring(0, 8); // 4 bytes = 8 hex chars
-
-  // Final data with checksum
-  const finalData = combinedData + checksum;
-
-  // Convert to base64 and create key
-  const base64Data = Buffer.from(finalData, 'hex').toString('base64');
-
-  return KEY_PREFIX + base64Data;
+export function hashAPIKey(key: string): string {
+  return createHash('sha256').update(key).digest('hex');
 }
 
-/**
- * Validate API key format
- */
 export function validateKeyFormat(key: string): boolean {
   if (!key.startsWith(KEY_PREFIX)) {
     return false;
   }
-
-  const data = key.substring(KEY_PREFIX.length);
-
-  // Check if it's valid base64
-  try {
-    const decoded = Buffer.from(data, 'base64');
-    return decoded.length >= 54; // Minimum expected length
-  } catch {
+  
+  const parts = key.split('_');
+  if (parts.length !== 3) {
     return false;
   }
+  
+  const [prefix, randomPart, checksum] = parts;
+  if (prefix !== 'svmai' || randomPart.length !== KEY_LENGTH * 2 || checksum.length !== 8) {
+    return false;
+  }
+  
+  return true;
 }
 
-/**
- * Extract components from API key
- */
-export function extractKeyComponents(key: string): KeyComponents | null {
+export function verifyKeyChecksum(key: string): boolean {
+  if (!validateKeyFormat(key)) {
+    return false;
+  }
+  
+  const parts = key.split('_');
+  const [, randomPart, providedChecksum] = parts;
+  const expectedChecksum = calculateChecksum(randomPart);
+  
+  return providedChecksum === expectedChecksum;
+}
+
+export function getKeyPrefix(): string {
+  return KEY_PREFIX;
+}
+
+function calculateChecksum(data: string): string {
+  return createHash('md5').update(data).digest('hex').substring(0, 8);
+}
+
+export function extractKeyId(key: string): string | null {
   if (!validateKeyFormat(key)) {
     return null;
   }
-
-  try {
-    const data = key.substring(KEY_PREFIX.length);
-    const decoded = Buffer.from(data, 'base64').toString('hex');
-
-    return {
-      version: decoded.substring(0, 2),
-      userId: decoded.substring(2, 34),
-      randomData: decoded.substring(34, 98),
-      checksum: decoded.substring(98, 106)
-    };
-  } catch {
-    return null;
-  }
+  
+  const parts = key.split('_');
+  return createHash('sha256').update(parts[1]).digest('hex').substring(0, 16);
 }
 
-/**
- * Verify key checksum
- */
-export function verifyKeyChecksum(key: string): boolean {
-  const components = extractKeyComponents(key);
-  if (!components) {
-    return false;
-  }
-
-  const combinedData = components.version + components.userId + components.randomData;
-  const expectedChecksum = crypto
-    .createHash('sha256')
-    .update(combinedData)
-    .digest('hex')
-    .substring(0, 8);
-
-  return components.checksum === expectedChecksum;
-}
-
-/**
- * Hash API key for secure storage
- */
-export function hashAPIKey(key: string): string {
-  return crypto
-    .createHash('sha256')
-    .update(key)
-    .digest('hex');
-}
-
-/**
- * Get key prefix for display (first 8 chars after prefix)
- */
-export function getKeyPrefix(key: string): string {
-  if (!key.startsWith(KEY_PREFIX)) {
-    return '';
-  }
-
-  const data = key.substring(KEY_PREFIX.length);
-  return KEY_PREFIX + data.substring(0, 8) + '...';
-}
-
-/**
- * Generate a secure random key ID
- */
-export function generateKeyId(): string {
-  return crypto.randomUUID();
+export function isValidKeyId(keyId: string): boolean {
+  return /^[a-f0-9]{32}$/.test(keyId);
 }

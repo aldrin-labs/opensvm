@@ -350,9 +350,18 @@ export function unixTimestampToDate(timestamp: number): Date {
 }
 
 /**
+ * Get time since transaction in milliseconds
+ */
+export function getTimeSinceTransaction(blockTime: number): number {
+    const now = Date.now() / 1000;
+    const diffSeconds = now - blockTime;
+    return diffSeconds * 1000; // Convert to milliseconds
+}
+
+/**
  * Get human-readable time since transaction
  */
-export function getTimeSinceTransaction(blockTime: number): string {
+export function getTimeSinceTransactionReadable(blockTime: number): string {
     const now = Date.now() / 1000;
     const diff = now - blockTime;
 

@@ -212,10 +212,13 @@ export class UserHistoryService {
       entry.referrer || ''
     ]);
 
-    return [
+    const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
+    
+    // Ensure there's always at least one newline after headers
+    return csvContent + '\n';
   }
 
   /**

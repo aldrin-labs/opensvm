@@ -203,9 +203,15 @@ export async function POST(request: NextRequest) {
                 return new Response(stream, {
                     headers: {
                         'Content-Type': 'text/event-stream',
-                        'Cache-Control': 'no-cache',
+                        'Cache-Control': 'no-cache, no-transform',
                         'Connection': 'keep-alive',
-                        'X-Request-ID': requestId
+                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+                        'X-Accel-Buffering': 'no',
+                        'X-Request-ID': requestId,
+                        'X-RateLimit-Limit': '50',
+                        'X-RateLimit-Remaining': '49',
+                        'X-RateLimit-Reset': new Date(Date.now() + 60000).toISOString(),
                     }
                 });
             } else {

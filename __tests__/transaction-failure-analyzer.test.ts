@@ -1,5 +1,5 @@
-import { TransactionFailureAnalyzer, createFailureAnalyzer } from '@/lib/transaction-failure-analyzer';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import { TransactionFailureAnalyzer, createFailureAnalyzer } from '../lib/transaction-failure-analyzer';
+import type { DetailedTransactionInfo } from '../lib/solana';
 
 // Mock transaction data for testing
 const mockFailedTransaction: DetailedTransactionInfo = {
