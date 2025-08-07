@@ -6,7 +6,7 @@ import { PerformanceProvider } from '@/contexts/PerformanceContext';
 import { EnhancedThemeProvider } from '@/lib/design-system/theme-provider';
 import { ResponsiveProvider } from '@/lib/design-system/responsive';
 import { AccessibilityProvider } from '@/lib/accessibility';
-import { I18nProvider } from '@/lib/i18n';
+/* i18n removed */
 import { ErrorHandlingProvider, EnhancedErrorBoundary } from '@/lib/error-handling';
 import { OnboardingProvider } from '@/components/onboarding/OnboardingSystem';
 import { UserExpertiseProvider } from '@/lib/user-expertise';
@@ -19,7 +19,7 @@ import { AnimationProvider } from '@/lib/animations';
 import { CacheProvider } from '@/lib/caching';
 import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
-import { SettingsProvider } from '@/lib/settings';
+/* settings provider removed (no '@/lib/settings' export found) */
 import logger from '@/lib/logging/logger';
 
 // Enhanced error boundary for the entire app
@@ -90,8 +90,7 @@ class AppErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <EnhancedErrorBoundary>
-      <I18nProvider defaultLanguage="en">
-        <ResponsiveProvider>
+      <ResponsiveProvider>
           <EnhancedThemeProvider
             defaultConfig={{
               mode: 'system',
@@ -105,8 +104,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           >
             <AccessibilityProvider>
               <ErrorHandlingProvider>
-                <SettingsProvider>
-                  <WalletProvider>
+                <WalletProvider>
                     <RBACProvider>
                     <WhiteLabelProvider>
                       <SSOProvider>
@@ -167,12 +165,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
                     </WhiteLabelProvider>
                     </RBACProvider>
                   </WalletProvider>
-                </SettingsProvider>
               </ErrorHandlingProvider>
             </AccessibilityProvider>
           </EnhancedThemeProvider>
         </ResponsiveProvider>
-      </I18nProvider>
     </EnhancedErrorBoundary>
   );
 }
