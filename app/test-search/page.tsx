@@ -1,9 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useState } from 'react';
 import EnhancedSearchBar from '@/components/EnhancedSearchBar';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 export default function TestSearchPage() {
+  const settings = useSettings();
   const [currentDemo, setCurrentDemo] = useState<'empty' | 'search'>('empty');
 
   return (

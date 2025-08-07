@@ -101,7 +101,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.stakeBalance !== undefined && suggestion.stakeBalance > 0) {
           primaryMetadata.push(`🏛️ ${suggestion.stakeBalance.toFixed(2)} SOL staked`);
         }
-        
+
         // Secondary info
         if (suggestion.actionCount !== undefined) {
           secondaryMetadata.push(`📊 ${formatNumber(suggestion.actionCount)} total txns`);
@@ -109,7 +109,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.recentTxCount !== undefined) {
           secondaryMetadata.push(`🔄 ${suggestion.recentTxCount} recent (7d)`);
         }
-        
+
         // Detail info
         if (suggestion.tokensHeld !== undefined) {
           detailMetadata.push(`🪙 ${suggestion.tokensHeld} tokens`);
@@ -131,7 +131,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
           const changeIcon = suggestion.priceChange24h >= 0 ? '📈' : '📉';
           primaryMetadata.push(`${changeIcon} ${suggestion.priceChange24h.toFixed(2)}%`);
         }
-        
+
         // Secondary info
         if (suggestion.volume !== undefined) {
           secondaryMetadata.push(`📊 Vol: ${formatCurrency(suggestion.volume)}`);
@@ -139,7 +139,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.marketCap !== undefined) {
           secondaryMetadata.push(`💎 MCap: ${formatCurrency(suggestion.marketCap)}`);
         }
-        
+
         // Detail info
         if (suggestion.holders !== undefined) {
           detailMetadata.push(`👥 ${formatNumber(suggestion.holders)} holders`);
@@ -163,7 +163,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.weeklyInvocations !== undefined) {
           primaryMetadata.push(`📈 ${formatNumber(suggestion.weeklyInvocations)} weekly`);
         }
-        
+
         // Secondary info
         if (suggestion.programType) {
           secondaryMetadata.push(`🏷️ ${suggestion.programType}`);
@@ -171,7 +171,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.deploymentDate) {
           secondaryMetadata.push(`🚀 Deployed ${formatDate(suggestion.deploymentDate)}`);
         }
-        
+
         // Detail info
         if (suggestion.deployer) {
           detailMetadata.push(`👨‍💻 ${suggestion.deployer.slice(0, 8)}...`);
@@ -192,7 +192,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.amount !== undefined && suggestion.amount > 0) {
           primaryMetadata.push(`💰 ${suggestion.amount.toFixed(4)} SOL`);
         }
-        
+
         // Secondary info
         if (suggestion.fees !== undefined) {
           secondaryMetadata.push(`⛽ ${suggestion.fees.toFixed(6)} SOL fees`);
@@ -200,7 +200,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
         if (suggestion.blockHeight !== undefined) {
           secondaryMetadata.push(`📦 Block ${formatNumber(suggestion.blockHeight)}`);
         }
-        
+
         // Detail info
         if (suggestion.instructions !== undefined) {
           detailMetadata.push(`📝 ${suggestion.instructions} instructions`);
@@ -271,7 +271,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Section Items */}
                 {section.suggestions.map((suggestion, _index) => {
                   const { primaryMetadata, secondaryMetadata, detailMetadata: _detailMetadata } = renderSuggestionMetadata(suggestion);
@@ -286,34 +286,33 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                         setQuery(suggestion.value);
                         setShowSuggestions(false);
                         console.log("Suggestion selected:", suggestion.value);
-                        
+
                         if (onSubmitValue) {
                           onSubmitValue(suggestion.value);
-                        } else {
+                        } else if (typeof document !== 'undefined') {
                           // Fallback: create a simple form submit event
                           setTimeout(() => {
                             const form = document.createElement('form');
                             const input = document.createElement('input');
                             input.value = suggestion.value;
                             form.appendChild(input);
-                            
+
                             const event = new Event('submit', { bubbles: true, cancelable: true });
                             Object.defineProperty(event, 'target', { value: input, enumerable: true });
-                            
+
                             handleSubmit(event as unknown as React.FormEvent);
                           }, 50);
                         }
                       }}
-                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 relative border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${
-                        isHovered ? 'bg-gray-50 dark:bg-gray-800' : ''
-                      }`}
+                      className={`w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 relative border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${isHovered ? 'bg-gray-50 dark:bg-gray-800' : ''
+                        }`}
                       onMouseEnter={() => setHoveredIndex(globalIndex)}
                       onMouseLeave={() => setHoveredIndex(null)}
                     >
                       {isHovered && (
                         <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r" />
                       )}
-                      
+
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-2">
@@ -331,17 +330,17 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                               </span>
                             )}
                           </div>
-                          
+
                           <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                             {suggestion.name || suggestion.label || suggestion.value}
                           </div>
-                          
+
                           {suggestion.symbol && suggestion.symbol !== suggestion.value && (
                             <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
                               {suggestion.symbol}
                             </div>
                           )}
-                          
+
                           {/* Primary metadata - most important info */}
                           {primaryMetadata.length > 0 && (
                             <div className="flex flex-wrap gap-3 mb-1">
@@ -352,7 +351,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                               ))}
                             </div>
                           )}
-                          
+
                           {/* Secondary metadata - additional important info */}
                           {secondaryMetadata.length > 0 && (
                             <div className="flex flex-wrap gap-3 mb-1">
@@ -363,7 +362,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                               ))}
                             </div>
                           )}
-                          
+
                           {suggestion.metadata?.description && (
                             <div className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-2">
                               {suggestion.metadata.description}
@@ -390,48 +389,46 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                     setQuery(suggestion.value);
                     setShowSuggestions(false);
                     console.log("Suggestion selected:", suggestion.value);
-                    
+
                     if (onSubmitValue) {
                       onSubmitValue(suggestion.value);
-                    } else {
+                    } else if (typeof document !== 'undefined') {
                       // Fallback: create a simple form submit event
                       setTimeout(() => {
                         const form = document.createElement('form');
                         const input = document.createElement('input');
                         input.value = suggestion.value;
                         form.appendChild(input);
-                        
+
                         const event = new Event('submit', { bubbles: true, cancelable: true });
                         Object.defineProperty(event, 'target', { value: input, enumerable: true });
-                        
+
                         handleSubmit(event as unknown as React.FormEvent);
                       }, 50);
                     }
                   }}
-                  className={`w-full px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 relative border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${
-                    isHovered ? 'bg-gray-50 dark:bg-gray-800' : ''
-                  }`}
+                  className={`w-full px-4 py-4 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors duration-200 relative border-b border-gray-100 dark:border-gray-800 last:border-b-0 ${isHovered ? 'bg-gray-50 dark:bg-gray-800' : ''
+                    }`}
                   onMouseEnter={() => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
                 >
                   {isHovered && (
                     <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary rounded-r" />
                   )}
-                  
+
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-2">
-                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${
-                          suggestion.type === 'address' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
-                          suggestion.type === 'token' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
-                          suggestion.type === 'program' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' :
-                          suggestion.type === 'recent_global' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
-                          suggestion.type === 'recent_user' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' :
-                          'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
-                        }`}>
+                        <span className={`text-xs font-medium px-2 py-1 rounded-full ${suggestion.type === 'address' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300' :
+                            suggestion.type === 'token' ? 'bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300' :
+                              suggestion.type === 'program' ? 'bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300' :
+                                suggestion.type === 'recent_global' ? 'bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300' :
+                                  suggestion.type === 'recent_user' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900 dark:text-indigo-300' :
+                                    'bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300'
+                          }`}>
                           {suggestion.type === 'recent_global' ? 'POPULAR' :
-                           suggestion.type === 'recent_user' ? 'RECENT' :
-                           suggestion.type.toUpperCase()}
+                            suggestion.type === 'recent_user' ? 'RECENT' :
+                              suggestion.type.toUpperCase()}
                         </span>
                         {suggestion.metadata?.verified && (
                           <span className="text-xs bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 px-1.5 py-0.5 rounded">
@@ -439,17 +436,17 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
                         {suggestion.name || suggestion.label || suggestion.value}
                       </div>
-                      
+
                       {suggestion.symbol && suggestion.symbol !== suggestion.value && (
                         <div className="text-xs text-gray-600 dark:text-gray-400 mb-2">
                           {suggestion.symbol}
                         </div>
                       )}
-                      
+
                       {/* Primary metadata - most important info */}
                       {primaryMetadata.length > 0 && (
                         <div className="flex flex-wrap gap-3 mb-1">
@@ -460,7 +457,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                           ))}
                         </div>
                       )}
-                      
+
                       {/* Secondary metadata - additional important info */}
                       {secondaryMetadata.length > 0 && (
                         <div className="flex flex-wrap gap-3 mb-1">
@@ -471,7 +468,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                           ))}
                         </div>
                       )}
-                      
+
                       {/* Detail metadata - supplementary info */}
                       {detailMetadata.length > 0 && (
                         <div className="flex flex-wrap gap-2 mt-1">
@@ -482,7 +479,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                           ))}
                         </div>
                       )}
-                      
+
                       {suggestion.metadata?.description && (
                         <div className="text-xs text-gray-500 dark:text-gray-500 mt-1 line-clamp-2">
                           {suggestion.metadata.description}
@@ -494,7 +491,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
               );
             })
           )}
-          
+
           <div className="px-4 py-2 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-900">
             <div className="flex justify-between items-center">
               <span>Press <kbd className="px-1 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-xs">↑</kbd> <kbd className="px-1 py-0.5 bg-white dark:bg-gray-800 rounded border border-gray-200 dark:border-gray-700 text-xs">↓</kbd> to navigate</span>

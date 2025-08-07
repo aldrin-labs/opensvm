@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import * as VTable from '@visactor/vtable';
 import type { ListTableConstructorOptions, ColumnDefine } from '@visactor/vtable';
 import type { TokenAccount } from '@/lib/solana';

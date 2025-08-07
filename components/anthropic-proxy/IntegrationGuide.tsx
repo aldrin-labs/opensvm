@@ -16,7 +16,7 @@ import {
   LightbulbIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface CodeExample {
     title: string;
@@ -805,4 +805,4 @@ console.log(message.content);`}</code>
             </Card>
         </div>
     );
-} 
+}

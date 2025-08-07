@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { notFound, redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import TransactionTabLayout from '../TransactionTabLayout';
@@ -5,7 +7,7 @@ import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Props {
-  params: Promise<{ signature: string; tab: string }>;
+  params: Promise<{ [key: string]: string }>
 }
 
 // Valid tab routes
@@ -21,7 +23,8 @@ const VALID_TABS = [
 ];
 
 export default async function TransactionTabPage({ params }: Props) {
-  const { signature, tab } = await params;
+  const resolvedParams = await params;
+  const { signature, tab } = resolvedParams;
   
   // Basic signature validation
   if (!signature || signature.length < 32) {

@@ -8,7 +8,7 @@ import { Label } from '../ui/label';
 import { Badge } from '../ui/badge';
 import { Trash2, Copy, Eye, EyeOff, Plus, Key, TrendingUp, Calendar, Zap, Code, Terminal } from 'lucide-react';
 import { toast } from 'sonner';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface APIKey {
     keyId: string;
@@ -519,4 +519,4 @@ console.log(message.content);`}
             </Card>
         </div>
     );
-} 
+}

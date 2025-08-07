@@ -5,7 +5,10 @@
 
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState, useCallback } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { UserProfile } from '@/types/user-history';
@@ -52,6 +55,7 @@ import {
 } from 'lucide-react';
 
 export default function UserProfilePage() {
+  const settings = useSettings();
   const params = useParams();
   const rawWalletAddress = params?.walletAddress as string;
   const [profile, setProfile] = useState<UserProfile | null>(null);

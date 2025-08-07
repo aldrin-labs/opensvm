@@ -73,6 +73,12 @@ const CytoscapeContainer = React.memo(() => {
 
     initializationPromiseRef.current = new Promise<void>((resolve, reject) => {
       try {
+        // Only run on client side
+        if (typeof document === 'undefined') {
+          reject(new Error('Document not available - SSR context'));
+          return;
+        }
+
         // Create the container div programmatically to isolate from React
         const cytoscapeDiv = document.createElement('div');
         cytoscapeDiv.id = 'cy-container';
@@ -80,11 +86,11 @@ const CytoscapeContainer = React.memo(() => {
         cytoscapeDiv.setAttribute('data-testid', 'cytoscape-container');
         cytoscapeDiv.setAttribute('data-graph-ready', 'false');
         cytoscapeDiv.setAttribute('data-initialization-state', 'creating');
-        
+
         // Store reference to cytoscape instance on the container for reliable access
         (cytoscapeDiv as any)._cytoscapeInitialized = false;
         (cytoscapeDiv as any)._cytoscapeError = null;
-        
+
         cytoscapeDiv.style.cssText = `
           width: 100%;
           height: 100%;
@@ -558,7 +564,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
   const wrappedOnAccountSelect = useCallback((accountAddress: string) => {
     const clientSideNavigation = !!onAccountSelect;
     debugLog('Account selected:', accountAddress, 'clientSideNavigation:', clientSideNavigation);
-    
+
     if (onAccountSelect && typeof onAccountSelect === 'function') {
       // Always use the provided callback for client-side navigation
       onAccountSelect(accountAddress);
@@ -574,7 +580,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
   // Enhanced GPU callbacks and mode synchronization
   useEffect(() => {
     setGPUCallbacks(wrappedOnTransactionSelect, wrappedOnAccountSelect);
-    
+
     // Ensure GPU graph data is synchronized when switching modes
     if (useGPUGraph && cyRef.current) {
       debugLog('GPU mode enabled, updating GPU graph data from cytoscape');
@@ -839,10 +845,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
     const waitForContainerWithRetry = async (): Promise<HTMLElement | null> => {
       const maxAttempts = 50; // Increased for CI/CD compatibility
       const baseDelay = 100; // Start with shorter delay
-      
+
       for (let attempts = 0; attempts < maxAttempts && isMounted; attempts++) {
         const cytoscapeContainer = document.getElementById('cy-container');
-        
+
         if (cytoscapeContainer) {
           // Verify container is properly initialized
           const initState = cytoscapeContainer.getAttribute('data-initialization-state');
@@ -854,16 +860,16 @@ const TransactionGraph = React.memo(function TransactionGraph({
             debugLog(`Container creating, waiting... (attempt ${attempts + 1})`);
           }
         }
-        
+
         // Use exponential backoff for better performance
         const delay = Math.min(baseDelay * Math.pow(1.2, attempts), 500);
         await new Promise(resolve => setTimeout(resolve, delay));
-        
+
         if (attempts % 10 === 9) {
           debugLog(`Still waiting for cytoscape container, attempt ${attempts + 1}/${maxAttempts}`);
         }
       }
-      
+
       return null;
     };
 
@@ -1082,7 +1088,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
 
     return () => {
       timeoutIdsCurrent.forEach(id => clearTimeout(id));
-      
+
       // Enhanced cytoscape cleanup
       const cytoscapeContainer = document.getElementById('cy-container');
       if (cytoscapeContainer) {
@@ -1100,10 +1106,10 @@ const TransactionGraph = React.memo(function TransactionGraph({
           }
         }
       }
-      
+
       // Clear GPU graph data
       updateGPUGraphData(null);
-      
+
       // Standard cleanup
       cleanupLayout();
       cleanupGraph();

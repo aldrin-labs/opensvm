@@ -1,3 +1,7 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 export default function TokenAnalyticsPage() {
   return (
     <div className="container mx-auto py-8">

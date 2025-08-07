@@ -1,8 +1,13 @@
+export const dynamic = 'force-dynamic';
+
 import type { Metadata } from 'next';
 import TokenDetails from '@/components/TokenDetails';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface PageProps {
-  params: Promise<{ mint: string }>;
+  params: Promise<{
+    mint: string;
+  }>;
 }
 
 export async function generateMetadata({

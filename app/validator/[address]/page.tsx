@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, ExternalLink, TrendingUp, Shield, DollarSign, Activity, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
@@ -55,6 +58,7 @@ interface ValidatorProfile {
 }
 
 export default function ValidatorProfilePage() {
+  const settings = useSettings();
   const params = useParams();
   const router = useRouter();
   const [validatorData, setValidatorData] = useState<ValidatorProfile | null>(null);

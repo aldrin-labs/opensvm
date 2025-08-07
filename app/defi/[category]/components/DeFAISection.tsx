@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -437,10 +437,10 @@ export default function DeFAISection() {
                     size="sm"
                     variant="ghost"
                     onClick={() => {
-                  if (typeof window !== 'undefined') {
-                    window.open(tool.website, '_blank');
-                  }
-                }}
+                      if (typeof window !== 'undefined') {
+                        window.open(tool.website, '_blank');
+                      }
+                    }}
                     aria-label={`Visit ${tool.name} website`}
                   >
                     <ExternalLink className="h-4 w-4" />

@@ -1,9 +1,15 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { LiveEventMonitor } from '@/components/LiveEventMonitor';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 export default function MonitoringPage() {
+  const settings = useSettings();
   return (
     <div className="container mx-auto px-4 py-6">
-      <LiveEventMonitor />
+      <LiveEventMonitor {...({ settings } as any)} />
     </div>
   );
 }

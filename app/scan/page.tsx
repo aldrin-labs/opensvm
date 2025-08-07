@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from 'react';
-
 export const dynamic = 'force-dynamic';
+
+import React, { useEffect, useState, useRef } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { ColumnDef } from "@tanstack/react-table";
 import { DataTable } from '@/components/ui/data-table';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -22,6 +23,7 @@ interface MemecoinInfo {
 }
 
 export default function ScanPage() {
+    const settings = useSettings();
     const [data, setData] = useState<MemecoinInfo[]>([]);
     const wsRef = useRef<WebSocket | null>(null);
 
@@ -46,7 +48,9 @@ export default function ScanPage() {
         };
 
         return () => {
-            ws.close();
+            if (wsRef.current) {
+                wsRef.current.close();
+            }
         };
     }, []);
 
@@ -105,7 +109,12 @@ export default function ScanPage() {
                             ))}
                         </div>
                     ) : (
-                        <DataTable columns={columns} data={data} pageSize={25} />
+                        <DataTable
+                            columns={columns}
+                            data={data}
+                            pageSize={25}
+                            {...({ settings } as any)}
+                        />
                     )}
                 </CardContent>
             </Card>

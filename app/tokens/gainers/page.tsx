@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Badge } from '@/components/ui/badge';
 import { getTopGainers } from '@/lib/mock-token-data';
 import type { TokenGainerData } from '@/types/token-market';
 
 export default function TokenGainersPage() {
+  const settings = useSettings();
   const router = useRouter();
   const [gainers, setGainers] = useState<TokenGainerData[]>([]);
   const [isLoading, setIsLoading] = useState(true);

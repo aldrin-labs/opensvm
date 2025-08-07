@@ -26,8 +26,6 @@ const nextConfig = {
   },
   // Environment variables that should be available to the client
   env: {
-    OPENSVM_RPC_LIST: process.env.OPENSVM_RPC_LIST || '',
-    OPENSVM_RPC_LIST_2: process.env.OPENSVM_RPC_LIST_2 || ''
   },
   // Image optimization
   images: {
@@ -86,7 +84,7 @@ const nextConfig = {
       // Prevent cytoscape CSS imports that don't exist (fixes mermaid issue)
       'cytoscape/dist/cytoscape.css': false,
     };
-    
+
     // Configure externals to prevent multiple Three.js instances
     if (!isServer) {
       config.resolve.fallback = {
@@ -113,12 +111,12 @@ const nextConfig = {
         }
         return true;
       });
-      
+
       config.externals.push({
         'bigint_buffer': 'commonjs bigint_buffer',
       });
     }
-    
+
     // Only apply optimizations in production builds
     if (!dev && !isServer) {
       // Enable proper code splitting for heavy libraries

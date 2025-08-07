@@ -20,7 +20,7 @@ import {
     PieChartIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface UsageData {
@@ -582,4 +582,4 @@ export default function UsageDashboard() {
             </Card>
         </div>
     );
-} 
+}

@@ -1,11 +1,15 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { TransfersTable } from '@/components/TransfersTable';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useSearchParams } from 'next/navigation';
 
 const DEFAULT_ADDRESS = 'DfiQz1pkh3FhKz4ZqHyBQHrKR5HRMhMFYgUZS8h6yRet';
 
 export default function TransfersTestPage() {
+  const settings = useSettings();
   const searchParams = useSearchParams();
   const address = searchParams.get('address') || DEFAULT_ADDRESS;
 

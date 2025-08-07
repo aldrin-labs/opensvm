@@ -8,7 +8,7 @@ import {
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { connectionPool } from '@/lib/solana-connection';
 import type { Connection } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
@@ -116,10 +116,16 @@ function SafeWalletProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
 }
 
-export function WalletProvider({ children }: WalletProviderProps): ReactNode {
-  const { rpcEndpoint } = useSettings();
+// Inner component that uses settings
+function WalletProviderInner({ children }: { children: ReactNode }) {
+  const settings = useSettings();
   const [endpoint, setEndpoint] = useState<string>(DEFAULT_ENDPOINT);
   const [connectionReady, setConnectionReady] = useState(false);
+  
+  const rpcEndpoint = settings?.rpcEndpoint;
+  
+  // Extract endpoint value for dependency array
+  const endpointValue = typeof rpcEndpoint === 'string' ? rpcEndpoint : rpcEndpoint?.url;
   
   // Initialize wallets
   const wallets = useMemo(
@@ -229,7 +235,7 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
       mounted = false;
       abortController.abort(); // Cancel any ongoing requests
     };
-  }, [rpcEndpoint?.url]);
+  }, [endpointValue]);
 
   if (!connectionReady) {
     return <div className="text-center py-4">Connecting to Solana network...</div>;
@@ -248,4 +254,28 @@ export function WalletProvider({ children }: WalletProviderProps): ReactNode {
       </SolanaWalletProvider>
     </ConnectionProvider>
   );
+}
+
+export function WalletProvider({ children }: WalletProviderProps): ReactNode {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // During SSR or before mounting, provide a fallback
+  if (!isMounted) {
+    return (
+      <ConnectionProvider endpoint={DEFAULT_ENDPOINT}>
+        <SolanaWalletProvider wallets={[]} autoConnect={false}>
+          <WalletModalProvider>
+            {children}
+          </WalletModalProvider>
+        </SolanaWalletProvider>
+      </ConnectionProvider>
+    );
+  }
+
+  // After mounting, use the full provider with settings
+  return <WalletProviderInner>{children}</WalletProviderInner>;
 }

@@ -62,7 +62,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   }, [width, onWidthChange]);
 
   const handleMouseUp = useCallback(() => {
-    if (isResizing.current) {
+    if (isResizing.current && typeof document !== 'undefined') {
       isResizing.current = false;
       document.body.style.cursor = 'default';
       document.body.classList.remove('select-none');
@@ -71,6 +71,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   }, [onResizeEnd]);
 
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);
 

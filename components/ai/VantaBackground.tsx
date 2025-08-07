@@ -5,7 +5,7 @@ import { useEffect, useRef } from 'react';
 export function VantaBackground() {
   const backgroundRef = useRef<HTMLDivElement>(null);
   const effectRef = useRef<any>(null);
-  const scriptsLoadedRef = useRef<{three: boolean, vanta: boolean}>({
+  const scriptsLoadedRef = useRef<{ three: boolean, vanta: boolean }>({
     three: false,
     vanta: false
   });
@@ -22,13 +22,13 @@ export function VantaBackground() {
       if (backgroundRef.current && window.VANTA && !effectRef.current) {
         try {
           console.log("Initializing VANTA.GLOBE");
-          
+
           // Make sure THREE is available and properly loaded
           if (!window.THREE) {
             console.error('THREE is not available - aborting Vanta initialization');
             return;
           }
-          
+
           effectRef.current = window.VANTA.GLOBE({
             el: backgroundRef.current,
             THREE: window.THREE, // Explicitly pass THREE to ensure it's used
@@ -43,7 +43,7 @@ export function VantaBackground() {
             size: 1.60,
             backgroundColor: 0x0
           });
-          
+
           console.log("Vanta effect initialized successfully");
         } catch (error) {
           console.error("Vanta initialization error:", error);
@@ -54,6 +54,9 @@ export function VantaBackground() {
 
   // Handle script loading and effect initialization
   useEffect(() => {
+    // Only run on client side
+    if (typeof document === 'undefined') return;
+
     // Load Three.js first
     const threeScript = document.createElement('script');
     threeScript.src = '/three.r134.min.js';
@@ -61,7 +64,7 @@ export function VantaBackground() {
     threeScript.onload = () => {
       console.log("Three.js loaded");
       scriptsLoadedRef.current.three = true;
-      
+
       // Only load Vanta after Three.js is loaded
       const vantaScript = document.createElement('script');
       vantaScript.src = '/vanta.globe.min.js';
@@ -74,7 +77,7 @@ export function VantaBackground() {
       document.body.appendChild(vantaScript);
     };
     document.body.appendChild(threeScript);
-    
+
     // Cleanup function
     return () => {
       if (effectRef.current) {
@@ -85,11 +88,11 @@ export function VantaBackground() {
   }, []);
 
   return (
-    <div 
+    <div
       ref={backgroundRef}
       className="absolute inset-0 z-0 pointer-events-none"
       style={{ opacity: 0.7 }}
-        id="vanta-globe-background"
+      id="vanta-globe-background"
     />
   );
 }

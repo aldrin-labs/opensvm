@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Connection, PublicKey } from '@solana/web3.js';
 import type { Commitment, AccountInfo } from '@solana/web3.js';
 import DisassemblyView from './components/disassembly-view';

@@ -14,7 +14,7 @@ import {
     RefreshCw,
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useAuthContext } from '@/contexts/AuthContext';
 import SVMAIDepositModal from './SVMAIDepositModal';
 
@@ -502,4 +502,4 @@ export default function BalanceDisplay({
             </CardContent>
         </Card>
     );
-} 
+}

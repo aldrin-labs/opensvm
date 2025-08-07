@@ -19,7 +19,8 @@ import { AnimationProvider } from '@/lib/animations';
 import { CacheProvider } from '@/lib/caching';
 import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
-/* settings provider removed (no '@/lib/settings' export found) */
+import { SettingsProvider } from '@/app/providers/SettingsProvider';
+import { AuthProvider } from '@/contexts/AuthContext';
 import logger from '@/lib/logging/logger';
 
 // Enhanced error boundary for the entire app
@@ -91,28 +92,30 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <EnhancedErrorBoundary>
       <ResponsiveProvider>
-          <EnhancedThemeProvider
-            defaultConfig={{
-              mode: 'system',
-              variant: 'default',
-              fontSize: 'base',
-              reducedMotion: false,
-              highContrast: false,
-              focusVisible: true,
-            }}
-            enableTransitions={true}
-          >
-            <AccessibilityProvider>
-              <ErrorHandlingProvider>
+        <EnhancedThemeProvider
+          defaultConfig={{
+            mode: 'system',
+            variant: 'default',
+            fontSize: 'base',
+            reducedMotion: false,
+            highContrast: false,
+            focusVisible: true,
+          }}
+          enableTransitions={true}
+        >
+          <AccessibilityProvider>
+            <ErrorHandlingProvider>
+              <SettingsProvider>
                 <WalletProvider>
+                  <AuthProvider>
                     <RBACProvider>
-                    <WhiteLabelProvider>
-                      <SSOProvider>
-                        <ExportProvider>
-                          <OptimisticUIProvider>
-                            <AnimationProvider>
-                              <CacheProvider>
-                                <VoiceProvider>
+                      <WhiteLabelProvider>
+                        <SSOProvider>
+                          <ExportProvider>
+                            <OptimisticUIProvider>
+                              <AnimationProvider>
+                                <CacheProvider>
+                                  <VoiceProvider>
                                     <UserExpertiseProvider>
                                       <OnboardingProvider>
                                         <NextThemesProvider
@@ -156,19 +159,21 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                         </NextThemesProvider>
                                       </OnboardingProvider>
                                     </UserExpertiseProvider>
-                                </VoiceProvider>
-                              </CacheProvider>
-                            </AnimationProvider>
-                          </OptimisticUIProvider>
-                        </ExportProvider>
-                      </SSOProvider>
-                    </WhiteLabelProvider>
+                                  </VoiceProvider>
+                                </CacheProvider>
+                              </AnimationProvider>
+                            </OptimisticUIProvider>
+                          </ExportProvider>
+                        </SSOProvider>
+                      </WhiteLabelProvider>
                     </RBACProvider>
-                  </WalletProvider>
-              </ErrorHandlingProvider>
-            </AccessibilityProvider>
-          </EnhancedThemeProvider>
-        </ResponsiveProvider>
+                  </AuthProvider>
+                </WalletProvider>
+              </SettingsProvider>
+            </ErrorHandlingProvider>
+          </AccessibilityProvider>
+        </EnhancedThemeProvider>
+      </ResponsiveProvider>
     </EnhancedErrorBoundary>
   );
 }

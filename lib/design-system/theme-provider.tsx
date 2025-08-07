@@ -205,7 +205,15 @@ export function EnhancedThemeProvider({
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (context === undefined) {
-    throw new Error('useTheme must be used within an EnhancedThemeProvider');
+    // Return default values during SSR/build time
+    return {
+      config: defaultConfig,
+      resolvedTheme: 'light' as const,
+      updateConfig: () => {},
+      resetToDefaults: () => {},
+      tokens: designTokens,
+      colors: themeColors.light,
+    };
   }
   return context;
 }

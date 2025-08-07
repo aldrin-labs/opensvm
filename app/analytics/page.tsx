@@ -1,7 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { SolanaDEXTab } from '@/components/solana/solana-dex-tab';
 import { CrossChainTab } from '@/components/solana/cross-chain-tab';
 import { DeFiHealthTab } from '@/components/solana/defi-health-tab';
@@ -16,6 +19,7 @@ type TabType = 'overview' | 'dex' | 'cross-chain' | 'defi-health' | 'validators'
 export default function AnalyticsPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const settings = useSettings();
   const [activeTab, setActiveTab] = useState<TabType>('overview');
 
   // Memoize tabs array to avoid needless re-computation
@@ -145,43 +149,44 @@ export default function AnalyticsPage() {
               networkMetrics={overviewData.networkMetrics}
               defiMetrics={overviewData.defiMetrics}
               crossChainMetrics={overviewData.crossChainMetrics}
+              {...({ settings } as any)}
             />
-            <QuickActions onNavigate={(tab: string) => handleTabChange(tab as TabType)} />
+            <QuickActions onNavigate={(tab: string) => handleTabChange(tab as TabType)} {...({ settings } as any)} />
           </div>
         );
       
       case 'dex':
-        return <SolanaDEXTab />;
+        return <SolanaDEXTab {...({ settings } as any)} />;
       
       case 'cross-chain':
-        return <CrossChainTab />;
+        return <CrossChainTab {...({ settings } as any)} />;
       
       case 'defi-health':
-        return <DeFiHealthTab />;
+        return <DeFiHealthTab {...({ settings } as any)} />;
       
       case 'validators':
-        return <ValidatorTab />;
+        return <ValidatorTab {...({ settings } as any)} />;
         
       case 'launchpads':
-        return <LaunchpadsTab />;
+        return <LaunchpadsTab {...({ settings } as any)} />;
         
       case 'bots':
-        return <BotsTab />;
+        return <BotsTab {...({ settings } as any)} />;
         
       case 'aggregators':
-        return <AggregatorsTab />;
+        return <AggregatorsTab {...({ settings } as any)} />;
         
       case 'marketplaces':
-        return <MarketplacesTab />;
+        return <MarketplacesTab {...({ settings } as any)} />;
         
       case 'socialfi':
-        return <SocialFiTab />;
+        return <SocialFiTab {...({ settings } as any)} />;
         
       case 'infofi':
-        return <InfoFiTab />;
+        return <InfoFiTab {...({ settings } as any)} />;
         
       case 'defai':
-        return <DeFAITab />;
+        return <DeFAITab {...({ settings } as any)} />;
       
       default:
         return null;

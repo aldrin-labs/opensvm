@@ -1,6 +1,10 @@
-import { Metadata } from 'next';
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { notFound } from 'next/navigation';
 import { Suspense } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import DeFAISection from './components/DeFAISection';
@@ -92,36 +96,14 @@ const categoryConfig = {
 };
 
 interface PageProps {
-  params: Promise<{
+  params: {
     category: string;
-  }>;
-}
-
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { category } = await params;
-  const config = categoryConfig[category as keyof typeof categoryConfig];
-
-  if (!config) {
-    return {
-      title: 'DeFi Category Not Found',
-      description: 'The requested DeFi category does not exist'
-    };
-  }
-
-  return {
-    title: `${config.title} | OpenSVM DeFi Analytics`,
-    description: config.description,
-    keywords: `defi, solana, analytics, ${category.replace('-', ' ')}`,
-    openGraph: {
-      title: config.title,
-      description: config.description,
-      type: 'website',
-    },
   };
 }
 
-export default async function DeFiCategoryPage({ params }: PageProps) {
-  const { category } = await params;
+export default function DeFiCategoryPage({ params }: PageProps) {
+  const settings = useSettings();
+  const { category } = params;
   const config = categoryConfig[category as keyof typeof categoryConfig];
 
   if (!config) {
@@ -148,16 +130,10 @@ export default async function DeFiCategoryPage({ params }: PageProps) {
               <LoadingSpinner />
             </div>
           }>
-            <ComponentToRender />
+            <ComponentToRender {...({ settings } as any)} />
           </Suspense>
         </ErrorBoundary>
       </div>
     </div>
   );
-}
-
-export function generateStaticParams() {
-  return Object.keys(categoryConfig).map((category) => ({
-    category,
-  }));
 }

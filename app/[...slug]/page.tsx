@@ -1,10 +1,14 @@
 'use client'
 
+export const dynamic = 'force-dynamic';
+
 import { useEffect } from 'react'
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useRouter } from 'next/navigation'
 import { isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils'
 
 export default function CatchAllRoute({ params }: { params: { slug: string[] } }) {
+  const settings = useSettings();
   const router = useRouter()
   const input = params.slug.join('/')
 

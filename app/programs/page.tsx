@@ -1,7 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import ProgramActivityTable, { type ProgramActivity } from '@/components/ProgramActivityTable';
 import { Button } from '@/components/ui/button';
 import { 
@@ -16,6 +19,7 @@ type ViewMode = 'all' | 'calls' | 'transactions' | 'blocks';
 
 export default function ProgramsPage() {
   const router = useRouter();
+  const settings = useSettings();
   const [programs, setPrograms] = useState<ProgramActivity[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -212,6 +216,7 @@ export default function ProgramsPage() {
           programs={programs}
           onProgramClick={handleProgramClick}
           isLoading={isLoading && programs.length === 0}
+          {...({ settings } as any)}
         />
 
         {hasMore && !isLoading && viewMode === 'all' && (

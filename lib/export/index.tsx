@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useCallback } from 'react';
+import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { useRBAC } from '@/lib/rbac';
 import { useI18n } from '@/lib/i18n';
 import { useErrorHandling } from '@/lib/error-handling';
@@ -104,11 +104,11 @@ export interface ImageExportConfig extends BaseExportConfig {
   quality?: number; // For PNG
 }
 
-export type ExportConfig = 
-  | PDFExportConfig 
-  | CSVExportConfig 
-  | XLSXExportConfig 
-  | JSONExportConfig 
+export type ExportConfig =
+  | PDFExportConfig
+  | CSVExportConfig
+  | XLSXExportConfig
+  | JSONExportConfig
   | ImageExportConfig;
 
 // Excel-specific types
@@ -191,29 +191,29 @@ interface ExportContextType {
   jobs: ExportJob[];
   activeJobs: ExportJob[];
   completedJobs: ExportJob[];
-  
+
   // Export operations
   exportData: (data: ExportData, config: ExportConfig, name?: string) => Promise<string>;
   exportChart: (chartId: string, config: ImageExportConfig) => Promise<ExportResult>;
   exportTable: (selector: string, config: ExportConfig) => Promise<ExportResult>;
   exportPage: (config: PDFExportConfig | ImageExportConfig) => Promise<ExportResult>;
-  
+
   // Job management
   getJob: (jobId: string) => ExportJob | undefined;
   cancelJob: (jobId: string) => Promise<void>;
   retryJob: (jobId: string) => Promise<void>;
   deleteJob: (jobId: string) => Promise<void>;
   clearCompletedJobs: () => Promise<void>;
-  
+
   // Templates
   saveTemplate: (name: string, config: ExportConfig) => Promise<void>;
   getTemplates: () => ExportTemplate[];
   deleteTemplate: (templateId: string) => Promise<void>;
-  
+
   // Bulk operations
   exportMultiple: (exports: Array<{ data: ExportData; config: ExportConfig; name: string }>) => Promise<string[]>;
   createZipArchive: (jobIds: string[], archiveName?: string) => Promise<ExportResult>;
-  
+
   // Utilities
   validateConfig: (config: ExportConfig) => string[];
   estimateFileSize: (data: ExportData, format: ExportFormat) => number;
@@ -260,7 +260,7 @@ class ExportService {
     tenantId?: string
   ): string {
     const id = `export-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    
+
     const job: ExportJob = {
       id,
       name,
@@ -272,38 +272,38 @@ class ExportService {
       createdBy: userId,
       tenantId,
     };
-    
+
     this.jobs.set(id, job);
     this.notifyListeners();
-    
+
     return id;
   }
 
   static updateJobStatus(jobId: string, status: ExportStatus, progress?: number, error?: string): void {
     const job = this.jobs.get(jobId);
     if (!job) return;
-    
+
     job.status = status;
     if (progress !== undefined) job.progress = progress;
     if (error) job.error = error;
-    
+
     if (status === 'exporting' && !job.startedAt) {
       job.startedAt = new Date();
     } else if (status === 'completed' || status === 'error') {
       job.completedAt = new Date();
     }
-    
+
     this.notifyListeners();
   }
 
   static completeJob(jobId: string, result: ExportResult): void {
     const job = this.jobs.get(jobId);
     if (!job) return;
-    
+
     job.status = 'completed';
     job.result = result;
     job.completedAt = new Date();
-    
+
     this.notifyListeners();
   }
 
@@ -316,13 +316,13 @@ class ExportService {
   }
 
   static getActiveJobs(): ExportJob[] {
-    return this.getAllJobs().filter(job => 
+    return this.getAllJobs().filter(job =>
       job.status === 'preparing' || job.status === 'exporting'
     );
   }
 
   static getCompletedJobs(): ExportJob[] {
-    return this.getAllJobs().filter(job => 
+    return this.getAllJobs().filter(job =>
       job.status === 'completed' || job.status === 'error'
     );
   }
@@ -346,10 +346,10 @@ class ExportService {
       id,
       createdAt: new Date(),
     };
-    
+
     this.templates.set(id, fullTemplate);
     this.persistTemplates();
-    
+
     return id;
   }
 
@@ -369,7 +369,7 @@ class ExportService {
         ...template,
         createdAt: template.createdAt.toISOString(),
       }));
-      
+
       if (typeof window !== 'undefined') {
         localStorage.setItem('opensvm_export_templates', JSON.stringify(templatesData));
       }
@@ -427,44 +427,44 @@ class ExportEngines {
     const delimiter = config.delimiter || ',';
     const includeHeaders = config.includeHeaders ?? true;
     const quoteStrings = config.quoteStrings ?? true;
-    
+
     let csvContent = '';
-    
+
     // Add headers
     if (includeHeaders && data.headers) {
-      csvContent += data.headers.map(header => 
+      csvContent += data.headers.map(header =>
         quoteStrings ? `"${header.replace(/"/g, '""')}"` : header
       ).join(delimiter) + '\n';
     }
-    
+
     // Add data rows
     data.rows.forEach(row => {
       const csvRow = row.map(cell => {
         let value = String(cell ?? '');
-        
+
         // Format dates
         if (cell instanceof Date && config.dateFormat) {
           value = this.formatDate(cell, config.dateFormat);
         }
-        
+
         // Format numbers
         if (typeof cell === 'number' && config.numberFormat) {
           value = this.formatNumber(cell, config.numberFormat);
         }
-        
+
         // Quote strings if needed
         if (quoteStrings && (typeof cell === 'string' || value.includes(delimiter))) {
           value = `"${value.replace(/"/g, '""')}"`;
         }
-        
+
         return value;
       }).join(delimiter);
-      
+
       csvContent += csvRow + '\n';
     });
-    
-    return new Blob([csvContent], { 
-      type: 'text/csv;charset=utf-8' 
+
+    return new Blob([csvContent], {
+      type: 'text/csv;charset=utf-8'
     });
   }
 
@@ -473,9 +473,9 @@ class ExportEngines {
     // This would integrate with jsPDF library
     // For now, return a placeholder
     const pdfContent = `%PDF-1.4\n1 0 obj\n<<\n/Type /Catalog\n/Pages 2 0 R\n>>\nendobj\n`;
-    
-    return new Blob([pdfContent], { 
-      type: 'application/pdf' 
+
+    return new Blob([pdfContent], {
+      type: 'application/pdf'
     });
   }
 
@@ -483,30 +483,30 @@ class ExportEngines {
   static async exportJSON(data: ExportData, config: JSONExportConfig): Promise<Blob> {
     const includeMetadata = config.includeMetadata ?? true;
     const pretty = config.pretty ?? true;
-    
+
     let jsonData: any = {
       headers: data.headers,
       rows: data.rows,
     };
-    
+
     if (includeMetadata && data.metadata) {
       jsonData.metadata = data.metadata;
     }
-    
+
     // Exclude specified fields
     if (config.excludeFields?.length) {
       jsonData = this.excludeFields(jsonData, config.excludeFields);
     }
-    
+
     // Format dates
     if (config.dateFormat && config.dateFormat !== 'iso') {
       jsonData = this.formatDatesInObject(jsonData, config.dateFormat, config.customDateFormat);
     }
-    
+
     const jsonString = JSON.stringify(jsonData, null, pretty ? 2 : undefined);
-    
-    return new Blob([jsonString], { 
-      type: 'application/json;charset=utf-8' 
+
+    return new Blob([jsonString], {
+      type: 'application/json;charset=utf-8'
     });
   }
 
@@ -526,23 +526,23 @@ class ExportEngines {
 
   private static formatNumber(num: number, format: CSVExportConfig['numberFormat']): string {
     if (!format) return num.toString();
-    
-    let formatted = format.precision !== undefined 
+
+    let formatted = format.precision !== undefined
       ? num.toFixed(format.precision)
       : num.toString();
-    
+
     // Replace decimal separator
     if (format.decimalSeparator !== '.') {
       formatted = formatted.replace('.', format.decimalSeparator);
     }
-    
+
     // Add thousands separator
     if (format.thousandsSeparator) {
       const parts = formatted.split(format.decimalSeparator);
       parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, format.thousandsSeparator);
       formatted = parts.join(format.decimalSeparator);
     }
-    
+
     return formatted;
   }
 
@@ -580,7 +580,7 @@ class ExportEngines {
 // Export provider component
 export function ExportProvider({ children }: { children: React.ReactNode }) {
   const [jobs, setJobs] = useState<ExportJob[]>([]);
-  
+
   // Handle RBAC context safely - wrap in try-catch to handle SSR
   let currentUser = null;
   let currentTenant = null;
@@ -593,7 +593,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
     currentUser = null;
     currentTenant = null;
   }
-  
+
   const { reportError } = useErrorHandling();
   const { t } = useI18n();
 
@@ -604,17 +604,17 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
     return unsubscribe;
   }, []);
 
-  const activeJobs = jobs.filter(job => 
+  const activeJobs = jobs.filter(job =>
     job.status === 'preparing' || job.status === 'exporting'
   );
-  
-  const completedJobs = jobs.filter(job => 
+
+  const completedJobs = jobs.filter(job =>
     job.status === 'completed' || job.status === 'error'
   );
 
   const exportData = useCallback(async (
-    data: ExportData, 
-    config: ExportConfig, 
+    data: ExportData,
+    config: ExportConfig,
     name?: string
   ): Promise<string> => {
     if (!currentUser) {
@@ -649,24 +649,24 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
               blob = await ExportEngines.exportCSV(data, config as CSVExportConfig);
               if (!filename.endsWith('.csv')) filename += '.csv';
               break;
-              
+
             case 'json':
               blob = await ExportEngines.exportJSON(data, config as JSONExportConfig);
               if (!filename.endsWith('.json')) filename += '.json';
               break;
-              
+
             case 'pdf':
               blob = await ExportEngines.exportPDF(data, config as PDFExportConfig);
               if (!filename.endsWith('.pdf')) filename += '.pdf';
               break;
-              
+
             default:
               throw new Error(`Unsupported export format: ${config.format}`);
           }
 
           // Create download URL
           const url = URL.createObjectURL(blob);
-          
+
           // Complete the job
           const result: ExportResult = {
             success: true,
@@ -676,9 +676,9 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
             format: config.format,
             downloadUrl: url,
           };
-          
+
           ExportService.completeJob(jobId, result);
-          
+
         } catch (error) {
           ExportService.updateJobStatus(jobId, 'error', undefined, (error as Error).message);
           reportError(error as Error, { component: 'ExportProvider', jobId });
@@ -686,7 +686,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
       }, 100);
 
       return jobId;
-      
+
     } catch (error) {
       reportError(error as Error, { component: 'ExportProvider', action: 'exportData' });
       throw error;
@@ -694,7 +694,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
   }, [currentUser, currentTenant, reportError]);
 
   const exportChart = useCallback(async (
-    chartId: string, 
+    chartId: string,
     config: ImageExportConfig
   ): Promise<ExportResult> => {
     // Implementation would capture chart as image
@@ -706,7 +706,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const exportTable = useCallback(async (
-    selector: string, 
+    selector: string,
     config: ExportConfig
   ): Promise<ExportResult> => {
     // Implementation would extract table data and export
@@ -760,7 +760,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
   // Template operations (placeholder implementations)
   const saveTemplate = useCallback(async (name: string, config: ExportConfig) => {
     if (!currentUser) throw new Error('User not authenticated');
-    
+
     ExportService.saveTemplate({
       name,
       format: config.format,
@@ -789,7 +789,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
   }, [exportData]);
 
   const createZipArchive = useCallback(async (
-    jobIds: string[], 
+    jobIds: string[],
     archiveName?: string
   ): Promise<ExportResult> => {
     return {
@@ -801,20 +801,20 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
 
   const validateConfig = useCallback((config: ExportConfig): string[] => {
     const errors: string[] = [];
-    
+
     if (!config.format) {
       errors.push('Export format is required');
     }
-    
+
     // Format-specific validation
     switch (config.format) {
       case 'csv':
         const csvConfig = config as CSVExportConfig;
-        if (csvConfig.delimiter && ![',' , ';', '\t', '|'].includes(csvConfig.delimiter)) {
+        if (csvConfig.delimiter && ![',', ';', '\t', '|'].includes(csvConfig.delimiter)) {
           errors.push('Invalid CSV delimiter');
         }
         break;
-        
+
       case 'pdf':
         const pdfConfig = config as PDFExportConfig;
         if (pdfConfig.pageSize && !['a4', 'a3', 'letter', 'legal'].includes(pdfConfig.pageSize)) {
@@ -822,14 +822,14 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
         }
         break;
     }
-    
+
     return errors;
   }, []);
 
   const estimateFileSize = useCallback((data: ExportData, format: ExportFormat): number => {
     // Rough estimation based on data size and format
     const baseSize = JSON.stringify(data).length;
-    
+
     switch (format) {
       case 'csv':
         return baseSize * 0.8; // CSV is usually smaller than JSON
@@ -907,7 +907,7 @@ export function ExportProvider({ children }: { children: React.ReactNode }) {
         features: ['scalable', 'editable', 'small_size'],
       },
     };
-    
+
     return formatInfoMap[format];
   }, []);
 

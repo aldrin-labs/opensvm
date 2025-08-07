@@ -24,23 +24,43 @@ interface AccessibilityContextType {
 
 const AccessibilityContext = createContext<AccessibilityContextType | undefined>(undefined);
 
-// Screen reader announcement component
-const ScreenReaderAnnouncer: React.FC = () => {
+// Screen reader announcement component with SSR support
+const ScreenReaderAnnouncer: React.FC<{
+  onAnnouncerReady: (announcer: (message: string, priority?: 'polite' | 'assertive') => void) => void;
+}> = ({ onAnnouncerReady }) => {
+  const [mounted, setMounted] = useState(false);
   const [announcements, setAnnouncements] = useState<Array<{
     id: string;
     message: string;
     priority: 'polite' | 'assertive';
   }>>([]);
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const announceToScreenReader = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+    if (!mounted) return; // Don't announce during SSR
     const id = Math.random().toString(36).substr(2, 9);
     setAnnouncements(prev => [...prev, { id, message, priority }]);
-    
+
     // Clear announcement after it's been read
     setTimeout(() => {
       setAnnouncements(prev => prev.filter(announcement => announcement.id !== id));
     }, 1000);
   };
+
+  // Register the announcer function when component mounts
+  useEffect(() => {
+    if (mounted) {
+      onAnnouncerReady(announceToScreenReader);
+    }
+  }, [mounted, onAnnouncerReady, announceToScreenReader]);
+
+  // Don't render aria-live regions during SSR to prevent hydration mismatches
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>
@@ -97,7 +117,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
 
 function trapFocus(element: HTMLElement): () => void {
   const focusableElements = getFocusableElements(element);
-  if (focusableElements.length === 0) return () => {};
+  if (focusableElements.length === 0) return () => { };
 
   const firstElement = focusableElements[0];
   const lastElement = focusableElements[focusableElements.length - 1];
@@ -198,7 +218,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
   };
 
   const contextValue: AccessibilityContextType = {
-    announceToScreenReader: announcer || (() => {}),
+    announceToScreenReader: announcer || (() => { }),
     focusManager,
     keyboardNavigation,
     reducedMotion: config.reducedMotion,
@@ -208,7 +228,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
 
   return (
     <AccessibilityContext.Provider value={contextValue}>
-      <ScreenReaderAnnouncer />
+      <ScreenReaderAnnouncer onAnnouncerReady={setAnnouncer} />
       {children}
     </AccessibilityContext.Provider>
   );
@@ -217,7 +237,23 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
 export function useAccessibility() {
   const context = useContext(AccessibilityContext);
   if (context === undefined) {
-    throw new Error('useAccessibility must be used within an AccessibilityProvider');
+    // Return default values during SSR/build time
+    return {
+      announceToScreenReader: () => { },
+      focusManager: {
+        trapFocus: () => () => { },
+        restoreFocus: () => { },
+        getNextFocusableElement: () => null,
+        getPreviousFocusableElement: () => null,
+      },
+      keyboardNavigation: {
+        isKeyboardUser: false,
+        setKeyboardUser: () => { },
+      },
+      reducedMotion: false,
+      highContrast: false,
+      fontSize: 'base' as const,
+    };
   }
   return context;
 }
@@ -238,17 +274,17 @@ export function SkipLink({ href = '#main-content', children = 'Skip to main cont
 }
 
 // Focus visible enhancement
-export function FocusRing({ 
-  children, 
+export function FocusRing({
+  children,
   className = '',
-  visible = true 
-}: { 
+  visible = true
+}: {
   children: React.ReactNode;
   className?: string;
   visible?: boolean;
 }) {
   const { keyboardNavigation } = useAccessibility();
-  
+
   return (
     <div
       className={`
@@ -263,7 +299,7 @@ export function FocusRing({
 }
 
 // Landmark component for better screen reader navigation
-export function Landmark({ 
+export function Landmark({
   as: Component = 'div',
   role,
   label,
@@ -281,13 +317,13 @@ export function Landmark({
   [key: string]: any;
 }) {
   const accessibilityProps: { [key: string]: any } = {};
-  
+
   if (role) accessibilityProps.role = role;
   if (label) accessibilityProps['aria-label'] = label;
   if (labelledBy) accessibilityProps['aria-labelledby'] = labelledBy;
 
   return (
-    <Component 
+    <Component
       className={className}
       {...accessibilityProps}
       {...props}
@@ -304,13 +340,13 @@ export function HighContrastMode({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkHighContrast = () => {
       if (typeof window === 'undefined') return;
-      
+
       // Check for Windows high contrast mode
       const isWindowsHighContrast = window.matchMedia('(prefers-contrast: high)').matches;
-      
+
       // Check for forced colors (Windows high contrast)
       const hasForcedColors = window.matchMedia('(forced-colors: active)').matches;
-      
+
       setIsHighContrast(isWindowsHighContrast || hasForcedColors);
     };
 

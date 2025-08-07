@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import Image from 'next/image';
 
 interface NFTCollection {
@@ -11,6 +14,7 @@ interface NFTCollection {
 }
 
 export default function NFTsPage() {
+  const settings = useSettings();
   const [collections, setCollections] = useState<NFTCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

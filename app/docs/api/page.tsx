@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -75,7 +78,9 @@ function EndpointCard({
   };
 
   return (
-    <Card className="border-l-4 border-l-blue-500">
+    <Card className="border-l-4 border-l-blue-500"
+          {...({ settings } as any)}
+        >
       <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
         <CollapsibleTrigger className="w-full">
           <CardHeader className="hover:bg-gray-50">
@@ -466,6 +471,7 @@ function generateCurlCommand(endpoint: APIEndpoint): string {
 }
 
 export default function APIDocumentationPage() {
+  const settings = useSettings();
   const [spec, setSpec] = useState<OpenAPISpec | null>(null);
   const [endpoints, setEndpoints] = useState<APIEndpoint[]>([]);
   const [loading, setLoading] = useState(true);

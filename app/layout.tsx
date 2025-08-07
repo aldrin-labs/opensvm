@@ -4,11 +4,9 @@ import "./globals.css";
 import "./styles/custom-scrollbar.css";
 import "./styles/scrollbar-themes.css";
 import "../styles/rtl.css";
-import dynamic from 'next/dynamic';
 import { Suspense } from 'react';
-// Import Navbar directly
 import { NavbarInteractive } from '@/components/NavbarInteractive';
-import { SkipLink } from '@/lib/accessibility';
+import { Providers } from './providers';
 
 // Load fonts with preload
 const inter = Inter({
@@ -23,11 +21,6 @@ const jetbrains = JetBrains_Mono({
   display: 'swap',
   variable: '--font-jetbrains',
   preload: true,
-});
-
-// Dynamic imports with loading fallbacks and error boundary
-const Providers = dynamic(() => import('./providers').then(mod => mod.Providers), {
-  loading: () => <div className="min-h-screen bg-background" />
 });
 
 export const metadata: Metadata = {
@@ -60,7 +53,7 @@ export default function RootLayout({
           href="https://api.mainnet-beta.solana.com"
           crossOrigin="anonymous"
         />
-        
+
         {/* Preload critical fonts with high priority */}
         <link
           rel="preload"
@@ -78,7 +71,7 @@ export default function RootLayout({
           crossOrigin="anonymous"
           fetchPriority="high"
         />
-        
+
         {/* Priority hints for critical resources */}
         <link
           rel="preload"
@@ -87,31 +80,32 @@ export default function RootLayout({
           type="image/svg+xml"
           fetchPriority="high"
         />
-        
+
         {/* Meta tags for viewport control and performance monitoring */}
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover" />
         <meta name="theme-color" content="#000000" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-        
+
         {/* PWA support */}
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
-        
+
         {/* Base favicon */}
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        
+
         {/* Service worker registration script */}
         <script src="/register-sw.js" defer></script>
       </head>
       <body className={inter.className}>
-        <SkipLink />
+        {/* <SkipLink /> */}
         <Providers>
           <Suspense fallback={<div className="min-h-screen bg-background" />}>
-            <NavbarInteractive />
-            <main id="main-content" className="flex-1 pt-14" role="main">
-              {children}
-            </main>
+            <NavbarInteractive>
+              <main id="main-content" className="flex-1" role="main">
+                {children}
+              </main>
+            </NavbarInteractive>
           </Suspense>
         </Providers>
       </body>

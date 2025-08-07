@@ -1,10 +1,12 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { redirect } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface Props {
-  params: Promise<{ 
-    signature: string;
-    tab: string[];
-  }>;
+  params: Promise<{ [key: string]: string }>
 }
 
 // Valid tab routes
@@ -19,8 +21,9 @@ const VALID_TABS = [
   'failure'
 ];
 
-export default async function InvalidTabRedirect({ params }: Props) {
-  const { signature, tab } = await params;
+export default function InvalidTabRedirect({ params }: Props) {
+  const settings = useSettings();
+  const { signature, tab } = params;
   
   // Handle base URL case (empty tab array)
   if (!tab || tab.length === 0) {

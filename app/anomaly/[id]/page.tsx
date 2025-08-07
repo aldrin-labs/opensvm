@@ -1,12 +1,16 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { AnomalyProfilePage } from '@/components/AnomalyProfilePage';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface AnomalyPageProps {
-  params: Promise<{
-    id: string;
-  }>;
+  params: Promise<{ [key: string]: string }>
 }
 
-export default async function AnomalyPage({ params }: AnomalyPageProps) {
-  const { id } = await params;
+export default function AnomalyPage({ params }: AnomalyPageProps) {
+  const settings = useSettings();
+  const { id } = params;
   return <AnomalyProfilePage anomalyId={id} />;
 }

@@ -361,19 +361,23 @@ export function ChatUI({
       const lastMessage = messages[messages.length - 1];
       const announcement = `${lastMessage.role === 'user' ? 'You' : 'AI Assistant'} said: ${lastMessage.content.substring(0, 100)}`;
 
-      // Create temporary live region for announcement
-      const liveRegion = document.createElement('div');
-      liveRegion.setAttribute('role', 'status');
-      liveRegion.setAttribute('aria-live', 'polite');
-      liveRegion.className = 'sr-only';
-      liveRegion.textContent = announcement;
+      // Create temporary live region for announcement (only on client side)
+      if (typeof document !== 'undefined') {
+        const liveRegion = document.createElement('div');
+        liveRegion.setAttribute('role', 'status');
+        liveRegion.setAttribute('aria-live', 'polite');
+        liveRegion.className = 'sr-only';
+        liveRegion.textContent = announcement;
 
-      document.body.appendChild(liveRegion);
+        document.body.appendChild(liveRegion);
 
-      // Remove after announcement
-      setTimeout(() => {
-        document.body.removeChild(liveRegion);
-      }, 1000);
+        // Remove after announcement
+        setTimeout(() => {
+          if (document.body.contains(liveRegion)) {
+            document.body.removeChild(liveRegion);
+          }
+        }, 1000);
+      }
     }
   }, [messages]);
 

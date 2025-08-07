@@ -12,7 +12,7 @@ import {
     CopyIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/lib/settings';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface DepositModalProps {
@@ -418,4 +418,4 @@ export default function SVMAIDepositModal({
             </DialogContent>
         </Dialog>
     );
-} 
+}

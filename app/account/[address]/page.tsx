@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { getConnection } from '@/lib/solana-connection';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
 import AccountInfo from '@/components/AccountInfo';
@@ -126,6 +129,7 @@ interface PageProps {
 }
 
 export default function AccountPage({ params, searchParams }: PageProps) {
+  const settings = useSettings();
   const router = useRouter();
   const urlParams = useParams();
   const [accountInfo, setAccountInfo] = useState<AccountData | null>(null);

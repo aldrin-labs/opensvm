@@ -1,6 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useEffect, useState } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useParams } from 'next/navigation';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ProgramView from './components/program-view';
@@ -29,6 +32,7 @@ interface ProgramResponse {
 }
 
 export default function ProgramPage() {
+  const settings = useSettings();
   const params = useParams();
   const address = params?.address as string;
   const [loading, setLoading] = useState(true);

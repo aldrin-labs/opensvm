@@ -1,9 +1,22 @@
 'use client';
 
-import AccountExplorerLinks from '@/components/AccountExplorerLinks';
-import AccountOverview from '@/components/AccountOverview';
+export const dynamic = 'force-dynamic';
+
+import NextDynamic from 'next/dynamic';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
+
+// Dynamic imports to ensure client-side only
+const AccountExplorerLinks = NextDynamic(() => import('@/components/AccountExplorerLinks'), {
+  ssr: false,
+  loading: () => <div>Loading AccountExplorerLinks...</div>
+});
+
+const AccountOverview = NextDynamic(() => import('@/components/AccountOverview'), {
+  ssr: false,
+  loading: () => <div>Loading AccountOverview...</div>
+});
 
 // Mock token accounts for testing
 const mockTokenAccounts = [
@@ -13,7 +26,7 @@ const mockTokenAccounts = [
     uiAmount: 10.5,
     account: '4VvJHWPXf8bxQmM5vLNHUDzjfCrpCPiPCaVFQmrMjJdH',
     owner: '4VvJHWPXf8bxQmM5vLNHUDzjfCrpCPiPCaVFQmrMjJdH',
-    amount: 10500000000, // 10.5 SOL in lamports
+    amount: 10500000000,
     decimals: 9
   },
   {
@@ -22,7 +35,7 @@ const mockTokenAccounts = [
     uiAmount: 1250.75,
     account: '7KqpRwzkkeweW5GT1CiRBGKdRhPKJYm2e7DjT9L5dTwz',
     owner: '7KqpRwzkkeweW5GT1CiRBGKdRhPKJYm2e7DjT9L5dTwz',
-    amount: 1250750000, // 1250.75 USDC in microunits
+    amount: 1250750000,
     decimals: 6
   },
   {
@@ -31,7 +44,7 @@ const mockTokenAccounts = [
     uiAmount: 500.25,
     account: 'BkV8hmX2cGBbYwyR7NtFkgWc1e4bGmCjqH7JfDfwFKyq',
     owner: 'BkV8hmX2cGBbYwyR7NtFkgWc1e4bGmCjqH7JfDfwFKyq',
-    amount: 500250000, // 500.25 USDT in microunits
+    amount: 500250000,
     decimals: 6
   }
 ];
@@ -72,9 +85,9 @@ function MockTransfersTable() {
 
   const filteredTransfers = useMemo(() => {
     if (!searchTerm.trim()) return mockTransfers;
-    
+
     const lowerSearchTerm = searchTerm.toLowerCase();
-    return mockTransfers.filter(transfer => 
+    return mockTransfers.filter(transfer =>
       transfer.from?.toLowerCase().includes(lowerSearchTerm) ||
       transfer.to?.toLowerCase().includes(lowerSearchTerm) ||
       transfer.tokenSymbol?.toLowerCase().includes(lowerSearchTerm) ||
@@ -168,13 +181,14 @@ function MockTransfersTable() {
 const testAddress = '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM';
 
 export default function ComponentsTestPage() {
+  const settings = useSettings();
   return (
     <div className="min-h-screen bg-black p-4">
       <div className="container mx-auto space-y-8">
         <h1 className="text-3xl font-bold text-white mb-8">
           OpenSVM Components Test Page
         </h1>
-        
+
         {/* Account Explorer Links Test */}
         <div className="bg-neutral-900 rounded-lg p-6">
           <h2 className="text-xl font-semibold text-white mb-4">Account Explorer Links</h2>

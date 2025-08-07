@@ -1,7 +1,12 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { Maximize2, RotateCcw, Plus, MoreHorizontal, X, Settings, HelpCircle, Download, Share2 } from 'lucide-react';
-import { SettingsModal } from '../modals/SettingsModal';
+import dynamic from 'next/dynamic';
+
+// Dynamically import SettingsModal to avoid SSR issues
+const SettingsModal = dynamic(() => import('../modals/SettingsModal').then(mod => ({ default: mod.SettingsModal })), {
+  ssr: false
+});
 
 export interface ChatLayoutProps {
   children: ReactNode;
@@ -67,7 +72,7 @@ export function ChatLayout({
   }, [onWidthChange]);
 
   const handleMouseUp = useCallback(() => {
-    if (isResizing.current) {
+    if (isResizing.current && typeof document !== 'undefined') {
       isResizing.current = false;
       document.body.style.cursor = 'default';
       document.body.classList.remove('select-none');
@@ -76,6 +81,8 @@ export function ChatLayout({
   }, [onResizeEnd]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (typeof document === 'undefined') return;
+
     e.preventDefault();
     isResizing.current = true;
     lastX.current = e.clientX;
@@ -86,6 +93,8 @@ export function ChatLayout({
 
   // Close menu when clicking outside
   useEffect(() => {
+    if (typeof document === 'undefined') return;
+
     const handleClickOutside = (event: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
         setIsMenuOpen(false);
@@ -97,7 +106,7 @@ export function ChatLayout({
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof document === 'undefined') return;
 
     document.addEventListener('mousemove', handleMouseMove);
     document.addEventListener('mouseup', handleMouseUp);

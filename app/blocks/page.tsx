@@ -1,7 +1,10 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import BlockExploreTable from '@/components/BlockExploreTable';
 import { Button } from '@/components/ui/button';
 import { getRecentBlocks, getBlockStats, type BlockListResponse } from '@/lib/block-data';
@@ -9,6 +12,7 @@ import { BlockDetails } from '@/lib/solana';
 import { formatLargeNumber } from '@/utils/format';
 
 export default function BlocksPage() {
+  const settings = useSettings();
   const router = useRouter();
   const [blocks, setBlocks] = useState<BlockDetails[]>([]);
   const [isLoading, setIsLoading] = useState(true);

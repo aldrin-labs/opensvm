@@ -1,8 +1,10 @@
-// @ts-nocheck
-
 "use client";
 
-import { useEffect, useState } from "react";
+// @ts-nocheck
+
+export const dynamic = 'force-dynamic';
+
+import React, { useEffect, useState } from "react";
 import { Connection, SystemProgram } from "@solana/web3.js";
 
 const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=2eb1ae21-40d0-4b6d-adde-ccb3d56ad570";

@@ -1,7 +1,16 @@
 "use client";
 
-import { VTableWrapper } from '@/components/vtable';
+export const dynamic = 'force-dynamic';
+
+import NextDynamic from 'next/dynamic';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useState } from 'react';
+
+// Dynamic import to ensure client-side only
+const VTableWrapper = NextDynamic(() => import('@/components/vtable').then(mod => ({ default: mod.VTableWrapper })), {
+  ssr: false,
+  loading: () => <div className="p-4">Loading VTable...</div>
+});
 
 const testData = [
   { id: 1, name: 'John Doe', age: 30, city: 'New York' },
@@ -19,6 +28,7 @@ const columns = [
 ];
 
 export default function TestPage() {
+  const settings = useSettings();
   const [data, setData] = useState(testData);
 
   const handleSort = (field: string, order: 'asc' | 'desc' | null) => {
@@ -30,9 +40,9 @@ export default function TestPage() {
     const sortedData = [...data].sort((a, b) => {
       const aValue = a[field as keyof typeof a];
       const bValue = b[field as keyof typeof b];
-      
+
       if (aValue === bValue) return 0;
-      
+
       const modifier = order === 'asc' ? 1 : -1;
       return aValue > bValue ? modifier : -modifier;
     });

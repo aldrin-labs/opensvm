@@ -1,5 +1,7 @@
-// Modify existing search page to include AI enhancements with real API integration
 'use client';
+// Modify existing search page to include AI enhancements with real API integration
+
+export const dynamic = 'force-dynamic';
 
 import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
@@ -7,6 +9,7 @@ import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton';
 import EnhancedSearchBar from '@/components/search';
 import { sanitizeSearchQuery, formatNumber, isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface SearchResult {
   address: string;
@@ -674,6 +677,7 @@ function SearchResults() {
 }
 
 export default function SearchPage() {
+  const settings = useSettings();
   return (
     <Suspense fallback={<div>Loading...</div>}>
       <SearchResults />

@@ -1,17 +1,25 @@
+'use client';
+
+export const dynamic = 'force-dynamic';
+
 import { Suspense } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import TransactionTabLayout from '../TransactionTabLayout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Props {
-  params: Promise<{ signature: string }>;
+  params: Promise<{ [key: string]: string }>
 }
 
-export default async function TransactionRelatedPage({ params }: Props) {
-  const { signature } = await params;
+export default function TransactionRelatedPage({ params }: Props) {
+  const settings = useSettings();
+  const { signature } = params;
 
   return (
-    <ErrorBoundary>
+    <ErrorBoundary
+          {...({ settings } as any)}
+        >
       <Suspense fallback={<LoadingSpinner />}>
         <TransactionTabLayout signature={signature} activeTab="related" />
       </Suspense>

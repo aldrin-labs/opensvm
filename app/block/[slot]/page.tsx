@@ -1,9 +1,13 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useParams } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import BlockDetails from '@/components/BlockDetails';
 
 export default function BlockPage() {
+  const settings = useSettings();
   const params = useParams();
   const slot = params?.slot as string;
 

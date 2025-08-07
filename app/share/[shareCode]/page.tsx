@@ -1,11 +1,15 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useEffect, useState } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';
 
 export default function ShareLandingPage() {
+  const settings = useSettings();
   const params = useParams();
   const router = useRouter();
   const shareCode = params?.shareCode as string;

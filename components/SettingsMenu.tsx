@@ -1,7 +1,7 @@
 'use client';
 
-import { useState } from 'react';
-import { useSettings } from '@/lib/settings';
+import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { updateRpcEndpoint } from '@/lib/solana-connection';
 import { Button } from '@/components/ui/button';
 import {
@@ -47,17 +47,32 @@ const fontSizes = [
   { id: 'large', name: 'Large' },
 ] as const;
 
-export function SettingsMenu() {
+// Client-side only component that uses settings
+function SettingsMenuClient() {
   const settings = useSettings();
   const [isOpen, setIsOpen] = useState(false);
-  const [tempSettings, setTempSettings] = useState({
-    theme: settings.theme,
-    fontFamily: settings.fontFamily,
-    fontSize: settings.fontSize,
-    rpcEndpoint: settings.rpcEndpoint,
-    customRpcEndpoint: settings.customRpcEndpoint,
-  });
   const [showCustomRpc, setShowCustomRpc] = useState(false);
+  
+  const [tempSettings, setTempSettings] = useState({
+    theme: settings?.theme || 'paper',
+    fontFamily: settings?.fontFamily || 'berkeley',
+    fontSize: settings?.fontSize || 'medium',
+    rpcEndpoint: settings?.rpcEndpoint || { name: 'OpenSVM', url: 'opensvm', network: 'mainnet' },
+    customRpcEndpoint: settings?.customRpcEndpoint || '',
+  });
+
+  // Update tempSettings when settings change
+  useEffect(() => {
+    if (settings) {
+      setTempSettings({
+        theme: settings.theme,
+        fontFamily: settings.fontFamily,
+        fontSize: settings.fontSize,
+        rpcEndpoint: settings.rpcEndpoint,
+        customRpcEndpoint: settings.customRpcEndpoint,
+      });
+    }
+  }, [settings]);
 
   const handleApply = () => {
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
@@ -241,4 +256,27 @@ export function SettingsMenu() {
       </DropdownMenuContent>
     </DropdownMenu>
   );
+}
+
+export function SettingsMenu() {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return (
+      <Button 
+        variant="ghost" 
+        size="icon"
+        className="h-8 w-8 rounded-md"
+        disabled
+      >
+        {icons.settings}
+      </Button>
+    );
+  }
+
+  return <SettingsMenuClient />;
 }

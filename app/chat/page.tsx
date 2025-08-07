@@ -4,8 +4,16 @@ import { useState } from 'react';
 import { Connection } from '@solana/web3.js';
 import { createSolanaAgent } from '@/lib/ai/core/factory';
 import { useAIChat } from '@/lib/ai/hooks/useAIChat';
-import { ChatUI } from '@/components/ai/ChatUI';
+import dynamic from 'next/dynamic';
 import { RotateCcw, Plus, Settings } from 'lucide-react';
+
+// Dynamic import for ChatUI to ensure client-side only
+const ChatUI = dynamic(() => import('@/components/ai/ChatUI').then(mod => ({ default: mod.ChatUI })), {
+  ssr: false,
+  loading: () => <div className="min-h-screen bg-background flex items-center justify-center">
+    <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+  </div>
+});
 
 // Initialize Solana connection
 const connection = new Connection(
@@ -14,9 +22,9 @@ const connection = new Connection(
 
 export default function ChatPage() {
   const [activeTab, setActiveTab] = useState('agent');
-  
+
   const agent = createSolanaAgent(connection);
-  
+
   const {
     messages,
     input,
@@ -89,7 +97,7 @@ export default function ChatPage() {
           </button>
         </div>
       </div>
-      
+
       {/* Chat content */}
       <div className="flex-1 min-h-0">
         <ChatUI

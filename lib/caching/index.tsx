@@ -486,8 +486,22 @@ export function CacheProvider({ children }: { children: React.ReactNode }) {
   // Cache implementations - memoize to prevent recreation on every render
   const memoryCache = useMemo(() => new MemoryCache(config.maxMemorySize), [config.maxMemorySize]);
   const indexedDBCache = useMemo(() => new IndexedDBCache(), []);
-  const localStorageCache = useMemo(() => new StorageCache(localStorage), []);
-  const sessionStorageCache = useMemo(() => new StorageCache(sessionStorage), []);
+  const localStorageCache = useMemo(() => {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined' && window.localStorage) {
+      return new StorageCache(localStorage);
+    }
+    // Return a no-op cache for SSR
+    return new MemoryCache(1024); // Small fallback cache
+  }, []);
+  const sessionStorageCache = useMemo(() => {
+    // Check if we're in a browser environment
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+      return new StorageCache(sessionStorage);
+    }
+    // Return a no-op cache for SSR
+    return new MemoryCache(1024); // Small fallback cache
+  }, []);
 
   // Initialize IndexedDB on mount
   useEffect(() => {

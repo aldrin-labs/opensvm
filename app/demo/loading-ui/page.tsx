@@ -1,6 +1,9 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +47,6 @@ import {
 } from '@/components/ui/optimistic';
 
 import { PendingActionsIndicator } from '@/lib/optimistic-ui';
-import { useI18n } from '@/lib/i18n';
 import { Clock, Heart, MessageSquare, Plus, Minus, Save, Upload, Download } from 'lucide-react';
 
 // Mock data and API functions
@@ -85,11 +87,11 @@ const mockCommentApi = (text: string) =>
   }));
 
 export default function LoadingUIDemo() {
+  const settings = useSettings();
   const [showOverlay, setShowOverlay] = useState(false);
   const [progress, setProgress] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [skeletonDemo, setSkeletonDemo] = useState(true);
-  const { t } = useI18n();
 
   // Progress simulation
   useEffect(() => {
@@ -135,7 +137,9 @@ export default function LoadingUIDemo() {
         <PendingActionsIndicator className="mt-4 inline-flex" showDetails />
       </div>
 
-      <Tabs defaultValue="loading" className="w-full">
+      <Tabs defaultValue="loading" className="w-full"
+          {...({ settings } as any)}
+        >
         <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="loading">Loading Components</TabsTrigger>
           <TabsTrigger value="skeletons">Skeleton Screens</TabsTrigger>
@@ -217,14 +221,14 @@ export default function LoadingUIDemo() {
                   <LoadingButton loading={isLoading}>
                     Default Button
                   </LoadingButton>
-                  <LoadingButton loading={isLoading} variant="secondary">
+                  <LoadingButton loading={isLoading}>
                     <Save className="w-4 h-4 mr-2" />
                     Save Changes
                   </LoadingButton>
-                  <LoadingButton loading={isLoading} variant="destructive">
+                  <LoadingButton loading={isLoading}>
                     Delete Item
                   </LoadingButton>
-                  <LoadingButton loading={isLoading} variant="outline" size="sm">
+                  <LoadingButton loading={isLoading}>
                     Small Button
                   </LoadingButton>
                 </div>
@@ -234,10 +238,22 @@ export default function LoadingUIDemo() {
               <div>
                 <h3 className="text-lg font-semibold mb-3">Status Indicators</h3>
                 <div className="flex gap-4 flex-wrap">
-                  <StatusIndicator status="loading" label="Processing" />
-                  <StatusIndicator status="success" label="Completed" />
-                  <StatusIndicator status="error" label="Failed" />
-                  <StatusIndicator status="warning" label="Warning" />
+                  <div className="flex items-center gap-2">
+                    <StatusIndicator status="loading" />
+                    <span className="text-sm">Processing</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusIndicator status="success" />
+                    <span className="text-sm">Completed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusIndicator status="error" />
+                    <span className="text-sm">Failed</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <StatusIndicator status="idle" />
+                    <span className="text-sm">Idle</span>
+                  </div>
                 </div>
               </div>
 
@@ -249,7 +265,9 @@ export default function LoadingUIDemo() {
                     Toggle Loading Overlay
                   </Button>
                   {showOverlay && (
-                    <LoadingOverlay message="Processing your request..." />
+                    <LoadingOverlay loading={true}>
+                      Processing your request...
+                    </LoadingOverlay>
                   )}
                 </div>
               </div>

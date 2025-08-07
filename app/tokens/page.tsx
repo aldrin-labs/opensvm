@@ -1,13 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+export const dynamic = 'force-dynamic';
+
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Button } from '@/components/ui/button';
 import { getAllTokens } from '@/lib/mock-token-data';
 import type { TokenMarketData, TokenListResponse } from '@/types/token-market';
 
 export default function TokensPage() {
+  const settings = useSettings();
   const router = useRouter();
   const [tokens, setTokens] = useState<TokenMarketData[]>([]);
   const [isLoading, setIsLoading] = useState(true);

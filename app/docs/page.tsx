@@ -1,19 +1,22 @@
+export const dynamic = 'force-dynamic';
+
 import { promises as fs } from 'fs';
 import path from 'path';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 export const metadata = {
   title: 'OpenSVM Documentation',
 };
 
-export default async function DocsPage() {
-  const docsDir = path.join(process.cwd(), 'docs');
+export default function DocsPage() {  const docsDir = path.join(process.cwd(), 'docs');
+  const settings = useSettings();
 
   try {
     // Verify directory exists
     try {
-      await fs.access(docsDir);
+      fs.access(docsDir);
     } catch (error) {
       console.error(`Docs directory not found: ${docsDir}`);
       return (
@@ -24,14 +27,14 @@ export default async function DocsPage() {
       );
     }
 
-    const files = await fs.readdir(docsDir);
+    const files = fs.readdir(docsDir);
     const mdFiles = files.filter(file => file.endsWith('.md'));
 
     // Get the content of index.md if it exists
     let indexContent = null;
     if (mdFiles.includes('index.md')) {
       const indexPath = path.join(docsDir, 'index.md');
-      indexContent = await fs.readFile(indexPath, 'utf8');
+      indexContent = fs.readFile(indexPath, 'utf8');
     }
 
     if (mdFiles.length === 0) {

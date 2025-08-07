@@ -1,7 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
+import { useSettings } from '@/app/providers/SettingsProvider';
 
 interface TrendingNFTCollection {
   address: string;
@@ -21,6 +24,7 @@ const fetchTrendingCollections = async (): Promise<TrendingNFTCollection[]> => {
 };
 
 export default function TrendingNFTsPage() {
+  const settings = useSettings();
   const [collections, setCollections] = useState<TrendingNFTCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

@@ -1,17 +1,31 @@
 'use client';
 
-import dynamic from 'next/dynamic';
+export const dynamic = 'force-dynamic';
+
+import React, { useState, useEffect } from 'react';
+import { useSettings } from '@/app/providers/SettingsProvider';
+import NextDynamic from 'next/dynamic';
 import LoadingSpinner from '@/components/LoadingSpinner';
 
 // Dynamically import TransactionGraph to avoid SSR window references
-const TransactionGraph = dynamic(
+const TransactionGraph = NextDynamic(
   () => import('@/components/transaction-graph/TransactionGraph'),
   { loading: () => <LoadingSpinner />, ssr: false }
 );
 
 export default function TestTransactionGraphPage() {
+  const settings = useSettings();
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  if (!isMounted) {
+    return <LoadingSpinner />;
+  }
   const testSignature = '5JbxvGuxz64CgFidRvBEV6TGEpwtbBSvaxVJiXGJrMnqHKGmKk5wXJMhM1VujQ7WGjE3VDJp1oucukwW6LEuLWFo';
-  
+
   const handleTransactionSelect = (signature: string) => {
     console.log('Transaction selected:', signature);
   };
@@ -31,4 +45,4 @@ export default function TestTransactionGraphPage() {
       </div>
     </div>
   );
-} 
+}

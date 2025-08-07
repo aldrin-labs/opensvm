@@ -1,7 +1,16 @@
 "use client";
 
-import { VTableWrapper } from '@/components/vtable';
+export const dynamic = 'force-dynamic';
+
+import NextDynamic from 'next/dynamic';
+import { useSettings } from '@/app/providers/SettingsProvider';
 import { useState } from 'react';
+
+// Dynamic import to ensure client-side only
+const VTableWrapper = NextDynamic(() => import('@/components/vtable').then(mod => ({ default: mod.VTableWrapper })), {
+  ssr: false,
+  loading: () => <div className="p-4">Loading VTable...</div>
+});
 
 const testData = [
   { id: 1, name: 'John Doe', age: 30, city: 'New York', email: 'john@example.com', phone: '+1-555-0123', address: '123 Main St', company: 'Tech Corp' },
@@ -12,6 +21,7 @@ const testData = [
 ];
 
 export default function TestVTable() {
+  const settings = useSettings();
   const [containerWidth, setContainerWidth] = useState('100%');
   const [showAllColumns, setShowAllColumns] = useState(false);
 
