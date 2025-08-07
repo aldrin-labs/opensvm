@@ -68,27 +68,29 @@ describe('Graph Visualization Integration Tests', () => {
       signature: 'graph-test-signature-123',
       slot: 123456789,
       blockTime: Date.now(),
+      timestamp: Date.now(),
+      type: 'sol',
       success: true,
       details: {
         accounts: [
-          { pubkey: 'account_A', executable: false, owner: '11111111111111111111111111111111' },
-          { pubkey: 'account_B', executable: false, owner: '11111111111111111111111111111111' },
-          { pubkey: 'account_C', executable: false, owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
-          { pubkey: 'account_D', executable: false, owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' }
-        ],
+          { pubkey: 'account_A', signer: false, writable: true, owner: '11111111111111111111111111111111' },
+          { pubkey: 'account_B', signer: false, writable: true, owner: '11111111111111111111111111111111' },
+          { pubkey: 'account_C', signer: false, writable: true, owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
+          { pubkey: 'account_D', signer: false, writable: true, owner: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' }
+        ] as any,
         instructions: [
           {
             program: 'System Program',
             programId: '11111111111111111111111111111111',
-            instructionType: 'transfer',
-            accounts: ['account_A', 'account_B'],
+            
+            accounts: [0, 1], // indices for account_A, account_B
             data: '00000002'
           },
           {
             program: 'SPL Token',
             programId: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
-            instructionType: 'transfer',
-            accounts: ['account_C', 'account_D', 'account_A'],
+            
+            accounts: [2, 3, 0], // indices for account_C, account_D, account_A
             data: '03'
           }
         ],
@@ -134,12 +136,12 @@ describe('Graph Visualization Integration Tests', () => {
 
       // Verify nodes are created for accounts
       expect(graphData.nodes.length).toBeGreaterThan(0);
-      const accountNodes = graphData.nodes.filter(node => node.type === 'account');
+      const accountNodes = graphData.nodes.filter((node: any) => node.type === 'account');
       expect(accountNodes.length).toBe(4); // 4 accounts in transaction
 
       // Verify edges are created for transfers
       expect(graphData.edges.length).toBeGreaterThan(0);
-      const transferEdges = graphData.edges.filter(edge => edge.type === 'transfer');
+      const transferEdges = graphData.edges.filter((edge: any) => edge.type === 'transfer');
       expect(transferEdges.length).toBeGreaterThan(0);
 
       // Verify metadata includes transaction info
@@ -155,14 +157,15 @@ describe('Graph Visualization Integration Tests', () => {
           ...mockTransaction.details!,
           accounts: Array.from({ length: 10 }, (_, i) => ({
             pubkey: `account_${i}`,
-            executable: false,
+            signer: false,
+            writable: true,
             owner: i % 2 === 0 ? '11111111111111111111111111111111' : 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
-          })),
+          })) as any,
           instructions: Array.from({ length: 5 }, (_, i) => ({
             program: i % 2 === 0 ? 'System Program' : 'SPL Token',
             programId: i % 2 === 0 ? '11111111111111111111111111111111' : 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
             instructionType: 'transfer',
-            accounts: [`account_${i}`, `account_${i + 1}`],
+            accounts: [i, i + 1],
             data: i % 2 === 0 ? '00000002' : '03'
           }))
         }
@@ -173,15 +176,15 @@ describe('Graph Visualization Integration Tests', () => {
       const graphBuilder = new TransactionGraphBuilder();
       const graphData = await graphBuilder.buildTransactionGraph(complexTransaction);
 
-      expect(graphData.nodes.length).toBe(10);
+      expect(graphData.nodes.length).toBe(13); // 10 accounts + 2 programs + 1 transaction node
       expect(graphData.edges.length).toBeGreaterThan(5);
       expect(graphData.metadata.instructionCount).toBe(5);
 
       // Verify different node types
-      const systemAccounts = graphData.nodes.filter(node => 
+      const systemAccounts = graphData.nodes.filter((node: any) =>
         node.data.owner === '11111111111111111111111111111111'
       );
-      const tokenAccounts = graphData.nodes.filter(node => 
+      const tokenAccounts = graphData.nodes.filter((node: any) =>
         node.data.owner === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'
       );
 
@@ -207,7 +210,7 @@ describe('Graph Visualization Integration Tests', () => {
       expect(optimizedGraph.edges).toBeDefined();
 
       // Verify nodes have position data
-      optimizedGraph.nodes.forEach(node => {
+      optimizedGraph.nodes.forEach((node: any) => {
         expect(node.position).toBeDefined();
         expect(typeof node.position.x).toBe('number');
         expect(typeof node.position.y).toBe('number');
@@ -320,10 +323,10 @@ describe('Graph Visualization Integration Tests', () => {
       expect(filteredGraph.edges.length).toBeLessThanOrEqual(graphData.edges.length);
 
       // Verify filter application
-      const programNodes = filteredGraph.nodes.filter(node => node.type === 'program');
+      const programNodes = filteredGraph.nodes.filter((node: any) => node.type === 'program');
       expect(programNodes.length).toBe(0); // Programs should be filtered out
 
-      const accountNodes = filteredGraph.nodes.filter(node => node.type === 'account');
+      const accountNodes = filteredGraph.nodes.filter((node: any) => node.type === 'account');
       expect(accountNodes.length).toBeGreaterThan(0); // Accounts should remain
     });
   });
@@ -359,7 +362,7 @@ describe('Graph Visualization Integration Tests', () => {
       const buildTime = Date.now() - startTime;
 
       expect(buildTime).toBeLessThan(5000); // Should build within 5 seconds
-      expect(graphData.nodes.length).toBe(100);
+      expect(graphData.nodes.length).toBe(103); // 100 accounts + 2 programs + 1 transaction node
       expect(graphData.edges.length).toBeGreaterThan(50);
 
       // Test layout optimization performance
@@ -371,7 +374,7 @@ describe('Graph Visualization Integration Tests', () => {
       const layoutTime = Date.now() - layoutStartTime;
 
       expect(layoutTime).toBeLessThan(10000); // Should optimize within 10 seconds
-      expect(optimizedGraph.nodes.length).toBe(100);
+      expect(optimizedGraph.nodes.length).toBe(103); // 100 accounts + 2 programs + 1 transaction node
     });
 
     it('should implement graph virtualization for very large datasets', async () => {

@@ -59,7 +59,7 @@ describe('NLPEngine', () => {
           })
         ])
       );
-      expect(response.blockchain_actions).toHaveLength(expect.any(Number));
+      expect(response.blockchain_actions).toHaveLength(0);
     });
 
     it('should process portfolio analysis requests', async () => {
@@ -83,7 +83,8 @@ describe('NLPEngine', () => {
           })
         ])
       );
-      expect(response.suggested_actions).toHaveLength(expect.any(Number));
+      expect(response.suggested_actions).toBeDefined();
+      expect(response.suggested_actions!.length).toBeGreaterThan(0);
     });
   });
 
@@ -252,8 +253,9 @@ describe('NLPEngine', () => {
 
       const response = await engine.processConversation(request);
 
-      expect(response.blockchain_actions).toHaveLength(1);
-      const action = response.blockchain_actions[0];
+      expect(response.blockchain_actions).toBeDefined();
+      expect(response.blockchain_actions!).toHaveLength(1);
+      const action = response.blockchain_actions![0];
       
       expect(action.action_type).toBe('swap');
       expect(action.parameters).toEqual(
@@ -279,10 +281,11 @@ describe('NLPEngine', () => {
 
       const response = await engine.processConversation(request);
 
-      expect(response.blockchain_actions.length).toBeGreaterThanOrEqual(2);
+      expect(response.blockchain_actions).toBeDefined();
+      expect(response.blockchain_actions!.length).toBeGreaterThanOrEqual(2);
       
-      const stakingAction = response.blockchain_actions.find(a => a.action_type === 'stake');
-      const liquidityAction = response.blockchain_actions.find(a => a.action_type === 'add_liquidity');
+      const stakingAction = response.blockchain_actions!.find(a => a.action_type === 'stake');
+      const liquidityAction = response.blockchain_actions!.find(a => a.action_type === 'add_liquidity');
       
       expect(stakingAction).toBeDefined();
       expect(liquidityAction).toBeDefined();
@@ -421,7 +424,8 @@ describe('NLPEngine', () => {
 
       const response = await engine.processConversation(request);
 
-      expect(response.suggested_actions).toHaveLength(expect.any(Number));
+      expect(response.suggested_actions).toBeDefined();
+      expect(response.suggested_actions!.length).toBeGreaterThan(0);
       expect(response.suggested_actions).toEqual(
         expect.arrayContaining([
           expect.stringMatching(/analyz|review|diversif|rebalanc/i)

@@ -259,13 +259,14 @@ export class InstructionParserService {
     const instructionType = instructionDef?.name || 'unknown';
     const description = instructionDef?.description || `${program.name} instruction`;
 
-    const accountRoles = accounts.map((account, index) => ({
+    // Only create account roles if accounts array is not empty
+    const accountRoles = accounts.length > 0 ? accounts.map((account, index) => ({
       pubkey: account,
       role: instructionDef?.accounts[index]?.role || 'unknown',
       description: instructionDef?.accounts[index]?.description || `Account ${index}`,
       isSigner: instructionDef?.accounts[index]?.isSigner || false,
       isWritable: instructionDef?.accounts[index]?.isWritable || false
-    })) as InstructionAccountRole[];
+    })) as InstructionAccountRole[] : [];
 
     return {
       programId: program.programId,
@@ -304,19 +305,22 @@ export class InstructionParserService {
     const dataAnalysis = this.analyzeInstructionData(data);
     const enhancedDescription = dataAnalysis ? `${instructionType} (${dataAnalysis})` : instructionType;
 
+    // Only create account roles if accounts array is not empty
+    const accountRoles = accounts.length > 0 ? accounts.map((account, index) => ({
+      pubkey: account,
+      role: 'unknown' as any,
+      description: `Account ${index}`,
+      isSigner: false,
+      isWritable: false
+    })) : [];
+
     return {
       programId,
       programName,
       instructionType,
       description: `${programName}: ${enhancedDescription}`,
       category: 'unknown',
-      accounts: accounts.map((account, index) => ({
-        pubkey: account,
-        role: 'unknown' as any,
-        description: `Account ${index}`,
-        isSigner: false,
-        isWritable: false
-      })),
+      accounts: accountRoles,
       parameters: parsed?.info ? this.extractParameters(parsed.info) : [],
       riskLevel: 'medium'
     };
@@ -366,7 +370,7 @@ export class InstructionParserService {
         return `Allocate ${info.space || 0} bytes for account`;
 
       default:
-        return `System ${instructionType} instruction`;
+        return `System Program ${instructionType} instruction`;
     }
   }
 

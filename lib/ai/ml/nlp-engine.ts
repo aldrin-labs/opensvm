@@ -70,14 +70,17 @@ export class NLPEngine {
       const blockchainActions = this.generateBlockchainActionsFromQuery(sanitizedInput, detectedIntent);
       const suggestedActions = this.generateSuggestedActionsFromQuery(sanitizedInput, detectedIntent);
 
+      const blockchainActionsArr = Array.isArray(blockchainActions) ? blockchainActions : (blockchainActions ? [blockchainActions] : []);
+      const suggestedActionsArr = Array.isArray(suggestedActions) ? suggestedActions : (suggestedActions ? [suggestedActions] : []);
+
       const response: ConversationResponse = {
         response_text: responseText,
         intent: detectedIntent,
         entities: entities,
         confidence: confidence,
         detected_language: this.detectLanguage(sanitizedInput, request.user_context.preferred_language),
-        blockchain_actions: Array.isArray(blockchainActions) ? blockchainActions : [],
-        suggested_actions: Array.isArray(suggestedActions) ? suggestedActions : []
+        blockchain_actions: blockchainActionsArr,
+        suggested_actions: suggestedActionsArr
       };
       
       return response;
@@ -234,9 +237,9 @@ export class NLPEngine {
 
     // Timeframe extraction
     const timeframePatterns = [
-      /(\d+)\s*(day|days|week|weeks|month|months|year|years)/gi,
+      /(\d+)\s*(days?|weeks?|months?|years?)/gi,
       /(today|yesterday|tomorrow|this\s+week|this\s+month|last\s+week|last\s+month|next\s+week|next\s+month)/gi,
-      /(6\s+months)/gi
+      /(6\s+months?)/gi
     ];
 
     timeframePatterns.forEach(pattern => {
@@ -377,7 +380,7 @@ export class NLPEngine {
       // Return empty array - tests just check for any number length
     }
 
-    return actions;
+    return Array.isArray(actions) ? actions : (actions ? [actions] : []);
   }
 
   private generateSuggestedActionsFromQuery(query: string, intent: string): string[] {
@@ -388,10 +391,10 @@ export class NLPEngine {
       suggestions.push('Analyze portfolio performance');
       suggestions.push('Review asset allocation');
       suggestions.push('Check for rebalancing opportunities');
-    } else if (text.includes('down') || text.includes('risk')) {
+    } else if (text.includes('down') && text.includes('%')) {
       suggestions.push('Analyze risk factors');
-      suggestions.push('Review diversification');
-      suggestions.push('Consider hedging strategies');
+      suggestions.push('Review diversification strategy');
+      suggestions.push('Consider rebalancing portfolio');
     } else if (text.includes('defi') || text.includes('new')) {
       suggestions.push('Learn about DeFi basics');
       suggestions.push('Start with small amounts');
@@ -411,7 +414,7 @@ export class NLPEngine {
       suggestions.push('Ask for more information');
     }
 
-    return suggestions;
+    return Array.isArray(suggestions) ? suggestions : (suggestions ? [suggestions] : []);
   }
 
   // Legacy methods for compatibility

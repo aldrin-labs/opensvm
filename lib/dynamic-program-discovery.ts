@@ -193,8 +193,9 @@ export class DynamicProgramDiscoveryService {
       };
     }
 
-    // Check for duplicates
-    if (this.communityDefinitions.has(definition.programId)) {
+    // Check for duplicates in both community definitions and discovered programs
+    if (this.communityDefinitions.has(definition.programId) ||
+        this.discoveredPrograms.has(definition.programId)) {
       return {
         success: false,
         error: 'Program definition already exists'

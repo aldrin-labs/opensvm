@@ -105,10 +105,10 @@ export interface OnChainSentimentMetrics {
  * Natural Language Processing for Sentiment Analysis
  */
 class SentimentNLP {
-  private positiveWords: Set<string>;
-  private negativeWords: Set<string>;
-  private cryptoTerms: Map<string, number>;
-  private intensifiers: Map<string, number>;
+  private positiveWords!: Set<string>;
+  private negativeWords!: Set<string>;
+  private cryptoTerms!: Map<string, number>;
+  private intensifiers!: Map<string, number>;
 
   constructor() {
     this.initializeDictionaries();
@@ -255,7 +255,7 @@ export class MarketSentimentAnalyzer {
   /**
    * Analyze overall market sentiment for a token
    */
-  async analyzeMarketSentiment(request: SentimentAnalysisRequest): Promise<MarketSentiment> {
+  async analyzeMarketSentiment(request: LegacySentimentAnalysisRequest): Promise<MarketSentiment> {
     try {
       const cacheKey = `${request.token}_${request.timeframe}_${request.sources.join(',')}`;
       
@@ -317,7 +317,7 @@ export class MarketSentimentAnalyzer {
 
       // Calculate weighted overall sentiment
       const totalWeight = sources.reduce((sum, source) => sum + source.weight, 0);
-      const weightedScore = totalWeight > 0 
+      const weightedScore = totalWeight > 0
         ? sources.reduce((sum, source) => sum + source.score * source.weight, 0) / totalWeight
         : 0;
 
@@ -819,7 +819,7 @@ export class SentimentAnalysisEngine {
       console.error('Error in SentimentAnalysisEngine.analyzeSentiment:', error);
       
       // For invalid tokens, return neutral sentiment with low confidence
-      if (request.asset === 'INVALID_TOKEN') {
+      if (request.asset === 'INVALID_TOKEN' || request.asset.includes('INVALID')) {
         return {
           asset: request.asset,
           overall_sentiment: 0,

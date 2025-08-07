@@ -1489,7 +1489,7 @@ export function searchPrograms(query: string): ProgramDefinition[] {
   return getAllProgramDefinitions().filter(program =>
     program.name.toLowerCase().includes(lowercaseQuery) ||
     program.description.toLowerCase().includes(lowercaseQuery) ||
-    program.programId.includes(trimmedQuery)
+    program.programId === trimmedQuery // Exact match for program ID
   );
 }
 
