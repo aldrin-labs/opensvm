@@ -162,11 +162,12 @@ export async function POST(request: NextRequest) {
         // Estimate cost and reserve balance
         const estimatedCost = estimateRequestCost(anthropicRequest);
         const proxyRequest: ProxyRequest = {
-            keyId,
+            method: 'POST',
+            headers: Object.fromEntries(request.headers.entries()),
+            body: anthropicRequest,
             userId,
-            anthropicRequest,
-            estimatedCost,
-            timestamp: new Date()
+            apiKeyId: keyId,
+            estimatedCost
         };
 
         try {
@@ -184,7 +185,14 @@ export async function POST(request: NextRequest) {
         }
 
         // Get Anthropic client and process request
-        const anthropicClient = await getAnthropicClient();
+        // Initialize Anthropic client. On first use, an API key is required.
+        // Prefer a specific proxy key if provided via environment; otherwise fall back to the caller's key.
+        const initKey =
+          process.env.ANTHROPIC_PROXY_API_KEY ||
+          process.env.ANTHROPIC_API_KEY ||
+          apiKey;
+
+        const anthropicClient = getAnthropicClient(initKey);
 
         try {
             if (anthropicRequest.stream) {
@@ -213,16 +221,19 @@ export async function POST(request: NextRequest) {
                 // Process successful response for billing
                 const actualCost = calculateActualCost(response, anthropicRequest.model);
                 const proxyResponse: ProxyResponse = {
-                    keyId,
+                    status: 200,
+                    headers: { 'content-type': 'application/json' },
+                    body: response,
                     userId,
-                    anthropicResponse: response,
-                    actualCost,
+                    keyId,
+                    model: anthropicRequest.model,
                     inputTokens: response.usage?.input_tokens || 0,
                     outputTokens: response.usage?.output_tokens || 0,
-                    model: anthropicRequest.model,
+                    actualCost,
+                    responseTime: Date.now() - startTime,
                     success: true,
                     timestamp: new Date(),
-                    responseTime: Date.now() - startTime
+                    anthropicResponse: response
                 };
 
                 await billingProcessor.processSuccessfulResponse(proxyResponse);
@@ -236,16 +247,19 @@ export async function POST(request: NextRequest) {
         } catch (error) {
             // Process failed response for billing
             const proxyResponse: ProxyResponse = {
-                keyId,
+                status: 500,
+                headers: { 'content-type': 'application/json' },
+                body: null,
                 userId,
-                anthropicResponse: null,
-                actualCost: 0,
+                keyId,
+                model: anthropicRequest.model,
                 inputTokens: 0,
                 outputTokens: 0,
-                model: anthropicRequest.model,
+                actualCost: 0,
+                responseTime: Date.now() - startTime,
                 success: false,
                 timestamp: new Date(),
-                responseTime: Date.now() - startTime
+                anthropicResponse: null
             };
 
             await billingProcessor.processFailedResponse(proxyResponse);
@@ -379,4 +393,4 @@ export async function OPTIONS(_request: NextRequest) {
             'Access-Control-Max-Age': '86400'
         }
     });
-} 
+}

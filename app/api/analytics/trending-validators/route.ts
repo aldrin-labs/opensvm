@@ -325,6 +325,7 @@ export async function GET(request: Request) {
     console.error('Error fetching trending validators:', error);
     return NextResponse.json({
       success: false,
+      data: null,
       error: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 });
   }
@@ -339,7 +340,8 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: false,
         error: 'Rate limit exceeded for burn operations. Please try again later.',
-        retryAfter: burnRateLimitResult.retryAfter
+        retryAfter: burnRateLimitResult.retryAfter,
+        data: null
       }, {
         status: 429,
         headers: {
@@ -357,21 +359,24 @@ export async function POST(request: Request) {
     if (!voteAccount || !burnAmount || !burnSignature || !burnerWallet) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required parameters'
+        error: 'Missing required parameters',
+        data: null
       }, { status: 400 });
     }
 
     if (burnAmount < 1000) {
       return NextResponse.json({
         success: false,
-        error: 'Minimum burn amount is 1000 $SVMAI'
+        error: 'Minimum burn amount is 1000 $SVMAI',
+        data: null
       }, { status: 400 });
     }
 
     if (burnAmount > MAX_BURN_AMOUNTS.SVMAI) {
       return NextResponse.json({
         success: false,
-        error: `Maximum burn amount is ${MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI`
+        error: `Maximum burn amount is ${MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI`,
+        data: null
       }, { status: 400 });
     }
 
@@ -385,7 +390,8 @@ export async function POST(request: Request) {
     if (!verification.valid) {
       return NextResponse.json({
         success: false,
-        error: `Burn verification failed: ${verification.error}`
+        error: `Burn verification failed: ${verification.error}`,
+        data: null
       }, { status: 400 });
     }
 
@@ -398,7 +404,8 @@ export async function POST(request: Request) {
       if (usedSignatures.has(burnSignature)) {
         return NextResponse.json({
           success: false,
-          error: 'This burn transaction has already been used for a boost'
+          error: 'This burn transaction has already been used for a boost',
+          data: null
         }, { status: 400 });
       }
 
@@ -482,7 +489,8 @@ export async function POST(request: Request) {
     console.error('Error processing burn:', error);
     return NextResponse.json({
       success: false,
-      error: error instanceof Error ? error.message : 'Unknown error'
+      error: error instanceof Error ? error.message : 'Unknown error',
+      data: null
     }, { status: 500 });
   }
 }
