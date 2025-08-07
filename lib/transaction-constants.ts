@@ -41,3 +41,10 @@ export function isDexLikeAddress(address: string): boolean {
 export function isAboveDustThreshold(amount: number, threshold: number): boolean {
   return amount >= threshold;
 }
+// Transaction batch and retry constants for account transfer API
+export const TRANSACTION_BATCH_SIZE = 100;
+export const MAX_RETRIES = 5;
+export const INITIAL_BACKOFF_MS = 500;
+export const BATCH_DELAY_MS = 200;
+export const MAX_SIGNATURES_LIMIT = 1000;
+export const MIN_WALLET_ADDRESS_LENGTH = 32;
