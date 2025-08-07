@@ -31,7 +31,7 @@ export class BillingProcessor {
       const cost = calculateSVMAICost(model, usage.inputTokens, usage.outputTokens);
 
       // Check balance
-      const hasBalance = await this.balanceManager.hasBalance(userId, cost);
+      const hasBalance = await this.balanceManager.hasSufficientBalance(userId, cost);
       if (!hasBalance) {
         throw new Error('Insufficient SVMAI balance');
       }
@@ -63,7 +63,7 @@ export class BillingProcessor {
   }
 
   async preflightCheck(userId: string, estimatedCost: number = 1): Promise<boolean> {
-    return await this.balanceManager.hasBalance(userId, estimatedCost);
+    return await this.balanceManager.hasSufficientBalance(userId, estimatedCost);
   }
 
   async refundTransaction(userId: string, cost: number): Promise<boolean> {
@@ -75,11 +75,17 @@ export class BillingProcessor {
     }
   }
 
+  async initialize(): Promise<void> {
+    await this.balanceManager.initialize();
+    await this.usageTracker.initialize();
+  }
+
   async reserveBalance(request: ProxyRequest): Promise<void> {
     // Check if user has sufficient balance for the estimated cost
-    const hasBalance = await this.balanceManager.hasBalance(request.userId, request.estimatedCost);
+    const estimatedCost = request.estimatedCost || 1;
+    const hasBalance = await this.balanceManager.hasSufficientBalance(request.userId || '', estimatedCost);
     if (!hasBalance) {
-      throw new Error(`Insufficient balance. Required: ${request.estimatedCost} SVMAI`);
+      throw new Error(`Insufficient balance to reserve ${estimatedCost} tokens for ${request.body?.model || 'unknown'} request.`);
     }
     // Note: In a production system, you might want to actually reserve/lock the balance
     // For now, we just check availability
@@ -87,26 +93,19 @@ export class BillingProcessor {
 
   async processSuccessfulResponse(response: ProxyResponse): Promise<void> {
     try {
-      // Deduct the actual cost from the user's balance
-      const deductSuccess = await this.balanceManager.subtractBalance(response.userId, response.actualCost);
-      if (!deductSuccess) {
-        console.error(`Failed to deduct balance for user ${response.userId}, cost: ${response.actualCost}`);
-        return;
-      }
-
       // Track usage statistics
-      await this.usageTracker.trackUsage(
-        response.userId,
-        response.keyId,
-        response.model,
-        response.inputTokens,
-        response.outputTokens,
-        response.actualCost,
-        response.responseTime || 0,
-        response.success
+      await this.usageTracker.trackResponse(response);
+
+      // Consume reserved balance
+      const estimatedCost = (response.inputTokens || 0) + (response.outputTokens || 0);
+      await this.balanceManager.consumeReservedBalance(
+        response.userId || '',
+        estimatedCost,
+        response.actualCost || 0,
+        response.keyId || ''
       );
 
-      console.log(`Successfully processed response for user ${response.userId}, cost: ${response.actualCost} SVMAI`);
+      console.log(`Successfully processed response for user ${response.userId || 'unknown'}`);
     } catch (error) {
       console.error('Error processing successful response:', error);
     }
@@ -115,18 +114,17 @@ export class BillingProcessor {
   async processFailedResponse(response: ProxyResponse): Promise<void> {
     try {
       // Track the failed request for analytics (no cost deduction for failed requests)
-      await this.usageTracker.trackUsage(
-        response.userId,
-        response.keyId,
-        response.model,
-        response.inputTokens,
-        response.outputTokens,
-        0, // No cost for failed requests
-        response.responseTime || 0,
-        false
+      await this.usageTracker.trackResponse(response);
+
+      // Release reserved balance
+      const estimatedAmount = (response.inputTokens || 0) + (response.outputTokens || 0);
+      await this.balanceManager.releaseReservedBalance(
+        response.userId || '',
+        estimatedAmount,
+        response.keyId || ''
       );
 
-      console.log(`Processed failed response for user ${response.userId}`);
+      console.log(`Processed failed response for user ${response.userId || 'unknown'}`);
     } catch (error) {
       console.error('Error processing failed response:', error);
     }
@@ -145,9 +143,10 @@ export class BillingProcessor {
 
   private extractUsage(response: ProxyResponse | AnthropicResponse): { inputTokens: number; outputTokens: number } | null {
     if ('usage' in response && response.usage) {
+      const usage = response.usage as any;
       return {
-        inputTokens: response.usage.input_tokens || response.usage.inputTokens || 0,
-        outputTokens: response.usage.output_tokens || response.usage.outputTokens || 0
+        inputTokens: usage.input_tokens || usage.inputTokens || 0,
+        outputTokens: usage.output_tokens || usage.outputTokens || 0
       };
     }
     return null;

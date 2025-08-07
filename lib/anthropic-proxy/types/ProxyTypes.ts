@@ -4,15 +4,28 @@ export interface ProxyRequest {
   body: any;
   userId?: string;
   apiKeyId?: string;
+  estimatedCost?: number;
 }
 
 export interface ProxyResponse {
   status: number;
   headers: Record<string, string>;
   body: any;
+  userId?: string;
+  keyId?: string;
+  model?: string;
+  inputTokens?: number;
+  outputTokens?: number;
+  actualCost?: number;
+  responseTime?: number;
+  success?: boolean;
+  timestamp?: Date;
+  anthropicResponse?: AnthropicResponse | null;
   usage?: {
-    inputTokens: number;
-    outputTokens: number;
+    inputTokens?: number;
+    outputTokens?: number;
+    input_tokens?: number;
+    output_tokens?: number;
   };
 }
 

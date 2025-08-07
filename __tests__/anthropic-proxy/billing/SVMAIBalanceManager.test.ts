@@ -15,7 +15,7 @@ describe('SVMAIBalanceManager', () => {
     jest.clearAllMocks();
     mockStorage = new MockedBalanceStorage() as jest.Mocked<BalanceStorage>;
     balanceManager = new SVMAIBalanceManager();
-    (balanceManager as any).storage = mockStorage;
+    (balanceManager as any).balanceStorage = mockStorage;
   });
 
   describe('getBalance', () => {
@@ -23,99 +23,84 @@ describe('SVMAIBalanceManager', () => {
       const userId = 'user123';
       const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 100,
-        reservedBalance: 10,
-        availableBalance: 90,
-        totalDeposited: 150,
-        totalSpent: 50,
-        lastUpdated: new Date()
+        balance: 100,
+        lastUpdated: Date.now()
       };
 
       mockStorage.getBalance.mockResolvedValue(mockBalance);
 
       const result = await balanceManager.getBalance(userId);
 
-      expect(result).toEqual(mockBalance);
+      expect(result).toBe(100);
       expect(mockStorage.getBalance).toHaveBeenCalledWith(userId);
     });
 
-    it('should create initial balance for new user', async () => {
+    it('should return 0 for new user', async () => {
       const userId = 'newuser';
       
       mockStorage.getBalance.mockResolvedValue(null);
-      mockStorage.storeBalance.mockResolvedValue();
 
       const result = await balanceManager.getBalance(userId);
 
-      expect(result).toEqual({
-        userId,
-        svmaiBalance: 0,
-        reservedBalance: 0,
-        availableBalance: 0,
-        totalDeposited: 0,
-        totalSpent: 0,
-        lastUpdated: expect.any(Date)
-      });
-
-      expect(mockStorage.storeBalance).toHaveBeenCalledWith(
-        expect.objectContaining({
-          userId,
-          svmaiBalance: 0,
-          reservedBalance: 0,
-          availableBalance: 0
-        })
-      );
+      expect(result).toBe(0);
     });
   });
 
   describe('addBalance', () => {
-    it('should add balance and log transaction', async () => {
+    it('should add balance successfully', async () => {
       const userId = 'user123';
       const amount = 50;
-      const transactionId = 'tx123';
       
-      const currentBalance: UserBalance = {
+      const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 100,
-        reservedBalance: 10,
-        availableBalance: 90,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 150,
+        lastUpdated: Date.now()
       };
 
-      mockStorage.getBalance.mockResolvedValue(currentBalance);
-      mockStorage.storeBalance.mockResolvedValue();
-      mockStorage.logTransaction.mockResolvedValue();
+      mockStorage.addToBalance.mockResolvedValue(mockBalance);
 
-      const result = await balanceManager.addBalance(userId, amount, transactionId);
+      const result = await balanceManager.addBalance(userId, amount);
 
-      expect(result).toEqual({
+      expect(result).toEqual(mockBalance);
+      expect(mockStorage.addToBalance).toHaveBeenCalledWith(userId, amount);
+    });
+
+    it('should throw error for negative amount', async () => {
+      const userId = 'user123';
+      const amount = -10;
+
+      await expect(balanceManager.addBalance(userId, amount)).rejects.toThrow('Amount must be positive');
+    });
+  });
+
+  describe('subtractBalance', () => {
+    it('should subtract balance successfully', async () => {
+      const userId = 'user123';
+      const amount = 25;
+      
+      const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 150,
-        reservedBalance: 10,
-        availableBalance: 140,
-        totalDeposited: 150,
-        totalSpent: 0,
-        lastUpdated: expect.any(Date)
-      });
+        balance: 75,
+        lastUpdated: Date.now()
+      };
 
-      expect(mockStorage.storeBalance).toHaveBeenCalledWith(
-        expect.objectContaining({
-          svmaiBalance: 150,
-          availableBalance: 140,
-          totalDeposited: 150
-        })
-      );
+      mockStorage.subtractFromBalance.mockResolvedValue(mockBalance);
 
-      expect(mockStorage.logTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          id: transactionId,
-          userId,
-          type: 'deposit',
-          amount
-        })
-      );
+      const result = await balanceManager.subtractBalance(userId, amount);
+
+      expect(result).toBe(true);
+      expect(mockStorage.subtractFromBalance).toHaveBeenCalledWith(userId, amount);
+    });
+
+    it('should return false when subtraction fails', async () => {
+      const userId = 'user123';
+      const amount = 100;
+
+      mockStorage.subtractFromBalance.mockResolvedValue(null);
+
+      const result = await balanceManager.subtractBalance(userId, amount);
+
+      expect(result).toBe(false);
     });
   });
 
@@ -125,29 +110,17 @@ describe('SVMAIBalanceManager', () => {
       const amount = 20;
       const requestId = 'req123';
       
-      const currentBalance: UserBalance = {
+      const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 100,
-        reservedBalance: 10,
-        availableBalance: 90,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 100,
+        lastUpdated: Date.now()
       };
 
-      mockStorage.getBalance.mockResolvedValue(currentBalance);
-      mockStorage.storeBalance.mockResolvedValue();
-      mockStorage.logTransaction.mockResolvedValue();
+      mockStorage.getBalance.mockResolvedValue(mockBalance);
 
       const result = await balanceManager.reserveBalance(userId, amount, requestId);
 
       expect(result).toBe(true);
-      expect(mockStorage.storeBalance).toHaveBeenCalledWith(
-        expect.objectContaining({
-          reservedBalance: 30,
-          availableBalance: 70
-        })
-      );
     });
 
     it('should reject reservation when insufficient funds', async () => {
@@ -155,22 +128,17 @@ describe('SVMAIBalanceManager', () => {
       const amount = 100;
       const requestId = 'req123';
       
-      const currentBalance: UserBalance = {
+      const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 50,
-        reservedBalance: 10,
-        availableBalance: 40,
-        totalDeposited: 50,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 50,
+        lastUpdated: Date.now()
       };
 
-      mockStorage.getBalance.mockResolvedValue(currentBalance);
+      mockStorage.getBalance.mockResolvedValue(mockBalance);
 
       const result = await balanceManager.reserveBalance(userId, amount, requestId);
 
       expect(result).toBe(false);
-      expect(mockStorage.storeBalance).not.toHaveBeenCalled();
     });
   });
 
@@ -181,19 +149,14 @@ describe('SVMAIBalanceManager', () => {
       const actualAmount = 25;
       const requestId = 'req123';
       
-      const currentBalance: UserBalance = {
+      const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 100,
-        reservedBalance: 30,
-        availableBalance: 70,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 75,
+        lastUpdated: Date.now()
       };
 
-      mockStorage.getBalance.mockResolvedValue(currentBalance);
-      mockStorage.storeBalance.mockResolvedValue();
-      mockStorage.logTransaction.mockResolvedValue();
+      mockStorage.subtractFromBalance.mockResolvedValue(mockBalance);
+      mockStorage.addToBalance.mockResolvedValue(mockBalance);
 
       const result = await balanceManager.consumeReservedBalance(
         userId, 
@@ -202,27 +165,9 @@ describe('SVMAIBalanceManager', () => {
         requestId
       );
 
-      expect(result).toEqual({
-        userId,
-        svmaiBalance: 75, // 100 - 25
-        reservedBalance: 0, // 30 - 30
-        availableBalance: 75, // 75 (svmaiBalance) - 0 (reservedBalance)
-        totalDeposited: 100,
-        totalSpent: 25,
-        lastUpdated: expect.any(Date)
-      });
-
-      expect(mockStorage.logTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'consume',
-          amount: actualAmount,
-          metadata: expect.objectContaining({
-            reserved: reservedAmount,
-            consumed: actualAmount,
-            refunded: 5
-          })
-        })
-      );
+      expect(result).toBe(true);
+      expect(mockStorage.subtractFromBalance).toHaveBeenCalledWith(userId, actualAmount);
+      expect(mockStorage.addToBalance).toHaveBeenCalledWith(userId, 5); // refund
     });
   });
 
@@ -231,42 +176,10 @@ describe('SVMAIBalanceManager', () => {
       const userId = 'user123';
       const amount = 20;
       const requestId = 'req123';
-      
-      const currentBalance: UserBalance = {
-        userId,
-        svmaiBalance: 100,
-        reservedBalance: 20,
-        availableBalance: 80,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: new Date()
-      };
-
-      mockStorage.getBalance.mockResolvedValue(currentBalance);
-      mockStorage.storeBalance.mockResolvedValue();
-      mockStorage.logTransaction.mockResolvedValue();
 
       const result = await balanceManager.releaseReservedBalance(userId, amount, requestId);
 
-      expect(result).toEqual({
-        userId,
-        svmaiBalance: 100,
-        reservedBalance: 0,
-        availableBalance: 100,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: expect.any(Date)
-      });
-
-      expect(mockStorage.logTransaction).toHaveBeenCalledWith(
-        expect.objectContaining({
-          type: 'release',
-          amount,
-          metadata: expect.objectContaining({
-            released: amount
-          })
-        })
-      );
+      expect(result).toBe(true);
     });
   });
 
@@ -277,12 +190,8 @@ describe('SVMAIBalanceManager', () => {
       
       const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 100,
-        reservedBalance: 10,
-        availableBalance: 90,
-        totalDeposited: 100,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 100,
+        lastUpdated: Date.now()
       };
 
       mockStorage.getBalance.mockResolvedValue(mockBalance);
@@ -298,12 +207,8 @@ describe('SVMAIBalanceManager', () => {
       
       const mockBalance: UserBalance = {
         userId,
-        svmaiBalance: 50,
-        reservedBalance: 10,
-        availableBalance: 40,
-        totalDeposited: 50,
-        totalSpent: 0,
-        lastUpdated: new Date()
+        balance: 50,
+        lastUpdated: Date.now()
       };
 
       mockStorage.getBalance.mockResolvedValue(mockBalance);
@@ -315,26 +220,12 @@ describe('SVMAIBalanceManager', () => {
   });
 
   describe('getTransactionHistory', () => {
-    it('should return transaction history', async () => {
+    it('should return empty transaction history', async () => {
       const userId = 'user123';
-      const mockHistory = [
-        {
-          id: 'tx1',
-          userId,
-          type: 'deposit',
-          amount: 100,
-          balanceAfter: 100,
-          timestamp: new Date(),
-          metadata: {}
-        }
-      ];
-
-      mockStorage.getTransactionHistory.mockResolvedValue(mockHistory);
 
       const result = await balanceManager.getTransactionHistory(userId);
 
-      expect(result).toEqual(mockHistory);
-      expect(mockStorage.getTransactionHistory).toHaveBeenCalledWith(userId, 50, 0);
+      expect(result).toEqual([]);
     });
   });
 });

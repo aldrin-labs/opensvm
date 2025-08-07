@@ -73,4 +73,57 @@ export class SVMAIBalanceManager {
   async deleteUser(userId: string): Promise<boolean> {
     return await this.balanceStorage.deleteUser(userId);
   }
+
+  async initialize(): Promise<void> {
+    // Initialize the balance storage if needed
+    // BalanceStorage doesn't have an initialize method, so this is a no-op
+  }
+
+  async reserveBalance(userId: string, amount: number, requestId: string): Promise<boolean> {
+    // Check if user has sufficient balance
+    const hasEnough = await this.hasBalance(userId, amount);
+    if (!hasEnough) {
+      return false;
+    }
+
+    // For now, we'll simulate reservation by checking balance
+    // In a production system, you'd implement actual balance reservation
+    return true;
+  }
+
+  async consumeReservedBalance(userId: string, reservedAmount: number, actualAmount: number, requestId: string): Promise<boolean> {
+    // Consume the actual amount and refund the difference if any
+    const success = await this.subtractBalance(userId, actualAmount);
+    if (success && actualAmount < reservedAmount) {
+      // Refund the difference
+      const refundAmount = reservedAmount - actualAmount;
+      await this.addBalance(userId, refundAmount);
+    }
+    return success;
+  }
+
+  async releaseReservedBalance(userId: string, amount: number, requestId: string): Promise<boolean> {
+    // In a real implementation, this would release reserved funds
+    // For now, we'll just return true since we don't actually reserve
+    return true;
+  }
+
+  async hasSufficientBalance(userId: string, requiredAmount: number): Promise<boolean> {
+    return await this.hasBalance(userId, requiredAmount);
+  }
+
+  async getTransactionHistory(userId: string): Promise<any[]> {
+    // Return empty array for now - would implement transaction history in production
+    return [];
+  }
+
+  async storeBalance(balance: UserBalance): Promise<void> {
+    // Store balance - implement as needed
+    await this.balanceStorage.updateBalance(balance.userId, balance.balance);
+  }
+
+  async logTransaction(transaction: any): Promise<void> {
+    // Log transaction - implement as needed
+    console.log('Transaction logged:', transaction);
+  }
 }

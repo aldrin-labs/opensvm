@@ -50,15 +50,16 @@ describe('BillingProcessor', () => {
     describe('processSuccessfulResponse', () => {
         const mockAnthropicResponse: AnthropicResponse = {
             id: 'msg_success',
-            type: 'message',
-            role: 'assistant',
-            content: [{ type: 'text', text: 'Response' }],
+            content: [{ text: 'Response' }],
             model: 'claude-3-haiku-20240307',
             stop_reason: 'end_turn',
             usage: { input_tokens: 10, output_tokens: 20 },
         };
 
         const mockProxyResponse: ProxyResponse = {
+            status: 200,
+            headers: {},
+            body: {},
             keyId: 'key1',
             userId: 'user1',
             anthropicResponse: mockAnthropicResponse,
@@ -76,7 +77,7 @@ describe('BillingProcessor', () => {
 
             expect(mockUsageTracker.trackResponse).toHaveBeenCalledWith(mockProxyResponse);
             // Implementation calls consumeReservedBalance with estimated cost and actual cost
-            const expectedEstimatedCost = mockProxyResponse.inputTokens + mockProxyResponse.outputTokens; // 10 + 20 = 30
+            const expectedEstimatedCost = (mockProxyResponse.inputTokens || 0) + (mockProxyResponse.outputTokens || 0); // 10 + 20 = 30
             expect(mockBalanceManager.consumeReservedBalance).toHaveBeenCalledWith(
                 mockProxyResponse.userId,
                 expectedEstimatedCost,
@@ -88,6 +89,9 @@ describe('BillingProcessor', () => {
 
     describe('processFailedResponse', () => {
         const mockProxyResponse: ProxyResponse = {
+            status: 400,
+            headers: {},
+            body: {},
             keyId: 'key2',
             userId: 'user2',
             anthropicResponse: null, // Indicates a failed request before full response
@@ -105,7 +109,7 @@ describe('BillingProcessor', () => {
 
             expect(mockUsageTracker.trackResponse).toHaveBeenCalledWith(mockProxyResponse);
             // Implementation calls releaseReservedBalance with estimated amount
-            const expectedEstimatedAmount = mockProxyResponse.inputTokens + mockProxyResponse.outputTokens; // 0 + 0 = 0
+            const expectedEstimatedAmount = (mockProxyResponse.inputTokens || 0) + (mockProxyResponse.outputTokens || 0); // 0 + 0 = 0
             expect(mockBalanceManager.releaseReservedBalance).toHaveBeenCalledWith(
                 mockProxyResponse.userId,
                 expectedEstimatedAmount,
@@ -116,29 +120,29 @@ describe('BillingProcessor', () => {
 
     describe('reserveBalance', () => {
         const mockProxyRequest: ProxyRequest = {
-            keyId: 'key3',
-            userId: 'user3',
-            anthropicRequest: {
+            method: 'POST',
+            headers: {},
+            body: {
                 model: 'claude-3-opus-20240229',
                 max_tokens: 100,
                 messages: [{ role: 'user', content: 'hi' }],
             },
+            userId: 'user3',
+            apiKeyId: 'key3',
             estimatedCost: 75,
-            timestamp: new Date(),
         };
 
         it('should reserve balance for a valid request', async () => {
             await billingProcessor.reserveBalance(mockProxyRequest);
 
-            expect(mockBalanceManager.reserveBalance).toHaveBeenCalledWith(
+            expect(mockBalanceManager.hasSufficientBalance).toHaveBeenCalledWith(
                 mockProxyRequest.userId,
-                mockProxyRequest.estimatedCost,
-                mockProxyRequest.keyId
+                mockProxyRequest.estimatedCost
             );
         });
 
         it('should throw an error if balance reservation fails', async () => {
-            mockBalanceManager.reserveBalance.mockResolvedValue(false);
+            mockBalanceManager.hasSufficientBalance.mockResolvedValue(false);
 
             await expect(billingProcessor.reserveBalance(mockProxyRequest)).rejects.toThrow(
                 'Insufficient balance to reserve 75 tokens for claude-3-opus-20240229 request.'

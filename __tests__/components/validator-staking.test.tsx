@@ -9,42 +9,48 @@ jest.mock('@solana/wallet-adapter-react', () => ({
 }));
 
 // Mock Solana Web3.js
-const mockConnection = {
-  getVoteAccounts: jest.fn(),
-  getMinimumBalanceForRentExemption: jest.fn(),
-  getBalance: jest.fn(),
-  getLatestBlockhash: jest.fn(),
-  getBlockHeight: jest.fn(),
-  confirmTransaction: jest.fn(),
-  getTokenAccountBalance: jest.fn(),
-  getParsedProgramAccounts: jest.fn()
-};
+jest.mock('@solana/web3.js', () => {
+  const mockConnectionMethods = {
+    getVoteAccounts: jest.fn(),
+    getMinimumBalanceForRentExemption: jest.fn(),
+    getBalance: jest.fn(),
+    getLatestBlockhash: jest.fn(),
+    getBlockHeight: jest.fn(),
+    confirmTransaction: jest.fn(),
+    getTokenAccountBalance: jest.fn(),
+    getParsedProgramAccounts: jest.fn()
+  };
 
-jest.mock('@solana/web3.js', () => ({
-  Connection: jest.fn(() => mockConnection),
-  PublicKey: jest.fn().mockImplementation((key) => ({
-    toBase58: () => key,
-    toBuffer: () => Buffer.from(key)
-  })),
-  Transaction: jest.fn().mockImplementation(() => ({
-    add: jest.fn(),
-    recentBlockhash: '',
-    feePayer: null
-  })),
-  StakeProgram: {
-    programId: 'Stake11111111111111111111111111111111111111',
-    space: 200,
-    initialize: jest.fn(),
-    delegate: jest.fn()
-  },
-  SystemProgram: {
-    createAccountWithSeed: jest.fn()
-  },
-  Authorized: jest.fn(),
-  Lockup: jest.fn(),
-  LAMPORTS_PER_SOL: 1000000000,
-  findProgramAddress: jest.fn()
-}));
+  return {
+    Connection: jest.fn(() => mockConnectionMethods),
+    PublicKey: jest.fn().mockImplementation((key) => ({
+      toBase58: () => key,
+      toBuffer: () => Buffer.from(key)
+    })),
+    Transaction: jest.fn().mockImplementation(() => ({
+      add: jest.fn(),
+      recentBlockhash: '',
+      feePayer: null
+    })),
+    StakeProgram: {
+      programId: 'Stake11111111111111111111111111111111111111',
+      space: 200,
+      initialize: jest.fn(),
+      delegate: jest.fn()
+    },
+    SystemProgram: {
+      createAccountWithSeed: jest.fn()
+    },
+    Authorized: jest.fn(),
+    Lockup: jest.fn(),
+    LAMPORTS_PER_SOL: 1000000000,
+    findProgramAddress: jest.fn()
+  };
+});
+
+// Get the mock connection for use in tests
+const { Connection } = require('@solana/web3.js');
+const mockConnection = new Connection();
 
 // Mock SPL Token
 jest.mock('@solana/spl-token', () => ({
