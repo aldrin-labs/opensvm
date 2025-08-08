@@ -5,7 +5,7 @@
 
 import { useEffect, useState } from 'react';
 
-export type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized';
+export type Theme = 'paper' | 'high-contrast' | 'dos-blue' | 'cyberpunk' | 'solarized';
 export type FontFamily = 'berkeley' | 'inter' | 'jetbrains';
 export type FontSize = 'small' | 'medium' | 'large';
 
@@ -139,13 +139,13 @@ class SettingsManager {
       url,
       network: 'mainnet' // Default to mainnet for custom endpoints
     };
-    
+
     // Add to available endpoints if not already present
     const exists = this.settings.availableRpcEndpoints.find(e => e.url === url);
     if (!exists) {
       this.settings.availableRpcEndpoints.push(endpoint);
     }
-    
+
     this.settings.rpcEndpoint = endpoint;
     this.settings.customRpcEndpoint = url;
     this.saveSettings();
@@ -163,10 +163,10 @@ class SettingsManager {
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
-    
+
     // Remove all theme classes
-    root.classList.remove('theme-paper', 'theme-high-contrast', 'theme-dos', 'theme-cyberpunk', 'theme-solarized');
-    
+    root.classList.remove('theme-paper', 'theme-high-contrast', 'theme-dos-blue', 'theme-cyberpunk', 'theme-solarized');
+
     // Apply new theme class
     root.classList.add(`theme-${theme}`);
   }
@@ -175,10 +175,10 @@ class SettingsManager {
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
-    
+
     // Remove all font classes
     root.classList.remove('font-berkeley', 'font-inter', 'font-jetbrains');
-    
+
     // Apply new font class
     root.classList.add(`font-${fontFamily}`);
   }
@@ -187,10 +187,10 @@ class SettingsManager {
     if (typeof window === 'undefined') return;
 
     const root = document.documentElement;
-    
+
     // Remove all font size classes
     root.classList.remove('text-small', 'text-medium', 'text-large');
-    
+
     // Apply new font size class
     root.classList.add(`text-${fontSize}`);
   }

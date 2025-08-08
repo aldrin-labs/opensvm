@@ -30,7 +30,7 @@ const icons = {
 const themes = [
   { id: 'paper', name: 'Paper' },
   { id: 'high-contrast', name: 'High Contrast' },
-  { id: 'dos', name: 'DOS Blue' },
+  { id: 'dos-blue', name: 'DOS Blue' },
   { id: 'cyberpunk', name: 'Cyberpunk' },
   { id: 'solarized', name: 'Solarized' },
 ] as const;

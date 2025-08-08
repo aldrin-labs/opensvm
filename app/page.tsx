@@ -15,6 +15,7 @@ import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
 import { SearchSuggestions } from '@/components/search/SearchSuggestions';
 import { SearchSuggestion } from '@/components/search/types';
+import { ThemeTest } from '@/components/ThemeTest';
 import { debounce } from '@/lib/utils';
 
 interface Block {
@@ -66,12 +67,12 @@ export default function HomePage() {
         setIsLoading(true);
         const connection = await getConnection();
         const latency = await getRPCLatency();
-        
+
         // Get current slot and blocks in one batch
         const slot = await connection.getSlot();
         const startSlot = Math.max(0, slot - 9);
         const slots = await connection.getBlocks(startSlot, slot);
-        
+
         if (!mounted) return;
 
         // Update blocks
@@ -84,11 +85,11 @@ export default function HomePage() {
           connection.getVoteAccounts(),
           connection.getRecentPerformanceSamples(1)
         ]);
-        
+
         if (!mounted) return;
 
         const tps = perfSamples[0] ? Math.round(perfSamples[0].numTransactions / perfSamples[0].samplePeriodSecs) : 0;
-        
+
         const newStats = {
           epoch: epochInfo.epoch,
           epochProgress: (epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100,
@@ -97,7 +98,7 @@ export default function HomePage() {
           tps,
           successRate: 100,
         };
-        
+
         setStats(newStats);
 
         // Update network data
@@ -189,7 +190,7 @@ export default function HomePage() {
       const blockInfo = await connection.getBlock(block.slot, {
         maxSupportedTransactionVersion: 0
       });
-      
+
       if (blockInfo) {
         const blockWithTx: Block = {
           ...block,
@@ -214,9 +215,9 @@ export default function HomePage() {
 
   return (
     <div className="relative">
-      <main 
+      <main
         className="min-h-screen bg-background"
-        style={{ 
+        style={{
           width: isAIChatOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
           transition: !isResizing ? 'all 300ms ease-in-out' : 'none',
           marginRight: isAIChatOpen ? `${sidebarWidth}px` : 0
@@ -252,7 +253,7 @@ export default function HomePage() {
               >
                 Search
               </Button>
-              
+
               <SearchSuggestions
                 showSuggestions={showSuggestions}
                 suggestions={suggestions}
@@ -305,8 +306,8 @@ export default function HomePage() {
                 <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
                 <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
                 <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
-                  <div 
-                    className="bg-primary h-1" 
+                  <div
+                    className="bg-primary h-1"
                     style={{ width: `${stats?.epochProgress ?? 0}%` }}
                   />
                 </div>
@@ -337,7 +338,7 @@ export default function HomePage() {
           {/* Recent Activity */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="bg-background border border-border rounded-lg p-6">
-              <RecentBlocks 
+              <RecentBlocks
                 blocks={blocks}
                 onBlockSelect={handleBlockSelect}
                 isLoading={isLoading}
@@ -357,11 +358,14 @@ export default function HomePage() {
               AI Assistant
             </Button>
           </div>
+
+          {/* Theme Test Component */}
+          <ThemeTest />
         </div>
       </main>
 
       {/* AI Chat Sidebar */}
-      <AIChatSidebar 
+      <AIChatSidebar
         isOpen={isAIChatOpen}
         onClose={() => setIsAIChatOpen(false)}
         onWidthChange={setSidebarWidth}
