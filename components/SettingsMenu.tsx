@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/app/providers/SettingsProvider';
-import { updateRpcEndpoint } from '@/lib/solana-connection';
+import { updateClientRpcEndpoint } from '@/lib/solana-connection';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -52,7 +52,7 @@ function SettingsMenuClient() {
   const settings = useSettings();
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomRpc, setShowCustomRpc] = useState(false);
-  
+
   const [tempSettings, setTempSettings] = useState({
     theme: settings?.theme || 'paper',
     fontFamily: settings?.fontFamily || 'berkeley',
@@ -77,13 +77,13 @@ function SettingsMenuClient() {
   const handleApply = () => {
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
       settings.addCustomRpcEndpoint('Custom', tempSettings.customRpcEndpoint);
-      updateRpcEndpoint(tempSettings.customRpcEndpoint);
+      updateClientRpcEndpoint(tempSettings.customRpcEndpoint);
     } else {
       settings.setTheme(tempSettings.theme);
       settings.setFontFamily(tempSettings.fontFamily);
       settings.setFontSize(tempSettings.fontSize);
       settings.setRpcEndpoint(tempSettings.rpcEndpoint);
-      updateRpcEndpoint(tempSettings.rpcEndpoint.url);
+      updateClientRpcEndpoint(tempSettings.rpcEndpoint.url);
     }
     setIsOpen(false);
   };
@@ -103,8 +103,8 @@ function SettingsMenuClient() {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-md"
         >
@@ -114,7 +114,7 @@ function SettingsMenuClient() {
       <DropdownMenuContent align="end" className="w-[280px]">
         <DropdownMenuLabel>Settings</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        
+
         {/* Theme Selection */}
         <DropdownMenuSub>
           <DropdownMenuSubTrigger>Theme: {themes.find(t => t.id === tempSettings.theme)?.name}</DropdownMenuSubTrigger>
@@ -235,7 +235,7 @@ function SettingsMenuClient() {
         )}
 
         <DropdownMenuSeparator />
-        
+
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 p-2">
           <Button
@@ -267,8 +267,8 @@ export function SettingsMenu() {
 
   if (!isMounted) {
     return (
-      <Button 
-        variant="ghost" 
+      <Button
+        variant="ghost"
         size="icon"
         className="h-8 w-8 rounded-md"
         disabled

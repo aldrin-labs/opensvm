@@ -39,7 +39,7 @@ export const networks: Network[] = [
       discord: 'https://discord.com/invite/solana',
     },
     endpoints: {
-      mainnet: 'https://solana-mainnet.core.chainstack.com/263c9f53f4e4cdb897c0edc4a64cd007',
+      mainnet: 'https://api.mainnet-beta.solana.com',
       testnet: 'https://api.testnet.solana.com',
       devnet: 'https://api.devnet.solana.com',
     },

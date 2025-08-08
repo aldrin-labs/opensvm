@@ -1,8 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { updateRpcEndpoint } from './solana-connection';
-import { getRpcEndpoints } from './opensvm-rpc';
+import { updateClientRpcEndpoint } from './solana-connection';
 
 export type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized';
 export type FontFamily = 'berkeley' | 'inter' | 'jetbrains';
@@ -27,7 +26,7 @@ export interface RpcEndpoint {
 // Define the OpenSVM endpoint as the primary endpoint
 const OPENSVM_ENDPOINT: RpcEndpoint = {
   name: 'OpenSVM',
-  url: 'https://api.opensvm.com',
+  url: 'https://opensvm.com/api/proxy/rpc',
   network: 'mainnet'
 };
 
@@ -40,37 +39,18 @@ const SERUM_ENDPOINT: RpcEndpoint = {
   network: 'mainnet'
 };
 
-// Use getRpcEndpoints for dynamic endpoint discovery and fallback to defaults
+// Client-safe RPC endpoints (no secrets exposed)
 const getDefaultRpcEndpoints = (): RpcEndpoint[] => {
-  try {
-    const dynamicEndpoints = getRpcEndpoints().map(endpoint => {
-      // Ensure endpoint is properly typed as RpcEndpoint
-      return typeof endpoint === 'string' ?
-        { name: 'Dynamic', url: endpoint, network: 'mainnet' as const } :
-        endpoint;
-    });
-    console.log(`Loaded ${dynamicEndpoints.length} RPC endpoints from OpenSVM configuration`);
-    return dynamicEndpoints.length > 0 ? dynamicEndpoints : [
-      OPENSVM_ENDPOINT,
-      SERUM_ENDPOINT,
-      { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
-      { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
-      DEFAULT_MAINNET_ENDPOINT,
-      { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
-      { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
-    ];
-  } catch (error) {
-    console.warn('Failed to load dynamic RPC endpoints, using defaults:', error);
-    return [
-      OPENSVM_ENDPOINT,
-      SERUM_ENDPOINT,
-      { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
-      { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
-      DEFAULT_MAINNET_ENDPOINT,
-      { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
-      { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
-    ];
-  }
+  // For client-side, we only use safe endpoints and the proxy
+  return [
+    OPENSVM_ENDPOINT,
+    SERUM_ENDPOINT,
+    { name: 'Ankr', url: 'https://rpc.ankr.com/solana', network: 'mainnet' },
+    { name: 'ExtrNode', url: 'https://solana-mainnet.rpc.extrnode.com', network: 'mainnet' },
+    DEFAULT_MAINNET_ENDPOINT,
+    { name: 'Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' },
+    { name: 'Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' },
+  ];
 };
 
 const defaultRpcEndpoints: RpcEndpoint[] = getDefaultRpcEndpoints();
@@ -135,7 +115,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
           setSettings(parsed);
           // Update RPC endpoint in connection pool
-          updateRpcEndpoint(parsed.rpcEndpoint.url).catch(console.error);
+          updateClientRpcEndpoint(parsed.rpcEndpoint.url);
         }
       } catch (error) {
         console.error('Error parsing settings:', error);
@@ -188,7 +168,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // Always use OpenSVM endpoint and ignore any attempts to change it
     setRpcEndpoint: useCallback(async (endpoint: RpcEndpoint) => {
       console.log(`Attempt to change RPC endpoint to ${endpoint.name} ignored. Using OpenSVM endpoint.`);
-      await updateRpcEndpoint(OPENSVM_ENDPOINT.url);
+      updateClientRpcEndpoint(OPENSVM_ENDPOINT.url);
       setSettings((s) => ({ ...s, rpcEndpoint: OPENSVM_ENDPOINT }));
       return Promise.resolve(); // Return resolved promise to maintain API compatibility
     }, []),
@@ -196,7 +176,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     addCustomRpcEndpoint: async (name: string, url: string) => {
       const newEndpoint: RpcEndpoint = { name, url, network: 'custom' };
       try {
-        await updateRpcEndpoint(url);
+        updateClientRpcEndpoint(url);
         setSettings((s) => ({
           ...s,
           // Add to available endpoints but force using OpenSVM
@@ -228,12 +208,12 @@ export function useSettings(): SettingsContextType {
     // Return default settings when no context is available (during SSR/build)
     return {
       ...defaultSettings,
-      setTheme: () => {},
-      setFontFamily: () => {},
-      setFontSize: () => {},
-      setRpcEndpoint: async () => {},
-      setCustomRpcEndpoint: () => {},
-      addCustomRpcEndpoint: async () => {}
+      setTheme: () => { },
+      setFontFamily: () => { },
+      setFontSize: () => { },
+      setRpcEndpoint: async () => { },
+      setCustomRpcEndpoint: () => { },
+      addCustomRpcEndpoint: async () => { }
     };
   }
   return context;
