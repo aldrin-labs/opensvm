@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect } from 'react'
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useRouter } from 'next/navigation'
 import { isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils'
 
