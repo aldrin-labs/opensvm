@@ -15,15 +15,7 @@
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 // Import build-time generated configuration
-let rpcConfig: any = null;
-
-try {
-  // Try to import the build-time generated config first
-  rpcConfig = require('./rpc-config');
-} catch (e) {
-  // Fallback to environment variables if build-time config doesn't exist
-  console.warn('Build-time RPC config not found, falling back to environment variables');
-}
+import * as rpcConfigModule from './rpc-config';
 
 function parseRpcList(envVar: string | undefined): string[] {
   if (!envVar) return [];
@@ -40,22 +32,26 @@ function parseRpcList(envVar: string | undefined): string[] {
 // Get RPC endpoints from build-time config or environment variables
 function getConfiguredEndpoints(): string[] {
   // Use build-time config if available
-  if (rpcConfig && rpcConfig.getRpcEndpoints) {
-    const endpoints = rpcConfig.getRpcEndpoints();
-    if (endpoints.length > 0) {
-      return endpoints;
+  try {
+    if (rpcConfigModule && rpcConfigModule.getRpcEndpoints) {
+      const endpoints = rpcConfigModule.getRpcEndpoints();
+      if (endpoints.length > 0) {
+        return [...endpoints]; // Convert readonly array to mutable array
+      }
     }
+  } catch (e) {
+    console.warn('Build-time RPC config not available, falling back to environment variables');
   }
-
+  
   // Fallback: Parse RPC lists from environment variables
   const list1 = parseRpcList(process.env.OPENSVM_RPC_LIST);
   const list2 = parseRpcList(process.env.OPENSVM_RPC_LIST_2);
   const combined = [...list1, ...list2];
-
+  
   if (combined.length > 0) {
     return combined;
   }
-
+  
   // Final fallback
   console.warn('No RPC configuration found, using OpenSVM RPC server fallback');
   return ['/api/proxy/rpc'];
