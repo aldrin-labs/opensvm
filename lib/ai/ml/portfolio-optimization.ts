@@ -12,11 +12,11 @@
  */
 
 import { TensorUtils } from './core/tensor-utils';
-import type { 
-  PortfolioOptimizationRequest, 
-  OptimizedPortfolio, 
+import type {
+  // PortfolioOptimizationRequest,
+  OptimizedPortfolio,
   PortfolioAllocation,
-  RiskMetrics,
+  // RiskMetrics,
   TensorData
 } from './types';
 
@@ -219,21 +219,21 @@ class ModernPortfolioTheory {
     riskTolerance: number = 1.0
   ): number[] {
     const n = expectedReturns.length;
-    
+
     if (n === 0) return [];
     if (n === 1) return [1.0];
 
     // Convert to tensors
     const returnsTensor = TensorUtils.createTensor(expectedReturns, [n]);
     const covTensor = TensorUtils.createTensor(
-      covarianceMatrix.flat(), 
+      covarianceMatrix.flat(),
       [n, n]
     );
 
     // Solve the optimization problem using quadratic programming approximation
     // This is a simplified version - in production, would use proper QP solver
     const weights = this.approximateQPSolution(returnsTensor, covTensor, riskTolerance);
-    
+
     // Normalize weights to sum to 1
     const totalWeight = weights.reduce((sum, w) => sum + w, 0);
     return totalWeight > 0 ? weights.map(w => w / totalWeight) : weights;
@@ -252,13 +252,13 @@ class ModernPortfolioTheory {
     // Gradient descent approximation
     for (let iter = 0; iter < iterations; iter++) {
       const gradients = this.calculateGradient(returns, covariance, weights, riskTolerance);
-      
+
       // Update weights
       for (let i = 0; i < n; i++) {
         weights[i] += learningRate * gradients[i];
         weights[i] = Math.max(0, weights[i]); // Non-negative constraint
       }
-      
+
       // Normalize
       const sum = weights.reduce((s, w) => s + w, 0);
       if (sum > 0) {
@@ -282,10 +282,10 @@ class ModernPortfolioTheory {
 
     // Gradient of utility function: U = E[r] - λ * Var[r]
     // ∂U/∂w_i = r_i - 2λ * Σ(w_j * σ_ij)
-    
+
     for (let i = 0; i < n; i++) {
       gradients[i] = returns.data[i];
-      
+
       // Subtract risk term
       for (let j = 0; j < n; j++) {
         const covarianceValue = covariance.data[i * n + j];
@@ -328,7 +328,7 @@ class ModernPortfolioTheory {
     numPoints: number = 50
   ): Array<{ risk: number; return: number; weights: number[] }> {
     const frontier: Array<{ risk: number; return: number; weights: number[] }> = [];
-    
+
     // Calculate range of risk tolerance values
     const minRiskTolerance = 0.1;
     const maxRiskTolerance = 10.0;
@@ -337,10 +337,10 @@ class ModernPortfolioTheory {
     for (let i = 0; i < numPoints; i++) {
       const riskTolerance = minRiskTolerance + i * step;
       const weights = this.calculateOptimalWeights(expectedReturns, covarianceMatrix, riskTolerance);
-      
+
       const expectedReturn = this.calculatePortfolioReturn(weights, expectedReturns);
       const riskMetrics = this.calculatePortfolioRisk(weights, covarianceMatrix);
-      
+
       frontier.push({
         risk: riskMetrics.volatility,
         return: expectedReturn,
@@ -369,7 +369,7 @@ class YieldFarmingOptimizer {
     protocols: YieldFarmingProtocol[]
   ): YieldFarmingAllocation[] {
     const allocations: YieldFarmingAllocation[] = [];
-    
+
     // Score each protocol
     const scoredProtocols = protocols.map(protocol => ({
       ...protocol,
@@ -377,24 +377,24 @@ class YieldFarmingOptimizer {
     })).sort((a, b) => b.score - a.score);
 
     let remainingCapital = availableCapital;
-    
+
     // Allocate capital to top-scoring protocols
     for (const protocol of scoredProtocols) {
       if (remainingCapital <= 0) break;
-      
+
       const maxAllocation = Math.min(
         remainingCapital,
         availableCapital * 0.3, // Max 30% per protocol
         protocol.max_deposit || Infinity
       );
-      
+
       if (maxAllocation >= protocol.min_deposit) {
         const allocation = this.calculateOptimalAllocation(
           protocol,
           maxAllocation,
           riskTolerance
         );
-        
+
         if (allocation > 0) {
           allocations.push({
             protocol: protocol.name,
@@ -405,7 +405,7 @@ class YieldFarmingOptimizer {
             risk_score: protocol.risk_score,
             impermanent_loss_risk: protocol.impermanent_loss_risk
           });
-          
+
           remainingCapital -= allocation;
         }
       }
@@ -420,7 +420,7 @@ class YieldFarmingOptimizer {
     const riskAdjustment = 1 - (protocol.risk_score * (1 - riskTolerance));
     const liquidityBonus = Math.min(1, protocol.total_liquidity / 10000000); // Normalize by $10M
     const stabilityBonus = protocol.apy_stability || 0.5;
-    
+
     return baseYield * riskAdjustment * liquidityBonus * stabilityBonus;
   }
 
@@ -433,10 +433,10 @@ class YieldFarmingOptimizer {
     const winProbability = 1 - (protocol.risk_score * 0.5); // Assume higher risk = higher failure chance
     const averageWin = protocol.current_apy / 100; // Convert percentage to decimal
     const averageLoss = 0.5; // Assume 50% loss on failure
-    
+
     const kellyFraction = (winProbability * averageWin - (1 - winProbability) * averageLoss) / averageWin;
     const adjustedFraction = Math.max(0, Math.min(1, kellyFraction * riskTolerance));
-    
+
     return maxAllocation * adjustedFraction;
   }
 }
@@ -473,12 +473,12 @@ class RiskManager {
   calculateRiskMetrics(
     portfolio: CurrentHolding[],
     correlationMatrix: number[][],
-    volatilities: number[]
+    //  volatilities: number[]
   ): PortfolioRiskAnalysis {
     const riskBreakdown = this.calculateRiskBreakdown(portfolio);
     const diversificationScore = this.calculateDiversificationScore(portfolio, correlationMatrix);
     const stressTestResults = this.performStressTests(portfolio);
-    
+
     const overallRiskScore = this.calculateOverallRisk(riskBreakdown, diversificationScore);
 
     return {
@@ -492,7 +492,7 @@ class RiskManager {
 
   private calculateRiskBreakdown(portfolio: CurrentHolding[]): PortfolioRiskAnalysis['risk_breakdown'] {
     const totalValue = portfolio.reduce((sum, holding) => sum + holding.current_value_usd, 0);
-    
+
     let marketRisk = 0;
     let liquidityRisk = 0;
     let protocolRisk = 0;
@@ -501,13 +501,13 @@ class RiskManager {
 
     portfolio.forEach(holding => {
       const weight = holding.current_value_usd / totalValue;
-      
+
       // Market risk based on token volatility (simplified)
       marketRisk += weight * this.getTokenVolatility(holding.token);
-      
+
       // Liquidity risk based on token/protocol liquidity
       liquidityRisk += weight * this.getLiquidityRisk(holding);
-      
+
       // Protocol risk from staking/LP positions
       if (holding.staking_info) {
         protocolRisk += weight * this.getProtocolRisk(holding.staking_info.protocol);
@@ -544,7 +544,7 @@ class RiskManager {
       'BONK': 1.2,
       'WIF': 1.0
     };
-    
+
     return volatilities[token] || 0.8; // Default high volatility for unknown tokens
   }
 
@@ -559,7 +559,7 @@ class RiskManager {
       'BONK': 0.4,
       'WIF': 0.3
     };
-    
+
     return liquidityScores[holding.token] || 0.5;
   }
 
@@ -573,7 +573,7 @@ class RiskManager {
       'Marinade': 0.2,
       'Lido': 0.15
     };
-    
+
     return protocolRisks[protocol] || 0.5;
   }
 
@@ -598,7 +598,7 @@ class RiskManager {
     }
 
     const avgCorrelation = correlationCount > 0 ? totalCorrelation / correlationCount : 0;
-    
+
     // Diversification score inversely related to correlation
     return Math.max(0, 1 - avgCorrelation);
   }
@@ -615,16 +615,16 @@ class RiskManager {
     return scenarios.map(scenario => {
       let worstAsset = '';
       let worstImpact = 0;
-      
-      const portfolioImpact = portfolio.reduce((totalImpact, holding, index) => {
+
+      const portfolioImpact = portfolio.reduce((totalImpact, holding) => {
         const assetImpact = this.calculateAssetStressImpact(holding, scenario.name);
         const weightedImpact = (holding.current_value_usd / this.getTotalPortfolioValue(portfolio)) * assetImpact;
-        
+
         if (assetImpact < worstImpact) {
           worstImpact = assetImpact;
           worstAsset = holding.symbol;
         }
-        
+
         return totalImpact + weightedImpact;
       }, 0);
 
@@ -641,7 +641,7 @@ class RiskManager {
   private calculateAssetStressImpact(holding: CurrentHolding, scenario: string): number {
     // Different assets react differently to different stress scenarios
     const assetType = this.categorizeAsset(holding.token);
-    
+
     const stressImpacts: Record<string, Record<string, number>> = {
       'Market Crash (-50%)': {
         'stablecoin': -0.05,
@@ -682,7 +682,7 @@ class RiskManager {
     const stablecoins = ['USDC', 'USDT', 'DAI', 'FRAX'];
     const majorCrypto = ['BTC', 'ETH', 'SOL'];
     const defiTokens = ['UNI', 'AAVE', 'COMP', 'SNX', 'JUP'];
-    
+
     if (stablecoins.includes(token)) return 'stablecoin';
     if (majorCrypto.includes(token)) return 'major_crypto';
     if (defiTokens.includes(token)) return 'defi_token';
@@ -721,7 +721,7 @@ class RiskManager {
         'Use multiple DEX platforms'
       ]
     };
-    
+
     return strategies[scenario] || ['Monitor situation closely', 'Consider position reduction'];
   }
 
@@ -746,7 +746,7 @@ class RiskManager {
 
     // Adjust for diversification
     const diversificationAdjustment = 1 - (diversificationScore * 0.3);
-    
+
     return Math.min(1, weightedRisk * diversificationAdjustment);
   }
 }
@@ -770,29 +770,85 @@ export class PortfolioOptimizationEngine {
    */
   async optimizePortfolio(request: PortfolioAnalysisRequest): Promise<PortfolioOptimizationResult> {
     try {
+      // Validate inputs
+      this.validatePortfolioRequest(request);
+
       // Get market data for analysis
       const marketData = await this.getMarketData(request.current_portfolio);
-      
+
       // Calculate expected returns and covariance matrix
       const expectedReturns = await this.calculateExpectedReturns(request.current_portfolio);
       const covarianceMatrix = await this.calculateCovarianceMatrix(request.current_portfolio);
-      
+
       // Determine risk tolerance parameter
       const riskTolerance = this.mapRiskToleranceToParameter(request.risk_tolerance);
-      
-      // Calculate optimal weights
-      const optimalWeights = this.modernPortfolioTheory.calculateOptimalWeights(
+
+      // Calculate optimal weights with constraints
+      const optimalWeights = this.calculateConstrainedOptimalWeights(
         expectedReturns,
         covarianceMatrix,
-        riskTolerance
+        riskTolerance,
+        request.constraints
       );
 
       // Build optimized portfolio
-      const optimized_portfolio = await this.buildOptimizedPortfolio(
+      let optimized_portfolio = await this.buildOptimizedPortfolio(
         request,
         optimalWeights,
         marketData
       );
+
+      // Use yieldOptimizer if the objective is maximize_yield
+      if (request.optimization_objective === 'maximize_yield') {
+        // Example: allocate available capital to yield farming protocols
+        const availableCapital = request.current_portfolio.reduce((sum, h) => sum + h.current_value_usd, 0);
+        // Mock protocols list for demonstration; replace with real data in production
+        const protocols: YieldFarmingProtocol[] = [
+          {
+            name: 'Raydium',
+            pool: 'SOL-USDC',
+            current_apy: 15,
+            risk_score: 0.3,
+            total_liquidity: 50000000,
+            min_deposit: 100,
+            max_deposit: 100000,
+            impermanent_loss_risk: 0.2,
+            apy_stability: 0.7
+          },
+          {
+            name: 'Orca',
+            pool: 'ETH-USDC',
+            current_apy: 12,
+            risk_score: 0.25,
+            total_liquidity: 30000000,
+            min_deposit: 100,
+            max_deposit: 50000,
+            impermanent_loss_risk: 0.25,
+            apy_stability: 0.6
+          }
+        ];
+        const yieldAllocations = this.yieldOptimizer.optimizeYieldFarming(
+          availableCapital,
+          riskTolerance,
+          protocols
+        );
+        // Optionally, merge yieldAllocations into optimized_portfolio.allocations or use as needed
+        // For demonstration, append to allocations
+        optimized_portfolio.allocations = [
+          ...optimized_portfolio.allocations,
+          ...yieldAllocations.map(a => ({
+            token: a.pool,
+            symbol: a.protocol,
+            percentage: a.allocation_percentage,
+            amount: a.allocation_amount,
+            usd_value: a.allocation_amount,
+            strategy: 'farm' as PortfolioAllocation['strategy'],
+            protocol: a.protocol,
+            expected_apy: a.expected_apy,
+            risk_score: a.risk_score
+          }))
+        ];
+      }
 
       // Create rebalancing plan
       const rebalancing_plan = await this.createRebalancingPlan(
@@ -812,15 +868,15 @@ export class PortfolioOptimizationEngine {
       const risk_analysis = this.riskManager.calculateRiskMetrics(
         request.current_portfolio,
         covarianceMatrix,
-        expectedReturns.map(r => Math.sqrt(r)) // Simplified volatility
+        //  expectedReturns.map(r => Math.sqrt(r)) // Simplified volatility
       );
 
       // Generate recommendations
       const recommendations = await this.generateRecommendations(
         request,
-        optimized_portfolio,
+        //   optimized_portfolio,
         risk_analysis,
-        performance_projection
+        //  performance_projection
       );
 
       // Suggest alternative strategies
@@ -869,7 +925,7 @@ export class PortfolioOptimizationEngine {
 
     // Generate improvement suggestions
     const improvement_suggestions = this.generateImprovementSuggestions(holdings, performance_metrics);
-    
+
     // Identify risk warnings
     const risk_warnings = this.identifyRiskWarnings(holdings);
 
@@ -885,7 +941,7 @@ export class PortfolioOptimizationEngine {
   private async getMarketData(holdings: CurrentHolding[]): Promise<MarketData> {
     // Mock market data - in production would fetch real data
     const tokens = holdings.map(h => h.token);
-    
+
     return {
       prices: this.getMockPrices(tokens),
       volumes: this.getMockVolumes(tokens),
@@ -903,7 +959,7 @@ export class PortfolioOptimizationEngine {
       const baseReturn = this.getHistoricalReturn(holding.token);
       const trendAdjustment = this.getTrendAdjustment(holding.token);
       const fundamentalScore = this.getFundamentalScore(holding.token);
-      
+
       return baseReturn * (1 + trendAdjustment) * (1 + fundamentalScore);
     });
   }
@@ -911,7 +967,7 @@ export class PortfolioOptimizationEngine {
   private async calculateCovarianceMatrix(holdings: CurrentHolding[]): Promise<number[][]> {
     const n = holdings.length;
     const matrix: number[][] = Array(n).fill(null).map(() => Array(n).fill(0));
-    
+
     // Calculate covariance between each pair of assets
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
@@ -924,18 +980,98 @@ export class PortfolioOptimizationEngine {
         }
       }
     }
-    
+
     return matrix;
   }
 
-  private mapRiskToleranceToParameter(riskTolerance: string): number {
-    const mapping = {
+  private validatePortfolioRequest(request: PortfolioAnalysisRequest): void {
+    if (!request.current_portfolio || request.current_portfolio.length === 0) {
+      throw new Error('Portfolio cannot be empty');
+    }
+
+    if (request.constraints.min_position_size > request.constraints.max_position_size) {
+      throw new Error('Minimum position size cannot be greater than maximum position size');
+    }
+
+    if (request.constraints.max_risk_score < 0 || request.constraints.max_risk_score > 1) {
+      throw new Error('Risk score must be between 0 and 1');
+    }
+  }
+
+  private mapRiskToleranceToParameter(riskTolerance: 'conservative' | 'moderate' | 'aggressive'): number {
+    const mapping: Record<string, number> = {
       'conservative': 0.5,
       'moderate': 1.0,
       'aggressive': 2.0
     };
-    
+
     return mapping[riskTolerance] || 1.0;
+  }
+
+  private calculateConstrainedOptimalWeights(
+    expectedReturns: number[],
+    covarianceMatrix: number[][],
+    riskTolerance: number,
+    constraints: PortfolioConstraints
+  ): number[] {
+    const n = expectedReturns.length;
+    if (n === 0) return [];
+
+    const minWeight = constraints.min_position_size / 100;
+    const maxWeight = constraints.max_position_size / 100;
+
+    // First get unconstrained optimal weights using MPT
+    const unconstrainedWeights = this.modernPortfolioTheory.calculateOptimalWeights(
+      expectedReturns,
+      covarianceMatrix,
+      riskTolerance
+    );
+
+    // Apply constraints to the unconstrained solution
+    let weights = new Array(n).fill(0);
+
+    // Apply minimum weight constraints first
+    for (let i = 0; i < n; i++) {
+      weights[i] = Math.max(minWeight, Math.min(maxWeight, unconstrainedWeights[i]));
+    }
+
+    // Check if we need to redistribute excess weight
+    let totalWeight = weights.reduce((sum, w) => sum + w, 0);
+
+    if (totalWeight > 1) {
+      // Scale down proportionally if over-allocated
+      weights = weights.map(w => w / totalWeight);
+    } else if (totalWeight < 0.95) {
+      // Redistribute remaining weight based on risk-adjusted attractiveness
+      const remainingWeight = 1 - totalWeight;
+      const attractiveness = expectedReturns.map((ret, i) => {
+        const variance = covarianceMatrix[i][i];
+        return variance > 0 ? ret / Math.sqrt(variance) : ret; // Sharpe-like ratio
+      });
+
+      // Sort by attractiveness
+      const sortedIndices = attractiveness
+        .map((attr, idx) => ({ attractiveness: attr, index: idx }))
+        .sort((a, b) => b.attractiveness - a.attractiveness)
+        .map(item => item.index);
+
+      // Distribute remaining weight
+      for (const idx of sortedIndices) {
+        if (remainingWeight <= 0.001) break;
+
+        const currentWeight = weights[idx];
+        const maxAdditional = maxWeight - currentWeight;
+        const allocation = Math.min(remainingWeight * 0.5, maxAdditional); // Conservative allocation
+
+        if (allocation > 0.001) {
+          weights[idx] += allocation;
+        }
+      }
+    }
+
+    // Final normalization
+    const finalTotal = weights.reduce((sum, w) => sum + w, 0);
+    return finalTotal > 0 ? weights.map(w => w / finalTotal) : weights;
   }
 
   private async buildOptimizedPortfolio(
@@ -944,11 +1080,11 @@ export class PortfolioOptimizationEngine {
     marketData: MarketData
   ): Promise<OptimizedPortfolio> {
     const totalValue = request.current_portfolio.reduce((sum, h) => sum + h.current_value_usd, 0);
-    
+
     const allocations: PortfolioAllocation[] = request.current_portfolio.map((holding, index) => {
       const targetValue = totalValue * weights[index];
       const targetPercentage = weights[index] * 100;
-      
+
       // Determine optimal strategy for this allocation
       const strategy = this.determineOptimalStrategy(holding, targetPercentage);
       const expectedApy = this.getExpectedAPY(holding.token, strategy);
@@ -1001,11 +1137,11 @@ export class PortfolioOptimizationEngine {
       const currentValue = currentHolding?.current_value_usd || 0;
       const targetValue = allocation.usd_value;
       const difference = targetValue - currentValue;
-      
+
       if (Math.abs(difference) > targetValue * constraints.rebalance_threshold / 100) {
         const action: RebalanceTransaction['action'] = difference > 0 ? 'buy' : 'sell';
         const amount = Math.abs(difference);
-        
+
         transactions.push({
           action,
           token: allocation.token,
@@ -1013,7 +1149,10 @@ export class PortfolioOptimizationEngine {
           protocol: allocation.protocol,
           estimated_cost: this.estimateTransactionCost(action, allocation.token, amount),
           priority: this.calculateTransactionPriority(difference, allocation.percentage),
-          dependencies: this.getTransactionDependencies(action, allocation.token, transactions)
+          dependencies: this.getTransactionDependencies(
+            action,
+            //  allocation.token, 
+            transactions)
         });
       }
     }
@@ -1047,25 +1186,38 @@ export class PortfolioOptimizationEngine {
     marketData: MarketData,
     timeHorizon: string
   ): Promise<PerformanceProjection> {
-    // Mock performance projections - in production would use Monte Carlo simulation
+    // Use market data to adjust projections based on current market conditions
     const baseReturn = portfolio.expected_return;
     const baseVolatility = portfolio.expected_risk;
-    
+
+    // Adjust volatility based on market data
+    const marketVolatilityAdjustment = this.calculateMarketVolatilityAdjustment(marketData);
+    const adjustedVolatility = baseVolatility * marketVolatilityAdjustment;
+
+    // Adjust returns based on market liquidity and momentum
+    const marketMomentumAdjustment = this.calculateMarketMomentumAdjustment(marketData);
+    const adjustedReturn = baseReturn * marketMomentumAdjustment;
+
+    // Apply time horizon specific adjustments
+    const timeHorizonMultiplier = this.getTimeHorizonMultiplier(timeHorizon);
+    const timeAdjustedReturn = adjustedReturn * timeHorizonMultiplier;
+    const timeAdjustedVolatility = adjustedVolatility * Math.sqrt(timeHorizonMultiplier);
+
     const timeframes = {
-      '1week': this.generateProjectionMetrics(baseReturn, baseVolatility, 1/52),
-      '1month': this.generateProjectionMetrics(baseReturn, baseVolatility, 1/12),
-      '3month': this.generateProjectionMetrics(baseReturn, baseVolatility, 0.25),
-      '6month': this.generateProjectionMetrics(baseReturn, baseVolatility, 0.5),
-      '1year': this.generateProjectionMetrics(baseReturn, baseVolatility, 1)
+      '1week': this.generateProjectionMetrics(timeAdjustedReturn, timeAdjustedVolatility, 1 / 52),
+      '1month': this.generateProjectionMetrics(timeAdjustedReturn, timeAdjustedVolatility, 1 / 12),
+      '3month': this.generateProjectionMetrics(timeAdjustedReturn, timeAdjustedVolatility, 0.25),
+      '6month': this.generateProjectionMetrics(timeAdjustedReturn, timeAdjustedVolatility, 0.5),
+      '1year': this.generateProjectionMetrics(timeAdjustedReturn, timeAdjustedVolatility, 1)
     };
 
     const scenarios = {
-      bull_market: this.generateProjectionMetrics(baseReturn * 1.5, baseVolatility * 0.8, 1),
-      bear_market: this.generateProjectionMetrics(baseReturn * 0.3, baseVolatility * 1.5, 1),
-      sideways_market: this.generateProjectionMetrics(baseReturn * 0.8, baseVolatility * 0.6, 1)
+      bull_market: this.generateProjectionMetrics(timeAdjustedReturn * 1.5, timeAdjustedVolatility * 0.8, 1),
+      bear_market: this.generateProjectionMetrics(timeAdjustedReturn * 0.3, timeAdjustedVolatility * 1.5, 1),
+      sideways_market: this.generateProjectionMetrics(timeAdjustedReturn * 0.8, timeAdjustedVolatility * 0.6, 1)
     };
 
-    const monte_carlo_results = this.runMonteCarloSimulation(baseReturn, baseVolatility, 10000);
+    const monte_carlo_results = this.runMonteCarloSimulation(timeAdjustedReturn, timeAdjustedVolatility, 10000);
 
     return {
       timeframes,
@@ -1074,11 +1226,43 @@ export class PortfolioOptimizationEngine {
     };
   }
 
+  private getTimeHorizonMultiplier(timeHorizon: string): number {
+    const multipliers: Record<string, number> = {
+      '1week': 0.5,
+      '1month': 0.8,
+      '3month': 1.0,
+      '6month': 1.1,
+      '1year': 1.2
+    };
+
+    return multipliers[timeHorizon] || 1.0;
+  }
+
+  private calculateMarketVolatilityAdjustment(marketData: MarketData): number {
+    // Calculate average market volatility
+    const volatilities = Object.values(marketData.volatilities);
+    const avgVolatility = volatilities.reduce((sum, vol) => sum + vol, 0) / volatilities.length;
+
+    // Higher market volatility increases portfolio volatility
+    return Math.max(0.5, Math.min(2.0, avgVolatility / 0.5));
+  }
+
+  private calculateMarketMomentumAdjustment(marketData: MarketData): number {
+    // Calculate market momentum based on volume and price data
+    const volumes = Object.values(marketData.volumes);
+    const avgVolume = volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length;
+
+    // Higher volume typically indicates stronger momentum
+    const volumeMomentum = Math.min(1.2, avgVolume / 50000000); // Normalize by $50M
+
+    return Math.max(0.7, Math.min(1.3, volumeMomentum));
+  }
+
   private async generateRecommendations(
     request: PortfolioAnalysisRequest,
-    portfolio: OptimizedPortfolio,
+    //  portfolio: OptimizedPortfolio,
     riskAnalysis: PortfolioRiskAnalysis,
-    performance: PerformanceProjection
+    //  performance: PerformanceProjection
   ): Promise<PortfolioRecommendation[]> {
     const recommendations: PortfolioRecommendation[] = [];
 
@@ -1170,6 +1354,28 @@ export class PortfolioOptimizationEngine {
       cons: ['High technical complexity', 'Competition from MEV bots', 'Requires significant capital']
     });
 
+    // Analyze current market conditions to adjust strategies
+    const avgVolatility = Object.values(marketData.volatilities).reduce((sum, vol) => sum + vol, 0) / Object.values(marketData.volatilities).length;
+    const avgYield = Object.values(marketData.yield_rates).reduce((sum, rate) => sum + rate, 0) / Object.values(marketData.yield_rates).length;
+
+    // Adjust strategy parameters based on market conditions
+    strategies.forEach(strategy => {
+      if (avgVolatility > 0.8) {
+        // High volatility market - adjust risk levels
+        strategy.risk_level *= 1.2;
+        if (strategy.name === 'Automated Arbitrage') {
+          strategy.expected_return *= 1.3; // More arbitrage opportunities
+        }
+      }
+
+      if (avgYield > 0.1) {
+        // High yield environment
+        if (strategy.name === 'DeFi Yield Farming') {
+          strategy.expected_return *= 1.2;
+        }
+      }
+    });
+
     return strategies.sort((a, b) => b.suitability_score - a.suitability_score);
   }
 
@@ -1185,12 +1391,12 @@ export class PortfolioOptimizationEngine {
       'BONK': 0.00001,
       'WIF': 2.5
     };
-    
+
     const result: Record<string, number> = {};
     tokens.forEach(token => {
       result[token] = mockPrices[token] || 10;
     });
-    
+
     return result;
   }
 
@@ -1220,19 +1426,19 @@ export class PortfolioOptimizationEngine {
       'BONK': 1.2,
       'WIF': 1.0
     };
-    
+
     const result: Record<string, number> = {};
     tokens.forEach(token => {
       result[token] = volatilities[token] || 0.8;
     });
-    
+
     return result;
   }
 
   private getMockCorrelations(tokens: string[]): number[][] {
     const n = tokens.length;
     const matrix: number[][] = Array(n).fill(null).map(() => Array(n).fill(0));
-    
+
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
         if (i === j) {
@@ -1242,7 +1448,7 @@ export class PortfolioOptimizationEngine {
         }
       }
     }
-    
+
     return matrix;
   }
 
@@ -1253,12 +1459,12 @@ export class PortfolioOptimizationEngine {
       'USDC': 0.03,
       'USDT': 0.025
     };
-    
+
     const result: Record<string, number> = {};
     tokens.forEach(token => {
       result[token] = yieldRates[token] || 0.02;
     });
-    
+
     return result;
   }
 
@@ -1272,16 +1478,39 @@ export class PortfolioOptimizationEngine {
       'BONK': 1.5,
       'WIF': 0.8
     };
-    
+
     return returns[token] || 0.2;
   }
 
   private getTrendAdjustment(token: string): number {
-    return (Math.random() - 0.5) * 0.2; // -10% to +10% adjustment
+    // Token-specific trend adjustments based on market momentum
+    const trendMap: Record<string, number> = {
+      'SOL': 0.08,
+      'BTC': 0.05,
+      'ETH': 0.06,
+      'USDC': 0,
+      'USDT': 0,
+      'BONK': 0.15,
+      'WIF': 0.12
+    };
+
+    // Use token-specific trend or fall back to random adjustment
+    return trendMap[token] ?? (Math.random() - 0.5) * 0.2; // -10% to +10% adjustment
   }
 
   private getFundamentalScore(token: string): number {
-    return (Math.random() - 0.5) * 0.1; // -5% to +5% adjustment
+    // Token-specific trend adjustments based on market momentum
+    const scoreMap: Record<string, number> = {
+      'SOL': 0.08,
+      'BTC': 0.05,
+      'ETH': 0.06,
+      'USDC': 0,
+      'USDT': 0,
+      'BONK': 0.15,
+      'WIF': 0.12
+    };
+
+    return scoreMap[token] ?? (Math.random() - 0.5) * 0.1; // -5% to +5% adjustment
   }
 
   private getAssetVariance(token: string): number {
@@ -1293,7 +1522,7 @@ export class PortfolioOptimizationEngine {
     const vol1 = this.getMockVolatilities([token1])[token1];
     const vol2 = this.getMockVolatilities([token2])[token2];
     const correlation = Math.random() * 0.8 - 0.4; // Random correlation
-    
+
     return vol1 * vol2 * correlation;
   }
 
@@ -1317,7 +1546,7 @@ export class PortfolioOptimizationEngine {
       'USDC': { 'hold': 0, 'stake': 0, 'lend': 8, 'provide_liquidity': 5, 'farm': 10 },
       'ETH': { 'hold': 0, 'stake': 5, 'lend': 2, 'provide_liquidity': 8, 'farm': 12 }
     };
-    
+
     return baseYields[token]?.[strategy] || 0;
   }
 
@@ -1331,7 +1560,7 @@ export class PortfolioOptimizationEngine {
       'BONK': 0.9,
       'WIF': 0.8
     };
-    
+
     return riskScores[token] || 0.7;
   }
 
@@ -1349,7 +1578,7 @@ export class PortfolioOptimizationEngine {
         'farm': 'Tulip'
       }
     };
-    
+
     return protocolMapping[token]?.[strategy];
   }
 
@@ -1358,7 +1587,7 @@ export class PortfolioOptimizationEngine {
       const baseReturn = this.getHistoricalReturn(allocation.token);
       const yieldBonus = allocation.expected_apy / 100;
       const weight = allocation.percentage / 100;
-      
+
       return sum + weight * (baseReturn + yieldBonus);
     }, 0);
   }
@@ -1377,7 +1606,7 @@ export class PortfolioOptimizationEngine {
       const weight = allocation.percentage / 100;
       return sum + weight * weight;
     }, 0);
-    
+
     return 1 - concentrationIndex;
   }
 
@@ -1389,20 +1618,48 @@ export class PortfolioOptimizationEngine {
       '6month': 180,
       '1year': 365
     };
-    
+
     return frequencies[timeHorizon] || 90;
   }
 
   private estimateRebalancingCosts(
     current: CurrentHolding[],
     target: PortfolioAllocation[]
-  ): OptimizedPortfolio['estimated_costs'] {
-    // Mock cost estimation
+  ): { gas: number; slippage: number; fees: number; total: number } {
+    let totalGas = 0;
+    let totalSlippage = 0;
+    let totalFees = 0;
+
+    // Calculate costs based on differences between current and target
+    target.forEach(targetAllocation => {
+      const currentHolding = current.find(h => h.token === targetAllocation.token);
+      const currentValue = currentHolding?.current_value_usd || 0;
+      const targetValue = targetAllocation.usd_value;
+      const difference = Math.abs(targetValue - currentValue);
+
+      if (difference > 100) { // Only count if difference is significant
+        // Gas costs - more transactions = more gas
+        totalGas += 5; // Base gas cost per transaction
+
+        // Slippage - larger trades have more slippage
+        const slippageRate = this.getSlippageRate(targetAllocation.token, difference);
+        totalSlippage += difference * slippageRate;
+
+        // Protocol fees
+        const feeRate = 0.003; // 0.3% typical DEX fee
+        totalFees += difference * feeRate;
+      }
+    });
+
+    // Add costs for new positions not in current portfolio
+    const newPositions = target.filter(t => !current.find(c => c.token === t.token));
+    totalGas += newPositions.length * 10; // Higher gas for new positions
+
     return {
-      gas: 50,
-      slippage: 25,
-      fees: 30,
-      total: 105
+      gas: totalGas,
+      slippage: totalSlippage,
+      fees: totalFees,
+      total: totalGas + totalSlippage + totalFees
     };
   }
 
@@ -1419,20 +1676,50 @@ export class PortfolioOptimizationEngine {
       'add_liquidity': 0.01,
       'remove_liquidity': 0.01
     };
-    
-    return amount * (baseCosts[action] || 0.005);
+
+    // Token-specific adjustments
+    const tokenMultipliers: Record<string, number> = {
+      'BONK': 1.5, // Higher costs for low liquidity tokens
+      'WIF': 1.3,
+      'SOL': 0.8, // Lower costs for high liquidity tokens
+      'USDC': 0.7,
+      'USDT': 0.7
+    };
+
+    const baseCost = baseCosts[action] || 0.005;
+    const multiplier = tokenMultipliers[token] || 1.0;
+
+    return amount * baseCost * multiplier;
+  }
+
+  private getSlippageRate(token: string, tradeSize: number): number {
+    // Higher slippage for less liquid tokens and larger trades
+    const baseLiquidity: Record<string, number> = {
+      'SOL': 100000000, // $100M daily volume
+      'USDC': 500000000,
+      'USDT': 500000000,
+      'ETH': 80000000,
+      'BONK': 10000000,
+      'WIF': 20000000
+    };
+
+    const liquidity = baseLiquidity[token] || 5000000;
+    const impactFactor = tradeSize / liquidity;
+
+    // Slippage increases non-linearly with trade size
+    return Math.min(0.05, 0.001 + impactFactor * impactFactor * 10);
   }
 
   private calculateTransactionPriority(difference: number, percentage: number): number {
     const magnitudeScore = Math.abs(difference) / 10000; // Normalize by $10k
     const percentageScore = percentage / 100;
-    
+
     return Math.min(10, magnitudeScore + percentageScore * 5);
   }
 
   private getTransactionDependencies(
     action: RebalanceTransaction['action'],
-    token: string,
+    //token: string,
     existingTransactions: RebalanceTransaction[]
   ): string[] {
     // Simple dependency logic
@@ -1441,26 +1728,26 @@ export class PortfolioOptimizationEngine {
       const sellTx = existingTransactions.find(tx => tx.action === 'sell');
       return sellTx ? [sellTx.token] : [];
     }
-    
+
     return [];
   }
 
   private createExecutionSteps(transactions: RebalanceTransaction[]): ExecutionStep[] {
     // Sort transactions by priority and dependencies
     const sortedTransactions = [...transactions].sort((a, b) => b.priority - a.priority);
-    
+
     const steps: ExecutionStep[] = [];
     const processed = new Set<string>();
-    
+
     let stepNumber = 1;
     while (processed.size < transactions.length) {
-      const stepTransactions = sortedTransactions.filter(tx => 
-        !processed.has(tx.token) && 
+      const stepTransactions = sortedTransactions.filter(tx =>
+        !processed.has(tx.token) &&
         tx.dependencies.every(dep => processed.has(dep))
       );
-      
+
       if (stepTransactions.length === 0) break; // Avoid infinite loop
-      
+
       steps.push({
         step: stepNumber++,
         transactions: stepTransactions,
@@ -1468,10 +1755,10 @@ export class PortfolioOptimizationEngine {
         risk_level: stepTransactions.some(tx => tx.priority > 7) ? 'high' : 'medium',
         conditions: ['Market stability', 'Adequate liquidity']
       });
-      
+
       stepTransactions.forEach(tx => processed.add(tx.token));
     }
-    
+
     return steps;
   }
 
@@ -1483,7 +1770,7 @@ export class PortfolioOptimizationEngine {
     const expectedReturn = baseReturn * timeMultiplier;
     const volatility = baseVolatility * Math.sqrt(timeMultiplier);
     const sharpeRatio = volatility > 0 ? expectedReturn / volatility : 0;
-    
+
     return {
       expected_return: expectedReturn,
       expected_yield: expectedReturn * 0.5, // Assume half comes from yield
@@ -1504,21 +1791,21 @@ export class PortfolioOptimizationEngine {
     simulations: number
   ): MonteCarloResults {
     const results: number[] = [];
-    
+
     for (let i = 0; i < simulations; i++) {
       // Generate random return using normal distribution approximation
       const randomReturn = expectedReturn + volatility * this.generateNormalRandom();
       results.push(randomReturn);
     }
-    
+
     results.sort((a, b) => a - b);
-    
+
     const mean = results.reduce((sum, r) => sum + r, 0) / results.length;
     const variance = results.reduce((sum, r) => sum + Math.pow(r - mean, 2), 0) / results.length;
     const stdDev = Math.sqrt(variance);
-    
+
     const getPercentile = (p: number) => results[Math.floor(results.length * p / 100)];
-    
+
     return {
       simulations_count: simulations,
       return_distribution: {
@@ -1540,31 +1827,32 @@ export class PortfolioOptimizationEngine {
   private generateNormalRandom(): number {
     // Box-Muller transform for normal distribution
     let u = 0, v = 0;
-    while(u === 0) u = Math.random(); // Converting [0,1) to (0,1)
-    while(v === 0) v = Math.random();
+    while (u === 0) u = Math.random(); // Converting [0,1) to (0,1)
+    while (v === 0) v = Math.random();
     return Math.sqrt(-2.0 * Math.log(u)) * Math.cos(2.0 * Math.PI * v);
   }
 
   private calculateCurrentYield(holdings: CurrentHolding[]): number {
-    let totalYield = 0;
+    let weightedYield = 0;
     let totalValue = 0;
-    
+
     holdings.forEach(holding => {
-      let yieldAmount = 0;
-      
+      let holdingYield = 0;
+
       if (holding.staking_info) {
-        yieldAmount += holding.staking_info.staked_amount * holding.staking_info.current_apy / 100;
+        holdingYield = holding.staking_info.current_apy; // Already in percentage
       }
-      
-      if (holding.liquidity_info) {
-        yieldAmount += holding.liquidity_info.fees_earned; // Annualized
+
+      if (holding.liquidity_info && holding.liquidity_info.fees_earned > 0) {
+        // Convert fees to annualized yield percentage
+        holdingYield += (holding.liquidity_info.fees_earned / holding.current_value_usd) * 100;
       }
-      
-      totalYield += yieldAmount;
+
+      weightedYield += holdingYield * holding.current_value_usd;
       totalValue += holding.current_value_usd;
     });
-    
-    return totalValue > 0 ? (totalYield / totalValue) * 100 : 0;
+
+    return totalValue > 0 ? weightedYield / totalValue : 0;
   }
 
   private async calculateSharpeRatio(holdings: CurrentHolding[]): Promise<number> {
@@ -1572,13 +1860,35 @@ export class PortfolioOptimizationEngine {
     const totalReturn = this.calculateCurrentYield(holdings) / 100;
     const riskFreeRate = 0.02; // 2% risk-free rate
     const volatility = holdings.reduce((sum, h) => sum + this.getAssetVariance(h.token), 0) / holdings.length;
-    
+
     return volatility > 0 ? (totalReturn - riskFreeRate) / Math.sqrt(volatility) : 0;
   }
 
   private async calculateMaxDrawdown(holdings: CurrentHolding[]): Promise<number> {
-    // Mock max drawdown calculation
-    return 0.25; // Assume 25% max drawdown
+    // Mock max drawdown calculation based on asset volatility
+    const volatilities = holdings.map(h => this.getTokenVolatility(h.token));
+    const avgVolatility = volatilities.length > 0
+      ? volatilities.reduce((sum, v) => sum + v, 0) / volatilities.length
+      : 0.5;
+
+    // Higher volatility assets typically have higher max drawdown
+    // Scale between 15% and 45% based on average volatility
+    return Math.min(0.45, Math.max(0.15, avgVolatility * 0.5));
+  }
+
+  private getTokenVolatility(token: string): number {
+    // Mock volatility data - in production would use historical price data
+    const volatilities: Record<string, number> = {
+      'SOL': 0.6,
+      'BTC': 0.4,
+      'ETH': 0.5,
+      'USDC': 0.02,
+      'USDT': 0.02,
+      'BONK': 1.2,
+      'WIF': 1.0
+    };
+
+    return volatilities[token] || 0.8; // Default high volatility for unknown tokens
   }
 
   private calculateDiversification(holdings: CurrentHolding[]): number {
@@ -1587,7 +1897,7 @@ export class PortfolioOptimizationEngine {
       const weight = holding.current_value_usd / totalValue;
       return sum + weight * weight;
     }, 0);
-    
+
     return 1 - concentrationIndex;
   }
 
@@ -1596,26 +1906,39 @@ export class PortfolioOptimizationEngine {
     metrics: PortfolioPerformanceMetrics
   ): string[] {
     const suggestions: string[] = [];
-    
+
     if (metrics.diversification_score < 0.6) {
       suggestions.push('Improve diversification by reducing concentration in top holdings');
     }
-    
+
     if (metrics.current_yield < 5) {
       suggestions.push('Consider staking or liquidity provision to increase yield generation');
     }
-    
+
     if (metrics.sharpe_ratio < 1) {
       suggestions.push('Optimize risk-adjusted returns by rebalancing towards lower-risk assets');
     }
-    
+
+    // Use holdings to generate more specific suggestions
+    const unstaked = holdings.filter(h =>
+      !h.staking_info &&
+      !h.liquidity_info &&
+      ['SOL', 'ETH'].includes(h.token)
+    );
+
+    if (unstaked.length > 0) {
+      const totalUnstakedValue = unstaked.reduce((sum, h) => sum + h.current_value_usd, 0);
+      const percentage = (totalUnstakedValue / metrics.total_value) * 100;
+      suggestions.push(`Consider staking ${percentage.toFixed(0)}% of idle ${unstaked.map(h => h.symbol).join(', ')} holdings`);
+    }
+
     return suggestions;
   }
 
   private identifyRiskWarnings(holdings: CurrentHolding[]): string[] {
     const warnings: string[] = [];
     const totalValue = holdings.reduce((sum, h) => sum + h.current_value_usd, 0);
-    
+
     // Check concentration risk
     holdings.forEach(holding => {
       const percentage = (holding.current_value_usd / totalValue) * 100;
@@ -1623,7 +1946,7 @@ export class PortfolioOptimizationEngine {
         warnings.push(`High concentration risk: ${holding.symbol} represents ${percentage.toFixed(0)}% of portfolio`);
       }
     });
-    
+
     // Check protocol risk
     const protocolExposure = new Map<string, number>();
     holdings.forEach(holding => {
@@ -1632,35 +1955,35 @@ export class PortfolioOptimizationEngine {
         protocolExposure.set(holding.staking_info.protocol, current + holding.current_value_usd);
       }
     });
-    
+
     protocolExposure.forEach((value, protocol) => {
       const percentage = (value / totalValue) * 100;
       if (percentage > 30) {
         warnings.push(`High protocol exposure: ${percentage.toFixed(0)}% allocated to ${protocol}`);
       }
     });
-    
+
     return warnings;
   }
 
-  private calculateSuitabilityScore(request: PortfolioAnalysisRequest, strategy: string): number {
-    const riskToleranceScore = {
+  private calculateSuitabilityScore(request: PortfolioAnalysisRequest, strategy: 'yield_farming' | 'staking' | 'arbitrage'): number {
+    const riskToleranceScore: Record<string, Record<'yield_farming' | 'staking' | 'arbitrage', number>> = {
       'conservative': { 'yield_farming': 0.3, 'staking': 0.9, 'arbitrage': 0.1 },
       'moderate': { 'yield_farming': 0.7, 'staking': 0.6, 'arbitrage': 0.5 },
       'aggressive': { 'yield_farming': 0.9, 'staking': 0.4, 'arbitrage': 0.8 }
     };
-    
-    const timeHorizonScore = {
+
+    const timeHorizonScore: Record<string, Record<'yield_farming' | 'staking' | 'arbitrage', number>> = {
       '1week': { 'yield_farming': 0.3, 'staking': 0.2, 'arbitrage': 0.9 },
       '1month': { 'yield_farming': 0.5, 'staking': 0.4, 'arbitrage': 0.8 },
       '3month': { 'yield_farming': 0.7, 'staking': 0.6, 'arbitrage': 0.6 },
       '6month': { 'yield_farming': 0.8, 'staking': 0.8, 'arbitrage': 0.4 },
       '1year': { 'yield_farming': 0.9, 'staking': 0.9, 'arbitrage': 0.3 }
     };
-    
+
     const riskScore = riskToleranceScore[request.risk_tolerance]?.[strategy] || 0.5;
     const timeScore = timeHorizonScore[request.time_horizon]?.[strategy] || 0.5;
-    
+
     return (riskScore + timeScore) / 2;
   }
 }
@@ -1718,6 +2041,6 @@ export function getStrategyIcon(strategy: PortfolioAllocation['strategy']): stri
     'provide_liquidity': '💧',
     'farm': '🚜'
   };
-  
+
   return icons[strategy] || '📊';
 }

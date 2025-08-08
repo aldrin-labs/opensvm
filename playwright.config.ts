@@ -69,6 +69,11 @@ export default defineConfig({
 
     /* Reduce resource usage */
     bypassCSP: true,
+
+    /* Set environment variable for test detection */
+    extraHTTPHeaders: {
+      'X-Playwright-Test': 'true'
+    }
   },
 
   /* Configure projects for major browsers with performance optimizations */
@@ -150,21 +155,22 @@ export default defineConfig({
   ],
 
   /* Run your local dev server before starting the tests - optimized */
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
-    timeout: 90 * 1000, // Reduced timeout for faster startup
-    stdout: 'ignore',
-    stderr: 'pipe',
-    env: {
-      NODE_ENV: 'test',
-      NEXT_TELEMETRY_DISABLED: '1',
-      // Disable heavy features for test environment
-      DISABLE_ANALYTICS: 'true',
-      DISABLE_TRACKING: 'true'
-    }
-  },
+  // Disabled webServer here to allow running tests against an already running server
+  // Start the server separately with `npm run start` before running Playwright tests
+  // webServer: {
+  //   command: 'npm run build && npm run start',
+  //   url: 'http://localhost:3000',
+  //   reuseExistingServer: !process.env.CI,
+  //   timeout: 120 * 1000,
+  //   stdout: 'pipe',
+  //   stderr: 'pipe',
+  //   env: {
+  //     NODE_ENV: 'test',
+  //     NEXT_TELEMETRY_DISABLED: '1',
+  //     DISABLE_ANALYTICS: 'true',
+  //     DISABLE_TRACKING: 'true'
+  //   }
+  // },
 
   /* Global setup and teardown for better resource management */
   globalSetup: require.resolve('./e2e/global-setup.ts'),

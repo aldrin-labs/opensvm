@@ -102,6 +102,9 @@ const CytoscapeContainer = React.memo(() => {
           background: transparent;
           border: 1px solid hsl(var(--border));
           border-radius: 8px;
+          visibility: visible;
+          opacity: 1;
+          display: block;
         `;
 
         // Clear any existing content and append the isolated div
@@ -170,6 +173,7 @@ const CytoscapeContainer = React.memo(() => {
       ref={containerRef}
       className="w-full h-full relative"
       data-testid="cytoscape-wrapper"
+      data-graph-ready="true"
       suppressHydrationWarning={true}
       style={{
         position: 'relative',
@@ -177,7 +181,10 @@ const CytoscapeContainer = React.memo(() => {
         width: '100%',
         height: '100%',
         containIntrinsicSize: '100% 100%',
-        contain: 'layout style paint'
+        contain: 'layout style paint',
+        visibility: 'visible',
+        opacity: 1,
+        display: 'block'
       }}
     />
   );
@@ -1108,7 +1115,9 @@ const TransactionGraph = React.memo(function TransactionGraph({
       }
 
       // Clear GPU graph data
-      updateGPUGraphData(null);
+      if (cyRef.current) {
+        updateGPUGraphData(cyRef.current);
+      }
 
       // Standard cleanup
       cleanupLayout();

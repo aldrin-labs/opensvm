@@ -9,9 +9,10 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-export default async function Image({ params }: { params: { signature: string } }) {
+export default async function Image({ params }: { params: Promise<{ signature: string }> }) {
   try {
-    const tx = await getTransactionDetails(params.signature);
+    const resolvedParams = await params;
+    const tx = await getTransactionDetails(resolvedParams.signature);
     
     const title = tx ? `Transaction ${tx.success ? 'Success' : 'Failed'}` : 'Transaction Details';
     const description = tx 

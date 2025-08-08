@@ -9,9 +9,10 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-export default async function Image({ params }: { params: { address: string } }) {
+export default async function Image({ params }: { params: Promise<{ address: string }> }) {
   try {
-    const program = await getAccountInfo(params.address);
+    const resolvedParams = await params;
+    const program = await getAccountInfo(resolvedParams.address);
     
     const title = 'Program Overview';
     const description = program?.executable 
@@ -128,7 +129,7 @@ export default async function Image({ params }: { params: { address: string } })
                   textAlign: 'center',
                 }}
               >
-                {params.address.slice(0, 20)}...{params.address.slice(-20)}
+                {resolvedParams.address.slice(0, 20)}...{resolvedParams.address.slice(-20)}
               </div>
             )}
           </div>
@@ -165,4 +166,4 @@ export default async function Image({ params }: { params: { address: string } })
       status: 500,
     });
   }
-} 
+}

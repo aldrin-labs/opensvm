@@ -7,14 +7,16 @@ import { useSettings } from '@/app/providers/SettingsProvider';
 import { useRouter } from 'next/navigation'
 import { isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils'
 
-export default function CatchAllRoute({ params }: { params: { slug: string[] } }) {
+export default function CatchAllRoute({ params }: { params: Promise<{ slug: string[] }> }) {
   const settings = useSettings();
   const router = useRouter()
-  const input = params.slug.join('/')
 
   useEffect(() => {
     async function handleRedirect() {
       try {
+        const resolvedParams = await params;
+        const input = resolvedParams.slug.join('/')
+        
         // Check if it's a numeric value (potential block number)
         if (/^\d+$/.test(input)) {
           router.push(`/block/${input}`)
@@ -37,13 +39,13 @@ export default function CatchAllRoute({ params }: { params: { slug: string[] } }
         router.push(`/search?q=${encodeURIComponent(input)}`)
       } catch (error) {
         console.error('Error in catch-all route:', error)
-        // Fallback to search page on any error
-        router.push(`/search?q=${encodeURIComponent(input)}`)
+        // Fallback to search page on any error - use empty string as fallback
+        router.push(`/search`)
       }
     }
 
     handleRedirect()
-  }, [input, router])
+  }, [params, router])
 
   return (
     <div className="flex items-center justify-center min-h-screen">

@@ -10,9 +10,10 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-export default async function Image({ params }: { params: { mint: string } }) {
+export default async function Image({ params }: { params: Promise<{ mint: string }> }) {
   try {
-    const token = await getTokenInfo(params.mint);
+    const resolvedParams = await params;
+    const token = await getTokenInfo(resolvedParams.mint);
     
     const title = token?.name || 'Token Overview';
     const description = `Supply: ${formatNumber(token?.totalSupply || 0)} • Decimals: ${token?.decimals || 0}`;
@@ -127,7 +128,7 @@ export default async function Image({ params }: { params: { mint: string } }) {
                   textAlign: 'center',
                 }}
               >
-                {params.mint.slice(0, 20)}...{params.mint.slice(-20)}
+                {resolvedParams.mint.slice(0, 20)}...{resolvedParams.mint.slice(-20)}
               </div>
             )}
           </div>

@@ -18,6 +18,7 @@
     "install:force": "npm install --force",
     "test": "NODE_OPTIONS=--max_old_space_size=4096 jest",
     "test:e2e": "playwright test",
+    "e2e:run": "node scripts/run_e2e_tests.js",
     "test:e2e:ui": "playwright test --ui",
     "dev:test": "NODE_ENV=test next dev",
     "build:test": "NODE_ENV=test next build",

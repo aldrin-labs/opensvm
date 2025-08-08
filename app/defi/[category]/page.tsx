@@ -2,8 +2,8 @@
 
 export const dynamic = 'force-dynamic';
 
-import { notFound } from 'next/navigation';
-import { Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Suspense, useEffect, useState } from 'react';
 import { useSettings } from '@/app/providers/SettingsProvider';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
@@ -96,18 +96,47 @@ const categoryConfig = {
 };
 
 interface PageProps {
-  params: {
-    category: string;
-  };
+  params: Promise<{ category: string }>;
 }
 
 export default function DeFiCategoryPage({ params }: PageProps) {
   const settings = useSettings();
-  const { category } = params;
-  const config = categoryConfig[category as keyof typeof categoryConfig];
+  const router = useRouter();
+  const [category, setCategory] = useState<string | null>(null);
 
+  useEffect(() => {
+    async function resolveParams() {
+      try {
+        const resolvedParams = await params;
+        setCategory(resolvedParams.category);
+      } catch (error) {
+        console.error('Error resolving params:', error);
+      }
+    }
+    resolveParams();
+  }, [params]);
+
+  const config = category ? categoryConfig[category as keyof typeof categoryConfig] : null;
+
+  // Handle 404 navigation for invalid category
+  useEffect(() => {
+    if (category && !config) {
+      router.push('/404');
+    }
+  }, [category, config, router]);
+
+  // Show loading while resolving params
+  if (!category) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // Show null for invalid category (will redirect via useEffect)
   if (!config) {
-    notFound();
+    return null;
   }
 
   const ComponentToRender = config.component;

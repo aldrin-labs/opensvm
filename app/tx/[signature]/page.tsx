@@ -2,18 +2,42 @@
 
 export const dynamic = 'force-dynamic';
 
-import { redirect } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useSettings } from '@/app/providers/SettingsProvider';
+import LoadingSpinner from '@/components/LoadingSpinner';
 
 interface Props {
-  params: Promise<{ [key: string]: string }>
+  params: Promise<{ signature: string }>
 }
 
 export default function TransactionPage({ params }: Props) {
   const settings = useSettings();
-  // Await the params in the server component
-  const { signature } = params;
+  const router = useRouter();
+  const [signature, setSignature] = useState<string | null>(null);
 
-  // Always redirect to overview tab - client-side preference handling happens there
-  redirect(`/tx/${signature}/overview`);
+  useEffect(() => {
+    async function resolveParams() {
+      try {
+        const resolvedParams = await params;
+        setSignature(resolvedParams.signature);
+      } catch (error) {
+        console.error('Error resolving params:', error);
+      }
+    }
+    resolveParams();
+  }, [params]);
+
+  useEffect(() => {
+    if (signature) {
+      // Always redirect to overview tab - client-side preference handling happens there
+      router.push(`/tx/${signature}/overview`);
+    }
+  }, [signature, router]);
+
+  if (!signature) {
+    return <LoadingSpinner />;
+  }
+
+  return null; // This component just redirects, so it doesn't render anything
 }

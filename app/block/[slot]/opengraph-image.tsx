@@ -10,10 +10,11 @@ export const size = {
 };
 export const contentType = 'image/png';
 
-export default async function Image({ params }: { params: { slot: string } }) {
+export default async function Image({ params }: { params: Promise<{ slot: string }> }) {
   try {
+    const resolvedParams = await params;
     const conn = await getConnection();
-    const slotNumber = parseInt(params.slot);
+    const slotNumber = parseInt(resolvedParams.slot);
     const [block, blockTime] = await Promise.all([
       conn.getBlock(slotNumber, { maxSupportedTransactionVersion: 0 }),
       conn.getBlockTime(slotNumber),

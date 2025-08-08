@@ -2,19 +2,35 @@
 
 export const dynamic = 'force-dynamic';
 
-import { Suspense } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useSettings } from '@/app/providers/SettingsProvider';
 import TransactionTabLayout from '../TransactionTabLayout';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface Props {
-  params: Promise<{ [key: string]: string }>
+  params: Promise<{ signature: string }>
 }
 
 export default function TransactionGraphPage({ params }: Props) {
   const settings = useSettings();
-  const { signature } = params;
+  const [signature, setSignature] = useState<string | null>(null);
+
+  useEffect(() => {
+    async function resolveParams() {
+      try {
+        const resolvedParams = await params;
+        setSignature(resolvedParams.signature);
+      } catch (error) {
+        console.error('Error resolving params:', error);
+      }
+    }
+    resolveParams();
+  }, [params]);
+
+  if (!signature) {
+    return <LoadingSpinner />;
+  }
 
   return (
     <ErrorBoundary

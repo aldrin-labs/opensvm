@@ -302,57 +302,57 @@ export function useComponentPerformance(componentName: string) {
 export function useApiPerformance() {
   const { trackCustomMetric } = usePerformance();
 
-  const trackApiCall = async <T>(
+  function trackApiCall<T>(
     apiCall: () => Promise<T>,
     operationName: string,
     metadata?: Record<string, any>
-  ): Promise<T> => {
+  ): Promise<T> {
     const startTime = performance.now();
     const startTimestamp = Date.now();
     
-    try {
-      const result = await apiCall();
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      // Track successful API call
-      trackCustomMetric(`api-${operationName}-duration`, duration, {
-        operation: operationName,
-        success: true,
-        startTime: startTimestamp,
-        endTime: Date.now(),
-        ...metadata
+    return apiCall()
+      .then((result) => {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        // Track successful API call
+        trackCustomMetric(`api-${operationName}-duration`, duration, {
+          operation: operationName,
+          success: true,
+          startTime: startTimestamp,
+          endTime: Date.now(),
+          ...metadata
+        });
+        
+        logger.apiRequest('GET', operationName, duration, 200, {
+          requestId: `${operationName}-${startTimestamp}`,
+          metadata
+        });
+        
+        return result;
+      })
+      .catch((error) => {
+        const endTime = performance.now();
+        const duration = endTime - startTime;
+        
+        // Track failed API call
+        trackCustomMetric(`api-${operationName}-error`, duration, {
+          operation: operationName,
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          startTime: startTimestamp,
+          endTime: Date.now(),
+          ...metadata
+        });
+        
+        logger.apiError('GET', operationName, error instanceof Error ? error : new Error('Unknown error'), {
+          requestId: `${operationName}-${startTimestamp}`,
+          metadata
+        });
+        
+        throw error;
       });
-      
-      logger.apiRequest('GET', operationName, duration, 200, {
-        requestId: `${operationName}-${startTimestamp}`,
-        metadata
-      });
-      
-      return result;
-      
-    } catch (error) {
-      const endTime = performance.now();
-      const duration = endTime - startTime;
-      
-      // Track failed API call
-      trackCustomMetric(`api-${operationName}-error`, duration, {
-        operation: operationName,
-        success: false,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        startTime: startTimestamp,
-        endTime: Date.now(),
-        ...metadata
-      });
-      
-      logger.apiError('GET', operationName, error instanceof Error ? error : new Error('Unknown error'), {
-        requestId: `${operationName}-${startTimestamp}`,
-        metadata
-      });
-      
-      throw error;
-    }
-  };
+  }
 
   return { trackApiCall };
 }

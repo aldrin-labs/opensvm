@@ -53,11 +53,11 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
         newElements.merge(ele);
       }
     });
-    
+
     // Get connected elements as well
     const neighborhood = newElements.neighborhood();
     const subgraph = newElements.merge(neighborhood);
-    
+
     // Run layout only on the subgraph but preserve existing positions
     subgraph.layout(<DagreLayoutOptions>{
       name: 'dagre',
@@ -113,7 +113,7 @@ export const runIncrementalLayout = (cy: cytoscape.Core, newElementIds: string[]
  */
 export const runLayout = (cy: cytoscape.Core): void => {
   const nodeCount = cy.nodes().length;
-  
+
   // Adjust layout parameters based on graph size
   const layoutConfig: DagreLayoutOptions = {
     name: 'dagre',
@@ -356,11 +356,16 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
  */
 export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
   console.log('Starting cytoscape initialization...');
-  
+
+  // Validate container first
+  if (!container || !container.parentElement) {
+    throw new Error('Invalid container provided for cytoscape initialization');
+  }
+
   // Add GPU acceleration hints to the container
   container.style.willChange = 'transform';
   container.style.transform = 'translateZ(0)'; // Force hardware acceleration
-  
+
   // Choose layout based on dagre availability
   const layoutConfig = dagreRegistered ?
     <DagreLayoutOptions>{
@@ -383,26 +388,37 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
 
   console.log('Using layout:', layoutConfig.name);
 
-  const cy = cytoscape({
-    container: container,
-    style: createGraphStyle(),
-    layout: layoutConfig,
-    minZoom: 0.2,
-    maxZoom: 3,
-    // Use default wheelSensitivity (don't set custom value to avoid warnings)
-    // Performance optimizations
-    styleEnabled: true,
-    hideEdgesOnViewport: false,
-    hideLabelsOnViewport: false,
-    textureOnViewport: false,
-    motionBlur: false,
-    pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
-    // Enable batching for better performance
-    autoungrabify: false,
-    autolock: false,
-    autounselectify: false,
-  });
+  try {
+    const cy = cytoscape({
+      container: container,
+      style: createGraphStyle(),
+      layout: layoutConfig,
+      minZoom: 0.2,
+      maxZoom: 3,
+      // Use default wheelSensitivity (don't set custom value to avoid warnings)
+      // Performance optimizations
+      styleEnabled: true,
+      hideEdgesOnViewport: false,
+      hideLabelsOnViewport: false,
+      textureOnViewport: false,
+      motionBlur: false,
+      pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1,
+      // Enable batching for better performance
+      autoungrabify: false,
+      autolock: false,
+      autounselectify: false,
+    });
 
-  console.log('Cytoscape initialization completed');
-  return cy;
+    // Store cytoscape instance on container for test access
+    (container as any)._cytoscape = cy;
+    (container as any)._cytoscapeInitialized = true;
+
+    console.log('Cytoscape initialization completed successfully');
+    return cy;
+  } catch (error) {
+    console.error('Cytoscape initialization failed:', error);
+    (container as any)._cytoscapeError = error;
+    (container as any)._cytoscapeInitialized = false;
+    throw error;
+  }
 };
