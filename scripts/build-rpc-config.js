@@ -49,7 +49,7 @@ function parseRpcList(envVar) {
 }
 
 function buildRpcConfig() {
-    console.log('Building RPC configuration...', process.env);
+    console.log('Building RPC configuration...');
 
     // Parse RPC lists from environment variables
     const list1 = parseRpcList(process.env.OPENSVM_RPC_LIST);
