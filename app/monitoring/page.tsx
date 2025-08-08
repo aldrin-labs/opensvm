@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { LiveEventMonitor } from '@/components/LiveEventMonitor';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 export default function MonitoringPage() {
   const settings = useSettings();

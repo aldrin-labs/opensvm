@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { getConnection } from '@/lib/solana-connection';
-//import { useSettings } from '@/app/providers/SettingsProvider';
+//import { useSettings } from '@/lib/settings';
 import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
 import AccountInfo from '@/components/AccountInfo';

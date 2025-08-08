@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useRouter } from 'next/navigation';
 import { Suspense, useEffect, useState } from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ErrorBoundary from './components/ErrorBoundary';
 import DeFAISection from './components/DeFAISection';

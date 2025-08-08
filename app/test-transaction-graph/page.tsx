@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import NextDynamic from 'next/dynamic';
 import LoadingSpinner from '@/components/LoadingSpinner';
 

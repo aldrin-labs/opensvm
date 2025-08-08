@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NetworkCharts } from '@/components/NetworkCharts';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { NetworksTable } from '@/components/NetworksTable';
 
 export default function NetworksPage() {

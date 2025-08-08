@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState } from 'react';
 import EnhancedSearchBar from '@/components/EnhancedSearchBar';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 export default function TestSearchPage() {
   const settings = useSettings();

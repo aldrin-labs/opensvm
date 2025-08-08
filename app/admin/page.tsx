@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 export default function AdminPage() {
   const settings = useSettings();

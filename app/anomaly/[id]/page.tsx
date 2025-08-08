@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { AnomalyProfilePage } from '@/components/AnomalyProfilePage';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 interface AnomalyPageProps {
   params: Promise<{ [key: string]: string }>

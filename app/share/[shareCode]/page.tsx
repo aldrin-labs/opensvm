@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState } from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { AlertCircle } from 'lucide-react';

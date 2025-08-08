@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { TransfersTable } from '@/components/TransfersTable';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useSearchParams } from 'next/navigation';
 
 const DEFAULT_ADDRESS = 'DfiQz1pkh3FhKz4ZqHyBQHrKR5HRMhMFYgUZS8h6yRet';

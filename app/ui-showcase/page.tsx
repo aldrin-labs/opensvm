@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { PaperThemeDemo } from '@/components/PaperThemeDemo';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 export default function UIShowcasePage() {
   const settings = useSettings();

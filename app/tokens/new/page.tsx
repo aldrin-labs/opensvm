@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

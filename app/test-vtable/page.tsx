@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import NextDynamic from 'next/dynamic';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useState } from 'react';
 
 // Dynamic import to ensure client-side only

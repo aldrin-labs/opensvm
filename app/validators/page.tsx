@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import React from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { ValidatorTab } from '@/components/solana/validator-tab';
 
 export default function ValidatorsPage() {

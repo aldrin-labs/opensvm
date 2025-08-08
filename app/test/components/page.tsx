@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import NextDynamic from 'next/dynamic';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useState, useMemo } from 'react';
 import { Search, X } from 'lucide-react';
 

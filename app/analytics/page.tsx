@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { SolanaDEXTab } from '@/components/solana/solana-dex-tab';
 import { CrossChainTab } from '@/components/solana/cross-chain-tab';
 import { DeFiHealthTab } from '@/components/solana/defi-health-tab';

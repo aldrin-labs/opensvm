@@ -4,7 +4,7 @@ import { promises as fs } from 'fs';
 import path from 'path';
 import Link from 'next/link';
 import ReactMarkdown from 'react-markdown';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 export const metadata = {
   title: 'OpenSVM Documentation',

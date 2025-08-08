@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import ProgramActivityTable, { type ProgramActivity } from '@/components/ProgramActivityTable';
 import { Button } from '@/components/ui/button';
 import { 

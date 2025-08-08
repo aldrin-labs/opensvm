@@ -8,7 +8,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useEffect, useState, useCallback } from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { UserProfile } from '@/types/user-history';

@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useParams } from 'next/navigation';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import BlockDetails from '@/components/BlockDetails';
 
 export default function BlockPage() {
