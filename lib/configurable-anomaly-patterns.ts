@@ -291,16 +291,22 @@ export class AnomalyPatternManager {
   async loadRemotePatterns(): Promise<void> {
     // Try loading from local JSON config first, then remote
     let configLoaded = false;
-    
+
     // Try local config file first
     try {
+      // Skip local config loading during server-side rendering/build time
+      if (typeof window === 'undefined') {
+        console.log('[AnomalyPatterns] Skipping local config during server-side rendering');
+        throw new Error('Server-side environment detected');
+      }
+
       const localConfigUrl = '/config/anomaly-patterns.json';
       console.log('[AnomalyPatterns] Attempting to load local config from:', localConfigUrl);
-      
+
       const response = await fetch(localConfigUrl);
       if (response.ok) {
         const localPatterns: AnomalyPatternConfiguration = await response.json();
-        
+
         if (this.isValidConfiguration(localPatterns)) {
           const validation = this.validateConfiguration(localPatterns);
           if (validation.valid) {
@@ -308,7 +314,7 @@ export class AnomalyPatternManager {
             this.lastUpdate = new Date();
             configLoaded = true;
             console.log(`✅ [AnomalyPatterns] Loaded ${localPatterns.patterns.length} patterns from LOCAL config`);
-            
+
             // DEBUG: Log transaction_failure_burst pattern from local config
             const failureBurstPattern = localPatterns.patterns.find(p => p.id === 'transaction_failure_burst');
             console.log(`🐛 DEBUG: transaction_failure_burst in LOCAL config:`, {
@@ -350,7 +356,7 @@ export class AnomalyPatternManager {
           this.lastUpdate = new Date();
           configLoaded = true;
           console.log(`✅ [AnomalyPatterns] Loaded ${remotePatterns.patterns.length} patterns from REMOTE config`);
-          
+
           // DEBUG: Log transaction_failure_burst pattern from remote config
           const failureBurstPattern = remotePatterns.patterns.find(p => p.id === 'transaction_failure_burst');
           console.log(`🐛 DEBUG: transaction_failure_burst in REMOTE patterns:`, {
@@ -370,7 +376,7 @@ export class AnomalyPatternManager {
     // If neither local nor remote config worked, fall back to defaults
     if (!configLoaded) {
       console.log('⚠️ [AnomalyPatterns] No valid config found, using default patterns');
-      
+
       // DEBUG: Log transaction_failure_burst pattern from fallback defaults
       const failureBurstPattern = this.patterns.patterns.find(p => p.id === 'transaction_failure_burst');
       console.log(`🐛 DEBUG: transaction_failure_burst in FALLBACK patterns:`, {
@@ -387,7 +393,7 @@ export class AnomalyPatternManager {
    */
   getEnabledPatterns(): AnomalyPattern[] {
     const enabledConfigs = this.patterns.patterns.filter(config => config.enabled);
-    
+
     // DEBUG: Log enabled patterns, especially transaction_failure_burst
     console.log(`🐛 DEBUG: getEnabledPatterns() returning ${enabledConfigs.length} enabled patterns`);
     const failureBurstConfig = enabledConfigs.find(config => config.id === 'transaction_failure_burst');
@@ -399,7 +405,7 @@ export class AnomalyPatternManager {
     } else {
       console.log(`🐛 DEBUG: transaction_failure_burst NOT FOUND in enabled patterns`);
     }
-    
+
     return enabledConfigs.map(config => this.convertConfigToPattern(config));
   }
 
@@ -654,16 +660,16 @@ export class AnomalyPatternManager {
           e.timestamp > now - recentTimeWindow
         );
         const recentFailures = recentTransactions.filter(e => e.data?.err !== null);
-        
+
         // Only trigger if there are enough transactions AND high failure rate
         if (recentTransactions.length < 5) {
           return 0; // Not enough data for burst detection
         }
-        
+
         const burstFailureRate = recentFailures.length / recentTransactions.length;
         console.log(`🐛 DEBUG: failure_rate calculation - Recent txs: ${recentTransactions.length}, failures: ${recentFailures.length}, rate: ${burstFailureRate.toFixed(3)}`);
         return burstFailureRate;
-        
+
       case 'transaction_burst':
       case 'rapid_trades':
       case 'arbitrage_bot':

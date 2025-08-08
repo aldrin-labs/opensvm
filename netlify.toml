@@ -15,8 +15,9 @@
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-[[plugins]]
-  package = "netlify-plugin-inline-functions-env"
-  [plugins.inputs]
-    buildEvent = "onBuild"
-    include = ["OPENSVM_RPC_LIST", "OPENSVM_RPC_LIST_2"]
+# Removed inline functions env plugin to reduce environment variable size
+# [[plugins]]
+#   package = "netlify-plugin-inline-functions-env"
+#   [plugins.inputs]
+#     buildEvent = "onBuild"
+#     include = ["OPENSVM_RPC_LIST", "OPENSVM_RPC_LIST_2"]

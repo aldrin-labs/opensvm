@@ -68,24 +68,16 @@ const CytoscapeContainer = React.memo(() => {
       return;
     }
 
-    // Copy the current container ref value for cleanup
+    // Capture current container reference to avoid closure issues
     const currentContainer = containerRef.current;
 
+    // Create the initialization promise
     initializationPromiseRef.current = new Promise<void>((resolve, reject) => {
       try {
-        // Only run on client side
-        if (typeof document === 'undefined') {
-          reject(new Error('Document not available - SSR context'));
-          return;
-        }
-
-        // Create the container div programmatically to isolate from React
+        // Create cytoscape div programmatically to prevent React DOM conflicts
         const cytoscapeDiv = document.createElement('div');
         cytoscapeDiv.id = 'cy-container';
-        cytoscapeDiv.className = 'w-full h-full';
-        cytoscapeDiv.setAttribute('data-testid', 'cytoscape-container');
-        cytoscapeDiv.setAttribute('data-graph-ready', 'false');
-        cytoscapeDiv.setAttribute('data-initialization-state', 'creating');
+        cytoscapeDiv.setAttribute('data-initialization-state', 'initializing');
 
         // Store reference to cytoscape instance on the container for reliable access
         (cytoscapeDiv as any)._cytoscapeInitialized = false;
@@ -169,28 +161,9 @@ const CytoscapeContainer = React.memo(() => {
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full relative"
-      data-testid="cytoscape-wrapper"
-      data-graph-ready="true"
-      suppressHydrationWarning={true}
-      style={{
-        position: 'relative',
-        minHeight: '400px',
-        width: '100%',
-        height: '100%',
-        containIntrinsicSize: '100% 100%',
-        contain: 'layout style paint',
-        visibility: 'visible',
-        opacity: 1,
-        display: 'block'
-      }}
-    />
+    <div ref={containerRef} className="w-full h-full" />
   );
-});
-
-const TransactionGraph = React.memo(function TransactionGraph({
+}); const TransactionGraph = React.memo(function TransactionGraph({
   initialSignature,
   initialAccount,
   initialTransactionData,
@@ -1208,7 +1181,7 @@ const TransactionGraph = React.memo(function TransactionGraph({
               </svg>
             </div>
             <div className="flex-1">
-              <p className="text-sm text-destructive font-medium">{error}</p>
+              <p className="text-sm text-destructive font-medium" data-testid="error-message">{error}</p>
               <button
                 onClick={() => setError(null)}
                 className="mt-2 text-xs text-destructive/80 hover:text-destructive hover:underline transition-colors"
