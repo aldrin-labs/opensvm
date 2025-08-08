@@ -33,11 +33,11 @@ const list2 = parseRpcList(process.env.OPENSVM_RPC_LIST_2);
 // Combine all RPC endpoints
 let opensvmRpcEndpoints = [...list1, ...list2];
 
-// Fallback endpoints if no environment variables are set
+// Fallback endpoints if no environment variables are set (enforce OpenSVM RPC servers)
 if (opensvmRpcEndpoints.length === 0) {
-  console.warn('No OPENSVM_RPC_LIST environment variables found, using fallback endpoints');
+  console.warn('No OPENSVM_RPC_LIST environment variables found, using OpenSVM RPC server fallback');
   opensvmRpcEndpoints = [
-    'https://solana-mainnet.core.chainstack.com/263c9f53f4e4cdb897c0edc4a64cd007'
+    '/api/proxy/rpc'
   ];
 }
 

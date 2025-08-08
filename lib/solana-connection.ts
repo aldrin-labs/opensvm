@@ -16,20 +16,23 @@ class ProxyConnection extends Connection {
   private readonly maxConcurrentRequests = 12; // Increased from 8
   private readonly maxRetries = 12; // Increased from 8
   private activeRequests = 0;
-  // private _isClient: boolean = false;
 
   constructor(endpoint: string, config?: ConnectionConfig) {
-    // Determine if we're running in the client and prepare the endpoint
-    const _isClient = typeof window !== 'undefined';
+    // Proxy for opensvm.com endpoints is disabled; use the provided endpoint directly
     let finalEndpoint = endpoint;
-
-    // If this is a client and the endpoint contains opensvm.com, use the proxy instead
-    if (_isClient && endpoint.includes('opensvm.com')) {
-      const idMatch = endpoint.match(/\/api\/([^\/]+)$/);
-      if (idMatch && idMatch[1]) {
-        finalEndpoint = `/api/proxy/rpc/${idMatch[1]}`;
+    // Ensure endpoint is absolute with http or https
+    if (!/^https?:\/\//i.test(finalEndpoint)) {
+      if (typeof window !== 'undefined' && window.location.origin) {
+        finalEndpoint = window.location.origin + finalEndpoint;
+      } else if (process.env.NEXT_PUBLIC_BASE_URL) {
+        finalEndpoint = process.env.NEXT_PUBLIC_BASE_URL + finalEndpoint;
+      } else {
+        throw new Error(`Invalid endpoint '${endpoint}': URL must start with http:// or https://`);
       }
     }
+
+    // Proxy for opensvm.com endpoints is disabled; use the provided endpoint directly
+    // ...existing code continues
 
     // Detect test environment for optimized timeouts
     const isTestEnv = process.env.NODE_ENV === 'test' ||
@@ -38,15 +41,15 @@ class ProxyConnection extends Connection {
 
     // Configure timeouts based on environment
     const timeoutConfig = isTestEnv ? {
-      fetchTimeout: 3000,      // 3s for tests vs 8s for production
-      maxRetries: 3,           // 3 retries vs 12 for production
+      fetchTimeout: 3000,      // 3s for tests vs 15s for production
+      maxRetries: 3,           // 3 retries vs 8 for production
       retryDelay: 200,         // 200ms vs 1000ms for production
-      confirmTimeout: 10000    // 10s vs 30s for production
+      confirmTimeout: 10000    // 10s vs 45s for production
     } : {
-      fetchTimeout: 8000,
-      maxRetries: 12,
+      fetchTimeout: 15000,     // Increased from 8s to 15s for busy periods
+      maxRetries: 8,           // Reduced from 12 to 8 for faster failure
       retryDelay: 1000,
-      confirmTimeout: 30000
+      confirmTimeout: 45000    // Increased from 30s to 45s
     };
 
     super(finalEndpoint, {

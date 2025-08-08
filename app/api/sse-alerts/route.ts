@@ -25,6 +25,26 @@ export async function GET(request: NextRequest) {
 
     switch (action) {
       case 'connect':
+        // Get event types from query params, no default - require explicit specification
+        const eventTypesParam = searchParams.get('eventTypes');
+
+        if (!eventTypesParam) {
+          const { response, status } = createErrorResponse(
+            ErrorCodes.INVALID_REQUEST,
+            'eventTypes parameter is required. Specify which event types to subscribe to.',
+            {
+              message: 'No event types specified - connection refused',
+              validEventTypes: ['block', 'transaction', 'account_change'],
+              example: '?eventTypes=block&clientId=your-client-id'
+            },
+            400
+          );
+          return Response.json(response, { status });
+        }
+
+        const eventTypes = eventTypesParam.split(',');
+        const eventTypesSet = new Set(eventTypes);
+
         // Start monitoring when first client connects
         try {
           // Import EventStreamManager dynamically
@@ -35,7 +55,7 @@ export async function GET(request: NextRequest) {
           const mockClient = {
             id: clientId,
             send: (data: any) => {
-              // Send blockchain events to SSE clients
+              // Send blockchain events to SSE clients (filtering now happens in SSE manager)
               try {
                 const eventData = JSON.parse(data);
                 sseManager.broadcastBlockchainEvent(eventData);
@@ -44,7 +64,7 @@ export async function GET(request: NextRequest) {
               }
             },
             close: () => { },
-            subscriptions: new Set(['transaction', 'block']),
+            subscriptions: eventTypesSet,
             authenticated: true,
             connectionTime: Date.now(),
             lastActivity: Date.now()
@@ -56,8 +76,8 @@ export async function GET(request: NextRequest) {
           console.warn('Failed to start blockchain monitoring:', error);
         }
 
-        // Return SSE stream
-        const stream = sseManager.addClient(clientId);
+        // Return SSE stream with event type filtering
+        const stream = sseManager.addClient(clientId, eventTypesSet);
         return new Response(stream, {
           headers: {
             'Content-Type': 'text/event-stream',

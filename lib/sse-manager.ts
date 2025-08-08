@@ -10,6 +10,7 @@ export interface SSEConnection {
   subscriptions: Set<string>;
   connected: boolean;
   lastActivity: number;
+  eventTypes: Set<string>; // Filter for event types (transaction, block, etc.)
 }
 
 export interface BlockchainEvent {
@@ -30,14 +31,15 @@ export class SSEManager {
     return SSEManager.instance;
   }
 
-  public addConnection(id: string, controller: ReadableStreamDefaultController): void {
+  public addConnection(id: string, controller: ReadableStreamDefaultController, eventTypes: Set<string> = new Set()): void {
     const connection: SSEConnection = {
       id,
       response: null as any, // Will be set by caller
       controller,
       subscriptions: new Set(),
       connected: true,
-      lastActivity: Date.now()
+      lastActivity: Date.now(),
+      eventTypes
     };
 
     this.connections.set(id, connection);
@@ -64,6 +66,11 @@ export class SSEManager {
     for (const [id, connection] of Array.from(this.connections.entries())) {
       if (!connection.connected) {
         this.connections.delete(id);
+        continue;
+      }
+
+      // Only send event if the connection is subscribed to this event type
+      if (!connection.eventTypes.has(event.type)) {
         continue;
       }
 
@@ -119,10 +126,10 @@ export class SSEManager {
     }
   }
 
-  public addClient(clientId: string): ReadableStream {
+  public addClient(clientId: string, eventTypes: Set<string> = new Set()): ReadableStream {
     const stream = new ReadableStream({
       start: (controller) => {
-        this.addConnection(clientId, controller);
+        this.addConnection(clientId, controller, eventTypes);
       },
       cancel: () => {
         this.removeConnection(clientId);

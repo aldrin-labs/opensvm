@@ -1,7 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { useTheme } from '@/lib/design-system/theme-provider';
+import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 
 // WCAG 2.1 AA compliance utilities and components
 
@@ -39,7 +38,7 @@ const ScreenReaderAnnouncer: React.FC<{
     setMounted(true);
   }, []);
 
-  const announceToScreenReader = (message: string, priority: 'polite' | 'assertive' = 'polite') => {
+  const announceToScreenReader = useCallback((message: string, priority: 'polite' | 'assertive' = 'polite') => {
     if (!mounted) return; // Don't announce during SSR
     const id = Math.random().toString(36).substr(2, 9);
     setAnnouncements(prev => [...prev, { id, message, priority }]);
@@ -48,7 +47,7 @@ const ScreenReaderAnnouncer: React.FC<{
     setTimeout(() => {
       setAnnouncements(prev => prev.filter(announcement => announcement.id !== id));
     }, 1000);
-  };
+  }, [mounted]);
 
   // Register the announcer function when component mounts
   useEffect(() => {
@@ -184,9 +183,10 @@ function useKeyboardDetection() {
 
 // Main accessibility provider
 export function AccessibilityProvider({ children }: { children: React.ReactNode }) {
-  const { config } = useTheme();
   const keyboardNavigation = useKeyboardDetection();
   const [announcer, setAnnouncer] = useState<((message: string, priority?: 'polite' | 'assertive') => void) | null>(null);
+  const [reducedMotion, setReducedMotion] = useState(false);
+  const [highContrast, setHighContrast] = useState(false);
 
   // Store previous focus when dialogs/modals open
   useEffect(() => {
@@ -198,6 +198,29 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
 
     document.addEventListener('focusin', handleFocusIn);
     return () => document.removeEventListener('focusin', handleFocusIn);
+  }, []);
+
+  // Detect system preferences for accessibility
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const updatePreferences = () => {
+      setReducedMotion(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+      setHighContrast(window.matchMedia('(prefers-contrast: high)').matches);
+    };
+
+    updatePreferences();
+
+    const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const highContrastQuery = window.matchMedia('(prefers-contrast: high)');
+
+    reducedMotionQuery.addEventListener('change', updatePreferences);
+    highContrastQuery.addEventListener('change', updatePreferences);
+
+    return () => {
+      reducedMotionQuery.removeEventListener('change', updatePreferences);
+      highContrastQuery.removeEventListener('change', updatePreferences);
+    };
   }, []);
 
   const focusManager = {
@@ -221,9 +244,9 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     announceToScreenReader: announcer || (() => { }),
     focusManager,
     keyboardNavigation,
-    reducedMotion: config.reducedMotion,
-    highContrast: config.highContrast,
-    fontSize: config.fontSize,
+    reducedMotion,
+    highContrast: false, // High contrast is disabled by default
+    fontSize: 'base',
   };
 
   return (

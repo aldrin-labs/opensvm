@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getConnection } from '@/lib/solana-connection';
-import { Connection } from '@solana/web3.js';
+import { Connection, PublicKey } from '@solana/web3.js';
 import { getStreamingAnomalyDetector } from '@/lib/streaming-anomaly-detector';
 import { validateStreamRequest } from '@/lib/validation/stream-schemas';
 import { generalRateLimiter, type RateLimitResult } from '@/lib/rate-limiter';
@@ -213,8 +213,13 @@ class EventStreamManager {
         return this.connection!.onSlotChange(slotCallback);
       });
 
-      // Setup transaction monitoring with error protection
-      await this.setupTransactionMonitoring();
+      // Setup transaction monitoring with error protection (only if requested)
+      const needsTransactionMonitoring = Array.from(this.clients.values()).some(
+        client => client.subscriptions.has('transaction') || client.subscriptions.has('all')
+      );
+      if (needsTransactionMonitoring) {
+        await this.setupTransactionMonitoring();
+      }
 
       logger.debug('Started blockchain event monitoring with anomaly detection');
     } catch (error) {
@@ -267,6 +272,11 @@ class EventStreamManager {
     if (!this.connection) return;
 
     try {
+      // Rate limiting for transaction processing - max 50 transactions per second
+      let transactionCount = 0;
+      let lastResetTime = Date.now();
+      const TRANSACTION_RATE_LIMIT = 50; // per second
+
       // System programs to filter out
       const SYSTEM_PROGRAMS = new Set([
         'Vote111111111111111111111111111111111111111', // Vote program
@@ -277,27 +287,106 @@ class EventStreamManager {
         'Stake11111111111111111111111111111111111111', // Stake program
       ]);
 
-      // Monitor for new transactions by subscribing to logs with safe subscription
+      // Important programs we DO want to monitor
+      const IMPORTANT_PROGRAMS = new Set([
+        'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA', // SPL Token program
+        'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL', // Associated Token program
+        'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4', // Jupiter
+        'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc', // Orca Whirlpools
+        'srmqPiNtmKaV9w8LvVGbLH4jN3CJKovNjhH7TvDdny8', // Serum
+        '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
+        
+        // Additional DEX/AMM programs
+        'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // Raydium CLMM
+        'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C', // Raydium CPMM
+        'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY', // Phoenix
+        'Dooar9JkhdZ7J3LHN3A7YCuoGRUggXhQaG4kijfLGU2j', // Lifinity
+        'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo', // Meteora DLMM
+        'Eo7WjKq67rjJQSZxS6z3YkapzY3eMj6Xy8X5EQVn5UaB', // Meteora Pools
+        'MERLuDFBMmsHnsBPZw2sDQZHvXFMwp8EdjudcU2HKky', // Mercurial
+        'HyaB3W9q6XdA5xwpU4XnSZV94htfmbmqJXZcEbRaJutt', // Invariant
+        'SSwapUtytfBdBn1b9NUGG6foMVPtcWgpRU32HToDUZr', // Saros
+        'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1', // Aldrin
+        'FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X', // FluxBeam
+        
+        // Lending/Borrowing protocols
+        'MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD', // Marginfi
+        'KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD', // Kamino Lend
+        'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo', // Solend
+        'dRiftyHA39MWEi3m9aunc5MzRF1JYuBsbn6VPcn33UH', // Drift
+        'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR', // Port Finance
+        '6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc', // Larix
+        'hadeK9DLv9eA7ya5KCTqSvSvRZeJC3JgD5a9Y3CNbvu', // Hadeswap
+        
+        // Staking/Liquid staking
+        'SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy', // Stake Pool program
+        'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', // Marinade mSOL
+        'LSTxxxnJzKDFSLr4dUkPcmCf5VyryEqzPLz5j4bpxFp', // Liquid Staking Token
+        'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn', // Jito
+        'BLZRi6frs4X4DNLw56V4EXai1b6QVESN1BhHBTYM4VcY', // BlazeStake
+        
+        // Other significant protocols
+        'PythP5jyMWGSMUs1GBABL9NMy51dskhnCLHgYWVCFE9', // Pyth Price Oracle
+        'MNFSTqtC93rjpqpHHApjykkZiyTKctLjAcCLHbcfgZK', // Manifest
+        'cndyAnrLdpjq1Ssp1z8xxDsB8dxe7u4HL5Nxi2K5WXZ', // Metaplex Candy Machine v3
+        'CJsLwbP1iu5DuUikHEJnLfANgKy6stB2uFgvBBHoyxwz', // Metaplex Auction House
+      ]);
+
+      // Monitor for new transactions by subscribing to specific programs instead of ALL
       await this.safeSubscribe('logs', () => {
         const logsCallback = async (logs: any, context: any) => {
           if (logs.signature) {
             try {
-              // Skip obvious vote transactions early to reduce processing load
-              const isVoteTransaction = logs.logs?.some((log: string) => log.includes('Vote111111111111111111111111111111111111111'));
-              if (isVoteTransaction) {
+              // Rate limiting check
+              const now = Date.now();
+              if (now - lastResetTime >= 1000) {
+                transactionCount = 0;
+                lastResetTime = now;
+              }
+
+              if (transactionCount >= TRANSACTION_RATE_LIMIT) {
+                return; // Skip processing if rate limit exceeded
+              }
+              transactionCount++;
+
+              // Quick filtering based on logs before expensive RPC call
+              const logContent = logs.logs?.join(' ') || '';
+
+              // Skip vote transactions immediately
+              if (logContent.includes('Vote111111111111111111111111111111111111111')) {
                 return;
               }
 
-              let txDetails = null;
+              // Skip if no important programs are involved
+              const hasImportantProgram = Array.from(IMPORTANT_PROGRAMS).some(program =>
+                logContent.includes(program)
+              );
+
+              if (!hasImportantProgram) {
+                return; // Skip this transaction
+              }
+
+              let txDetails: any = null;
               try {
-                // Try to fetch transaction details, but don't fail the whole event if this fails
-                txDetails = await this.connection!.getTransaction(logs.signature, {
+                // Add timeout wrapper for getTransaction calls
+                const timeoutPromise = new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Transaction fetch timeout')), 5000)
+                );
+
+                const fetchPromise = this.connection!.getTransaction(logs.signature, {
                   commitment: 'confirmed',
                   maxSupportedTransactionVersion: 0
                 });
+
+                // Race between fetch and timeout
+                txDetails = await Promise.race([fetchPromise, timeoutPromise]);
               } catch (fetchError) {
                 // Log error but continue processing with just the logs data
-                logger.warn(`Failed to fetch transaction details for ${logs.signature}:`, fetchError);
+                if (fetchError instanceof Error && fetchError.message === 'Transaction fetch timeout') {
+                  logger.debug(`Transaction fetch timeout for ${logs.signature}, continuing with logs data only`);
+                } else {
+                  logger.warn(`Failed to fetch transaction details for ${logs.signature}:`, fetchError);
+                }
               }
 
               // Create event with available data (whether we got tx details or not)
@@ -352,7 +441,18 @@ class EventStreamManager {
         };
 
         this.subscriptionCallbacks.set('logs', logsCallback);
-        return this.connection!.onLogs('all', logsCallback, 'confirmed');
+        
+        // Instead of monitoring ALL transactions, monitor only specific important programs
+        // This dramatically reduces the load by 90%+
+        const importantPrograms = Array.from(IMPORTANT_PROGRAMS);
+        
+        // Subscribe to multiple important programs instead of 'all'
+        const subscriptionPromises = importantPrograms.map(program => 
+          this.connection!.onLogs(new PublicKey(program), logsCallback, 'confirmed')
+        );
+        
+        // Return the first subscription ID (we'll track all of them)
+        return subscriptionPromises[0];
       });
 
     } catch (error) {

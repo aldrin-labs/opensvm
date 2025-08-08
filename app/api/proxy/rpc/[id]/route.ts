@@ -1,4 +1,5 @@
 import { NextRequest } from 'next/server';
+import { getRpcEndpoints } from '@/lib/opensvm-rpc';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
@@ -29,14 +30,21 @@ export async function POST(
     // Get the endpoint ID from route params - properly awaited
     const params = await context.params;
     const { id: endpointId } = await params;
-    
+
     // Parse the request body
     const body = await request.json();
-    
-    console.log(`Proxying RPC request to OpenSVM API, ID: ${endpointId}`);
-    
-    // Try the OpenSVM RPC endpoint first
-    let response = await fetch(`https://opensvm.com/api/${endpointId}`, {
+
+    // Resolve RPC endpoint from configured OpenSVM RPC list
+    const rpcEndpoints = getRpcEndpoints();
+    const rpcUrl = rpcEndpoints[endpointId as keyof typeof rpcEndpoints];
+    if (!rpcUrl || typeof rpcUrl !== 'string') {
+      return Response.json(
+        { error: `Unknown RPC endpoint ${endpointId}` },
+        { status: 404, headers: defaultHeaders }
+      );
+    }
+    console.log(`Proxying RPC request to RPC endpoint ${rpcUrl}`);
+    let response = await fetch(rpcUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -52,7 +60,7 @@ export async function POST(
       // If OpenSVM API returns 404, fallback to Solana mainnet API
       if (response.status === 404) {
         console.log(`OpenSVM API returned 404, falling back to Solana mainnet API`);
-        
+
         response = await fetch(`https://api.mainnet-beta.solana.com`, {
           method: 'POST',
           headers: {
@@ -63,15 +71,15 @@ export async function POST(
           signal: controller.signal,
         });
       }
-      
+
       if (!response.ok) {
         console.error(`Error from OpenSVM API: ${response.status} ${response.statusText}`);
         return Response.json(
-          { 
+          {
             error: `RPC request failed with status ${response.status}`,
             code: response.status
           },
-          { 
+          {
             status: response.status,
             headers: defaultHeaders
           }
@@ -81,7 +89,7 @@ export async function POST(
 
     // Forward the response from the OpenSVM API back to the client
     const data = await response.json();
-    
+
     return Response.json(data, {
       status: 200,
       headers: defaultHeaders
@@ -89,7 +97,7 @@ export async function POST(
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('RPC proxy error:', error);
-    
+
     let status = 500;
     let message = 'Failed to proxy RPC request';
 
@@ -102,13 +110,13 @@ export async function POST(
         message = 'Rate limit exceeded. Please try again in a few moments.';
       }
     }
-    
+
     return Response.json(
-      { 
+      {
         error: message,
         details: error instanceof Error ? { message: error.message } : error
       },
-      { 
+      {
         status,
         headers: defaultHeaders
       }

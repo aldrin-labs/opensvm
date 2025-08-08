@@ -8,6 +8,16 @@ export type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized
 export type FontFamily = 'berkeley' | 'inter' | 'jetbrains';
 export type FontSize = 'small' | 'medium' | 'large';
 
+// Accessibility settings
+export interface AccessibilitySettings {
+  reducedMotion: boolean;
+  highContrast: boolean;
+  focusVisible: boolean;
+  screenReaderMode: boolean;
+  keyboardNavigation: boolean;
+  autoPlay: boolean;
+}
+
 export interface RpcEndpoint {
   name: string;
   url: string;

@@ -61,12 +61,30 @@ export class AnomalyDetectionCapability extends BaseCapability {
       // Try to load configurable patterns first
       const remoteConfigUrl = process.env.ANOMALY_PATTERNS_CONFIG_URL;
       this.patterns = await loadAnomalyPatterns(remoteConfigUrl);
-      console.log(`Loaded ${this.patterns.length} configurable anomaly detection patterns`);
+      console.log(`✅ Loaded ${this.patterns.length} configurable anomaly detection patterns from config`);
+      
+      // DEBUG: Log transaction_failure_burst pattern status
+      const failureBurstPattern = this.patterns.find(p => p.type === 'transaction_failure_burst');
+      console.log(`🐛 DEBUG: transaction_failure_burst pattern:`, {
+        found: !!failureBurstPattern,
+        threshold: failureBurstPattern?.threshold,
+        description: failureBurstPattern?.description,
+        source: 'configurable_patterns'
+      });
     } catch (error) {
-      console.warn('Failed to load configurable patterns, falling back to static patterns:', error);
+      console.warn('❌ Failed to load configurable patterns, falling back to static patterns:', error);
       // Fallback to static patterns
       this.patterns = getAllPatterns();
-      console.log(`Loaded ${this.patterns.length} static anomaly detection patterns`);
+      console.log(`⚠️ Loaded ${this.patterns.length} static anomaly detection patterns as fallback`);
+      
+      // DEBUG: Log transaction_failure_burst pattern status from fallback
+      const failureBurstPattern = this.patterns.find(p => p.type === 'transaction_failure_burst');
+      console.log(`🐛 DEBUG: transaction_failure_burst pattern (fallback):`, {
+        found: !!failureBurstPattern,
+        threshold: failureBurstPattern?.threshold,
+        description: failureBurstPattern?.description,
+        source: 'static_patterns'
+      });
     }
   }
 
@@ -154,6 +172,22 @@ export class AnomalyDetectionCapability extends BaseCapability {
         alerts.push(alert);
         this.alerts.push(alert); // Now synchronous
 
+        // DEBUG: Log when transaction_failure_burst is triggered
+        if (pattern.type === 'transaction_failure_burst') {
+          console.log(`🚨 DEBUG: transaction_failure_burst triggered for event:`, {
+            eventType: event.type,
+            signature: event.data?.signature,
+            hasError: event.data?.hasError,
+            logCount: event.data?.logCount,
+            contextErrorRate: context.errorRate,
+            threshold: pattern.threshold,
+            contextStats: {
+              totalRecentTxs: context.recentEvents.filter(e => e.type === 'transaction').length,
+              totalFailedTxs: context.recentEvents.filter(e => e.type === 'transaction' && e.data?.err !== null).length
+            }
+          });
+        }
+
         // Push alert via SSE for real-time updates
         try {
           const sseManager = SSEManager.getInstance();
@@ -184,11 +218,16 @@ export class AnomalyDetectionCapability extends BaseCapability {
     const transactionStatistics = this.calculateTransactionStatistics(transactionEvents);
     const baselineData = await this.getBaselineData();
 
+    const errorRate = transactionEvents.length > 0 ? failedTransactions.length / transactionEvents.length : 0;
+
+    // DEBUG: Log context creation details
+    console.log(`🐛 DEBUG: Context created - Total txs: ${transactionEvents.length}, Failed: ${failedTransactions.length}, Error rate: ${errorRate.toFixed(3)} (${(errorRate * 100).toFixed(1)}%)`);
+
     return {
       recentEvents,
       transactionVolume: transactionEvents.length,
       averageFees: this.calculateAverageFees(transactionEvents),
-      errorRate: transactionEvents.length > 0 ? failedTransactions.length / transactionEvents.length : 0,
+      errorRate,
       timestamp: now,
       timeWindowMs: recentWindow,
       feeStatistics,

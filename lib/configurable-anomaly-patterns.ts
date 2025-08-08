@@ -289,38 +289,96 @@ export class AnomalyPatternManager {
    * Load patterns from remote configuration
    */
   async loadRemotePatterns(): Promise<void> {
-    if (!this.remoteConfigUrl) {
-      console.log('[AnomalyPatterns] No remote config URL provided, using defaults');
-      return;
+    // Try loading from local JSON config first, then remote
+    let configLoaded = false;
+    
+    // Try local config file first
+    try {
+      const localConfigUrl = '/config/anomaly-patterns.json';
+      console.log('[AnomalyPatterns] Attempting to load local config from:', localConfigUrl);
+      
+      const response = await fetch(localConfigUrl);
+      if (response.ok) {
+        const localPatterns: AnomalyPatternConfiguration = await response.json();
+        
+        if (this.isValidConfiguration(localPatterns)) {
+          const validation = this.validateConfiguration(localPatterns);
+          if (validation.valid) {
+            this.patterns = localPatterns;
+            this.lastUpdate = new Date();
+            configLoaded = true;
+            console.log(`✅ [AnomalyPatterns] Loaded ${localPatterns.patterns.length} patterns from LOCAL config`);
+            
+            // DEBUG: Log transaction_failure_burst pattern from local config
+            const failureBurstPattern = localPatterns.patterns.find(p => p.id === 'transaction_failure_burst');
+            console.log(`🐛 DEBUG: transaction_failure_burst in LOCAL config:`, {
+              found: !!failureBurstPattern,
+              enabled: failureBurstPattern?.enabled,
+              threshold: failureBurstPattern?.threshold,
+              source: 'LOCAL_CONFIG'
+            });
+          } else {
+            console.warn('[AnomalyPatterns] Invalid local configuration:', validation.errors);
+          }
+        }
+      }
+    } catch (localError) {
+      console.warn('[AnomalyPatterns] Failed to load local config:', localError);
     }
 
-    try {
-      const response = await fetch(this.remoteConfigUrl);
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
+    // If local config failed and remote URL is provided, try remote
+    if (!configLoaded && this.remoteConfigUrl) {
+      console.log('[AnomalyPatterns] Attempting to load remote config from:', this.remoteConfigUrl);
 
-      const remotePatterns: AnomalyPatternConfiguration = await response.json();
+      try {
+        const response = await fetch(this.remoteConfigUrl);
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
 
-      // Use isValidConfiguration for type guard validation
-      if (!this.isValidConfiguration(remotePatterns)) {
-        throw new Error('Invalid configuration structure received from remote source');
-      }
+        const remotePatterns: AnomalyPatternConfiguration = await response.json();
 
-      // Validate the configuration
-      const validation = this.validateConfiguration(remotePatterns);
-      if (validation.valid) {
-        this.patterns = remotePatterns;
-        this.lastUpdate = new Date();
-        console.log(`[AnomalyPatterns] Loaded ${remotePatterns.patterns.length} patterns from remote config`);
-      } else {
-        console.warn('[AnomalyPatterns] Invalid remote configuration, using defaults');
-        console.warn('[AnomalyPatterns] Validation errors:', validation.errors);
-        throw new Error(`Invalid configuration: ${validation.errors.join('; ')}`);
+        // Use isValidConfiguration for type guard validation
+        if (!this.isValidConfiguration(remotePatterns)) {
+          throw new Error('Invalid configuration structure received from remote source');
+        }
+
+        // Validate the configuration
+        const validation = this.validateConfiguration(remotePatterns);
+        if (validation.valid) {
+          this.patterns = remotePatterns;
+          this.lastUpdate = new Date();
+          configLoaded = true;
+          console.log(`✅ [AnomalyPatterns] Loaded ${remotePatterns.patterns.length} patterns from REMOTE config`);
+          
+          // DEBUG: Log transaction_failure_burst pattern from remote config
+          const failureBurstPattern = remotePatterns.patterns.find(p => p.id === 'transaction_failure_burst');
+          console.log(`🐛 DEBUG: transaction_failure_burst in REMOTE patterns:`, {
+            found: !!failureBurstPattern,
+            enabled: failureBurstPattern?.enabled,
+            threshold: failureBurstPattern?.threshold,
+            source: 'REMOTE_CONFIG'
+          });
+        } else {
+          console.warn('[AnomalyPatterns] Invalid remote configuration:', validation.errors);
+        }
+      } catch (error) {
+        console.error('[AnomalyPatterns] Failed to load remote configuration:', error);
       }
-    } catch (error) {
-      console.error('[AnomalyPatterns] Failed to load remote configuration:', error);
-      console.log('[AnomalyPatterns] Falling back to default patterns');
+    }
+
+    // If neither local nor remote config worked, fall back to defaults
+    if (!configLoaded) {
+      console.log('⚠️ [AnomalyPatterns] No valid config found, using default patterns');
+      
+      // DEBUG: Log transaction_failure_burst pattern from fallback defaults
+      const failureBurstPattern = this.patterns.patterns.find(p => p.id === 'transaction_failure_burst');
+      console.log(`🐛 DEBUG: transaction_failure_burst in FALLBACK patterns:`, {
+        found: !!failureBurstPattern,
+        enabled: failureBurstPattern?.enabled,
+        threshold: failureBurstPattern?.threshold,
+        source: 'FALLBACK_DEFAULTS'
+      });
     }
   }
 
@@ -328,9 +386,21 @@ export class AnomalyPatternManager {
    * Get all enabled patterns converted to AnomalyPattern format
    */
   getEnabledPatterns(): AnomalyPattern[] {
-    return this.patterns.patterns
-      .filter(config => config.enabled)
-      .map(config => this.convertConfigToPattern(config));
+    const enabledConfigs = this.patterns.patterns.filter(config => config.enabled);
+    
+    // DEBUG: Log enabled patterns, especially transaction_failure_burst
+    console.log(`🐛 DEBUG: getEnabledPatterns() returning ${enabledConfigs.length} enabled patterns`);
+    const failureBurstConfig = enabledConfigs.find(config => config.id === 'transaction_failure_burst');
+    if (failureBurstConfig) {
+      console.log(`🐛 DEBUG: transaction_failure_burst IS ENABLED in final patterns:`, {
+        threshold: failureBurstConfig.threshold,
+        conditions: failureBurstConfig.conditions
+      });
+    } else {
+      console.log(`🐛 DEBUG: transaction_failure_burst NOT FOUND in enabled patterns`);
+    }
+    
+    return enabledConfigs.map(config => this.convertConfigToPattern(config));
   }
 
   /**
@@ -575,7 +645,25 @@ export class AnomalyPatternManager {
       case 'fee_spike':
         return context.averageFees;
       case 'failure_rate':
-        return context.errorRate;
+        // FIX: Calculate failure rate more contextually
+        // Instead of global error rate, calculate recent burst failure rate
+        const recentTimeWindow = 60000; // 1 minute for burst detection
+        const now = context.timestamp;
+        const recentTransactions = context.recentEvents.filter(e =>
+          e.type === 'transaction' &&
+          e.timestamp > now - recentTimeWindow
+        );
+        const recentFailures = recentTransactions.filter(e => e.data?.err !== null);
+        
+        // Only trigger if there are enough transactions AND high failure rate
+        if (recentTransactions.length < 5) {
+          return 0; // Not enough data for burst detection
+        }
+        
+        const burstFailureRate = recentFailures.length / recentTransactions.length;
+        console.log(`🐛 DEBUG: failure_rate calculation - Recent txs: ${recentTransactions.length}, failures: ${recentFailures.length}, rate: ${burstFailureRate.toFixed(3)}`);
+        return burstFailureRate;
+        
       case 'transaction_burst':
       case 'rapid_trades':
       case 'arbitrage_bot':

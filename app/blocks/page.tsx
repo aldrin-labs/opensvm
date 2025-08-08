@@ -4,80 +4,121 @@ export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useSettings } from '@/app/providers/SettingsProvider';
-import BlockExploreTable from '@/components/BlockExploreTable';
-import { Button } from '@/components/ui/button';
-import { getRecentBlocks, getBlockStats, type BlockListResponse } from '@/lib/block-data';
-import { BlockDetails } from '@/lib/solana';
 import { formatLargeNumber } from '@/utils/format';
 
-export default function BlocksPage() {
-  const settings = useSettings();
+interface SimpleBlockData {
+  slot: number;
+  timestamp: number;
+  transactionCount: number;
+}
+
+export default function BlocksPageSimple() {
   const router = useRouter();
-  const [blocks, setBlocks] = useState<BlockDetails[]>([]);
+  const [blocks, setBlocks] = useState<SimpleBlockData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [hasMore, setHasMore] = useState(false);
-  const [cursor, setCursor] = useState<number | undefined>();
-  const [stats, setStats] = useState({
-    currentSlot: 0,
-    avgBlockTime: 0,
-    recentTPS: 0,
-    totalTransactions: 0
-  });
+  const [isConnected, setIsConnected] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState('disconnected');
 
-  // Auto-refresh data every 30 seconds for real-time updates
+  // Simple SSE connection
   useEffect(() => {
-    const loadBlocks = async () => {
+    let eventSource: EventSource | null = null;
+
+    const connectSSE = () => {
       try {
-        setIsLoading(true);
-        setError(null);
-        
-        // Load blocks and stats in parallel
-        const [blocksResponse, blockStats] = await Promise.all([
-          getRecentBlocks(50),
-          getBlockStats()
-        ]);
-        
-        setBlocks(blocksResponse.blocks);
-        setHasMore(blocksResponse.hasMore);
-        setCursor(blocksResponse.cursor);
-        setStats(blockStats);
-      } catch (err) {
-        console.error('Error loading blocks:', err);
-        setError('Failed to load block data. Please try again.');
-      } finally {
-        setIsLoading(false);
+        setConnectionStatus('connecting');
+        const clientId = `blocks_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        // Add event types filter to only get block events
+        eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect&eventTypes=block`);
+
+        eventSource.onopen = () => {
+          console.log('SSE connection opened for blocks page');
+          setIsConnected(true);
+          setConnectionStatus('connected');
+          setError(null);
+        };
+
+        eventSource.onerror = (event) => {
+          console.error('SSE connection error:', event);
+          setIsConnected(false);
+          setConnectionStatus('error');
+          setError('Connection error');
+        };
+
+        // Listen for all messages (SSE sends data as messages, not as typed events)
+        eventSource.onmessage = (event) => {
+          try {
+            const eventData = JSON.parse(event.data);
+            console.log('Received SSE message:', eventData);
+
+            // Handle block events (server-filtered to only block events)
+            if (eventData.type === 'block') {
+              const blockData = eventData.data;
+              if (blockData && typeof blockData.slot === 'number') {
+                const newBlock: SimpleBlockData = {
+                  slot: blockData.slot,
+                  timestamp: blockData.blockTime || Math.floor(Date.now() / 1000),
+                  transactionCount: blockData.transactionCount || 0
+                };
+
+                setBlocks(prev => {
+                  // Avoid duplicates and keep most recent blocks
+                  const filtered = prev.filter(b => b.slot !== newBlock.slot);
+                  return [newBlock, ...filtered].slice(0, 50); // Keep max 50 blocks
+                });
+
+                setIsLoading(false); // Stop loading spinner once we receive first block
+              }
+            }
+          } catch (parseError) {
+            console.error('Failed to parse SSE message:', parseError);
+          }
+        };
+
+      } catch (error) {
+        console.error('Failed to create SSE connection:', error);
+        setError('Failed to create connection');
+        setConnectionStatus('error');
       }
     };
 
-    loadBlocks();
+    // Load initial data and connect SSE
+    const loadInitialData = async () => {
+      try {
+        setIsLoading(true);
+        // Try to fetch some initial blocks from API
+        const response = await fetch('/api/blocks?limit=10');
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data.blocks) {
+            const initialBlocks = data.data.blocks.map((block: any) => ({
+              slot: block.slot,
+              timestamp: block.timestamp || block.blockTime,
+              transactionCount: block.transactionCount || 0
+            }));
+            setBlocks(initialBlocks);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to load initial blocks:', err);
+      } finally {
+        setIsLoading(false);
+        // Connect to SSE after initial load
+        connectSSE();
+      }
+    };
 
-    // Set up auto-refresh
-    const interval = setInterval(loadBlocks, 30000); // Refresh every 30 seconds
+    loadInitialData();
 
-    return () => clearInterval(interval);
+    return () => {
+      if (eventSource) {
+        eventSource.close();
+      }
+    };
   }, []);
 
   const handleBlockClick = (slot: number) => {
     router.push(`/block/${slot}`);
-  };
-
-  const loadMore = async () => {
-    if (!hasMore || isLoading || !cursor) return;
-
-    try {
-      setIsLoading(true);
-      const response: BlockListResponse = await getRecentBlocks(50, cursor - 1);
-      setBlocks(prev => [...prev, ...response.blocks]);
-      setHasMore(response.hasMore);
-      setCursor(response.cursor);
-    } catch (err) {
-      console.error('Error loading more blocks:', err);
-      setError('Failed to load more blocks. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -85,74 +126,84 @@ export default function BlocksPage() {
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">Recent Blocks</h1>
         <p className="text-muted-foreground">
-          View latest blocks and transactions on the Solana network. Data updates every 30 seconds.
+          View latest blocks with real-time streaming updates.
         </p>
       </div>
 
-      {/* Block Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-background border border-border rounded-lg p-6">
-          <div className="text-sm text-muted-foreground">Current Slot</div>
-          <div className="text-2xl font-bold text-foreground">
-            {formatLargeNumber(stats.currentSlot)}
-          </div>
-        </div>
-        <div className="bg-background border border-border rounded-lg p-6">
-          <div className="text-sm text-muted-foreground">Avg Block Time</div>
-          <div className="text-2xl font-bold text-foreground">
-            {stats.avgBlockTime.toFixed(2)}s
-          </div>
-        </div>
-        <div className="bg-background border border-border rounded-lg p-6">
-          <div className="text-sm text-muted-foreground">Recent TPS</div>
-          <div className="text-2xl font-bold text-foreground">
-            {formatLargeNumber(Math.round(stats.recentTPS))}
-          </div>
-        </div>
-        <div className="bg-background border border-border rounded-lg p-6">
-          <div className="text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              Live Status
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            </div>
-          </div>
-          <div className="text-2xl font-bold text-green-600">Active</div>
+      {/* Connection Status */}
+      <div className="mb-6 p-4 border rounded-lg">
+        <div className="flex items-center gap-2">
+          <div className={`w-3 h-3 rounded-full ${isConnected
+            ? 'bg-green-500 animate-pulse'
+            : connectionStatus === 'connecting'
+              ? 'bg-yellow-500 animate-pulse'
+              : 'bg-red-500'
+            }`}></div>
+          <span className="font-medium">
+            {isConnected ? 'Live Connection Active' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+          </span>
+          {error && (
+            <span className="text-red-500 ml-2">({error})</span>
+          )}
         </div>
       </div>
 
-      {error && (
+      {error && !isConnected && (
         <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
           <p className="text-destructive">{error}</p>
         </div>
       )}
 
-      <div className="space-y-6">
-        <BlockExploreTable
-          blocks={blocks}
-          onBlockClick={handleBlockClick}
-          isLoading={isLoading && blocks.length === 0}
-        />
+      {/* Blocks Table */}
+      <div className="border rounded-lg">
+        <div className="p-4 border-b">
+          <h2 className="text-lg font-semibold">Latest Blocks</h2>
+        </div>
 
-        {hasMore && !isLoading && (
-          <div className="flex justify-center">
-            <Button onClick={loadMore} variant="outline">
-              Load More Blocks
-            </Button>
+        {isLoading && blocks.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading blocks...</p>
           </div>
-        )}
-
-        {isLoading && blocks.length > 0 && (
-          <div className="flex justify-center py-4">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
-            <span className="ml-2 text-muted-foreground">Loading more blocks...</span>
+        ) : (
+          <div className="divide-y">
+            {blocks.length === 0 ? (
+              <div className="p-8 text-center">
+                <p className="text-muted-foreground">No blocks received yet. Waiting for real-time updates...</p>
+              </div>
+            ) : (
+              blocks.map((block) => (
+                <div
+                  key={block.slot}
+                  className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                  onClick={() => handleBlockClick(block.slot)}
+                >
+                  <div className="flex justify-between items-center">
+                    <div>
+                      <div className="font-mono font-bold">
+                        #{formatLargeNumber(block.slot)}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {block.transactionCount} transactions
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-sm text-muted-foreground">
+                        {new Date(block.timestamp * 1000).toLocaleTimeString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         )}
       </div>
 
       <div className="mt-8 text-sm text-muted-foreground">
         <p>
-          Block data is fetched directly from the Solana RPC and updated in real-time. 
-          Click on any block to view detailed information including transactions and program activity.
+          Block data is streamed in real-time from the Solana RPC via Server-Sent Events (SSE).
+          New blocks appear automatically as they are confirmed on the network.
         </p>
       </div>
     </div>
