@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { connectionPool, getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey } from '@solana/web3.js';
 
 const defaultHeaders = {
@@ -38,7 +38,7 @@ export async function GET(
     if (!address) {
       return new Response(
         JSON.stringify({ error: 'Account address is required' }),
-        { 
+        {
           status: 400,
           headers: new Headers(defaultHeaders)
         }
@@ -50,7 +50,7 @@ export async function GET(
     } catch (error) {
       return new Response(
         JSON.stringify({ error: 'Invalid Solana address' }),
-        { 
+        {
           status: 400,
           headers: new Headers(defaultHeaders)
         }
@@ -72,7 +72,7 @@ export async function GET(
     const fetchTransactionDetails = async (signature: string, index: number) => {
       // Get a separate connection for each transaction to maximize parallelism
       const txConnection = await getConnection();
-      
+
       try {
         const tx = await txConnection.getParsedTransaction(signature, {
           maxSupportedTransactionVersion: 0,
@@ -95,7 +95,7 @@ export async function GET(
               const pre = tx.meta.preBalances[i];
               const post = tx.meta.postBalances[i];
               const change = post - pre;
-              
+
               if (change !== 0 && accounts[i]) {
                 transfers.push({
                   account: accounts[i].pubkey,
@@ -111,7 +111,7 @@ export async function GET(
           signature: sigInfo.signature,
           timestamp: tx?.blockTime ? tx.blockTime * 1000 : sigInfo.blockTime ? sigInfo.blockTime * 1000 : Date.now(),
           slot: sigInfo.slot,
-          err: sigInfo.err, 
+          err: sigInfo.err,
           success: !sigInfo.err,
           accounts,
           transfers,
@@ -144,7 +144,7 @@ export async function GET(
       JSON.stringify({
         address,
         transactions: transactionDetails,
-        rpcCount: connectionPool.getConnectionCount()
+        rpcCount: 1 // Using single connection for now
       }),
       {
         status: 200,
@@ -154,7 +154,7 @@ export async function GET(
   } catch (error) {
     clearTimeout(timeoutId);
     console.error('Account transactions error:', error);
-    
+
     let status = 500;
     let message = 'Failed to fetch account transactions';
 
@@ -170,13 +170,13 @@ export async function GET(
         message = 'Account not found. Please check the address and try again.';
       }
     }
-    
+
     return new Response(
-      JSON.stringify({ 
+      JSON.stringify({
         error: message,
         details: error instanceof Error ? { message: error.message } : error
       }),
-      { 
+      {
         status,
         headers: new Headers(defaultHeaders)
       }

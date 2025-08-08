@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana-connection';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,
@@ -54,7 +54,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
   // Initialize connection
   useEffect(() => {
     const initConnection = async () => {
-      const conn = await getConnection();
+      const conn = getClientConnection();
       setConnection(conn);
     };
     initConnection();

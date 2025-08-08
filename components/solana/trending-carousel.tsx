@@ -6,7 +6,7 @@ import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown, Clock, ArrowUpRigh
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, Transaction, SystemProgram } from '@solana/web3.js';
 // Note: PublicKey removed as we use publicKey from wallet hook
-import { getConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana-connection';
 import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 // Note: TOKEN_DECIMALS removed as we use TOKEN_MULTIPLIERS for precision
@@ -46,7 +46,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   // Initialize connection
   useEffect(() => {
     const initConnection = async () => {
-      const conn = await getConnection();
+      const conn = getClientConnection();
       setConnection(conn);
     };
     initConnection();
@@ -467,8 +467,8 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
                 key={index}
                 onClick={() => setCurrentIndex(index * itemsPerView)}
                 className={`w-2 h-2 rounded-full transition-colors ${Math.floor(currentIndex / itemsPerView) === index
-                    ? 'bg-accent'
-                    : 'bg-muted-foreground/30'
+                  ? 'bg-accent'
+                  : 'bg-muted-foreground/30'
                   }`}
                 aria-label={`Go to slide ${index + 1}`}
               />

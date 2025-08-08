@@ -9,7 +9,7 @@ import {
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
 import { useSettings } from '@/app/providers/SettingsProvider';
-import { connectionPool } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana-connection';
 import type { Connection } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';
 
@@ -87,7 +87,7 @@ class WalletErrorBoundary extends Component<
         <div className="p-4 bg-red-50 border border-red-200 rounded text-red-700">
           <p className="font-medium">Wallet connection error</p>
           <p className="text-sm">Please try refreshing the page or reconnecting your wallet.</p>
-          <button 
+          <button
             onClick={() => this.setState({ hasError: false, error: null })}
             className="mt-2 text-sm underline hover:no-underline"
           >
@@ -106,10 +106,10 @@ function SafeWalletProvider({ children }: { children: ReactNode }) {
   const { publicKey, connected, connecting } = useWallet();
 
   useEffect(() => {
-    debugLog('Wallet state:', { 
-      connected, 
-      connecting, 
-      publicKey: publicKey?.toString() 
+    debugLog('Wallet state:', {
+      connected,
+      connecting,
+      publicKey: publicKey?.toString()
     });
   }, [connected, connecting, publicKey]);
 
@@ -121,12 +121,12 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
   const settings = useSettings();
   const [endpoint, setEndpoint] = useState<string>(DEFAULT_ENDPOINT);
   const [connectionReady, setConnectionReady] = useState(false);
-  
+
   const rpcEndpoint = settings?.rpcEndpoint;
-  
+
   // Extract endpoint value for dependency array
   const endpointValue = typeof rpcEndpoint === 'string' ? rpcEndpoint : rpcEndpoint?.url;
-  
+
   // Initialize wallets
   const wallets = useMemo(
     () => [new PhantomWalletAdapter()],
@@ -146,7 +146,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
         // Chain abort signals - abort if either parent or timeout triggers
         // Use custom signal combining since AbortSignal.any might not be available
         let combinedSignal = controller.signal;
-        
+
         // Listen for parent abort signal
         if (!abortController.signal.aborted) {
           const parentAbortHandler = () => {
@@ -183,9 +183,9 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
 
       try {
         // First try connection pool
-        const connection = await connectionPool.getConnection();
+        const connection = getClientConnection();
         const poolEndpoint = getEndpoint(connection);
-        
+
         // If pool endpoint is not the default, try it first
         if (poolEndpoint !== DEFAULT_ENDPOINT) {
           if (await tryEndpoint(poolEndpoint)) {
@@ -200,7 +200,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
         // Immediately try fallbacks if pool fails
         for (const fallback of FALLBACK_ENDPOINTS) {
           if (!mounted || abortController.signal.aborted) return;
-          
+
           if (await tryEndpoint(fallback)) {
             if (mounted && !abortController.signal.aborted) {
               setEndpoint(fallback);

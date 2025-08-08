@@ -1,5 +1,6 @@
 import { NextRequest } from 'next/server';
 import { getRpcEndpoints } from '@/lib/opensvm-rpc';
+import { getConnection } from '@/lib/solana-connection-server';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
