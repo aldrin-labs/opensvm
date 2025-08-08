@@ -34,24 +34,21 @@
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Block access to sensitive configuration files
+# Block access to sensitive configuration files with security headers
 [[headers]]
   for = "/lib/rpc-config.json"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
-  status = 404
 
 [[headers]]
   for = "/lib/rpc-endpoints.js"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
-  status = 404
 
 [[headers]]
   for = "/lib/rpc-config.ts"
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
-  status = 404
 
 # Redirect attempts to access config files to 404
 [[redirects]]
