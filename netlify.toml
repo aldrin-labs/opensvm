@@ -1,5 +1,5 @@
 [build]
-  command = "next build"
+  command = "node scripts/build-rpc-config.js && next build"
   publish = ".next"
 
 [build.environment]
@@ -12,11 +12,59 @@
   NODE_OPTIONS = "--max-old-space-size=4096"
   ANALYZE = "false"
 
+# Function configuration - selective environment variables
+[functions]
+  # Include the RPC configuration file in functions from protected directory
+  included_files = ["config/rpc-config.json", "config/rpc-endpoints.js"]
+
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
+# Selectively pass only essential environment variables to specific functions
 [[plugins]]
   package = "netlify-plugin-inline-functions-env"
   [plugins.inputs]
     buildEvent = "onBuild"
-    include = ["OPENSVM_RPC_LIST", "OPENSVM_RPC_LIST_2"]
+    # Only include essential API keys, not large RPC lists
+    include = ["ANTHROPIC_API_KEY", "TOGETHER_API_KEY"]
+
+# Headers for static assets
+[[headers]]
+  for = "/_next/static/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Block access to sensitive configuration files
+[[headers]]
+  for = "/lib/rpc-config.json"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+  status = 404
+
+[[headers]]
+  for = "/lib/rpc-endpoints.js"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+  status = 404
+
+[[headers]]
+  for = "/lib/rpc-config.ts"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow"
+  status = 404
+
+# Redirect attempts to access config files to 404
+[[redirects]]
+  from = "/lib/rpc-config.json"
+  to = "/404"
+  status = 404
+
+[[redirects]]
+  from = "/lib/rpc-endpoints.js"
+  to = "/404"
+  status = 404
+
+[[redirects]]
+  from = "/lib/rpc-config.ts"
+  to = "/404"
+  status = 404

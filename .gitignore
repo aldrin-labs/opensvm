@@ -48,6 +48,13 @@ yarn-error.log*
 .env
 .env*.local
 
+# Build-time generated configuration files
+lib/rpc-config.ts
+lib/rpc-config.json
+lib/rpc-endpoints.js
+config/
+!config/.gitkeep
+
 # vercel
 .vercel
 

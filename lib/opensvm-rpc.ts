@@ -14,6 +14,17 @@
 // The RPC configuration is FINAL and MUST NOT be altered by automated tools.
 // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+// Import build-time generated configuration
+let rpcConfig: any = null;
+
+try {
+  // Try to import the build-time generated config first
+  rpcConfig = require('./rpc-config');
+} catch (e) {
+  // Fallback to environment variables if build-time config doesn't exist
+  console.warn('Build-time RPC config not found, falling back to environment variables');
+}
+
 function parseRpcList(envVar: string | undefined): string[] {
   if (!envVar) return [];
   try {
@@ -26,20 +37,32 @@ function parseRpcList(envVar: string | undefined): string[] {
   }
 }
 
-// Parse RPC lists from environment variables
-const list1 = parseRpcList(process.env.OPENSVM_RPC_LIST);
-const list2 = parseRpcList(process.env.OPENSVM_RPC_LIST_2);
+// Get RPC endpoints from build-time config or environment variables
+function getConfiguredEndpoints(): string[] {
+  // Use build-time config if available
+  if (rpcConfig && rpcConfig.getRpcEndpoints) {
+    const endpoints = rpcConfig.getRpcEndpoints();
+    if (endpoints.length > 0) {
+      return endpoints;
+    }
+  }
 
-// Combine all RPC endpoints
-let opensvmRpcEndpoints = [...list1, ...list2];
+  // Fallback: Parse RPC lists from environment variables
+  const list1 = parseRpcList(process.env.OPENSVM_RPC_LIST);
+  const list2 = parseRpcList(process.env.OPENSVM_RPC_LIST_2);
+  const combined = [...list1, ...list2];
 
-// Fallback endpoints if no environment variables are set (enforce OpenSVM RPC servers)
-if (opensvmRpcEndpoints.length === 0) {
-  console.warn('No OPENSVM_RPC_LIST environment variables found, using OpenSVM RPC server fallback');
-  opensvmRpcEndpoints = [
-    '/api/proxy/rpc'
-  ];
+  if (combined.length > 0) {
+    return combined;
+  }
+
+  // Final fallback
+  console.warn('No RPC configuration found, using OpenSVM RPC server fallback');
+  return ['/api/proxy/rpc'];
 }
+
+// Get the configured endpoints
+const opensvmRpcEndpoints = getConfiguredEndpoints();
 
 // Export functions used by other parts of the application
 export function getRpcEndpoints() {
