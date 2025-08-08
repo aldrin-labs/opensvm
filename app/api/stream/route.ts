@@ -26,6 +26,8 @@ interface StreamClient {
   authenticated: boolean;
   connectionTime: number;
   lastActivity: number;
+  isConnected: boolean;
+  consecutiveFailures: number;
 }
 
 // Enhanced authentication and rate limiting with timestamp-based blocking
@@ -132,6 +134,10 @@ class EventStreamManager {
   private isMonitoring = false;
   private subscriptionAttempts: Map<string, number> = new Map(); // Track subscription attempts
   private subscriptionErrors: Map<string, { count: number; lastError: Date }> = new Map();
+  private connectionHealthTimer: NodeJS.Timeout | null = null;
+  private readonly CONNECTION_HEALTH_INTERVAL = 30000; // 30 seconds
+  private readonly MAX_CONSECUTIVE_FAILURES = 3;
+  private readonly CLIENT_TIMEOUT = 30000; // 0.5 minutes of inactivity
 
   public static getInstance(): EventStreamManager {
     if (!EventStreamManager.instance) {
@@ -146,6 +152,11 @@ class EventStreamManager {
 
     if (!this.isMonitoring) {
       await this.startMonitoring();
+    }
+
+    // Start connection health monitoring if this is the first client
+    if (this.clients.size === 1 && !this.connectionHealthTimer) {
+      this.startConnectionHealthMonitoring();
     }
   }
 
@@ -170,6 +181,7 @@ class EventStreamManager {
     const client = this.clients.get(clientId);
     if (client) {
       client.subscriptions.clear();
+      client.isConnected = false;
       this.clients.delete(clientId);
       CLIENT_AUTH_TOKENS.delete(clientId);
       AUTH_FAILURES.delete(clientId);
@@ -177,7 +189,77 @@ class EventStreamManager {
 
       if (this.clients.size === 0) {
         this.stopMonitoring();
+        this.stopConnectionHealthMonitoring();
       }
+    }
+  }
+
+  private startConnectionHealthMonitoring(): void {
+    if (this.connectionHealthTimer) return;
+
+    this.connectionHealthTimer = setInterval(() => {
+      this.checkClientConnections();
+    }, this.CONNECTION_HEALTH_INTERVAL);
+
+    logger.debug('Started connection health monitoring');
+  }
+
+  private stopConnectionHealthMonitoring(): void {
+    if (this.connectionHealthTimer) {
+      clearInterval(this.connectionHealthTimer);
+      this.connectionHealthTimer = null;
+      logger.debug('Stopped connection health monitoring');
+    }
+  }
+
+  private checkClientConnections(): void {
+    const now = Date.now();
+    const clientsToRemove: string[] = [];
+
+    for (const [clientId, client] of this.clients) {
+      // Check for inactive clients
+      if (now - client.lastActivity > this.CLIENT_TIMEOUT) {
+        logger.warn(`Client ${clientId} timed out due to inactivity`);
+        clientsToRemove.push(clientId);
+        continue;
+      }
+
+      // Check for clients with too many consecutive failures
+      if (client.consecutiveFailures >= this.MAX_CONSECUTIVE_FAILURES) {
+        logger.warn(`Client ${clientId} removed due to consecutive failures: ${client.consecutiveFailures}`);
+        clientsToRemove.push(clientId);
+        continue;
+      }
+
+      // Send a ping to test connection health
+      try {
+        if (client.isConnected) {
+          client.send(JSON.stringify({
+            type: 'ping',
+            timestamp: now,
+            clientId: client.id
+          }));
+          client.lastActivity = now;
+        }
+      } catch (error) {
+        logger.warn(`Health check failed for client ${clientId}:`, error);
+        client.consecutiveFailures++;
+        client.isConnected = false;
+      }
+    }
+
+    // Remove unhealthy clients
+    clientsToRemove.forEach(clientId => {
+      this.removeClient(clientId);
+    });
+
+    if (clientsToRemove.length > 0) {
+      logger.info(`Removed ${clientsToRemove.length} unhealthy clients. Active clients: ${this.clients.size}`);
+    }
+
+    // Check if we should continue monitoring based on connected clients
+    if (this.isMonitoring && !this.shouldContinueMonitoring()) {
+      this.stopMonitoring();
     }
   }
 
@@ -214,12 +296,7 @@ class EventStreamManager {
       });
 
       // Setup transaction monitoring with error protection (only if requested)
-      const needsTransactionMonitoring = Array.from(this.clients.values()).some(
-        client => client.subscriptions.has('transaction') || client.subscriptions.has('all')
-      );
-      if (needsTransactionMonitoring) {
-        await this.setupTransactionMonitoring();
-      }
+      await this.setupTransactionMonitoring();
 
       logger.debug('Started blockchain event monitoring with anomaly detection');
     } catch (error) {
@@ -227,6 +304,28 @@ class EventStreamManager {
       this.isMonitoring = false;
       this.recordSubscriptionError('monitoring', error);
     }
+  }
+
+  private shouldContinueMonitoring(): boolean {
+    // Check if we have any connected clients
+    const connectedClients = Array.from(this.clients.values()).filter(c => c.isConnected);
+
+    if (connectedClients.length === 0) {
+      logger.debug('No connected clients, stopping monitoring to save resources');
+      return false;
+    }
+
+    // Check if any connected clients have active subscriptions
+    const hasActiveSubscriptions = connectedClients.some(client =>
+      client.subscriptions.size > 0
+    );
+
+    if (!hasActiveSubscriptions) {
+      logger.debug('No active subscriptions from connected clients, stopping monitoring');
+      return false;
+    }
+
+    return true;
   }
 
   // Safe subscription wrapper with idempotency and error handling
@@ -271,6 +370,16 @@ class EventStreamManager {
   private async setupTransactionMonitoring(): Promise<void> {
     if (!this.connection) return;
 
+    // Check if any connected clients actually want transaction monitoring
+    const needsTransactionMonitoring = Array.from(this.clients.values()).some(
+      client => client.isConnected && (client.subscriptions.has('transaction') || client.subscriptions.has('all'))
+    );
+
+    if (!needsTransactionMonitoring) {
+      logger.debug('No connected clients need transaction monitoring, skipping setup');
+      return;
+    }
+
     try {
       // Rate limiting for transaction processing - max 50 transactions per second
       let transactionCount = 0;
@@ -295,7 +404,7 @@ class EventStreamManager {
         'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc', // Orca Whirlpools
         'srmqPiNtmKaV9w8LvVGbLH4jN3CJKovNjhH7TvDdny8', // Serum
         '9WzDXwBbmkg8ZTbNMqUxvQRAyrZzDsGYdLVL9zYtAWWM', // Raydium
-        
+
         // Additional DEX/AMM programs
         'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK', // Raydium CLMM
         'CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C', // Raydium CPMM
@@ -308,7 +417,7 @@ class EventStreamManager {
         'SSwapUtytfBdBn1b9NUGG6foMVPtcWgpRU32HToDUZr', // Saros
         'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1', // Aldrin
         'FLUXubRmkEi2q6K3Y9kBPg9248ggaZVsoSFhtJHSrm1X', // FluxBeam
-        
+
         // Lending/Borrowing protocols
         'MarBmsSgKXdrN1egZf5sqe1TMai9K1rChYNDJgjq7aD', // Marginfi
         'KLend2g3cP87fffoy8q1mQqGKjrxjC8boSyAYavgmjD', // Kamino Lend
@@ -317,14 +426,14 @@ class EventStreamManager {
         'Port7uDYB3wk6GJAw4KT1WpTeMtSu9bTcChBHkX2LfR', // Port Finance
         '6LtLpnUFNByNXLyCoK9wA2MykKAmQNZKBdY8s47dehDc', // Larix
         'hadeK9DLv9eA7ya5KCTqSvSvRZeJC3JgD5a9Y3CNbvu', // Hadeswap
-        
+
         // Staking/Liquid staking
         'SPoo1Ku8WFXoNDMHPsrGSTSG1Y47rzgn41SLUNakuHy', // Stake Pool program
         'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', // Marinade mSOL
         'LSTxxxnJzKDFSLr4dUkPcmCf5VyryEqzPLz5j4bpxFp', // Liquid Staking Token
         'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn', // Jito
         'BLZRi6frs4X4DNLw56V4EXai1b6QVESN1BhHBTYM4VcY', // BlazeStake
-        
+
         // Other significant protocols
         'PythP5jyMWGSMUs1GBABL9NMy51dskhnCLHgYWVCFE9', // Pyth Price Oracle
         'MNFSTqtC93rjpqpHHApjykkZiyTKctLjAcCLHbcfgZK', // Manifest
@@ -335,6 +444,15 @@ class EventStreamManager {
       // Monitor for new transactions by subscribing to specific programs instead of ALL
       await this.safeSubscribe('logs', () => {
         const logsCallback = async (logs: any, context: any) => {
+          // Early exit if no connected clients need transaction monitoring
+          const hasActiveTransactionListeners = Array.from(this.clients.values()).some(
+            client => client.isConnected && (client.subscriptions.has('transaction') || client.subscriptions.has('all'))
+          );
+
+          if (!hasActiveTransactionListeners) {
+            return; // Skip processing if no one is listening
+          }
+
           if (logs.signature) {
             try {
               // Rate limiting check
@@ -441,16 +559,16 @@ class EventStreamManager {
         };
 
         this.subscriptionCallbacks.set('logs', logsCallback);
-        
+
         // Instead of monitoring ALL transactions, monitor only specific important programs
         // This dramatically reduces the load by 90%+
         const importantPrograms = Array.from(IMPORTANT_PROGRAMS);
-        
+
         // Subscribe to multiple important programs instead of 'all'
-        const subscriptionPromises = importantPrograms.map(program => 
+        const subscriptionPromises = importantPrograms.map(program =>
           this.connection!.onLogs(new PublicKey(program), logsCallback, 'confirmed')
         );
-        
+
         // Return the first subscription ID (we'll track all of them)
         return subscriptionPromises[0];
       });
@@ -541,19 +659,37 @@ class EventStreamManager {
     let successCount = 0;
     let failureCount = 0;
 
-    // Broadcast to WebSocket clients
+    // Early exit if no clients
+    if (this.clients.size === 0) {
+      logger.debug('No clients connected, skipping event broadcast');
+      return;
+    }
+
+    // Broadcast to WebSocket clients with improved error handling
     for (const [clientId, client] of this.clients) {
       try {
+        // Skip disconnected clients
+        if (!client.isConnected) {
+          continue;
+        }
+
         // Check if client is subscribed to this event type
         if (client.subscriptions.has(event.type) || client.subscriptions.has('all')) {
           client.send(eventData);
+          client.lastActivity = Date.now();
+          client.consecutiveFailures = 0; // Reset failure count on success
           successCount++;
         }
       } catch (error) {
         logger.error(`Failed to send event to client ${clientId}:`, error);
         failureCount++;
-        // Remove failed clients
-        this.removeClient(clientId);
+
+        // Mark client as problematic
+        client.consecutiveFailures++;
+        client.isConnected = false;
+
+        // Don't immediately remove - let health check handle it
+        // This prevents removing clients during temporary network issues
       }
     }
 
@@ -565,8 +701,13 @@ class EventStreamManager {
       logger.error('Failed to broadcast to SSE clients:', error);
     }
 
-    if (failureCount > 0) {
-      logger.warn(`Event broadcast: ${successCount} successful, ${failureCount} failed`);
+    // Only log if there were actual clients to send to
+    const totalEligibleClients = Array.from(this.clients.values())
+      .filter(client => client.isConnected && (client.subscriptions.has(event.type) || client.subscriptions.has('all')))
+      .length;
+
+    if (totalEligibleClients > 0) {
+      logger.debug(`Event broadcast: ${successCount}/${totalEligibleClients} successful, ${failureCount} failed`);
     }
   }
 
@@ -596,9 +737,12 @@ class EventStreamManager {
 
   public getStatus(): any {
     const anomalyDetector = getStreamingAnomalyDetector();
+    const now = Date.now();
+
     return {
       isMonitoring: this.isMonitoring,
       clientCount: this.clients.size,
+      connectedClients: Array.from(this.clients.values()).filter(c => c.isConnected).length,
       subscriptions: Array.from(this.subscriptionIds.keys()),
       subscriptionAttempts: Object.fromEntries(this.subscriptionAttempts),
       subscriptionErrors: Object.fromEntries(
@@ -607,6 +751,21 @@ class EventStreamManager {
           { count: value.count, lastError: value.lastError.toISOString() }
         ])
       ),
+      clientHealth: Array.from(this.clients.entries()).map(([id, client]) => ({
+        id,
+        isConnected: client.isConnected,
+        authenticated: client.authenticated,
+        lastActivity: new Date(client.lastActivity).toISOString(),
+        consecutiveFailures: client.consecutiveFailures,
+        subscriptions: Array.from(client.subscriptions),
+        idleTime: now - client.lastActivity
+      })),
+      healthMonitoring: {
+        enabled: this.connectionHealthTimer !== null,
+        interval: this.CONNECTION_HEALTH_INTERVAL,
+        maxFailures: this.MAX_CONSECUTIVE_FAILURES,
+        clientTimeout: this.CLIENT_TIMEOUT
+      },
       anomalyDetector: anomalyDetector.getStats()
     };
   }
@@ -854,7 +1013,9 @@ export async function POST(request: NextRequest) {
           subscriptions: new Set(['transaction', 'block']),
           authenticated: false,
           connectionTime: Date.now(),
-          lastActivity: Date.now()
+          lastActivity: Date.now(),
+          isConnected: true,
+          consecutiveFailures: 0
         };
 
         await manager.addClient(mockClient);
