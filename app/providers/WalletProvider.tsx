@@ -8,7 +8,7 @@ import {
 } from '@solana/wallet-adapter-react';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { PhantomWalletAdapter } from '@solana/wallet-adapter-wallets';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { getClientConnection } from '@/lib/solana-connection';
 import type { Connection } from '@solana/web3.js';
 import '@solana/wallet-adapter-react-ui/styles.css';

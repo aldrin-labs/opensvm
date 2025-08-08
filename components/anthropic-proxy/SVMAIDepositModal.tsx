@@ -12,7 +12,7 @@ import {
     CopyIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { useAuthContext } from '@/contexts/AuthContext';
 
 interface DepositModalProps {

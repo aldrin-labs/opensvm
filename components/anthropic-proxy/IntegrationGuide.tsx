@@ -16,7 +16,7 @@ import {
   LightbulbIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 
 interface CodeExample {
     title: string;
