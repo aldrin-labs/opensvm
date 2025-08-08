@@ -3,6 +3,7 @@
 import React, { Suspense } from 'react';
 import { PerformanceProvider } from '@/contexts/PerformanceContext';
 import { AccessibilityProvider } from '@/lib/accessibility';
+import { EnhancedThemeProvider } from '@/lib/design-system/theme-provider';
 /* i18n removed */
 import { ErrorHandlingProvider, EnhancedErrorBoundary } from '@/lib/error-handling';
 import { OnboardingProvider } from '@/components/onboarding/OnboardingSystem';
@@ -15,7 +16,7 @@ import { AnimationProvider } from '@/lib/animations';
 import { CacheProvider } from '@/lib/caching';
 import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
-import { SettingsProvider } from '@/app/providers/SettingsProvider';
+import { SettingsProvider as LibSettingsProvider } from '@/lib/settings';
 import { AuthProvider } from '@/contexts/AuthContext';
 import logger from '@/lib/logging/logger';
 
@@ -87,66 +88,68 @@ class AppErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <EnhancedErrorBoundary>
-      <AccessibilityProvider>
-        <ErrorHandlingProvider>
-          <SettingsProvider>
-            <WalletProvider>
-              <AuthProvider>
-                <RBACProvider>
-                  <SSOProvider>
-                    <ExportProvider>
-                      <OptimisticUIProvider>
-                        <AnimationProvider>
-                          <CacheProvider>
-                            <VoiceProvider>
-                              <UserExpertiseProvider>
-                                <OnboardingProvider>
-                                  <PerformanceProvider
-                                    config={{
-                                      enabled: true,
-                                      collectInterval: 2000, // Collect metrics every 2 seconds
-                                      reportInterval: 30000,  // Report every 30 seconds
-                                      debugMode: process.env.NODE_ENV === 'development',
-                                      thresholds: {
-                                        fps: { warning: 30, critical: 15 },
-                                        memoryUsage: { warning: 0.75, critical: 0.9 },
-                                        apiResponseTime: { warning: 1000, critical: 2500 },
-                                        loadTime: { warning: 3000, critical: 5000 },
-                                        firstContentfulPaint: { warning: 2000, critical: 4000 },
-                                        largestContentfulPaint: { warning: 2500, critical: 4000 },
-                                        cumulativeLayoutShift: { warning: 0.1, critical: 0.25 },
-                                        timeToInteractive: { warning: 3500, critical: 5000 }
-                                      }
-                                    }}
-                                    autoStart={true}
-                                  >
-                                    <Suspense
-                                      fallback={
-                                        <div className="min-h-screen bg-background flex items-center justify-center">
-                                          <div className="text-center">
-                                            <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                            <p className="text-muted-foreground">Loading OpenSVM...</p>
-                                          </div>
-                                        </div>
-                                      }
+      <EnhancedThemeProvider>
+        <AccessibilityProvider>
+          <ErrorHandlingProvider>
+            <LibSettingsProvider>
+              <WalletProvider>
+                <AuthProvider>
+                  <RBACProvider>
+                    <SSOProvider>
+                      <ExportProvider>
+                        <OptimisticUIProvider>
+                          <AnimationProvider>
+                            <CacheProvider>
+                              <VoiceProvider>
+                                <UserExpertiseProvider>
+                                  <OnboardingProvider>
+                                    <PerformanceProvider
+                                      config={{
+                                        enabled: true,
+                                        collectInterval: 2000, // Collect metrics every 2 seconds
+                                        reportInterval: 30000,  // Report every 30 seconds
+                                        debugMode: process.env.NODE_ENV === 'development',
+                                        thresholds: {
+                                          fps: { warning: 30, critical: 15 },
+                                          memoryUsage: { warning: 0.75, critical: 0.9 },
+                                          apiResponseTime: { warning: 1000, critical: 2500 },
+                                          loadTime: { warning: 3000, critical: 5000 },
+                                          firstContentfulPaint: { warning: 2000, critical: 4000 },
+                                          largestContentfulPaint: { warning: 2500, critical: 4000 },
+                                          cumulativeLayoutShift: { warning: 0.1, critical: 0.25 },
+                                          timeToInteractive: { warning: 3500, critical: 5000 }
+                                        }
+                                      }}
+                                      autoStart={true}
                                     >
-                                      {children}
-                                    </Suspense>
-                                  </PerformanceProvider>
-                                </OnboardingProvider>
-                              </UserExpertiseProvider>
-                            </VoiceProvider>
-                          </CacheProvider>
-                        </AnimationProvider>
-                      </OptimisticUIProvider>
-                    </ExportProvider>
-                  </SSOProvider>
-                </RBACProvider>
-              </AuthProvider>
-            </WalletProvider>
-          </SettingsProvider>
-        </ErrorHandlingProvider>
-      </AccessibilityProvider>
+                                      <Suspense
+                                        fallback={
+                                          <div className="min-h-screen bg-background flex items-center justify-center">
+                                            <div className="text-center">
+                                              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                              <p className="text-muted-foreground">Loading OpenSVM...</p>
+                                            </div>
+                                          </div>
+                                        }
+                                      >
+                                        {children}
+                                      </Suspense>
+                                    </PerformanceProvider>
+                                  </OnboardingProvider>
+                                </UserExpertiseProvider>
+                              </VoiceProvider>
+                            </CacheProvider>
+                          </AnimationProvider>
+                        </OptimisticUIProvider>
+                      </ExportProvider>
+                    </SSOProvider>
+                  </RBACProvider>
+                </AuthProvider>
+              </WalletProvider>
+            </LibSettingsProvider>
+          </ErrorHandlingProvider>
+        </AccessibilityProvider>
+      </EnhancedThemeProvider>
     </EnhancedErrorBoundary>
   );
 }

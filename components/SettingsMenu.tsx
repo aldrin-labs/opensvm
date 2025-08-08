@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { useSettings } from '@/app/providers/SettingsProvider';
+import { useSettings } from '@/lib/settings';
 import { updateClientRpcEndpoint } from '@/lib/solana-connection';
 import { Button } from '@/components/ui/button';
 import {
