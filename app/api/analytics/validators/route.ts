@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
 
