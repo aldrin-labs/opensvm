@@ -15,7 +15,6 @@ import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
 import { SearchSuggestions } from '@/components/search/SearchSuggestions';
 import { SearchSuggestion } from '@/components/search/types';
-import { ThemeTest } from '@/components/ThemeTest';
 import { debounce } from '@/lib/utils';
 
 interface Block {
@@ -358,9 +357,6 @@ export default function HomePage() {
               AI Assistant
             </Button>
           </div>
-
-          {/* Theme Test Component */}
-          <ThemeTest />
         </div>
       </main>
 

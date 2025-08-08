@@ -45,8 +45,8 @@ export function getConnection(): ClientConnection {
 // For client-side, we only allow updating to proxy endpoints
 export function updateRpcEndpoint(endpoint: string): void {
     // On client-side, we only support proxy endpoints for security
-    if (endpoint && (endpoint.startsWith('/api/') || endpoint === 'opensvm')) {
-        const proxyEndpoint = endpoint === 'opensvm' ? '/api/proxy/rpc' : endpoint;
+    if (endpoint && (endpoint.startsWith('/api/') || endpoint === 'opensvm' || endpoint === 'osvm' || endpoint === 'gsvm')) {
+        const proxyEndpoint = endpoint === 'opensvm' || endpoint === 'osvm' || endpoint === 'gsvm' ? '/api/proxy/rpc' : endpoint;
         clientConnection = new ClientConnection(proxyEndpoint);
     } else {
         console.warn('Client-side only supports proxy endpoints for security reasons');

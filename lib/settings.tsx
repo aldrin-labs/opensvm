@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { updateClientRpcEndpoint } from './solana-connection';
+import { updateRpcEndpoint } from './solana-connection-client';
 
 export type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized';
 export type FontFamily = 'berkeley' | 'inter' | 'jetbrains';
@@ -115,7 +115,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
 
           setSettings(parsed);
           // Update RPC endpoint in connection pool
-          updateClientRpcEndpoint(parsed.rpcEndpoint.url);
+          updateRpcEndpoint(parsed.rpcEndpoint.url);
         }
       } catch (error) {
         console.error('Error parsing settings:', error);
@@ -168,7 +168,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     // Always use OpenSVM endpoint and ignore any attempts to change it
     setRpcEndpoint: useCallback(async (endpoint: RpcEndpoint) => {
       console.log(`Attempt to change RPC endpoint to ${endpoint.name} ignored. Using OpenSVM endpoint.`);
-      updateClientRpcEndpoint(OPENSVM_ENDPOINT.url);
+      updateRpcEndpoint(OPENSVM_ENDPOINT.url);
       setSettings((s) => ({ ...s, rpcEndpoint: OPENSVM_ENDPOINT }));
       return Promise.resolve(); // Return resolved promise to maintain API compatibility
     }, []),
@@ -176,7 +176,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     addCustomRpcEndpoint: async (name: string, url: string) => {
       const newEndpoint: RpcEndpoint = { name, url, network: 'custom' };
       try {
-        updateClientRpcEndpoint(url);
+        updateRpcEndpoint(url);
         setSettings((s) => ({
           ...s,
           // Add to available endpoints but force using OpenSVM
