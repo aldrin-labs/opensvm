@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
+import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/validator-registry';
 
 interface GeolocationData {
   country: string;
@@ -61,10 +62,10 @@ function calculatePerformanceScore(
   const uptimeScore = Math.min(epochCredits / maxCredits, 1);
 
   // Geography score (bonus for geographic diversity)
-  const geoScore = geoData.country !== 'Unknown' ? 1.0 : 0.5;
+  const geoScore = geoData.country !== '' ? 1.0 : 0.5;
 
   // Version score (latest version gets full score)
-  const versionScore = version !== 'Unknown' ? 1.0 : 0.5;
+  const versionScore = version !== '' ? 1.0 : 0.5;
 
   return (
     commissionScore * weights.COMMISSION_WEIGHT +
@@ -141,12 +142,12 @@ export async function GET() {
         geoResults = new Map();
         uniqueIps.forEach(ip => {
           geoResults.set(ip, {
-            country: 'Unknown',
-            countryCode: 'XX',
-            region: 'Unknown',
-            city: 'Unknown',
-            datacenter: 'Unknown',
-            isp: 'Unknown'
+            country: '',
+            countryCode: '',
+            region: '',
+            city: '',
+            datacenter: '',
+            isp: ''
           });
         });
       }
@@ -156,31 +157,37 @@ export async function GET() {
       geoResults = new Map();
       uniqueIps.forEach(ip => {
         geoResults.set(ip, {
-          country: 'Unknown',
-          countryCode: 'XX',
-          region: 'Unknown',
-          city: 'Unknown',
-          datacenter: 'Unknown',
-          isp: 'Unknown'
+          country: '',
+          countryCode: '',
+          region: '',
+          city: '',
+          datacenter: '',
+          isp: ''
         });
       });
     }
 
+    // Batch fetch validator names for better performance
+    const voteAccountList = sortedValidators.map(v => v.votePubkey);
+    console.log(`Batch fetching names for ${voteAccountList.length} validators...`);
+    const validatorNames = await batchGetValidatorNames(voteAccountList);
+    console.log(`Successfully fetched ${validatorNames.size} validator names`);
+
     // Process validators with cached geolocation data
     const validatorsWithGeo = await Promise.all(
-      sortedValidators.map(async (validator, index) => {
+      sortedValidators.map(async (validator) => {
         const clusterNode = clusterNodes.find(node =>
           node.pubkey === validator.nodePubkey
         );
 
         // Get geolocation data from batch results
         let geoData: GeolocationData = {
-          country: 'Unknown',
-          countryCode: 'XX',
-          region: 'Unknown',
-          city: 'Unknown',
-          datacenter: 'Unknown',
-          isp: 'Unknown'
+          country: '',
+          countryCode: '',
+          region: '',
+          city: '',
+          datacenter: '',
+          isp: ''
         };
 
         const ip = validatorToIpMap.get(validator.votePubkey);
@@ -191,8 +198,8 @@ export async function GET() {
             countryCode: batchGeoData.countryCode,
             region: batchGeoData.region,
             city: batchGeoData.city,
-            datacenter: batchGeoData.datacenter || 'Unknown',
-            isp: batchGeoData.isp || 'Unknown',
+            datacenter: batchGeoData.datacenter || '',
+            isp: batchGeoData.isp || '',
             lat: batchGeoData.lat,
             lon: batchGeoData.lon
           };
@@ -208,7 +215,7 @@ export async function GET() {
           validator.activatedStake,
           totalNetworkStake,
           currentEpochCredits,
-          clusterNode?.version || 'Unknown',
+          clusterNode?.version || '',
           geoData
         );
 
@@ -220,15 +227,19 @@ export async function GET() {
         const maxCredits = 440000; // Approximate max credits per epoch
         const uptimeDecimal = Math.min(currentEpochCredits / maxCredits, 1.0); // Keep as 0-1
 
+        // Get real validator name from batch results
+        const validatorName = validatorNames.get(validator.votePubkey) ||
+          `Validator ${validator.votePubkey.slice(0, 8)}...${validator.votePubkey.slice(-4)}`;
+
         return {
           voteAccount: validator.votePubkey,
-          name: `${geoData.city}, ${geoData.country}` || `Validator ${index + 1}`,
+          name: validatorName,
           commission: validator.commission,
           activatedStake: validator.activatedStake,
           lastVote: validator.lastVote,
           credits: totalCredits,
           epochCredits: currentEpochCredits,
-          version: clusterNode?.version || 'Unknown',
+          version: clusterNode?.version || '',
           status: voteAccounts.current.includes(validator) ? 'active' as const : 'delinquent' as const,
           datacenter: geoData.datacenter,
           country: geoData.country,
@@ -291,7 +302,7 @@ export async function GET() {
       });
 
       // Datacenter distribution based on ISP/organization
-      const datacenterKey = validator.datacenter || 'Unknown';
+      const datacenterKey = validator.datacenter || 'Other';
       const currentDatacenter = datacenterMap.get(datacenterKey) || { count: 0, stake: 0 };
       datacenterMap.set(datacenterKey, {
         count: currentDatacenter.count + 1,

@@ -1,5 +1,6 @@
 import { Connection, VoteAccountStatus } from '@solana/web3.js';
 import { BaseAnalytics } from './base-analytics';
+import { getValidatorName, batchGetValidatorNames } from './validator-registry';
 import {
   ValidatorMetrics,
   ValidatorPerformance,
@@ -106,6 +107,10 @@ export class ValidatorAnalytics extends BaseAnalytics {
     const allValidators = [...voteAccounts.current, ...voteAccounts.delinquent];
     const validatorMetrics: ValidatorMetrics[] = [];
 
+    // Batch fetch validator names for better performance
+    const voteAccountList = allValidators.map(v => v.votePubkey);
+    const validatorNames = await batchGetValidatorNames(voteAccountList);
+
     for (const validator of allValidators) {
       try {
         // Get validator identity from cluster nodes
@@ -119,10 +124,14 @@ export class ValidatorAnalytics extends BaseAnalytics {
         // Get geographic/datacenter info (limited in base RPC)
         const geoInfo = await this.getValidatorGeoInfo(validator.nodePubkey, nodeInfo);
 
+        // Get real validator name from registry
+        const validatorName = validatorNames.get(validator.votePubkey) ||
+          await getValidatorName(validator.votePubkey, nodeInfo);
+
         const metrics: ValidatorMetrics = {
           voteAccount: validator.votePubkey,
           nodePubkey: validator.nodePubkey,
-          name: await this.getValidatorName(validator.votePubkey),
+          name: validatorName,
           commission: validator.commission,
           activatedStake: validator.activatedStake,
           lastVote: validator.lastVote,
@@ -191,17 +200,6 @@ export class ValidatorAnalytics extends BaseAnalytics {
     const baseAPY = 0.065; // ~6.5% base APY for Solana
     const commissionPenalty = (validator.commission || 0) / 100;
     return Math.max(0, baseAPY - commissionPenalty);
-  }
-
-  private async getValidatorName(voteAccount: string): Promise<string> {
-    try {
-      // Try to get validator name from known registries
-      // This could integrate with Validators.app API, Stake.fish, etc.
-      // For now, return a simplified name
-      return `Validator ${voteAccount.slice(0, 8)}`;
-    } catch (error) {
-      return 'Unknown Validator';
-    }
   }
 
   private async getValidatorGeoInfo(nodePubkey: string, nodeInfo: any): Promise<{
