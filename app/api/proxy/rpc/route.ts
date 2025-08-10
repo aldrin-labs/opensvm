@@ -24,7 +24,25 @@ export async function POST(request: NextRequest) {
     const timeoutId = setTimeout(() => controller.abort(), 30000);
 
     try {
-        const body = await request.json();
+        // Handle empty or malformed request body
+        let body;
+        try {
+            const text = await request.text();
+            if (!text || text.trim() === '') {
+                return new Response(JSON.stringify({ error: 'Empty request body' }), {
+                    status: 400,
+                    headers: defaultHeaders
+                });
+            }
+            body = JSON.parse(text);
+        } catch (parseError) {
+            console.error('Failed to parse request JSON:', parseError);
+            return new Response(JSON.stringify({ error: 'Invalid JSON in request body' }), {
+                status: 400,
+                headers: defaultHeaders
+            });
+        }
+
         const endpoints = getRpcEndpoints();
         if (!endpoints || endpoints.length === 0) {
             return new Response(JSON.stringify({ error: 'No RPC endpoints configured' }), {
@@ -33,7 +51,7 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        // Pick a random endpoint
+        // Pick a random endpoint for load balancing
         const randomIndex = Math.floor(Math.random() * endpoints.length);
         const rpcUrl = endpoints[randomIndex];
         console.log(`Proxying RPC request to random endpoint ${rpcUrl}`);

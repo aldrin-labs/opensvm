@@ -4,3 +4,10 @@
 
 // This file exists for compatibility but direct imports are preferred
 export { getConnection } from './solana-connection-server';
+
+// Client-side exports (for compatibility)
+export {
+    getConnection as getClientConnection,
+    updateRpcEndpoint as updateClientRpcEndpoint,
+    getAvailableRpcEndpoints
+} from './solana-connection-client';

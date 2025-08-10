@@ -18,12 +18,10 @@ interface WalletProviderProps {
 }
 
 // Default mainnet endpoint that will always be available
-const DEFAULT_ENDPOINT = 'https://api.mainnet-beta.solana.com';
+const DEFAULT_ENDPOINT = '/api/proxy/rpc';
 
 // Fallback endpoints in case OpenSVM is not available
 const FALLBACK_ENDPOINTS = [
-  'https://solana-api.projectserum.com',
-  'https://rpc.ankr.com/solana',
   DEFAULT_ENDPOINT
 ] as const;
 

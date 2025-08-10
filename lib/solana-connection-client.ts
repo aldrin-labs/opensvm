@@ -26,6 +26,20 @@ class ClientConnection extends Connection {
                 'Accept': 'application/json'
             },
             ...config,
+            // Override fetch to ensure proper JSON-RPC formatting
+            fetch: async (input: RequestInfo | URL, options?: RequestInit) => {
+                const response = await fetch(input, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        ...(options?.headers || {})
+                    },
+                    body: options?.body,
+                    signal: options?.signal
+                });
+                return response;
+            }
         });
     }
 }
