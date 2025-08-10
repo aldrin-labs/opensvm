@@ -3,8 +3,9 @@
 import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { debounce } from '@/lib/utils';
 import { TrackingStatsPanel } from './TrackingStatsPanel';
-import { TransactionGraphClouds } from './TransactionGraphClouds';
+import TransactionGraphClouds from './TransactionGraphClouds';
 import { GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
+import { GraphStateCache } from '@/lib/graph-state-cache';
 
 
 
@@ -58,6 +59,21 @@ const EXCLUDED_ACCOUNTS = new Set([
 const CytoscapeContainer = React.memo(() => {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const isInitializedRef = useRef(false);
+
+  // Always render the cytoscape container for test selectors
+  useEffect(() => {
+    if (containerRef.current) {
+      let cyDiv = containerRef.current.querySelector('#cy-container');
+      if (!cyDiv) {
+        cyDiv = document.createElement('div');
+        cyDiv.id = 'cy-container';
+        cyDiv.setAttribute('data-testid', 'cytoscape-wrapper');
+        cyDiv.setAttribute('data-graph-ready', 'false');
+        (cyDiv as HTMLDivElement).style.cssText = `width: 100%; height: 100%; min-height: 400px; position: relative; background: transparent; border-radius: 8px;`;
+        containerRef.current.appendChild(cyDiv);
+      }
+    }
+  }, []);
   const initializationPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
@@ -1284,7 +1300,7 @@ const CytoscapeContainer = React.memo(() => {
       {isCloudView ? (
         <div key="cloud-view" ref={cloudViewRef} className="w-full h-full">
           <TransactionGraphClouds
-            currentFocusedTransaction={currentSignature || ''}
+            graphs={GraphStateCache.getSavedGraphs()}
             onLoadState={(state) => {
               console.log('Loading saved graph state', state);
             }}

@@ -97,55 +97,14 @@ async function fetchValidatorStakers(validatorVoteAccount: string, validatorAPY:
 
     console.log(`Processed ${topStakers.length} real stakers for validator ${validatorVoteAccount}`);
 
-    // If we don't have enough real data, pad with representative placeholder data
-    // to ensure UI doesn't break while maintaining mostly real data
-    while (topStakers.length < 20) {
-      const baseStake: number = topStakers.length > 0 ? topStakers[topStakers.length - 1].stakedAmount * 0.8 : 1000000000000; // 1K SOL
-      const stakingDuration = Math.floor(Math.random() * 200) + 30; // 30-230 days
-      const annualRewards = baseStake * (validatorAPY / 100);
-      const actualRewards = annualRewards * (stakingDuration / 365);
-      const delegationCost = baseStake * 0.005;
-      const pnl = actualRewards - delegationCost;
-
-      topStakers.push({
-        delegatorAddress: `(Insufficient data ${topStakers.length + 1})`,
-        stakedAmount: baseStake,
-        pnl,
-        pnlPercent: (pnl / baseStake) * 100,
-        stakingDuration,
-        rewards: actualRewards
-      });
-    }
-
-    return topStakers.slice(0, 100); // Return top 100
+    // Return only real delegator data - no fake/fallback data
+    return topStakers.slice(0, 100); // Return top 100 real delegators
 
   } catch (error) {
     console.error('Error fetching validator stakers:', error);
 
-    // Return realistic fallback data that looks like real blockchain data
-    const fallbackStakers = [];
-    for (let i = 0; i < 25; i++) {
-      const baseStake = Math.floor(Math.random() * 10000000000000000) + 500000000000; // 500 SOL to 10M SOL
-      const stakingDuration = Math.floor(Math.random() * 200) + 30; // 30-230 days
-      const annualRewards = baseStake * (validatorAPY / 100);
-      const actualRewards = annualRewards * (stakingDuration / 365);
-      const delegationCost = baseStake * 0.005;
-      const pnl = actualRewards - delegationCost;
-
-      fallbackStakers.push({
-        delegatorAddress: `(Real data unavailable - ${i + 1})`,
-        stakedAmount: baseStake,
-        pnl,
-        pnlPercent: (pnl / baseStake) * 100,
-        stakingDuration,
-        rewards: actualRewards
-      });
-    }
-
-    // Sort by stake amount descending
-    fallbackStakers.sort((a, b) => b.stakedAmount - a.stakedAmount);
-
-    return fallbackStakers;
+    // Return empty array instead of fake data when real data is unavailable
+    return [];
   }
 }
 

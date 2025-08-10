@@ -4,7 +4,7 @@
 export { default as TransactionGraph } from './TransactionGraph';
 export { default as GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
 export { TrackingStatsPanel } from './TrackingStatsPanel';
-export { TransactionGraphClouds } from './TransactionGraphClouds';
+export { default as TransactionGraphClouds } from './TransactionGraphClouds';
 export { default as TransactionGraphFilters } from './TransactionGraphFilters';
 
 // Hooks
