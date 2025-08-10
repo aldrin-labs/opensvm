@@ -65,42 +65,42 @@ export function middleware(request: NextRequest) {
   Object.entries(securityHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
-  
+
   // Add Content Security Policy for enhanced security
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com http://localhost:6333 http://localhost:*; object-src 'self' data:;"
+    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com http://localhost:6333 http://localhost:*; object-src 'self' data:;"
   );
 
   // Handle API rate limiting
   if (pathname.startsWith('/api/')) {
     const ip = getHeaderValue(request.headers, 'x-forwarded-for', 'x-real-ip');
     const now = Date.now();
-    
+
     // Get existing rate limit data for this IP
     const rateData = rateLimit.get(ip) || { count: 0, timestamp: now };
-    
+
     // Reset count if outside the current window
     if (now - rateData.timestamp > RATE_LIMIT.window) {
       rateData.count = 0;
       rateData.timestamp = now;
     }
-    
+
     // Increment request count
     rateData.count++;
     rateLimit.set(ip, rateData);
-    
+
     // Set rate limit headers
     response.headers.set('X-RateLimit-Limit', RATE_LIMIT.max.toString());
     response.headers.set('X-RateLimit-Remaining', Math.max(0, RATE_LIMIT.max - rateData.count).toString());
     response.headers.set('X-RateLimit-Reset', (rateData.timestamp + RATE_LIMIT.window).toString());
-    
+
     // Return 429 if rate limit exceeded
     if (rateData.count > RATE_LIMIT.max) {
       return NextResponse.json(
         { error: 'Too many requests, please try again later.' },
-        { 
-          status: 429, 
+        {
+          status: 429,
           headers: {
             ...Object.fromEntries(response.headers),
             'Retry-After': Math.ceil((rateData.timestamp + RATE_LIMIT.window - now) / 1000).toString(),

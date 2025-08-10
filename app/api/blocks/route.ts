@@ -29,17 +29,22 @@ export async function GET(request: NextRequest) {
     // Get and validate parameters
     const searchParams = request.nextUrl.searchParams;
     const requestParams = {
-      limit: searchParams.get('limit'),
-      before: searchParams.get('before'),
-      validator: searchParams.get('validator'),
-      includeAnalytics: searchParams.get('includeAnalytics'),
-      sortBy: searchParams.get('sortBy'),
-      sortOrder: searchParams.get('sortOrder')
+      limit: searchParams.get('limit') || undefined,
+      before: searchParams.get('before') || undefined,
+      validator: searchParams.get('validator') || undefined,
+      includeAnalytics: searchParams.get('includeAnalytics') || undefined,
+      sortBy: searchParams.get('sortBy') || undefined,
+      sortOrder: searchParams.get('sortOrder') || undefined
     };
+
+    // Filter out undefined values to let the schema apply defaults
+    const filteredParams = Object.fromEntries(
+      Object.entries(requestParams).filter(([_, value]) => value !== undefined)
+    );
 
     let validatedParams;
     try {
-      validatedParams = validateBlockListRequest(requestParams);
+      validatedParams = validateBlockListRequest(filteredParams);
     } catch (error: any) {
       return NextResponse.json({
         success: false,

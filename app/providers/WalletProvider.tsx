@@ -18,11 +18,13 @@ interface WalletProviderProps {
 }
 
 // Default mainnet endpoint that will always be available
-const DEFAULT_ENDPOINT = '/api/proxy/rpc';
+const DEFAULT_ENDPOINT = typeof window !== 'undefined'
+  ? `${window.location.origin}/api/proxy/rpc`
+  : 'https://api.mainnet-beta.solana.com';
 
 // Fallback endpoints in case OpenSVM is not available
 const FALLBACK_ENDPOINTS = [
-  DEFAULT_ENDPOINT
+  typeof window !== 'undefined' ? `${window.location.origin}/api/proxy/rpc` : 'https://api.mainnet-beta.solana.com'
 ] as const;
 
 function getEndpoint(connection: Connection): string {
