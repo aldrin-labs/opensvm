@@ -3,9 +3,8 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useState, useEffect } from 'react';
-import { useSettings } from '@/lib/settings';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, ExternalLink, TrendingUp, Shield, DollarSign, Activity, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, ExternalLink, TrendingUp, Shield, DollarSign, Activity, AlertTriangle, Search, ChevronUp, ChevronDown } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { ShareButton } from '@/components/ShareButton';
 import { ValidatorStaking } from '@/components/solana/validator-staking';
@@ -58,13 +57,19 @@ interface ValidatorProfile {
 }
 
 export default function ValidatorProfilePage() {
-  const settings = useSettings();
   const params = useParams();
   const router = useRouter();
   const [validatorData, setValidatorData] = useState<ValidatorProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'overview' | 'performance' | 'stakers' | 'recommendations'>('overview');
+
+  // Stakers tab state
+  const [stakersPage, setStakersPage] = useState(1);
+  const [stakersPerPage, setStakersPerPage] = useState(25);
+  const [stakersSearch, setStakersSearch] = useState('');
+  const [stakersSortBy, setStakersSortBy] = useState<'rank' | 'amount' | 'pnl' | 'pnlPercent' | 'duration' | 'rewards'>('amount');
+  const [stakersSortOrder, setStakersSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const validatorAddress = params.address as string;
 
@@ -101,6 +106,85 @@ export default function ValidatorProfilePage() {
 
   const formatPercent = (value: number) => {
     return `${value.toFixed(2)}%`;
+  };
+
+  // Helper functions for stakers tab
+  const handleStakersSort = (column: typeof stakersSortBy) => {
+    if (stakersSortBy === column) {
+      setStakersSortOrder(stakersSortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setStakersSortBy(column);
+      setStakersSortOrder('desc');
+    }
+    setStakersPage(1); // Reset to first page when sorting
+  };
+
+  const getFilteredAndSortedStakers = () => {
+    if (!validatorData?.detailedStats.topStakers) return [];
+
+    let stakers = [...validatorData.detailedStats.topStakers];
+
+    // Filter by search term
+    if (stakersSearch.trim()) {
+      const searchTerm = stakersSearch.toLowerCase();
+      stakers = stakers.filter(staker =>
+        staker.delegatorAddress.toLowerCase().includes(searchTerm)
+      );
+    }
+
+    // Sort stakers
+    stakers.sort((a, b) => {
+      let aValue: number;
+      let bValue: number;
+
+      switch (stakersSortBy) {
+        case 'amount':
+          aValue = a.stakedAmount;
+          bValue = b.stakedAmount;
+          break;
+        case 'pnl':
+          aValue = a.pnl;
+          bValue = b.pnl;
+          break;
+        case 'pnlPercent':
+          aValue = a.pnlPercent;
+          bValue = b.pnlPercent;
+          break;
+        case 'duration':
+          aValue = a.stakingDuration;
+          bValue = b.stakingDuration;
+          break;
+        case 'rewards':
+          aValue = a.rewards;
+          bValue = b.rewards;
+          break;
+        default: // rank
+          aValue = stakers.indexOf(a);
+          bValue = stakers.indexOf(b);
+          break;
+      }
+
+      return stakersSortOrder === 'asc' ? aValue - bValue : bValue - aValue;
+    });
+
+    return stakers;
+  };
+
+  const filteredStakers = getFilteredAndSortedStakers();
+  const totalStakers = filteredStakers.length;
+  const totalPages = Math.ceil(totalStakers / stakersPerPage);
+  const paginatedStakers = filteredStakers.slice(
+    (stakersPage - 1) * stakersPerPage,
+    stakersPage * stakersPerPage
+  );
+
+  const handleAddressClick = (address: string) => {
+    router.push(`/account/${address}`);
+  };
+
+  const getSortIcon = (column: typeof stakersSortBy) => {
+    if (stakersSortBy !== column) return null;
+    return stakersSortOrder === 'asc' ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />;
   };
 
 
@@ -163,8 +247,8 @@ export default function ValidatorProfilePage() {
               <h1 className="text-3xl font-bold flex items-center">
                 {validatorData.name}
                 <span className={`ml-3 px-2 py-1 text-xs rounded-full ${validatorData.status === 'active'
-                    ? 'bg-green-100 text-green-800'
-                    : 'bg-red-100 text-red-800'
+                  ? 'bg-green-100 text-green-800'
+                  : 'bg-red-100 text-red-800'
                   }`}>
                   {validatorData.status}
                 </span>
@@ -254,15 +338,15 @@ export default function ValidatorProfilePage() {
             {[
               { id: 'overview', label: 'Overview' },
               { id: 'performance', label: 'Performance History' },
-              { id: 'stakers', label: 'Top Stakers' },
+              { id: 'stakers', label: 'Delegators' },
               { id: 'recommendations', label: 'Recommendations' }
             ].map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id as any)}
                 className={`py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === tab.id
-                    ? 'border-primary text-primary'
-                    : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-border'
                   }`}
               >
                 {tab.label}
@@ -361,42 +445,186 @@ export default function ValidatorProfilePage() {
         )}
 
         {activeTab === 'stakers' && (
-          <div className="bg-background border rounded-lg p-6">
-            <h3 className="text-lg font-semibold mb-4">Top 100 Stakers</h3>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4">Rank</th>
-                    <th className="text-left py-3 px-4">Delegator</th>
-                    <th className="text-left py-3 px-4">Staked Amount</th>
-                    <th className="text-left py-3 px-4">PnL</th>
-                    <th className="text-left py-3 px-4">PnL %</th>
-                    <th className="text-left py-3 px-4">Duration</th>
-                    <th className="text-left py-3 px-4">Rewards</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {validatorData.detailedStats.topStakers.map((staker, index) => (
-                    <tr key={staker.delegatorAddress} className="border-b hover:bg-muted/50">
-                      <td className="py-3 px-4">{index + 1}</td>
-                      <td className="py-3 px-4">
-                        <code className="text-sm">{staker.delegatorAddress.slice(0, 8)}...{staker.delegatorAddress.slice(-4)}</code>
-                      </td>
-                      <td className="py-3 px-4">{formatSOL(staker.stakedAmount)}</td>
-                      <td className={`py-3 px-4 ${staker.pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {staker.pnl >= 0 ? '+' : ''}{formatSOL(staker.pnl)}
-                      </td>
-                      <td className={`py-3 px-4 ${staker.pnlPercent >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                        {staker.pnlPercent >= 0 ? '+' : ''}{formatPercent(staker.pnlPercent)}
-                      </td>
-                      <td className="py-3 px-4">{staker.stakingDuration} days</td>
-                      <td className="py-3 px-4">{formatSOL(staker.rewards)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <div className="bg-background border rounded-lg p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+              <div>
+                <h3 className="text-lg font-semibold">Delegators</h3>
+                <p className="text-sm text-muted-foreground">
+                  Total: {validatorData.detailedStats.topStakers.length} delegators
+                  {stakersSearch.trim() && ` (${totalStakers} matching "${stakersSearch}")`}
+                </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 sm:gap-4">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder="Search delegator address..."
+                    value={stakersSearch}
+                    onChange={(e) => {
+                      setStakersSearch(e.target.value);
+                      setStakersPage(1); // Reset to first page when searching
+                    }}
+                    className="pl-10 pr-4 py-2 border rounded-md text-sm bg-background w-full sm:w-64"
+                  />
+                </div>
+
+                {/* Items per page */}
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground whitespace-nowrap">Show:</span>
+                  <select
+                    value={stakersPerPage}
+                    onChange={(e) => {
+                      setStakersPerPage(Number(e.target.value));
+                      setStakersPage(1);
+                    }}
+                    className="border rounded px-3 py-2 text-sm bg-background"
+                  >
+                    <option value="10">10</option>
+                    <option value="25">25</option>
+                    <option value="50">50</option>
+                    <option value="100">100</option>
+                  </select>
+                </div>
+              </div>
             </div>
+
+            <div className="overflow-x-auto -mx-4 sm:mx-0">
+              <div className="min-w-full inline-block align-middle">
+                <table className="w-full min-w-[800px]">
+                  <thead>
+                    <tr className="border-b bg-muted/20">
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('rank')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          Rank {getSortIcon('rank')}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium min-w-[300px]">Delegator Address</th>
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('amount')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          Staked Amount {getSortIcon('amount')}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('pnl')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          PnL {getSortIcon('pnl')}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('pnlPercent')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          PnL % {getSortIcon('pnlPercent')}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('duration')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          Duration {getSortIcon('duration')}
+                        </button>
+                      </th>
+                      <th className="text-left py-3 px-4 font-medium">
+                        <button
+                          onClick={() => handleStakersSort('rewards')}
+                          className="flex items-center gap-1 hover:text-primary transition-colors"
+                        >
+                          Rewards {getSortIcon('rewards')}
+                        </button>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedStakers.map((staker, index) => {
+                      const globalIndex = (stakersPage - 1) * stakersPerPage + index;
+                      return (
+                        <tr key={staker.delegatorAddress} className="border-b hover:bg-muted/50 transition-colors">
+                          <td className="py-3 px-4 text-sm">{globalIndex + 1}</td>
+                          <td className="py-3 px-4">
+                            <button
+                              onClick={() => handleAddressClick(staker.delegatorAddress)}
+                              className="text-primary hover:text-primary/80 underline decoration-dotted hover:decoration-solid font-mono text-sm transition-all duration-200 break-all"
+                              title="Click to view account details"
+                            >
+                              {staker.delegatorAddress}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-sm font-medium">{formatSOL(staker.stakedAmount)}</td>
+                          <td className={`py-3 px-4 text-sm font-medium ${staker.pnl >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {staker.pnl >= 0 ? '+' : ''}{formatSOL(staker.pnl)}
+                          </td>
+                          <td className={`py-3 px-4 text-sm font-medium ${staker.pnlPercent >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
+                            {staker.pnlPercent >= 0 ? '+' : ''}{formatPercent(staker.pnlPercent)}
+                          </td>
+                          <td className="py-3 px-4 text-sm">{staker.stakingDuration} days</td>
+                          <td className="py-3 px-4 text-sm font-medium">{formatSOL(staker.rewards)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mt-6 pt-4 border-t">
+                <div className="text-sm text-muted-foreground order-2 sm:order-1">
+                  Showing {((stakersPage - 1) * stakersPerPage) + 1}-{Math.min(stakersPage * stakersPerPage, totalStakers)} of {totalStakers} delegators
+                </div>
+                <div className="flex items-center justify-center sm:justify-end gap-2 order-1 sm:order-2">
+                  <button
+                    onClick={() => setStakersPage(Math.max(1, stakersPage - 1))}
+                    disabled={stakersPage === 1}
+                    className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                  >
+                    Previous
+                  </button>
+                  <span className="text-sm text-muted-foreground px-2">
+                    Page {stakersPage} of {totalPages}
+                  </span>
+                  <button
+                    onClick={() => setStakersPage(Math.min(totalPages, stakersPage + 1))}
+                    disabled={stakersPage === totalPages}
+                    className="px-3 py-2 text-sm border rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted transition-colors"
+                  >
+                    Next
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* No results message */}
+            {totalStakers === 0 && stakersSearch.trim() && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No delegators found matching "{stakersSearch}"</p>
+                <button
+                  onClick={() => setStakersSearch('')}
+                  className="mt-2 text-primary hover:text-primary/80 underline"
+                >
+                  Clear search
+                </button>
+              </div>
+            )}
+
+            {/* Empty state */}
+            {validatorData.detailedStats.topStakers.length === 0 && (
+              <div className="text-center py-8">
+                <p className="text-muted-foreground">No delegator data available for this validator</p>
+              </div>
+            )}
           </div>
         )}
 
@@ -405,8 +633,8 @@ export default function ValidatorProfilePage() {
             <div className="bg-background border rounded-lg p-6">
               <h3 className="text-lg font-semibold mb-4">Staking Recommendation</h3>
               <div className={`p-4 rounded-lg mb-4 ${validatorData.recommendations.shouldStake
-                  ? 'bg-green-50 border-green-200'
-                  : 'bg-red-50 border-red-200'
+                ? 'bg-green-50 border-green-200'
+                : 'bg-red-50 border-red-200'
                 }`}>
                 <div className="flex items-center mb-2">
                   {validatorData.recommendations.shouldStake ? (
