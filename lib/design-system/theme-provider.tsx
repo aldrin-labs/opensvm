@@ -42,7 +42,7 @@ function getSystemTheme(): 'light' | 'dark' {
 
 function getSystemPreferences(): Partial<ThemeConfig> {
   if (typeof window === 'undefined') return {};
-  
+
   return {
     reducedMotion: window.matchMedia('(prefers-reduced-motion: reduce)').matches,
     highContrast: window.matchMedia('(prefers-contrast: high)').matches,
@@ -62,11 +62,41 @@ export function EnhancedThemeProvider({
   storageKey = 'opensvm-theme-config',
   enableTransitions = true,
 }: EnhancedThemeProviderProps) {
-  const [config, setConfig] = useState<ThemeConfig>(() => ({
-    ...defaultConfig,
-    ...customDefaults,
-  }));
+  const [config, setConfig] = useState<ThemeConfig>(() => {
+    // Try to load from localStorage immediately
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem(storageKey);
+        if (stored) {
+          const parsedConfig = JSON.parse(stored) as Partial<ThemeConfig>;
+          return { ...defaultConfig, ...customDefaults, ...parsedConfig };
+        }
+      } catch (error) {
+        console.warn('Failed to load theme config from localStorage:', error);
+      }
+    }
+    return {
+      ...defaultConfig,
+      ...customDefaults,
+    };
+  });
   const [mounted, setMounted] = useState(false);
+
+  // Apply theme immediately on first render to avoid flash
+  useEffect(() => {
+    const root = document.documentElement;
+
+    // Apply cyberpunk theme immediately if no other theme is set
+    if (!root.classList.contains('theme-paper') &&
+      !root.classList.contains('theme-high-contrast') &&
+      !root.classList.contains('theme-dos-blue') &&
+      !root.classList.contains('theme-cyberpunk') &&
+      !root.classList.contains('theme-solarized')) {
+      root.classList.add('theme-cyberpunk');
+    }
+
+    setMounted(true);
+  }, []);
 
   // Resolve the actual theme based on mode and system preferences
   const resolvedTheme = useMemo(() => {
@@ -83,35 +113,20 @@ export function EnhancedThemeProvider({
 
   // Initialize theme from localStorage and system preferences
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem(storageKey);
-      if (stored) {
-        const parsedConfig = JSON.parse(stored) as Partial<ThemeConfig>;
-        setConfig(prev => ({ ...prev, ...parsedConfig }));
-      }
-    } catch (error) {
-      console.warn('Failed to load theme config from localStorage:', error);
-    }
-
-    // Apply system preferences
+    // This effect now only handles system preferences since localStorage is loaded in useState
     const systemPrefs = getSystemPreferences();
     if (Object.keys(systemPrefs).length > 0) {
       setConfig(prev => ({ ...prev, ...systemPrefs }));
     }
-
-    setMounted(true);
-  }, [storageKey]);
+  }, []);
 
   // Apply theme to document
   useEffect(() => {
-    if (!mounted) return;
-
     const root = document.documentElement;
-    const body = document.body;
 
     // Remove existing theme classes
     root.className = root.className.replace(
-      /theme-\w+|font-size-\w+/g, 
+      /theme-\w+|font-size-\w+/g,
       ''
     ).trim();
 
@@ -126,7 +141,7 @@ export function EnhancedThemeProvider({
 
     // Apply font size
     root.classList.add(`font-size-${config.fontSize}`);
-    
+
     // Apply accessibility preferences
     if (config.reducedMotion) {
       root.classList.add('reduce-motion');
@@ -147,25 +162,20 @@ export function EnhancedThemeProvider({
     }
 
     // Set CSS custom properties for runtime theming
-    root.style.setProperty('--theme-transition-duration', 
+    root.style.setProperty('--theme-transition-duration',
       config.reducedMotion ? '0ms' : (enableTransitions ? '300ms' : '0ms')
     );
 
-  }, [config, resolvedTheme, mounted, enableTransitions]);
-
-  // Save config to localStorage
+  }, [config, resolvedTheme, enableTransitions]);  // Save config to localStorage
   useEffect(() => {
     if (!mounted) return;
-    
+
     try {
-      console.log('Saving theme config to localStorage:', config);
       localStorage.setItem(storageKey, JSON.stringify(config));
     } catch (error) {
       console.warn('Failed to save theme config to localStorage:', error);
     }
-  }, [config, storageKey, mounted]);
-
-  // Listen for system theme changes
+  }, [config, storageKey, mounted]);  // Listen for system theme changes
   useEffect(() => {
     if (!mounted || config.mode !== 'system') return;
 
@@ -180,12 +190,7 @@ export function EnhancedThemeProvider({
   }, [config.mode, mounted]);
 
   const updateConfig = (updates: Partial<ThemeConfig>) => {
-    console.log('Theme config updating:', updates);
-    setConfig(prev => {
-      const newConfig = { ...prev, ...updates };
-      console.log('New theme config:', newConfig);
-      return newConfig;
-    });
+    setConfig(prev => ({ ...prev, ...updates }));
   };
 
   const resetToDefaults = () => {
@@ -215,8 +220,8 @@ export function useTheme() {
     return {
       config: defaultConfig,
       resolvedTheme: 'light' as const,
-      updateConfig: () => {},
-      resetToDefaults: () => {},
+      updateConfig: () => { },
+      resetToDefaults: () => { },
       tokens: designTokens,
       colors: themeColors.light,
     };
