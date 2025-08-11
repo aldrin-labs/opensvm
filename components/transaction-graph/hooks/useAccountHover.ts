@@ -38,53 +38,6 @@ export function useAccountHover(): UseAccountHoverReturn {
         memoryManager.current = MemoryManager.getInstance();
     }, []);
 
-    const showTooltip = useCallback((address: string, position: { x: number; y: number }) => {
-        try {
-            // 🔒 SECURITY: Validate and sanitize address input
-            const sanitizedAddress = SecurityUtils.validateSolanaAddress(address);
-
-            // 🔒 SECURITY: Rate limiting check
-            if (!SecurityUtils.checkRateLimit(`tooltip_${sanitizedAddress}`, 10, 60000)) { // 10 requests per minute
-                setError('Rate limit exceeded. Please wait before hovering again.');
-                return;
-            }
-
-            // 📊 PERFORMANCE: Prevent excessive requests
-            if (requestCountRef.current > 50) {
-                setError('Too many requests. Please refresh the page.');
-                return;
-            }
-
-            // Clear previous error
-            setError(null);
-
-            // Debounce to prevent spamming network calls with exponential backoff
-            if (debounceRef.current) {
-                if (memoryManager.current) {
-                    memoryManager.current.unregisterResource(`debounce_${Date.now()}`);
-                }
-                clearTimeout(debounceRef.current);
-            }
-
-            const debounceDelay = Math.min(120 + (requestCountRef.current * 10), 1000); // Progressive delay
-
-            if (memoryManager.current) {
-                const timeoutId = memoryManager.current.safeSetTimeout(async () => {
-                    await handleTooltipRequest(sanitizedAddress, position);
-                }, debounceDelay, `Account hover debounce for ${sanitizedAddress}`);
-                debounceRef.current = timeoutId as any;
-            } else {
-                debounceRef.current = setTimeout(async () => {
-                    await handleTooltipRequest(sanitizedAddress, position);
-                }, debounceDelay);
-            }
-
-        } catch (validationError) {
-            setError(validationError instanceof Error ? validationError.message : 'Invalid address format');
-            console.error('Address validation failed:', validationError);
-        }
-    }, []);
-
     const handleTooltipRequest = useCallback(async (address: string, position: { x: number; y: number }) => {
         try {
             // Cancel any in-flight requests to prevent race conditions
@@ -173,6 +126,53 @@ export function useAccountHover(): UseAccountHoverReturn {
             setIsLoading(false);
         }
     }, []);
+
+    const showTooltip = useCallback((address: string, position: { x: number; y: number }) => {
+        try {
+            // 🔒 SECURITY: Validate and sanitize address input
+            const sanitizedAddress = SecurityUtils.validateSolanaAddress(address);
+
+            // 🔒 SECURITY: Rate limiting check
+            if (!SecurityUtils.checkRateLimit(`tooltip_${sanitizedAddress}`, 10, 60000)) { // 10 requests per minute
+                setError('Rate limit exceeded. Please wait before hovering again.');
+                return;
+            }
+
+            // 📊 PERFORMANCE: Prevent excessive requests
+            if (requestCountRef.current > 50) {
+                setError('Too many requests. Please refresh the page.');
+                return;
+            }
+
+            // Clear previous error
+            setError(null);
+
+            // Debounce to prevent spamming network calls with exponential backoff
+            if (debounceRef.current) {
+                if (memoryManager.current) {
+                    memoryManager.current.unregisterResource(`debounce_${Date.now()}`);
+                }
+                clearTimeout(debounceRef.current);
+            }
+
+            const debounceDelay = Math.min(120 + (requestCountRef.current * 10), 1000); // Progressive delay
+
+            if (memoryManager.current) {
+                const timeoutId = memoryManager.current.safeSetTimeout(async () => {
+                    await handleTooltipRequest(sanitizedAddress, position);
+                }, debounceDelay, `Account hover debounce for ${sanitizedAddress}`);
+                debounceRef.current = timeoutId as any;
+            } else {
+                debounceRef.current = setTimeout(async () => {
+                    await handleTooltipRequest(sanitizedAddress, position);
+                }, debounceDelay);
+            }
+
+        } catch (validationError) {
+            setError(validationError instanceof Error ? validationError.message : 'Invalid address format');
+            console.error('Address validation failed:', validationError);
+        }
+    }, [handleTooltipRequest]);
 
     const hideTooltip = useCallback(() => {
         try {

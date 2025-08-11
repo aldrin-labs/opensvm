@@ -69,7 +69,7 @@ export function middleware(request: NextRequest) {
   // Add Content Security Policy for enhanced security
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com https://ingesteer.services-prod.nsvcs.net http://localhost:6333 http://localhost:*; object-src 'self' data:;"
+    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com https://ingesteer.services-prod.nsvcs.net http://localhost:6333 http://localhost:*; object-src 'self' data:;"
   );
 
   // Handle API rate limiting

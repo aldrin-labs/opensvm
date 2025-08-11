@@ -484,7 +484,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     }, [
         publicKey, connected, connection, sendTransaction, securityValidated,
         stakeAmount, userSolBalance, meetsRequirement, validatorVoteAccount,
-        operationMutex, isRateLimited, isBlocked, fetchUserBalances
+        operationMutex, isRateLimited, isBlocked, fetchUserBalances, fetchUserStakeAccounts
     ]);
 
     // Secure unstake operation with comprehensive validation
@@ -630,7 +630,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
     }, [
         publicKey, connected, connection, sendTransaction, unstakeAmount,
         userStakedAmount, validatorVoteAccount, operationMutex,
-        isRateLimited, isBlocked, fetchUserBalances
+        stakeAccounts, isRateLimited, isBlocked, fetchUserBalances
     ]);
     // Fetch balances on component mount and wallet connection
     useEffect(() => {
