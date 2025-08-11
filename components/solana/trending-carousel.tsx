@@ -1,12 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown } from 'lucide-react';
-import { useWallet } from '@solana/wallet-adapter-react';
-import { Connection, Transaction, SystemProgram } from '@solana/web3.js';
-import { getClientConnection } from '@/lib/solana-connection';
-import { createBurnInstruction, getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MIN_BURN_AMOUNTS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -26,7 +21,6 @@ interface TrendingCarouselProps {
 }
 
 export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
-  const { connected } = useWallet();
   const [trendingValidators, setTrendingValidators] = useState<TrendingValidator[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -87,12 +81,38 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
 
   if (error || trendingValidators.length === 0) {
     return (
-      <div className="bg-accent/10 border border-border rounded-lg p-3 mb-4">
-        <div className="flex items-center justify-center h-16">
-          <div className="text-center">
-            <Flame className="h-4 w-4 text-accent mx-auto mb-2" />
+      <div className="bg-gradient-to-r from-accent/5 to-primary/5 border border-border rounded-lg p-4 sm:p-6 mb-4">
+        <div className="text-center space-y-3">
+          <div className="flex items-center justify-center">
+            <div className="relative">
+              <Flame className="h-8 w-8 text-accent animate-pulse" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-primary rounded-full animate-ping" />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <h3 className="text-base font-semibold text-foreground">
+              Boost Your Favorite Validator
+            </h3>
+            <p className="text-sm text-muted-foreground max-w-md mx-auto leading-relaxed">
+              Help validators gain visibility by burning $SVMAI tokens. Boosted validators appear here and get enhanced exposure to the community.
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+            <div className="flex items-center text-xs text-muted-foreground bg-background/50 px-3 py-2 rounded-full border">
+              <Crown className="h-4 w-4 mr-2 text-accent" />
+              <span>24h boost duration</span>
+            </div>
+            <div className="flex items-center text-xs text-muted-foreground bg-background/50 px-3 py-2 rounded-full border">
+              <TrendingUp className="h-4 w-4 mr-2 text-primary" />
+              <span>Trending visibility</span>
+            </div>
+          </div>
+
+          <div className="pt-2">
             <p className="text-xs text-muted-foreground">
-              {error || 'No trending validators available'}
+              Select a validator from the list below to start boosting
             </p>
           </div>
         </div>

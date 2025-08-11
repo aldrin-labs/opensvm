@@ -34,27 +34,8 @@ const TRENDING_CACHE_KEY = 'trending_validators';
 const BOOSTS_CACHE_KEY = 'validator_boosts';
 const USED_SIGNATURES_CACHE_KEY = 'used_burn_signatures';
 
-// Real deposit volume tracking - tracks actual on-chain staking deposits to validators
-const getRealDepositVolume = async (voteAccount: string): Promise<number> => {
-  try {
-    // In a real implementation, this would query blockchain data for actual deposits
-    // For now, we'll use a combination of on-chain metrics to estimate activity
-
-    // This is a placeholder for real implementation that would:
-    // 1. Query recent staking transactions to this validator
-    // 2. Sum deposit amounts over the last 24 hours
-    // 3. Return actual volume data
-
-    // For development, return 0 to indicate no mock data
-    return 0;
-  } catch (error) {
-    console.warn('Error fetching real deposit volume:', error);
-    return 0;
-  }
-};
-
 // Calculate trending score based on real validator performance metrics
-const calculateTrendingScore = (validator: any, depositVolume: number, boost?: BoostPurchase): number => {
+const calculateTrendingScore = (validator: any, _depositVolume: number, boost?: BoostPurchase): number => {
   let score = 0;
 
   // Base score from actual validator performance metrics (0-1000 points)
@@ -298,7 +279,7 @@ export async function GET(request: Request) {
 
     // Fetch validator data from main endpoint with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 40000); // 10 second timeout
 
     let validatorsData;
     try {
@@ -318,47 +299,14 @@ export async function GET(request: Request) {
       }
     } catch (fetchError) {
       clearTimeout(timeoutId);
-      console.warn('Validator data fetch failed, using fallback data:', fetchError);
+      console.warn('Validator data fetch failed, returning empty trending list:', fetchError);
 
-      // Return fallback trending validators when the main API fails
-      const fallbackValidators: TrendingValidator[] = [
-        {
-          voteAccount: 'FallbackValidator1',
-          name: 'Trending Validator #1',
-          commission: 5,
-          activatedStake: 10000000000000,
-          depositVolume24h: 15000,
-          trendingScore: 1500,
-          trendingReason: 'volume' as const,
-          rank: 1
-        },
-        {
-          voteAccount: 'FallbackValidator2',
-          name: 'Trending Validator #2',
-          commission: 3,
-          activatedStake: 8000000000000,
-          depositVolume24h: 12000,
-          trendingScore: 1200,
-          trendingReason: 'volume' as const,
-          rank: 2
-        },
-        {
-          voteAccount: 'FallbackValidator3',
-          name: 'Trending Validator #3',
-          commission: 7,
-          activatedStake: 6000000000000,
-          depositVolume24h: 10000,
-          trendingScore: 1000,
-          trendingReason: 'volume' as const,
-          rank: 3
-        }
-      ];
-
+      // Return empty array instead of fallback validators
       return NextResponse.json({
         success: true,
-        data: fallbackValidators,
+        data: [],
         cached: false,
-        fallback: true,
+        fallback: false,
         error: fetchError instanceof Error ? fetchError.message : 'Unknown error',
         timestamp: Date.now()
       });
