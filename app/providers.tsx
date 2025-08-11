@@ -16,7 +16,7 @@ import { AnimationProvider } from '@/lib/animations';
 import { CacheProvider } from '@/lib/caching';
 import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
-import { SettingsProvider as LibSettingsProvider } from '@/lib/settings';
+import { SettingsProvider } from '@/lib/settings';
 import { AuthProvider } from '@/contexts/AuthContext';
 import logger from '@/lib/logging/logger';
 
@@ -88,10 +88,10 @@ class AppErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <EnhancedErrorBoundary>
-      <EnhancedThemeProvider>
+      <SettingsProvider>
         <AccessibilityProvider>
           <ErrorHandlingProvider>
-            <LibSettingsProvider>
+            <EnhancedThemeProvider>
               <WalletProvider>
                 <AuthProvider>
                   <RBACProvider>
@@ -146,10 +146,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
                   </RBACProvider>
                 </AuthProvider>
               </WalletProvider>
-            </LibSettingsProvider>
+            </EnhancedThemeProvider>
           </ErrorHandlingProvider>
         </AccessibilityProvider>
-      </EnhancedThemeProvider>
+      </SettingsProvider>
     </EnhancedErrorBoundary>
   );
 }

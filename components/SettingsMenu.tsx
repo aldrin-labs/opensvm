@@ -78,11 +78,13 @@ function SettingsMenuClient() {
   }, [settings, config]);
 
   const handleApply = () => {
+    console.log('SettingsMenu: Applying settings:', tempSettings);
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
       settings.addCustomRpcEndpoint('Custom', tempSettings.customRpcEndpoint);
       updateClientRpcEndpoint(tempSettings.customRpcEndpoint);
     } else {
       // Use enhanced theme provider for theme changes
+      console.log('SettingsMenu: Updating theme to:', tempSettings.theme);
       updateConfig({ variant: tempSettings.theme as any });
       // Use old settings for other options
       settings.setFontFamily(tempSettings.fontFamily);
