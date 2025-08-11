@@ -17,13 +17,22 @@ interface LogContext {
   sessionId?: string;
   transactionSignature?: string;
   requestId?: string;
+  message?: string;  // For error events
+  reason?: string;   // For unhandledrejection events
+  filename?: string; // For error events
+  lineno?: number;   // For error events
+  colno?: number;    // For error events
+  error?: string;    // For error stack traces
+  promise?: Promise<any>; // For unhandledrejection events
   metadata?: Record<string, any>;
 }
 
 class StructuredLogger {
   private static instance: StructuredLogger;
   private logs: LogEntry[] = [];
+  private pendingLogs: LogEntry[] = []; // Batch for sending to logging service
   private config: LoggerConfig;
+  private batchTimer: NodeJS.Timeout | null = null;
 
   private readonly defaultConfig: LoggerConfig = {
     level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
@@ -43,12 +52,15 @@ class StructuredLogger {
 
   private constructor(config?: Partial<LoggerConfig>) {
     this.config = { ...this.defaultConfig, ...config };
-    
+
     // Setup error capture
     this.setupGlobalErrorHandling();
-    
+
     // Setup periodic log cleanup
     this.setupLogCleanup();
+
+    // Setup batch logging timer (once per minute)
+    this.setupBatchLogging();
   }
 
   static getInstance(config?: Partial<LoggerConfig>): StructuredLogger {
@@ -91,11 +103,44 @@ class StructuredLogger {
     }, 60000); // Check every minute
   }
 
+  private setupBatchLogging(): void {
+    // Batch and send logs once per minute to reduce API calls
+    setInterval(() => {
+      this.flushPendingLogs();
+    }, 60000); // Send logs every minute
+  }
+
+  private flushPendingLogs(): void {
+    if (this.pendingLogs.length === 0) return;
+
+    if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
+      try {
+        // Send batched logs to external logging service
+        fetch('/api/logging', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            logs: this.pendingLogs,
+            batchSize: this.pendingLogs.length,
+            timestamp: new Date().toISOString()
+          }),
+        }).catch(error => {
+          console.error('Failed to send batch logs to service:', error);
+        });
+      } catch (error) {
+        console.error('Error in batch log submission:', error);
+      }
+    }
+
+    // Clear the batch after sending
+    this.pendingLogs = [];
+  }
+
   private shouldLog(level: LogLevel): boolean {
     if (process.env.NODE_ENV === 'production' && !this.config.enabledInProduction) {
       return level === 'error'; // Only errors in production if disabled
     }
-    
+
     return this.levelOrder[level] >= this.levelOrder[this.config.level];
   }
 
@@ -184,18 +229,12 @@ class StructuredLogger {
 
   private sendToLoggingService(entry: LogEntry): void {
     if (process.env.NODE_ENV === 'production' && typeof window !== 'undefined') {
-      try {
-        // Send to external logging service (e.g., DataDog, Sentry, etc.)
-        fetch('/api/logging', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(entry),
-        }).catch(error => {
-          // Don't log this error to prevent infinite loops
-          console.error('Failed to send log to service:', error);
-        });
-      } catch (error) {
-        // Ignore logging service errors
+      // Add to batch instead of sending immediately
+      this.pendingLogs.push(entry);
+
+      // Optional: If batch gets too large, flush immediately
+      if (this.pendingLogs.length >= 100) {
+        this.flushPendingLogs();
       }
     }
   }
@@ -365,11 +404,11 @@ class StructuredLogger {
 
     this.logs.forEach(log => {
       stats.byLevel[log.level]++;
-      
+
       if (log.component) {
         stats.byComponent[log.component] = (stats.byComponent[log.component] || 0) + 1;
       }
-      
+
       if (log.timestamp >= oneHourAgo) {
         stats.recentCount++;
       }
@@ -386,7 +425,7 @@ class StructuredLogger {
     if (format === 'json') {
       return JSON.stringify(this.logs, null, 2);
     }
-    
+
     // CSV format
     const headers = ['timestamp', 'level', 'component', 'message', 'metadata'];
     const csvRows = [
@@ -399,7 +438,7 @@ class StructuredLogger {
         `"${JSON.stringify(log.metadata || {}).replace(/"/g, '""')}"`,
       ].join(','))
     ];
-    
+
     return csvRows.join('\n');
   }
 
@@ -409,6 +448,22 @@ class StructuredLogger {
 
   getConfig(): LoggerConfig {
     return { ...this.config };
+  }
+
+  // Cleanup method for proper disposal
+  cleanup(): void {
+    // Flush any remaining logs
+    this.flushPendingLogs();
+
+    // Clear batch timer
+    if (this.batchTimer) {
+      clearInterval(this.batchTimer);
+      this.batchTimer = null;
+    }
+
+    // Clear logs
+    this.logs = [];
+    this.pendingLogs = [];
   }
 }
 

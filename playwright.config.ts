@@ -28,7 +28,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://osvm.ai',
 
     /* Optimized trace collection for better performance */
     trace: 'retain-on-failure',
@@ -97,7 +97,6 @@ export default defineConfig({
             '--disable-extensions',
             '--disable-plugins',
             '--disable-images', // Faster loading in tests
-            '--disable-gpu',
             '--headless=new'
           ]
         }

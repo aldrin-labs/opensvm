@@ -8,9 +8,15 @@ import PlaceholderTab from './PlaceholderTab';
 
 export const tabs = [
   { id: 'tokens', label: 'Tokens' },
-  { id: 'sol-transfers', label: 'SOL Transfers' },
-  { id: 'token-transfers', label: 'Token Transfers' },
-  { id: 'all-transfers', label: 'All Transfers' },
+  { id: 'account-transfers', label: 'Account Transfers' },
+  { id: 'all-txs', label: 'All Txs' },
+  { id: 'trading-txs', label: 'Trading Txs' },
+  { id: 'defi-txs', label: 'DeFi Txs' },
+  { id: 'nft-txs', label: 'NFT Txs' },
+  { id: 'staking-txs', label: 'Staking Txs' },
+  { id: 'utility-txs', label: 'Utility Txs' },
+  { id: 'suspicious-txs', label: 'Suspicious Txs' },
+  { id: 'custom-program-txs', label: 'Custom Program Txs' },
 ];
 
 interface Props {
@@ -82,22 +88,58 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
     switch (activeTab) {
       case 'tokens':
         return <TokensTab solBalance={solBalance} tokenBalances={tokenBalances} />;
-      case 'sol-transfers':
+      case 'account-transfers':
         return (
           <div className="w-full">
-            <TransfersTab address={address} transferType="SOL" />
+            <TransfersTab address={address} transactionCategory="account-transfers" />
           </div>
         );
-      case 'token-transfers':
+      case 'all-txs':
         return (
           <div className="w-full">
-            <TransfersTab address={address} transferType="TOKEN" />
+            <TransfersTab address={address} transactionCategory="all-txs" />
           </div>
         );
-      case 'all-transfers':
+      case 'trading-txs':
         return (
           <div className="w-full">
-            <TransfersTab address={address} transferType="ALL" />
+            <TransfersTab address={address} transactionCategory="trading-txs" />
+          </div>
+        );
+      case 'defi-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="defi-txs" />
+          </div>
+        );
+      case 'nft-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="nft-txs" />
+          </div>
+        );
+      case 'staking-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="staking-txs" />
+          </div>
+        );
+      case 'utility-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="utility-txs" />
+          </div>
+        );
+      case 'suspicious-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="suspicious-txs" />
+          </div>
+        );
+      case 'custom-program-txs':
+        return (
+          <div className="w-full">
+            <TransfersTab address={address} transactionCategory="custom-program-txs" />
           </div>
         );
       default:

@@ -155,7 +155,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   const [accountInfo, setAccountInfo] = useState<AccountData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<string>('tokens');
+  const [activeTab, setActiveTab] = useState<string>('account-transfers');
   const [currentAddress, setCurrentAddress] = useState<string>('');
   const graphRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
@@ -277,7 +277,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
         if (!mounted || signal.aborted) return;
 
-        setActiveTab(tab as string || 'tokens');
+        setActiveTab(tab as string || 'account-transfers');
 
         // Determine the address to load (prioritize URL params for client-side nav)
         const addressToLoad = (urlParams?.address as string) || rawAddress;

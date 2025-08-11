@@ -3,15 +3,31 @@
 import { memo } from 'react';
 import { TransfersTable } from '@/components/TransfersTable';
 
+// Transaction category types
+type TransactionCategory =
+  | 'account-transfers'
+  | 'all-txs'
+  | 'trading-txs'
+  | 'defi-txs'
+  | 'nft-txs'
+  | 'staking-txs'
+  | 'utility-txs'
+  | 'suspicious-txs'
+  | 'custom-program-txs';
+
 interface Props {
   address: string;
-  transferType?: 'SOL' | 'TOKEN' | 'ALL';
+  transactionCategory?: TransactionCategory;
 }
 
-function TransfersTabComponent({ address, transferType = 'ALL' }: Props) {
+function TransfersTabComponent({ address, transactionCategory = 'account-transfers' }: Props) {
   return (
     <div className="w-full h-full flex flex-col">
-      <TransfersTable key={`${address}-${transferType}`} address={address} transferType={transferType} />
+      <TransfersTable
+        key={`${address}-${transactionCategory}`}
+        address={address}
+        transactionCategory={transactionCategory}
+      />
     </div>
   );
 }
