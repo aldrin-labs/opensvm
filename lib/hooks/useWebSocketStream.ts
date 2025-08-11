@@ -162,7 +162,7 @@ export function useSSEStream(options: UseSSEStreamOptions = {}): UseSSEStreamRet
       console.log(`[SSE] Creating Server-Sent Events connection for ${clientId}`);
 
       // Use EventSource for receiving events from server
-      const eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect`);
+      const eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect&eventTypes=transaction,block`);
 
       eventSource.onopen = () => {
         console.log(`[SSE] Connection established for ${clientId}`);

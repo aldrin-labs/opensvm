@@ -297,7 +297,8 @@ export class AnomalyPatternManager {
       // Skip local config loading during server-side rendering/build time
       if (typeof window === 'undefined') {
         console.log('[AnomalyPatterns] Skipping local config during server-side rendering');
-        throw new Error('Server-side environment detected');
+        // Don't throw an error, just return to continue with remote config or defaults
+        return;
       }
 
       const localConfigUrl = '/config/anomaly-patterns.json';

@@ -28,7 +28,7 @@ export default function BlocksPageSimple() {
             try {
                 setConnectionStatus('connecting');
                 const clientId = `blocks_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-                eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect`);
+                eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect&eventTypes=block`);
 
                 eventSource.onopen = () => {
                     console.log('SSE connection opened');
@@ -153,10 +153,10 @@ export default function BlocksPageSimple() {
             <div className="mb-6 p-4 border rounded-lg">
                 <div className="flex items-center gap-2">
                     <div className={`w-3 h-3 rounded-full ${isConnected
-                            ? 'bg-green-500 animate-pulse'
-                            : connectionStatus === 'connecting'
-                                ? 'bg-yellow-500 animate-pulse'
-                                : 'bg-red-500'
+                        ? 'bg-green-500 animate-pulse'
+                        : connectionStatus === 'connecting'
+                            ? 'bg-yellow-500 animate-pulse'
+                            : 'bg-red-500'
                         }`}></div>
                     <span className="font-medium">
                         {isConnected ? 'Live Connection Active' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}

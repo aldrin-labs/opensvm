@@ -69,13 +69,13 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
   const reconnectAttempts = useRef(0);
   const maxReconnectAttempts = 5;
   const isMountedRef = useRef(true);
-  
+
   // Use refs for callbacks to prevent dependency changes causing reconnections
   const onAlertRef = useRef(onAlert);
   const onStatusUpdateRef = useRef(onStatusUpdate);
   const onBlockchainEventRef = useRef(onBlockchainEvent);
   const onErrorRef = useRef(onError);
-  
+
   // Update refs when callbacks change
   useEffect(() => {
     onAlertRef.current = onAlert;
@@ -99,7 +99,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
 
     try {
       console.log(`[SSE] Connecting client ${clientId}...`);
-      const eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect`);
+      const eventSource = new EventSource(`/api/sse-alerts?clientId=${encodeURIComponent(clientId)}&action=connect&eventTypes=transaction,block`);
       eventSourceRef.current = eventSource;
 
       eventSource.onopen = () => {
@@ -115,7 +115,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
         console.error('[SSE] Connection error:', event);
         if (isMountedRef.current) {
           setIsConnected(false);
-          
+
           const errorMsg = 'SSE connection failed';
           setError(errorMsg);
           onErrorRef.current?.(new Error(errorMsg));
@@ -127,9 +127,9 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
           const baseDelay = Math.min(Math.pow(2, reconnectAttempts.current) * 1000, 30000);
           const jitter = Math.random() * 1000; // 0-1s jitter
           const delay = baseDelay + jitter;
-          
+
           console.log(`[SSE] Reconnecting in ${Math.round(delay)}ms (attempt ${reconnectAttempts.current + 1}/${maxReconnectAttempts})`);
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current++;
@@ -140,7 +140,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
           // After max attempts, wait longer before giving up completely
           console.error('[SSE] Max reconnection attempts reached. Waiting 5 minutes before final retry...');
           setError('Connection lost. Retrying in 5 minutes...');
-          
+
           reconnectTimeoutRef.current = setTimeout(() => {
             if (isMountedRef.current) {
               reconnectAttempts.current = 0; // Reset for final attempt
@@ -155,14 +155,14 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
         try {
           const alert: AnomalyAlert = JSON.parse(event.data);
           console.log('[SSE] Received anomaly alert:', alert);
-          
+
           if (isMountedRef.current) {
             setAlerts(prev => {
               const newAlerts = [alert, ...prev].slice(0, maxAlerts);
               return newAlerts;
             });
           }
-          
+
           onAlertRef.current?.(alert);
         } catch (parseError) {
           console.error('[SSE] Failed to parse anomaly alert:', parseError);
@@ -174,11 +174,11 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
         try {
           const status: SystemStatus = JSON.parse(event.data);
           console.log('[SSE] Received system status:', status);
-          
+
           if (isMountedRef.current) {
             setSystemStatus(status);
           }
-          
+
           onStatusUpdateRef.current?.(status);
         } catch (parseError) {
           console.error('[SSE] Failed to parse system status:', parseError);
@@ -205,7 +205,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
             timestamp: Date.now(),
             data: transactionData
           };
-          
+
           console.log('[SSE] Received transaction event:', blockchainEvent);
           onBlockchainEventRef.current?.(blockchainEvent);
         } catch (parseError) {
@@ -222,7 +222,7 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
             timestamp: Date.now(),
             data: blockData
           };
-          
+
           console.log('[SSE] Received block event:', blockchainEvent);
           onBlockchainEventRef.current?.(blockchainEvent);
         } catch (parseError) {
@@ -249,10 +249,10 @@ export function useSSEAlerts(options: UseSSEAlertsOptions = {}): UseSSEAlertsRet
 
   const disconnect = useCallback(() => {
     console.log(`[SSE] Disconnecting client ${clientId}...`);
-    
+
     // Mark as unmounted to prevent race conditions
     isMountedRef.current = false;
-    
+
     // Clear reconnection timeout first
     if (reconnectTimeoutRef.current) {
       clearTimeout(reconnectTimeoutRef.current);
