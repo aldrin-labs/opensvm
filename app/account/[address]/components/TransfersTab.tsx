@@ -10,7 +10,7 @@ interface Props {
 
 function TransfersTabComponent({ address, transferType = 'ALL' }: Props) {
   return (
-    <div className="w-full h-full">
+    <div className="w-full h-full flex flex-col">
       <TransfersTable key={`${address}-${transferType}`} address={address} transferType={transferType} />
     </div>
   );

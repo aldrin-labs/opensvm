@@ -105,11 +105,15 @@ export function useTransfers(address: string): UseTransfersResult {
       params.set('limit', '1000');
       if (cursor) params.set('beforeSignature', cursor);
 
+      console.log(`[useTransfers] Fetching transfers for ${address} with params:`, params.toString());
+
       const response = await fetch(`/api/account-transfers/${encodeURIComponent(address)}?${params.toString()}`, {
         signal: controller.signal
       });
 
       const result: TransferResponse & { nextPageSignature?: string } = await response.json();
+
+      console.log(`[useTransfers] API response:`, { ok: response.ok, status: response.status, dataLength: result.data?.length });
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch transfers');

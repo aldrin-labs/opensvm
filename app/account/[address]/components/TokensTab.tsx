@@ -253,8 +253,8 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
   const getRowId = useCallback((row: TokenInfo) => row.mint, []);
 
   return (
-    <div className="space-y-4 bg-background text-foreground">
-      <div className="flex justify-between items-center">
+    <div className="h-full flex flex-col space-y-4 bg-background text-foreground">
+      <div className="flex-shrink-0 flex justify-between items-center">
         <h2 className="text-xl font-semibold text-foreground">
           Tokens ({filteredTokens.length})
         </h2>
@@ -275,7 +275,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
         </div>
       </div>
 
-      <div className="w-full border border-border rounded-lg h-[700px] bg-card/50 tokens-vtable-container overflow-hidden">
+      <div className="flex-1 w-full border border-border rounded-lg bg-card/50 tokens-vtable-container overflow-hidden min-h-0">
         <VTableWrapper
           columns={fluidColumns}
           data={sortedTokens}
@@ -291,7 +291,7 @@ export default function TokensTab({ solBalance, tokenBalances }: Props) {
       </div>
 
       {!showZeroBalance && tokenInfo.some(t => t.balance === 0) && (
-        <div className="text-sm text-muted-foreground text-center">
+        <div className="flex-shrink-0 text-sm text-muted-foreground text-center">
           {tokenInfo.filter(t => t.balance === 0).length} tokens with zero balance hidden.
           <button
             onClick={() => setShowZeroBalance(true)}

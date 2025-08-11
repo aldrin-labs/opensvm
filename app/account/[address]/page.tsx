@@ -29,7 +29,7 @@ interface AccountData {
 async function getAccountData(address: string): Promise<AccountData> {
   // Add timeout protection for e2e tests with much faster fallback
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Account data fetch timeout')), 2000); // Reduced to 2s for faster tests
+    setTimeout(() => reject(new Error('Account data fetch timeout')), 15000); // Reduced to 15s for faster tests
   });
 
   try {
@@ -66,7 +66,7 @@ async function getAccountData(address: string): Promise<AccountData> {
       const connection = await Promise.race([
         getConnection(),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Connection timeout')), 1500)
+          setTimeout(() => reject(new Error('Connection timeout')), 15000)
         )
       ]) as Awaited<ReturnType<typeof getConnection>>;
 
@@ -77,19 +77,19 @@ async function getAccountData(address: string): Promise<AccountData> {
         Promise.race([
           getSolanaAccountInfo(address),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Account info timeout')), 1500)
+            setTimeout(() => reject(new Error('Account info timeout')), 15000)
           )
         ]) as Promise<Awaited<ReturnType<typeof getSolanaAccountInfo>>>,
         Promise.race([
           connection.getBalance(pubkey),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Balance timeout')), 1500)
+            setTimeout(() => reject(new Error('Balance timeout')), 15000)
           )
         ]) as Promise<number>
       ]);
 
       // Fetch token accounts with timeout protection
-      let tokenBalances: { mint: string; balance: number; }[] = [];
+      let tokenBalances: any[] = [];
       let tokenAccountsForOverview: any[] = [];
 
       try {
@@ -100,7 +100,7 @@ async function getAccountData(address: string): Promise<AccountData> {
         const tokenAccounts = await Promise.race([
           tokenAccountsPromise,
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Token accounts timeout')), 3000)
+            setTimeout(() => reject(new Error('Token accounts timeout')), 30000)
           )
         ]) as Awaited<typeof tokenAccountsPromise>;
 
@@ -112,7 +112,7 @@ async function getAccountData(address: string): Promise<AccountData> {
         tokenAccountsForOverview = tokenAccounts.value.map(account => ({
           mint: account.account.data.parsed.info.mint,
           uiAmount: account.account.data.parsed.info.tokenAmount.uiAmount,
-          symbol: 'UNK', // Default symbol - would be fetched from token registry in real app
+          symbol: account.account.data.parsed.info.symbol || account.account.data.parsed.info.tokenSymbol || account.account.data.parsed.name || account.account.data.parsed.info.mint || '<Unknown>', // Default symbol - would be fetched from token registry in real app
         }));
       } catch (tokenError) {
         console.warn('Token accounts fetch failed, continuing with empty tokens:', tokenError instanceof Error ? tokenError.message : 'Unknown error');
@@ -182,7 +182,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         setLoading(false);
         setError('Loading timeout - showing partial data');
       }
-    }, isTestEnv ? 3000 : 6000); // 3s for tests, 6s for normal use
+    }, isTestEnv ? 30000 : 60000); // 3s for tests, 6s for normal use
 
     try {
       setLoading(true);
@@ -218,7 +218,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       const accountData = await Promise.race([
         getAccountData(cleanAddress),
         new Promise<AccountData>((_, reject) =>
-          setTimeout(() => reject(new Error('Account data fetch timeout')), isTestEnv ? 4000 : 8000)
+          setTimeout(() => reject(new Error('Account data fetch timeout')), isTestEnv ? 40000 : 80000)
         )
       ]);
 
@@ -343,49 +343,50 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="w-full px-4 py-8">
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        {/* Main Content - Left Side */}
-        <div className="xl:col-span-2 space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <AccountOverview
-              address={accountInfo.address}
-              solBalance={accountInfo.solBalance}
-              tokenAccounts={accountInfo.tokenAccounts}
-              isSystemProgram={accountInfo.isSystemProgram}
-              parsedOwner={accountInfo.parsedOwner}
-            />
-            <div ref={graphRef}>
-              <GraphErrorBoundary>
-                <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-[400px]" />}>
-                  <TransactionGraphLazy
-                    key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
-                    initialAccount={accountInfo.address}
-                    onTransactionSelect={(signature: string) => {
-                      // Client-side navigation to transaction page
-                      router.push(`/tx/${signature}`);
-                    }}
-                    onAccountSelect={(accountAddress: string) => {
-                      // Smooth client-side navigation to account page
-                      if (accountAddress !== accountInfo.address) {
-                        navigateToAccount(accountAddress);
-                      }
-                    }}
-                    clientSideNavigation={true}
-                    width="100%"
-                    height="400px"
-                  />
-                </PerformanceWrapper>
-              </GraphErrorBoundary>
-            </div>
-          </div>
-        </div>
-        {/* Sidebar - Right Side: Account Info */}
-        <div className="xl:col-span-2 space-y-6">
+      <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
+        {/* Account Info - Narrow Column */}
+        <div className="xl:col-span-1 space-y-6">
           <AccountInfo
             address={accountInfo.address}
             isSystemProgram={accountInfo.isSystemProgram}
             parsedOwner={accountInfo.parsedOwner}
           />
+        </div>
+
+        {/* Account Overview - Medium Column */}
+        <div className="xl:col-span-2 space-y-6">
+          <AccountOverview
+            address={accountInfo.address}
+            solBalance={accountInfo.solBalance}
+            tokenAccounts={accountInfo.tokenAccounts}
+            isSystemProgram={accountInfo.isSystemProgram}
+            parsedOwner={accountInfo.parsedOwner}
+          />
+        </div>
+
+        {/* Transaction Graph - Wide Column */}
+        <div className="xl:col-span-7 space-y-6" ref={graphRef}>
+          <GraphErrorBoundary>
+            <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-full" />}>
+              <TransactionGraphLazy
+                key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
+                initialAccount={accountInfo.address}
+                onTransactionSelect={(signature: string) => {
+                  // Client-side navigation to transaction page
+                  router.push(`/tx/${signature}`);
+                }}
+                onAccountSelect={(accountAddress: string) => {
+                  // Smooth client-side navigation to account page
+                  if (accountAddress !== accountInfo.address) {
+                    navigateToAccount(accountAddress);
+                  }
+                }}
+                clientSideNavigation={true}
+                width="100%"
+                height="100%"
+              />
+            </PerformanceWrapper>
+          </GraphErrorBoundary>
         </div>
       </div>
       {/* Full-width tabs and table */}

@@ -106,9 +106,9 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   };
 
   return (
-    <div className="mt-6 w-full">
+    <div className="h-full flex flex-col w-full">
       {renderTabs()}
-      <div ref={contentRef} className="tab-content">
+      <div ref={contentRef} className="flex-1 tab-content min-h-0">
         {renderContent()}
       </div>
     </div>

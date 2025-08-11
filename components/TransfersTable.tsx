@@ -11,17 +11,25 @@ import { useRouter } from 'next/navigation';
 import { PinIcon, Search, X, Filter } from 'lucide-react';
 import Link from 'next/link';
 import {
-  getCachedTransfers,
-  storeTransferEntry,
-  markTransfersCached,
-  isSolanaOnlyTransaction,
-  type TransferEntry
+  isSolanaOnlyTransaction
 } from '@/lib/qdrant';
 
 interface TransfersTableProps {
   address: string;
   transferType?: 'SOL' | 'TOKEN' | 'ALL';
 }
+
+// Transaction category types
+type TransactionCategory =
+  | 'account-transfers'
+  | 'all-txs'
+  | 'trading-txs'
+  | 'defi-txs'
+  | 'nft-txs'
+  | 'staking-txs'
+  | 'utility-txs'
+  | 'suspicious-txs'
+  | 'custom-program-txs';
 
 export function TransfersTable({ address, transferType = 'ALL' }: TransfersTableProps) {
   const { transfers: rawTransfers, loading, error, hasMore, loadMore, totalCount } = useTransfers(address);
@@ -35,99 +43,111 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
-  // New state for caching and Solana filtering
-  const [useCachedData, setUseCachedData] = useState(false);
-  const [cachedTransfers, setCachedTransfers] = useState<TransferEntry[]>([]);
-  const [cachingInProgress, setCachingInProgress] = useState(false);
-  const [solanaOnlyFilter, setSolanaOnlyFilter] = useState(true);
-
-  // Load cached data and sync timestamp on component mount
-  useEffect(() => {
-    const loadCachedData = async () => {
+  // New state for comprehensive transaction filtering with localStorage persistence
+  const [filterPreferences, setFilterPreferences] = useState(() => {
+    if (typeof window !== 'undefined') {
       try {
-        const [cached] = await Promise.all([
-          getCachedTransfers(address, {
-            solanaOnly: solanaOnlyFilter,
-            transferType: transferType
-          })
-        ]);
-
-        setCachedTransfers(cached.transfers);
-
-        // Use cached data if available
-        if (cached.transfers.length > 0) {
-          setUseCachedData(true);
-        }
+        const saved = localStorage.getItem('opensvm-filter-preferences');
+        return saved ? JSON.parse(saved) : {
+          transactionCategory: 'account-transfers' as TransactionCategory,
+          solanaOnlyFilter: false,
+          customProgramAddress: ''
+        };
       } catch (error) {
-        console.error('Error loading cached data:', error);
+        console.warn('Failed to load filter preferences from localStorage:', error);
+        return {
+          transactionCategory: 'account-transfers' as TransactionCategory,
+          solanaOnlyFilter: false,
+          customProgramAddress: ''
+        };
       }
+    }
+    return {
+      transactionCategory: 'account-transfers' as TransactionCategory,
+      solanaOnlyFilter: false,
+      customProgramAddress: ''
     };
+  });
 
-    loadCachedData();
-  }, [address, transferType, solanaOnlyFilter]);
-
-  // Cache new transfers when they arrive
+  // Update localStorage when filter preferences change
   useEffect(() => {
-    const cacheNewTransfers = async () => {
-      if (rawTransfers.length === 0 || cachingInProgress) return;
-
-      setCachingInProgress(true);
+    if (typeof window !== 'undefined') {
       try {
-        const transferEntries: TransferEntry[] = rawTransfers.map(transfer => ({
-          id: `${address}-${transfer.signature}-${Date.now()}`,
-          walletAddress: address,
-          signature: transfer.signature || '',
-          timestamp: new Date(transfer.timestamp || '').getTime(),
-          type: transfer.type || 'transfer',
-          amount: transfer.amount || 0,
-          token: transfer.tokenSymbol || transfer.token || 'SOL',
-          tokenSymbol: transfer.tokenSymbol,
-          tokenName: transfer.tokenName,
-          from: transfer.from || '',
-          to: transfer.to || '',
-          mint: transfer.mint,
-          usdValue: transfer.usdValue,
-          isSolanaOnly: isSolanaOnlyTransaction(transfer),
-          cached: true,
-          lastUpdated: Date.now()
-        }));
-
-        // Store each transfer
-        for (const entry of transferEntries) {
-          await storeTransferEntry(entry);
-        }
-
-        // Mark as cached
-        const signatures = transferEntries.map(t => t.signature).filter(Boolean);
-        if (signatures.length > 0) {
-          await markTransfersCached(signatures, address);
-        }
-
-        // Update cached transfers state
-        setCachedTransfers(prev => {
-          const newTransfers = [...transferEntries, ...prev];
-          // Remove duplicates by signature
-          const unique = newTransfers.reduce((acc, current) => {
-            const existing = acc.find(t => t.signature === current.signature);
-            if (!existing) {
-              acc.push(current);
-            }
-            return acc;
-          }, [] as TransferEntry[]);
-          return unique.sort((a, b) => b.timestamp - a.timestamp);
-        });
-
+        localStorage.setItem('opensvm-filter-preferences', JSON.stringify(filterPreferences));
       } catch (error) {
-        console.error('Error caching transfers:', error);
-      } finally {
-        setCachingInProgress(false);
+        console.warn('Failed to save filter preferences to localStorage:', error);
       }
-    };
+    }
+  }, [filterPreferences]);
 
-    cacheNewTransfers();
-  }, [rawTransfers, address, cachingInProgress]);
+  // Helper function to update filter preferences with proper typing
+  const updateFilterPreference = useCallback((key: keyof typeof filterPreferences, value: any) => {
+    setFilterPreferences((prev: typeof filterPreferences) => ({
+      ...prev,
+      [key]: value
+    }));
+  }, []);
 
-  // Handle client-side navigation to account/transaction pages
+  // Helper functions to categorize transactions
+  const categorizeTransaction = useCallback((transfer: Transfer): TransactionCategory[] => {
+    const categories: TransactionCategory[] = ['all-txs'];
+
+    // Account transfers - basic token/SOL transfers
+    if (transfer.type === 'transfer' || transfer.type === 'transferChecked') {
+      categories.push('account-transfers');
+    }
+
+    // Trading transactions - DEX trades, swaps
+    if (transfer.type?.includes('swap') || transfer.type?.includes('trade') || transfer.type?.includes('exchange')) {
+      categories.push('trading-txs');
+    }
+
+    // DeFi transactions - lending, borrowing, liquidity provision
+    if (transfer.type?.includes('deposit') || transfer.type?.includes('withdraw') ||
+      transfer.type?.includes('borrow') || transfer.type?.includes('lend') ||
+      transfer.type?.includes('stake') || transfer.type?.includes('unstake') ||
+      transfer.mint?.includes('LP') || transfer.tokenSymbol?.includes('LP')) {
+      categories.push('defi-txs');
+    }
+
+    // NFT transactions
+    if (transfer.type?.includes('nft') || transfer.type?.includes('NFT') ||
+      transfer.tokenSymbol?.includes('NFT') || transfer.amount === 1) {
+      categories.push('nft-txs');
+    }
+
+    // Staking transactions
+    if (transfer.type?.includes('stake') || transfer.type?.includes('delegate') ||
+      transfer.type?.includes('reward') || transfer.type?.includes('commission')) {
+      categories.push('staking-txs');
+    }
+
+    // Utility transactions - account creation, rent, etc.
+    if (transfer.type?.includes('createAccount') || transfer.type?.includes('rent') ||
+      transfer.type?.includes('fee') || transfer.amount === 0) {
+      categories.push('utility-txs');
+    }
+
+    // Suspicious transactions - large amounts, unusual patterns
+    if ((transfer.amount || 0) > 1000000 || transfer.type?.includes('unknown')) {
+      categories.push('suspicious-txs');
+    }
+
+    // Custom program transactions
+    if (filterPreferences.customProgramAddress &&
+      (transfer.from === filterPreferences.customProgramAddress ||
+        transfer.to === filterPreferences.customProgramAddress)) {
+      categories.push('custom-program-txs');
+    }
+
+    return categories;
+  }, [filterPreferences.customProgramAddress]);
+
+  // Load any additional configuration on component mount
+  useEffect(() => {
+    // Any additional setup can be done here
+    // Caching is now handled automatically by the API
+  }, [address, transferType, filterPreferences.transactionCategory, filterPreferences.solanaOnlyFilter]);  // Handle client-side navigation to account/transaction pages
   const handleAddressClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, targetAddress: string) => {
     if (!targetAddress) return;
 
@@ -151,52 +171,32 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
     });
   }, [router]);
 
-  // Map API data to the expected Transfer format, with option to use cached data
+  // Map API data to the expected Transfer format
   const transfers = useMemo(() => {
-    const sourceData = useCachedData ? cachedTransfers : rawTransfers;
+    // Now we primarily use rawTransfers since API handles caching automatically
+    const sourceData = rawTransfers;
 
     return sourceData.map(item => {
-      // Handle both TransferEntry and raw transfer formats
-      if ('walletAddress' in item) {
-        // This is a cached TransferEntry
-        const cachedItem = item as TransferEntry;
-        return {
-          signature: cachedItem.signature || '',
-          timestamp: new Date(cachedItem.timestamp).toISOString(),
-          type: cachedItem.type || 'transfer',
-          amount: cachedItem.amount || 0,
-          token: cachedItem.tokenSymbol || cachedItem.token || 'SOL',
-          tokenSymbol: cachedItem.tokenSymbol || cachedItem.token || 'SOL',
-          from: cachedItem.from || '',
-          to: cachedItem.to || '',
-          tokenName: cachedItem.tokenName || (cachedItem.token === 'SOL' ? 'Solana' : cachedItem.token),
-          usdValue: cachedItem.usdValue,
-          mint: cachedItem.mint,
-          isSolanaOnly: cachedItem.isSolanaOnly,
-          cached: cachedItem.cached
-        };
-      } else {
-        // This is a raw transfer from API
-        const rawItem = item as any;
-        return {
-          signature: rawItem.signature || '',
-          timestamp: rawItem.timestamp || '',
-          type: rawItem.type || 'transfer',
-          amount: rawItem.amount || 0,
-          token: rawItem.tokenSymbol || 'SOL',
-          tokenSymbol: rawItem.tokenSymbol || 'SOL',
-          from: rawItem.from || '',
-          to: rawItem.to || '',
-          tokenName: rawItem.tokenName || 'Solana',
-          usdValue: rawItem.usdValue,
-          mint: rawItem.mint,
-          isSolanaOnly: isSolanaOnlyTransaction(rawItem),
-          cached: false,
-          ...(rawItem as any)
-        };
-      }
+      // Handle raw transfer from API (the primary case now)
+      const rawItem = item as any;
+      return {
+        signature: rawItem.signature || '',
+        timestamp: rawItem.timestamp || '',
+        type: rawItem.type || 'transfer',
+        amount: rawItem.amount || 0,
+        token: rawItem.tokenSymbol || 'SOL',
+        tokenSymbol: rawItem.tokenSymbol || 'SOL',
+        from: rawItem.from || '',
+        to: rawItem.to || '',
+        tokenName: rawItem.tokenName || 'Solana',
+        usdValue: rawItem.usdValue,
+        mint: rawItem.mint,
+        isSolanaOnly: isSolanaOnlyTransaction(rawItem),
+        cached: false,
+        ...(rawItem as any)
+      };
     });
-  }, [rawTransfers, cachedTransfers, useCachedData]);
+  }, [rawTransfers]);
 
   // Handle row selection
   const handleRowSelect = useCallback((rowId: string) => {
@@ -357,14 +357,28 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
   const sortedTransfers = useMemo(() => {
     if (!transfers.length) return [];
 
-    // First filter by transfer type (SOL, TOKEN, ALL)
+    // Apply transaction category filtering first
     let filtered = transfers;
+
+    if (filterPreferences.transactionCategory !== 'all-txs') {
+      filtered = transfers.filter(transfer => {
+        const categories = categorizeTransaction(transfer);
+        return categories.includes(filterPreferences.transactionCategory);
+      });
+    }
+
+    // Apply Solana-only filter if enabled
+    if (filterPreferences.solanaOnlyFilter) {
+      filtered = filtered.filter(transfer => isSolanaOnlyTransaction(transfer));
+    }
+
+    // Legacy transfer type filtering (SOL, TOKEN, ALL) - kept for backward compatibility
     if (transferType === 'SOL') {
-      filtered = transfers.filter(transfer =>
+      filtered = filtered.filter(transfer =>
         (transfer.tokenSymbol || transfer.token || 'SOL') === 'SOL'
       );
     } else if (transferType === 'TOKEN') {
-      filtered = transfers.filter(transfer =>
+      filtered = filtered.filter(transfer =>
         (transfer.tokenSymbol || transfer.token || 'SOL') !== 'SOL'
       );
     }
@@ -403,11 +417,6 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
       });
     }
 
-    // Filter for Solana-only transactions (exclude cross-chain/bridge txns)
-    if (solanaOnlyFilter) {
-      filtered = filtered.filter(transfer => isSolanaOnlyTransaction(transfer));
-    }
-
     // Then sort the filtered results
     const sorted = [...filtered].sort((a, b) => {
       const aValue = a[sortField];
@@ -436,7 +445,7 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
     });
 
     return sorted;
-  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transferType, solanaOnlyFilter]);
+  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transferType, filterPreferences, categorizeTransaction]);
 
   // Get unique values for filter dropdowns
   const uniqueTypes = useMemo(() => {
@@ -514,8 +523,65 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
           )}
         </div>
 
-        {/* Filters Row */}
+        {/* Transaction Category Filter */}
+        <div className="flex flex-wrap gap-2">
+          {/* Transaction Category Buttons */}
+          <div className="flex flex-wrap gap-2">
+            {[
+              { key: 'account-transfers', label: 'Account Transfers', color: 'blue' },
+              { key: 'all-txs', label: 'All Txs', color: 'gray' },
+              { key: 'trading-txs', label: 'Trading Txs', color: 'green' },
+              { key: 'defi-txs', label: 'DeFi Txs', color: 'purple' },
+              { key: 'nft-txs', label: 'NFT Txs', color: 'pink' },
+              { key: 'staking-txs', label: 'Staking Txs', color: 'orange' },
+              { key: 'utility-txs', label: 'Utility Txs', color: 'yellow' },
+              { key: 'suspicious-txs', label: 'Suspicious Txs', color: 'red' },
+              { key: 'custom-program-txs', label: 'Custom Program Txs', color: 'indigo' }
+            ].map(({ key, label, color }) => (
+              <button
+                key={key}
+                onClick={() => updateFilterPreference('transactionCategory', key as TransactionCategory)}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPreferences.transactionCategory === key
+                    ? `bg-${color}-100 text-${color}-700 border border-${color}-300`
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Secondary Filters Row */}
         <div className="flex flex-wrap gap-4">
+          {/* Solana Only Filter - only show for Account Transfers */}
+          {filterPreferences.transactionCategory === 'account-transfers' && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => updateFilterPreference('solanaOnlyFilter', !filterPreferences.solanaOnlyFilter)}
+                className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPreferences.solanaOnlyFilter
+                  ? 'bg-green-100 text-green-700 border border-green-300'
+                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                  }`}
+              >
+                Solana Only
+              </button>
+            </div>
+          )}
+
+          {/* Custom Program Address Input - only show for Custom Program Txs */}
+          {filterPreferences.transactionCategory === 'custom-program-txs' && (
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Program Address"
+                value={filterPreferences.customProgramAddress}
+                onChange={(e) => updateFilterPreference('customProgramAddress', e.target.value)}
+                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          )}
+
           {/* Type Filter */}
           <div className="flex items-center gap-2">
             <Filter className="h-4 w-4 text-muted-foreground" />
@@ -531,21 +597,19 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
             </select>
           </div>
 
-          {/* Token Filter - only show for 'ALL' transfer type */}
-          {transferType === 'ALL' && (
-            <div className="flex items-center gap-2">
-              <select
-                value={tokenFilter}
-                onChange={(e) => setTokenFilter(e.target.value)}
-                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              >
-                <option value="all">All Tokens</option>
-                {uniqueTokens.map(token => (
-                  <option key={token} value={token}>{token}</option>
-                ))}
-              </select>
-            </div>
-          )}
+          {/* Token Filter */}
+          <div className="flex items-center gap-2">
+            <select
+              value={tokenFilter}
+              onChange={(e) => setTokenFilter(e.target.value)}
+              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+            >
+              <option value="all">All Tokens</option>
+              {uniqueTokens.map(token => (
+                <option key={token} value={token}>{token}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Amount Range Filter */}
           <div className="flex items-center gap-2">
@@ -566,50 +630,47 @@ export function TransfersTable({ address, transferType = 'ALL' }: TransfersTable
             />
           </div>
 
-          {/* Solana Only Filter */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setSolanaOnlyFilter(!solanaOnlyFilter)}
-              className={`px-3 py-1 text-sm rounded-lg transition-colors ${solanaOnlyFilter
-                ? 'bg-blue-100 text-blue-700 border border-blue-300'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                }`}
-            >
-              Solana Only
-            </button>
-          </div>
-
           {/* Clear Filters */}
-          {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm || solanaOnlyFilter) && (
-            <button
-              onClick={() => {
-                setTypeFilter('all');
-                setTokenFilter('all');
-                setAmountFilter({ min: '', max: '' });
-                setSearchTerm('');
-                setSolanaOnlyFilter(false);
-              }}
-              className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
-            >
-              Clear Filters
-            </button>
-          )}
+          {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm ||
+            filterPreferences.solanaOnlyFilter || filterPreferences.transactionCategory !== 'account-transfers' ||
+            filterPreferences.customProgramAddress) && (
+              <button
+                onClick={() => {
+                  setTypeFilter('all');
+                  setTokenFilter('all');
+                  setAmountFilter({ min: '', max: '' });
+                  setSearchTerm('');
+                  setFilterPreferences({
+                    transactionCategory: 'account-transfers',
+                    solanaOnlyFilter: false,
+                    customProgramAddress: ''
+                  });
+                }}
+                className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+              >
+                Clear Filters
+              </button>
+            )}
         </div>
       </div>
 
       {/* Search Results Count */}
-      {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || solanaOnlyFilter) && (
-        <div className="text-sm text-muted-foreground">
-          Found {sortedTransfers.length} transfers
-          {searchTerm && ` matching "${searchTerm}"`}
-          {typeFilter !== 'all' && ` of type "${typeFilter}"`}
-          {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
-          {(amountFilter.min || amountFilter.max) && ` within amount range`}
-          {solanaOnlyFilter && ` (Solana-only)`}
-        </div>
-      )}
+      {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max ||
+        filterPreferences.solanaOnlyFilter || filterPreferences.transactionCategory !== 'account-transfers' ||
+        filterPreferences.customProgramAddress) && (
+          <div className="text-sm text-muted-foreground">
+            Found {sortedTransfers.length} transfers
+            {searchTerm && ` matching "${searchTerm}"`}
+            {filterPreferences.transactionCategory !== 'account-transfers' && ` in ${filterPreferences.transactionCategory.replace('-', ' ')}`}
+            {typeFilter !== 'all' && ` of type "${typeFilter}"`}
+            {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
+            {(amountFilter.min || amountFilter.max) && ` within amount range`}
+            {filterPreferences.solanaOnlyFilter && ` (Solana only)`}
+            {filterPreferences.customProgramAddress && ` (custom program: ${filterPreferences.customProgramAddress.slice(0, 8)}...)`}
+          </div>
+        )}
 
-      <div className="border border-border rounded-lg overflow-hidden h-[600px] bg-card/50" role="region" aria-labelledby="transfers-heading" aria-live="polite">
+      <div className="border border-border rounded-lg overflow-hidden flex-1 bg-card/50 min-h-0" role="region" aria-labelledby="transfers-heading" aria-live="polite">
         <VTableWrapper
           columns={columns}
           data={sortedTransfers}

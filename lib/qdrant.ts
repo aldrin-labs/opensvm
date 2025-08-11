@@ -815,12 +815,22 @@ export interface TransferEntry {
   lastUpdated: number;
 }
 
+// Cache for tracking collection and index creation status
+const collectionInitialized = new Map<string, boolean>();
+
 /**
  * Initialize transfers collection with proper indexing
+ * Caches initialization status to avoid repeated operations
  */
 async function ensureTransfersCollection() {
   // Skip in browser
   if (typeof window !== 'undefined') return;
+
+  // Check if already initialized
+  const cacheKey = `${COLLECTIONS.TRANSFERS}_initialized`;
+  if (collectionInitialized.get(cacheKey)) {
+    return; // Already initialized, skip
+  }
 
   try {
     const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
@@ -846,19 +856,24 @@ async function ensureTransfersCollection() {
       } catch (error: any) {
         if (error?.data?.status?.error?.includes('already exists') ||
           error?.message?.includes('already exists')) {
-          console.log(`Index for ${fieldName} in transfers already exists`);
+          // Index already exists, this is expected and not an error
+          // Don't log this to reduce noise
         } else {
           console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
         }
       }
     };
 
-    // Ensure necessary indexes exist
+    // Ensure necessary indexes exist (only on first initialization)
     await ensureIndex('walletAddress');
     await ensureIndex('signature');
     await ensureIndex('token');
     await ensureIndex('isSolanaOnly');
     await ensureIndex('cached');
+
+    // Mark as initialized
+    collectionInitialized.set(cacheKey, true);
+    console.log('Transfers collection and indexes initialized successfully');
 
   } catch (error) {
     console.error('Error ensuring transfers collection:', error);
@@ -876,18 +891,33 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
   try {
     await ensureTransfersCollection();
 
+    // Validate entry data
+    if (!entry.id || !entry.walletAddress || !entry.signature) {
+      throw new Error(`Invalid transfer entry data: missing required fields`);
+    }
+
     // Generate embedding from transfer content
     const textContent = `${entry.walletAddress} ${entry.type} ${entry.token} ${entry.amount} ${entry.from} ${entry.to}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.TRANSFERS, {
+    console.log(`Storing transfer entry with ID: ${entry.id}`);
+
+    const upsertData = {
       wait: true,
       points: [{
         id: entry.id,
         vector,
-        payload: entry as any
+        payload: {
+          ...entry,
+          // Ensure all fields are properly serializable
+          timestamp: Number(entry.timestamp),
+          amount: Number(entry.amount),
+          lastUpdated: Number(entry.lastUpdated)
+        }
       }]
-    });
+    };
+
+    await qdrantClient.upsert(COLLECTIONS.TRANSFERS, upsertData);
   } catch (error) {
     console.error('Error storing transfer entry:', error);
     throw error;

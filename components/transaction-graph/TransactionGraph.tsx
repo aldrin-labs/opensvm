@@ -1047,6 +1047,9 @@ const CytoscapeContainer = React.memo(() => {
   useEffect(() => {
     if (!isLoading) return;
 
+    // Capture the current ref value at the start of the effect
+    const currentCy = cyRef.current;
+
     // Force completion after reasonable timeout
     const completionTimeout = setTimeout(() => {
       if (isLoading) {
@@ -1055,14 +1058,14 @@ const CytoscapeContainer = React.memo(() => {
         setProgress(0);
 
         // Try to show whatever graph data we have
-        if (cyRef.current) {
-          const nodes = cyRef.current.nodes();
-          const edges = cyRef.current.edges();
+        if (currentCy) {
+          const nodes = currentCy.nodes();
+          const edges = currentCy.edges();
 
           if (nodes.length > 0) {
             setError(`Loading completed with timeout. Showing ${nodes.length} nodes and ${edges.length} edges.`);
             // Force GPU graph update using existing hook function
-            updateGPUGraphData(cyRef.current);
+            updateGPUGraphData(currentCy);
           } else {
             setError('Graph loading timed out. No data could be loaded. This may be expected for accounts with limited activity.');
           }
@@ -1079,8 +1082,9 @@ const CytoscapeContainer = React.memo(() => {
 
   // Enhanced cleanup on unmount with cytoscape-specific logic
   useEffect(() => {
-    // Capture timeoutIds ref for cleanup
+    // Capture ref values for cleanup
     const timeoutIdsCurrent = timeoutIds.current;
+    const currentCy = cyRef.current;
 
     return () => {
       timeoutIdsCurrent.forEach(id => clearTimeout(id));
@@ -1104,8 +1108,8 @@ const CytoscapeContainer = React.memo(() => {
       }
 
       // Clear GPU graph data
-      if (cyRef.current) {
-        updateGPUGraphData(cyRef.current);
+      if (currentCy) {
+        updateGPUGraphData(currentCy);
       }
 
       // Standard cleanup
@@ -1113,7 +1117,7 @@ const CytoscapeContainer = React.memo(() => {
       cleanupGraph();
       stopTrackingAddress();
     };
-  }, [cleanupGraph, cleanupLayout, stopTrackingAddress, updateGPUGraphData]);
+  }, [cleanupGraph, cleanupLayout, stopTrackingAddress, updateGPUGraphData, cyRef]);
 
   // Handle window resize
   useEffect(() => {
