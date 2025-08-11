@@ -4,16 +4,16 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 
 // Check if required environment variables are present
-if (!process.env.TOGETHER_API_KEY || !process.env.HELICONE_API_KEY) {
+if (!process.env.TOGETHER_API_KEY) {
   console.warn('Warning: Missing required environment variables. The similar questions feature will be disabled.');
 }
 
 const together = process.env.TOGETHER_API_KEY ? new Together({
   apiKey: process.env.TOGETHER_API_KEY,
-  baseURL: "https://together.helicone.ai/v1",
-  defaultHeaders: process.env.HELICONE_API_KEY ? {
-    "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}`,
-  } : {},
+  baseURL: "https://api.together.xyz/v1",
+  // defaultHeaders: process.env.HELICONE_API_KEY ? {
+  //   "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}`,
+  // } : {},
 }) : null;
 
 interface ChatCompletion {
