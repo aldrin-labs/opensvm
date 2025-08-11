@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/lib/settings';
+import { useTheme } from '@/lib/design-system/theme-provider';
 import { updateClientRpcEndpoint } from '@/lib/solana-connection';
 import { Button } from '@/components/ui/button';
 import {
@@ -28,6 +29,7 @@ const icons = {
 };
 
 const themes = [
+  { id: 'default', name: 'Default' },
   { id: 'paper', name: 'Paper' },
   { id: 'high-contrast', name: 'High Contrast' },
   { id: 'dos-blue', name: 'DOS Blue' },
@@ -50,11 +52,12 @@ const fontSizes = [
 // Client-side only component that uses settings
 function SettingsMenuClient() {
   const settings = useSettings();
+  const { config, updateConfig } = useTheme();
   const [isOpen, setIsOpen] = useState(false);
   const [showCustomRpc, setShowCustomRpc] = useState(false);
 
   const [tempSettings, setTempSettings] = useState({
-    theme: settings?.theme || 'paper',
+    theme: config?.variant || 'cyberpunk',
     fontFamily: settings?.fontFamily || 'berkeley',
     fontSize: settings?.fontSize || 'medium',
     rpcEndpoint: settings?.rpcEndpoint || { name: 'OpenSVM', url: 'opensvm', network: 'mainnet' },
@@ -63,23 +66,25 @@ function SettingsMenuClient() {
 
   // Update tempSettings when settings change
   useEffect(() => {
-    if (settings) {
+    if (settings && config) {
       setTempSettings({
-        theme: settings.theme,
+        theme: config.variant,
         fontFamily: settings.fontFamily,
         fontSize: settings.fontSize,
         rpcEndpoint: settings.rpcEndpoint,
         customRpcEndpoint: settings.customRpcEndpoint,
       });
     }
-  }, [settings]);
+  }, [settings, config]);
 
   const handleApply = () => {
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
       settings.addCustomRpcEndpoint('Custom', tempSettings.customRpcEndpoint);
       updateClientRpcEndpoint(tempSettings.customRpcEndpoint);
     } else {
-      settings.setTheme(tempSettings.theme);
+      // Use enhanced theme provider for theme changes
+      updateConfig({ variant: tempSettings.theme as any });
+      // Use old settings for other options
       settings.setFontFamily(tempSettings.fontFamily);
       settings.setFontSize(tempSettings.fontSize);
       settings.setRpcEndpoint(tempSettings.rpcEndpoint);
@@ -90,7 +95,7 @@ function SettingsMenuClient() {
 
   const handleCancel = () => {
     setTempSettings({
-      theme: settings.theme,
+      theme: config.variant,
       fontFamily: settings.fontFamily,
       fontSize: settings.fontSize,
       rpcEndpoint: settings.rpcEndpoint,
@@ -124,7 +129,7 @@ function SettingsMenuClient() {
                 <DropdownMenuItem
                   key={theme.id}
                   preventClose
-                  onClick={() => setTempSettings(s => ({ ...s, theme: theme.id }))}
+                  onClick={() => setTempSettings(s => ({ ...s, theme: theme.id as any }))}
                 >
                   {theme.name}
                 </DropdownMenuItem>
