@@ -149,24 +149,16 @@ export default function AccountOverview({
 
     // Add token balances with USD values (mock prices for now)
     tokenAccounts.forEach((token, index) => {
-      if (token.uiAmount && token.uiAmount > 0) {
-        // Mock USD price calculation - in real implementation this would come from API
-        const mockPrice = token.symbol === 'USDC' ? 1 :
-          token.symbol === 'USDT' ? 1 :
-            token.symbol === 'BTC' ? 43000 :
-              token.symbol === 'ETH' ? 2500 :
-                Math.random() * 100; // Random price for other tokens
-
+      if (token.uiAmount > 0) {
+        const mockPrice = Math.random() * 1000 + 10; // Mock price between $10-$1010
         data.push({
-          name: token.symbol || 'Unknown',
+          name: token.symbol || `${token.mint?.slice(0, 4)}...${token.mint?.slice(-4)}` || 'Unknown',
           value: token.uiAmount,
           usdValue: token.uiAmount * mockPrice,
           color: themeColors[(index + 1) % themeColors.length]
         });
       }
-    });
-
-    // Sort by USD value descending
+    });    // Sort by USD value descending
     data.sort((a, b) => b.usdValue - a.usdValue);
 
     // Take top 10 and group rest as "Others"
@@ -213,21 +205,38 @@ export default function AccountOverview({
               <div className="text-sm text-muted-foreground">($0.00)</div>
             </div>
             {tokenAccounts && tokenAccounts.length > 0 && (
-              <div className="mt-2">
-                <button className="w-full flex items-center justify-between bg-muted rounded-lg p-3 hover:bg-muted/80">
-                  <div className="text-sm font-mono">
-                    {tokenAccounts[0]?.mint?.slice(0, 8)}...
+              <div className="mt-2 space-y-2">
+                {/* Display top 3 tokens with proper formatting */}
+                {tokenAccounts.slice(0, 3).map((token, index) => (
+                  <div key={token.mint || index} className="bg-muted rounded-lg p-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {token.icon && (
+                          <img src={token.icon} alt={token.symbol} className="w-5 h-5 rounded-full" />
+                        )}
+                        <div>
+                          <div className="text-sm font-medium">
+                            {token.symbol || `${token.mint?.slice(0, 4)}...${token.mint?.slice(-4)}`}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {token.name || 'Unknown Token'}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-sm font-mono">
+                          {token.uiAmount?.toLocaleString() || '0'}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          {token.usdValue ? `$${token.usdValue.toFixed(2)}` : '$0.00'}
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="text-sm">
-                    {tokenAccounts[0]?.uiAmount?.toLocaleString()}
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    {tokenAccounts[0]?.symbol || 'Unknown'}
-                  </div>
-                </button>
-                {tokenAccounts.length > 1 && (
-                  <div className="text-xs text-muted-foreground mt-2 text-center">
-                    + {tokenAccounts.length - 1} more tokens
+                ))}
+                {tokenAccounts.length > 3 && (
+                  <div className="text-xs text-muted-foreground text-center py-2">
+                    + {tokenAccounts.length - 3} more tokens
                   </div>
                 )}
               </div>

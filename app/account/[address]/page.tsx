@@ -6,6 +6,7 @@ import { getConnection } from '@/lib/solana-connection';
 //import { useSettings } from '@/lib/settings';
 import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
+import { batchFetchTokenMetadata } from '@/lib/token-registry';
 import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
 import { TransactionGraphLazy, AccountTabsLazy, PerformanceWrapper } from '@/components/LazyComponents';
@@ -109,11 +110,25 @@ async function getAccountData(address: string): Promise<AccountData> {
           balance: account.account.data.parsed.info.tokenAmount.uiAmount,
         }));
 
-        tokenAccountsForOverview = tokenAccounts.value.map(account => ({
-          mint: account.account.data.parsed.info.mint,
-          uiAmount: account.account.data.parsed.info.tokenAmount.uiAmount,
-          symbol: account.account.data.parsed.info.symbol || account.account.data.parsed.info.tokenSymbol || account.account.data.parsed.name || account.account.data.parsed.info.mint || '<Unknown>', // Default symbol - would be fetched from token registry in real app
-        }));
+        // Fetch token metadata for all mints
+        const mintAddresses = tokenAccounts.value.map(account => account.account.data.parsed.info.mint);
+        const tokenMetadataMap = await batchFetchTokenMetadata(connection, mintAddresses);
+
+        tokenAccountsForOverview = tokenAccounts.value.map(account => {
+          const mint = account.account.data.parsed.info.mint;
+          const metadata = tokenMetadataMap.get(mint);
+
+          return {
+            mint,
+            owner: account.account.owner.toBase58(),
+            amount: account.account.data.parsed.info.tokenAmount.amount,
+            decimals: account.account.data.parsed.info.tokenAmount.decimals,
+            uiAmount: account.account.data.parsed.info.tokenAmount.uiAmount,
+            symbol: metadata?.symbol || `${mint.slice(0, 4)}...${mint.slice(-4)}`,
+            name: metadata?.name || 'Unknown Token',
+            icon: metadata?.logoURI
+          };
+        });
       } catch (tokenError) {
         console.warn('Token accounts fetch failed, continuing with empty tokens:', tokenError instanceof Error ? tokenError.message : 'Unknown error');
         // Continue with empty token data instead of failing
@@ -343,9 +358,9 @@ export default function AccountPage({ params, searchParams }: PageProps) {
 
   return (
     <div className="w-full px-4 py-8">
-      <div className="grid grid-cols-1 xl:grid-cols-10 gap-6">
-        {/* Account Info - Narrow Column */}
-        <div className="xl:col-span-1 space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* Account Info - Compact Column */}
+        <div className="lg:col-span-2 space-y-6">
           <AccountInfo
             address={accountInfo.address}
             isSystemProgram={accountInfo.isSystemProgram}
@@ -354,7 +369,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         </div>
 
         {/* Account Overview - Medium Column */}
-        <div className="xl:col-span-2 space-y-6">
+        <div className="lg:col-span-3 space-y-6">
           <AccountOverview
             address={accountInfo.address}
             solBalance={accountInfo.solBalance}
@@ -365,7 +380,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         </div>
 
         {/* Transaction Graph - Wide Column */}
-        <div className="xl:col-span-7 space-y-6" ref={graphRef}>
+        <div className="lg:col-span-7 space-y-6" ref={graphRef}>
           <GraphErrorBoundary>
             <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-full" />}>
               <TransactionGraphLazy

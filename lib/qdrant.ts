@@ -19,7 +19,9 @@ export const COLLECTIONS = {
   USER_LIKES: 'user_likes',
   SHARES: 'shares',
   SHARE_CLICKS: 'share_clicks',
-  TRANSFERS: 'transfers'
+  TRANSFERS: 'transfers',
+  TOKEN_METADATA: 'token_metadata',
+  PROGRAM_METADATA: 'program_metadata'
 } as const;
 
 // Export qdrant client for direct access
@@ -815,6 +817,43 @@ export interface TransferEntry {
   lastUpdated: number;
 }
 
+export interface TokenMetadataEntry {
+  id: string; // mintAddress
+  mintAddress: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoURI?: string;
+  verified: boolean;
+  metadataUri?: string;
+  description?: string;
+  cached: boolean;
+  lastUpdated: number;
+  cacheExpiry: number;
+}
+
+export interface ProgramMetadataEntry {
+  id: string; // programId
+  programId: string;
+  name: string;
+  description?: string;
+  githubUrl?: string;
+  twitterUrl?: string;
+  websiteUrl?: string;
+  docsUrl?: string;
+  logoUrl?: string;
+  idl?: any; // IDL JSON object
+  verified: boolean;
+  category?: string; // 'defi', 'nft', 'gaming', 'infrastructure', etc.
+  tags?: string[];
+  deployedSlot?: number;
+  authority?: string;
+  upgradeAuthority?: string;
+  cached: boolean;
+  lastUpdated: number;
+  cacheExpiry: number;
+}
+
 // Cache for tracking collection and index creation status
 const collectionInitialized = new Map<string, boolean>();
 
@@ -877,6 +916,64 @@ async function ensureTransfersCollection() {
 
   } catch (error) {
     console.error('Error ensuring transfers collection:', error);
+    throw error;
+  }
+}
+
+/**
+ * Ensure token metadata collection exists with proper indexes
+ */
+async function ensureTokenMetadataCollection(): Promise<void> {
+  const cacheKey = 'token_metadata_initialized';
+
+  // Check if already initialized in this session
+  if (collectionInitialized.get(cacheKey)) {
+    return;
+  }
+
+  try {
+    const exists = await qdrantClient.getCollection(COLLECTIONS.TOKEN_METADATA).catch(() => null);
+
+    if (!exists) {
+      await qdrantClient.createCollection(COLLECTIONS.TOKEN_METADATA, {
+        vectors: {
+          size: 384,
+          distance: 'Cosine'
+        }
+      });
+      console.log('Created token metadata collection');
+    }
+
+    // Helper function to ensure index exists
+    const ensureIndex = async (fieldName: string) => {
+      try {
+        await qdrantClient.createPayloadIndex(COLLECTIONS.TOKEN_METADATA, {
+          field_name: fieldName,
+          field_schema: 'keyword'
+        });
+        console.log(`Created index for ${fieldName} in token metadata`);
+      } catch (error: any) {
+        if (error?.data?.status?.error?.includes('already exists') ||
+          error?.message?.includes('already exists')) {
+          // Index already exists, this is expected and not an error
+        } else {
+          console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
+        }
+      }
+    };
+
+    // Ensure necessary indexes exist
+    await ensureIndex('mintAddress');
+    await ensureIndex('symbol');
+    await ensureIndex('cached');
+    await ensureIndex('verified');
+
+    // Mark as initialized
+    collectionInitialized.set(cacheKey, true);
+    console.log('Token metadata collection and indexes initialized successfully');
+
+  } catch (error) {
+    console.error('Error ensuring token metadata collection:', error);
     throw error;
   }
 }
@@ -1220,5 +1317,324 @@ export function isSolanaOnlyTransaction(transfer: any): boolean {
   } catch (error) {
     console.error('Error analyzing transfer for Solana-only detection:', error);
     return false; // Default to cross-chain on error for safety
+  }
+}
+
+/**
+ * Store token metadata entry in Qdrant
+ */
+export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  try {
+    await ensureTokenMetadataCollection();
+
+    // Validate metadata
+    if (!metadata.id || !metadata.mintAddress || !metadata.symbol) {
+      throw new Error(`Invalid token metadata: missing required fields`);
+    }
+
+    // Generate embedding from token content
+    const textContent = `${metadata.symbol} ${metadata.name} ${metadata.mintAddress} ${metadata.description || ''}`;
+    const vector = generateSimpleEmbedding(textContent);
+
+    console.log(`Storing token metadata for: ${metadata.symbol} (${metadata.mintAddress})`);
+
+    const upsertData = {
+      wait: true,
+      points: [{
+        id: metadata.id,
+        vector,
+        payload: {
+          ...metadata,
+          // Ensure all fields are properly serializable
+          decimals: Number(metadata.decimals),
+          lastUpdated: Number(metadata.lastUpdated),
+          cacheExpiry: Number(metadata.cacheExpiry)
+        }
+      }]
+    };
+
+    await qdrantClient.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+  } catch (error) {
+    console.error('Error storing token metadata:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get cached token metadata from Qdrant
+ */
+export async function getCachedTokenMetadata(
+  mintAddress: string
+): Promise<TokenMetadataEntry | null> {
+  // Skip in browser
+  if (typeof window !== 'undefined') {
+    return null;
+  }
+
+  try {
+    await ensureTokenMetadataCollection();
+
+    const result = await qdrantClient.search(COLLECTIONS.TOKEN_METADATA, {
+      vector: generateSimpleEmbedding(mintAddress),
+      filter: {
+        must: [
+          { key: 'mintAddress', match: { value: mintAddress } }
+        ]
+      },
+      limit: 1,
+      with_payload: true
+    });
+
+    if (result.length > 0) {
+      const metadata = result[0].payload as unknown as TokenMetadataEntry;
+
+      // Check if cache is still valid
+      const now = Date.now();
+      if (metadata.cacheExpiry > now) {
+        return metadata;
+      } else {
+        console.log(`Token metadata cache expired for ${mintAddress}`);
+        // Optionally delete expired entry
+        await qdrantClient.delete(COLLECTIONS.TOKEN_METADATA, {
+          points: [metadata.id]
+        });
+        return null;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting cached token metadata:', error);
+    return null;
+  }
+}
+
+/**
+ * Batch get cached token metadata from Qdrant
+ */
+export async function batchGetCachedTokenMetadata(
+  mintAddresses: string[]
+): Promise<Map<string, TokenMetadataEntry>> {
+  // Skip in browser
+  if (typeof window !== 'undefined') {
+    return new Map();
+  }
+
+  const results = new Map<string, TokenMetadataEntry>();
+
+  try {
+    await ensureTokenMetadataCollection();
+
+    // Process in small batches to avoid overwhelming Qdrant
+    const batchSize = 10;
+    for (let i = 0; i < mintAddresses.length; i += batchSize) {
+      const batch = mintAddresses.slice(i, i + batchSize);
+
+      const promises = batch.map(async (mintAddress) => {
+        const metadata = await getCachedTokenMetadata(mintAddress);
+        if (metadata) {
+          results.set(mintAddress, metadata);
+        }
+      });
+
+      await Promise.all(promises);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error batch getting cached token metadata:', error);
+    return new Map();
+  }
+}
+
+/**
+ * Ensure program metadata collection exists with proper indexes
+ */
+async function ensureProgramMetadataCollection(): Promise<void> {
+  const cacheKey = 'program_metadata_initialized';
+
+  // Check if already initialized in this session
+  if (collectionInitialized.get(cacheKey)) {
+    return;
+  }
+
+  try {
+    const exists = await qdrantClient.getCollection(COLLECTIONS.PROGRAM_METADATA).catch(() => null);
+
+    if (!exists) {
+      await qdrantClient.createCollection(COLLECTIONS.PROGRAM_METADATA, {
+        vectors: {
+          size: 384,
+          distance: 'Cosine'
+        }
+      });
+      console.log('Created program metadata collection');
+    }
+
+    // Helper function to ensure index exists
+    const ensureIndex = async (fieldName: string) => {
+      try {
+        await qdrantClient.createPayloadIndex(COLLECTIONS.PROGRAM_METADATA, {
+          field_name: fieldName,
+          field_schema: 'keyword'
+        });
+        console.log(`Created index for ${fieldName} in program metadata`);
+      } catch (error: any) {
+        if (error?.data?.status?.error?.includes('already exists') ||
+          error?.message?.includes('already exists')) {
+          // Index already exists, this is expected and not an error
+        } else {
+          console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
+        }
+      }
+    };
+
+    // Ensure necessary indexes exist
+    await ensureIndex('programId');
+    await ensureIndex('name');
+    await ensureIndex('category');
+    await ensureIndex('verified');
+    await ensureIndex('cached');
+
+    // Mark as initialized
+    collectionInitialized.set(cacheKey, true);
+    console.log('Program metadata collection and indexes initialized successfully');
+
+  } catch (error) {
+    console.error('Error ensuring program metadata collection:', error);
+    throw error;
+  }
+}
+
+/**
+ * Store program metadata entry in Qdrant
+ */
+export async function storeProgramMetadata(metadata: ProgramMetadataEntry): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  try {
+    await ensureProgramMetadataCollection();
+
+    // Validate metadata
+    if (!metadata.id || !metadata.programId || !metadata.name) {
+      throw new Error(`Invalid program metadata: missing required fields`);
+    }
+
+    // Generate embedding from program content
+    const textContent = `${metadata.name} ${metadata.description || ''} ${metadata.category || ''} ${metadata.tags?.join(' ') || ''} ${metadata.programId}`;
+    const vector = generateSimpleEmbedding(textContent);
+
+    console.log(`Storing program metadata for: ${metadata.name} (${metadata.programId})`);
+
+    const upsertData = {
+      wait: true,
+      points: [{
+        id: metadata.id,
+        vector,
+        payload: {
+          ...metadata,
+          // Ensure all fields are properly serializable
+          lastUpdated: Number(metadata.lastUpdated),
+          cacheExpiry: Number(metadata.cacheExpiry),
+          deployedSlot: metadata.deployedSlot ? Number(metadata.deployedSlot) : undefined
+        }
+      }]
+    };
+
+    await qdrantClient.upsert(COLLECTIONS.PROGRAM_METADATA, upsertData);
+  } catch (error) {
+    console.error('Error storing program metadata:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get cached program metadata from Qdrant
+ */
+export async function getCachedProgramMetadata(
+  programId: string
+): Promise<ProgramMetadataEntry | null> {
+  // Skip in browser
+  if (typeof window !== 'undefined') {
+    return null;
+  }
+
+  try {
+    await ensureProgramMetadataCollection();
+
+    const result = await qdrantClient.search(COLLECTIONS.PROGRAM_METADATA, {
+      vector: generateSimpleEmbedding(programId),
+      filter: {
+        must: [
+          { key: 'programId', match: { value: programId } }
+        ]
+      },
+      limit: 1,
+      with_payload: true
+    });
+
+    if (result.length > 0) {
+      const metadata = result[0].payload as unknown as ProgramMetadataEntry;
+
+      // Check if cache is still valid
+      const now = Date.now();
+      if (metadata.cacheExpiry > now) {
+        return metadata;
+      } else {
+        console.log(`Program metadata cache expired for ${programId}`);
+        // Optionally delete expired entry
+        await qdrantClient.delete(COLLECTIONS.PROGRAM_METADATA, {
+          points: [metadata.id]
+        });
+        return null;
+      }
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error getting cached program metadata:', error);
+    return null;
+  }
+}
+
+/**
+ * Batch get cached program metadata from Qdrant
+ */
+export async function batchGetCachedProgramMetadata(
+  programIds: string[]
+): Promise<Map<string, ProgramMetadataEntry>> {
+  // Skip in browser
+  if (typeof window !== 'undefined') {
+    return new Map();
+  }
+
+  const results = new Map<string, ProgramMetadataEntry>();
+
+  try {
+    await ensureProgramMetadataCollection();
+
+    // Process in small batches to avoid overwhelming Qdrant
+    const batchSize = 10;
+    for (let i = 0; i < programIds.length; i += batchSize) {
+      const batch = programIds.slice(i, i + batchSize);
+
+      const promises = batch.map(async (programId) => {
+        const metadata = await getCachedProgramMetadata(programId);
+        if (metadata) {
+          results.set(programId, metadata);
+        }
+      });
+
+      await Promise.all(promises);
+    }
+
+    return results;
+  } catch (error) {
+    console.error('Error batch getting cached program metadata:', error);
+    return new Map();
   }
 }
