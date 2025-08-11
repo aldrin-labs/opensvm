@@ -26,7 +26,7 @@ interface ThemeContextType {
 
 const defaultConfig: ThemeConfig = {
   mode: 'system',
-  variant: 'default',
+  variant: 'cyberpunk',
   fontSize: 'base',
   reducedMotion: false,
   highContrast: false,
@@ -115,8 +115,8 @@ export function EnhancedThemeProvider({
       ''
     ).trim();
 
-    // Apply theme variant
-    if (config.variant !== 'default') {
+    // Apply theme variant  
+    if (config.variant && config.variant !== 'default') {
       root.classList.add(`theme-${config.variant}`);
     }
 
@@ -158,6 +158,7 @@ export function EnhancedThemeProvider({
     if (!mounted) return;
     
     try {
+      console.log('Saving theme config to localStorage:', config);
       localStorage.setItem(storageKey, JSON.stringify(config));
     } catch (error) {
       console.warn('Failed to save theme config to localStorage:', error);
@@ -179,7 +180,12 @@ export function EnhancedThemeProvider({
   }, [config.mode, mounted]);
 
   const updateConfig = (updates: Partial<ThemeConfig>) => {
-    setConfig(prev => ({ ...prev, ...updates }));
+    console.log('Theme config updating:', updates);
+    setConfig(prev => {
+      const newConfig = { ...prev, ...updates };
+      console.log('New theme config:', newConfig);
+      return newConfig;
+    });
   };
 
   const resetToDefaults = () => {

@@ -10,6 +10,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 
 const icons = {
+  default: (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="4" />
+      <path d="m12 2 3 10h7l-5.5 4 2 7L12 18l-6.5 5 2-7L2 12h7z" />
+    </svg>
+  ),
   paper: (
     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
       <rect x="3" y="3" width="18" height="18" rx="2" />
@@ -53,6 +59,7 @@ export function ThemeSwitcher() {
   const { config, updateConfig } = useTheme();
 
   const themes = [
+    { id: 'default', name: 'Default', icon: icons.default },
     { id: 'paper', name: 'Paper', icon: icons.paper },
     { id: 'high-contrast', name: 'High Contrast', icon: icons['high-contrast'] },
     { id: 'dos-blue', name: 'DOS Blue', icon: icons['dos-blue'] },
