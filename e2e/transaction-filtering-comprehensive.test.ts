@@ -24,8 +24,19 @@ test.describe('Transaction Filtering System - Comprehensive Tests', () => {
     test('01. Account Transfers filter shows only basic transfers', async ({ page }) => {
         await page.goto(`/account/${TEST_ADDRESSES.GENERAL_USER}`);
 
-        // Wait for page to load
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        // Wait for page to load account info first
+        await page.waitForSelector('text=Account Info', { timeout: 30000 });
+
+        // Wait for tabs skeleton to appear (lazy loading started)
+        try {
+            await page.waitForSelector('.space-y-2', { timeout: 20000 }); // TableSkeleton has space-y-2
+            console.log('Table skeleton detected - lazy loading started');
+        } catch (e) {
+            console.log('No skeleton detected, continuing...');
+        }
+
+        // Wait for the actual transfers table with much longer timeout (lazy loading)
+        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 60000 });
 
         // Check if Account Transfers is default selected
         const accountTransfersButton = page.locator('button:has-text("Account Transfers")');
