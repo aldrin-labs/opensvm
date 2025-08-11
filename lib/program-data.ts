@@ -2,7 +2,8 @@
  * Service for fetching and managing program activity data using existing Solana APIs
  */
 
-import { getConnection, getBlockDetails } from '@/lib/solana';
+import { getBlockDetails } from '@/lib/solana';
+import { getConnection } from '@/lib/solana-connection-server';
 import { ProgramActivity } from '@/components/ProgramActivityTable';
 
 export interface ProgramListResponse {

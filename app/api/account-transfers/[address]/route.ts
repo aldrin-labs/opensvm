@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey, Connection } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 import {
   MIN_TRANSFER_SOL,

@@ -15,7 +15,7 @@ const HTTP_STATUS_CODES = {
   409: { severity: 'medium' as const, category: 'validation' as const },
   422: { severity: 'medium' as const, category: 'validation' as const },
   429: { severity: 'medium' as const, category: 'api' as const },
-  
+
   // Server errors
   500: { severity: 'critical' as const, category: 'api' as const },
   502: { severity: 'high' as const, category: 'network' as const },
@@ -74,12 +74,12 @@ export class EnhancedFetch {
   }
 
   private calculateDelay(attempt: number): number {
-    const exponentialDelay = this.config.baseDelay * 
+    const exponentialDelay = this.config.baseDelay *
       Math.pow(this.config.exponentialBase, attempt - 1);
-    
+
     // Add jitter to prevent thundering herd
     const jitter = Math.random() * 0.1 * exponentialDelay;
-    
+
     return Math.min(exponentialDelay + jitter, this.config.maxDelay);
   }
 
@@ -98,20 +98,16 @@ export class EnhancedFetch {
     endpoint: string,
     context?: Record<string, any>
   ) {
-    const statusInfo = HTTP_STATUS_CODES[response.status as keyof typeof HTTP_STATUS_CODES];
-    
     return createApiError(
       endpoint,
       response.status,
-      response.statusText || `HTTP ${response.status}`,
+      response.statusText || `HTTP ${response.status}`
     );
   }
 
   private handleAuthenticationError(response: Response) {
-    if (response.status === 401 && this.rbac) {
-      // Clear authentication and redirect to login
-      this.rbac.clearAuthentication?.();
-      
+    if (response.status === 401) {
+      // Handle authentication error by redirecting to login
       if (typeof window !== 'undefined') {
         window.location.href = '/login';
       }
@@ -129,9 +125,8 @@ export class EnhancedFetch {
     try {
       // Add authentication headers if available
       const headers = new Headers(options.headers);
-      if (this.rbac?.currentUser?.accessToken) {
-        headers.set('Authorization', `Bearer ${this.rbac.currentUser.accessToken}`);
-      }
+      // Note: RBAC user model doesn't have accessToken - this would need to be implemented
+      // For now, we'll skip automatic token injection and rely on manual header setting
 
       // Add tenant context if available
       if (this.rbac?.currentTenant?.id) {
@@ -166,10 +161,10 @@ export class EnhancedFetch {
       }
 
       return response;
-      
+
     } catch (error) {
       clearTimeout(timeoutId);
-      
+
       // Handle network errors
       if (error instanceof Error) {
         // Retry on retryable errors
@@ -238,8 +233,8 @@ export class EnhancedFetch {
       // Re-throw if already handled
       if (error instanceof Error && this.errorHandler) {
         // Only report if not already reported in makeRequest
-        if (!error.message.includes('Request timeout') && 
-            !error.message.includes('Network')) {
+        if (!error.message.includes('Request timeout') &&
+          !error.message.includes('Network')) {
           this.errorHandler.reportError(error, {
             endpoint: url,
             method: options.method || 'GET',
@@ -357,7 +352,7 @@ ApiInterceptors.addRequestInterceptor((config) => {
   const headers = new Headers(config.headers);
   headers.set('X-Requested-With', 'XMLHttpRequest');
   headers.set('Accept', 'application/json');
-  
+
   return { ...config, headers };
 });
 

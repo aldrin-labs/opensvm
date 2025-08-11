@@ -69,7 +69,7 @@ export function middleware(request: NextRequest) {
   // Add Content Security Policy for enhanced security
   response.headers.set(
     'Content-Security-Policy',
-    "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com http://localhost:6333 http://localhost:*; object-src 'self' data:;"
+    "default-src 'self' data:; script-src 'self'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com http://localhost:6333 http://localhost:*; object-src 'self' data:;"
   );
 
   // Handle API rate limiting
@@ -108,6 +108,43 @@ export function middleware(request: NextRequest) {
         }
       );
     }
+  }
+
+  // Persist custom cluster/RPC override via query param -> cookie
+  // Example usages:
+  //   ?cluster=devnet
+  //   ?cluster=testnet
+  //   ?cluster=mainnet
+  //   ?cluster=rpc.osvm.ai
+  //   ?cluster=https://rpc.osvm.ai/sonic?token=secrettoken
+  const clusterParam = url.searchParams.get('cluster');
+  if (clusterParam && clusterParam.trim().length > 0) {
+    // Set cookie so it persists across navigation
+    const cookieValue = clusterParam.trim();
+
+    // Use a redirect to remove the query param from the URL so links stay clean
+    url.searchParams.delete('cluster');
+    const redirectResponse = NextResponse.redirect(url);
+
+    // Persist cookie for 30 days
+    redirectResponse.cookies.set('cluster', cookieValue, {
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+      secure: url.protocol === 'https:',
+      maxAge: 60 * 60 * 24 * 30,
+    });
+
+    // Carry security headers on redirect, too
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      redirectResponse.headers.set(key, value);
+    });
+    redirectResponse.headers.set(
+      'Content-Security-Policy',
+      "default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com http://localhost:6333 http://localhost:*; object-src 'self' data:;"
+    );
+
+    return redirectResponse;
   }
 
   // Handle redirects for legacy paths

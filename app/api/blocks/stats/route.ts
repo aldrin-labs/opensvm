@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 import { getBlockStats } from '@/lib/block-data';
-import { getConnection } from '@/lib/solana';
+import { getConnection } from '@/lib/solana-connection-server';
 import { z } from 'zod';
 import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
@@ -28,7 +28,7 @@ const BlockStatsRequestSchema = z.object({
 
 export async function GET(request: NextRequest) {
   const startTime = Date.now();
-  
+
   try {
     // Rate limiting
     const rateLimitResult = await rateLimitMiddleware(request);
@@ -64,11 +64,11 @@ export async function GET(request: NextRequest) {
         getBlockStats(),
         getConnection()
       ]);
-      
+
       epochInfo = await connection.getEpochInfo();
     } catch (error: any) {
       console.error('Error fetching block stats:', error);
-      
+
       return NextResponse.json({
         success: false,
         error: {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
           retryAfter: 5
         },
         timestamp: Date.now()
-      }, { 
+      }, {
         status: 500,
         headers: { 'Retry-After': '5' }
       });
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
         const totalSlots = performanceSamples.reduce((sum, sample) => sum + sample.numSlots, 0);
         const averageFees = totalSlots > 0 ? (totalTransactions * 0.000005) / totalSlots : 0; // Rough estimate
         const averageTransactionCount = totalSlots > 0 ? totalTransactions / totalSlots : 0;
-        
+
         // Determine network health based on TPS and block time
         let networkHealth: 'excellent' | 'good' | 'fair' | 'poor' = 'good';
         if (stats.recentTPS > 2000 && stats.avgBlockTime < 0.5) {
@@ -175,7 +175,7 @@ export async function GET(request: NextRequest) {
 
   } catch (error: any) {
     console.error('Unexpected error in block stats API:', error);
-    
+
     return NextResponse.json({
       success: false,
       error: {
@@ -185,7 +185,7 @@ export async function GET(request: NextRequest) {
         retryAfter: 5
       },
       timestamp: Date.now()
-    }, { 
+    }, {
       status: 500,
       headers: { 'Retry-After': '5' }
     });

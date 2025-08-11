@@ -149,12 +149,12 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'text-halign': 'center',
       'font-size': '13px',
       'font-family': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      'color': '#ffffff',
+      'color': 'hsl(var(--foreground))',
       'text-outline-width': 1.5,
-      'text-outline-color': 'rgba(0, 0, 0, 0.7)',
-      'background-color': '#6366f1',
+      'text-outline-color': 'hsl(var(--background) / 0.7)',
+      'background-color': 'hsl(var(--primary))',
       'border-width': 2,
-      'border-color': '#ffffff40',
+      'border-color': 'hsl(var(--border))',
       'border-opacity': 0.8
     }
   },
@@ -163,10 +163,10 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     css: {
       'border-width': 2,
       'border-style': 'dashed',
-      'border-color': '#e2e8f0',
-      'background-color': '#f1f5f9',
-      'color': '#64748b',
-      'text-outline-color': '#ffffffcc',
+      'border-color': 'hsl(var(--border))',
+      'background-color': 'hsl(var(--muted))',
+      'color': 'hsl(var(--muted-foreground))',
+      'text-outline-color': 'hsl(var(--background) / 0.8)',
       'opacity': 0.7
     }
   },
@@ -175,75 +175,107 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     css: {
       'border-width': 2,
       'border-style': 'dotted',
-      'border-color': '#3b82f6',
-      'background-color': '#dbeafe',
-      'color': '#1e40af',
-      'text-outline-color': '#ffffffcc'
+      'border-color': 'hsl(var(--primary))',
+      'background-color': 'hsl(var(--primary) / 0.15)',
+      'color': 'hsl(var(--primary-foreground))',
+      'text-outline-color': 'hsl(var(--background) / 0.8)'
     }
   },
   {
     selector: 'node.account',
     css: {
       'shape': 'round-rectangle',
-      'background-color': '#1e293b',
-      'border-color': '#475569',
+      'background-color': 'hsl(var(--card))',
+      'border-color': 'hsl(var(--border))',
       'border-width': 2,
       'width': '180px',
       'height': '48px',
       'font-size': '12px',
-      'color': '#e2e8f0',
-      'text-outline-color': '#00000080'
+      'color': 'hsl(var(--card-foreground))',
+      'text-outline-color': 'hsl(var(--background) / 0.5)'
     }
   },
   {
     selector: 'node.transaction',
     css: {
       'shape': 'ellipse',
-      'background-color': '#3b82f6',
-      'border-color': '#ffffff4d',
+      'background-color': 'hsl(var(--primary))',
+      'border-color': 'hsl(var(--border))',
       'border-width': 2,
       'width': '56px',
       'height': '56px',
       'font-size': '11px'
     }
   },
+  // Transaction type coloring
+  {
+    selector: 'node[txType = "spl_transfer"]',
+    css: {
+      'background-color': 'hsl(var(--primary))'
+    }
+  },
+  {
+    selector: 'node[txType = "sol_transfer"]',
+    css: {
+      'background-color': 'hsl(var(--success))'
+    }
+  },
+  {
+    selector: 'node[txType = "defi"]',
+    css: {
+      'background-color': 'hsl(var(--warning))'
+    }
+  },
+  {
+    selector: 'node[txType = "nft"]',
+    css: {
+      'background-color': 'hsl(var(--primary))'
+    }
+  },
+  {
+    selector: 'node[isFunding = "true"]',
+    css: {
+      'border-width': 3,
+      'border-color': 'hsl(var(--warning))'
+    }
+  },
   {
     selector: 'node.transaction.success',
     css: {
-      'background-color': '#10b981',
-      'border-color': '#ffffff66'
+      'background-color': 'hsl(var(--success))',
+      'border-color': 'hsl(var(--border))'
     }
   },
   {
     selector: 'node.transaction.error',
     css: {
-      'background-color': '#ef4444',
-      'border-color': '#ffffff66'
+      'background-color': 'hsl(var(--destructive))',
+      'border-color': 'hsl(var(--border))'
     }
   },
   {
     selector: 'node.new-transaction',
     css: {
-      'background-color': '#8b5cf6',
+      'background-color': 'hsl(var(--primary))',
       'border-width': 3,
-      'border-color': '#a78bfa'
+      'border-color': 'hsl(var(--primary))'
     }
   },
   {
     selector: 'node.tracked-address',
     css: {
-      'background-color': '#f59e0b',
+      'background-color': 'hsl(var(--warning))',
       'border-width': 3,
-      'border-color': '#fbbf24'
+      'border-color': 'hsl(var(--warning))'
     }
   },
   {
     selector: 'node.highlighted',
     css: {
       'border-width': 4,
-      'border-color': '#fbbf24',
-      'background-color': '#f59e0b',
-      'text-outline-color': '#000000cc',
+      'border-color': 'hsl(var(--warning))',
+      'background-color': 'hsl(var(--warning))',
+      'text-outline-color': 'hsl(var(--background) / 0.8)',
       'text-outline-width': 2,
       'z-index': 100
     }
@@ -252,9 +284,9 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'node.active',
     css: {
       'border-width': 4,
-      'border-color': '#06b6d4',
-      'background-color': '#0891b2',
-      'text-outline-color': '#000000cc',
+      'border-color': 'hsl(var(--primary))',
+      'background-color': 'hsl(var(--primary))',
+      'text-outline-color': 'hsl(var(--background) / 0.8)',
       'text-outline-width': 2,
       'z-index': 999
     }
@@ -263,8 +295,8 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'edge',
     css: {
       'width': 2.5,
-      'line-color': '#64748b',
-      'target-arrow-color': '#64748b',
+      'line-color': 'hsl(var(--muted-foreground))',
+      'target-arrow-color': 'hsl(var(--muted-foreground))',
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
       'opacity': 0.8,
@@ -272,12 +304,50 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'line-cap': 'round'
     }
   },
+  // Edge color by transaction type attached on edge data.txType
+  {
+    selector: 'edge[txType = "spl_transfer"]',
+    css: {
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))'
+    }
+  },
+  {
+    selector: 'edge[txType = "sol_transfer"]',
+    css: {
+      'line-color': 'hsl(var(--success))',
+      'target-arrow-color': 'hsl(var(--success))'
+    }
+  },
+  {
+    selector: 'edge[txType = "defi"]',
+    css: {
+      'line-color': 'hsl(var(--warning))',
+      'target-arrow-color': 'hsl(var(--warning))'
+    }
+  },
+  {
+    selector: 'edge[txType = "nft"]',
+    css: {
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))'
+    }
+  },
+  {
+    selector: 'edge[isFunding = "true"]',
+    css: {
+      'line-style': 'solid',
+      'width': 3.5,
+      'line-color': 'hsl(var(--warning))',
+      'target-arrow-color': 'hsl(var(--warning))'
+    }
+  },
   {
     selector: 'edge.hover',
     css: {
       'width': 4,
-      'line-color': '#3b82f6',
-      'target-arrow-color': '#3b82f6',
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))',
       'opacity': 1,
       'arrow-scale': 1.5,
       'z-index': 10
@@ -287,17 +357,17 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'edge[type="transfer"]',
     css: {
       'width': 3.5,
-      'line-color': '#10b981',
-      'target-arrow-color': '#10b981',
+      'line-color': 'hsl(var(--success))',
+      'target-arrow-color': 'hsl(var(--success))',
       'label': 'data(label)',
       'font-size': '11px',
       'font-family': 'Inter, sans-serif',
-      'color': '#064e3b',
-      'text-background-color': '#ecfdf5',
+      'color': 'hsl(var(--success-foreground, var(--foreground)))',
+      'text-background-color': 'hsl(var(--background))',
       'text-background-opacity': 0.95,
       'text-background-padding': '4px',
       'text-border-width': 1,
-      'text-border-color': '#10b981',
+      'text-border-color': 'hsl(var(--success))',
       'text-border-opacity': 0.3,
       'line-cap': 'round',
       'curve-style': 'bezier'
@@ -307,8 +377,8 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'edge.realtime-edge',
     css: {
       'width': 3,
-      'line-color': '#8b5cf6',
-      'target-arrow-color': '#8b5cf6',
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))',
       'line-style': 'dashed',
       'opacity': 0.9,
       'arrow-scale': 1.4
@@ -318,12 +388,76 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'edge.highlighted',
     css: {
       'width': 5,
-      'line-color': '#f59e0b',
-      'target-arrow-color': '#f59e0b',
+      'line-color': 'hsl(var(--warning))',
+      'target-arrow-color': 'hsl(var(--warning))',
       'z-index': 999,
       'arrow-scale': 1.8,
       'opacity': 1,
       'line-cap': 'round'
+    }
+  },
+  // Enhanced edge styling with amount-based thickness and labels
+  {
+    selector: 'edge[amount]',
+    css: {
+      'label': 'data(label)',
+      'font-size': '10px',
+      'font-family': 'Inter, sans-serif',
+      'color': 'hsl(var(--foreground))',
+      'text-background-color': 'hsl(var(--background))',
+      'text-background-opacity': 0.9,
+      'text-background-padding': '3px',
+      'text-border-width': 1,
+      'text-border-color': 'hsl(var(--border))',
+      'text-border-opacity': 0.5,
+      'text-rotation': 'autorotate',
+      'text-margin-y': '8px'
+    }
+  },
+  // Edge thickness based on transaction amount
+  {
+    selector: 'edge[amount >= 1000]',
+    css: { 'width': 4.5 }
+  },
+  {
+    selector: 'edge[amount >= 100]',
+    css: { 'width': 3.5 }
+  },
+  {
+    selector: 'edge[amount >= 10]',
+    css: { 'width': 3 }
+  },
+  {
+    selector: 'edge[amount >= 1]',
+    css: { 'width': 2.5 }
+  },
+  {
+    selector: 'edge[amount < 1]',
+    css: { 'width': 2 }
+  },
+  // Direction indicators for bidirectional transactions
+  {
+    selector: 'edge[direction="in"]',
+    css: {
+      'line-style': 'solid',
+      'source-arrow-shape': 'none',
+      'target-arrow-shape': 'triangle'
+    }
+  },
+  {
+    selector: 'edge[direction="out"]',
+    css: {
+      'line-style': 'solid',
+      'source-arrow-shape': 'triangle',
+      'target-arrow-shape': 'none'
+    }
+  },
+  {
+    selector: 'edge[direction="bidirectional"]',
+    css: {
+      'line-style': 'dashed',
+      'source-arrow-shape': 'triangle',
+      'target-arrow-shape': 'triangle'
     }
   },
   {

@@ -64,19 +64,19 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
 
   // GPU-optimized node colors
   const nodeColors = useMemo(() => ({
-    account: '#2c5282',
-    transaction: '#4299e1',
-    'transaction.success': '#48bb78',
-    'transaction.error': '#f56565',
-    tracked: '#8b5cf6',
-    default: '#4a5568'
+    account: 'hsl(var(--primary))',
+    transaction: 'hsl(var(--muted-foreground))',
+    'transaction.success': 'hsl(var(--success))',
+    'transaction.error': 'hsl(var(--destructive))',
+    tracked: 'hsl(var(--primary))',
+    default: 'hsl(var(--muted-foreground))'
   }), []);
 
   // GPU-optimized link colors
   const linkColors = useMemo(() => ({
-    transfer: '#68d391',
-    interaction: '#718096',
-    default: '#718096'
+    transfer: 'hsl(var(--success))',
+    interaction: 'hsl(var(--muted-foreground))',
+    default: 'hsl(var(--muted-foreground))'
   }), []);
 
   // Optimized node size calculation
@@ -108,21 +108,21 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
       transparent: true,
       opacity: 0.9
     });
-    
+
     const mesh = new THREE.Mesh(geometry, material);
-    
+
     // Add glow effect for tracked nodes
     if (node.tracked) {
       const glowGeometry = new THREE.SphereGeometry(getNodeSize(node) * 1.5, 16, 16);
       const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0x8b5cf6,
+        color: new THREE.Color('hsl(var(--primary))'),
         transparent: true,
         opacity: 0.3
       });
       const glow = new THREE.Mesh(glowGeometry, glowMaterial);
       mesh.add(glow);
     }
-    
+
     return mesh;
   }, [getNodeSize, getNodeColor]);
 
@@ -138,16 +138,16 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
   // GPU particle system for enhanced visual effects
   const enableParticleEffects = useCallback(() => {
     if (!enableGPUParticles || !graphRef.current) return;
-    
+
     // Add particle trail effects for active transactions
-    const activeNodes = graphData.nodes.filter(node => 
+    const activeNodes = graphData.nodes.filter(node =>
       node.type === 'transaction' && node.status === 'success'
     );
-    
+
     // Create GPU-accelerated particle system
     const particleCount = Math.min(activeNodes.length * 10, 500);
     const particles = new Float32Array(particleCount * 3);
-    
+
     // Initialize particle positions around active nodes
     activeNodes.forEach((node, nodeIndex) => {
       for (let i = 0; i < 10 && nodeIndex * 10 + i < particleCount; i++) {
@@ -166,7 +166,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     if (animationFrameRef.current) {
       cancelAnimationFrame(animationFrameRef.current);
     }
-    
+
     animationFrameRef.current = requestAnimationFrame(() => {
       onNodeHover?.(node);
     });
@@ -216,14 +216,14 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
         }
       }, 100);
     }
-    
+
     if (!graphRef.current) {
       return;
     }
 
     // Warm up the simulation for better initial layout
     graphRef.current.d3ReheatSimulation();
-    
+
     // Enable particle effects
     enableParticleEffects();
   }, [graphData, enableParticleEffects]);
@@ -240,13 +240,13 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     nodeCanvasObject: !use3D ? (node: Node, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const size = getNodeSize(node) * globalScale;
       const color = getNodeColor(node);
-      
+
       // Draw main node
       ctx.fillStyle = color;
       ctx.beginPath();
       ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI, false);
       ctx.fill();
-      
+
       // Add glow effect for tracked nodes using GPU acceleration
       if (node.tracked) {
         ctx.save();
@@ -257,7 +257,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
         ctx.fill();
         ctx.restore();
       }
-      
+
       // Draw label
       if (globalScale > 0.5) {
         ctx.fillStyle = '#ffffff';
@@ -273,14 +273,14 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     linkCanvasObject: !use3D ? (link: Link, ctx: CanvasRenderingContext2D, globalScale: number) => {
       const width = (link.type === 'transfer' ? 3 : 2) * globalScale;
       const color = getLinkColor(link);
-      
+
       ctx.strokeStyle = color;
       ctx.lineWidth = width;
       ctx.beginPath();
-      
+
       const sourceNode = link.source as Node;
       const targetNode = link.target as Node;
-      
+
       ctx.moveTo(sourceNode.x || 0, sourceNode.y || 0);
       ctx.lineTo(targetNode.x || 0, targetNode.y || 0);
       ctx.stroke();
@@ -303,7 +303,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
   const containerDimensions = useMemo(() => {
     const actualWidth = typeof width === 'number' && width > 0 ? width : 800;
     const actualHeight = typeof height === 'number' && height > 0 ? height : 600;
-    
+
     return {
       width: actualWidth,
       height: actualHeight

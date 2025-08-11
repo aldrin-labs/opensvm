@@ -11,14 +11,18 @@ export function useGraphInitialization() {
   const isInitialized = useRef<boolean>(false);
   const isInitializingRef = useRef<boolean>(false);
   const initializationAbortControllerRef = useRef<AbortController | null>(null);
-  
+
   const [isInitializing, setIsInitializing] = useState<boolean>(false);
 
   // Initialize graph once with enhanced race condition protection
   const initializeGraph = useCallback(async (
     container: HTMLElement,
     onTransactionSelect?: (signature: string) => void,
-    onAccountSelect?: (accountAddress: string) => void
+    onAccountSelect?: (accountAddress: string) => void,
+    showAccountTooltip?: (address: string, position: { x: number; y: number }) => void,
+    hideAccountTooltip?: () => void,
+    showEdgeTooltip?: (signature: string, position: { x: number; y: number }) => void,
+    hideEdgeTooltip?: () => void
   ) => {
     // Prevent multiple initializations
     if (isInitialized.current || isInitializingRef.current) {
@@ -77,20 +81,31 @@ export function useGraphInitialization() {
       // Setup interactions with proper refs
       const containerRef = { current: container as HTMLDivElement };
       const focusSignatureRef = { current: '' };
-      const setViewportState = () => {};
+      const setViewportState = () => { };
       const wrappedOnTransactionSelect = (signature: string, _incrementalLoad: boolean) => {
         if (onTransactionSelect) {
           onTransactionSelect(signature);
         }
       };
-      
       // Debug callback availability
       console.log('Setting up graph interactions with callbacks:', {
         hasTransactionCallback: !!wrappedOnTransactionSelect,
         hasAccountCallback: !!onAccountSelect
       });
-      
-      setupGraphInteractions(cy, containerRef, focusSignatureRef, wrappedOnTransactionSelect, setViewportState, onAccountSelect, onTransactionSelect);
+
+      setupGraphInteractions(
+        cy,
+        containerRef,
+        focusSignatureRef,
+        wrappedOnTransactionSelect,
+        setViewportState,
+        onAccountSelect,
+        onTransactionSelect,
+        showAccountTooltip,
+        hideAccountTooltip,
+        showEdgeTooltip,
+        hideEdgeTooltip
+      );
 
       // Mark as initialized
       isInitialized.current = true;
@@ -103,12 +118,12 @@ export function useGraphInitialization() {
     } catch (error) {
       isInitializingRef.current = false;
       setIsInitializing(false);
-      
+
       if (error instanceof Error && error.message.includes('aborted')) {
         debugLog('Graph initialization aborted');
         return null;
       }
-      
+
       errorLog('Graph initialization failed:', error);
       throw error;
     }

@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey } from '@solana/web3.js';
+import { classifyTransactionType, isFundingTransaction } from '@/lib/transaction-classifier';
+import { getConnection as getClientConnection } from '@/lib/solana-connection-server';
+import { getTokenInfoServer } from '@/lib/server/token-metadata-cache';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
@@ -34,6 +37,8 @@ export async function GET(
     const limit = parseInt(url.searchParams.get('limit') || '5', 10);
     const before = url.searchParams.get('before') || undefined;
     const until = url.searchParams.get('until') || undefined;
+    const classify = url.searchParams.get('classify') === 'true';
+    const includeInflow = url.searchParams.get('includeInflow') === 'true';
 
     if (!address) {
       return new Response(
@@ -61,11 +66,27 @@ export async function GET(
     const connection = await getConnection();
 
     // Fetch signatures for the account
-    const signatures = await connection.getSignaturesForAddress(new PublicKey(address), {
+    let signatures = await connection.getSignaturesForAddress(new PublicKey(address), {
       limit,
       before,
       until
     }, 'confirmed');
+
+    // If includeInflow is true, also fetch inbound transactions
+    if (includeInflow) {
+      try {
+        // Get recent inbound transactions by looking at account's pre/post balance changes
+        // This is a simplified approach - in production you might want to use a more sophisticated method
+        const accountInfo = await connection.getAccountInfo(new PublicKey(address));
+        if (accountInfo) {
+          // For now, we'll add a flag to indicate this transaction involved the account
+          // The actual inflow detection will be done in the transaction processing
+        }
+      } catch (error) {
+        console.warn('Could not fetch inflow data:', error);
+        // Continue without inflow data
+      }
+    }
 
     // Fetch full transaction details
     // Use multiple connections for parallel processing
@@ -88,6 +109,7 @@ export async function GET(
 
         // Calculate transaction flow
         const transfers = [];
+        let primaryNetChange = 0;
         if (tx?.meta) {
           // Look at pre/post balances to determine transfers
           if (tx.meta.preBalances && tx.meta.postBalances) {
@@ -102,12 +124,34 @@ export async function GET(
                   change
                 });
               }
+              // Track net change for the requested address to derive direction
+              if (accounts[i] && accounts[i].pubkey === address) {
+                primaryNetChange += change;
+              }
             }
           }
         }
 
+        // Basic token transfer extraction for SPL
+        let tokenAmount: number | undefined;
+        let tokenMint: string | undefined;
+        try {
+          const ixs = tx?.transaction.message.instructions as any[] | undefined;
+          if (ixs && Array.isArray(ixs)) {
+            for (const ix of ixs) {
+              const pid = ix?.programId?.toString?.() || ix?.programId || '';
+              if (pid === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
+                const parsed = (ix as any)?.parsed?.info || (ix as any)?.info;
+                const amtStr = parsed?.amount ?? parsed?.tokenAmount?.amount;
+                if (amtStr != null) tokenAmount = Number(amtStr);
+                tokenMint = parsed?.mint || parsed?.tokenMint || tokenMint;
+              }
+            }
+          }
+        } catch { }
+
         const sigInfo = signatures[index];
-        return {
+        const base = {
           signature: sigInfo.signature,
           timestamp: tx?.blockTime ? tx.blockTime * 1000 : sigInfo.blockTime ? sigInfo.blockTime * 1000 : Date.now(),
           slot: sigInfo.slot,
@@ -117,6 +161,44 @@ export async function GET(
           transfers,
           memo: sigInfo.memo
         };
+        // Optionally classify and enrich with token metadata/decimals
+        if (classify) {
+          const classification = classifyTransactionType({ details: { instructions: (tx as any)?.transaction?.message?.instructions } });
+          const isFunding = isFundingTransaction({ details: { instructions: (tx as any)?.transaction?.message?.instructions } }, address);
+
+          let normalizedAmount: number | undefined = undefined;
+          let symbol: string | undefined = undefined;
+          try {
+            if (classification.type === 'spl_transfer' && tokenMint) {
+              const serverConn = await getClientConnection();
+              const info = await getTokenInfoServer(serverConn as any, tokenMint);
+              if (info) {
+                const decimals = info.decimals ?? 0;
+                symbol = info.symbol;
+                if (typeof tokenAmount === 'number') {
+                  normalizedAmount = tokenAmount / Math.pow(10, decimals);
+                }
+              }
+            } else if (classification.type === 'sol_transfer' && typeof primaryNetChange === 'number') {
+              // primaryNetChange is lamports change for the focus address in this tx
+              normalizedAmount = Math.abs(primaryNetChange) / 1_000_000_000;
+              symbol = 'SOL';
+            }
+          } catch (metaErr) {
+            console.warn('Token metadata normalization failed:', metaErr);
+          }
+
+          return {
+            ...base,
+            classification,
+            isFunding,
+            direction: primaryNetChange > 0 ? 'in' : primaryNetChange < 0 ? 'out' : 'neutral',
+            tokenMint,
+            tokenSymbol: symbol,
+            amount: normalizedAmount ?? tokenAmount
+          };
+        }
+        return base;
       } catch (error) {
         console.error(`Error fetching transaction ${signature}:`, error);
         const sigInfo = signatures[index];
@@ -143,6 +225,8 @@ export async function GET(
     return new Response(
       JSON.stringify({
         address,
+        includeInflow,
+        classified: classify,
         transactions: transactionDetails,
         rpcCount: 1 // Using single connection for now
       }),

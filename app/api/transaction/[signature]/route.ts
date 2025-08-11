@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import { enhancedTransactionFetcher } from '@/lib/enhanced-transaction-fetcher';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 
@@ -122,10 +122,10 @@ export async function GET(
 ) {
   // Detect test environment for optimized performance
   const isTestEnv = process.env.NODE_ENV === 'test' ||
-                    process.env.PLAYWRIGHT_TEST === 'true' ||
-                    request.headers.get('user-agent')?.includes('playwright') ||
-                    (typeof global !== 'undefined' && (global as any).__PLAYWRIGHT__);
-  
+    process.env.PLAYWRIGHT_TEST === 'true' ||
+    request.headers.get('user-agent')?.includes('playwright') ||
+    (typeof global !== 'undefined' && (global as any).__PLAYWRIGHT__);
+
   // Optimize timeouts for test environment
   const timeoutMs = isTestEnv ? 3000 : 8000; // 3s for tests, 8s for production
   const controller = new AbortController();
@@ -157,7 +157,7 @@ export async function GET(
 
       // Transform and return the demo transaction data
       const transactionInfo = transformTransactionData(signature, demoTx);
-      
+
       // Calculate and log metrics for demo response (reduced logging in test env)
       if (DEBUG && !isTestEnv) {
         const metrics = calculateResponseMetrics(transactionInfo, signature, startTime);
@@ -234,12 +234,12 @@ export async function GET(
 
       // Transform basic data to existing format
       transactionInfo = transformTransactionData(signature, basicTx);
-      
+
     } catch (basicError) {
       if (DEBUG) {
         console.log(`[API] Basic fetch failed, falling back to direct connection: ${basicError instanceof Error ? basicError.message : 'Unknown error'}`);
       }
-      
+
       // Fallback to direct connection fetch
       const connection = await getConnection();
       const fallbackTx = await Promise.race([
@@ -352,11 +352,11 @@ function calculateResponseMetrics(data: any, signature: string, startTime: numbe
   const jsonString = JSON.stringify(data);
   const endTime = Date.now();
   const processingTime = endTime - startTime;
-  
+
   // Calculate JSON size in bytes
   const jsonSizeBytes = new Blob([jsonString]).size;
   const jsonSizeKB = (jsonSizeBytes / 1024).toFixed(2);
-  
+
   // Count total keys recursively
   function countKeys(obj: any): number {
     if (typeof obj !== 'object' || obj === null) return 0;
@@ -365,9 +365,9 @@ function calculateResponseMetrics(data: any, signature: string, startTime: numbe
     }
     return Object.keys(obj).length + Object.values(obj).reduce((sum: number, value: any) => sum + countKeys(value), 0);
   }
-  
+
   const totalKeys = countKeys(data);
-  
+
   // Transaction-specific metrics
   const metrics = {
     signature: signature.substring(0, 20) + '...',
@@ -376,8 +376,8 @@ function calculateResponseMetrics(data: any, signature: string, startTime: numbe
       bytes: jsonSizeBytes,
       kb: `${jsonSizeKB}KB`,
       readable: jsonSizeBytes < 1024 ? `${jsonSizeBytes}B` :
-                jsonSizeBytes < 1024 * 1024 ? `${jsonSizeKB}KB` :
-                `${(jsonSizeBytes / (1024 * 1024)).toFixed(2)}MB`
+        jsonSizeBytes < 1024 * 1024 ? `${jsonSizeKB}KB` :
+          `${(jsonSizeBytes / (1024 * 1024)).toFixed(2)}MB`
     },
     keyCount: {
       total: totalKeys,
@@ -396,7 +396,7 @@ function calculateResponseMetrics(data: any, signature: string, startTime: numbe
       success: data.success
     }
   };
-  
+
   return metrics;
 }
 

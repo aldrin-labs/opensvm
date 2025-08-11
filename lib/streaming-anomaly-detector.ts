@@ -1,4 +1,4 @@
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { AnomalyDetectionCapability } from '@/lib/ai/capabilities/anomaly-detection';
 import { Connection } from '@solana/web3.js';
 

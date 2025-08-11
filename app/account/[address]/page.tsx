@@ -2,7 +2,7 @@
 
 export const dynamic = 'force-dynamic';
 
-import { getConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana-connection';
 //import { useSettings } from '@/lib/settings';
 import { PublicKey } from '@solana/web3.js';
 import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
@@ -65,11 +65,11 @@ async function getAccountData(address: string): Promise<AccountData> {
       }
 
       const connection = await Promise.race([
-        getConnection(),
+        Promise.resolve(getClientConnection()),
         new Promise((_, reject) =>
           setTimeout(() => reject(new Error('Connection timeout')), 15000)
         )
-      ]) as Awaited<ReturnType<typeof getConnection>>;
+      ]) as Awaited<ReturnType<typeof getClientConnection>>;
 
       const pubkey = validateSolanaAddress(address);
 
@@ -164,7 +164,6 @@ interface PageProps {
 }
 
 export default function AccountPage({ params, searchParams }: PageProps) {
-  //const settings = useSettings();
   const router = useRouter();
   const urlParams = useParams();
   const [accountInfo, setAccountInfo] = useState<AccountData | null>(null);
@@ -172,20 +171,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('account-transfers');
   const [currentAddress, setCurrentAddress] = useState<string>('');
+  const [graphKey] = useState<string>(() => 'graph-static');
+  const initialGraphAccountRef = useRef<string | null>(null);
   const graphRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
-
-  // Smooth navigation function with error handling
-  const navigateToAccount = useCallback(async (newAddress: string) => {
-    if (newAddress !== currentAddress) {
-      try {
-        await router.push(`/account/${newAddress}`, { scroll: false });
-      } catch (error) {
-        console.error('Navigation failed:', error);
-        setError('Failed to navigate to account. Please try again.');
-      }
-    }
-  }, [currentAddress, router]);
 
   // Load account data function with enhanced timeout protection for e2e tests
   const loadAccountData = useCallback(async (address: string, signal?: AbortSignal) => {
@@ -241,6 +230,10 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       if (signal?.aborted) return;
 
       setAccountInfo(accountData);
+      // Capture initial graph account once; keep graph mounted with static initial account
+      if (initialGraphAccountRef.current === null) {
+        initialGraphAccountRef.current = accountData.address;
+      }
       setCurrentAddress(cleanAddress);
 
     } catch (err) {
@@ -271,6 +264,22 @@ export default function AccountPage({ params, searchParams }: PageProps) {
     }
   }, []);
 
+  // Smooth navigation function with error handling
+  const navigateToAccount = useCallback(async (newAddress: string) => {
+    if (!newAddress || newAddress === currentAddress) return;
+    try {
+      // Update URL without reloading/remounting the graph
+      if (typeof window !== 'undefined') {
+        window.history.pushState({ account: newAddress }, '', `/account/${newAddress}`);
+      }
+      // Load new account data without touching the graph component
+      await loadAccountData(newAddress);
+    } catch (error) {
+      console.error('Navigation failed:', error);
+      setError('Failed to navigate to account. Please try again.');
+    }
+  }, [currentAddress, loadAccountData]);
+
   // Single effect to handle all address changes
   useEffect(() => {
     let mounted = true;
@@ -286,8 +295,9 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
 
-        const { address: rawAddress } = await params;
-        const resolvedSearchParams = await searchParams;
+        // Resolve the promises
+        const [resolvedParams, resolvedSearchParams] = await Promise.all([params, searchParams]);
+        const rawAddress = resolvedParams.address;
         const { tab } = resolvedSearchParams;
 
         if (!mounted || signal.aborted) return;
@@ -320,6 +330,29 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       }
     };
   }, [params, searchParams, urlParams?.address, currentAddress, loadAccountData]);
+
+  // Handle browser back/forward navigation by reloading only account data
+  useEffect(() => {
+    const handler = async (event: PopStateEvent) => {
+      const stateAccount = (event.state && (event.state as any).account) as string | undefined;
+      let addressFromUrl: string | undefined = stateAccount;
+      if (!addressFromUrl && typeof window !== 'undefined') {
+        const match = window.location.pathname.match(/\/account\/([^/?#]+)/);
+        addressFromUrl = match?.[1];
+      }
+      if (addressFromUrl && addressFromUrl !== currentAddress) {
+        await loadAccountData(addressFromUrl);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('popstate', handler);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('popstate', handler);
+      }
+    };
+  }, [currentAddress, loadAccountData]);
 
   if (loading) {
     return (
@@ -384,8 +417,8 @@ export default function AccountPage({ params, searchParams }: PageProps) {
           <GraphErrorBoundary>
             <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-full" />}>
               <TransactionGraphLazy
-                key={`graph-${accountInfo.address}`} // Dynamic key for proper prop updates
-                initialAccount={accountInfo.address}
+                key={graphKey}
+                initialAccount={initialGraphAccountRef.current || accountInfo.address}
                 onTransactionSelect={(signature: string) => {
                   // Client-side navigation to transaction page
                   router.push(`/tx/${signature}`);

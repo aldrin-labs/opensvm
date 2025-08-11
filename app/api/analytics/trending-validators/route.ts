@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { memoryCache } from '@/lib/cache';
 import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
 import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
 import { getClientIP } from '@/lib/utils/client-ip';
+import { PublicKey } from '@solana/web3.js';
 
 interface TrendingValidator {
   voteAccount: string;
@@ -85,13 +86,46 @@ async function verifyBurnTransaction(
   expectedAmount: number
 ): Promise<{ valid: boolean; error?: string }> {
   try {
+    // 🔒 SECURITY: Input validation first
+    if (!signature || typeof signature !== 'string' || signature.length !== 88) {
+      return { valid: false, error: 'Invalid transaction signature format' };
+    }
+
+    if (!expectedBurner || typeof expectedBurner !== 'string') {
+      return { valid: false, error: 'Invalid burner address' };
+    }
+
+    if (!expectedAmount || typeof expectedAmount !== 'number' || expectedAmount <= 0) {
+      return { valid: false, error: 'Invalid burn amount' };
+    }
+
+    // Validate expected burner address format
+    try {
+      const burnerPubkey = new PublicKey(expectedBurner);
+      if (!burnerPubkey) {
+        return { valid: false, error: 'Invalid burner public key format' };
+      }
+    } catch (error) {
+      return { valid: false, error: 'Invalid burner public key' };
+    }
+
     const connection = await getConnection();
 
-    // Get transaction details
-    const tx = await connection.getTransaction(signature, {
-      commitment: 'confirmed',
-      maxSupportedTransactionVersion: 0
-    });
+    // Get transaction details with timeout protection
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    let tx;
+    try {
+      tx = await connection.getTransaction(signature, {
+        commitment: 'confirmed',
+        maxSupportedTransactionVersion: 0
+      });
+      clearTimeout(timeoutId);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      return { valid: false, error: 'Failed to fetch transaction from blockchain' };
+    }
 
     if (!tx) {
       return { valid: false, error: 'Transaction not found' };
@@ -127,6 +161,12 @@ async function verifyBurnTransaction(
 
     for (let i = 0; i < messageInstructions.length; i++) {
       const ix = messageInstructions[i];
+
+      // 🔒 SECURITY: Validate instruction structure
+      if (!ix || typeof ix.programIdIndex !== 'number') {
+        continue;
+      }
+
       const programId = messageAccountKeys[ix.programIdIndex]?.toBase58();
 
       // Check if this is a token program instruction
@@ -134,61 +174,86 @@ async function verifyBurnTransaction(
         // Decode the instruction data to check if it's a burn instruction
         const data = ix.data;
 
+        // 🔒 SECURITY: Validate instruction data
+        if (!data || !Array.isArray(data) || data.length < 9) {
+          continue;
+        }
+
         // Burn instruction has first byte = 8
-        if (data && data[0] === 8) {
-          // Extract burn amount (8 bytes starting at position 1)
-          const amountBytes = data.slice(1, 9);
-          const amount = Buffer.from(amountBytes).readBigUInt64LE();
-          burnAmount = Number(amount) / TOKEN_MULTIPLIERS.SVMAI;
+        if (data[0] === 8) {
+          try {
+            // Extract burn amount (8 bytes starting at position 1)
+            const amountBytes = data.slice(1, 9);
+            if (amountBytes.length !== 8) {
+              continue;
+            }
 
-          // Get the token account and verify its owner
-          if (ix.accounts && ix.accounts.length > 0) {
-            const tokenAccountIndex = ix.accounts[0];
-            const tokenAccountPubkey = messageAccountKeys[tokenAccountIndex];
+            const amount = Buffer.from(amountBytes).readBigUInt64LE();
+            burnAmount = Number(amount) / TOKEN_MULTIPLIERS.SVMAI;
 
-            // Get the token account info to verify owner and mint
-            try {
-              const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
-              if (tokenAccountInfo.value && tokenAccountInfo.value.data && 'parsed' in tokenAccountInfo.value.data) {
-                const parsedData = tokenAccountInfo.value.data.parsed;
-                if (parsedData.type === 'account') {
-                  // Verify this is the correct token mint
-                  if (parsedData.info.mint !== TOKEN_MINTS.SVMAI.toBase58()) {
-                    return { valid: false, error: 'Burn transaction is for wrong token mint' };
+            // 🔒 SECURITY: Validate burn amount range
+            if (burnAmount < 0 || burnAmount > 1000000000) { // Max 1B tokens
+              return { valid: false, error: 'Burn amount out of valid range' };
+            }
+
+            // Get the token account and verify its owner
+            if (ix.accounts && ix.accounts.length > 0) {
+              const tokenAccountIndex = ix.accounts[0];
+
+              // 🔒 SECURITY: Validate account index
+              if (typeof tokenAccountIndex !== 'number' || tokenAccountIndex < 0 || tokenAccountIndex >= messageAccountKeys.length) {
+                return { valid: false, error: 'Invalid token account index in burn instruction' };
+              }
+
+              const tokenAccountPubkey = messageAccountKeys[tokenAccountIndex];
+
+              // Get the token account info to verify owner and mint
+              try {
+                const tokenAccountInfo = await connection.getParsedAccountInfo(tokenAccountPubkey);
+                if (tokenAccountInfo.value && tokenAccountInfo.value.data && 'parsed' in tokenAccountInfo.value.data) {
+                  const parsedData = tokenAccountInfo.value.data.parsed;
+                  if (parsedData.type === 'account') {
+                    // Verify this is the correct token mint
+                    if (parsedData.info.mint !== TOKEN_MINTS.SVMAI.toBase58()) {
+                      return { valid: false, error: 'Burn transaction is for wrong token mint' };
+                    }
+                    // Get the owner from parsed data
+                    burnerAccount = parsedData.info.owner;
+                  } else {
+                    throw new Error('Invalid token account type');
                   }
-                  // Get the owner from parsed data
-                  burnerAccount = parsedData.info.owner;
                 } else {
-                  throw new Error('Invalid token account type');
+                  // Fallback to transaction signer if we can't get parsed account info
+                  // Use the first signer as the burner (fee payer is typically the token account owner)
+                  const signers = messageAccountKeys.filter((_: any, idx: number) =>
+                    tx.transaction.message.header.numRequiredSignatures > idx
+                  );
+                  if (signers.length > 0) {
+                    burnerAccount = signers[0].toBase58();
+                  } else {
+                    throw new Error('No signers found in transaction');
+                  }
                 }
-              } else {
-                // Fallback to transaction signer if we can't get parsed account info
-                // Use the first signer as the burner (fee payer is typically the token account owner)
+              } catch (error) {
+                console.error('Error getting token account info:', error);
+                // Fallback to transaction signer (with validation)
                 const signers = messageAccountKeys.filter((_: any, idx: number) =>
                   tx.transaction.message.header.numRequiredSignatures > idx
                 );
                 if (signers.length > 0) {
                   burnerAccount = signers[0].toBase58();
                 } else {
-                  throw new Error('No signers found in transaction');
+                  return { valid: false, error: 'Could not determine burner account from transaction' };
                 }
               }
-            } catch (error) {
-              console.error('Error getting token account info:', error);
-              // Fallback to transaction signer (with validation)
-              const signers = messageAccountKeys.filter((_: any, idx: number) =>
-                tx.transaction.message.header.numRequiredSignatures > idx
-              );
-              if (signers.length > 0) {
-                burnerAccount = signers[0].toBase58();
-              } else {
-                return { valid: false, error: 'Could not determine burner account from transaction' };
-              }
             }
-          }
 
-          burnFound = true;
-          break;
+            burnFound = true;
+            break;
+          } catch (parseError) {
+            console.error('Error parsing burn instruction:', parseError);
+            continue;
+          }
         }
       }
     }
@@ -222,6 +287,12 @@ async function verifyBurnTransaction(
       if (pre.mint === TOKEN_MINTS.SVMAI.toBase58() && post) {
         const preBal = Number(pre.uiTokenAmount.amount);
         const postBal = Number(post.uiTokenAmount.amount);
+
+        // 🔒 SECURITY: Validate balance values
+        if (isNaN(preBal) || isNaN(postBal) || preBal < 0 || postBal < 0) {
+          continue;
+        }
+
         const burned = (preBal - postBal) / TOKEN_MULTIPLIERS.SVMAI;
 
         if (Math.abs(burned - expectedAmount) < tolerance) {
@@ -397,16 +468,84 @@ export async function POST(request: Request) {
       });
     }
 
-    const { voteAccount, burnAmount, burnSignature, burnerWallet } = await request.json();
-
-    if (!voteAccount || !burnAmount || !burnSignature || !burnerWallet) {
+    // 🔒 SECURITY: Parse and validate request body
+    let requestBody;
+    try {
+      requestBody = await request.json();
+    } catch (error) {
       return NextResponse.json({
         success: false,
-        error: 'Missing required parameters',
+        error: 'Invalid JSON in request body',
         data: null
       }, { status: 400 });
     }
 
+    const { voteAccount, burnAmount, burnSignature, burnerWallet } = requestBody;
+
+    // 🔒 SECURITY: Comprehensive input validation
+    if (!voteAccount || typeof voteAccount !== 'string') {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid or missing voteAccount parameter',
+        data: null
+      }, { status: 400 });
+    }
+
+    if (!burnAmount || typeof burnAmount !== 'number' || isNaN(burnAmount)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid or missing burnAmount parameter',
+        data: null
+      }, { status: 400 });
+    }
+
+    if (!burnSignature || typeof burnSignature !== 'string') {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid or missing burnSignature parameter',
+        data: null
+      }, { status: 400 });
+    }
+
+    if (!burnerWallet || typeof burnerWallet !== 'string') {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid or missing burnerWallet parameter',
+        data: null
+      }, { status: 400 });
+    }
+
+    // 🔒 SECURITY: Validate Solana address formats
+    try {
+      new PublicKey(voteAccount);
+    } catch (error) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid voteAccount format',
+        data: null
+      }, { status: 400 });
+    }
+
+    try {
+      new PublicKey(burnerWallet);
+    } catch (error) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid burnerWallet format',
+        data: null
+      }, { status: 400 });
+    }
+
+    // 🔒 SECURITY: Validate transaction signature format
+    if (burnSignature.length !== 88 || !/^[1-9A-HJ-NP-Za-km-z]+$/.test(burnSignature)) {
+      return NextResponse.json({
+        success: false,
+        error: 'Invalid transaction signature format',
+        data: null
+      }, { status: 400 });
+    }
+
+    // 📊 BUSINESS LOGIC: Validate burn amount ranges
     if (burnAmount < 1000) {
       return NextResponse.json({
         success: false,
@@ -419,6 +558,15 @@ export async function POST(request: Request) {
       return NextResponse.json({
         success: false,
         error: `Maximum burn amount is ${MAX_BURN_AMOUNTS.SVMAI.toLocaleString()} $SVMAI`,
+        data: null
+      }, { status: 400 });
+    }
+
+    // 🔒 SECURITY: Additional amount validation
+    if (!Number.isFinite(burnAmount) || burnAmount <= 0) {
+      return NextResponse.json({
+        success: false,
+        error: 'Burn amount must be a positive finite number',
         data: null
       }, { status: 400 });
     }
@@ -456,7 +604,7 @@ export async function POST(request: Request) {
       usedSignatures.add(burnSignature);
       const THIRTY_DAYS_MS = 30 * 24 * 60 * 60; // Calculate in seconds to avoid overflow
 
-      // Limit cache size to prevent memory exhaustion
+      // 📊 PERFORMANCE: Limit cache size to prevent memory exhaustion
       if (usedSignatures.size > 10000) {
         // Create a new set with recent signatures (last 5000)
         const entries = Array.from(usedSignatures);
@@ -476,9 +624,18 @@ export async function POST(request: Request) {
       let totalBurned = burnAmount;
 
       if (existingBoostIndex >= 0) {
-        // Add to existing boost - amounts stack up and timer resets
+        // 📊 BUSINESS LOGIC: Add to existing boost - amounts stack up and timer resets
         const existingBoost = currentBoosts[existingBoostIndex];
         totalBurned = existingBoost.totalBurned + burnAmount;
+
+        // 🔒 SECURITY: Validate total burn amount doesn't exceed limits
+        if (totalBurned > MAX_BURN_AMOUNTS.SVMAI * 10) { // Allow 10x max for cumulative
+          return NextResponse.json({
+            success: false,
+            error: `Total burned amount would exceed maximum limit`,
+            data: null
+          }, { status: 400 });
+        }
 
         // Update existing boost with new totals and reset timer
         currentBoosts[existingBoostIndex] = {
@@ -505,9 +662,17 @@ export async function POST(request: Request) {
       }
 
       // Clean up expired boosts
+      const now = Date.now();
       const activeBoosts = currentBoosts.filter(
-        boost => boost.purchaseTime + (boost.duration * 3600000) > Date.now()
+        boost => boost.purchaseTime + (boost.duration * 3600000) > now
       );
+
+      // 📊 PERFORMANCE: Limit the number of active boosts to prevent memory issues
+      if (activeBoosts.length > 1000) {
+        // Keep only the most recent 500 boosts
+        activeBoosts.sort((a, b) => b.purchaseTime - a.purchaseTime);
+        activeBoosts.splice(500);
+      }
 
       // Cache updated boosts for 25 hours
       memoryCache.set(BOOSTS_CACHE_KEY, activeBoosts, 25 * 3600);

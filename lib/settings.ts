@@ -73,14 +73,26 @@ class SettingsManager {
 
     try {
       const stored = localStorage.getItem('opensvm-settings');
-      if (stored) {
-        const parsed = JSON.parse(stored);
-        return {
-          ...defaultSettings,
-          ...parsed,
-          availableRpcEndpoints: defaultSettings.availableRpcEndpoints // Always use default endpoints
-        };
+      const parsed = stored ? JSON.parse(stored) : {};
+
+      // Check for cluster cookie override
+      const clusterCookie = this.getCookie('cluster');
+      const override = this.resolveClusterToEndpoint(clusterCookie);
+
+      const merged: Settings = {
+        ...defaultSettings,
+        ...parsed,
+        availableRpcEndpoints: defaultSettings.availableRpcEndpoints
+      };
+
+      if (override) {
+        merged.rpcEndpoint = override.endpoint;
+        if (override.isCustom) {
+          merged.customRpcEndpoint = override.endpoint.url;
+        }
       }
+
+      return merged;
     } catch (error) {
       console.warn('Failed to load settings from localStorage:', error);
     }
@@ -157,6 +169,39 @@ class SettingsManager {
     return () => {
       this.listeners.delete(listener);
     };
+  }
+
+  private getCookie(name: string): string | null {
+    if (typeof document === 'undefined') return null;
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()!.split(';').shift() || null;
+    return null;
+  }
+
+  private normalizeUrl(url: string): string {
+    if (/^https?:\/\//i.test(url)) return url;
+    if (/^[\w.-]+(\:[0-9]+)?(\/|$)/.test(url)) return `https://${url}`;
+    return url;
+  }
+
+  private resolveClusterToEndpoint(cluster: string | null | undefined): { endpoint: RpcEndpoint; isCustom: boolean } | null {
+    if (!cluster) return null;
+    const value = cluster.trim().toLowerCase();
+    if (!value) return null;
+
+    if (value === 'mainnet' || value === 'mainnet-beta' || value === 'opensvm' || value === 'osvm' || value === 'gsvm') {
+      return { endpoint: { name: 'OpenSVM', url: 'opensvm', network: 'mainnet' }, isCustom: false };
+    }
+    if (value === 'devnet') {
+      return { endpoint: { name: 'Solana Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' }, isCustom: false };
+    }
+    if (value === 'testnet') {
+      return { endpoint: { name: 'Solana Testnet', url: 'https://api.testnet.solana.com', network: 'testnet' }, isCustom: false };
+    }
+    // Treat as custom endpoint/host
+    const normalized = this.normalizeUrl(cluster);
+    return { endpoint: { name: 'Custom', url: normalized, network: 'mainnet' }, isCustom: true };
   }
 
   private applyTheme(theme: Theme) {

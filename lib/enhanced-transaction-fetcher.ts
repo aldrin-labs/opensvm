@@ -17,7 +17,7 @@ import {
   AccountInfo,
   TokenBalance
 } from '@solana/web3.js';
-import { getConnection } from './solana-connection';
+import { getConnection } from './solana-connection-server';
 
 import type { TransactionMetadataEnrichment } from './transaction-metadata-enricher';
 

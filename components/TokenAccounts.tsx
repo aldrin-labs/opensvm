@@ -1,7 +1,7 @@
 import type { AccountInfo } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { AccountLayout } from '@solana/spl-token';
-import { getConnection } from '@/lib/solana';
+import { getClientConnection as getConnection } from '@/lib/solana-connection';
 import { useEffect, useState } from 'react';
 
 interface TokenAccount {
@@ -23,7 +23,7 @@ export default function TokenAccounts({ accounts }: TokenAccountsProps) {
 
   useEffect(() => {
     const parseAccounts = async () => {
-      const connection = await getConnection();
+      const connection = getConnection();
       const parsedAccounts = accounts.map((acc) => {
         const data = AccountLayout.decode(acc.account.data);
         return {

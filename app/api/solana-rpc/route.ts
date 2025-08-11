@@ -11,7 +11,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 
 // Simple in-memory cache
 const cache = new Map<string, { data: any; timestamp: number }>();
@@ -44,29 +44,29 @@ async function retryOperation<T>(
   initialDelay: number = 2000
 ): Promise<T> {
   let lastError;
-  
+
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       return await operation();
     } catch (error) {
       lastError = error;
-      
+
       if (error instanceof Error) {
         const errorMessage = error.message.toLowerCase();
         if (errorMessage.includes('invalid') || errorMessage.includes('unsupported')) {
           throw error;
         }
       }
-      
+
       if (attempt === maxRetries - 1) {
         throw lastError;
       }
-      
+
       const delay = initialDelay * Math.pow(1.5, attempt);
       await new Promise(resolve => setTimeout(resolve, delay));
     }
   }
-  
+
   throw lastError;
 }
 
@@ -77,7 +77,7 @@ export async function POST(request: NextRequest) {
   let body: any;
   try {
     body = await request.json();
-    
+
     // Try to get from cache first
     const cacheKey = getCacheKey(body.method, body.params);
     const cachedResult = getFromCache(cacheKey);
@@ -181,10 +181,10 @@ export async function POST(request: NextRequest) {
     }
   } catch (error) {
     console.error('RPC error:', error);
-    
+
     let status = 500;
     let message = error instanceof Error ? error.message : 'Unknown error';
-    
+
     if (message.toLowerCase().includes('invalid')) {
       status = 400;
     } else if (message.toLowerCase().includes('not found')) {
@@ -192,7 +192,7 @@ export async function POST(request: NextRequest) {
     } else if (message.toLowerCase().includes('rate limit')) {
       status = 429;
     }
-    
+
     return NextResponse.json({
       jsonrpc: '2.0',
       error: {

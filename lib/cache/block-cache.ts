@@ -9,7 +9,7 @@ import { memoryCache } from '../cache';
 import { cacheManager as persistentCache } from './persistent-cache';
 import { CacheConfig, CacheEntry } from '@/lib/types/block.types';
 import { BlockDetails } from '@/lib/solana';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 
 // ============================================================================
 // Cache Configuration
@@ -126,7 +126,7 @@ export class BlockCacheManager {
   async delete(key: string): Promise<boolean> {
     const cacheKey = this.getCacheKey(key);
     const deleted = this.cache.delete(cacheKey);
-    
+
     // Cancel any background refresh tasks
     const refreshTask = this.backgroundRefreshTasks.get(cacheKey);
     if (refreshTask) {
@@ -162,11 +162,11 @@ export class BlockCacheManager {
 
   async setBlockData(slot: number, blockData: BlockDetails): Promise<void> {
     const key = `block:${slot}`;
-    
+
     // Determine if block is confirmed (immutable)
     const currentSlot = await this.getCurrentSlot();
     const isConfirmed = slot < currentSlot - 32; // 32 slots for finalization
-    
+
     const ttl = isConfirmed ? Infinity : 300000; // 5 minutes for recent blocks
     await this.set(key, blockData, ttl);
   }
@@ -227,14 +227,14 @@ export class BlockCacheManager {
     try {
       const connection = await getConnection();
       const currentSlot = await connection.getSlot();
-      
+
       // Warm up last 100 blocks
       const blocksToWarm = 100;
       const promises: Promise<void>[] = [];
 
       for (let i = 0; i < blocksToWarm; i++) {
         const slot = currentSlot - i;
-        
+
         promises.push(
           this.warmBlock(slot).catch(error => {
             console.warn(`Failed to warm block ${slot}:`, error.message);
@@ -245,7 +245,7 @@ export class BlockCacheManager {
         if (promises.length >= 10) {
           await Promise.all(promises);
           promises.length = 0;
-          
+
           // Small delay between batches
           await new Promise(resolve => setTimeout(resolve, 100));
         }
@@ -287,7 +287,7 @@ export class BlockCacheManager {
 
   private scheduleBackgroundRefresh(key: string, delay?: number): void {
     const cacheKey = this.getCacheKey(key);
-    
+
     // Cancel existing refresh task
     const existingTask = this.backgroundRefreshTasks.get(cacheKey);
     if (existingTask) {
@@ -314,7 +314,7 @@ export class BlockCacheManager {
     // This would implement the actual data refresh logic
     // For now, we'll just log the refresh attempt
     console.debug(`Background refresh triggered for ${key}`);
-    
+
     // TODO: Implement actual refresh logic based on key type
     // - For block lists: fetch latest blocks
     // - For analytics: recalculate analytics data
@@ -369,7 +369,7 @@ export class BlockCacheManager {
 
   private enforceSize(): void {
     const maxEntries = 10000; // Configurable limit
-    
+
     if (this.cache.size <= maxEntries) {
       return;
     }
@@ -380,7 +380,7 @@ export class BlockCacheManager {
 
     // Remove oldest 10% of entries
     const toRemove = Math.floor(this.cache.size * 0.1);
-    
+
     for (let i = 0; i < toRemove; i++) {
       const [key] = entries[i];
       this.cache.delete(key);
@@ -397,7 +397,7 @@ export class BlockCacheManager {
 
   private cleanup(): void {
     let cleaned = 0;
-    
+
     for (const [key, entry] of this.cache.entries()) {
       if (this.isExpired(entry)) {
         this.cache.delete(key);
@@ -417,7 +417,7 @@ export class BlockCacheManager {
 
   getMetrics() {
     const totalRequests = this.metrics.hits + this.metrics.misses;
-    
+
     return {
       ...this.metrics,
       hitRate: totalRequests > 0 ? this.metrics.hits / totalRequests : 0,
@@ -429,13 +429,13 @@ export class BlockCacheManager {
 
   private estimateMemoryUsage(): number {
     let totalSize = 0;
-    
+
     for (const entry of this.cache.values()) {
       // Rough estimation of memory usage
       totalSize += JSON.stringify(entry.data).length * 2; // UTF-16 encoding
       totalSize += 200; // Overhead for entry metadata
     }
-    
+
     return totalSize;
   }
 
@@ -465,19 +465,19 @@ export class BlockCacheManager {
 
   async shutdown(): Promise<void> {
     console.log('Block cache manager shutting down...');
-    
+
     // Cancel all background refresh tasks
     for (const task of this.backgroundRefreshTasks.values()) {
       clearTimeout(task);
     }
     this.backgroundRefreshTasks.clear();
-    
+
     // Final cleanup
     this.cleanup();
-    
+
     // Clear cache
     this.cache.clear();
-    
+
     console.log('Block cache manager shutdown complete');
   }
 }
@@ -512,7 +512,7 @@ export const blockCacheManager = BlockCacheManager.getInstance({
 export async function getCacheMetrics() {
   const blockMetrics = blockCacheManager.getMetrics();
   const persistentStats = await persistentCache.stats();
-  
+
   return {
     blockCache: blockMetrics,
     persistentCache: persistentStats,

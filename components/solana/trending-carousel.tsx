@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ChevronLeft, ChevronRight, TrendingUp, Flame, Crown } from 'lucide-react';
 
 interface TrendingValidator {
@@ -25,46 +25,180 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const fetchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const mountedRef = useRef(true);
 
   const itemsPerView = 6; // Show 6 trending validators at once for thin layout
 
-  const fetchTrendingValidators = async () => {
+  const fetchTrendingValidators = useCallback(async () => {
     try {
+      // 📊 PERFORMANCE: Cancel any previous requests to prevent race conditions
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       setLoading(true);
-      const response = await fetch('/api/analytics/trending-validators');
+      setError(null);
+
+      // 🔒 SECURITY: Add timeout protection
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+
+      fetchTimeoutRef.current = setTimeout(() => {
+        if (abortControllerRef.current) {
+          abortControllerRef.current.abort();
+        }
+      }, 15000); // 15 second timeout
+
+      const response = await fetch('/api/analytics/trending-validators', {
+        signal: abortControllerRef.current.signal,
+        headers: {
+          'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache'
+        }
+      });
+
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
       const result = await response.json();
 
+      // 🔒 SECURITY: Validate response structure
+      if (!result || typeof result !== 'object') {
+        throw new Error('Invalid response format');
+      }
+
       if (result.success) {
-        setTrendingValidators(result.data);
-        setError(null);
+        // 📊 BUSINESS LOGIC: Sanitize and validate trending validators data
+        const sanitizedValidators = Array.isArray(result.data) ?
+          result.data.slice(0, 50).map((validator: any) => { // Limit to 50 for performance
+            // Validate required fields
+            if (!validator || typeof validator !== 'object') {
+              return null;
+            }
+
+            return {
+              voteAccount: typeof validator.voteAccount === 'string' ? validator.voteAccount.trim() : '',
+              name: typeof validator.name === 'string' ?
+                validator.name.replace(/[<>&"']/g, '').trim().slice(0, 100) : 'Unknown', // XSS protection
+              commission: typeof validator.commission === 'number' ?
+                Math.max(0, Math.min(100, validator.commission)) : 0, // Clamp between 0-100%
+              activatedStake: typeof validator.activatedStake === 'number' ?
+                Math.max(0, validator.activatedStake) : 0,
+              depositVolume24h: typeof validator.depositVolume24h === 'number' ?
+                Math.max(0, validator.depositVolume24h) : 0,
+              boostEndTime: typeof validator.boostEndTime === 'number' ? validator.boostEndTime : undefined,
+              boostAmount: typeof validator.boostAmount === 'number' ?
+                Math.max(0, validator.boostAmount) : undefined,
+              trendingScore: typeof validator.trendingScore === 'number' ?
+                Math.max(0, validator.trendingScore) : 0,
+              trendingReason: ['volume', 'boost'].includes(validator.trendingReason) ?
+                validator.trendingReason : 'volume',
+              rank: typeof validator.rank === 'number' ?
+                Math.max(1, validator.rank) : 1
+            };
+          }).filter(Boolean) : []; // Remove any null entries
+
+        // Only update state if component is still mounted
+        if (mountedRef.current) {
+          setTrendingValidators(sanitizedValidators);
+          setError(null);
+        }
       } else {
-        setError(result.error || 'Failed to fetch trending validators');
+        throw new Error(result.error || 'Failed to fetch trending validators');
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Network error');
-    } finally {
-      setLoading(false);
-    }
-  };
+      if (err instanceof Error && err.name === 'AbortError') {
+        // Request was cancelled, this is expected
+        return;
+      }
 
-  useEffect(() => {
-    fetchTrendingValidators();
-    // Refresh every 2 minutes
-    const interval = setInterval(fetchTrendingValidators, 120000);
-    return () => clearInterval(interval);
+      console.error('Error fetching trending validators:', err);
+
+      if (mountedRef.current) {
+        setError(err instanceof Error ? err.message : 'Network error');
+      }
+    } finally {
+      if (mountedRef.current) {
+        setLoading(false);
+      }
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+        fetchTimeoutRef.current = null;
+      }
+    }
   }, []);
 
-  const nextSlide = () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    fetchTrendingValidators();
+
+    // Refresh every 2 minutes with proper cleanup
+    intervalRef.current = setInterval(() => {
+      if (mountedRef.current) {
+        fetchTrendingValidators();
+      }
+    }, 120000);
+
+    return () => {
+      // 📊 PERFORMANCE: Comprehensive cleanup to prevent memory leaks
+      mountedRef.current = false;
+
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+
+      if (fetchTimeoutRef.current) {
+        clearTimeout(fetchTimeoutRef.current);
+      }
+
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [fetchTrendingValidators]);
+
+  const nextSlide = useCallback(() => {
     if (currentIndex + itemsPerView < trendingValidators.length) {
       setCurrentIndex(currentIndex + itemsPerView);
     }
-  };
+  }, [currentIndex, itemsPerView, trendingValidators.length]);
 
-  const prevSlide = () => {
+  const prevSlide = useCallback(() => {
     if (currentIndex > 0) {
       setCurrentIndex(Math.max(0, currentIndex - itemsPerView));
     }
-  };
+  }, [currentIndex, itemsPerView]);
+
+  // 🔒 SECURITY: Sanitize and validate validator click handler
+  const handleValidatorClick = useCallback((voteAccount: string) => {
+    try {
+      if (!voteAccount || typeof voteAccount !== 'string') {
+        console.error('Invalid vote account provided');
+        return;
+      }
+
+      // Basic Solana address validation
+      if (voteAccount.length < 32 || voteAccount.length > 44 || !/^[1-9A-HJ-NP-Za-km-z]+$/.test(voteAccount)) {
+        console.error('Invalid vote account format');
+        return;
+      }
+
+      onValidatorClick?.(voteAccount);
+    } catch (error) {
+      console.error('Error handling validator click:', error);
+    }
+  }, [onValidatorClick]);
 
   if (loading) {
     return (
@@ -159,7 +293,7 @@ export function TrendingCarousel({ onValidatorClick }: TrendingCarouselProps) {
           <div
             key={validator.voteAccount}
             className="bg-background border rounded-md p-2 hover:shadow-md transition-all duration-200 cursor-pointer group"
-            onClick={() => onValidatorClick?.(validator.voteAccount)}
+            onClick={() => handleValidatorClick(validator.voteAccount)}
           >
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center justify-center w-5 h-5 bg-accent rounded-full text-accent-foreground text-xs font-semibold">

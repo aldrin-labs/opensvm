@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint } from '@solana/spl-token';
-import { getConnection } from '@/lib/solana';
+import { getConnection } from '@/lib/solana-connection-server';
 import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
 
 // Rate limit configuration for token details - optimized for e2e tests

@@ -1,5 +1,5 @@
 import { PublicKey } from '@solana/web3.js';
-import { getConnection } from './solana-connection';
+import { getConnection } from './solana-connection-server';
 
 // SVMAI token mint address
 export const SVMAI_MINT_ADDRESS = 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump';

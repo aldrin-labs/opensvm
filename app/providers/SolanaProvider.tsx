@@ -3,19 +3,19 @@
 import { ConnectionProvider } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { useEffect, useState, useMemo } from 'react';
-import { connectionPool } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana-connection';
 
 // Use a default endpoint to allow rendering while the real connection initializes
 const DEFAULT_ENDPOINT = 'https://api.mainnet-beta.solana.com';
 
 export function SolanaProvider({ children }: { children: React.ReactNode }) {
   const [connection, setConnection] = useState<Connection | null>(null);
-  
+
   useEffect(() => {
-    // Initialize connection pool
+    // Initialize client connection
     const init = async () => {
       try {
-        const conn = await connectionPool.getConnection();
+        const conn = getClientConnection();
         setConnection(conn);
       } catch (error) {
         console.error('Failed to initialize connection:', error);
@@ -32,8 +32,8 @@ export function SolanaProvider({ children }: { children: React.ReactNode }) {
 
   // Always render children, use default or actual connection when available
   return (
-    <ConnectionProvider 
-      endpoint={endpoint} 
+    <ConnectionProvider
+      endpoint={endpoint}
       config={config}
     >
       {children}

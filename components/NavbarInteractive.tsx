@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { RpcStatusBadge } from './RpcStatusBadge';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -148,6 +149,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               <span className="text-sm text-foreground/70">[AI]</span>
             </Link>
             <ChangelogNotification />
+            <RpcStatusBadge />
             <span className="hidden md:inline-block text-xs text-muted-foreground">{currentTime}</span>
           </div>
 

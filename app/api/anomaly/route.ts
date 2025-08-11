@@ -1,12 +1,12 @@
 import { NextRequest } from 'next/server';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { AnomalyDetectionCapability } from '@/lib/ai/capabilities/anomaly-detection';
 import { validateAnomalyRequest, validateBlockchainEvent } from '@/lib/validation/stream-schemas';
-import { 
-  createSuccessResponse, 
-  createErrorResponse, 
-  CommonErrors, 
-  ErrorCodes 
+import {
+  createSuccessResponse,
+  createErrorResponse,
+  CommonErrors,
+  ErrorCodes
 } from '@/lib/api-response';
 
 // Global anomaly detector instance
@@ -24,18 +24,18 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const action = searchParams.get('action') || 'alerts';
-    
+
     const detector = await getAnomalyDetector();
-    
+
     switch (action) {
       case 'alerts':
         const alerts = await detector.getAnomalyAlerts();
         return Response.json(createSuccessResponse(alerts));
-        
+
       case 'stats':
         const stats = await detector.getAnomalyStats();
         return Response.json(createSuccessResponse(stats));
-        
+
       default:
         const { response, status } = createErrorResponse(
           ErrorCodes.INVALID_REQUEST,
@@ -77,14 +77,14 @@ export async function POST(request: NextRequest) {
 
     const { event, action } = validationResult.data;
     const detector = await getAnomalyDetector();
-    
+
     switch (action) {
       case 'analyze':
         if (!event) {
           const { response, status } = CommonErrors.missingField('event');
           return Response.json(response, { status });
         }
-        
+
         // Additional validation for single event
         if (!Array.isArray(event)) {
           const eventValidation = validateBlockchainEvent(event);
@@ -98,14 +98,14 @@ export async function POST(request: NextRequest) {
             return Response.json(response, { status });
           }
         }
-        
+
         const alerts = await detector.processEvent(event);
         return Response.json(createSuccessResponse({
           event,
           alerts,
           anomalyCount: alerts.length
         }));
-        
+
       case 'bulk_analyze':
         if (!Array.isArray(event)) {
           const { response, status } = createErrorResponse(
@@ -116,7 +116,7 @@ export async function POST(request: NextRequest) {
           );
           return Response.json(response, { status });
         }
-        
+
         // Validate each event
         for (let i = 0; i < event.length; i++) {
           const eventValidation = validateBlockchainEvent(event[i]);
@@ -130,7 +130,7 @@ export async function POST(request: NextRequest) {
             return Response.json(response, { status });
           }
         }
-        
+
         const results = [];
         for (const evt of event) {
           const eventAlerts = await detector.processEvent(evt);
@@ -140,12 +140,12 @@ export async function POST(request: NextRequest) {
             anomalyCount: eventAlerts.length
           });
         }
-        
+
         return Response.json(createSuccessResponse({
           processed: results.length,
           results
         }));
-        
+
       default:
         const { response, status } = createErrorResponse(
           ErrorCodes.INVALID_REQUEST,

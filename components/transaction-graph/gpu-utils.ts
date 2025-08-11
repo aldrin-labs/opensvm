@@ -150,7 +150,7 @@ export class GPUParticleSystem {
    * @param count Number of particles
    * @param color Particle color
    */
-  addBurst(x: number, y: number, count: number = 10, color: string = '#4CAF50'): void {
+  addBurst(x: number, y: number, count: number = 10, color: string = 'hsl(var(--success))'): void {
     for (let i = 0; i < count; i++) {
       const angle = (i / count) * Math.PI * 2;
       const speed = 2 + Math.random() * 3;

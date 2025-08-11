@@ -16,8 +16,7 @@ import {
   VersionedBlockResponse
 } from '@solana/web3.js';
 // Note: Connection, AccountMeta, ParsedMessageAccount, BlockResponse, ParsedInstruction, PartiallyDecodedInstruction removed as they're not currently used
-import { getConnection as getProxyConnection } from './solana-connection';
-export { getConnection } from './solana-connection';
+import { getClientConnection as getProxyConnection } from './solana-connection';
 
 // Type definitions
 export type AccountData = {

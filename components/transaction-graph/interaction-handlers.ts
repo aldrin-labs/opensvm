@@ -36,68 +36,68 @@ export async function focusOnTransaction(
 ): Promise<void> {
   const cy = cyRef.current;
   if (!cy) return;
-  
+
   // Create abort controller for this request
   const controller = new AbortController();
-  
+
   // Store the signature we're focusing on for this specific request lifecycle
   const targetSignature = signature;
-  
+
   try {
     // Clear previous highlights
     cy.elements().removeClass('highlighted');
-    
+
     // Always update focus signature and current signature state
     focusSignatureRef.current = signature;
     setCurrentSignature(signature);
-    
+
     // Create or update transaction node immediately
     let transactionNode = cy.getElementById(signature);
     if (transactionNode.length === 0) {
-      transactionNode = cy.add({ 
-        data: { 
-          id: signature, 
-          label: signature.slice(0, 8) + '...', 
-          type: 'transaction' 
-        }, 
-        classes: 'transaction highlight-transaction' 
+      transactionNode = cy.add({
+        data: {
+          id: signature,
+          label: signature.slice(0, 8) + '...',
+          type: 'transaction'
+        },
+        classes: 'transaction highlight-transaction'
       });
     }
-    
+
     // Handle state updates and callbacks without navigation
     if (clientSideNavigation) {
-      const isProgrammaticNavigation = typeof window !== 'undefined' && 
+      const isProgrammaticNavigation = typeof window !== 'undefined' &&
         window.sessionStorage && window.sessionStorage.getItem('programmatic_nav') === 'true';
-      
+
       if (!isProgrammaticNavigation) {
         // Always call the transaction select handler if provided
         if (typeof onTransactionSelect === 'function') {
           onTransactionSelect(signature);
         }
-        
+
         // No longer use router.replace to avoid page reload
         // This allows state-only updates
       }
     }
-    
+
     // Always expand the graph if requested
     if (incrementalLoad) {
       // Let the abort signal propagate to fetch operations
       const signal = controller.signal;
       const expanded = await expandTransactionGraph(signature, signal);
-      
+
       // Check if this request is still relevant after expansion
       if (focusSignatureRef.current !== targetSignature) {
         controller.abort();
         return;
       }
-      
+
       // Update node classes after expansion
       transactionNode = cy.getElementById(signature);
       if (transactionNode.length > 0) {
         transactionNode.addClass('highlighted');
       }
-      
+
       // Update viewport if expansion added new elements and we're not preserving viewport
       if (expanded && !preserveViewport) {
         const neighborhood = transactionNode.neighborhood().add(transactionNode);
@@ -113,7 +113,7 @@ export async function focusOnTransaction(
     } else {
       // For non-incremental loads, just highlight and center
       transactionNode.addClass('highlighted');
-      
+
       if (!preserveViewport) {
         const neighborhood = transactionNode.neighborhood().add(transactionNode);
         cy.animate({
@@ -126,7 +126,7 @@ export async function focusOnTransaction(
         });
       }
     }
-    
+
     // Restore viewport state if needed
     if (preserveViewport && viewportState) {
       cy.viewport(viewportState);
@@ -158,7 +158,11 @@ export const setupGraphInteractions = (
   focusOnTransaction: (signature: string, incrementalLoad: boolean) => void,
   setViewportState: (state: ViewportState) => void,
   onAddressTrack?: (address: string) => void,
-  onTransactionSelect?: (signature: string) => void
+  onTransactionSelect?: (signature: string) => void,
+  showAccountTooltip?: (address: string, position: { x: number; y: number }) => void,
+  hideAccountTooltip?: () => void,
+  showEdgeTooltip?: (signature: string, position: { x: number; y: number }) => void,
+  hideEdgeTooltip?: () => void
 ): void => {
   console.log('setupGraphInteractions called with callbacks:', {
     addressCallback: !!onAddressTrack,
@@ -166,40 +170,56 @@ export const setupGraphInteractions = (
   });
   // Add active state styling
   cy.style().selector(':active').style({ 'opacity': 0.7 }).update();
-  
+
   // Remove any existing event listeners to prevent memory leaks
   cy.off('tap mouseover mouseout pan zoom');
-  
+
   // Apply GPU acceleration to container
   if (containerRef.current) {
     optimizeCytoscapeContainer(containerRef.current);
   }
-  
+
   // GPU-accelerated throttle hover effects for better performance
   const throttledHoverIn = gpuThrottle((event: any) => {
     const ele = event.target;
-    
+
     if (ele.isNode() && ele.data('type') === 'transaction') {
       containerRef.current?.style.setProperty('cursor', 'pointer');
       ele.addClass('hover');
       ele.connectedEdges().addClass('hover').connectedNodes().addClass('hover');
     }
-    
+
     if (ele.isNode() && ele.data('type') === 'account') {
       containerRef.current?.style.setProperty('cursor', 'pointer');
       ele.addClass('hover');
       ele.connectedEdges().addClass('hover');
+
+      // Tooltip for account nodes
+      if (showAccountTooltip) {
+        const rp = ele.renderedPosition();
+        // Position offset to avoid covering the node
+        showAccountTooltip(ele.id(), { x: rp.x + 12, y: rp.y - 12 });
+      }
     }
-    
+
     if (ele.isEdge()) {
       ele.addClass('hover');
       ele.connectedNodes().addClass('hover');
+      if (showEdgeTooltip) {
+        const rp = { x: event.renderedPosition.x, y: event.renderedPosition.y };
+        const connectedTxs = ele.connectedNodes().filter((n: any) => n.data('type') === 'transaction');
+        if (connectedTxs.length > 0) {
+          showEdgeTooltip(connectedTxs[0].id(), rp);
+        }
+      }
     }
   }, 60); // 60fps for smooth GPU-accelerated interactions
 
   const throttledHoverOut = gpuThrottle(() => {
     cy.elements().removeClass('hover');
     containerRef.current?.style.removeProperty('cursor');
+    if (hideAccountTooltip) hideAccountTooltip();
+    if (hideEdgeTooltip) hideEdgeTooltip();
   }, 60); // 60fps for smooth GPU-accelerated interactions
 
   // Debounce viewport state updates for better performance
@@ -211,7 +231,7 @@ export const setupGraphInteractions = (
       });
     }
   }, 250); // 250ms delay to reduce overhead from frequent pan/zoom events
-  
+
   // Add click handler for all nodes (transactions and accounts)
   cy.on('tap', 'node', (event) => {
     // Always prevent default browser behavior to avoid page reload
@@ -219,16 +239,16 @@ export const setupGraphInteractions = (
       event.originalEvent.preventDefault();
       event.originalEvent.stopPropagation();
     }
-    
+
     const node = event.target;
     const signature = node.id();
     const nodeType = node.data('type');
-    
+
     // Highlight the clicked node
     cy.elements().removeClass('active');
     node.addClass('active');
-    
-    if (nodeType === 'transaction' && signature !== focusSignatureRef.current) { 
+
+    if (nodeType === 'transaction' && signature !== focusSignatureRef.current) {
       node.flashClass('active', 300);
       // Pass false as second parameter to avoid unnecessary reload in some cases
       focusOnTransaction(signature, true);
@@ -236,12 +256,12 @@ export const setupGraphInteractions = (
     else if (nodeType === 'account') {
       // For account nodes, navigate to account page
       const address = signature; // In this case, the ID is the address
-      
+
       console.log('Account node clicked:', address, 'Callback available:', !!onAddressTrack);
-      
+
       // Highlight the account and its connections
       node.connectedEdges().addClass('highlighted').connectedNodes().addClass('highlighted');
-      
+
       // ALWAYS use callback if provided - prioritize it over fallback
       if (onAddressTrack && typeof onAddressTrack === 'function') {
         console.log('Using callback for account navigation:', address);
@@ -255,7 +275,7 @@ export const setupGraphInteractions = (
       }
     }
   });
-  
+
   // Add throttled hover effects for better performance
   cy.on('mouseover', 'node, edge', throttledHoverIn);
   cy.on('mouseout', 'node, edge', throttledHoverOut);
@@ -267,31 +287,31 @@ export const setupGraphInteractions = (
       event.originalEvent.preventDefault();
       event.originalEvent.stopPropagation();
     }
-    
+
     const edge = event.target;
-    
+
     // Highlight the edge and its connected nodes
     cy.elements().removeClass('highlighted active');
     edge.addClass('highlighted');
     edge.connectedNodes().addClass('highlighted');
-    
+
     // If one of the connected nodes is a transaction, navigate to it
     const connectedTxs = edge.connectedNodes().filter((node: any) => node.data('type') === 'transaction');
     if (connectedTxs.length > 0) {
       const txSignature = connectedTxs[0].id();
-      
+
       // Navigate to transaction page
       if (typeof window !== 'undefined') {
         window.open(`/tx/${txSignature}`, '_blank');
       }
-      
+
       // Also focus on it in the current graph for visual feedback
       if (txSignature !== focusSignatureRef.current) {
         focusOnTransaction(txSignature, true);
       }
     }
   });
-  
+
   // Track viewport changes with debounced updates for performance
   cy.on('pan zoom', updateViewportState);
 };
@@ -307,14 +327,14 @@ export const resizeGraph = (
 ): void => {
   if (cyRef.current) {
     const cy = cyRef.current;
-    
+
     // Save current viewport state if preserving
     const currentZoom = preserveViewport ? cy.zoom() : undefined;
     const currentPan = preserveViewport ? cy.pan() : undefined;
-    
+
     // First resize to adjust the container dimensions
     cy.resize();
-    
+
     // Restore viewport if preserving, otherwise center
     if (preserveViewport && currentZoom && currentPan) {
       cy.viewport({ zoom: currentZoom, pan: currentPan });

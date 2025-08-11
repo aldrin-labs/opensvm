@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getTokenInfo } from '@/lib/token-registry';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

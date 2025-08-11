@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

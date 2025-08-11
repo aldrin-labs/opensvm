@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint } from '@solana/spl-token';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 
 export async function GET(request: Request) {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
     const connection = await getConnection();
     const pubkey = new PublicKey(address);
     const accountInfo = await connection.getAccountInfo(pubkey);
-    
+
     if (!accountInfo) {
       console.log('Account not found:', address);
       return NextResponse.json({ type: 'unknown' });
@@ -37,7 +37,7 @@ export async function GET(request: Request) {
     // Check if it's a token mint
     const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
     const TOKEN_2022_PROGRAM_ID = new PublicKey('TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb');
-    
+
     const owner = accountInfo.owner;
     if (owner.equals(TOKEN_PROGRAM_ID) || owner.equals(TOKEN_2022_PROGRAM_ID)) {
       try {

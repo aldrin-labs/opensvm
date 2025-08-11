@@ -1,6 +1,5 @@
 import { NextRequest } from 'next/server';
 import { getRpcEndpoints } from '@/lib/opensvm-rpc';
-import { getConnection } from '@/lib/solana-connection-server';
 
 const defaultHeaders = {
     'Content-Type': 'application/json',
@@ -43,18 +42,72 @@ export async function POST(request: NextRequest) {
             });
         }
 
-        const endpoints = getRpcEndpoints();
-        if (!endpoints || endpoints.length === 0) {
-            return new Response(JSON.stringify({ error: 'No RPC endpoints configured' }), {
-                status: 500,
+        // Resolve cluster override from query param or cookie
+        const url = new URL(request.url);
+        const clusterParam = url.searchParams.get('cluster');
+        const rawCookie = request.cookies.get('cluster')?.value;
+        const clusterCookie = rawCookie ? safeDecode(rawCookie) : undefined;
+
+        const rpcUrl = resolveClusterToRpcUrl(clusterParam || clusterCookie);
+        if (!rpcUrl) {
+            const endpoints = getRpcEndpoints();
+            if (!endpoints || endpoints.length === 0) {
+                return new Response(JSON.stringify({ error: 'No RPC endpoints configured' }), {
+                    status: 500,
+                    headers: defaultHeaders
+                });
+            }
+            // Pick a random endpoint for load balancing
+            const randomIndex = Math.floor(Math.random() * endpoints.length);
+            const fallbackUrl = endpoints[randomIndex];
+            console.log(`Proxying RPC request to random endpoint ${fallbackUrl}`);
+            const response = await fetch(fallbackUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(body),
+                signal: controller.signal
+            });
+
+            clearTimeout(timeoutId);
+
+            if (!response.ok) {
+                // Fallback to mainnet if 404
+                if (response.status === 404) {
+                    console.log('RPC endpoint returned 404, falling back to Solana mainnet');
+                    const response2 = await fetch('https://api.mainnet-beta.solana.com', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                        },
+                        body: JSON.stringify(body),
+                        signal: controller.signal,
+                    });
+                    const data2 = await response2.json();
+                    return new Response(JSON.stringify(data2), {
+                        status: response2.ok ? 200 : response2.status,
+                        headers: defaultHeaders
+                    });
+                }
+
+                console.error(`Error proxying RPC request: ${response.status} ${response.statusText}`);
+                return new Response(JSON.stringify({ error: `RPC request failed` }), {
+                    status: response.status,
+                    headers: defaultHeaders
+                });
+            }
+
+            const data = await response.json();
+            return new Response(JSON.stringify(data), {
+                status: 200,
                 headers: defaultHeaders
             });
         }
 
-        // Pick a random endpoint for load balancing
-        const randomIndex = Math.floor(Math.random() * endpoints.length);
-        const rpcUrl = endpoints[randomIndex];
-        console.log(`Proxying RPC request to random endpoint ${rpcUrl}`);
+        console.log(`Proxying RPC request to cluster override ${rpcUrl}`);
 
         let response = await fetch(rpcUrl, {
             method: 'POST',
@@ -117,4 +170,27 @@ export async function POST(request: NextRequest) {
             headers: defaultHeaders
         });
     }
+}
+
+function normalizeUrl(url: string): string {
+    if (/^https?:\/\//i.test(url)) return url;
+    if (/^[\w.-]+(\:[0-9]+)?(\/|$)/.test(url)) return `https://${url}`;
+    return url;
+}
+
+function safeDecode(value: string): string {
+    try { return decodeURIComponent(value); } catch { return value; }
+}
+
+function resolveClusterToRpcUrl(cluster?: string | null): string | null {
+    if (!cluster) return null;
+    const value = cluster.trim().toLowerCase();
+    if (!value) return null;
+    if (value === 'opensvm' || value === 'osvm' || value === 'gsvm' || value === 'mainnet' || value === 'mainnet-beta') {
+        return null; // use default randomized endpoints
+    }
+    if (value === 'devnet') return 'https://api.devnet.solana.com';
+    if (value === 'testnet') return 'https://api.testnet.solana.com';
+    if (cluster.startsWith('http://') || cluster.startsWith('https://')) return cluster;
+    return normalizeUrl(cluster);
 }

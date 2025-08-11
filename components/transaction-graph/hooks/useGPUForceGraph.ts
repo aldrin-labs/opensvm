@@ -6,7 +6,7 @@ import { debugLog } from '../utils';
 export function useGPUForceGraph() {
   const [useGPUGraph, setUseGPUGraph] = useState<boolean>(false); // Default to regular cytoscape for compatibility
   const [gpuGraphData, setGpuGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
-  
+
   // Store callbacks for GPU handlers
   const [onTransactionSelect, setOnTransactionSelect] = useState<((signature: string) => void) | null>(null);
   const [onAccountSelect, setOnAccountSelect] = useState<((address: string) => void) | null>(null);
@@ -24,7 +24,7 @@ export function useGPUForceGraph() {
       const nodes = cy.nodes().map((node) => {
         const nodeData = node.data();
         const position = node.position();
-        
+
         return {
           id: nodeData.id,
           label: nodeData.label || nodeData.id,
@@ -33,7 +33,7 @@ export function useGPUForceGraph() {
           x: position.x,
           y: position.y,
           size: nodeData.size || 10,
-          color: nodeData.color || '#4ade80',
+          color: nodeData.color || 'hsl(var(--success))',
           data: nodeData
         };
       });
@@ -45,7 +45,7 @@ export function useGPUForceGraph() {
           source: edgeData.source,
           target: edgeData.target,
           value: edgeData.value || 1,
-          color: edgeData.color || '#6b7280',
+          color: edgeData.color || 'hsl(var(--muted-foreground))',
           type: edgeData.type || 'transfer',
           data: edgeData
         };
@@ -78,12 +78,12 @@ export function useGPUForceGraph() {
       account: !!onAccountSelect,
       transaction: !!onTransactionSelect
     });
-    
+
     if (node.type === 'account') {
       // Handle account click - use callback if available, otherwise fallback
       const address = node.id;
       console.log('GPU: Account node clicked:', address, 'Callback available:', !!onAccountSelect);
-      
+
       if (onAccountSelect && typeof onAccountSelect === 'function') {
         console.log('GPU: Using account callback for navigation');
         onAccountSelect(address);
@@ -97,7 +97,7 @@ export function useGPUForceGraph() {
       // Handle transaction click - use callback if available, otherwise fallback
       const signature = node.id;
       console.log('GPU: Transaction node clicked:', signature, 'Callback available:', !!onTransactionSelect);
-      
+
       if (onTransactionSelect && typeof onTransactionSelect === 'function') {
         console.log('GPU: Using transaction callback');
         onTransactionSelect(signature);
@@ -113,13 +113,13 @@ export function useGPUForceGraph() {
   // Handle link clicks - should open transaction pages
   const handleGPULinkClick = useCallback((link: any) => {
     debugLog('GPU link clicked:', link);
-    
+
     // Links represent connections between accounts and transactions
     // When a link is clicked, we want to navigate to the transaction
     if (link.source && link.target) {
       // Determine which end is the transaction
       let transactionId = null;
-      
+
       if (typeof link.source === 'object' && link.source.type === 'transaction') {
         transactionId = link.source.id;
       } else if (typeof link.target === 'object' && link.target.type === 'transaction') {
@@ -128,7 +128,7 @@ export function useGPUForceGraph() {
         // If source is string, check if it looks like a transaction signature (longer than account address)
         transactionId = link.source.length > 50 ? link.source : link.target;
       }
-      
+
       if (transactionId) {
         if (onTransactionSelect) {
           onTransactionSelect(transactionId);

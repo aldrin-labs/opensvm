@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { getConnection, getRPCLatency } from '@/lib/solana';
+import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getRPCLatency } from '@/lib/solana';
 
 // Dynamically import NetworkResponseChart with no SSR
 const NetworkResponseChart = dynamic(
@@ -36,20 +37,20 @@ export default function HomeStats() {
     async function fetchData() {
       try {
         setIsLoading(true);
-        const connection = await getConnection();
+        const connection = getConnection();
         const latency = await getRPCLatency();
-        
+
         if (!mounted) return;
 
         // Get epoch info and other stats
         const epochInfo = await connection.getEpochInfo();
         const validators = await connection.getVoteAccounts();
         const perfSamples = await connection.getRecentPerformanceSamples(1);
-        
+
         if (!mounted) return;
 
         const tps = perfSamples[0] ? Math.round(perfSamples[0].numTransactions / perfSamples[0].samplePeriodSecs) : 0;
-        
+
         const newStats = {
           epoch: epochInfo.epoch,
           epochProgress: (epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100,
@@ -58,7 +59,7 @@ export default function HomeStats() {
           tps,
           successRate: 100,
         };
-        
+
         setStats(newStats);
 
         // Update network data
@@ -137,8 +138,8 @@ export default function HomeStats() {
             <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
             <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
             <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
-              <div 
-                className="bg-primary h-1" 
+              <div
+                className="bg-primary h-1"
                 style={{ width: `${stats?.epochProgress ?? 0}%` }}
               />
             </div>

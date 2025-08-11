@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
 import { memoryCache } from '@/lib/cache';
@@ -133,7 +133,7 @@ export async function GET(
     // Get the address from params - properly awaited in Next.js 15
     const params = await context.params;
     const { address } = await params;
-    
+
     // Add overall API timeout
     let timeoutId: NodeJS.Timeout | undefined;
     const timeoutPromise = new Promise((_, reject) => {
@@ -144,7 +144,7 @@ export async function GET(
 
     const cacheKey = `account-stats-${address}`;
     const cachedStats = memoryCache.get<AccountStats>(cacheKey);
-    
+
     // Return cached data and refresh in background if stale
     if (cachedStats) {
       const age = Date.now() - cachedStats.lastUpdated;

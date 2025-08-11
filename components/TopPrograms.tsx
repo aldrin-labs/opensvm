@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getConnection } from '@/lib/solana';
+import { getClientConnection as getConnection } from '@/lib/solana-connection';
 
 interface Program {
   address: string;
@@ -15,31 +15,31 @@ export function TopPrograms() {
   useEffect(() => {
     async function fetchPrograms() {
       try {
-        const connection = await getConnection();
+        const connection = getConnection();
         const slot = await connection.getSlot();
         const blocks = await connection.getBlocks(Math.max(0, slot - 100), slot);
-        
+
         // Get transactions from recent blocks
         const programCounts = new Map<string, number>();
-        
+
         for (const blockSlot of blocks) {
           try {
             const block = await connection.getBlock(blockSlot, {
               maxSupportedTransactionVersion: 0
             });
-            
+
             if (!block) continue;
 
             // Count program invocations from logs
             block.transactions.forEach(tx => {
               if (!tx.meta?.logMessages) return;
-              
+
               tx.meta.logMessages
                 .filter(log => log.includes('Program') && log.includes('invoke'))
                 .forEach(log => {
                   const match = log.match(/Program (\w+) invoke/);
                   if (!match || !match[1]) return;
-                  
+
                   const program = match[1];
                   programCounts.set(program, (programCounts.get(program) || 0) + 1);
                 });

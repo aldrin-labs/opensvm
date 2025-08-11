@@ -71,7 +71,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
   return (
     <div className="relative">
       <button
-        className="flex items-center space-x-1 p-2 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        className="flex items-center space-x-1 p-2 rounded-md hover:bg-muted transition-colors"
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="Saved graph states"
@@ -81,11 +81,11 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-gray-900 shadow-lg rounded-md z-50 border border-gray-200 dark:border-gray-700 p-2">
-          <div className="flex justify-between items-center mb-2 p-2 border-b border-gray-200 dark:border-gray-700">
+        <div className="absolute right-0 mt-2 w-72 bg-popover text-popover-foreground shadow-lg rounded-md z-50 border border-border p-2">
+          <div className="flex justify-between items-center mb-2 p-2 border-b border-border">
             <h3 className="font-medium">Graph Clouds</h3>
             <button
-              className="text-blue-500 hover:text-blue-700 flex items-center space-x-1 transition-colors"
+              className="text-primary hover:text-primary/90 flex items-center space-x-1 transition-colors"
               onClick={() => {
                 onSaveCurrentState();
                 // Refresh the list after saving
@@ -100,7 +100,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
 
           <div className="max-h-80 overflow-y-auto">
             {savedGraphs.length === 0 ? (
-              <div className="text-center text-gray-500 dark:text-gray-400 py-4">
+              <div className="text-center text-muted-foreground py-4">
                 No saved graphs
               </div>
             ) : (
@@ -108,27 +108,27 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
                 {savedGraphs.map(graph => (
                   <li
                     key={graph.signature}
-                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md cursor-pointer flex justify-between items-start transition-colors"
+                    className="p-2 hover:bg-muted rounded-md cursor-pointer flex justify-between items-start transition-colors"
                     onClick={() => handleLoadState(graph)}
                   >
                     <div className="flex-1 pr-2 min-w-0">
                       <div className="font-medium break-all">{graph.title}</div>
-                      <div className="text-xs text-gray-500">
+                      <div className="text-xs text-muted-foreground">
                         Last updated: {formatDate(graph.timestamp)}
                       </div>
-                      <div className="text-xs text-purple-700 dark:text-purple-300 mt-1">
+                      <div className="text-xs text-primary mt-1">
                         Type: {inferGraphType(graph)}
                       </div>
-                      <div className="text-xs text-gray-600 dark:text-gray-400 break-all">
+                      <div className="text-xs text-muted-foreground break-all">
                         Address: {graph.signature}
                       </div>
                       {graph.context && (
-                        <div className="text-xs text-blue-700 dark:text-blue-300 mt-1">
+                        <div className="text-xs text-primary mt-1">
                           Context: {graph.context}
                         </div>
                       )}
                       {(typeof graph.nodeCount === 'number' || typeof graph.edgeCount === 'number') && (
-                        <div className="text-xs text-green-700 dark:text-green-300 mt-1">
+                        <div className="text-xs text-success mt-1">
                           Stats: {typeof graph.nodeCount === 'number' ? `${graph.nodeCount} nodes` : ''}
                           {typeof graph.nodeCount === 'number' && typeof graph.edgeCount === 'number' ? ', ' : ''}
                           {typeof graph.edgeCount === 'number' ? `${graph.edgeCount} edges` : ''}
@@ -136,7 +136,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
                       )}
                     </div>
                     <button
-                      className="text-red-500 hover:text-red-700 p-1 transition-colors"
+                      className="text-destructive hover:text-destructive/90 p-1 transition-colors"
                       onClick={(e) => handleDelete(e, graph.signature)}
                       aria-label="Delete saved graph"
                     >

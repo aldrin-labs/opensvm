@@ -2,7 +2,7 @@ export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { sanitizeSearchQuery, isValidSolanaAddress, formatNumber } from '@/lib/utils';
 
 // Rate limit configuration for account search
@@ -38,11 +38,11 @@ export async function GET(request: NextRequest) {
     } catch (error) {
       if (error instanceof RateLimitError) {
         return NextResponse.json(
-          { 
+          {
             error: 'Too many requests. Please try again later.',
             retryAfter: Math.ceil(error.retryAfter / 1000)
           },
-          { 
+          {
             status: 429,
             headers: {
               ...baseHeaders,
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     if (!query) {
       return NextResponse.json(
         { error: 'Search query is required' },
-        { 
+        {
           status: 400,
           headers: baseHeaders
         }
@@ -71,16 +71,16 @@ export async function GET(request: NextRequest) {
     // Get connection from pool with timeout
     const connection = await Promise.race<ReturnType<typeof getConnection>>([
       getConnection(),
-      new Promise((_, reject) => 
+      new Promise((_, reject) =>
         setTimeout(() => reject(new Error('Connection timeout')), 10000)
       ) as Promise<ReturnType<typeof getConnection>>
     ]);
-    
+
     // First validate the query format
     if (query.length > 30 && !isValidSolanaAddress(query)) {
       return NextResponse.json(
         { error: 'Invalid Solana address format' },
-        { 
+        {
           status: 400,
           headers: baseHeaders
         }
@@ -97,7 +97,7 @@ export async function GET(request: NextRequest) {
           connection.getAccountInfo(pubkey),
           connection.getBalance(pubkey)
         ]);
-        
+
         if (account) {
           accounts.push({
             address: pubkey.toString(),
@@ -117,7 +117,7 @@ export async function GET(request: NextRequest) {
     console.error('Search error:', error);
     return NextResponse.json(
       { error: 'Failed to perform search' },
-      { 
+      {
         status: 500,
         headers: baseHeaders
       }

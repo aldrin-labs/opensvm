@@ -1,10 +1,9 @@
-import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { ListTable } from '@visactor/vtable';
 import * as VTable from '@visactor/vtable';
 import { useRouter } from 'next/navigation';
-import React, { useMemo } from 'react';
-import { TableContainer, TableHead, TableRow, TableCell, TableBody } from './TableComponents';
-import { TableHeaderText, TableCellText } from './TableComponents';
+// import { TableContainer, TableHead, TableRow, TableCell, TableBody } from './TableComponents';
+// import { TableHeaderText, TableCellText } from './TableComponents';
 import { useTheme } from '@/lib/design-system/theme-provider';
 
 
@@ -555,9 +554,11 @@ export function VTableWrapper({
             try {
               const raw = args.value?.html ?? args.value;
               if (typeof document !== 'undefined' && typeof navigator !== 'undefined') {
+                // SECURITY FIX: Use textContent instead of innerHTML to prevent XSS
                 const tmp = document.createElement('div');
-                tmp.innerHTML = raw;
-                const text = tmp.textContent || tmp.innerText || String(args.value);
+                // Only set textContent, never innerHTML with user data
+                tmp.textContent = typeof raw === 'string' ? raw : String(args.value || '');
+                const text = tmp.textContent || String(args.value || '');
                 if (text && typeof navigator !== 'undefined' && navigator.clipboard) {
                   navigator.clipboard.writeText(text);
                 }

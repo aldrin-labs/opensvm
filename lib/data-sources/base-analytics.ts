@@ -1,5 +1,5 @@
 import { Connection } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection';
+import { getConnection } from '@/lib/solana-connection-server';
 import { getDuckDBCache } from '@/lib/data-cache/duckdb-cache';
 import { AnalyticsCallback, AnalyticsConfig } from '@/lib/types/solana-analytics';
 
@@ -9,7 +9,7 @@ export abstract class BaseAnalytics {
   protected config: AnalyticsConfig;
   protected intervals: NodeJS.Timeout[] = [];
   protected callbacks: Map<string, AnalyticsCallback<any>[]> = new Map();
-  
+
   // State management for initialization and monitoring
   private initializationPromise: Promise<void> | null = null;
   private isInitialized = false;
@@ -35,7 +35,7 @@ export abstract class BaseAnalytics {
 
     this.isInitializing = true;
     this.initializationPromise = this.performInitialization();
-    
+
     try {
       await this.initializationPromise;
       this.isInitialized = true;
@@ -112,7 +112,7 @@ export abstract class BaseAnalytics {
       // Clear all intervals
       this.intervals.forEach(interval => clearInterval(interval));
       this.intervals = [];
-      
+
       await this.onStopMonitoring();
       this.isMonitoring = false;
       console.log(`${this.getAnalyticsName()} monitoring stopped`);

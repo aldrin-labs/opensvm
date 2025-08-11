@@ -79,9 +79,23 @@ function SettingsMenuClient() {
 
   const handleApply = () => {
     console.log('SettingsMenu: Applying settings:', tempSettings);
+    // Helper to set persistent cluster cookie
+    const setClusterCookie = (value: string) => {
+      try {
+        const secure = typeof window !== 'undefined' && window.location.protocol === 'https:';
+        const attrs = `; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${secure ? '; Secure' : ''}`;
+        document.cookie = `cluster=${encodeURIComponent(value)}${attrs}`;
+      } catch (e) {
+        console.warn('Failed to set cluster cookie', e);
+      }
+    };
+
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
       settings.addCustomRpcEndpoint('Custom', tempSettings.customRpcEndpoint);
-      updateClientRpcEndpoint(tempSettings.customRpcEndpoint);
+      // Persist custom URL to cookie so server proxy honors it
+      setClusterCookie(tempSettings.customRpcEndpoint);
+      // Keep client on proxy endpoint for safety
+      updateClientRpcEndpoint('opensvm');
     } else {
       // Use enhanced theme provider for theme changes
       console.log('SettingsMenu: Updating theme to:', tempSettings.theme);
@@ -90,7 +104,13 @@ function SettingsMenuClient() {
       settings.setFontFamily(tempSettings.fontFamily);
       settings.setFontSize(tempSettings.fontSize);
       settings.setRpcEndpoint(tempSettings.rpcEndpoint);
-      updateClientRpcEndpoint(tempSettings.rpcEndpoint.url);
+      // Persist selection to cookie: 'opensvm' stays pooled; URLs force specific RPC
+      const selected = tempSettings.rpcEndpoint?.url === 'opensvm'
+        ? 'opensvm'
+        : tempSettings.rpcEndpoint?.url;
+      if (selected) setClusterCookie(selected);
+      // Keep client on proxy endpoint for safety
+      updateClientRpcEndpoint('opensvm');
     }
     setIsOpen(false);
   };

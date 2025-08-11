@@ -17,6 +17,13 @@ import {
   errorLog,
   debugLog
 } from './utils';
+import { classifyTransactionType, isFundingTransaction, type TransactionClassification } from '@/lib/transaction-classifier';
+import { formatEdgeLabel } from './edge-label-utils';
+import AccountHoverTooltip from './AccountHoverTooltip';
+import { GraphControls } from './GraphControls';
+import { NavigationHistory } from './NavigationHistory';
+import { useEdgeHover } from './hooks/useEdgeHover';
+import TransactionEdgeTooltip from './TransactionEdgeTooltip';
 import {
   useFullscreenMode,
   useAddressTracking,
@@ -26,6 +33,7 @@ import {
   useGraphInitialization,
   useNavigationHistory
 } from './hooks';
+import { useHoverCache } from './hooks/useHoverCache';
 
 // Constants
 const EXCLUDED_ACCOUNTS = new Set([
@@ -226,12 +234,40 @@ const CytoscapeContainer = React.memo(() => {
     cleanupGraph,
     isGraphReady
   } = useGraphInitialization();
+  const [hoveredAccount, setHoveredAccount] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState<{ x: number; y: number } | null>(null);
+  const [isHoverLoading, setIsHoverLoading] = useState<boolean>(false);
+  const [hoverData, setHoverData] = useState<any>(null);
+  const { hoveredSignature, position: edgeTooltipPos, data: edgeTooltipData, isLoading: edgeTooltipLoading, show: showEdgeTooltip, hide: hideEdgeTooltip } = useEdgeHover();
+
+  // Hover data caching
+  const hoverCache = useHoverCache<any>(30000); // 30 second TTL
+
+  // Performance monitoring
+  const trackHoverPerformance = useCallback((operation: string, startTime: number) => {
+    const duration = Date.now() - startTime;
+    if (duration > 200) {
+      console.warn(`Hover operation '${operation}' took ${duration}ms (target: <200ms)`);
+    }
+    return duration;
+  }, []);
 
   // State management
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<number>(0);
   const [progressMessage, setProgressMessage] = useState<string>('');
+
+  // Graph filter state
+  const [filters, setFilters] = useState({
+    solTransfers: true,
+    splTransfers: true,
+    defi: true,
+    nft: true,
+    programCalls: true,
+    system: true,
+    funding: true
+  });
 
   // Note: Debounced state updates could be added here for high-frequency operations
   // but would require replacing all setProgress/setProgressMessage calls throughout the component
@@ -260,27 +296,40 @@ const CytoscapeContainer = React.memo(() => {
 
   // Navigation history
   const {
+    navigationHistory,
+    currentHistoryIndex,
     canGoBack,
     canGoForward,
     navigateBack,
     navigateForward,
-    addToHistory
+    addToHistory,
+    navigateToIndex,
+    goHome
   } = useNavigationHistory({
     initialSignature,
+    initialAccount,
     onNavigate: (signature) => {
       setCurrentSignature(signature);
       onTransactionSelect(signature);
 
-      // Focus on the transaction in the graph
+      // Restore viewport state if available, otherwise focus on the transaction
       if (cyRef.current) {
-        const node = cyRef.current.getElementById(signature);
-        if (node.length > 0) {
-          cyRef.current.center(node);
-          cyRef.current.zoom({
-            level: 1.5,
-            position: node.position()
-          });
+        const restored = restoreViewportState(signature);
+        if (!restored) {
+          const node = cyRef.current.getElementById(signature);
+          if (node.length > 0) {
+            cyRef.current.center(node);
+            cyRef.current.zoom({
+              level: 1.5,
+              position: node.position()
+            });
+          }
         }
+      }
+    },
+    onAccountNavigate: (address) => {
+      if (onAccountSelect) {
+        onAccountSelect(address);
       }
     }
   });
@@ -288,7 +337,13 @@ const CytoscapeContainer = React.memo(() => {
   // Wrapper for GPU node click that adds to history
   const handleGPUNodeClickWithHistory = (node: any) => {
     if (node && node.id && node.type === 'transaction') {
-      addToHistory(node.id);
+      addToHistory({
+        id: node.id,
+        type: 'transaction',
+        label: node.id,
+        signature: node.id,
+        timestamp: Date.now()
+      });
     }
     handleGPUNodeClick(node);
   };
@@ -309,7 +364,13 @@ const CytoscapeContainer = React.memo(() => {
     }
 
     if (transactionId) {
-      addToHistory(transactionId);
+      addToHistory({
+        id: transactionId,
+        type: 'transaction',
+        label: transactionId,
+        signature: transactionId,
+        timestamp: Date.now()
+      });
     }
 
     handleGPULinkClick(link);
@@ -408,10 +469,7 @@ const CytoscapeContainer = React.memo(() => {
           nodes.forEach((node, index) => {
             const row = Math.floor(index / 5);
             const col = index % 5;
-            node.position({
-              x: col * 100,
-              y: row * 100
-            });
+            node.position({ x: col * 100, y: row * 100 });
           });
         }
       } else {
@@ -485,7 +543,9 @@ const CytoscapeContainer = React.memo(() => {
     // Store signature as a known non-null value
     const txSignature: string = data.signature;
 
-    // Add transaction node
+    // Add transaction node with classification
+    const classification: TransactionClassification = classifyTransactionType(data);
+    const funding = isFundingTransaction(data, focusAccount);
     nodes.push({
       data: {
         id: txSignature,
@@ -493,10 +553,40 @@ const CytoscapeContainer = React.memo(() => {
         type: 'transaction',
         signature: txSignature,
         success: !data.err,
+        txType: classification.type,
+        txTypeConfidence: classification.confidence,
+        isFunding: funding || classification.isFunding,
+        tokenMint: classification.tokenMint,
+        tokenSymbol: classification.tokenSymbol,
+        amount: classification.amount,
         size: 20,
-        color: data.err ? '#ef4444' : '#10b981'
+        color: data.err ? 'hsl(var(--destructive))' : 'hsl(var(--success))'
       }
     });
+
+    // Compute net balance changes per account (prefer provided transfers; fallback to meta)
+    const netChangeByAccount: Record<string, number> = {};
+    const transfersArr: Array<{ account: string; change: number }> = (data as any).transfers || [];
+    if (Array.isArray(transfersArr) && transfersArr.length > 0) {
+      for (const t of transfersArr) {
+        if (!t || typeof t.account !== 'string') continue;
+        netChangeByAccount[t.account] = (netChangeByAccount[t.account] || 0) + (Number(t.change) || 0);
+      }
+    } else {
+      const meta = (data as any).meta;
+      const pre = meta?.preBalances;
+      const post = meta?.postBalances;
+      const keys = (data.accounts || data.details?.accounts || []).map((a: any) => a?.pubkey || a?.id || a);
+      if (Array.isArray(pre) && Array.isArray(post) && Array.isArray(keys)) {
+        for (let i = 0; i < Math.min(pre.length, post.length, keys.length); i++) {
+          const change = Number(post[i] || 0) - Number(pre[i] || 0);
+          const acc = keys[i];
+          if (typeof acc === 'string' && change !== 0) {
+            netChangeByAccount[acc] = (netChangeByAccount[acc] || 0) + change;
+          }
+        }
+      }
+    }
 
     // Process accounts from either data.accounts or data.details.accounts
     const accountsToProcess = data.accounts || data.details?.accounts || [];
@@ -526,9 +616,14 @@ const CytoscapeContainer = React.memo(() => {
           isSigner: account.isSigner || account.signer || false,
           isWritable: account.isWritable || account.writable || false,
           size: focusAccount === accountPubkey ? 25 : 15,
-          color: (account.isSigner || account.signer) ? '#8b5cf6' : '#6b7280'
+          color: (account.isSigner || account.signer) ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
         }
       });
+
+      // Determine direction and amount for edge visualization
+      const netChange = Number(netChangeByAccount[accountPubkey] || 0);
+      const direction = netChange > 0 ? 'in' : netChange < 0 ? 'out' : 'neutral';
+      const edgeAmount = classification.type === 'sol_transfer' ? Math.abs(netChange) : classification.amount;
 
       edges.push({
         data: {
@@ -536,7 +631,18 @@ const CytoscapeContainer = React.memo(() => {
           source: txSignature,
           target: accountPubkey,
           type: 'account_interaction',
-          color: (account.isWritable || account.writable) ? '#f59e0b' : '#6b7280'
+          txType: classification.type,
+          isFunding: funding || classification.isFunding,
+          color: (account.isWritable || account.writable) ? 'hsl(var(--warning))' : 'hsl(var(--muted-foreground))',
+          amount: edgeAmount,
+          tokenSymbol: classification.tokenSymbol,
+          direction,
+          label: formatEdgeLabel({
+            amount: edgeAmount,
+            tokenSymbol: classification.tokenSymbol,
+            txType: classification.type,
+            isFunding: funding || classification.isFunding
+          })
         }
       });
     });
@@ -550,16 +656,61 @@ const CytoscapeContainer = React.memo(() => {
     return { nodes, edges };
   }, []); // No dependencies needed as this is a pure function
 
+  // Save viewport state when navigating
+  const saveViewportState = useCallback((key: string) => {
+    if (cyRef.current) {
+      const cy = cyRef.current;
+      const center = cy.pan();
+      const zoom = cy.zoom();
+      const viewportState = { x: center.x, y: center.y, zoom };
+      sessionStorage.setItem(`graph-viewport-${key}`, JSON.stringify(viewportState));
+    }
+  }, [cyRef]);
+
+  // Restore viewport state when returning to a previous view
+  const restoreViewportState = useCallback((key: string): boolean => {
+    if (cyRef.current) {
+      const stored = sessionStorage.getItem(`graph-viewport-${key}`);
+      if (stored) {
+        try {
+          const viewportState = JSON.parse(stored);
+          cyRef.current.pan({ x: viewportState.x, y: viewportState.y });
+          cyRef.current.zoom(viewportState.zoom);
+          return true;
+        } catch (error) {
+          console.warn('Failed to restore viewport state:', error);
+        }
+      }
+    }
+    return false;
+  }, [cyRef]);
+
   // Memoized wrapper to avoid stale closures
   const wrappedOnTransactionSelect = useCallback((signature: string) => {
-    addToHistory(signature);
+    // Save current viewport state before navigating
+    if (currentSignature) {
+      saveViewportState(currentSignature);
+    }
+
+    addToHistory({
+      id: signature,
+      type: 'transaction',
+      label: signature,
+      signature: signature,
+      timestamp: Date.now()
+    });
     onTransactionSelect(signature);
-  }, [addToHistory, onTransactionSelect]);
+  }, [addToHistory, onTransactionSelect, currentSignature, saveViewportState]);
 
   // Memoized wrapper for account selection with client-side navigation priority
   const wrappedOnAccountSelect = useCallback((accountAddress: string) => {
     const clientSideNavigation = !!onAccountSelect;
     debugLog('Account selected:', accountAddress, 'clientSideNavigation:', clientSideNavigation);
+
+    // Save current viewport state before navigating
+    if (currentSignature) {
+      saveViewportState(currentSignature);
+    }
 
     if (onAccountSelect && typeof onAccountSelect === 'function') {
       // Always use the provided callback for client-side navigation
@@ -571,7 +722,203 @@ const CytoscapeContainer = React.memo(() => {
         window.location.href = `/account/${accountAddress}`;
       }
     }
-  }, [onAccountSelect]);
+  }, [onAccountSelect, currentSignature, saveViewportState]);
+
+  // Graph filter and zoom control handlers
+  const handleFilterChange = useCallback((filter: string, value: boolean) => {
+    setFilters(prev => ({ ...prev, [filter]: value }));
+
+    // Apply filters to cytoscape graph
+    if (cyRef.current) {
+      const cy = cyRef.current;
+
+      // Show/hide nodes based on transaction type
+      const nextFilters = { ...filters, [filter]: value } as typeof filters;
+      cy.nodes().forEach(node => {
+        if (node.data('type') === 'transaction') {
+          const txType = node.data('txType');
+          let shouldShow = true;
+
+          if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
+          else if (txType === 'spl_transfer' && !nextFilters.splTransfers) shouldShow = false;
+          else if (txType === 'defi' && !nextFilters.defi) shouldShow = false;
+          else if (txType === 'nft' && !nextFilters.nft) shouldShow = false;
+          else if (txType === 'program_call' && !nextFilters.programCalls) shouldShow = false;
+          else if (txType === 'system' && !nextFilters.system) shouldShow = false;
+
+          // Special handling for funding transactions
+          if (node.data('isFunding') && !nextFilters.funding) shouldShow = false;
+
+          node.style('display', shouldShow ? 'element' : 'none');
+        }
+      });
+
+      // Show/hide edges based on transaction type
+      cy.edges().forEach(edge => {
+        const txType = edge.data('txType');
+        let shouldShow = true;
+
+        if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
+        else if (txType === 'spl_transfer' && !nextFilters.splTransfers) shouldShow = false;
+        else if (txType === 'defi' && !nextFilters.defi) shouldShow = false;
+        else if (txType === 'nft' && !nextFilters.nft) shouldShow = false;
+        else if (txType === 'program_call' && !nextFilters.programCalls) shouldShow = false;
+        else if (txType === 'system' && !nextFilters.system) shouldShow = false;
+
+        // Special handling for funding transactions
+        if (edge.data('isFunding') && !nextFilters.funding) shouldShow = false;
+
+        edge.style('display', shouldShow ? 'element' : 'none');
+      });
+      // Do not run layout to preserve static positions
+    }
+  }, [filters, cyRef]);
+
+  const handleZoomIn = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.zoom({
+        level: cyRef.current.zoom() * 1.2,
+        renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 }
+      });
+    }
+  }, [cyRef]);
+
+  const handleZoomOut = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.zoom({
+        level: cyRef.current.zoom() * 0.8,
+        renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 }
+      });
+    }
+  }, [cyRef]);
+
+  const handleReset = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.reset();
+      cyRef.current.fit();
+    }
+  }, [cyRef]);
+
+  const handleFit = useCallback(() => {
+    if (cyRef.current) {
+      cyRef.current.fit();
+    }
+  }, [cyRef]);
+
+  // Keyboard navigation support
+  const handleKeyDown = useCallback((event: KeyboardEvent) => {
+    if (!cyRef.current) return;
+
+    const cy = cyRef.current;
+    const selectedNodes = cy.nodes(':selected');
+    const selectedEdges = cy.edges(':selected');
+
+    switch (event.key) {
+      case 'ArrowUp':
+      case 'ArrowDown':
+      case 'ArrowLeft':
+      case 'ArrowRight':
+        event.preventDefault();
+        if (selectedNodes.length > 0) {
+          const node = selectedNodes[0];
+          const pos = node.position();
+          const step = event.shiftKey ? 50 : 20;
+
+          switch (event.key) {
+            case 'ArrowUp':
+              node.position({ x: pos.x, y: pos.y - step });
+              break;
+            case 'ArrowDown':
+              node.position({ x: pos.x, y: pos.y + step });
+              break;
+            case 'ArrowLeft':
+              node.position({ x: pos.x - step, y: pos.y });
+              break;
+            case 'ArrowRight':
+              node.position({ x: pos.x + step, y: pos.y });
+              break;
+          }
+        }
+        break;
+
+      case 'Tab':
+        event.preventDefault();
+        if (selectedNodes.length > 0) {
+          const nodes = cy.nodes();
+          const arr = nodes.toArray();
+          const currentIndex = arr.findIndex(n => n.id() === selectedNodes[0].id());
+          const nextIndex = (currentIndex + 1) % nodes.length;
+          nodes.removeClass('selected');
+          nodes.eq(nextIndex).addClass('selected');
+        } else if (cy.nodes().length > 0) {
+          const nodes = cy.nodes();
+          nodes.removeClass('selected');
+          nodes.eq(0).addClass('selected');
+        }
+        break;
+
+      case 'Enter':
+        if (selectedNodes.length > 0) {
+          const node = selectedNodes[0];
+          if (node.data('type') === 'transaction') {
+            wrappedOnTransactionSelect(node.id());
+          } else if (node.data('type') === 'account') {
+            wrappedOnAccountSelect(node.id());
+          }
+        } else if (selectedEdges.length > 0) {
+          // If an edge is selected, open tx in background
+          const edge = selectedEdges[0];
+          const txSig = edge.data('fullSignature') || (edge.data('id') || '').split('-')[0];
+          if (txSig) {
+            window.open(`/tx/${txSig}`, '_blank', 'noopener');
+          }
+        }
+        break;
+
+      case 'Escape':
+        cy.nodes().removeClass('selected');
+        cy.edges().removeClass('selected');
+        break;
+
+      case 'f':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          handleFit();
+        }
+        break;
+
+      case 'r':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          handleReset();
+        }
+        break;
+
+      // Navigation history shortcuts
+      case 'h':
+        if (event.ctrlKey || event.metaKey) {
+          event.preventDefault();
+          goHome();
+        }
+        break;
+    }
+  }, [cyRef, wrappedOnTransactionSelect, wrappedOnAccountSelect, handleFit, handleReset, goHome]);
+
+  // Accessibility support
+  const getAccessibilityLabel = useCallback((element: any) => {
+    if (element.isNode()) {
+      const data = element.data();
+      if (data.type === 'transaction') {
+        return `Transaction ${data.label}, Type: ${data.txType || 'unknown'}, ${data.isFunding ? 'Funding transaction' : 'Regular transaction'}`;
+      } else if (data.type === 'account') {
+        return `Account ${data.label}, ${data.isSigner ? 'Signer' : 'Non-signer'}, ${data.isWritable ? 'Writable' : 'Read-only'}`;
+      }
+    } else if (element.isEdge()) {
+      const data = element.data();
+      return `Transaction edge from ${data.source} to ${data.target}, Type: ${data.txType || 'unknown'}, ${data.isFunding ? 'Funding transaction' : 'Regular transaction'}`;
+    }
+    return 'Graph element';
+  }, []);
 
   // Enhanced GPU callbacks and mode synchronization
   useEffect(() => {
@@ -590,6 +937,8 @@ const CytoscapeContainer = React.memo(() => {
       }
     }
   }, [setGPUCallbacks, wrappedOnTransactionSelect, wrappedOnAccountSelect, useGPUGraph, isCloudView, updateGPUGraphData, cyRef]);
+
+
 
   // Memoized debug panel to avoid expensive cytoscape queries on every render
   const DebugPanel = React.memo(() => {
@@ -625,6 +974,19 @@ const CytoscapeContainer = React.memo(() => {
           <div>• Initialized: {isInitialized ? 'Yes' : 'No'}</div>
           <div>• Has initial data: {initialTransactionData ? 'Yes' : 'No'}</div>
           <div>• Container ready: {containerRef.current ? 'Yes' : 'No'}</div>
+          {/* Describe the focused element for assistive tech if any selection exists */}
+          {(() => {
+            const sel = cyRef.current?.elements(':selected');
+            if (sel && sel.length > 0) {
+              const label = getAccessibilityLabel(sel[0]);
+              return <div aria-live="polite" className="sr-only">{label}</div>;
+            }
+            return null;
+          })()}
+          {/* Accessibility overview for screen readers */}
+          <div aria-live="polite" className="sr-only">
+            Graph has {nodes.length} nodes and {edges.length} edges. {transactionNodes.length} transaction nodes and {accountNodes.length} account nodes.
+          </div>
         </div>
         {nodes.length === 0 && (
           <div className="mt-2 pt-2 border-t border-destructive/20 text-xs">
@@ -656,7 +1018,7 @@ const CytoscapeContainer = React.memo(() => {
         type: 'account',
         pubkey: account,
         size: 25,
-        color: '#8b5cf6'
+        color: 'hsl(var(--primary))'
       }
     });
 
@@ -675,7 +1037,7 @@ const CytoscapeContainer = React.memo(() => {
           signature: txSignature,
           success: !tx.err,
           size: 15,
-          color: tx.err ? '#ef4444' : '#10b981'
+          color: tx.err ? 'hsl(var(--destructive))' : 'hsl(var(--success))'
         }
       });
 
@@ -685,7 +1047,7 @@ const CytoscapeContainer = React.memo(() => {
           source: account,
           target: txSignature,
           type: 'account_transaction',
-          color: '#6b7280'
+          color: 'hsl(var(--muted-foreground))'
         }
       });
     });
@@ -909,7 +1271,51 @@ const CytoscapeContainer = React.memo(() => {
 
         try {
           // Enhanced initialization with proper error handling
-          initPromise = initializeGraph(cytoscapeContainer, wrappedOnTransactionSelect, wrappedOnAccountSelect);
+          const showTooltip = async (address: string, pos: { x: number; y: number }) => {
+            setHoveredAccount(address);
+            setTooltipPosition(pos);
+            setIsHoverLoading(true);
+            try {
+              // Use cache first for instant responses
+              const cached = hoverCache.getCachedData(address);
+              if (cached) {
+                setHoverData(cached);
+                setIsHoverLoading(false);
+                return;
+              }
+
+              const start = Date.now();
+              const res = await fetch(`/api/account-stats/${address}`, { headers: { 'Cache-Control': 'no-cache' } });
+              trackHoverPerformance('account-stats-fetch', start);
+              if (res.ok) {
+                const data = await res.json();
+                setHoverData(data);
+                hoverCache.setCachedData(address, data);
+              } else {
+                setHoverData(null);
+              }
+            } catch (err) {
+              console.error('Account hover fetch failed', err);
+              setHoverData(null);
+            } finally {
+              setIsHoverLoading(false);
+            }
+          };
+          const hideTooltip = () => {
+            setHoveredAccount(null);
+            setTooltipPosition(null);
+            setHoverData(null);
+            setIsHoverLoading(false);
+          };
+          initPromise = initializeGraph(
+            cytoscapeContainer,
+            wrappedOnTransactionSelect,
+            wrappedOnAccountSelect,
+            showTooltip,
+            hideTooltip,
+            showEdgeTooltip,
+            hideEdgeTooltip
+          );
           await initPromise;
 
           // Verify cytoscape instance was properly created
@@ -977,9 +1383,16 @@ const CytoscapeContainer = React.memo(() => {
               }
             });
 
+            // Save initial viewport state after graph is loaded
+            if (initialAccount) {
+              setTimeout(() => {
+                saveViewportState(initialAccount);
+              }, 1000); // Wait for layout to settle
+            }
+
             // Force update GPU graph data after adding elements
             debugLog('Updating GPU graph data after initial load...');
-            updateGPUGraphData(cyRef.current);
+            updateGPUGraphData(cyRef.current!);
           }
 
           // Run layout with large transaction protection
@@ -1041,7 +1454,7 @@ const CytoscapeContainer = React.memo(() => {
       isMounted = false;
       abortController.abort();
     };
-  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress, cyRef, fetchAccountData, fetchData, initialTransactionData]);
+  }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress, cyRef, fetchAccountData, fetchData, initialTransactionData, hideEdgeTooltip, hoverCache, saveViewportState, showEdgeTooltip, trackHoverPerformance]);
 
   // Enhanced timeout protection for loading with recovery
   useEffect(() => {
@@ -1137,6 +1550,22 @@ const CytoscapeContainer = React.memo(() => {
     };
   }, [cyRef]); // Include cyRef as it's used in the resize handler
 
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDownEvent = (event: KeyboardEvent) => {
+      handleKeyDown(event);
+    };
+
+    if (typeof window !== 'undefined') {
+      window.addEventListener('keydown', handleKeyDownEvent);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('keydown', handleKeyDownEvent);
+      }
+    };
+  }, [handleKeyDown]);
+
   return (
     <div
       ref={containerRef}
@@ -1144,6 +1573,25 @@ const CytoscapeContainer = React.memo(() => {
       style={containerStyle}
       key="transaction-graph-container"
     >
+      {/* Hover tooltip for account nodes */}
+      {hoveredAccount && tooltipPosition ? (
+        <AccountHoverTooltip
+          accountAddress={hoveredAccount}
+          position={tooltipPosition}
+          visible={true}
+          data={hoverData}
+          isLoading={isHoverLoading}
+        />
+      ) : null}
+      {hoveredSignature && edgeTooltipPos ? (
+        <TransactionEdgeTooltip
+          signature={hoveredSignature}
+          position={edgeTooltipPos}
+          visible={true}
+          data={edgeTooltipData}
+          isLoading={edgeTooltipLoading}
+        />
+      ) : null}
       {/* Show initialization overlay when graph is not ready */}
       {!isInitialized && typeof window !== 'undefined' && (
         <div className="absolute inset-0 flex items-center justify-center z-30">
@@ -1339,6 +1787,35 @@ const CytoscapeContainer = React.memo(() => {
           onStopTracking={stopTrackingAddress}
         />
       ) : null}
+
+      {/* Graph Controls */}
+      <GraphControls
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onReset={handleReset}
+        onFit={handleFit}
+        onToggleFullscreen={toggleFullscreen}
+        isFullscreen={isFullscreen}
+        filters={filters}
+        onFilterChange={handleFilterChange}
+        visibleElements={{
+          nodes: cyRef.current?.nodes().length || 0,
+          edges: cyRef.current?.edges().length || 0
+        }}
+      />
+
+      {/* Navigation History */}
+      <NavigationHistory
+        history={navigationHistory}
+        currentIndex={currentHistoryIndex}
+        onNavigate={navigateToIndex}
+        onGoBack={navigateBack}
+        onGoForward={navigateForward}
+        onGoHome={goHome}
+        canGoBack={canGoBack}
+        canGoForward={canGoForward}
+        maxHistorySize={20}
+      />
     </div>
   );
 }, (prevProps, nextProps) => {

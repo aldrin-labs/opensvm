@@ -1,5 +1,14 @@
 'use client';
 
+export interface NavigationItem {
+  id: string;
+  type: 'account' | 'transaction';
+  label: string;
+  address?: string;
+  signature?: string;
+  timestamp: number;
+}
+
 import cytoscape from 'cytoscape';
 
 // Define interfaces locally instead of importing them
@@ -8,7 +17,7 @@ export interface ViewportState {
   pan: { x: number; y: number };
 }
 
-export interface GraphState { 
+export interface GraphState {
   focusedTransaction: string;
   title?: string;
   timestamp?: number;

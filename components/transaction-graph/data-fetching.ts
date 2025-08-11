@@ -11,6 +11,58 @@ const formatSolChange = (change: number) => `${change > 0 ? '+' : ''}${change.to
 import { runIncrementalLayout } from './layout';
 // import { GraphStateCache } from '@/lib/graph-state-cache'; // Commented out missing import
 import { checkForSplTransfers } from './spl-check';
+import { classifyTransactionType, isFundingTransaction } from '@/lib/transaction-classifier';
+
+/**
+ * Fetch bidirectional transactions (both inflow and outflow) for an account
+ * @param address Account address
+ * @param signal Optional abort signal
+ * @returns Account data with both inflow and outflow transactions
+ */
+export async function fetchBidirectionalTransactions(
+  address: string,
+  signal?: AbortSignal
+): Promise<AccountData | null> {
+  console.log(`Starting bidirectional fetch for account: ${address}`);
+
+  try {
+    // Fetch both outflow and inflow transactions
+    const [outflowResponse, inflowResponse] = await Promise.all([
+      fetch(`/api/account-transactions/${address}?limit=20&classify=true`, { signal }),
+      fetch(`/api/account-transactions/${address}?limit=20&classify=true&includeInflow=true`, { signal })
+    ]);
+
+    if (!outflowResponse.ok || !inflowResponse.ok) {
+      throw new Error('Failed to fetch bidirectional transactions');
+    }
+
+    const [outflowData, inflowData] = await Promise.all([
+      outflowResponse.json(),
+      inflowResponse.json()
+    ]);
+
+    // Merge and deduplicate transactions
+    const allTransactions = [...(outflowData.transactions || []), ...(inflowData.transactions || [])];
+    const uniqueTransactions = allTransactions.filter((tx, index, self) =>
+      index === self.findIndex(t => t.signature === tx.signature)
+    );
+
+    // Sort by timestamp (newest first)
+    uniqueTransactions.sort((a, b) => b.timestamp - a.timestamp);
+
+    return {
+      address,
+      transactions: uniqueTransactions,
+      bidirectional: true,
+      outflowCount: outflowData.transactions?.length || 0,
+      inflowCount: inflowData.transactions?.length || 0
+    };
+  } catch (error) {
+    console.error(`Failed to fetch bidirectional transactions for ${address}:`, error);
+    // Fallback to regular fetch
+    return fetchAccountTransactions(address, signal);
+  }
+}
 
 /**
  * Fetch transaction data with caching
@@ -125,7 +177,7 @@ export async function fetchAccountTransactions(
       const fetchSignal = signal || controller.signal;
 
       // Still limit but be more inclusive - allow up to 5 transactions
-      const response = await fetch(`/api/account-transactions/${address}?limit=5`, {
+      const response = await fetch(`/api/account-transactions/${address}?limit=20&classify=true`, {
         signal: fetchSignal,
         headers: { 'Cache-Control': 'no-cache' }
       });
@@ -147,23 +199,17 @@ export async function fetchAccountTransactions(
 
       // Process and enrich transaction data to be more inclusive
       const enrichedTransactions = transactions.map((tx: any) => {
-        // Determine transaction type from available data
-        let txType = 'system';
-        if (tx.details?.instructions) {
-          const firstInstruction = tx.details.instructions[0];
-          if (firstInstruction?.programId === 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA') {
-            txType = 'spl-token';
-          } else if (firstInstruction?.programId === '11111111111111111111111111111111') {
-            txType = 'system';
-          } else {
-            txType = 'other';
-          }
-        }
-
+        // If server provided classification, direction, tokenSymbol, amount, use them
+        const serverType = tx.classification?.type || tx.type;
+        const fallback = classifyTransactionType(tx);
         return {
           ...tx,
-          type: txType,
-          success: tx.success !== false && !tx.err, // Default to success if not explicitly failed
+          type: serverType || fallback.type,
+          isFunding: typeof tx.isFunding === 'boolean' ? tx.isFunding : isFundingTransaction(tx),
+          direction: tx.direction,
+          tokenSymbol: tx.tokenSymbol,
+          amount: tx.amount,
+          success: tx.success !== false && !tx.err,
           accounts: tx.accounts || [],
           transfers: tx.transfers || []
         };
@@ -615,6 +661,8 @@ export async function addAccountToGraph(
             label: shortenString(tx.signature),
             type: 'transaction',
             subType: txType,
+            txType: tx.type,
+            isFunding: !!tx.isFunding,
             status: 'loaded',
             timestamp: tx.timestamp,
             formattedTime: formatTimestamp(tx.timestamp),
@@ -640,6 +688,8 @@ export async function addAccountToGraph(
             source: address,
             target: tx.signature,
             type: 'account-tx',
+            txType: tx.type,
+            isFunding: !!tx.isFunding,
             status: 'loaded'
           }
         });
@@ -712,6 +762,8 @@ export async function addAccountToGraph(
               source: tx.signature,
               target: acc.pubkey,
               type: 'tx-account',
+              txType: tx.type,
+              isFunding: !!tx.isFunding,
               status: 'loaded',
               role: acc.isSigner ? 'signer' : (acc.isWritable ? 'writable' : 'readonly')
             }

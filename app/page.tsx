@@ -8,7 +8,8 @@ import { useSettings } from '@/lib/settings';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
-import { getConnection, getRPCLatency } from '@/lib/solana';
+import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getRPCLatency } from '@/lib/solana';
 import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
@@ -64,7 +65,7 @@ export default function HomePage() {
     async function fetchData() {
       try {
         setIsLoading(true);
-        const connection = await getConnection();
+        const connection = getConnection();
         const latency = await getRPCLatency();
 
         // Get current slot and blocks in one batch
@@ -185,7 +186,7 @@ export default function HomePage() {
 
   const handleBlockSelect = async (block: Block) => {
     try {
-      const connection = await getConnection();
+      const connection = getConnection();
       const blockInfo = await connection.getBlock(block.slot, {
         maxSupportedTransactionVersion: 0
       });

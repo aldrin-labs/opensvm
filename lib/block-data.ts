@@ -2,7 +2,8 @@
  * Service for fetching and managing block data using existing Solana APIs
  */
 
-import { getBlockDetails, getConnection, BlockDetails } from '@/lib/solana';
+import { getBlockDetails, BlockDetails } from '@/lib/solana';
+import { getConnection } from '@/lib/solana-connection-server';
 
 export interface BlockListResponse {
   blocks: BlockDetails[];
@@ -20,25 +21,25 @@ export async function getRecentBlocks(limit: number = 50, fromSlot?: number): Pr
   try {
     const connection = await getConnection();
     const currentSlot = await connection.getSlot();
-    
+
     // If no starting slot provided, use current slot
     const startSlot = fromSlot || currentSlot;
-    
+
     // Fetch blocks sequentially to avoid overwhelming the RPC
     const blocks: BlockDetails[] = [];
     const maxRetries = 3;
-    
+
     for (let i = 0; i < limit; i++) {
       const slot = startSlot - i;
-      
+
       // Don't go too far back to avoid old/unavailable blocks
       if (slot < currentSlot - 1000) {
         break;
       }
-      
+
       let retryCount = 0;
       let blockDetails: BlockDetails | null = null;
-      
+
       while (retryCount < maxRetries && !blockDetails) {
         try {
           blockDetails = await getBlockDetails(slot);
@@ -49,22 +50,22 @@ export async function getRecentBlocks(limit: number = 50, fromSlot?: number): Pr
         } catch (error: any) {
           retryCount++;
           console.warn(`Failed to fetch block ${slot}, attempt ${retryCount}:`, error.message);
-          
+
           // Skip this block if we've exceeded retries
           if (retryCount >= maxRetries) {
             console.warn(`Skipping block ${slot} after ${maxRetries} failed attempts`);
             break;
           }
-          
+
           // Wait a bit before retrying
           await new Promise(resolve => setTimeout(resolve, 200 * retryCount));
         }
       }
     }
-    
+
     // Sort blocks by slot in descending order
     blocks.sort((a, b) => b.slot - a.slot);
-    
+
     return {
       blocks,
       hasMore: blocks.length === limit && startSlot - limit > currentSlot - 1000,
@@ -89,10 +90,10 @@ export async function getBlockStats(): Promise<{
   try {
     const connection = await getConnection();
     const currentSlot = await connection.getSlot();
-    
+
     // Get recent performance samples
     const performance = await connection.getRecentPerformanceSamples(5);
-    
+
     if (performance.length === 0) {
       return {
         currentSlot,
@@ -101,12 +102,12 @@ export async function getBlockStats(): Promise<{
         totalTransactions: 0
       };
     }
-    
+
     // Calculate averages from performance samples
     const avgBlockTime = performance.reduce((sum, sample) => sum + sample.samplePeriodSecs, 0) / performance.length;
     const recentTPS = performance.reduce((sum, sample) => sum + (sample.numTransactions / sample.samplePeriodSecs), 0) / performance.length;
     const totalTransactions = performance.reduce((sum, sample) => sum + sample.numTransactions, 0);
-    
+
     return {
       currentSlot,
       avgBlockTime: avgBlockTime / performance.length, // Average block time per sample
@@ -134,15 +135,15 @@ export async function searchBlocksBySlotRange(startSlot: number, endSlot: number
   try {
     const blocks: BlockDetails[] = [];
     const range = Math.abs(endSlot - startSlot);
-    
+
     // Limit search range to prevent overwhelming the API
     if (range > 100) {
       throw new Error('Slot range too large. Please limit to 100 blocks or fewer.');
     }
-    
+
     const minSlot = Math.min(startSlot, endSlot);
     const maxSlot = Math.max(startSlot, endSlot);
-    
+
     for (let slot = minSlot; slot <= maxSlot; slot++) {
       try {
         const blockDetails = await getBlockDetails(slot);
@@ -154,7 +155,7 @@ export async function searchBlocksBySlotRange(startSlot: number, endSlot: number
         // Continue with other blocks
       }
     }
-    
+
     return blocks.sort((a, b) => b.slot - a.slot);
   } catch (error) {
     console.error('Error searching blocks:', error);
@@ -172,7 +173,7 @@ export async function getHighActivityBlocks(limit: number = 20, lookbackSlots: n
   try {
     const recentBlocksResponse = await getRecentBlocks(lookbackSlots);
     const blocks = recentBlocksResponse.blocks;
-    
+
     // Sort by transaction count and return top blocks
     return blocks
       .sort((a, b) => b.transactionCount - a.transactionCount)

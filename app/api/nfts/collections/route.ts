@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getConnection } from "@/lib/solana-connection";
+import { getConnection } from "@/lib/solana-connection-server";
 import { rateLimiter, RateLimitError } from "@/lib/rate-limit";
 
 // Type definitions

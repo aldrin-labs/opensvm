@@ -156,8 +156,36 @@ class ConnectionPool {
 // Global connection pool
 export const connectionPool = new ConnectionPool();
 
+function normalizeUrl(url: string): string {
+    // If the URL starts with http(s), return as-is
+    if (/^https?:\/\//i.test(url)) return url;
+    // If it looks like bare host (e.g., rpc.osvm.ai), prepend https://
+    if (/^[\w.-]+(\:[0-9]+)?(\/|$)/.test(url)) return `https://${url}`;
+    return url;
+}
+
+function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
+    const value = cluster.trim().toLowerCase();
+    if (value === 'mainnet' || value === 'mainnet-beta' || value === 'opensvm' || value === 'osvm' || value === 'gsvm') {
+        return 'opensvm';
+    }
+    if (value === 'devnet') {
+        return 'https://api.devnet.solana.com';
+    }
+    if (value === 'testnet') {
+        return 'https://api.testnet.solana.com';
+    }
+    // Otherwise treat as custom endpoint or host
+    if (cluster.startsWith('http://') || cluster.startsWith('https://')) {
+        return cluster;
+    }
+    // Handle host form like rpc.osvm.ai or rpc.osvm.ai/sonic?token=abc
+    return normalizeUrl(cluster);
+}
+
 // Primary connection getter
 export function getConnection(endpoint?: string): ProxyConnection {
+    // If an explicit endpoint is requested, honor it; otherwise use pool
     return connectionPool.getConnection(endpoint);
 }
 
