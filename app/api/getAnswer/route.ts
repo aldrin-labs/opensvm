@@ -46,7 +46,7 @@ export async function POST(request: Request) {
   if (!process.env.TOGETHER_API_KEY) {
     return new Response(
       JSON.stringify({ error: 'TOGETHER_API_KEY environment variable is not set' }),
-      { 
+      {
         status: 500,
         headers: { 'Content-Type': 'application/json' }
       }
@@ -54,16 +54,12 @@ export async function POST(request: Request) {
   }
 
   const together = new Together({
-    apiKey: process.env.TOGETHER_API_KEY,
-    baseURL: "https://together.helicone.ai/v1",
-    defaultHeaders: {
-      "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}`,
-    },
+    apiKey: process.env.TOGETHER_API_KEY
   });
 
   let { question, sources } = await request.json();
 
-  const trustedDomains = ["example.com", "trusted-source.com"];
+  const trustedDomains = ["osvm.ai", "opensvm.com", "solana.com", "solscan.io", "github.com", "phantom.app", "osvm.dev", "svmai.ai", "magiceden.io", "metaplex.com", "solana.fm", "svm-pay.com"];
 
   console.log("[getAnswer] Fetching text from source URLS");
   let finalResults = await Promise.all(
@@ -130,12 +126,12 @@ Remember, don't blindly repeat the contexts verbatim and don't tell the user how
       "[getAnswer] Fetching answer stream from Together API using text and question"
     );
     const stream = await TogetherAIStream(payload);
-    
+
     // Enhanced error handling for streaming responses
     if (!stream) {
       throw new Error("Failed to create stream response");
     }
-    
+
     return new Response(stream, {
       headers: new Headers({
         "Cache-Control": "no-cache",

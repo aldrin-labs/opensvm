@@ -642,7 +642,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
           </div>
         )}
 
-      <div className="border border-border rounded-lg overflow-hidden flex-1 bg-card/50 min-h-0" role="region" aria-labelledby="transfers-heading" aria-live="polite">
+      <div className="border border-border rounded-lg overflow-hidden flex-1 bg-card/50 min-h-0" role="region" aria-labelledby="transfers-heading" aria-live="polite" data-test="transfers-table">
         <VTableWrapper
           columns={columns}
           data={sortedTransfers}

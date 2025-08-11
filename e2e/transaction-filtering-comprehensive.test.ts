@@ -17,8 +17,8 @@ const TEST_ADDRESSES = {
 test.describe('Transaction Filtering System - Comprehensive Tests', () => {
 
     test.beforeEach(async ({ page }) => {
-        // Clear localStorage before each test
-        await page.evaluate(() => localStorage.clear());
+        // Skip localStorage clear to avoid security errors
+        // localStorage is handled by the browser automatically
     });
 
     test('01. Account Transfers filter shows only basic transfers', async ({ page }) => {
