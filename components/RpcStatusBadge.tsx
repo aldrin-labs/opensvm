@@ -165,37 +165,39 @@ export function RpcStatusBadge() {
     if (typeof window === "undefined") return null;
 
     return (
-        <div className="ml-2 flex items-center gap-2 text-xs px-2 py-1 rounded-md border border-border/40 bg-muted/40">
+        <div className="ml-2 flex flex-col items-center gap-0.5 text-xs px-1.5 py-1 rounded-md border border-border/40 bg-muted/40 w-16">
             <div className="flex items-center gap-1">
-                <span className={`inline-block w-2 h-2 rounded-full ${isOverride ? "bg-amber-500" : "bg-emerald-500"}`} />
-                <span className="font-medium">RPC:</span>
-                <span className="truncate max-w-[220px]" title={rpcLabel}>{rpcLabel}</span>
+                <span className={`inline-block w-1.5 h-1.5 rounded-full ${isOverride ? "bg-amber-500" : "bg-emerald-500"}`} />
+                <span className="text-[10px] font-medium truncate" title={rpcLabel}>RPC</span>
             </div>
-            <div className="text-muted-foreground">|</div>
-            <div className="flex items-center gap-1" title="Requests per minute (client-observed)">
-                <span>RPM:</span>
-                <span className="font-mono">{requestsPerMinute}</span>
+            <div className="flex flex-col items-center gap-0" title="Requests per minute / Total requests">
+                <div className="text-[9px] text-muted-foreground">
+                    <span className="font-mono">{requestsPerMinute}</span>
+                </div>
+                <div className="text-[9px] text-muted-foreground">
+                    <span className="font-mono">{totalRequests}</span>
+                </div>
             </div>
-            <div className="flex items-center gap-1" title="Total requests from this browser for this RPC (persisted)">
-                <span>Total:</span>
-                <span className="font-mono">{totalRequests}</span>
-            </div>
-            {isOverride && (
-                <button
-                    onClick={clearOverride}
-                    className="ml-1 px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-700 hover:bg-amber-500/30"
-                    title="Clear override (back to OpenSVM)"
-                >
-                    Clear
-                </button>
+            {(isOverride || totalRequests > 0) && (
+                <div className="flex gap-0.5 mt-0.5">
+                    {isOverride && (
+                        <button
+                            onClick={clearOverride}
+                            className="px-1 py-0.5 text-[8px] rounded bg-amber-500/20 text-amber-700 hover:bg-amber-500/30"
+                            title="Clear override"
+                        >
+                            C
+                        </button>
+                    )}
+                    <button
+                        onClick={resetTotalsForCurrent}
+                        className="px-1 py-0.5 text-[8px] rounded bg-muted text-foreground hover:bg-muted/70"
+                        title="Reset total counter"
+                    >
+                        R
+                    </button>
+                </div>
             )}
-            <button
-                onClick={resetTotalsForCurrent}
-                className="px-1.5 py-0.5 rounded bg-muted text-foreground hover:bg-muted/70"
-                title="Reset total counter for this RPC"
-            >
-                Reset
-            </button>
         </div>
     );
 }
