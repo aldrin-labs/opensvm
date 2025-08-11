@@ -24,7 +24,7 @@ function writeCookie(name: string, value: string, maxAgeSec: number) {
 function getActiveRpcLabel(): string {
     // Priority: cluster cookie; otherwise default proxy
     const cluster = readCookie("cluster");
-    if (!cluster || cluster === "opensvm") return "OpenSVM (pooled)";
+    if (!cluster || cluster === "opensvm") return "osvm rpc";
     if (cluster === "devnet" || cluster === "testnet" || cluster === "mainnet" || cluster === "mainnet-beta") return cluster;
     return cluster; // custom URL or host
 }
@@ -147,7 +147,7 @@ export function RpcStatusBadge() {
         // Set cookie to opensvm and reset local minute counter, keep totals per RPC (persist)
         writeCookie("cluster", "opensvm", 60 * 60 * 24 * 30);
         setRpcKey("opensvm");
-        setRpcLabel("OpenSVM (pooled)");
+        setRpcLabel("osvm rpc");
         // Reset in-memory minute counter for this rpcKey only
         const minute = loadJson<Record<string, { windowStartMs: number; count: number }>>(STORAGE_KEY_MINUTE, {});
         delete minute[rpcKey];
