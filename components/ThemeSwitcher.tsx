@@ -1,6 +1,6 @@
 'use client';
 
-import { useTheme } from '@/lib/theme';
+import { useTheme } from '@/lib/design-system/theme-provider';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -50,7 +50,7 @@ const icons = {
 };
 
 export function ThemeSwitcher() {
-  const { theme, setTheme } = useTheme();
+  const { config, updateConfig } = useTheme();
 
   const themes = [
     { id: 'paper', name: 'Paper', icon: icons.paper },
@@ -60,13 +60,13 @@ export function ThemeSwitcher() {
     { id: 'solarized', name: 'Solarized', icon: icons.solarized },
   ] as const;
 
-  const currentTheme = themes.find(t => t.id === theme);
+  const currentTheme = themes.find(t => t.id === config.variant);
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button 
-          variant="ghost" 
+        <Button
+          variant="ghost"
           size="icon"
           className="h-8 w-8 rounded-md"
         >
@@ -77,7 +77,7 @@ export function ThemeSwitcher() {
         {themes.map((t) => (
           <DropdownMenuItem
             key={t.id}
-            onClick={() => setTheme(t.id as any)}
+            onClick={() => updateConfig({ variant: t.id as any })}
             className="flex items-center gap-2 cursor-pointer"
           >
             {t.icon}

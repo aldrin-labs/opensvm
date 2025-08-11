@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import rough from 'roughjs';
-import { useTheme } from '@/lib/theme';
+import { useTheme } from '@/lib/design-system/theme-provider';
 import { Connection } from '@solana/web3.js';
 
 interface BlockMetrics {
@@ -29,7 +29,8 @@ interface FilterState {
 }
 
 export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solana.com' }: NetworkMetricsTableProps) {
-  const { theme } = useTheme();
+  const { config } = useTheme();
+  const theme = config.variant; // Map to old theme API for compatibility
   const [filters, setFilters] = useState<FilterState>({
     tps: { min: 0, max: Infinity },
     blockTime: { min: 0, max: Infinity },
@@ -51,7 +52,7 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
 
   const processBlock = useCallback(async (slot: number) => {
     if (!connectionRef.current) return;
-    
+
     try {
       const block = await connectionRef.current.getBlock(slot, {
         maxSupportedTransactionVersion: 0,
@@ -120,7 +121,7 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
 
   const cellRefs = useRef<{ [key: string]: HTMLCanvasElement }>({});
 
-  const filteredMetrics = metrics.filter(item => 
+  const filteredMetrics = metrics.filter(item =>
     item.tps >= filters.tps.min && item.tps <= filters.tps.max &&
     item.blockTime >= filters.blockTime.min && item.blockTime <= filters.blockTime.max &&
     item.successRate >= filters.successRate.min && item.successRate <= filters.successRate.max &&
@@ -163,7 +164,7 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
           y,
           { stroke: '#333', strokeWidth: 0.2, roughness: 0.5 }
         );
-        
+
         const value = maxValue - (range * i) / gridLines;
         ctx.font = '10px monospace';
         ctx.fillStyle = theme === 'high-contrast' ? '#fff' : '#666';
@@ -178,7 +179,7 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
         return canvas.height - padding.bottom - normalizedValue * graphHeight;
       };
 
-      switch(field) {
+      switch (field) {
         case 'tps':
         case 'fees':
         case 'cuOverpaid': {
@@ -244,17 +245,17 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
           points.forEach((point, i) => {
             const x = padding.left + i * pointWidth;
             const y = getY(point[field as keyof BlockMetrics]);
-            
-            if (i > 0 && points[i-1]) {
-              const prevX = padding.left + (i-1) * pointWidth;
-              const prevY = getY(points[i-1]![field as keyof BlockMetrics]);
+
+            if (i > 0 && points[i - 1]) {
+              const prevX = padding.left + (i - 1) * pointWidth;
+              const prevY = getY(points[i - 1]![field as keyof BlockMetrics]);
               rc.line(prevX, prevY, x, y, {
                 stroke: '#FF4B4B',
                 strokeWidth: 1.5,
                 roughness: 0.5
               });
             }
-            
+
             rc.circle(x, y, 3, {
               fill: '#FF4B4B',
               fillStyle: 'solid',
@@ -289,10 +290,10 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
           points.forEach((point, i) => {
             const x = padding.left + i * pointWidth;
             const y = getY(point[field as keyof BlockMetrics]);
-            
-            if (i > 0 && points[i-1]) {
-              const prevX = padding.left + (i-1) * pointWidth;
-              const prevY = getY(points[i-1]![field as keyof BlockMetrics]);
+
+            if (i > 0 && points[i - 1]) {
+              const prevX = padding.left + (i - 1) * pointWidth;
+              const prevY = getY(points[i - 1]![field as keyof BlockMetrics]);
               rc.line(prevX, prevY, x, y, {
                 stroke: '#4B7BFF',
                 strokeWidth: 1.5,

@@ -2,7 +2,10 @@ import { useCallback, useEffect, useRef, useState, ReactNode } from 'react';
 import { ListTable } from '@visactor/vtable';
 import * as VTable from '@visactor/vtable';
 import { useRouter } from 'next/navigation';
-import { useTheme } from '@/lib/theme';
+import React, { useMemo } from 'react';
+import { TableContainer, TableHead, TableRow, TableCell, TableBody } from './TableComponents';
+import { TableHeaderText, TableCellText } from './TableComponents';
+import { useTheme } from '@/lib/design-system/theme-provider';
 
 
 // Utility function to convert HSL to hex color
@@ -246,7 +249,8 @@ export function VTableWrapper({
   const [mounted, setMounted] = useState(false);
   const router = useRouter();
   // const pathname = usePathname(); // unused
-  const { theme } = useTheme();
+  const { config } = useTheme();
+  const theme = config.variant; // Map to old theme API for compatibility
 
   // Client-side navigation handler
   const handleNavigation = useCallback((href: string) => {

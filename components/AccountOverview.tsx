@@ -4,10 +4,10 @@ import { useState, useEffect, useMemo } from 'react';
 import { Loader2, User } from 'lucide-react';
 import { type TokenAccount } from '@/lib/solana';
 import AccountExplorerLinks from './AccountExplorerLinks';
-import { useTheme } from '@/lib/theme';
+import { useTheme } from '@/lib/design-system/theme-provider';
 import { Button } from '@/components/ui/button';
 import { useRouter } from 'next/navigation';
-import { 
+import {
   PieChart,
   Pie,
   Cell,
@@ -24,9 +24,9 @@ interface Props {
   parsedOwner?: string;
 }
 
-export default function AccountOverview({ 
-  address, 
-  solBalance, 
+export default function AccountOverview({
+  address,
+  solBalance,
   tokenAccounts,
   isSystemProgram,
   parsedOwner
@@ -36,7 +36,7 @@ export default function AccountOverview({
     tokenTransfers: number | null;
   }>({ totalTransactions: null, tokenTransfers: null });
   const [statsLoading, setStatsLoading] = useState(true);
-  const { theme } = useTheme();
+  const { config, resolvedTheme } = useTheme();
   const router = useRouter();
 
   useEffect(() => {
@@ -130,12 +130,12 @@ export default function AccountOverview({
 
       return colorSchemes[theme as keyof typeof colorSchemes] || colorSchemes.paper;
     };
-    
+
     // Get theme-aware colors for pie chart
-    const themeColors = getThemeAwareColors(theme);
-    
+    const themeColors = getThemeAwareColors(config.variant);
+
     const data = [];
-    
+
     // Add SOL balance (assuming $235.19 per SOL for USD value calculation)
     const SOL_PRICE = 235.19;
     if (solBalance > 0) {
@@ -146,17 +146,17 @@ export default function AccountOverview({
         color: themeColors[0] // Use first theme color for SOL
       });
     }
-    
+
     // Add token balances with USD values (mock prices for now)
     tokenAccounts.forEach((token, index) => {
       if (token.uiAmount && token.uiAmount > 0) {
         // Mock USD price calculation - in real implementation this would come from API
-        const mockPrice = token.symbol === 'USDC' ? 1 : 
-                         token.symbol === 'USDT' ? 1 :
-                         token.symbol === 'BTC' ? 43000 :
-                         token.symbol === 'ETH' ? 2500 : 
-                         Math.random() * 100; // Random price for other tokens
-        
+        const mockPrice = token.symbol === 'USDC' ? 1 :
+          token.symbol === 'USDT' ? 1 :
+            token.symbol === 'BTC' ? 43000 :
+              token.symbol === 'ETH' ? 2500 :
+                Math.random() * 100; // Random price for other tokens
+
         data.push({
           name: token.symbol || 'Unknown',
           value: token.uiAmount,
@@ -165,18 +165,18 @@ export default function AccountOverview({
         });
       }
     });
-    
+
     // Sort by USD value descending
     data.sort((a, b) => b.usdValue - a.usdValue);
-    
+
     // Take top 10 and group rest as "Others"
     if (data.length > 10) {
       const top10 = data.slice(0, 10);
       const others = data.slice(10);
-      
+
       const othersTotal = others.reduce((sum, item) => sum + item.usdValue, 0);
       const othersValueTotal = others.reduce((sum, item) => sum + item.value, 0);
-      
+
       if (othersTotal > 0) {
         top10.push({
           name: 'Others',
@@ -185,18 +185,18 @@ export default function AccountOverview({
           color: '#666666' // Gray color for Others
         });
       }
-      
+
       return top10;
     }
-    
+
     return data;
-  }, [solBalance, tokenAccounts, theme]);
+  }, [solBalance, tokenAccounts, config.variant]);
 
   return (
     <div className="rounded-lg border bg-card text-card-foreground">
       <div className="p-6">
         <h2 className="text-xl font-semibold mb-4">Overview</h2>
-        
+
         <div className="space-y-4">
           <div>
             <div className="text-sm text-muted-foreground">SOL Balance</div>
@@ -256,7 +256,7 @@ export default function AccountOverview({
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip 
+                      <Tooltip
                         formatter={(value: number, name: string) => [
                           `$${value.toFixed(2)}`,
                           name
@@ -280,7 +280,7 @@ export default function AccountOverview({
               <div className="text-sm text-muted-foreground">-</div>
             ) : (
               <div className="text-lg">
-                {typeof accountStats.totalTransactions === 'number' 
+                {typeof accountStats.totalTransactions === 'number'
                   ? accountStats.totalTransactions.toLocaleString()
                   : accountStats.totalTransactions}
               </div>
@@ -318,8 +318,8 @@ export default function AccountOverview({
 
           {/* User Page Redirect Button */}
           <div className="mt-4">
-            <Button 
-              variant="outline" 
+            <Button
+              variant="outline"
               className="w-full gap-2"
               onClick={() => router.push(`/user/${address}`)}
             >
