@@ -87,6 +87,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       variant="sidebar"
       isOpen={isOpen}
       onClose={onClose}
+      initialWidth={initialWidth}
       onWidthChange={onWidthChange}
       onResizeStart={onResizeStart}
       onResizeEnd={onResizeEnd}

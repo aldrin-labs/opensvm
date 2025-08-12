@@ -1,3 +1,7 @@
+export enum ExecutionMode {
+  Sequential = 'sequential',
+  Parallel = 'parallel'
+}
 export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
@@ -53,12 +57,13 @@ export interface AgentCapability {
   canHandle: (message: Message) => boolean;
 }
 
-export type CapabilityType = 
+export type CapabilityType =
   | 'general'
   | 'network'
-  | 'transaction' 
+  | 'transaction'
   | 'account'
   | 'planning'
   | 'analysis'
   | 'search'
-  | 'monitoring';
+  | 'monitoring'
+  | 'research';

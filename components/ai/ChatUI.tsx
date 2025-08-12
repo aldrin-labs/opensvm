@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { VantaBackground } from './VantaBackground';
 import { CustomScrollbar } from './CustomScrollbar';
 import { NewMessageBadge } from './NewMessageBadge';
+import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 
 interface ChatUIProps {
   messages: Message[];
@@ -46,11 +47,24 @@ export function ChatUI({
 }: ChatUIProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const { registerInputController } = useAIChatSidebar();
 
   // State for new message tracking
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+
+  // Register controller so other parts can open with prompt and focus
+  useEffect(() => {
+    registerInputController({
+      setInput: onInputChange,
+      focusInput: () => inputRef.current?.focus(),
+      submit: () => {
+        // Consumers can call onSubmit directly; keep stub here for API completeness
+      }
+    });
+  }, [registerInputController, onInputChange]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -440,6 +454,7 @@ export function ChatUI({
             </label>
             <textarea
               id="chat-input"
+              ref={inputRef}
               value={input}
               onChange={(e) => {
                 const value = e.target.value;

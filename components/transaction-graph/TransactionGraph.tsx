@@ -9,14 +9,14 @@ import { GraphStateCache } from '@/lib/graph-state-cache';
 
 
 
-import type { TransactionGraphProps } from './types';
+import type { TransactionGraphProps, AccountData } from './types';
 import {
   resizeGraph,
   fetchTransactionData,
-  fetchAccountTransactions,
   errorLog,
   debugLog
 } from './utils';
+import { fetchAccountTransactions } from './data-fetching';
 import { classifyTransactionType, isFundingTransaction, type TransactionClassification } from '@/lib/transaction-classifier';
 import { formatEdgeLabel } from './edge-label-utils';
 import AccountHoverTooltip from './AccountHoverTooltip';
@@ -185,7 +185,7 @@ const CytoscapeContainer = React.memo(() => {
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full h-full" />
+    <div ref={containerRef} className="w-full h-full" data-testid="cytoscape-wrapper" />
   );
 }); const TransactionGraph = React.memo(function TransactionGraph({
   initialSignature,
@@ -996,6 +996,8 @@ const CytoscapeContainer = React.memo(() => {
           <div>• Total Edges: {edges.length}</div>
           <div>• GPU Graph: {gpuGraphData.nodes.length} nodes, {gpuGraphData.links.length} links</div>
           <div>• Current signature: {currentSignature?.slice(0, 8) || 'None'}...</div>
+          <div>• Initial account: {initialAccount?.slice(0, 8) || 'None'}...</div>
+          <div>• Current URL: {typeof window !== 'undefined' ? window.location.pathname : 'SSR'}</div>
           <div>• Loading: {isLoading ? 'Yes' : 'No'}</div>
           <div>• Initialized: {isInitialized ? 'Yes' : 'No'}</div>
           <div>• Has initial data: {initialTransactionData ? 'Yes' : 'No'}</div>
@@ -1018,8 +1020,16 @@ const CytoscapeContainer = React.memo(() => {
           <div className="mt-2 pt-2 border-t border-destructive/20 text-xs">
             <div className="text-destructive font-medium">⚠️ Empty Graph</div>
             <div className="text-destructive text-[10px]">
-              Transaction data may not be processing correctly
+              No transaction data loaded. Please navigate to a specific transaction or account page.
             </div>
+            <div className="text-muted-foreground text-[10px] mt-1">
+              Try: /tx/[signature]/graph or /account/[address]
+            </div>
+            {initialAccount && (
+              <div className="text-primary text-[10px] mt-1">
+                Trying to load account: {initialAccount}
+              </div>
+            )}
           </div>
         )}
         <div className="mt-2 pt-2 border-t border-border text-xs">
@@ -1091,14 +1101,37 @@ const CytoscapeContainer = React.memo(() => {
     setProgressMessage('Fetching account transactions...');
 
     try {
-      const transactions = await fetchAccountTransactions(account);
+      debugLog('Fetching account data for:', account);
+      const accountData: AccountData | null = await fetchAccountTransactions(account);
 
-      if (!transactions || !cyRef.current) {
-        setError('Failed to fetch account transactions');
+      if (!accountData || !cyRef.current) {
+        setError('Failed to fetch account transactions. The account API might be unavailable.');
         return;
       }
 
-      setProgress(50);
+      // Extract transactions array from the account data
+      const transactions = accountData.transactions || [];
+      debugLog('Extracted transactions from account data:', transactions.length);
+
+      if (transactions.length === 0) {
+        setError('No transactions found for this account. This account might have limited activity or the account transactions API might be unavailable.');
+        // Still create the account node even with no transactions
+        const accountNode = {
+          data: {
+            id: account,
+            label: `${account.substring(0, 8)}...`,
+            type: 'account',
+            pubkey: account,
+            size: 25,
+            color: 'hsl(var(--primary))'
+          }
+        };
+
+        cyRef.current.add(accountNode);
+        updateGPUGraphData(cyRef.current);
+        setIsLoading(false);
+        return;
+      } setProgress(50);
       setProgressMessage('Processing account data...');
 
       // Set total accounts to load (estimate based on transactions)
@@ -1453,10 +1486,14 @@ const CytoscapeContainer = React.memo(() => {
             }, 1000);
           }
         } else if (initialSignature && isMounted) {
+          debugLog('Loading initial signature:', initialSignature);
           setCurrentSignature(initialSignature);
           await fetchData(initialSignature, initialAccount);
         } else if (initialAccount && isMounted) {
+          debugLog('Loading initial account:', initialAccount);
           await fetchAccountData(initialAccount);
+        } else if (isMounted) {
+          debugLog('No initial data provided - graph will be empty');
         }
 
         if (isMounted) {

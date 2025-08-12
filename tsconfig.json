@@ -8,7 +8,7 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
+      ]
     },
     "skipLibCheck": true,
     "strict": true,
@@ -41,11 +41,12 @@
   "include": [
     "components/transaction-graph/**/*.ts",
     "components/transaction-graph/**/*.tsx",
-    "components/ui/button.tsx",
     "components/ui/badge.tsx",
+    "components/ui/button.tsx",
     "components/ui/dropdown-menu.tsx",
     "next-env.d.ts",
-    "types/**/*.d.ts"
+    "types/**/*.d.ts",
+    ".next/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",

@@ -17,6 +17,7 @@ export interface ChatLayoutProps {
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
   onClose?: () => void;
+  initialWidth?: number;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onReset?: () => void;
@@ -37,6 +38,7 @@ export function ChatLayout({
   onResizeStart,
   onResizeEnd,
   onClose,
+  initialWidth,
   activeTab = 'agent',
   onTabChange,
   onReset,
@@ -47,9 +49,11 @@ export function ChatLayout({
   onHelp,
   onExpand,
 }: ChatLayoutProps) {
-  const [width, setWidth] = useState(() =>
-    typeof window !== 'undefined' ? (window.innerWidth < 640 ? window.innerWidth : 480) : 480
-  );
+  const [width, setWidth] = useState(() => {
+    if (typeof window === 'undefined') return initialWidth ?? 480;
+    const base = typeof initialWidth === 'number' ? initialWidth : (window.innerWidth < 640 ? window.innerWidth : 480);
+    return Math.min(800, Math.max(300, base));
+  });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -65,7 +69,10 @@ export function ChatLayout({
     lastX.current = e.clientX;
 
     requestAnimationFrame(() => {
-      const newWidth = Math.min(800, Math.max(300, (sidebarRef.current?.offsetWidth || 0) + deltaX));
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+      const maxWidth = Math.max(320, viewportWidth); // allow up to full viewport width
+      const baseWidth = (sidebarRef.current?.offsetWidth || 0) + deltaX;
+      const newWidth = Math.min(maxWidth, Math.max(300, baseWidth));
       setWidth(newWidth);
       onWidthChange?.(newWidth);
     });
@@ -116,6 +123,26 @@ export function ChatLayout({
       document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [handleMouseMove, handleMouseUp]);
+
+  // Sync width when initialWidth changes (and broadcast to listeners)
+  useEffect(() => {
+    if (typeof initialWidth !== 'number') return;
+    const clamped = Math.min(800, Math.max(300, initialWidth));
+    setWidth(clamped);
+    onWidthChange?.(clamped);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialWidth]);
+
+  // When opening or width/expanded changes, inform container to shift content
+  useEffect(() => {
+    if (!isOpen) return;
+    if (isExpanded) {
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+      onWidthChange?.(viewportWidth);
+    } else {
+      onWidthChange?.(width);
+    }
+  }, [isOpen, width, isExpanded, onWidthChange]);
 
   const handleOpenSettings = () => {
     setIsSettingsOpen(true);
@@ -192,7 +219,9 @@ export function ChatLayout({
           <div
             className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/10 active:bg-white/20 ${isExpanded ? 'hidden' : ''}`}
             onMouseDown={handleMouseDown}
-            aria-hidden="true"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize sidebar"
           />
           {/* Main content container with proper flex layout */}
           <div className="h-full w-full flex flex-col" style={{ boxSizing: 'border-box' }}>

@@ -64,3 +64,9 @@ next-env.d.ts
 
 # Local Netlify folder
 .netlify
+FINAL_SECURITY_AUDIT_REPORT.md
+COMPREHENSIVE_BUG_ANALYSIS.md
+docs/agent-tasks/interactive-account-graph-implementation-plan.md
+docs/agent-tasks/interactive-account-graph-navigation.md
+docs/agent-tasks/interactive-account-graph-task-list.md
+docs/agent-tasks/backup.ignore

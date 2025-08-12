@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
 
 // WCAG 2.1 AA compliance utilities and components
 
@@ -50,11 +50,15 @@ const ScreenReaderAnnouncer: React.FC<{
   }, [mounted]);
 
   // Register the announcer function when component mounts
+  // Use a ref to avoid calling setState during render
+  const onAnnouncerReadyRef = useRef(onAnnouncerReady);
+  onAnnouncerReadyRef.current = onAnnouncerReady;
+
   useEffect(() => {
     if (mounted) {
-      onAnnouncerReady(announceToScreenReader);
+      onAnnouncerReadyRef.current(announceToScreenReader);
     }
-  }, [mounted, onAnnouncerReady, announceToScreenReader]);
+  }, [mounted, announceToScreenReader]);
 
   // Don't render aria-live regions during SSR to prevent hydration mismatches
   if (!mounted) {

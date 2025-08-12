@@ -16,6 +16,7 @@ import { WalletButton } from './WalletButton';
 import { ChangelogNotification } from './ChangelogNotification';
 import { X, User } from 'lucide-react';
 import { AIChatSidebar } from './ai/AIChatSidebar';
+import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { useWallet } from '@solana/wallet-adapter-react';
 
 interface NavbarInteractiveProps {
@@ -25,8 +26,7 @@ interface NavbarInteractiveProps {
 export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(400);
+  const { isOpen: isAIChatOpen, open: openAIChat, close: closeAIChat, sidebarWidth, setSidebarWidth, isResizing, onResizeStart, onResizeEnd } = useAIChatSidebar();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -74,19 +74,27 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     };
   }, []);
 
-  // Adjust main content padding when AI sidebar is open
+  // Apply floating-button style content shift to the root content wrapper
   useEffect(() => {
-    const mainElement = document.querySelector('main');
-    if (mainElement) {
-      if (isAIChatOpen) {
-        mainElement.style.paddingRight = `${sidebarWidth}px`;
-        mainElement.style.transition = 'padding-right 0.3s ease-in-out';
-      } else {
-        mainElement.style.paddingRight = '0px';
-        mainElement.style.transition = 'padding-right 0.3s ease-in-out';
-      }
+    if (typeof document === 'undefined') return;
+    const contentElement = (document.getElementById('layout-content') || document.getElementById('main-content') || document.querySelector('main')) as HTMLElement | null;
+    if (!contentElement) return;
+
+    if (isAIChatOpen) {
+      contentElement.style.width = `calc(100% - ${sidebarWidth}px)`;
+      contentElement.style.marginRight = `${sidebarWidth}px`;
+    } else {
+      contentElement.style.width = '100%';
+      contentElement.style.marginRight = '0px';
     }
-  }, [isAIChatOpen, sidebarWidth]);
+    contentElement.style.transition = !isResizing ? 'all 300ms ease-in-out' : 'none';
+
+    return () => {
+      contentElement.style.width = '';
+      contentElement.style.marginRight = '';
+      contentElement.style.transition = '';
+    };
+  }, [isAIChatOpen, sidebarWidth, isResizing]);
 
   // Dropdown icon component - DRY pattern
   const DropdownIcon = () => (
@@ -110,16 +118,6 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
 
   const handleWidthChange = (newWidth: number) => {
     setSidebarWidth(newWidth);
-  };
-
-  const handleResizeStart = () => {
-    document.body.style.cursor = 'col-resize';
-    document.body.style.userSelect = 'none';
-  };
-
-  const handleResizeEnd = () => {
-    document.body.style.cursor = 'default';
-    document.body.style.userSelect = '';
   };
 
   // Focus trap for keyboard navigation in mobile menu
@@ -360,7 +358,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
             <Button
               size="sm"
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"
-              onClick={() => setIsAIChatOpen(true)}
+              onClick={openAIChat}
               aria-label="Open AI Assistant"
             >
               SVMAI
@@ -673,7 +671,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               <Button
                 className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 flex-1"
                 onClick={() => {
-                  setIsAIChatOpen(true);
+                  openAIChat();
                   setIsMobileMenuOpen(false);
                 }}
               >
@@ -684,18 +682,18 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
         </div>
       </div>
 
-      {/* AI Chat Sidebar */}
+      {/* AI Chat Sidebar (single instance at layout level via provider) */}
       <AIChatSidebar
         isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
+        onClose={closeAIChat}
         onWidthChange={handleWidthChange}
-        onResizeStart={handleResizeStart}
-        onResizeEnd={handleResizeEnd}
+        onResizeStart={onResizeStart}
+        onResizeEnd={onResizeEnd}
         initialWidth={sidebarWidth}
       />
 
       {/* Main content */}
-      <div className="pt-14">
+      <div id="layout-content" className="pt-14">
         {children}
       </div>
     </>

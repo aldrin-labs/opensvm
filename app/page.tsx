@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Search } from 'lucide-react';
 import { getClientConnection as getConnection } from '@/lib/solana-connection';
 import { getRPCLatency } from '@/lib/solana';
-import { AIChatSidebar } from '@/components/ai/AIChatSidebar';
+import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
@@ -50,9 +50,7 @@ export default function HomePage() {
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedBlock, setSelectedBlock] = useState<Block | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAIChatOpen, setIsAIChatOpen] = useState(false);
-  const [sidebarWidth, setSidebarWidth] = useState(400);
-  const [isResizing, setIsResizing] = useState(false);
+  const { isOpen: isAIChatOpen, open: openAIChat, close: closeAIChat, sidebarWidth, setSidebarWidth, isResizing, onResizeStart, onResizeEnd } = useAIChatSidebar();
   const [networkData, setNetworkData] = useState<NetworkData[]>([]);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -215,14 +213,7 @@ export default function HomePage() {
 
   return (
     <div className="relative">
-      <main
-        className="min-h-screen bg-background"
-        style={{
-          width: isAIChatOpen ? `calc(100% - ${sidebarWidth}px)` : '100%',
-          transition: !isResizing ? 'all 300ms ease-in-out' : 'none',
-          marginRight: isAIChatOpen ? `${sidebarWidth}px` : 0
-        }}
-      >
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12">
           {/* Hero Section */}
           <div className="text-center mb-12">
@@ -353,23 +344,13 @@ export default function HomePage() {
           <div className="fixed bottom-6 right-6">
             <Button
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 h-12 px-6 rounded-full shadow-lg"
-              onClick={() => setIsAIChatOpen(true)}
+              onClick={openAIChat}
             >
               SVMAI
             </Button>
           </div>
         </div>
-      </main>
-
-      {/* AI Chat Sidebar */}
-      <AIChatSidebar
-        isOpen={isAIChatOpen}
-        onClose={() => setIsAIChatOpen(false)}
-        onWidthChange={setSidebarWidth}
-        onResizeStart={() => setIsResizing(true)}
-        onResizeEnd={() => setIsResizing(false)}
-        initialWidth={sidebarWidth}
-      />
+      </div>
     </div>
   );
 }

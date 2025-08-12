@@ -12,6 +12,7 @@ export interface ChatProps {
   onWidthChange?: (width: number) => void;
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
+  initialWidth?: number;
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onReset?: () => void;
@@ -42,6 +43,7 @@ export function Chat({
   onWidthChange,
   onResizeStart,
   onResizeEnd,
+  initialWidth,
   activeTab = 'agent',
   onTabChange,
   onReset,
@@ -49,8 +51,8 @@ export function Chat({
   messages = [],
   input = '',
   isProcessing = false,
-  onInputChange = () => {},
-  onSubmit = () => {},
+  onInputChange = () => { },
+  onSubmit = () => { },
   notes = [],
   onClearNotes,
   agentActions = [],
@@ -64,13 +66,14 @@ export function Chat({
   isRecording
 }: ChatProps) {
   return (
-    <ChatLayout 
-      variant={variant} 
-      isOpen={isOpen} 
+    <ChatLayout
+      variant={variant}
+      isOpen={isOpen}
       className={className}
       onWidthChange={onWidthChange}
       onResizeStart={onResizeStart}
       onResizeEnd={onResizeEnd}
+      initialWidth={initialWidth}
       onClose={onClose}
       activeTab={activeTab}
       onTabChange={onTabChange}
