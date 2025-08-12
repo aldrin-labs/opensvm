@@ -29,14 +29,14 @@ const defaultSettings: Settings = {
   fontFamily: 'inter',
   fontSize: 'medium',
   rpcEndpoint: {
-    name: 'OpenSVM',
+    name: 'osvm rpc',
     url: 'opensvm',
     network: 'mainnet'
   },
   customRpcEndpoint: '',
   availableRpcEndpoints: [
     {
-      name: 'OpenSVM',
+      name: 'osvm rpc',
       url: 'opensvm',
       network: 'mainnet'
     },
@@ -191,7 +191,7 @@ class SettingsManager {
     if (!value) return null;
 
     if (value === 'mainnet' || value === 'mainnet-beta' || value === 'opensvm' || value === 'osvm' || value === 'gsvm') {
-      return { endpoint: { name: 'OpenSVM', url: 'opensvm', network: 'mainnet' }, isCustom: false };
+      return { endpoint: { name: 'osvm rpc', url: 'opensvm', network: 'mainnet' }, isCustom: false };
     }
     if (value === 'devnet') {
       return { endpoint: { name: 'Solana Devnet', url: 'https://api.devnet.solana.com', network: 'devnet' }, isCustom: false };

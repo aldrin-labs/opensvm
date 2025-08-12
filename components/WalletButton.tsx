@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { useEffect, useState, useCallback } from 'react';
 import { useAuthContext } from '@/contexts/AuthContext';
 
-interface WalletButtonProps {}
+interface WalletButtonProps { }
 
 export const WalletButton: React.FC<WalletButtonProps> = () => {
   const { connected, connecting, disconnect, select, wallets, publicKey, signMessage } = useWallet();
@@ -35,7 +35,7 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
             }
             return btoa(binary);
           };
-          
+
           await login(walletAddress, signMessageWrapper);
         } catch (error) {
           console.error('Auto-authentication failed:', error);
@@ -49,10 +49,10 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
   const handleConnect = async () => {
     // Clear any previous cancellation state when user explicitly connects
     clearCancellation();
-    
+
     // Find Phantom wallet from available wallets
     const phantomWallet = wallets.find(wallet => wallet.adapter.name === 'Phantom');
-    
+
     if (phantomWallet) {
       try {
         setIsConnecting(true);
@@ -85,29 +85,29 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
 
   if (!mounted) {
     return (
-      <Button variant="outline" className="min-w-[180px] h-9">
-        Connect Wallet
+      <Button variant="outline" className="min-w-[45px] h-9">
+        join
       </Button>
     );
   }
 
   if (connecting || isConnecting || (connected && authLoading)) {
     return (
-      <Button variant="outline" className="min-w-[180px] h-9" disabled>
+      <Button variant="outline" className="min-w-[45px] h-9" disabled>
         <span className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2" />
-        {connected && authLoading ? 'Authenticating...' : 'Connecting...'}
+        {connected && authLoading ? 'auth...' : 'load...'}
       </Button>
     );
   }
 
   if (connected && publicKey) {
     return (
-      <Button 
-        variant="outline" 
-        className="min-w-[180px] h-9 text-destructive hover:text-destructive-foreground hover:bg-destructive"
+      <Button
+        variant="outline"
+        className="min-w-[45px] h-9 text-destructive hover:text-destructive-foreground hover:bg-destructive"
         onClick={handleDisconnect}
       >
-        Disconnect
+        logout
       </Button>
     );
   }
@@ -115,10 +115,10 @@ export const WalletButton: React.FC<WalletButtonProps> = () => {
   return (
     <Button
       variant="outline"
-      className="min-w-[180px] h-9 bg-primary text-primary-foreground hover:bg-primary/90"
+      className="min-w-[45px] h-9 bg-primary text-primary-foreground hover:bg-primary/90"
       onClick={handleConnect}
     >
-      Connect Wallet
+      join
     </Button>
   );
 };

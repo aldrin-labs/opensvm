@@ -25,7 +25,7 @@ export interface RpcEndpoint {
 
 // Define the OpenSVM endpoint as the primary endpoint
 const OPENSVM_ENDPOINT: RpcEndpoint = {
-  name: 'OpenSVM',
+  name: 'osvm rpc',
   url: 'https://opensvm.com/api/proxy/rpc',
   network: 'mainnet'
 };

@@ -11,6 +11,14 @@ import {
     Maximize2,
     Minimize2
 } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 
 export interface GraphControlsProps {
     onZoomIn: () => void;
@@ -57,91 +65,106 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
     ];
 
     return (
-        <div className="absolute top-4 right-4 z-30 flex flex-col gap-3">
-            {/* Zoom and Navigation Controls */}
-            <div className="flex flex-col gap-2 p-3 bg-background/95 border border-border rounded-lg shadow-lg">
-                <div className="flex gap-1">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onZoomIn}
-                        className="h-8 w-8 p-0"
-                        title="Zoom In"
-                    >
-                        <ZoomIn className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onZoomOut}
-                        className="h-8 w-8 p-0"
-                        title="Zoom Out"
-                    >
-                        <ZoomOut className="h-4 w-4" />
-                    </Button>
-                </div>
-                <div className="flex gap-1">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onFit}
-                        className="h-8 w-8 p-0"
-                        title="Fit to View"
-                    >
-                        <Maximize2 className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onReset}
-                        className="h-8 w-8 p-0"
-                        title="Reset View"
-                    >
-                        <RotateCcw className="h-4 w-4" />
-                    </Button>
-                </div>
+        <div className="absolute top-2 right-2 z-30">
+            <div
+                role="toolbar"
+                aria-label="Graph controls"
+                className="flex items-center gap-1 rounded-md border border-border bg-background/90 backdrop-blur px-2 h-8 shadow"
+            >
                 <Button
-                    size="sm"
-                    variant="outline"
+                    size="icon"
+                    variant="ghost"
+                    onClick={onZoomIn}
+                    className="h-7 w-7"
+                    title="Zoom In"
+                    aria-label="Zoom in"
+                >
+                    <ZoomIn className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onZoomOut}
+                    className="h-7 w-7"
+                    title="Zoom Out"
+                    aria-label="Zoom out"
+                >
+                    <ZoomOut className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onFit}
+                    className="h-7 w-7"
+                    title="Fit to view"
+                    aria-label="Fit to view"
+                >
+                    <Maximize2 className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onReset}
+                    className="h-7 w-7"
+                    title="Reset view"
+                    aria-label="Reset view"
+                >
+                    <RotateCcw className="h-4 w-4" />
+                </Button>
+
+                <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="Filters"
+                            aria-label="Filters"
+                        >
+                            <Filter className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent sideOffset={6} className="min-w-[12rem]">
+                        <DropdownMenuLabel className="text-xs">Transaction types</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {filterOptions.map(({ key, label }) => {
+                            const enabled = filters[key as keyof typeof filters];
+                            return (
+                                <DropdownMenuItem
+                                    key={key}
+                                    preventClose
+                                    className="flex items-center gap-2 cursor-pointer"
+                                    onClick={() => onFilterChange(key, !enabled)}
+                                >
+                                    {enabled ? <Eye className="h-3 w-3 text-primary" /> : <EyeOff className="h-3 w-3 text-muted-foreground" />}
+                                    <span className="text-sm">{label}</span>
+                                    {enabled && (
+                                        <Badge className="ml-auto h-5 px-1 text-[10px]" variant="secondary">on</Badge>
+                                    )}
+                                </DropdownMenuItem>
+                            );
+                        })}
+                    </DropdownMenuContent>
+                </DropdownMenu>
+
+                <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+
+                <Button
+                    size="icon"
+                    variant="ghost"
                     onClick={onToggleFullscreen}
-                    className="h-8 w-8 p-0"
-                    title={isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen"}
+                    className="h-7 w-7"
+                    title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                 >
                     {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>
-            </div>
 
-            {/* Filter Controls */}
-            <div className="p-3 bg-background/95 border border-border rounded-lg shadow-lg">
-                <div className="flex items-center gap-2 mb-3">
-                    <Filter className="h-4 w-4" />
-                    <span className="text-sm font-medium">Filters</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    {filterOptions.map(({ key, label }) => (
-                        <Badge
-                            key={key}
-                            variant={filters[key as keyof typeof filters] ? "default" : "secondary"}
-                            className={`cursor-pointer transition-colors border ${filters[key as keyof typeof filters]
-                                    ? 'bg-primary text-primary-foreground border-primary hover:bg-primary/90'
-                                    : 'bg-muted text-muted-foreground border-border hover:bg-muted/80'
-                                }`}
-                            onClick={() => onFilterChange(key, !filters[key as keyof typeof filters])}
-                        >
-                            {filters[key as keyof typeof filters] ? <Eye className="h-3 w-3 mr-1" /> : <EyeOff className="h-3 w-3 mr-1" />}
-                            {label}
-                        </Badge>
-                    ))}
-                </div>
-            </div>
-
-            {/* Graph Stats */}
-            <div className="p-3 bg-background/95 border border-border rounded-lg shadow-lg">
-                <div className="text-sm font-medium mb-2">Graph Info</div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <div>Nodes: {visibleElements.nodes}</div>
-                    <div>Edges: {visibleElements.edges}</div>
-                </div>
+                <span className="ml-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                    N: {visibleElements.nodes} · E: {visibleElements.edges}
+                </span>
             </div>
         </div>
     );

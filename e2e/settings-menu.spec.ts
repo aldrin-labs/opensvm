@@ -200,7 +200,7 @@ test.describe('Settings Menu Functionality', () => {
         await rpcSubmenu.click();
 
         // Verify RPC options are available
-        const expectedRpcOptions = ['OpenSVM', 'Serum', 'Ankr', 'ExtrNode', 'Mainnet', 'Devnet', 'Testnet'];
+        const expectedRpcOptions = ['osvm rpc', 'Serum', 'Ankr', 'ExtrNode', 'Mainnet', 'Devnet', 'Testnet'];
 
         // Check for at least some of these options
         const opensvmOption = page.locator('text="OpenSVM"');

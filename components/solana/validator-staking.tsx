@@ -638,7 +638,7 @@ export function ValidatorStaking({ validatorVoteAccount, validatorName, commissi
           className="px-6 py-3 bg-muted text-white rounded-lg font-medium flex items-center cursor-not-allowed opacity-50"
         >
           <Lock className="h-4 w-4 mr-2" />
-          Connect Wallet to Stake
+          join to stake
         </button>
       </div>
     );

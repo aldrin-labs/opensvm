@@ -598,7 +598,7 @@ function CommunityNotes({ signature }: { signature: string }) {
               window.scrollTo({ top: 0, behavior: 'smooth' });
             }
           }}>
-            Connect Wallet
+            join
           </Button>
         </div>
       </div>

@@ -1,7 +1,15 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, ChevronRight, Home, MapPin } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Home, MapPin, History as HistoryIcon } from 'lucide-react';
+import {
+    DropdownMenu,
+    DropdownMenuTrigger,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuLabel,
+    DropdownMenuSeparator
+} from '@/components/ui/dropdown-menu';
 import type { NavigationItem } from './types';
 
 export interface NavigationHistoryProps {
@@ -27,116 +35,103 @@ export const NavigationHistory: React.FC<NavigationHistoryProps> = ({
     canGoForward,
     maxHistorySize = 20
 }) => {
-    // Truncate history if it exceeds max size
     const displayHistory = history.slice(-maxHistorySize);
-    const displayIndex = Math.max(0, currentIndex - (history.length - displayHistory.length));
+    // Note: keep local index logic inline where needed to avoid unused variable
+    // derive locally when needed to avoid unused variable warnings
 
     const formatLabel = (item: NavigationItem) => {
-        if (item.type === 'account') {
-            return `${item.label.substring(0, 8)}...`;
-        } else {
-            return `${item.label.substring(0, 8)}...`;
-        }
+        return `${item.label.substring(0, 8)}...`;
     };
 
     const getItemIcon = (item: NavigationItem) => {
         if (item.type === 'account') {
             return <MapPin className="h-3 w-3 text-primary" />;
-        } else {
-            return <span className="w-3 h-3 rounded-full bg-primary" />;
         }
-    };
-
-    const getItemColor = (item: NavigationItem, index: number) => {
-        if (index === displayIndex) {
-            return 'bg-primary text-primary-foreground';
-        } else if (index < displayIndex) {
-            return 'bg-muted text-muted-foreground';
-        } else {
-            return 'bg-background text-foreground border border-border';
-        }
+        return <span className="w-3 h-3 rounded-full bg-primary" />;
     };
 
     return (
-        <div className="absolute top-4 left-4 z-30 flex flex-col gap-3">
-            {/* Navigation Controls */}
-            <div className="flex items-center gap-2 p-3 bg-background/95 border border-border rounded-lg shadow-lg">
+        <div className="absolute top-2 left-2 z-30">
+            <div
+                role="toolbar"
+                aria-label="Navigation history"
+                className="flex items-center gap-1 rounded-md border border-border bg-background/90 backdrop-blur px-2 h-8 shadow"
+            >
                 <Button
-                    size="sm"
-                    variant="outline"
+                    size="icon"
+                    variant="ghost"
                     onClick={onGoHome}
-                    className="h-8 px-2"
+                    className="h-7 w-7"
                     title="Go to initial account"
+                    aria-label="Go to initial account"
                 >
                     <Home className="h-4 w-4" />
                 </Button>
 
-                <div className="flex gap-1">
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onGoBack}
-                        disabled={!canGoBack}
-                        className="h-8 w-8 p-0"
-                        title="Go back"
-                    >
-                        <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={onGoForward}
-                        disabled={!canGoForward}
-                        className="h-8 w-8 p-0"
-                        title="Go forward"
-                    >
-                        <ChevronRight className="h-4 w-4" />
-                    </Button>
-                </div>
-            </div>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onGoBack}
+                    disabled={!canGoBack}
+                    className="h-7 w-7"
+                    title="Back"
+                    aria-label="Back"
+                >
+                    <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                    size="icon"
+                    variant="ghost"
+                    onClick={onGoForward}
+                    disabled={!canGoForward}
+                    className="h-7 w-7"
+                    title="Forward"
+                    aria-label="Forward"
+                >
+                    <ChevronRight className="h-4 w-4" />
+                </Button>
 
-            {/* Breadcrumb Navigation */}
-            {displayHistory.length > 1 && (
-                <div className="p-3 bg-background/95 border border-border rounded-lg shadow-lg max-w-md">
-                    <div className="text-sm font-medium mb-2">Navigation History</div>
-                    <div className="flex flex-wrap gap-1">
-                        {displayHistory.map((item, index) => (
-                            <Badge
-                                key={`${item.id}-${item.timestamp}`}
-                                variant="secondary"
-                                className={`cursor-pointer transition-all duration-200 hover:scale-105 ${getItemColor(item, index)}`}
-                                onClick={() => onNavigate(history.length - displayHistory.length + index)}
-                            >
-                                <div className="flex items-center gap-1">
+                <div className="mx-1 h-5 w-px bg-border" aria-hidden="true" />
+
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7"
+                            title="History"
+                            aria-label="History"
+                        >
+                            <HistoryIcon className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent sideOffset={6} className="min-w-[14rem] max-h-[50vh] overflow-auto">
+                        <DropdownMenuLabel className="text-xs">Recent navigation</DropdownMenuLabel>
+                        <DropdownMenuSeparator />
+                        {displayHistory.length === 0 && (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">No history yet</div>
+                        )}
+                        {displayHistory.map((item, index) => {
+                            const absoluteIndex = history.length - displayHistory.length + index;
+                            const isActive = absoluteIndex === currentIndex;
+                            return (
+                                <DropdownMenuItem
+                                    key={`${item.id}-${item.timestamp}`}
+                                    className={`flex items-center gap-2 ${isActive ? 'bg-primary/10' : ''}`}
+                                    onClick={() => onNavigate(absoluteIndex)}
+                                >
                                     {getItemIcon(item)}
-                                    {formatLabel(item)}
-                                </div>
-                            </Badge>
-                        ))}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-2">
-                        {displayHistory.length} of {history.length} items
-                    </div>
-                </div>
-            )}
+                                    <span className="text-sm">{formatLabel(item)}</span>
+                                    {isActive && <Badge className="ml-auto h-5 px-1 text-[10px]" variant="secondary">current</Badge>}
+                                </DropdownMenuItem>
+                            );
+                        })}
+                    </DropdownMenuContent>
+                </DropdownMenu>
 
-            {/* Current Position Indicator */}
-            <div className="p-3 bg-background/95 border border-border rounded-lg shadow-lg">
-                <div className="text-sm font-medium mb-2">Current Position</div>
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <div>History: {currentIndex + 1} of {history.length}</div>
-                    {history[currentIndex] && (
-                        <div className="flex items-center gap-2">
-                            {getItemIcon(history[currentIndex])}
-                            <span className="font-medium">
-                                {history[currentIndex].type === 'account' ? 'Account' : 'Transaction'}
-                            </span>
-                            <span className="text-xs">
-                                {formatLabel(history[currentIndex])}
-                            </span>
-                        </div>
-                    )}
-                </div>
+                <span className="ml-2 text-[11px] text-muted-foreground whitespace-nowrap">
+                    {currentIndex + 1} / {history.length}
+                </span>
             </div>
         </div>
     );

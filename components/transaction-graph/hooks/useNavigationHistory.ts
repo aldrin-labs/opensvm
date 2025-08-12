@@ -58,7 +58,7 @@ export function useNavigationHistory({
     );
     const [isNavigatingHistory, setIsNavigatingHistory] = useState<boolean>(false);
     const isNavigatingRef = useRef<boolean>(false);
-    const [viewportStates, setViewportStates] = useState<Map<string, { x: number; y: number; zoom: number }>>(new Map());
+    const [viewportStates] = useState<Map<string, { x: number; y: number; zoom: number }>>(new Map());
 
     // Calculate navigation capabilities
     const canGoBack = currentHistoryIndex > 0;

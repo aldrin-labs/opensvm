@@ -247,21 +247,31 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
       ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI, false);
       ctx.fill();
 
-      // Add glow effect for tracked nodes using GPU acceleration
+      // Add glow effect for tracked nodes using theme token color
       if (node.tracked) {
         ctx.save();
         ctx.globalAlpha = 0.3;
-        ctx.fillStyle = '#8b5cf6';
+        try {
+          const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
+          ctx.fillStyle = primary ? `hsl(${primary.trim()})` : color;
+        } catch {
+          ctx.fillStyle = color;
+        }
         ctx.beginPath();
         ctx.arc(node.x || 0, node.y || 0, size * 1.5, 0, 2 * Math.PI, false);
         ctx.fill();
         ctx.restore();
       }
 
-      // Draw label
+      // Draw label (subtle; main labels handled by tooltips/DOM)
       if (globalScale > 0.5) {
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `${Math.max(8, size / 2)}px Arial`;
+        try {
+          const fg = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground');
+          ctx.fillStyle = fg ? `hsl(${fg.trim()})` : '#999999';
+        } catch {
+          ctx.fillStyle = '#999999';
+        }
+        ctx.font = `${Math.max(8, size / 2)}px Inter, ui-sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.label, node.x || 0, (node.y || 0) + size + 8);

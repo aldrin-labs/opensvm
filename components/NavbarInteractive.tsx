@@ -144,12 +144,12 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
         <div className="container mx-auto px-4 flex w-full items-center justify-between">
           {/* Logo and brand */}
           <div className="flex items-center gap-2 z-10">
+            <RpcStatusBadge />
             <Link href="/" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
-              <span className="font-bold text-lg">OPENSVM</span>
-              <span className="text-sm text-foreground/70">[AI]</span>
+              <span className="font-bold text-lg">OpenSVM</span>
+              <span className="text-sm text-foreground/70">[ai]</span>
             </Link>
             <ChangelogNotification />
-            <RpcStatusBadge />
             <span className="hidden md:inline-block text-xs text-muted-foreground">{currentTime}</span>
           </div>
 
@@ -356,15 +356,14 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 <User className="h-4 w-4" />
                 Profile
               </Button>
-            )}
-            <WalletButton />
+            ) || (<WalletButton />)}
             <Button
               size="sm"
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"
               onClick={() => setIsAIChatOpen(true)}
               aria-label="Open AI Assistant"
             >
-              AI Assistant
+              SVMAI
             </Button>
           </div>
 

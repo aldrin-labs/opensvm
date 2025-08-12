@@ -398,7 +398,7 @@ export default function SVMAIDepositModal({
                             disabled={processing}
                         >
                             <WalletIcon className="h-4 w-4 mr-2" />
-                            Connect Wallet
+                            join
                         </Button>
                         <Button
                             onClick={initiateDeposit}

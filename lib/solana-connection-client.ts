@@ -2,6 +2,27 @@
 
 import { Connection, ConnectionConfig } from '@solana/web3.js';
 
+// Event emitter for RPC request tracking
+class RpcEventEmitter {
+    private listeners: ((data: any) => void)[] = [];
+
+    emit(data: any) {
+        this.listeners.forEach(listener => listener(data));
+    }
+
+    subscribe(callback: (data: any) => void) {
+        this.listeners.push(callback);
+        return () => {
+            const index = this.listeners.indexOf(callback);
+            if (index > -1) {
+                this.listeners.splice(index, 1);
+            }
+        };
+    }
+}
+
+export const rpcEventEmitter = new RpcEventEmitter();
+
 // Simple client-side connection that only uses proxy endpoints
 class ClientConnection extends Connection {
     constructor(endpoint: string, config?: ConnectionConfig) {
@@ -26,19 +47,43 @@ class ClientConnection extends Connection {
                 'Accept': 'application/json'
             },
             ...config,
-            // Override fetch to ensure proper JSON-RPC formatting
+            // Override fetch to ensure proper JSON-RPC formatting and emit events
             fetch: async (input: RequestInfo | URL, options?: RequestInit) => {
-                const response = await fetch(input, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Accept': 'application/json',
-                        ...(options?.headers || {})
-                    },
-                    body: options?.body,
-                    signal: options?.signal
-                });
-                return response;
+                const startTime = Date.now();
+                try {
+                    const response = await fetch(input, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            ...(options?.headers || {})
+                        },
+                        body: options?.body,
+                        signal: options?.signal
+                    });
+
+                    // Emit RPC request event
+                    rpcEventEmitter.emit({
+                        timestamp: Date.now(),
+                        url: typeof input === 'string' ? input : input.toString(),
+                        method: 'POST',
+                        status: response.status,
+                        duration: Date.now() - startTime,
+                        body: options?.body ? JSON.parse(options.body as string) : null
+                    });
+
+                    return response;
+                } catch (error) {
+                    // Emit error event
+                    rpcEventEmitter.emit({
+                        timestamp: Date.now(),
+                        url: typeof input === 'string' ? input : input.toString(),
+                        method: 'POST',
+                        error: error,
+                        duration: Date.now() - startTime
+                    });
+                    throw error;
+                }
             }
         });
     }
@@ -71,12 +116,7 @@ export function updateRpcEndpoint(endpoint: string): void {
 export function getAvailableRpcEndpoints() {
     return [
         {
-            name: 'OpenSVM',
-            url: 'opensvm',
-            network: 'mainnet' as const
-        },
-        {
-            name: 'OpenSVM Proxy',
+            name: 'osvm rpc',
             url: '/api/proxy/rpc',
             network: 'mainnet' as const
         }

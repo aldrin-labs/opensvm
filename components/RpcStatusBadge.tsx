@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { rpcEventEmitter } from "@/lib/solana-connection-client";
 
 // Keys for localStorage persistence
 const STORAGE_KEY_TOTALS = "rpcRequestTotals"; // map of rpc -> total count
@@ -57,9 +58,8 @@ export function RpcStatusBadge() {
     const [requestsPerMinute, setRequestsPerMinute] = useState<number>(0);
     const [totalRequests, setTotalRequests] = useState<number>(0);
 
-    // A small event hook: count successful fetches to our proxy as RPC requests
-    // We patch window.fetch minimally once per mount; counts per active rpcKey
-    const fetchPatchedRef = useRef(false);
+    // A small event hook: subscribe to RPC events from solana-connection-client
+    // Counts per active rpcKey using event emitter pattern
 
     // Initialize counters from storage
     useEffect(() => {
@@ -79,54 +79,55 @@ export function RpcStatusBadge() {
         }
     }, [rpcKey]);
 
-    // Patch fetch once to count calls to our proxy that reach network successfully
+    // Subscribe to RPC events from solana-connection-client
     useEffect(() => {
-        if (typeof window === "undefined" || fetchPatchedRef.current) return;
-        fetchPatchedRef.current = true;
+        console.log('🚀 RPC Badge: Subscribing to RPC events...');
 
-        const originalFetch = window.fetch.bind(window);
-        window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-            try {
-                const response = await originalFetch(input, init);
-                try {
-                    const url = typeof input === "string" ? input : (input as URL).toString();
-                    // Count only POST calls to our proxy or full URLs to RPC (in case of custom)
-                    const isRpcCall = /\/api\/proxy\/rpc$/.test(url) || /https?:\/\//i.test(url) && init?.method === "POST";
-                    if (isRpcCall) {
-                        const currentKey = getActiveRpcKey();
-                        // Update totals
-                        const totals = loadJson<Record<string, number>>(STORAGE_KEY_TOTALS, {});
-                        const newTotal = (totals[currentKey] || 0) + 1;
-                        totals[currentKey] = newTotal;
-                        saveJson(STORAGE_KEY_TOTALS, totals);
+        const unsubscribe = rpcEventEmitter.subscribe((eventData) => {
+            console.log('📡 RPC Event received:', eventData);
 
-                        // Update minute window
-                        const minute = loadJson<Record<string, { windowStartMs: number; count: number }>>(STORAGE_KEY_MINUTE, {});
-                        const now = Date.now();
-                        const windowInfo = minute[currentKey];
-                        if (!windowInfo || now - windowInfo.windowStartMs >= 60_000) {
-                            minute[currentKey] = { windowStartMs: now, count: 1 };
-                        } else {
-                            minute[currentKey] = { windowStartMs: windowInfo.windowStartMs, count: windowInfo.count + 1 };
-                        }
-                        saveJson(STORAGE_KEY_MINUTE, minute);
-
-                        // If the active key matches current state, reflect to UI
-                        if (currentKey === rpcKey) {
-                            setTotalRequests(newTotal);
-                            const info = minute[currentKey];
-                            setRequestsPerMinute(info ? info.count : 0);
-                        }
-                    }
-                } catch { }
-                return response;
-            } catch (e) {
-                throw e;
+            // Only count successful requests (status < 500) or if no status (for errors)
+            if (eventData.status && eventData.status >= 500) {
+                console.log('❌ Skipping server error:', eventData.status);
+                return;
             }
-        };
+
+            const currentKey = getActiveRpcKey();
+            console.log('🔑 Current RPC key:', currentKey);
+
+            // Update totals
+            const totals = loadJson<Record<string, number>>(STORAGE_KEY_TOTALS, {});
+            const newTotal = (totals[currentKey] || 0) + 1;
+            totals[currentKey] = newTotal;
+            saveJson(STORAGE_KEY_TOTALS, totals);
+            console.log('📈 Updated totals:', totals);
+
+            // Update minute window
+            const minute = loadJson<Record<string, { windowStartMs: number; count: number }>>(STORAGE_KEY_MINUTE, {});
+            const now = Date.now();
+            const windowInfo = minute[currentKey];
+            if (!windowInfo || now - windowInfo.windowStartMs >= 60_000) {
+                minute[currentKey] = { windowStartMs: now, count: 1 };
+            } else {
+                minute[currentKey] = { windowStartMs: windowInfo.windowStartMs, count: windowInfo.count + 1 };
+            }
+            saveJson(STORAGE_KEY_MINUTE, minute);
+            console.log('⏱️ Updated minute window:', minute);
+
+            // Update UI if this matches current RPC key
+            if (currentKey === rpcKey) {
+                setTotalRequests(newTotal);
+                const info = minute[currentKey];
+                setRequestsPerMinute(info ? info.count : 0);
+                console.log('🎯 UI updated:', { total: newTotal, rpm: info ? info.count : 0 });
+            } else {
+                console.log('⚠️ Key mismatch:', { currentKey, rpcKey });
+            }
+        });
 
         return () => {
-            window.fetch = originalFetch;
+            console.log('🛑 RPC Badge: Unsubscribing from RPC events');
+            unsubscribe();
         };
     }, [rpcKey]);
 
@@ -162,28 +163,51 @@ export function RpcStatusBadge() {
         setTotalRequests(0);
     };
 
+    // Manual test function to verify counting works
+    const testRpcCounting = async () => {
+        try {
+            // Make a test RPC call to our proxy
+            const response = await fetch('/api/proxy/rpc', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 'test-' + Date.now(),
+                    method: 'getHealth',
+                    params: []
+                })
+            });
+            console.log('Test RPC call completed:', response.status);
+        } catch (error) {
+            console.error('Test RPC call failed:', error);
+        }
+    };
+
     if (typeof window === "undefined") return null;
 
     return (
-        <div className="ml-2 flex flex-col items-center gap-0.5 text-xs px-1.5 py-1 rounded-md border border-border/40 bg-muted/40 w-16">
-            <div className="flex items-center gap-1">
-                <span className={`inline-block w-1.5 h-1.5 rounded-full ${isOverride ? "bg-amber-500" : "bg-emerald-500"}`} />
-                <span className="text-[10px] font-medium truncate" title={rpcLabel}>RPC</span>
-            </div>
-            <div className="flex flex-col items-center gap-0" title="Requests per minute / Total requests">
-                <div className="text-[9px] text-muted-foreground">
-                    <span className="font-mono">{requestsPerMinute}</span>
+        <div
+            className="ml-2 flex items-center gap-1 text-xs px-1.5 rounded-md border border-border/40 bg-muted/40 w-25 h-14"
+            onDoubleClick={testRpcCounting}
+            title="Double-click to test RPC counting"
+        >
+            <div className="flex flex-col items-center justify-center gap-0 flex-1">
+                <div className="flex items-center gap-1">
+                    <span className={`inline-block w-1 rounded-full ${isOverride ? "bg-amber-500" : "bg-emerald-500"}`} />
+                    <span className="text-[8px] font-medium" title={rpcLabel}>{rpcLabel}</span>
                 </div>
-                <div className="text-[9px] text-muted-foreground">
-                    <span className="font-mono">{totalRequests}</span>
+                <div className="text-[8px] text-muted-foreground font-mono" title="RPM / Total">
+                    rpm:{requestsPerMinute} all:{totalRequests}
                 </div>
             </div>
             {(isOverride || totalRequests > 0) && (
-                <div className="flex gap-0.5 mt-0.5">
+                <div className="flex flex-col justify-center gap-0.5">
                     {isOverride && (
                         <button
                             onClick={clearOverride}
-                            className="px-1 py-0.5 text-[8px] rounded bg-amber-500/20 text-amber-700 hover:bg-amber-500/30"
+                            className="w-3 h-3 text-[6px] rounded bg-amber-500/20 text-amber-700 hover:bg-amber-500/30 flex items-center justify-center"
                             title="Clear override"
                         >
                             C
@@ -191,7 +215,7 @@ export function RpcStatusBadge() {
                     )}
                     <button
                         onClick={resetTotalsForCurrent}
-                        className="px-1 py-0.5 text-[8px] rounded bg-muted text-foreground hover:bg-muted/70"
+                        className="w-3 h-3 text-[6px] rounded bg-muted text-foreground hover:bg-muted/70 flex items-center justify-center"
                         title="Reset total counter"
                     >
                         R

@@ -20,13 +20,11 @@ import {
   CopyIcon,
   CheckIcon
 } from 'lucide-react';
-import type {
-  TransactionGraph,
-  GraphNode,
-  GraphEdge,
-  NodeType,
-  EdgeType
-} from '@/lib/transaction-graph-builder';
+// Note: Avoid importing types that may drift; define minimal local types used here
+type NodeType = 'account' | 'program' | 'instruction' | 'transaction';
+type EdgeType = 'transfer' | 'invoke' | 'dependency';
+interface GraphNode { id: string; type: NodeType; data: Record<string, any>; }
+interface GraphEdge { id: string; source: string; target: string; type: EdgeType; data: Record<string, any>; }
 
 // Filter and customization interfaces
 export interface GraphFilters {
@@ -78,7 +76,7 @@ export interface FilterPreset {
 }
 
 interface TransactionGraphFiltersProps {
-  graph: TransactionGraph;
+  graph: { nodes: GraphNode[]; edges: GraphEdge[] };
   filters: GraphFilters;
   customization: GraphCustomization;
   onFiltersChange: (filters: GraphFilters) => void;
@@ -184,7 +182,7 @@ const FILTER_PRESETS: FilterPreset[] = [
     name: 'Token Flow',
     description: 'Visualize token transfers and balances',
     filters: {
-      edgeTypes: new Set(['token_transfer']),
+      edgeTypes: new Set<EdgeType>(['transfer']),
       groupByTokenType: true
     },
     customization: {
@@ -247,11 +245,14 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
     // Apply search filter
     if (filters.searchQuery.trim()) {
       const query = filters.searchQuery.toLowerCase();
-      filteredNodes = filteredNodes.filter(node =>
-        node.label.toLowerCase().includes(query) ||
-        node.data.address?.toLowerCase().includes(query) ||
-        node.id.toLowerCase().includes(query)
-      );
+      filteredNodes = filteredNodes.filter(node => {
+        const label = (node as any).label as string | undefined;
+        return (
+          (label && label.toLowerCase().includes(query)) ||
+          (node.data.address && String(node.data.address).toLowerCase().includes(query)) ||
+          node.id.toLowerCase().includes(query)
+        );
+      });
     }
 
     // Apply amount filter
@@ -262,12 +263,12 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
 
     // Apply size filters
     filteredNodes = filteredNodes.filter(node => {
-      const size = node.style.size;
+      const size = (node as any).style?.size ?? 1;
       return size >= filters.minNodeSize && size <= filters.maxNodeSize;
     });
 
     filteredEdges = filteredEdges.filter(edge => {
-      const width = edge.style.width;
+      const width = (edge as any).style?.width ?? 1;
       return width >= filters.minEdgeWidth && width <= filters.maxEdgeWidth;
     });
 
@@ -283,7 +284,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
 
     // Apply system account filter
     if (filters.hideSystemAccounts) {
-      filteredNodes = filteredNodes.filter(node => node.type !== 'system_account');
+      // No 'system_account' in local NodeType; keep accounts and programs only
+      filteredNodes = filteredNodes.filter(node => node.type === 'account' || node.type === 'program');
     }
 
     // Apply small transfer filter
@@ -339,7 +341,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       filters,
       customization,
       timestamp: Date.now(),
-      graphSignature: graph.metadata.transactionSignature
+      graphSignature: (graph as any).metadata?.transactionSignature ?? ''
     };
 
     if (format === 'json') {
@@ -347,7 +349,8 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = url;
-      link.download = `graph-config-${graph.metadata.transactionSignature.substring(0, 8)}.json`;
+      const sig = ((graph as any).metadata?.transactionSignature ?? 'graph').toString();
+      link.download = `graph-config-${sig.substring(0, 8)}.json`;
       link.click();
       URL.revokeObjectURL(url);
     } else if (format === 'url') {
@@ -357,7 +360,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
       setCopiedPreset('url');
       setTimeout(() => setCopiedPreset(null), 2000);
     }
-  }, [filters, customization, graph.metadata.transactionSignature]);
+  }, [filters, customization, graph]);
 
   const importConfiguration = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1113,7 +1116,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
 export default TransactionGraphFilters;
 
 // Export utility functions
-export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilters): TransactionGraph {
+export function applyFiltersToGraph(graph: { nodes: GraphNode[]; edges: GraphEdge[]; metadata?: any }, filters: GraphFilters): { nodes: GraphNode[]; edges: GraphEdge[]; metadata?: any } {
   let filteredNodes: GraphNode[] = graph.nodes;
   let filteredEdges: GraphEdge[] = graph.edges;
 
@@ -1128,11 +1131,14 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
 
   if (filters.searchQuery.trim()) {
     const query = filters.searchQuery.toLowerCase();
-    filteredNodes = filteredNodes.filter(node =>
-      node.label.toLowerCase().includes(query) ||
-      node.data.address?.toLowerCase().includes(query) ||
-      node.id.toLowerCase().includes(query)
-    );
+    filteredNodes = filteredNodes.filter(node => {
+      const label = (node as any).label as string | undefined;
+      return (
+        (label && label.toLowerCase().includes(query)) ||
+        (node.data.address && String(node.data.address).toLowerCase().includes(query)) ||
+        node.id.toLowerCase().includes(query)
+      );
+    });
   }
 
   filteredEdges = filteredEdges.filter(edge => {
@@ -1141,12 +1147,12 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
   });
 
   filteredNodes = filteredNodes.filter(node => {
-    const size = node.style.size;
+    const size = (node as any).style?.size ?? 1;
     return size >= filters.minNodeSize && size <= filters.maxNodeSize;
   });
 
   filteredEdges = filteredEdges.filter(edge => {
-    const width = edge.style.width;
+    const width = (edge as any).style?.width ?? 1;
     return width >= filters.minEdgeWidth && width <= filters.maxEdgeWidth;
   });
 
@@ -1160,7 +1166,7 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
   }
 
   if (filters.hideSystemAccounts) {
-    filteredNodes = filteredNodes.filter(node => node.type !== 'system_account');
+    filteredNodes = filteredNodes.filter(node => node.type === 'account' || node.type === 'program');
   }
 
   if (filters.hideSmallTransfers) {
@@ -1178,7 +1184,7 @@ export function applyFiltersToGraph(graph: TransactionGraph, filters: GraphFilte
     nodes: filteredNodes,
     edges: filteredEdges,
     metadata: {
-      ...graph.metadata,
+      ...(graph as any).metadata,
       totalNodes: filteredNodes.length,
       totalEdges: filteredEdges.length
     }

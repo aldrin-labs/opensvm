@@ -355,7 +355,7 @@ export default function HomePage() {
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 h-12 px-6 rounded-full shadow-lg"
               onClick={() => setIsAIChatOpen(true)}
             >
-              AI Assistant
+              SVMAI
             </Button>
           </div>
         </div>

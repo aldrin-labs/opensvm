@@ -542,27 +542,8 @@ const CytoscapeContainer = React.memo(() => {
 
     // Store signature as a known non-null value
     const txSignature: string = data.signature;
-
-    // Add transaction node with classification
     const classification: TransactionClassification = classifyTransactionType(data);
     const funding = isFundingTransaction(data, focusAccount);
-    nodes.push({
-      data: {
-        id: txSignature,
-        label: `${txSignature.substring(0, 8)}...`,
-        type: 'transaction',
-        signature: txSignature,
-        success: !data.err,
-        txType: classification.type,
-        txTypeConfidence: classification.confidence,
-        isFunding: funding || classification.isFunding,
-        tokenMint: classification.tokenMint,
-        tokenSymbol: classification.tokenSymbol,
-        amount: classification.amount,
-        size: 20,
-        color: data.err ? 'hsl(var(--destructive))' : 'hsl(var(--success))'
-      }
-    });
 
     // Compute net balance changes per account (prefer provided transfers; fallback to meta)
     const netChangeByAccount: Record<string, number> = {};
@@ -605,7 +586,7 @@ const CytoscapeContainer = React.memo(() => {
         return;
       }
 
-      debugLog('Adding account node:', accountPubkey);
+      debugLog('Ensuring account node exists:', accountPubkey);
 
       nodes.push({
         data: {
@@ -619,33 +600,78 @@ const CytoscapeContainer = React.memo(() => {
           color: (account.isSigner || account.signer) ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
         }
       });
+    });
 
-      // Determine direction and amount for edge visualization
-      const netChange = Number(netChangeByAccount[accountPubkey] || 0);
-      const direction = netChange > 0 ? 'in' : netChange < 0 ? 'out' : 'neutral';
-      const edgeAmount = classification.type === 'sol_transfer' ? Math.abs(netChange) : classification.amount;
+    // Build account-to-account edges per transfer
+    const instructions: any[] = (data as any)?.details?.instructions || (data as any)?.transaction?.message?.instructions || [];
+    const parsedTransfers: Array<{ from: string; to: string; amount?: number; mint?: string }> = [];
+    for (const ix of instructions) {
+      const info = (ix?.parsed?.info || ix?.info) as any;
+      if (info && typeof info === 'object') {
+        const from = info.source || info.from || info.owner || info.authority;
+        const to = info.destination || info.to || info.newAccount || info.recipient;
+        if (typeof from === 'string' && typeof to === 'string') {
+          const amt = Number(info.lamports ?? info.amount ?? info.tokenAmount?.amount);
+          const mint = info.mint || info.tokenMint;
+          parsedTransfers.push({ from, to, amount: isNaN(amt) ? undefined : amt, mint });
+        }
+      }
+    }
 
+    // Fallback: pair negatives to positives if no parsed transfers
+    if (parsedTransfers.length === 0) {
+      const negatives = Object.entries(netChangeByAccount)
+        .filter(([, v]) => (v as number) < 0)
+        .map(([k, v]) => ({ acc: k, amt: Math.abs(v as number) }))
+        .sort((a, b) => b.amt - a.amt);
+      const positives = Object.entries(netChangeByAccount)
+        .filter(([, v]) => (v as number) > 0)
+        .map(([k, v]) => ({ acc: k, amt: v as number }))
+        .sort((a, b) => b.amt - a.amt);
+      let i = 0, j = 0;
+      while (i < negatives.length && j < positives.length) {
+        const from = negatives[i];
+        const to = positives[j];
+        const amt = Math.min(from.amt, to.amt);
+        parsedTransfers.push({ from: from.acc, to: to.acc, amount: amt });
+        from.amt -= amt;
+        to.amt -= amt;
+        if (from.amt <= 0.000001) i++;
+        if (to.amt <= 0.000001) j++;
+      }
+    }
+
+    // Create edges between accounts
+    for (const t of parsedTransfers) {
+      if (!t.from || !t.to || t.from === t.to) continue;
+      // Ensure nodes exist (added above), add edge
+      const isSol = classification.type === 'sol_transfer' && (t.mint == null);
+      const amountForEdge = isSol ? Math.abs(Number(t.amount || 0)) : classification.amount ?? t.amount;
+      const direction = focusAccount
+        ? (t.to === focusAccount ? 'in' : t.from === focusAccount ? 'out' : 'neutral')
+        : 'neutral';
       edges.push({
         data: {
-          id: `${txSignature}-${accountPubkey}`,
-          source: txSignature,
-          target: accountPubkey,
-          type: 'account_interaction',
+          id: `${txSignature}-${t.from}-${t.to}`,
+          source: t.from,
+          target: t.to,
+          type: 'account_transfer',
+          fullSignature: txSignature,
           txType: classification.type,
           isFunding: funding || classification.isFunding,
-          color: (account.isWritable || account.writable) ? 'hsl(var(--warning))' : 'hsl(var(--muted-foreground))',
-          amount: edgeAmount,
+          color: 'hsl(var(--muted-foreground))',
+          amount: amountForEdge,
           tokenSymbol: classification.tokenSymbol,
           direction,
           label: formatEdgeLabel({
-            amount: edgeAmount,
+            amount: amountForEdge,
             tokenSymbol: classification.tokenSymbol,
             txType: classification.type,
             isFunding: funding || classification.isFunding
           })
         }
       });
-    });
+    }
 
     debugLog('Processed transaction data result:', {
       signature: txSignature,

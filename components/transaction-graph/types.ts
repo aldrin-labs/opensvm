@@ -40,6 +40,9 @@ export interface Transaction {
   signature: string;
   timestamp: number;
   success: boolean;
+  // Optional classifier fields
+  type?: string;
+  isFunding?: boolean;
   accounts: {
     pubkey: string;
     isSigner: boolean;
@@ -54,6 +57,10 @@ export interface Transaction {
 export interface AccountData {
   address: string;
   transactions: Transaction[];
+  // Optional flags used by fetchers
+  bidirectional?: boolean;
+  outflowCount?: number;
+  inflowCount?: number;
 }
 
 export interface TransactionGraphProps {

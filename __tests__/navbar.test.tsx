@@ -14,13 +14,13 @@ jest.mock('@/components/SettingsMenu', () => ({
 }));
 
 jest.mock('@/components/WalletButton', () => ({
-  WalletButton: () => <div data-testid="wallet-button">Connect Wallet</div>,
+  WalletButton: () => <div data-testid="wallet-button">join</div>,
 }));
 
 jest.mock('@/components/ai/AIChatSidebar', () => ({
   AIChatSidebar: ({ isOpen }: { isOpen: boolean }) => (
     <div data-testid="ai-chat-sidebar" className={isOpen ? 'visible' : 'hidden'}>
-      AI Chat Sidebar
+      svmai
     </div>
   ),
 }));
@@ -59,10 +59,10 @@ describe('Navbar', () => {
 
   it('handles Solana address search correctly', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
-    
+
     const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
     const validAddress = '5vJRzKtcp4fJxqmR7qzajkaPgqErYd1GdZk7Z7nqLqj8';
-    
+
     fireEvent.change(searchInput, { target: { value: validAddress } });
     fireEvent.submit(searchInput);
 
@@ -71,10 +71,10 @@ describe('Navbar', () => {
 
   it('handles general search query correctly', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
-    
+
     const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
     const searchQuery = 'test query';
-    
+
     fireEvent.change(searchInput, { target: { value: searchQuery } });
     fireEvent.submit(searchInput);
 
@@ -83,9 +83,9 @@ describe('Navbar', () => {
 
   it('ignores empty search queries', () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
-    
+
     const searchInput = screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0];
-    
+
     fireEvent.change(searchInput, { target: { value: '   ' } });
     fireEvent.submit(searchInput);
 
@@ -94,13 +94,13 @@ describe('Navbar', () => {
 
   it('toggles AI chat sidebar visibility', async () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
-    
+
     const aiButton = screen.getByText('AI Assistant');
     const sidebar = screen.getByTestId('ai-chat-sidebar');
-    
+
     // Initially hidden
     expect(sidebar).toHaveClass('hidden');
-    
+
     // Show sidebar
     fireEvent.click(aiButton);
     expect(sidebar).toHaveClass('visible');

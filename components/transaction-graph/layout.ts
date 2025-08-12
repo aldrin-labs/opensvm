@@ -140,22 +140,24 @@ export const runLayout = (cy: cytoscape.Core): void => {
  * Create the graph style with modern, polished appearance
  * @returns Array of Cytoscape style objects
  */
-export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
+// Use 'any' to avoid strict property typing issues for numeric vs string values
+export const createGraphStyle = (): any[] => [
   {
     selector: 'node',
     css: {
       'label': 'data(label)',
       'text-valign': 'center',
       'text-halign': 'center',
-      'font-size': '13px',
-      'font-family': 'Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      'font-size': '11px',
+      'min-zoomed-font-size': 8,
+      'font-family': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
       'color': 'hsl(var(--foreground))',
-      'text-outline-width': 1.5,
-      'text-outline-color': 'hsl(var(--background) / 0.7)',
-      'background-color': 'hsl(var(--primary))',
-      'border-width': 2,
+      'text-outline-width': 2,
+      'text-outline-color': 'hsl(var(--background) / 0.9)',
+      'background-color': 'hsl(var(--card))',
+      'border-width': 1,
       'border-color': 'hsl(var(--border))',
-      'border-opacity': 0.8
+      'border-opacity': 1
     }
   },
   {
@@ -187,12 +189,12 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'shape': 'round-rectangle',
       'background-color': 'hsl(var(--card))',
       'border-color': 'hsl(var(--border))',
-      'border-width': 2,
-      'width': '180px',
-      'height': '48px',
-      'font-size': '12px',
+      'border-width': 1,
+      'width': '120px',
+      'height': '32px',
+      'font-size': '11px',
       'color': 'hsl(var(--card-foreground))',
-      'text-outline-color': 'hsl(var(--background) / 0.5)'
+      'text-outline-color': 'hsl(var(--background) / 0.8)'
     }
   },
   {
@@ -202,8 +204,8 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
       'background-color': 'hsl(var(--primary))',
       'border-color': 'hsl(var(--border))',
       'border-width': 2,
-      'width': '56px',
-      'height': '56px',
+      'width': '48px',
+      'height': '48px',
       'font-size': '11px'
     }
   },
@@ -294,13 +296,13 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
   {
     selector: 'edge',
     css: {
-      'width': 2.5,
+      'width': 2,
       'line-color': 'hsl(var(--muted-foreground))',
       'target-arrow-color': 'hsl(var(--muted-foreground))',
       'target-arrow-shape': 'triangle',
-      'curve-style': 'bezier',
-      'opacity': 0.8,
-      'arrow-scale': 1.3,
+      'curve-style': 'straight',
+      'opacity': 0.7,
+      'arrow-scale': 1.1,
       'line-cap': 'round'
     }
   },
@@ -401,17 +403,20 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: 'edge[amount]',
     css: {
       'label': 'data(label)',
-      'font-size': '10px',
-      'font-family': 'Inter, sans-serif',
-      'color': 'hsl(var(--foreground))',
-      'text-background-color': 'hsl(var(--background))',
-      'text-background-opacity': 0.9,
-      'text-background-padding': '3px',
+      'font-size': '9px',
+      'min-zoomed-font-size': 6,
+      'font-family': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      'color': 'hsl(var(--muted-foreground))',
+      'text-background-color': 'hsl(var(--card))',
+      'text-background-opacity': 0.95,
+      'text-background-padding': 2,
       'text-border-width': 1,
       'text-border-color': 'hsl(var(--border))',
       'text-border-opacity': 0.5,
       'text-rotation': 'autorotate',
-      'text-margin-y': '8px'
+      'text-margin-y': 6,
+      'text-wrap': 'wrap',
+      'text-max-width': 120
     }
   },
   // Edge thickness based on transaction amount
@@ -464,8 +469,8 @@ export const createGraphStyle = (): cytoscape.StylesheetCSS[] => [
     selector: '.hover',
     css: {
       'border-width': 3,
-      'line-color': '#06b6d4',
-      'target-arrow-color': '#06b6d4',
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))',
       'z-index': 10
     }
   },

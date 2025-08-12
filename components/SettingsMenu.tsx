@@ -60,7 +60,7 @@ function SettingsMenuClient() {
     theme: config?.variant || 'cyberpunk',
     fontFamily: settings?.fontFamily || 'berkeley',
     fontSize: settings?.fontSize || 'medium',
-    rpcEndpoint: settings?.rpcEndpoint || { name: 'OpenSVM', url: 'opensvm', network: 'mainnet' },
+    rpcEndpoint: settings?.rpcEndpoint || { name: 'osvm rpc', url: 'opensvm', network: 'mainnet' },
     customRpcEndpoint: settings?.customRpcEndpoint || '',
   });
 
