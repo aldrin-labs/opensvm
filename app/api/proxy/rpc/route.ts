@@ -48,18 +48,25 @@ export async function POST(request: NextRequest) {
         const rawCookie = request.cookies.get('cluster')?.value;
         const clusterCookie = rawCookie ? safeDecode(rawCookie) : undefined;
 
-        const rpcUrl = resolveClusterToRpcUrl(clusterParam || clusterCookie);
+        let rpcUrl = resolveClusterToRpcUrl(clusterParam || clusterCookie);
+        // If override produced a relative URL, ignore it to avoid recursion
+        if (rpcUrl && !/^https?:\/\//i.test(rpcUrl)) {
+            rpcUrl = null;
+        }
+
         if (!rpcUrl) {
             const endpoints = getRpcEndpoints();
-            if (!endpoints || endpoints.length === 0) {
+            // Use only absolute HTTP(S) endpoints to avoid proxy recursion
+            const safeEndpoints = (endpoints || []).filter(u => /^https?:\/\//i.test(u));
+            if (!safeEndpoints || safeEndpoints.length === 0) {
                 return new Response(JSON.stringify({ error: 'No RPC endpoints configured' }), {
                     status: 500,
                     headers: defaultHeaders
                 });
             }
             // Pick a random endpoint for load balancing
-            const randomIndex = Math.floor(Math.random() * endpoints.length);
-            const fallbackUrl = endpoints[randomIndex];
+            const randomIndex = Math.floor(Math.random() * safeEndpoints.length);
+            const fallbackUrl = safeEndpoints[randomIndex] || 'https://api.mainnet-beta.solana.com';
             console.log(`Proxying RPC request to random endpoint ${fallbackUrl}`);
             const response = await fetch(fallbackUrl, {
                 method: 'POST',

@@ -1,14 +1,10 @@
 'use client';
 
-import { Connection } from '@solana/web3.js';
-import { createSolanaAgent } from '@/lib/ai/core/factory';
-import { useAIChat } from '@/lib/ai/hooks/useAIChat';
+import { createSolanaAgent } from '../../lib/ai/core/factory';
+import { useAIChat } from '../../lib/ai/hooks/useAIChat';
 import { ChatUI } from './ChatUI';
-
-// Initialize Solana connection
-const connection = new Connection(
-  process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com'
-);
+import { getClientConnection as getConnection } from '../../lib/solana-connection';
+import type { Message as UIMessage } from './types';
 
 interface AIChatProps {
   initialContext?: string;
@@ -25,7 +21,7 @@ export function AIChat({
   className = '',
   showTabs = false,
   activeTab,
-  agent = createSolanaAgent(connection)
+  agent = createSolanaAgent(getConnection())
 }: AIChatProps) {
   const {
     messages,
@@ -39,9 +35,16 @@ export function AIChat({
     initialMessage: initialContext
   });
 
+  // Adapt lib AI messages (which may include role 'agent') to UI message type
+  const uiMessages: UIMessage[] = messages.map((m: any) => ({
+    role: m.role === 'agent' ? 'assistant' : m.role,
+    content: m.content,
+    metadata: m.metadata
+  }));
+
   return (
     <ChatUI
-      messages={messages}
+      messages={uiMessages}
       input={input}
       isProcessing={isProcessing}
       onInputChange={setInput}

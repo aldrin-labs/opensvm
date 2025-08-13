@@ -210,6 +210,7 @@ export function ChatLayout({
           className={`fixed top-0 right-0 h-screen h-[-webkit-fill-available] h-[100dvh] bg-black z-[200] shadow-xl ${className} ${!isResizing.current && 'transition-all duration-300 ease-in-out'}`}
           role="complementary"
           aria-label="AI Chat Sidebar"
+          data-ai-sidebar
         >
           {/* Skip link for keyboard navigation */}
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
@@ -330,9 +331,11 @@ export function ChatLayout({
                         onClick={handleOpenSettings}
                         className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
                         role="menuitem"
+                        data-ai-token-panel
+                        title="Manage SVMAI Tokens"
                       >
                         <Settings size={16} />
-                        Settings
+                        💰 Tokens
                       </button>
                       <button
                         onClick={handleHelp}

@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { getConnection as getServerConnection } from '@/lib/solana-connection-server';
 import { sanitizeSearchQuery } from '@/lib/utils';
 
-const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com');
+const connection = getServerConnection();
 
 interface TransactionResult {
   address: string;
@@ -56,7 +57,7 @@ export async function GET(request: Request) {
             const postBalance = tx.meta.postBalances[0] ?? 0;
             const preBalance = tx.meta.preBalances[0] ?? 0;
             const amount = (postBalance - preBalance) / 1e9;
-            
+
             return {
               address: sanitizedQuery,
               signature: sig.signature,

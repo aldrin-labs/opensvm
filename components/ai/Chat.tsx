@@ -33,6 +33,7 @@ export interface ChatProps {
   onExpand?: () => void;
   onVoiceRecord?: () => void;
   isRecording?: boolean;
+  onCancel?: () => void;
 }
 
 export function Chat({
@@ -63,7 +64,8 @@ export function Chat({
   onHelp,
   onExpand,
   onVoiceRecord,
-  isRecording
+  isRecording,
+  onCancel
 }: ChatProps) {
   return (
     <ChatLayout
@@ -101,6 +103,7 @@ export function Chat({
         onVoiceRecord={onVoiceRecord}
         isRecording={isRecording}
         variant={variant}
+        onCancel={onCancel}
       />
     </ChatLayout>
   );

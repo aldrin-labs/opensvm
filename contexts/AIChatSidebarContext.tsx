@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useState, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useMemo, useState, ReactNode, useCallback, useEffect } from 'react';
 
 interface AIChatSidebarContextValue {
     isOpen: boolean;
@@ -12,14 +12,24 @@ interface AIChatSidebarContextValue {
     isResizing: boolean;
     onResizeStart: () => void;
     onResizeEnd: () => void;
-    openWithPrompt: (text: string) => void;
+    openWithPrompt: (text: string, opts?: { submit?: boolean }) => void;
     registerInputController: (controller: { setInput: (value: string) => void; focusInput: () => void; submit?: () => void; }) => void;
 }
 
 const AIChatSidebarContext = createContext<AIChatSidebarContextValue | null>(null);
 
 export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
-    const [isOpen, setIsOpen] = useState<boolean>(false);
+    // Initialize from URL so E2E can deterministically open on first paint (no flicker)
+    const [isOpen, setIsOpen] = useState<boolean>(() => {
+        if (typeof window === 'undefined') return false;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const shouldOpen = params.get('ai');
+            return shouldOpen === '1' || shouldOpen === 'true';
+        } catch {
+            return false;
+        }
+    });
     const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
         if (typeof window === 'undefined') return 400;
         const saved = window.localStorage.getItem('aiSidebarWidth');
@@ -39,18 +49,122 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
     const onResizeEnd = useCallback(() => setIsResizing(false), []);
 
     const inputControllerRef = React.useRef<{ setInput: (value: string) => void; focusInput: () => void; submit?: () => void; } | null>(null);
+    // If openWithPrompt is called before the input controller is registered, queue it
+    const pendingPromptRef = React.useRef<{ text: string; submit?: boolean } | null>(null);
 
     const registerInputController = useCallback((controller: { setInput: (value: string) => void; focusInput: () => void; submit?: () => void; }) => {
         inputControllerRef.current = controller;
+        // Flush any pending prompt queued before controller was ready
+        if (pendingPromptRef.current) {
+            const { text, submit } = pendingPromptRef.current;
+            pendingPromptRef.current = null;
+            try {
+                setIsOpen(true);
+                controller.setInput(text);
+                controller.focusInput();
+                if (submit) {
+                    if (typeof window !== 'undefined') {
+                        requestAnimationFrame(() => requestAnimationFrame(() => controller.submit?.()));
+                    } else {
+                        setTimeout(() => controller.submit?.(), 0);
+                    }
+                }
+            } catch { /* noop */ }
+        }
     }, []);
 
-    const openWithPrompt = useCallback((text: string) => {
+    const openWithPrompt = useCallback((text: string, opts?: { submit?: boolean }) => {
         setIsOpen(true);
-        setTimeout(() => {
-            inputControllerRef.current?.setInput(text);
-            inputControllerRef.current?.focusInput();
-        }, 0);
+        const controller = inputControllerRef.current;
+        if (!controller) {
+            // Queue until controller is registered
+            pendingPromptRef.current = { text, submit: opts?.submit };
+            return;
+        }
+        try {
+            controller.setInput(text);
+            controller.focusInput();
+            if (opts?.submit) {
+                // Allow controlled input state to propagate, then submit (double rAF)
+                if (typeof window !== 'undefined') {
+                    requestAnimationFrame(() => requestAnimationFrame(() => controller.submit?.()));
+                } else {
+                    setTimeout(() => controller.submit?.(), 0);
+                }
+            }
+        } catch { /* noop */ }
     }, []);
+
+    // Support URL params to auto-open sidebar for manual/e2e testing
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const params = new URLSearchParams(window.location.search);
+            const shouldOpen = params.get('ai');
+            if (shouldOpen === '1' || shouldOpen === 'true') {
+                const text = params.get('aitext');
+                const shouldSubmit = params.get('aisubmit');
+                if (text && text.trim().length > 0) {
+                    openWithPrompt(decodeURIComponent(text), { submit: shouldSubmit === '1' || shouldSubmit === 'true' });
+                } else {
+                    open();
+                }
+            }
+        } catch {
+            // ignore
+        }
+        // run once on mount
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    // Keyboard shortcut: Ctrl/Cmd+Shift+I toggles the AI sidebar
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        const handler = (e: KeyboardEvent) => {
+            const isMac = navigator.platform.toUpperCase().includes('MAC');
+            const cmdOrCtrl = isMac ? e.metaKey : e.ctrlKey;
+            if (cmdOrCtrl && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
+                e.preventDefault();
+                toggle();
+            }
+        };
+        window.addEventListener('keydown', handler);
+        return () => window.removeEventListener('keydown', handler);
+    }, [toggle]);
+
+    // Testing hook: expose minimal global API for opening the sidebar programmatically
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        (window as any).SVMAI = {
+            open: () => open(),
+            close: () => close(),
+            toggle: () => toggle(),
+            prompt: (text: string, submit?: boolean) => openWithPrompt(String(text ?? ''), { submit: !!submit }),
+            // Deterministic test helpers for width control
+            setWidth: (w: number) => {
+                try {
+                    const n = Number(w);
+                    if (!Number.isFinite(n)) return;
+                    const clamped = Math.min(1920, Math.max(300, n));
+                    // Open to ensure layout shift is applied
+                    open();
+                    // Update provider state so Navbar effect reacts
+                    setSidebarWidth(clamped);
+                    try { window.localStorage.setItem('aiSidebarWidth', String(clamped)); } catch { /* noop */ }
+                } catch { /* noop */ }
+            },
+            getWidth: () => {
+                try {
+                    const saved = window.localStorage.getItem('aiSidebarWidth');
+                    const parsed = saved ? parseInt(saved, 10) : NaN;
+                    return Number.isFinite(parsed) ? parsed : 400;
+                } catch { return 400; }
+            }
+        };
+        return () => {
+            try { delete (window as any).SVMAI; } catch { /* noop */ }
+        };
+    }, [open, close, toggle, openWithPrompt, setSidebarWidth]);
 
     const value = useMemo<AIChatSidebarContextValue>(
         () => ({

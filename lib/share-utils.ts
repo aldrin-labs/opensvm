@@ -3,7 +3,7 @@
  * Functions for generating share codes, validating shares, and managing share data
  */
 
-import { EntityType, ShareEntry } from '@/types/share';
+import { EntityType, ShareEntry } from '../types/share';
 
 // Use ShareEntry type for validation and type checking
 type ValidatedShareEntry = ShareEntry;

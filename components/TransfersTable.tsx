@@ -93,7 +93,13 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     const categories: TransactionCategory[] = ['all-txs'];
 
     // Account transfers - basic token/SOL transfers
-    if (transfer.type === 'transfer' || transfer.type === 'transferChecked') {
+    // Treat generic transfer types, as well as normalized IN/OUT from API, as account transfers
+    if (
+      transfer.type === 'transfer' ||
+      transfer.type === 'transferChecked' ||
+      transfer.type === 'in' ||
+      transfer.type === 'out'
+    ) {
       categories.push('account-transfers');
     }
 
@@ -360,25 +366,21 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     // Apply transaction category filtering first
     let filtered = transfers;
 
-    if (filterPreferences.transactionCategory !== 'all-txs') {
-      filtered = transfers.filter(transfer => {
+    // Determine effective category: explicit prop takes precedence over stored preference
+    const effectiveCategory: TransactionCategory | undefined = (transactionCategory ?? filterPreferences.transactionCategory) as TransactionCategory;
+    if (effectiveCategory && effectiveCategory !== 'all-txs') {
+      filtered = filtered.filter(transfer => {
         const categories = categorizeTransaction(transfer);
-        return categories.includes(filterPreferences.transactionCategory);
+        return categories.includes(effectiveCategory);
       });
     }
 
-    // Apply Solana-only filter if enabled
-    if (filterPreferences.solanaOnlyFilter) {
+    // Apply Solana-only filter if enabled, but only for Account Transfers category (matches UI)
+    if (filterPreferences.solanaOnlyFilter && effectiveCategory === 'account-transfers') {
       filtered = filtered.filter(transfer => isSolanaOnlyTransaction(transfer));
     }
 
-    // Filter by transaction category
-    if (transactionCategory && transactionCategory !== 'all-txs') {
-      filtered = filtered.filter(transfer => {
-        const categories = categorizeTransaction(transfer);
-        return categories.includes(transactionCategory);
-      });
-    }
+    // Note: do not re-filter by transactionCategory here; already applied via effectiveCategory above
 
     // Filter by search term
     if (searchTerm.trim()) {
@@ -442,7 +444,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     });
 
     return sorted;
-  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transactionCategory, filterPreferences, categorizeTransaction]);
+  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transactionCategory, filterPreferences.transactionCategory, filterPreferences.solanaOnlyFilter, filterPreferences.customProgramAddress, categorizeTransaction]);
 
   // Get unique values for filter dropdowns
   const uniqueTypes = useMemo(() => {

@@ -49,7 +49,8 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
       case 'transaction': {
         // Fetch real transaction data from Solana
         const connection = new (await import('@solana/web3.js')).Connection(
-          process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
+          // Edge runtime cannot read cookies directly here; default to mainnet
+          'https://api.mainnet-beta.solana.com'
         );
 
         const tx = await connection.getTransaction(entityId, {
@@ -73,9 +74,7 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
       case 'account': {
         // Fetch real account data from Solana
         const { Connection, PublicKey } = await import('@solana/web3.js');
-        const connection = new Connection(
-          process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
-        );
+        const connection = new Connection('https://api.mainnet-beta.solana.com');
 
         const pubkey = new PublicKey(entityId);
         const balance = await connection.getBalance(pubkey);
@@ -103,20 +102,13 @@ async function fetchEntityDataForOG(entityType: string, entityId: string): Promi
       }
 
       case 'user': {
-        // Fetch user profile from our database
-        const qdrantModule = await import('@/lib/qdrant');
-        const profile = await qdrantModule.getUserProfile(entityId);
-
-        if (!profile) {
-          throw new Error('User profile not found');
-        }
-
+        // Edge runtime: avoid server DB dependencies; provide minimal fallback
         return {
-          walletAddress: profile.walletAddress,
-          displayName: profile.displayName,
-          followers: profile.socialStats.followers,
-          pageViews: profile.socialStats.profileViews,
-          totalVisits: profile.stats?.totalVisits || 0
+          walletAddress: entityId,
+          displayName: entityId.slice(0, 4) + '…' + entityId.slice(-4),
+          followers: 0,
+          pageViews: 0,
+          totalVisits: 0
         };
       }
 

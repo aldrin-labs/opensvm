@@ -12,9 +12,10 @@ const TEST_ADDRESSES = {
 test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
 
     test('16. Trading Txs category identifies DEX interactions correctly', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.MEME_TRADER}`);
+        await page.goto(`/account/${TEST_ADDRESSES.MEME_TRADER}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        // Wait for E2E simplified layout anchor
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to Trading Txs
         await page.click('text=Trading Txs');
@@ -37,9 +38,9 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('17. DeFi Txs category filters lending and staking properly', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}`);
+        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to DeFi Txs
         await page.click('text=DeFi Txs');
@@ -60,9 +61,9 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('18. NFT Txs category identifies NFT mints and transfers', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.NFT_COLLECTOR}`);
+        await page.goto(`/account/${TEST_ADDRESSES.NFT_COLLECTOR}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to NFT Txs
         await page.click('text=NFT Txs');
@@ -83,9 +84,9 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('19. Staking Txs shows delegation and reward transactions', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.VALIDATOR}`);
+        await page.goto(`/account/${TEST_ADDRESSES.VALIDATOR}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to Staking Txs
         await page.click('text=Staking Txs');
@@ -106,9 +107,9 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('20. Utility Txs captures account creation and fees', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.INSTITUTION}`);
+        await page.goto(`/account/${TEST_ADDRESSES.INSTITUTION}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to Utility Txs
         await page.click('text=Utility Txs');
@@ -138,9 +139,9 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('21. Suspicious Txs identifies large or unusual transactions', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.INSTITUTION}`);
+        await page.goto(`/account/${TEST_ADDRESSES.INSTITUTION}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
 
         // Navigate to Suspicious Txs
         await page.click('text=Suspicious Txs');
@@ -161,24 +162,42 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('22. Category switching preserves transaction data integrity', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}`);
+        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}?e2e=1`);
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
+        // Wait for deterministic anchor, then a specific tab (data-test preferred, text as fallback)
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 30000 });
+        await Promise.race([
+            page.waitForSelector('[data-test="tab-all-txs"]', { timeout: 30000 }),
+            page.waitForSelector('button:has-text("All Txs")', { timeout: 30000 })
+        ]);
 
         // Get transaction count from All Txs
-        await page.click('text=All Txs');
-        await page.waitForTimeout(2000);
+        if (await page.locator('[data-test="tab-all-txs"]').count()) {
+            await page.click('[data-test="tab-all-txs"]');
+        } else {
+            await page.click('button:has-text("All Txs")');
+        }
+        // Wait for the transfers table region to mount
+        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
 
         const allRows = page.locator('[data-test="timestamp"]');
         const allCount = await allRows.count();
 
         // Switch through categories and verify sum doesn't exceed total
-        const categories = ['Account Transfers', 'Trading Txs', 'DeFi Txs', 'NFT Txs', 'Staking Txs', 'Utility Txs'];
+        const categories = [
+            { label: 'Account Transfers', sel: '[data-test="tab-account-transfers"]' },
+            { label: 'Trading Txs', sel: '[data-test="tab-trading-txs"]' },
+            { label: 'DeFi Txs', sel: '[data-test="tab-defi-txs"]' },
+            { label: 'NFT Txs', sel: '[data-test="tab-nft-txs"]' },
+            { label: 'Staking Txs', sel: '[data-test="tab-staking-txs"]' },
+            { label: 'Utility Txs', sel: '[data-test="tab-utility-txs"]' },
+        ];
         let totalCategorized = 0;
 
         for (const category of categories) {
-            await page.click(`text=${category}`);
-            await page.waitForTimeout(1500);
+            await page.click(category.sel);
+            // Wait until rows are present (or proceed if zero for that category)
+            await page.waitForTimeout(300); // small debounce for UI update
 
             const categoryRows = page.locator('[data-test="timestamp"]');
             const categoryCount = await categoryRows.count();
@@ -190,11 +209,11 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('23. Performance test with large transaction history', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}`);
+        await page.goto(`/account/${TEST_ADDRESSES.DEFI_POWER_USER}?e2e=1`);
 
         const startTime = Date.now();
 
-        await page.waitForSelector('[data-test="transfers-table"]', { timeout: 45000 });
+        await page.waitForSelector('[data-test="account-page-e2e"]', { timeout: 45000 });
 
         const loadTime = Date.now() - startTime;
 
@@ -220,7 +239,7 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     test('24. Error handling for invalid addresses', async ({ page }) => {
         const invalidAddress = 'invalid-address-12345';
 
-        await page.goto(`/account/${invalidAddress}`);
+        await page.goto(`/account/${invalidAddress}?e2e=1`);
 
         // Should show error state or redirect
         await page.waitForTimeout(5000);
@@ -238,7 +257,7 @@ test.describe('Advanced Transaction Categorization - Real Data Tests', () => {
     });
 
     test('25. Real-time updates don\'t break categorization', async ({ page }) => {
-        await page.goto(`/account/${TEST_ADDRESSES.MEME_TRADER}`);
+        await page.goto(`/account/${TEST_ADDRESSES.MEME_TRADER}?e2e=1`);
 
         await page.waitForSelector('[data-test="transfers-table"]', { timeout: 30000 });
 

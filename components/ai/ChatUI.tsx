@@ -27,6 +27,7 @@ interface ChatUIProps {
   isRecording?: boolean;
   variant?: 'inline' | 'sidebar' | 'dialog';
   enableVirtualization?: boolean;
+  onCancel?: () => void;
 }
 
 export function ChatUI({
@@ -43,17 +44,55 @@ export function ChatUI({
   onRetryAction,
   onVoiceRecord,
   isRecording,
-  variant = 'inline'
+  variant = 'inline',
+  onCancel
 }: ChatUIProps) {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { registerInputController } = useAIChatSidebar();
+  // We can also leverage the sidebar API for programmatic prompts
+  const { openWithPrompt } = useAIChatSidebar();
+
+  // Derive page context (tx signature or account address) from URL
+  const pageContext = (() => {
+    if (typeof window === 'undefined') return null as null | { kind: 'tx' | 'account', value: string };
+    try {
+      const path = window.location.pathname || '';
+      // Transaction: allow 50+ alphanumeric chars (base58-like)
+      const txMatch = path.match(/^\/tx\/([A-Za-z0-9]{50,})/);
+      if (txMatch?.[1]) return { kind: 'tx', value: txMatch[1] };
+      // Account/User: base58 pubkey 32-44 chars
+      const acctMatch = path.match(/^\/(account|user)\/([1-9A-HJ-NP-Za-km-z]{32,44})/);
+      if (acctMatch?.[2]) return { kind: 'account', value: acctMatch[2] };
+    } catch { /* ignore */ }
+    return null;
+  })();
 
   // State for new message tracking
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
+  const [showSlashHelp, setShowSlashHelp] = useState(false);
+  const [copyNotice, setCopyNotice] = useState(false);
+  // Input history and slash completion
+  const [inputHistory, setInputHistory] = useState<string[]>([]);
+  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
+  const [draftBeforeHistory, setDraftBeforeHistory] = useState<string>('');
+  const [slashIndex, setSlashIndex] = useState(0);
+
+  // Helper: compute current slash suggestions based on input
+  const getSlashContext = useCallback(() => {
+    const raw = inputRef.current?.value ?? input;
+    const trimmed = (raw || '').trim();
+    const afterSlash = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+    const firstToken = afterSlash.split(/\s+/)[0].toLowerCase();
+    const slashList = ['tps', 'tx', 'wallet', 'path', 'help'];
+    const suggestions = firstToken.length
+      ? slashList.filter(c => c.startsWith(firstToken))
+      : slashList;
+    return { raw, trimmed, afterSlash, firstToken, suggestions };
+  }, [input]);
 
   // Register controller so other parts can open with prompt and focus
   useEffect(() => {
@@ -61,7 +100,19 @@ export function ChatUI({
       setInput: onInputChange,
       focusInput: () => inputRef.current?.focus(),
       submit: () => {
-        // Consumers can call onSubmit directly; keep stub here for API completeness
+        try {
+          // Create a synthetic submit event and call onSubmit
+          const form = inputRef.current?.closest('form');
+          if (form) {
+            const event = new Event('submit', { bubbles: true, cancelable: true });
+            form.dispatchEvent(event);
+          } else {
+            // Fallback invoke
+            onSubmit({ preventDefault: () => { /* noop */ } } as unknown as React.FormEvent);
+          }
+        } catch (err) {
+          console.error('Programmatic submit failed:', err);
+        }
       }
     });
   }, [registerInputController, onInputChange]);
@@ -229,6 +280,7 @@ export function ChatUI({
                       className={`flex w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
                       role="article"
                       aria-label={`${message.role === 'user' ? 'Your message' : 'AI response'}`}
+                      data-ai-message-role={message.role === 'user' ? 'user' : 'assistant'}
                       tabIndex={0}
                     >
                       <div className={`px-4 py-2 rounded-lg max-w-[80%] text-[12px] ${message.role === 'user' ? 'bg-black text-white border border-white/20' : 'bg-black text-white border border-white/20'
@@ -271,6 +323,7 @@ export function ChatUI({
                       role="status"
                       aria-live="assertive"
                       className="flex justify-center"
+                      data-ai-processing-status
                     >
                       <div className="bg-black text-white border border-white/20 px-4 py-2 rounded-lg">
                         <span className="animate-pulse">Processing...</span>
@@ -284,6 +337,7 @@ export function ChatUI({
                       className="border border-white/20 rounded-lg p-4 space-y-2"
                       role="region"
                       aria-label="Agent actions"
+                      data-ai-actions-feed
                     >
                       <div className="text-[12px] text-white/50 flex items-center justify-between">
                         <span>Actions:</span>
@@ -320,6 +374,7 @@ export function ChatUI({
                               }`}
                             role="listitem"
                             aria-label={`Action: ${action.description}, Status: ${action.status}`}
+                            data-ai-action-item
                           >
                             <div
                               className={`w-2 h-2 rounded-full ${action.status === 'completed' ? 'bg-green-500' :
@@ -331,6 +386,18 @@ export function ChatUI({
                             />
                             <div className="flex-1 min-w-0">
                               <div className="text-white truncate">{action.description}</div>
+                              {action.status === 'in_progress' && (
+                                <div className="text-[11px] text-white/50 mt-0.5">
+                                  {typeof action.startTime === 'number' && (
+                                    <span>
+                                      {Math.max(0, Math.floor((Date.now() - action.startTime) / 1000))}s elapsed
+                                    </span>
+                                  )}
+                                  {typeof action.stepIndex === 'number' && typeof action.totalSteps === 'number' && (
+                                    <span className="ml-2">Step {action.stepIndex} of {action.totalSteps}</span>
+                                  )}
+                                </div>
+                              )}
                               {action.error && (
                                 <div
                                   className="text-red-500 text-[11px] mt-1 break-words"
@@ -396,13 +463,84 @@ export function ChatUI({
   }, [messages]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Esc cancels current processing
+    if (e.key === 'Escape' && isProcessing) {
+      e.preventDefault();
+      onCancel?.();
+      return;
+    }
+    // Slash completion navigation and Tab-complete
+    if (showSlashHelp) {
+      const raw = inputRef.current?.value ?? input;
+      const trimmed = (raw || '').trim();
+      const afterSlash = trimmed.startsWith('/') ? trimmed.slice(1) : trimmed;
+      const firstToken = afterSlash.split(/\s+/)[0].toLowerCase();
+      const slashList = ['tps', 'tx', 'wallet', 'path', 'help'];
+      const suggestions = firstToken.length
+        ? slashList.filter(c => c.startsWith(firstToken))
+        : slashList;
+
+      if (e.key === 'Tab' && !e.shiftKey && suggestions.length > 0) {
+        e.preventDefault();
+        const chosen = suggestions[Math.min(slashIndex, suggestions.length - 1)] || suggestions[0];
+        const rest = afterSlash.replace(/^\S+/, '').replace(/^\s*/, '');
+        const next = `/${chosen}${rest ? ' ' + rest : ' '}`;
+        onInputChange(next);
+        setSlashIndex(0);
+        requestAnimationFrame(() => {
+          const el = inputRef.current;
+          if (el) el.selectionStart = el.selectionEnd = el.value.length;
+        });
+        return;
+      }
+      if (e.key === 'Enter' && !e.shiftKey && suggestions.length > 0) {
+        // If current token is only a prefix, autocomplete instead of submitting
+        const chosen = suggestions[Math.min(slashIndex, suggestions.length - 1)] || suggestions[0];
+        if (firstToken !== chosen) {
+          e.preventDefault();
+          const rest = afterSlash.replace(/^\S+/, '').replace(/^\s*/, '');
+          const next = `/${chosen}${rest ? ' ' + rest : ' '}`;
+          onInputChange(next);
+          setSlashIndex(0);
+          requestAnimationFrame(() => {
+            const el = inputRef.current;
+            if (el) el.selectionStart = el.selectionEnd = el.value.length;
+          });
+          return;
+        }
+      }
+      if (e.key === 'Tab' && e.shiftKey && suggestions.length > 0) {
+        e.preventDefault();
+        setSlashIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowDown' && suggestions.length > 0) {
+        e.preventDefault();
+        setSlashIndex(prev => (prev + 1) % suggestions.length);
+        return;
+      }
+      if (e.key === 'ArrowUp' && suggestions.length > 0) {
+        e.preventDefault();
+        setSlashIndex(prev => (prev - 1 + suggestions.length) % suggestions.length);
+        return;
+      }
+    }
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
-      console.log('Enter pressed, submitting form');
-      try {
-        onSubmit(e as any);
-      } catch (error) {
-        console.error('Error in Enter key submission:', error);
+      if (!isProcessing) {
+        console.log('Enter pressed, submitting form');
+        try {
+          // Prefer dispatching a real submit event so form onSubmit handles history/resets
+          const form = inputRef.current?.closest('form');
+          if (form) {
+            const evt = new Event('submit', { bubbles: true, cancelable: true });
+            form.dispatchEvent(evt);
+          } else {
+            onSubmit(e as any);
+          }
+        } catch (error) {
+          console.error('Error in Enter key submission:', error);
+        }
       }
     }
 
@@ -414,6 +552,62 @@ export function ChatUI({
           e.preventDefault();
           onInputChange('');
           break;
+        case 'P':
+        case 'p': {
+          // Insert context-aware prompt when available
+          if (pageContext) {
+            e.preventDefault();
+            const prompt = pageContext.kind === 'tx'
+              ? `Explain this transaction: ${pageContext.value}`
+              : `Summarize this wallet: ${pageContext.value}`;
+            onInputChange(prompt);
+          }
+          break;
+        }
+      }
+    }
+
+    // History navigation when caret at boundaries and not in slash mode
+    if (!showSlashHelp && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey) {
+      const el = inputRef.current;
+      if (!el) return;
+      const atStart = el.selectionStart === 0 && el.selectionEnd === 0;
+      const atEnd = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
+
+      const allowAnywhere = e.ctrlKey || e.metaKey; // power users: Ctrl/Cmd+Arrow to navigate history from anywhere
+
+      if (e.key === 'ArrowUp' && (atStart || allowAnywhere)) {
+        if (inputHistory.length === 0) return;
+        e.preventDefault();
+        if (historyIndex === null) {
+          setDraftBeforeHistory(el.value);
+          const idx = inputHistory.length - 1;
+          setHistoryIndex(idx);
+          onInputChange(inputHistory[idx]);
+        } else if (historyIndex > 0) {
+          const idx = historyIndex - 1;
+          setHistoryIndex(idx);
+          onInputChange(inputHistory[idx]);
+        }
+        requestAnimationFrame(() => {
+          const node = inputRef.current;
+          if (node) node.selectionStart = node.selectionEnd = node.value.length;
+        });
+      } else if (e.key === 'ArrowDown' && (atEnd || allowAnywhere)) {
+        if (historyIndex === null) return;
+        e.preventDefault();
+        if (historyIndex < inputHistory.length - 1) {
+          const idx = historyIndex + 1;
+          setHistoryIndex(idx);
+          onInputChange(inputHistory[idx]);
+        } else {
+          setHistoryIndex(null);
+          onInputChange(draftBeforeHistory);
+        }
+        requestAnimationFrame(() => {
+          const node = inputRef.current;
+          if (node) node.selectionStart = node.selectionEnd = node.value.length;
+        });
       }
     }
   };
@@ -437,10 +631,87 @@ export function ChatUI({
           {renderContent()}
         </div>
 
+        {/* Quick actions for common prompts (sidebar/agent tab only) */}
+        {variant === 'sidebar' && activeTab === 'agent' && (
+          <div className="px-4 pt-3 pb-1 border-t border-white/10 bg-black/60 flex flex-wrap gap-2" role="toolbar" aria-label="Quick actions">
+            <button
+              type="button"
+              className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              onClick={() => openWithPrompt?.('What is the current Solana TPS?', { submit: true })}
+              data-ai-quick="tps"
+              title="Ask for current TPS"
+            >
+              TPS
+            </button>
+            <button
+              type="button"
+              className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              onClick={() => {
+                const prompt = pageContext?.kind === 'tx'
+                  ? `Explain this transaction: ${pageContext.value}`
+                  : 'Explain this transaction: <paste signature>';
+                openWithPrompt?.(prompt, { submit: pageContext?.kind === 'tx' });
+              }}
+              data-ai-quick="explain-tx"
+              title="Template to explain a transaction"
+            >
+              Explain Tx
+            </button>
+            <button
+              type="button"
+              className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              onClick={() => {
+                const prompt = pageContext?.kind === 'account'
+                  ? `Summarize this wallet: ${pageContext.value}`
+                  : 'Summarize this wallet: <paste address>';
+                openWithPrompt?.(prompt, { submit: pageContext?.kind === 'account' });
+              }}
+              data-ai-quick="wallet-summary"
+              title="Template to summarize a wallet"
+            >
+              Wallet Summary
+            </button>
+            {pageContext && (
+              <button
+                type="button"
+                className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                onClick={() => {
+                  const prompt = pageContext.kind === 'tx'
+                    ? `Explain this transaction: ${pageContext.value}`
+                    : `Summarize this wallet: ${pageContext.value}`;
+                  openWithPrompt?.(prompt, { submit: false });
+                }}
+                data-ai-quick="context"
+                title="Use current page context"
+              >
+                Use Page Context
+              </button>
+            )}
+          </div>
+        )}
+
+        {/* Processing status for screen readers and tests */}
+        {isProcessing && (
+          <div role="status" aria-live="polite" className="px-4 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10">
+            Processing…
+          </div>
+        )}
+
         {/* Input area with accessibility */}
         <form
           onSubmit={(e) => {
             e.preventDefault();
+            try {
+              const current = inputRef.current?.value ?? input;
+              const trimmed = (current || '').trim();
+              if (trimmed) {
+                setInputHistory(prev => (prev.length > 0 && prev[prev.length - 1] === trimmed) ? prev : [...prev, trimmed]);
+                setHistoryIndex(null);
+                setDraftBeforeHistory('');
+              }
+              setSlashIndex(0);
+              setShowSlashHelp(false);
+            } catch { /* noop */ }
             onSubmit(e);
           }}
           className={`chat-input-area p-4 border-t border-white/20 flex-shrink-0 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'
@@ -461,19 +732,66 @@ export function ChatUI({
                 console.log('Input changed:', value);
                 try {
                   onInputChange(value);
+                  const show = value.trim().startsWith('/');
+                  setShowSlashHelp(show);
+                  if (show) setSlashIndex(0);
+                  if (!show && historyIndex !== null) {
+                    setHistoryIndex(null);
+                    setDraftBeforeHistory('');
+                  }
                 } catch (error) {
                   console.error('Error in input change:', error);
                 }
               }}
               onKeyDown={handleKeyDown}
-              placeholder={isProcessing ? "Processing..." : activeTab === 'notes' ? "Add knowledge..." : "Ask a question..."}
+              placeholder={isProcessing ? "Processing..." : activeTab === 'notes' ? "Add knowledge..." : showSlashHelp ? "Try /tps, /tx <sig>, /wallet <address>, /path <a> <b>" : "Ask a question..."}
               disabled={isProcessing}
               aria-disabled={isProcessing}
+              aria-expanded={showSlashHelp}
+              aria-controls={showSlashHelp ? 'ai-slash-list' : undefined}
+              aria-activedescendant={(() => {
+                if (!showSlashHelp) return undefined;
+                const { suggestions } = getSlashContext();
+                const active = Math.min(slashIndex, Math.max(0, suggestions.length - 1));
+                return suggestions.length > 0 ? `ai-slash-option-${suggestions[active]}` : undefined;
+              })()}
               aria-describedby="input-help"
               className="w-full bg-black text-white text-[12px] px-4 py-3 pr-16 rounded-lg border border-white/20 focus:outline-none focus:border-white/40 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 placeholder-white/50 disabled:opacity-50 resize-none"
               data-ai-chat-input
               rows={1}
             />
+            {showSlashHelp && (() => {
+              const { afterSlash, suggestions } = getSlashContext();
+              const active = Math.min(slashIndex, suggestions.length - 1);
+              return (
+                <div id="ai-slash-list" className="mt-2 text-[11px] text-white/80" role="listbox" aria-label="Slash command suggestions" data-ai-slash-list>
+                  <div className="flex flex-wrap gap-1">
+                    {suggestions.map((s, i) => (
+                      <button
+                        key={s}
+                        type="button"
+                        role="option"
+                        aria-selected={i === active}
+                        id={`ai-slash-option-${s}`}
+                        className={`px-2 py-0.5 rounded-full border ${i === active ? 'border-white text-white' : 'border-white/20 text-white/80'} hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2`}
+                        data-ai-slash-option={s}
+                        onClick={() => {
+                          const rest = afterSlash.replace(/^\S+/, '').replace(/^\s*/, '');
+                          const nextValue = `/${s}${rest ? ' ' + rest : ' '}`;
+                          onInputChange(nextValue);
+                          setSlashIndex(0);
+                          requestAnimationFrame(() => inputRef.current?.focus());
+                        }}
+                        title={`/${s}`}
+                      >
+                        /{s}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="mt-1 text-white/50">Tab to autocomplete, Shift+Tab previous, ↑/↓ to select</div>
+                </div>
+              );
+            })()}
             <div id="input-help" className="sr-only">
               Press Enter to send, Shift+Enter for new line
             </div>
@@ -490,14 +808,59 @@ export function ChatUI({
               {isRecording ? <Loader className="animate-spin" size={20} /> : <Mic size={20} />}
             </button>
 
+            {/* Copy last assistant response for convenience */}
             <button
-              type="submit"
-              aria-label="Send message"
-              disabled={isProcessing || !input.trim()}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              type="button"
+              aria-label="Copy last response"
+              title="Copy last response"
+              onClick={() => {
+                try {
+                  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+                  if (lastAssistant?.content) navigator.clipboard?.writeText(lastAssistant.content);
+                  setCopyNotice(true);
+                  setTimeout(() => setCopyNotice(false), 1500);
+                } catch (err) {
+                  console.error('Copy failed:', err);
+                }
+              }}
+              disabled={!messages.some(m => m.role === 'assistant')}
+              className="absolute right-20 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
             >
-              <Send size={16} />
+              <span className="sr-only">Copy last response</span>
+              {/* Use Send icon rotated as a simple clipboard placeholder to avoid new deps */}
+              <Send size={18} className="rotate-[-90deg] opacity-80" />
             </button>
+
+            {copyNotice && (
+              <div
+                role="status"
+                aria-live="polite"
+                className="absolute right-24 top-0 -translate-y-full text-[11px] bg-white text-black px-2 py-1 rounded shadow"
+                data-ai-toast="copied"
+              >
+                Copied
+              </div>
+            )}
+
+            {isProcessing ? (
+              <button
+                type="button"
+                aria-label="Cancel processing"
+                onClick={() => onCancel?.()}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              >
+                <Loader className="animate-spin" size={16} />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                aria-label="Send message"
+                disabled={isProcessing || !input.trim()}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              >
+                <Send size={16} />
+              </button>
+            )}
           </div>
         </form>
       </div>

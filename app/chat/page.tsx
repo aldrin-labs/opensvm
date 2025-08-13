@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { Connection } from '@solana/web3.js';
 import { createSolanaAgent } from '@/lib/ai/core/factory';
 import { useAIChat } from '@/lib/ai/hooks/useAIChat';
 import dynamic from 'next/dynamic';
 import { RotateCcw, Plus, Settings } from 'lucide-react';
+import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import type { Message as UIMessage } from '@/components/ai/types';
 
 // Dynamic import for ChatUI to ensure client-side only
 const ChatUI = dynamic(() => import('@/components/ai/ChatUI').then(mod => ({ default: mod.ChatUI })), {
@@ -15,10 +16,8 @@ const ChatUI = dynamic(() => import('@/components/ai/ChatUI').then(mod => ({ def
   </div>
 });
 
-// Initialize Solana connection
-const connection = new Connection(
-  process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com'
-);
+// Initialize Solana connection using settings-aware client facade
+const connection = getConnection();
 
 export default function ChatPage() {
   const [activeTab, setActiveTab] = useState('agent');
@@ -36,6 +35,13 @@ export default function ChatPage() {
     agent,
     initialMessage: undefined
   });
+
+  // Adapt messages to UI type (map 'agent' -> 'assistant' role)
+  const uiMessages: UIMessage[] = (messages as any[]).map(m => ({
+    role: m.role === 'agent' ? 'assistant' : m.role,
+    content: m.content,
+    metadata: m.metadata
+  }));
 
   const handleReset = () => {
     resetChat();
@@ -101,7 +107,7 @@ export default function ChatPage() {
       {/* Chat content */}
       <div className="flex-1 min-h-0">
         <ChatUI
-          messages={messages}
+          messages={uiMessages}
           input={input}
           isProcessing={isProcessing}
           onInputChange={setInput}

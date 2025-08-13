@@ -24,6 +24,10 @@ export interface AgentAction {
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   description: string;
   error?: string;
+  startTime?: number;
+  stepIndex?: number;
+  totalSteps?: number;
+  retryCount?: number;
 }
 
 export interface AgentConfig {

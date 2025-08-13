@@ -1,9 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { getConnection as getServerConnection } from '@/lib/solana-connection-server';
 import { sanitizeSearchQuery } from '@/lib/utils';
 
-const connection = new Connection(process.env.NEXT_PUBLIC_RPC_URL || 'https://api.mainnet-beta.solana.com');
+const connection = getServerConnection();
 
 interface SearchResult {
   address: string;
@@ -45,7 +46,7 @@ export async function GET(request: Request) {
         const tx = await connection.getTransaction(sanitizedQuery, {
           maxSupportedTransactionVersion: 0,
         });
-        
+
         if (tx && tx.meta) {
           const timestamp = tx.blockTime ? new Date(tx.blockTime * 1000).toISOString() : null;
           results.push({
@@ -65,12 +66,12 @@ export async function GET(request: Request) {
     // Check if query is a valid Solana address
     try {
       const pubkey = new PublicKey(sanitizedQuery);
-      
+
       // Check account info
       const accountInfo = await connection.getAccountInfo(pubkey);
       if (accountInfo) {
         const balance = accountInfo.lamports / 1e9;
-        
+
         // Determine account type
         let accountType: 'account' | 'program' | 'token' = 'account';
         if (accountInfo.executable) {
@@ -100,7 +101,7 @@ export async function GET(request: Request) {
         if (accountType === 'account') {
           try {
             const signatures = await connection.getSignaturesForAddress(pubkey, { limit: 10 });
-            
+
             // Add recent transactions to results
             for (const sig of signatures.slice(0, 5)) {
               try {
@@ -113,7 +114,7 @@ export async function GET(request: Request) {
                   const postBalance = tx.meta.postBalances[0] ?? 0;
                   const preBalance = tx.meta.preBalances[0] ?? 0;
                   const amount = Math.abs((postBalance - preBalance) / 1e9);
-                  
+
                   const txResult: SearchResult = {
                     address: sanitizedQuery,
                     signature: sig.signature,

@@ -28,7 +28,7 @@ export default defineConfig({
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
     /* Base URL to use in actions like `await page.goto('/')`. */
-    baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://osvm.ai',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL || (process.env.CI ? 'https://osvm.ai' : 'http://localhost:3000'),
 
     /* Optimized trace collection for better performance */
     trace: 'retain-on-failure',

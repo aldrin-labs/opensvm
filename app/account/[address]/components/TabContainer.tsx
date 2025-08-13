@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useCallback, useEffect, useRef } from 'react';
+import { memo, useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import TokensTab from './TokensTab';
 import TransfersTab from './TransfersTab';
@@ -30,26 +30,33 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   const router = useRouter();
   const scrollPositions = useRef<Record<string, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
+  // Local state to ensure tab switches render immediately in client/e2e mode
+  const [selectedTab, setSelectedTab] = useState<string>(activeTab);
+
+  // Keep local state in sync if parent prop changes (e.g., on initial mount or external nav)
+  useEffect(() => {
+    setSelectedTab(activeTab);
+  }, [activeTab]);
 
   // Save scroll position when tab changes
   const saveScrollPosition = useCallback(() => {
     if (contentRef.current) {
       if (typeof window !== 'undefined') {
-        scrollPositions.current[activeTab] = window.scrollY;
+        scrollPositions.current[selectedTab] = window.scrollY;
       }
     }
-  }, [activeTab]);
+  }, [selectedTab]);
 
   // Restore scroll position for new tab
   const restoreScrollPosition = useCallback(() => {
-    const savedPosition = scrollPositions.current[activeTab] || 0;
+    const savedPosition = scrollPositions.current[selectedTab] || 0;
     if (typeof window !== 'undefined') {
       window.scrollTo({
         top: savedPosition,
         behavior: 'instant' // Prevent smooth scrolling during tab switch
       });
     }
-  }, [activeTab]);
+  }, [selectedTab]);
 
   // Save scroll position before tab change
   useEffect(() => {
@@ -60,20 +67,22 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   useEffect(() => {
     const timer = setTimeout(restoreScrollPosition, 50);
     return () => clearTimeout(timer);
-  }, [activeTab, restoreScrollPosition]);
+  }, [selectedTab, restoreScrollPosition]);
 
   const handleTabChange = useCallback((tabId: string) => {
     saveScrollPosition(); // Save current position before switching
+    setSelectedTab(tabId);
     router.push(`/account/${address}?tab=${tabId}`, { scroll: false }); // Prevent automatic scroll to top
   }, [address, router, saveScrollPosition]);
 
   const renderTabs = () => (
-    <div className="flex space-x-4 mb-4 border-b border-border">
+    <div className="flex space-x-4 mb-4 border-b border-border" data-test="account-tabs">
       {tabs.map(tab => (
         <button
           key={tab.id}
+          data-test={`tab-${tab.id}`}
           onClick={() => handleTabChange(tab.id)}
-          className={`px-4 py-2 -mb-px ${activeTab === tab.id
+          className={`px-4 py-2 -mb-px ${selectedTab === tab.id
             ? 'text-primary border-b-2 border-primary font-medium'
             : 'text-muted-foreground hover:text-foreground'
             }`}
@@ -85,7 +94,7 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   );
 
   const renderContent = () => {
-    switch (activeTab) {
+    switch (selectedTab) {
       case 'tokens':
         return <TokensTab solBalance={solBalance} tokenBalances={tokenBalances} />;
       case 'account-transfers':

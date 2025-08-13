@@ -14,8 +14,8 @@ import {
   calculateShareExpiration,
   generateAIPrompt,
   extractHashtags
-} from '@/lib/share-utils';
-import { storeShareEntry } from '@/lib/qdrant';
+} from '../../../../lib/share-utils';
+import { storeShareEntry } from '../../../../lib/qdrant';
 import {
   EntityType,
   ShareEntry,
@@ -28,14 +28,13 @@ import {
   BlockOGData,
   ValidatorOGData,
   TokenOGData
-} from '@/types/share';
+} from '../../../../types/share';
 import { cookies } from 'next/headers';
-import { Connection, PublicKey } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
+import { getConnection as getServerConnection } from '../../../../lib/solana-connection-server';
 
-// Initialize Solana connection
-const connection = new Connection(
-  process.env.NEXT_PUBLIC_RPC_ENDPOINT || 'https://api.mainnet-beta.solana.com'
-);
+// Initialize Solana connection via server-side pool
+const connection = getServerConnection();
 
 /**
  * Fetch entity data based on type
@@ -94,7 +93,7 @@ async function fetchEntityData(
       case 'user': {
         // Try to fetch user profile from our database, with fallback
         try {
-          const qdrantModule = await import('@/lib/qdrant');
+          const qdrantModule = await import('../../../../lib/qdrant');
           const profile = await qdrantModule.getUserProfile(entityId);
 
           if (profile) {
@@ -171,7 +170,7 @@ async function fetchEntityData(
         // Fetch token data
         try {
           // Here we fetch the basic token info from the blockchain
-          const tokenModule = await import('@/lib/solana');
+          const tokenModule = await import('../../../../lib/solana');
           const tokenInfo = await tokenModule.getTokenInfo(entityId);
 
           if (!tokenInfo) return null;

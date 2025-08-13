@@ -5,6 +5,7 @@ import { SOLANA_RPC_KNOWLEDGE, PUMPFUN_KNOWLEDGE } from '../core/knowledge';
 import { executeAction } from '../actions';
 import { UserHistoryService } from '@/lib/user-history';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { parseSlashCommand, slashHelpMessage } from '../utils/parseSlashCommand';
 
 interface UseAIChatTabsProps {
   agent: SolanaAgent;
@@ -99,6 +100,9 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
   const [isProcessing, setIsProcessing] = useState(false);
   const [agentActions, setAgentActions] = useState<AgentAction[]>([]);
   const [isRecording, setIsRecording] = useState(false);
+  // Cancellation support
+  const [cancelRequested, setCancelRequested] = useState(false);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
 
   // Save message to user history
   const saveToHistory = (message: Message, tabType: 'agent' | 'assistant' | 'notes') => {
@@ -129,6 +133,34 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
     e.preventDefault();
     if (!input.trim() || isProcessing) return;
 
+    // reset cancel flag for this run; create new AbortController
+    setCancelRequested(false);
+    try { abortController?.abort(); } catch { /* noop */ }
+    const ac = new AbortController();
+    setAbortController(ac);
+
+    // Slash command handling
+    const parsed = parseSlashCommand(input);
+    if (parsed) {
+      if (parsed.type === 'help') {
+        const helpMsg: Message = { role: 'assistant', content: slashHelpMessage() };
+        if (activeTab === 'agent') setAgentMessages(prev => [...prev, helpMsg]);
+        else if (activeTab === 'assistant') setAssistantMessages(prev => [...prev, helpMsg]);
+        setInput('');
+        return;
+      }
+      if (parsed.type === 'tps') {
+        setInput(parsed.prompt);
+      } else if (parsed.type === 'tx') {
+        setInput(parsed.prompt);
+      } else if (parsed.type === 'wallet') {
+        setInput(parsed.prompt);
+      } else if (parsed.type === 'path') {
+        setInput(parsed.prompt);
+      }
+      // continue to normal flow with transformed prompt
+    }
+
     const userMessage: Message = {
       role: 'user',
       content: input.trim()
@@ -148,11 +180,20 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
           content: `You are a Solana blockchain agent with access to RPC methods. Create a plan to handle this request: "${userMessage.content}" using available methods: ${Object.keys(SOLANA_RPC_KNOWLEDGE).join(', ')}. Format actions as [ACTION]type:description[/ACTION].`
         });
 
+        if (cancelRequested) {
+          setIsProcessing(false);
+          return;
+        }
+
         const actions = extractActionsFromResponse(planResponse.content);
 
         if (actions.length === 0) {
           // Try direct execution if no actions were generated
           const response = await agent.processMessage(userMessage);
+          if (cancelRequested) {
+            setIsProcessing(false);
+            return;
+          }
           setAgentMessages(prev => [...prev, response]);
           saveToHistory(response, 'agent');
           setIsProcessing(false);
@@ -170,9 +211,12 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
         // Execute each action in sequence
         const results = [];
         for (const action of actions) {
+          if (cancelRequested) {
+            break;
+          }
           try {
-            // Update current action to in_progress
-            setAgentActions(prev => [...prev, { ...action, status: 'in_progress' }]);
+            // Update current action to in_progress with startTime
+            setAgentActions(prev => [...prev, { ...action, status: 'in_progress', startTime: Date.now(), retryCount: (action.retryCount ?? 0) }]);
 
             // Special handling for wallet path finding
             if (action.type === 'wallet_path_finding') {
@@ -194,12 +238,14 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
                     maxDepth: 42
                   }, {
                     streamResponse: (text: string) => {
+                      if (cancelRequested) return;
                       setAgentMessages(prev => [...prev, {
                         role: 'assistant',
                         content: text
                       }]);
                     },
                     response: (text: string) => {
+                      if (cancelRequested) return;
                       setAgentMessages(prev => [...prev, {
                         role: 'assistant',
                         content: text
@@ -243,6 +289,10 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
               role: 'user',
               content: action.description
             });
+
+            if (cancelRequested) {
+              break;
+            }
 
             // Add result
             results.push({
@@ -317,6 +367,10 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
       saveToHistory(userMessage, 'assistant');
       try {
         const response = await agent.processMessage(userMessage);
+        if (cancelRequested) {
+          setIsProcessing(false);
+          return;
+        }
         setAssistantMessages(prev => [...prev, response]);
         saveToHistory(response, 'assistant');
       } catch (error) {
@@ -338,6 +392,13 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
       setNotes(prev => [...prev, newNote]);
     }
 
+    setIsProcessing(false);
+  };
+
+  // Cancel: trigger AbortController to abort in-flight network requests and clear UI processing state
+  const cancel = () => {
+    try { abortController?.abort(); } catch { /* noop */ }
+    setCancelRequested(true);
     setIsProcessing(false);
   };
 
@@ -574,6 +635,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
     retryAction,
     setAgentMessages,
     startRecording,
-    isRecording
+    isRecording,
+    cancel
   };
 }

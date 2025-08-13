@@ -46,6 +46,17 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     return () => clearInterval(timer);
   }, []);
 
+  // Auto-open AI sidebar when ?ai=1 is present (stabilize E2E and deep links)
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const ai = params.get('ai');
+      if (ai === '1' || ai === 'true') {
+        openAIChat();
+      }
+    } catch { /* noop */ }
+  }, [openAIChat]);
+
   // Close mobile menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {

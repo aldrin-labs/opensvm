@@ -20,8 +20,11 @@ DropdownMenuTrigger.displayName = DropdownMenuPrimitive.Trigger.displayName
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, ...props }, ref) => (
-  <DropdownMenuPrimitive.Portal>
+>(({ className, sideOffset = 4, ...props }, ref) => {
+  const w = typeof window !== 'undefined' ? (window as any) : undefined;
+  const force = w && w.__E2E_FORCE_DROPDOWN_MOUNT === true ? true : undefined;
+  const inline = w && w.__E2E_INLINE_DROPDOWN === true;
+  const content = (
     <DropdownMenuPrimitive.Content
       ref={ref}
       sideOffset={sideOffset}
@@ -30,10 +33,17 @@ const DropdownMenuContent = React.forwardRef<
         animate-in fade-in-0 zoom-in-95
         ${className}
       `}
+      role="menu"
+      forceMount={force}
       {...props}
     />
-  </DropdownMenuPrimitive.Portal>
-))
+  );
+  return inline ? content : (
+    <DropdownMenuPrimitive.Portal>
+      {content}
+    </DropdownMenuPrimitive.Portal>
+  );
+})
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName
 
 const DropdownMenuItem = React.forwardRef<
@@ -102,7 +112,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
     {children}
     <span className="ml-auto h-4 w-4">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        <path d="m9 18 6-6-6-6"/>
+        <path d="m9 18 6-6-6-6" />
       </svg>
     </span>
   </DropdownMenuPrimitive.SubTrigger>
@@ -112,17 +122,24 @@ DropdownMenuSubTrigger.displayName = DropdownMenuPrimitive.SubTrigger.displayNam
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.SubContent>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.SubContent>
->(({ className, ...props }, ref) => (
-  <DropdownMenuPrimitive.SubContent
-    ref={ref}
-    className={`
-      z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-background p-1 shadow-md
-      animate-in fade-in-0 zoom-in-95 transition-all duration-200
-      ${className}
-    `}
-    {...props}
-  />
-))
+>(({ className, ...props }, ref) => {
+  const w = typeof window !== 'undefined' ? (window as any) : undefined;
+  const force = w && w.__E2E_FORCE_DROPDOWN_MOUNT === true ? true : undefined;
+  const inline = w && w.__E2E_INLINE_DROPDOWN === true;
+  const content = (
+    <DropdownMenuPrimitive.SubContent
+      ref={ref}
+      className={`
+        z-50 min-w-[8rem] overflow-hidden rounded-md border border-border bg-background p-1 shadow-md
+        animate-in fade-in-0 zoom-in-95 transition-all duration-200
+        ${className}
+      `}
+      forceMount={force}
+      {...props}
+    />
+  );
+  return inline ? content : content;
+})
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName
 
 const DropdownMenuPortal = DropdownMenuPrimitive.Portal

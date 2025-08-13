@@ -415,13 +415,16 @@ export function VTableWrapper({
                     // Handle Next.js Link components
                     if (rendered.type?.displayName === 'Link' || rendered.type === 'a') {
                       const { href, children: content } = rendered.props;
+                      const dataTest = rendered.props?.['data-test']
+                        ? ` data-test="${String(rendered.props['data-test'])}"`
+                        : '';
 
                       // Extract the text to display in the cell
                       const text = typeof content === 'string' ? content :
                         (content && typeof content === 'object' && 'props' in content) ? content.props.children : cellValue ?? '';
 
                       return {
-                        html: `<a href="javascript:void(0)" data-href="${href || '#'}" class="text-blue-500 hover:text-blue-600 hover:underline">${text}</a>`,
+                        html: `<a href="javascript:void(0)" data-href="${href || '#'}" class="text-blue-500 hover:text-blue-600 hover:underline"${dataTest}>${text}</a>`,
                         action: () => handleNavigation(href)
                       };
                     }
@@ -429,6 +432,9 @@ export function VTableWrapper({
                     // Handle divs with content (commonly used for cell formatting)
                     if (rendered.type === 'div') {
                       const className = rendered.props.className || '';
+                      const dataTest = rendered.props?.['data-test']
+                        ? ` data-test="${String(rendered.props['data-test'])}"`
+                        : '';
                       let divContent = rendered.props.children;
 
                       // Handle different types of children content
@@ -452,15 +458,18 @@ export function VTableWrapper({
                       }
 
                       return {
-                        html: `<div class="${className}">${textContent}</div>`
+                        html: `<div class="${className}"${dataTest}>${textContent}</div>`
                       };
                     }
 
                     // Handle span elements
                     if (rendered.type === 'span') {
                       const className = rendered.props.className || '';
+                      const dataTest = rendered.props?.['data-test']
+                        ? ` data-test="${String(rendered.props['data-test'])}"`
+                        : '';
                       return {
-                        html: `<span class="${className}">${rendered.props.children}</span>`
+                        html: `<span class="${className}"${dataTest}>${rendered.props.children}</span>`
                       };
                     }
 
