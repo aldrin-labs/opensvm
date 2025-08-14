@@ -47,7 +47,6 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     cancel
   } = useAIChatTabs({ agent });
 
-  const [width, setWidth] = useState(initialWidth);
   const [shareNotice, setShareNotice] = useState(false);
   const [tokenPanelOpen, setTokenPanelOpen] = useState(false);
   const isResizing = useRef(false);
@@ -55,14 +54,12 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isResizing.current) return;
-
     const deltaX = lastX.current - e.clientX;
     lastX.current = e.clientX;
-
-    const newWidth = Math.min(800, Math.max(300, width + deltaX));
-    setWidth(newWidth);
-    onWidthChange?.(newWidth);
-  }, [width, onWidthChange]);
+    const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const next = Math.min(viewport, Math.max(300, (initialWidth ?? 480) + deltaX));
+    onWidthChange?.(next);
+  }, [onWidthChange, initialWidth]);
 
   const handleMouseUp = useCallback(() => {
     if (isResizing.current && typeof document !== 'undefined') {
@@ -83,13 +80,12 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [width, handleMouseMove, handleMouseUp]);
+  }, [handleMouseMove, handleMouseUp]);
 
   // Intercept width changes to persist in context/localStorage
   const handleWidthChangeWrapper = useCallback((newWidth: number) => {
     try { setSidebarWidth(newWidth); } catch { }
     onWidthChange?.(newWidth);
-    setWidth(newWidth);
   }, [onWidthChange, setSidebarWidth]);
 
   // Share current chat context by copying a URL that opens sidebar with current input or last prompt

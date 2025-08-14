@@ -92,8 +92,10 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     if (!contentElement) return;
 
     if (isAIChatOpen) {
-      contentElement.style.width = `calc(100% - ${sidebarWidth}px)`;
-      contentElement.style.marginRight = `${sidebarWidth}px`;
+      const viewport = window.innerWidth || 1920;
+      const w = Math.min(Math.max(0, sidebarWidth), viewport);
+      contentElement.style.width = `calc(100% - ${w}px)`;
+      contentElement.style.marginRight = `${w}px`;
     } else {
       contentElement.style.width = '100%';
       contentElement.style.marginRight = '0px';

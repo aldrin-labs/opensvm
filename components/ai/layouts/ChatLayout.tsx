@@ -50,13 +50,15 @@ export function ChatLayout({
   onExpand,
 }: ChatLayoutProps) {
   const [width, setWidth] = useState(() => {
-    if (typeof window === 'undefined') return initialWidth ?? 480;
-    const base = typeof initialWidth === 'number' ? initialWidth : (window.innerWidth < 640 ? window.innerWidth : 480);
-    return Math.min(800, Math.max(300, base));
+    const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const base = typeof initialWidth === 'number' ? initialWidth : (viewport < 640 ? viewport : 480);
+    return Math.min(viewport, Math.max(300, base));
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
+  // Remember last non-expanded width so collapse returns to previous size
+  const lastCollapsedWidthRef = useRef<number>(480);
   const sidebarRef = useRef<HTMLDivElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const isResizing = useRef(false);
@@ -71,12 +73,13 @@ export function ChatLayout({
     requestAnimationFrame(() => {
       const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
       const maxWidth = Math.max(320, viewportWidth); // allow up to full viewport width
-      const baseWidth = (sidebarRef.current?.offsetWidth || 0) + deltaX;
+      // Use current logical width as base to avoid layout reads while dragging
+      const baseWidth = width + deltaX;
       const newWidth = Math.min(maxWidth, Math.max(300, baseWidth));
       setWidth(newWidth);
       onWidthChange?.(newWidth);
     });
-  }, [onWidthChange]);
+  }, [onWidthChange, width]);
 
   const handleMouseUp = useCallback(() => {
     if (isResizing.current && typeof document !== 'undefined') {
@@ -91,12 +94,18 @@ export function ChatLayout({
     if (typeof document === 'undefined') return;
 
     e.preventDefault();
+    // If currently expanded, switch to resizable mode and remember viewport width
+    if (isExpanded) {
+      const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+      setIsExpanded(false);
+      setWidth(viewportWidth);
+    }
     isResizing.current = true;
     lastX.current = e.clientX;
     document.body.style.cursor = 'ew-resize';
     document.body.classList.add('select-none');
     onResizeStart?.();
-  }, [onResizeStart]);
+  }, [onResizeStart, isExpanded]);
 
   // Close menu when clicking outside
   useEffect(() => {
@@ -127,9 +136,10 @@ export function ChatLayout({
   // Sync width when initialWidth changes (and broadcast to listeners)
   useEffect(() => {
     if (typeof initialWidth !== 'number') return;
-    const clamped = Math.min(800, Math.max(300, initialWidth));
-    setWidth(clamped);
-    onWidthChange?.(clamped);
+    const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    const clamped = Math.min(viewport, Math.max(300, initialWidth));
+    setWidth(prev => (prev !== clamped ? clamped : prev));
+    // Do not echo back via onWidthChange here to avoid feedback loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWidth]);
 
@@ -171,7 +181,18 @@ export function ChatLayout({
 
   const handleExpand = () => {
     setIsMenuOpen(false);
-    setIsExpanded(!isExpanded);
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
+    if (!isExpanded) {
+      // Save current width before expanding to full
+      lastCollapsedWidthRef.current = width;
+      setWidth(viewportWidth);
+      setIsExpanded(true);
+    } else {
+      // Restore previous collapsed width
+      const restored = Math.min(viewportWidth, Math.max(300, lastCollapsedWidthRef.current || 480));
+      setWidth(restored);
+      setIsExpanded(false);
+    }
     onExpand?.();
   };
 
@@ -202,7 +223,7 @@ export function ChatLayout({
         <div
           ref={sidebarRef}
           style={{
-            width: isExpanded ? '100%' : `${width}px`,
+            width: `${width}px`,
             minWidth: '320px',
             boxSizing: 'border-box',
             transform: `translateX(${isOpen ? '0' : '100%'})`
@@ -218,16 +239,18 @@ export function ChatLayout({
           </a>
 
           <div
-            className={`absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-white/10 active:bg-white/20 ${isExpanded ? 'hidden' : ''}`}
+            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center"
             onMouseDown={handleMouseDown}
             role="separator"
             aria-orientation="vertical"
             aria-label="Resize sidebar"
-          />
+          >
+            <div className="w-px h-10 bg-white/50 rounded" aria-hidden="true" />
+          </div>
           {/* Main content container with proper flex layout */}
           <div className="h-full w-full flex flex-col" style={{ boxSizing: 'border-box' }}>
             {/* Header with tabs and buttons */}
-            <div className="flex h-[40px] border-b border-white/20 flex-shrink-0 relative" role="navigation">
+            <div className="flex h-[40px] border-b border-white/20 flex-shrink-0 relative z-[201]" role="navigation">
               <div className="flex items-center" role="tablist">
                 <button
                   onClick={() => onTabChange?.('agent')}
