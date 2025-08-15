@@ -223,12 +223,19 @@ export function ChatLayout({
         <div
           ref={sidebarRef}
           style={{
-            width: `${width}px`,
-            minWidth: '320px',
+            position: 'fixed',
+            top: '0px',
+            left: isExpanded ? '0px' : undefined,
+            right: '0px',
+            bottom: '0px',
+            width: isExpanded ? '100vw' : `${width}px`,
+            height: '100vh',
+            minWidth: 'min(560px, 100vw)',
             boxSizing: 'border-box',
-            transform: `translateX(${isOpen ? '0' : '100%'})`
+            transform: `translateX(${isOpen ? '0' : '100%'})`,
+            zIndex: 99999
           }}
-          className={`fixed top-0 right-0 h-screen h-[-webkit-fill-available] h-[100dvh] bg-black z-[200] shadow-xl ${className} ${!isResizing.current && 'transition-all duration-300 ease-in-out'}`}
+          className={`bg-black shadow-xl ${className} ${!isResizing.current && 'transition-all duration-300 ease-in-out'}`}
           role="complementary"
           aria-label="AI Chat Sidebar"
           data-ai-sidebar
@@ -239,7 +246,7 @@ export function ChatLayout({
           </a>
 
           <div
-            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center"
+            className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize bg-white/10 hover:bg-white/20 active:bg-white/30 flex items-center justify-center z-[500] pointer-events-auto"
             onMouseDown={handleMouseDown}
             role="separator"
             aria-orientation="vertical"
@@ -247,8 +254,8 @@ export function ChatLayout({
           >
             <div className="w-px h-10 bg-white/50 rounded" aria-hidden="true" />
           </div>
-          {/* Main content container with proper flex layout */}
-          <div className="h-full w-full flex flex-col" style={{ boxSizing: 'border-box' }}>
+          {/* Main content container with proper flex layout; left padding to avoid overlapping the absolute handle */}
+          <div className="h-full w-full flex flex-col pl-3" style={{ boxSizing: 'border-box' }}>
             {/* Header with tabs and buttons */}
             <div className="flex h-[40px] border-b border-white/20 flex-shrink-0 relative z-[201]" role="navigation">
               <div className="flex items-center" role="tablist">

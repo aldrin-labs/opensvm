@@ -28,7 +28,7 @@ async function globalSetup(config: FullConfig) {
   const isLocal = (url: string) => /localhost|127\.0\.0\.1/.test(url);
 
   // Wait for server to be ready with retries; auto-fallback from local to production if needed
-  let retries = 10;
+  let retries = 15;
   let serverReady = false;
   let attemptedFallback = false;
   let fallbackIndex = 0;
@@ -40,7 +40,7 @@ async function globalSetup(config: FullConfig) {
   while (retries > 0 && !serverReady) {
     try {
       console.log(`Checking server readiness... (${retries} retries left)`);
-      const response = await page.goto(baseURL, { timeout: 10000, waitUntil: 'domcontentloaded' });
+      const response = await page.goto(baseURL, { timeout: 20000, waitUntil: 'domcontentloaded' });
 
       // Consider any successful navigation (even 404 pages) as server ready.
       // Next.js often serves 404 at '/', but the server is up.
@@ -97,13 +97,13 @@ async function globalSetup(config: FullConfig) {
   // Pre-load critical resources to improve test performance
   try {
     console.log('🔄 Pre-loading critical resources...');
-    await page.goto(`${baseURL}/account/DtdSSG8ZJRZVv5Jx7K1MeWp7Zxcu19GD5wQRGRpQ9uMF`, {
-      timeout: 30000,
+    await page.goto(`${baseURL}/?ai=1`, {
+      timeout: 20000,
       waitUntil: 'domcontentloaded'
     });
     console.log('✅ Critical resources pre-loaded');
   } catch (error) {
-    console.warn('⚠️ Pre-loading failed, but continuing with tests:', error.message);
+    console.warn('⚠️ Pre-loading failed, but continuing with tests:', (error as any)?.message);
   }
 
   await context.close();

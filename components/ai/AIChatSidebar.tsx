@@ -23,7 +23,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   onWidthChange,
   onResizeStart,
   onResizeEnd,
-  initialWidth = 480
+  initialWidth = 560
 }: AIChatSidebarProps) => {
   // Use the client-side connection that respects user settings/proxy
   const [agent] = useState(() => createSolanaAgent(getConnection()));
@@ -57,7 +57,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     const deltaX = lastX.current - e.clientX;
     lastX.current = e.clientX;
     const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const next = Math.min(viewport, Math.max(300, (initialWidth ?? 480) + deltaX));
+    const next = Math.min(viewport, Math.max(560, (initialWidth ?? 560) + deltaX));
     onWidthChange?.(next);
   }, [onWidthChange, initialWidth]);
 

@@ -52,11 +52,22 @@ This pull request enhances the multi-SVM search UX with smooth animations, AI en
 
 ## Testing
 
-All components have been tested during development to ensure proper functionality:
-- Verified AI responses with various blockchain data types
-- Tested search functionality across all platforms
-- Confirmed animations and transitions work smoothly
-- Validated data visualizations with different data sets
+Please follow the repo's Verification Rules (.github/VERIFICATION_RULES.md):
+
+### Requirements coverage
+- [ ] List each requirement and how it’s verified (test/assertion/screenshot/log)
+- [ ] Link screenshots under `screenshots/<feature>/`
+
+### Quality gates (must include status)
+- Build: PASS/FAIL
+- Typecheck: PASS/FAIL
+- Lint: PASS/FAIL
+- Unit tests: PASS/FAIL (notes)
+- E2E tests: PASS/FAIL (notes)
+
+### Evidence
+- [ ] Attach or link `test-results/` artifacts for any failures/flakes
+- [ ] Summarize any flaky retries and mitigation
 
 ## Documentation
 

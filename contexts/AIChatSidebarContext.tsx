@@ -31,11 +31,17 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
         }
     });
     const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-        if (typeof window === 'undefined') return 400;
+        // Default to a wider layout so header controls are visible on first open
+        if (typeof window === 'undefined') return 560;
         const saved = window.localStorage.getItem('aiSidebarWidth');
         const parsed = saved ? parseInt(saved, 10) : NaN;
-        const initial = Number.isFinite(parsed) ? parsed : 400;
-        return Math.min(1920, Math.max(300, initial));
+        let initial = Number.isFinite(parsed) ? parsed : 560;
+        // Migration: auto-bump previously saved narrow widths to ensure visibility of header controls
+        if (Number.isFinite(parsed) && parsed! < 520) {
+            initial = 560;
+            try { window.localStorage.setItem('aiSidebarWidth', String(initial)); } catch { /* noop */ }
+        }
+        return Math.min(1920, Math.max(560, initial));
     });
     const [isResizing, setIsResizing] = useState<boolean>(false);
 
@@ -145,7 +151,7 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
                 try {
                     const n = Number(w);
                     if (!Number.isFinite(n)) return;
-                    const clamped = Math.min(1920, Math.max(300, n));
+                    const clamped = Math.min(1920, Math.max(560, n));
                     // Open to ensure layout shift is applied
                     open();
                     // Update provider state so Navbar effect reacts
@@ -174,7 +180,7 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
             toggle,
             sidebarWidth,
             setSidebarWidth: (width: number) => {
-                const clamped = Math.min(1920, Math.max(300, width));
+                const clamped = Math.min(1920, Math.max(560, width));
                 setSidebarWidth(clamped);
                 try {
                     if (typeof window !== 'undefined') {
