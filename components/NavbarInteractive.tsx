@@ -93,7 +93,8 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
 
     if (isAIChatOpen) {
       const viewport = window.innerWidth || 1920;
-      const w = Math.min(Math.max(0, sidebarWidth), viewport);
+      // If width is within 100px of viewport treat as expanded full width for layout shift
+      const w = sidebarWidth >= viewport - 100 ? viewport : Math.min(Math.max(0, sidebarWidth), viewport);
       contentElement.style.width = `calc(100% - ${w}px)`;
       contentElement.style.marginRight = `${w}px`;
     } else {

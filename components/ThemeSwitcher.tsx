@@ -1,13 +1,13 @@
 'use client';
 
-import { useTheme } from '@/lib/design-system/theme-provider';
-import { Button } from '@/components/ui/button';
+import { useTheme } from '../lib/design-system/theme-provider';
+import { Button } from './ui/button';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+} from './ui/dropdown-menu';
 
 const icons = {
   default: (

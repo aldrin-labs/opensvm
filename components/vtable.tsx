@@ -4,8 +4,7 @@ import * as VTable from '@visactor/vtable';
 import { useRouter } from 'next/navigation';
 // import { TableContainer, TableHead, TableRow, TableCell, TableBody } from './TableComponents';
 // import { TableHeaderText, TableCellText } from './TableComponents';
-import { useTheme } from '@/lib/design-system/theme-provider';
-
+import { useTheme } from '../lib/design-system/theme-provider';
 
 // Utility function to convert HSL to hex color
 function hslToHex(hsl: string): string {
@@ -886,7 +885,7 @@ export function VTableWrapper({
   return (
     <div className={`vtable-container vtable-full-width relative ${loading ? 'vtable-loading' : ''}`} style={{ width: '100%', height: '100%', backgroundColor: bgColorHex }} key={`vtable-${theme}`}>
       {/* Inject style tag to force background colors */}
-      <style jsx>{`
+      <style>{`
         .vtable-container canvas {
           background: ${bgColorHex} !important;
           background-color: ${bgColorHex} !important;

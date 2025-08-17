@@ -82,10 +82,12 @@ export default function BinaryVisualizer({
   }, [data, selectedInstruction, onInstructionSelect]);
 
   return (
-    <canvas 
+    <canvas
       ref={canvasRef}
       style={{ width: '100%', height: '100%' }}
       className="rounded-lg"
+      role="img"
+      aria-label="Binary instruction heatmap"
     />
   );
 }

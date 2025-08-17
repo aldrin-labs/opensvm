@@ -30,7 +30,7 @@ export function TokenManagementPanel({ isOpen, onClose }: { isOpen: boolean; onC
     };
 
     return (
-        <div className={`fixed inset-0 z-[500] ${isOpen ? '' : 'pointer-events-none opacity-0'} transition-opacity`} aria-hidden={!isOpen}>
+        <div className={`fixed inset-0 z-[500] ${isOpen ? '' : 'pointer-events-none opacity-0'} transition-opacity`}>
             <div className="absolute inset-0 bg-black/70" onClick={onClose} />
             <div className="absolute right-4 top-4 w-[360px] bg-black border border-white/20 rounded-lg shadow-lg p-4 text-white">
                 <div className="flex items-center justify-between mb-2">

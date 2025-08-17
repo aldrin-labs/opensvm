@@ -147,6 +147,8 @@ export function NetworkTPSChart({ data }: NetworkTPSChartProps) {
         height={300}
         className="w-full h-full"
         style={{ maxHeight: 'calc(100% - 2rem)' }}
+        role="img"
+        aria-label={`Network Performance Chart showing TPS and Block Time data for ${data.length} data points`}
       />
     </div>
   );

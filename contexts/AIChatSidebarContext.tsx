@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useMemo, useState, ReactNode, useCallback, useEffect } from 'react';
+import { track, startTimer } from '@/lib/ai/telemetry';
 
 interface AIChatSidebarContextValue {
     isOpen: boolean;
@@ -45,8 +46,8 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
     });
     const [isResizing, setIsResizing] = useState<boolean>(false);
 
-    const open = useCallback(() => setIsOpen(true), []);
-    const close = useCallback(() => setIsOpen(false), []);
+    const open = useCallback(() => { setIsOpen(true); try { track('sidebar_open'); startTimer('sidebar_open_fmp'); } catch { } }, []);
+    const close = useCallback(() => { setIsOpen(false); try { track('sidebar_close'); } catch { } }, []);
     const toggle = useCallback((next?: boolean) => {
         setIsOpen((prev) => (typeof next === 'boolean' ? next : !prev));
     }, []);
@@ -70,7 +71,14 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
                 controller.focusInput();
                 if (submit) {
                     if (typeof window !== 'undefined') {
-                        requestAnimationFrame(() => requestAnimationFrame(() => controller.submit?.()));
+                        // More conservative scheduling to ensure tab state reflects new input before submit
+                        requestAnimationFrame(() =>
+                            requestAnimationFrame(() =>
+                                requestAnimationFrame(() => {
+                                    Promise.resolve().then(() => setTimeout(() => controller.submit?.(), 0));
+                                })
+                            )
+                        );
                     } else {
                         setTimeout(() => controller.submit?.(), 0);
                     }
@@ -91,9 +99,18 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
             controller.setInput(text);
             controller.focusInput();
             if (opts?.submit) {
-                // Allow controlled input state to propagate, then submit (double rAF)
                 if (typeof window !== 'undefined') {
-                    requestAnimationFrame(() => requestAnimationFrame(() => controller.submit?.()));
+                    // Some concurrent render timing caused the tab input state not to be ready by the prior double rAF approach.
+                    // Use a more conservative staged scheduler (triple rAF + microtask + timeout) to greatly reduce race risk.
+                    requestAnimationFrame(() =>
+                        requestAnimationFrame(() =>
+                            requestAnimationFrame(() => {
+                                Promise.resolve().then(() => {
+                                    setTimeout(() => controller.submit?.(), 0);
+                                });
+                            })
+                        )
+                    );
                 } else {
                     setTimeout(() => controller.submit?.(), 0);
                 }
@@ -108,10 +125,17 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
             const params = new URLSearchParams(window.location.search);
             const shouldOpen = params.get('ai');
             if (shouldOpen === '1' || shouldOpen === 'true') {
-                const text = params.get('aitext');
-                const shouldSubmit = params.get('aisubmit');
+                const raw = params.get('aitext');
+                const text = raw ? decodeURIComponent(raw) : '';
+                const submitParam = params.get('aisubmit');
+                // If aitext provided, auto-submit by default unless aisubmit explicitly disables it (0/false)
+                const shouldAutoSubmit = (() => {
+                    if (!text.trim()) return false;
+                    if (!submitParam) return true; // default ON
+                    return submitParam === '1' || submitParam === 'true';
+                })();
                 if (text && text.trim().length > 0) {
-                    openWithPrompt(decodeURIComponent(text), { submit: shouldSubmit === '1' || shouldSubmit === 'true' });
+                    openWithPrompt(text, { submit: shouldAutoSubmit });
                 } else {
                     open();
                 }
@@ -187,6 +211,7 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
                         window.localStorage.setItem('aiSidebarWidth', String(clamped));
                     }
                 } catch { }
+                try { track('width_change', { width: clamped }); } catch { }
             },
             isResizing,
             onResizeStart,

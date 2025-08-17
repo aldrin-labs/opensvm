@@ -1,6 +1,7 @@
 'use client';
 
 import type { Message, Note, AgentAction } from './types';
+import type { ChatTab, ChatMode } from './hooks/useChatTabs';
 import { ChatUI } from './ChatUI';
 import { ChatLayout } from './layouts/ChatLayout';
 
@@ -13,19 +14,32 @@ export interface ChatProps {
   onResizeStart?: () => void;
   onResizeEnd?: () => void;
   initialWidth?: number;
+  // New tab system props
+  tabs?: ChatTab[];
+  activeTabId?: string | null;
+  onTabClick?: (tabId: string) => void;
+  onTabClose?: (tabId: string) => void;
+  onNewTab?: () => void;
+  onTabRename?: (tabId: string, name: string) => void;
+  // Chat content props
+  messages?: Message[];
+  input?: string;
+  isProcessing?: boolean;
+  mode?: ChatMode;
+  onInputChange?: (value: string) => void;
+  onModeChange?: (mode: ChatMode) => void;
+  onSubmit?: (e: React.FormEvent) => void;
+  notes?: Note[];
+  onClearNotes?: () => void;
+  onAddNote?: (note: Note) => void;
+  onRemoveNote?: (id: string) => void;
+  agentActions?: AgentAction[];
+  onRetryAction?: (id: string) => void;
+  // Legacy props for backward compatibility
   activeTab?: string;
   onTabChange?: (tab: string) => void;
   onReset?: () => void;
   onNewChat?: () => void;
-  messages?: Message[];
-  input?: string;
-  isProcessing?: boolean;
-  onInputChange?: (value: string) => void;
-  onSubmit?: (e: React.FormEvent) => void;
-  notes?: Note[];
-  onClearNotes?: () => void;
-  agentActions?: AgentAction[];
-  onRetryAction?: (id: string) => void;
   onExport?: () => void;
   onShare?: () => void;
   onSettings?: () => void;
@@ -45,19 +59,32 @@ export function Chat({
   onResizeStart,
   onResizeEnd,
   initialWidth,
+  // New tab system props
+  tabs = [],
+  activeTabId = null,
+  onTabClick,
+  onTabClose,
+  onNewTab,
+  onTabRename,
+  // Chat content props
+  messages = [],
+  input = '',
+  isProcessing = false,
+  mode = 'agent',
+  onInputChange = () => { },
+  onModeChange,
+  onSubmit = () => { },
+  notes = [],
+  onClearNotes,
+  onAddNote,
+  onRemoveNote,
+  agentActions = [],
+  onRetryAction,
+  // Legacy props for backward compatibility
   activeTab = 'agent',
   onTabChange,
   onReset,
   onNewChat,
-  messages = [],
-  input = '',
-  isProcessing = false,
-  onInputChange = () => { },
-  onSubmit = () => { },
-  notes = [],
-  onClearNotes,
-  agentActions = [],
-  onRetryAction,
   onExport,
   onShare,
   onSettings,
@@ -77,6 +104,14 @@ export function Chat({
       onResizeEnd={onResizeEnd}
       initialWidth={initialWidth}
       onClose={onClose}
+      // New tab system props
+      tabs={tabs}
+      activeTabId={activeTabId}
+      onTabClick={onTabClick}
+      onTabClose={onTabClose}
+      onNewTab={onNewTab}
+      onTabRename={onTabRename}
+      // Legacy props for backward compatibility
       activeTab={activeTab}
       onTabChange={onTabChange}
       onReset={onReset}
@@ -96,8 +131,12 @@ export function Chat({
         onClose={onClose}
         className={variant === 'dialog' ? 'h-[600px]' : undefined}
         activeTab={activeTab}
+        mode={mode}
+        onModeChange={onModeChange}
         notes={notes}
         onClearNotes={onClearNotes}
+        onAddNote={onAddNote}
+        onRemoveNote={onRemoveNote}
         agentActions={agentActions}
         onRetryAction={onRetryAction}
         onVoiceRecord={onVoiceRecord}

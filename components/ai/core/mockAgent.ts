@@ -40,8 +40,8 @@ export class MockSolanaAgent {
         // Record in context
         this.context.messages.push(message);
 
-        // Add a short delay to surface processing UI and allow cancel tests to act
-        await this.delay(500);
+        // Add a slightly longer delay to surface processing UI and allow cancel tests to act reliably
+        await this.delay(1200);
 
         if (message.role === 'system') {
             // In mock mode, provide a simple plan note without ACTION tags so UI falls back to direct processing

@@ -2,10 +2,10 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Loader2, User } from 'lucide-react';
-import { type TokenAccount } from '@/lib/solana';
+import { type TokenAccount } from '../lib/solana';
 import AccountExplorerLinks from './AccountExplorerLinks';
-import { useTheme } from '@/lib/design-system/theme-provider';
-import { Button } from '@/components/ui/button';
+import { useTheme } from '../lib/design-system/theme-provider';
+import { Button } from '../components/ui/button';
 import { useRouter } from 'next/navigation';
 import {
   PieChart,
@@ -22,6 +22,13 @@ interface Props {
   tokenAccounts: TokenAccount[];
   isSystemProgram?: boolean;
   parsedOwner?: string;
+}
+
+interface PortfolioItem {
+  name: string;
+  value: number;
+  usdValue: number;
+  color: string;
 }
 
 export default function AccountOverview({
@@ -57,100 +64,95 @@ export default function AccountOverview({
         setStatsLoading(false);
       }
     }
-
     fetchAccountStats();
   }, [address]);
 
   // Calculate portfolio breakdown for pie chart
-  const portfolioData = useMemo(() => {
+  const portfolioData = useMemo<PortfolioItem[]>(() => {
     // Generate theme-aware colors for the pie chart
     const getThemeAwareColors = (theme: string) => {
       const colorSchemes = {
         paper: [
-          '#22c55e', // green-500
-          '#3b82f6', // blue-500
-          '#f59e0b', // amber-500
-          '#ef4444', // red-500
-          '#8b5cf6', // violet-500
-          '#06b6d4', // cyan-500
-          '#f97316', // orange-500
-          '#ec4899', // pink-500
-          '#84cc16', // lime-500
-          '#6366f1', // indigo-500
+          '#22c55e',
+          '#3b82f6',
+          '#f59e0b',
+          '#ef4444',
+          '#8b5cf6',
+          '#06b6d4',
+          '#f97316',
+          '#ec4899',
+          '#84cc16',
+          '#6366f1',
         ],
         'high-contrast': [
-          '#00ff00', // bright green
-          '#00ffff', // cyan
-          '#ffff00', // yellow
-          '#ff0000', // red
-          '#ff00ff', // magenta
-          '#0080ff', // bright blue
-          '#ff8000', // orange
-          '#80ff00', // lime
-          '#8000ff', // purple
-          '#ff0080', // hot pink
+          '#00ff00',
+          '#00ffff',
+            '#ffff00',
+          '#ff0000',
+          '#ff00ff',
+          '#0080ff',
+          '#ff8000',
+          '#80ff00',
+          '#8000ff',
+          '#ff0080',
         ],
         'dos-blue': [
-          '#ffff00', // yellow (primary)
-          '#00ffff', // cyan
-          '#ff00ff', // magenta
-          '#00ff00', // green
-          '#ff8000', // orange
-          '#8080ff', // light blue
-          '#ff8080', // light red
-          '#80ff80', // light green
-          '#ffff80', // light yellow
-          '#ff80ff', // light magenta
+          '#ffff00',
+          '#00ffff',
+          '#ff00ff',
+          '#00ff00',
+          '#ff8000',
+          '#8080ff',
+          '#ff8080',
+          '#80ff80',
+          '#ffff80',
+          '#ff80ff',
         ],
         cyberpunk: [
-          '#ff00ff', // magenta primary
-          '#00ffff', // cyan
-          '#ff0080', // hot pink
-          '#8000ff', // purple
-          '#ff4080', // pink
-          '#40ff80', // neon green
-          '#ff8040', // orange
-          '#4080ff', // blue
-          '#80ff40', // lime
-          '#ff4040', // red
+          '#ff00ff',
+          '#00ffff',
+          '#ff0080',
+          '#8000ff',
+          '#ff4080',
+          '#40ff80',
+          '#ff8040',
+          '#4080ff',
+          '#80ff40',
+          '#ff4040',
         ],
         solarized: [
-          '#268bd2', // blue
-          '#2aa198', // cyan
-          '#859900', // green
-          '#b58900', // yellow
-          '#cb4b16', // orange
-          '#d33682', // magenta
-          '#dc322f', // red
-          '#6c71c4', // violet
-          '#586e75', // base01
-          '#657b83', // base00
+          '#268bd2',
+          '#2aa198',
+          '#859900',
+          '#b58900',
+          '#cb4b16',
+          '#d33682',
+          '#dc322f',
+          '#6c71c4',
+          '#586e75',
+          '#657b83',
         ],
       };
 
-      return colorSchemes[theme as keyof typeof colorSchemes] || colorSchemes.paper;
+      return colorSchemes[config.variant as keyof typeof colorSchemes] || colorSchemes.paper;
     };
 
-    // Get theme-aware colors for pie chart
     const themeColors = getThemeAwareColors(config.variant);
+    const data: PortfolioItem[] = [];
 
-    const data = [];
-
-    // Add SOL balance (assuming $235.19 per SOL for USD value calculation)
     const SOL_PRICE = 235.19;
     if (solBalance > 0) {
       data.push({
         name: 'SOL',
         value: solBalance,
         usdValue: solBalance * SOL_PRICE,
-        color: themeColors[0] // Use first theme color for SOL
+        color: themeColors[0]
       });
     }
 
-    // Add token balances with USD values (mock prices for now)
     tokenAccounts.forEach((token, index) => {
       if (token.uiAmount > 0) {
-        const mockPrice = Math.random() * 1000 + 10; // Mock price between $10-$1010
+        const mockPrice = Math.random() * 1000 + 10;
         data.push({
           name: token.symbol || `${token.mint?.slice(0, 4)}...${token.mint?.slice(-4)}` || 'Unknown',
           value: token.uiAmount,
@@ -158,10 +160,10 @@ export default function AccountOverview({
           color: themeColors[(index + 1) % themeColors.length]
         });
       }
-    });    // Sort by USD value descending
+    });
+
     data.sort((a, b) => b.usdValue - a.usdValue);
 
-    // Take top 10 and group rest as "Others"
     if (data.length > 10) {
       const top10 = data.slice(0, 10);
       const others = data.slice(10);
@@ -174,7 +176,7 @@ export default function AccountOverview({
           name: 'Others',
           value: othersValueTotal,
           usdValue: othersTotal,
-          color: '#666666' // Gray color for Others
+          color: '#666666'
         });
       }
 

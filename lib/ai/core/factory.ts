@@ -9,6 +9,7 @@ import { AnomalyDetectionCapability } from '../capabilities/anomaly-detection';
 import type { AgentConfig } from '../types';
 import { SonicCapability } from '../capabilities/sonic';
 import { SolanaAgentKitCapability } from '../capabilities/solana-agent-kit';
+import { GenerativeCapability } from '../capabilities/generative';
 
 const DEFAULT_SYSTEM_PROMPT = `I am an AI assistant specialized in analyzing Solana blockchain data.
 I can help you understand transactions, account activities, and network performance. 
@@ -77,6 +78,9 @@ export function createSolanaAgent(
   if (options.enableAnomalyDetection !== false) {
     capabilities.push(new AnomalyDetectionCapability(connection) as any); // Type assertion for capability compatibility
   }
+
+  // Always add generative fallback last so specialized capabilities have priority
+  capabilities.push(new GenerativeCapability() as any);
 
   const config: AgentConfig = {
     capabilities,

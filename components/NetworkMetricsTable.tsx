@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import rough from 'roughjs';
-import { useTheme } from '@/lib/design-system/theme-provider';
+import { useTheme } from '../lib/design-system/theme-provider';
 import { Connection } from '@solana/web3.js';
 
 interface BlockMetrics {
@@ -355,6 +355,8 @@ export function NetworkMetricsTable({ endpoint = 'https://api.mainnet-beta.solan
               width={480}
               height={240}
               className="absolute inset-0 w-full h-full"
+              role="img"
+              aria-label={`${field} metric sparkline over recent blocks`}
             />
           </div>
 

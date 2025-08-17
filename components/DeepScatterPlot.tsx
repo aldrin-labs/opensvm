@@ -123,10 +123,12 @@ export default function DeepScatterPlot({
   }, [data, width, height, xField, yField, colorField, onPointClick]);
 
   return (
-    <canvas 
+    <canvas
       ref={canvasRef}
       style={{ width: `${width}px`, height: `${height}px` }}
       className="rounded-lg"
+      role="img"
+      aria-label="Scatter plot visualization"
     />
   );
 }

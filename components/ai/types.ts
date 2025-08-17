@@ -5,6 +5,8 @@ export enum ExecutionMode {
 export interface Message {
   role: 'system' | 'user' | 'assistant';
   content: string;
+  id?: string; // structured metadata id (uuid or incremental) Phase 4.1.1
+  tokensEst?: number; // approximate token estimate if available
   metadata?: {
     type: CapabilityType;
     data: any;

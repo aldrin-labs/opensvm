@@ -3,7 +3,7 @@ import type { Message, Note, AgentAction } from '../types';
 import { SolanaAgent } from '../core/agent';
 import { SOLANA_RPC_KNOWLEDGE, PUMPFUN_KNOWLEDGE } from '../core/knowledge';
 import { executeAction } from '../actions';
-import { UserHistoryService } from '@/lib/user-history';
+import { UserHistoryService } from '../../../lib/user-history';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { parseSlashCommand, slashHelpMessage } from '../utils/parseSlashCommand';
 
@@ -103,6 +103,19 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
   // Cancellation support
   const [cancelRequested, setCancelRequested] = useState(false);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
+
+  // Test/QA helper: expose deterministic seeding of messages (Phase 0.2.1)
+  if (typeof window !== 'undefined' && !(window as any).__SVMAI_SEED__) {
+    (window as any).__SVMAI_SEED__ = (n: number) => {
+      const count = Math.min(10000, Math.max(0, Number(n)));
+      const seeded: Message[] = [];
+      for (let i = 0; i < count; i++) {
+        seeded.push({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Seed message #${i}` });
+      }
+      setAgentMessages(prev => [...prev, ...seeded]);
+      return count;
+    };
+  }
 
   // Save message to user history
   const saveToHistory = (message: Message, tabType: 'agent' | 'assistant' | 'notes') => {
@@ -209,7 +222,12 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
         saveToHistory(planMessage, 'agent');
 
         // Execute each action in sequence
-        const results = [];
+        const results: Array<{
+          action: AgentAction;
+          response?: Message;
+          error?: string;
+          status: 'completed' | 'failed';
+        }> = [];
         for (const action of actions) {
           if (cancelRequested) {
             break;

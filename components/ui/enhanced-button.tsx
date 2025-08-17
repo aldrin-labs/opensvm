@@ -4,8 +4,7 @@ import * as React from 'react';
 import { Slot } from '@radix-ui/react-slot';
 import { cva, type VariantProps } from 'class-variance-authority';
 import { cn } from '@/lib/utils';
-import { useTheme } from '@/lib/design-system/theme-provider';
-
+import { useTheme } from '../../lib/design-system/theme-provider';
 const buttonVariants = cva(
   [
     // Base styles
@@ -125,7 +124,7 @@ const LoadingSpinner = ({ size = 16 }: { size?: number }) => (
 
 export interface EnhancedButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  VariantProps<typeof buttonVariants> {
   asChild?: boolean;
   loading?: boolean;
   loadingText?: string;
@@ -156,7 +155,7 @@ const EnhancedButton = React.forwardRef<HTMLButtonElement, EnhancedButtonProps>(
   ) => {
     const { config } = useTheme();
     const Comp = asChild ? Slot : 'button';
-    
+
     const isDisabled = disabled || loading;
     const spinnerSize = size === 'sm' || size === 'icon-sm' ? 12 : size === 'lg' || size === 'xl' ? 20 : 16;
 
@@ -234,12 +233,12 @@ export interface ButtonGroupProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 const ButtonGroup = React.forwardRef<HTMLDivElement, ButtonGroupProps>(
-  ({ 
-    className, 
-    orientation = 'horizontal', 
+  ({
+    className,
+    orientation = 'horizontal',
     attached = false,
-    children, 
-    ...props 
+    children,
+    ...props
   }, ref) => {
     return (
       <div
