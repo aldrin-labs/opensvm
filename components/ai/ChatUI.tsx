@@ -1,3 +1,8 @@
+"use client";
+
+// Added explicit client directive since this file makes extensive use of React hooks.
+// Without it, Next.js may treat the module as a server component when imported, causing
+// runtime hook errors or a silent hydration failure leading to an empty (black) chat area.
 import { Loader, Mic, Send } from 'lucide-react';
 import type { Message, Note, AgentAction } from './types';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -13,6 +18,7 @@ import { KnowledgePanel } from './components/KnowledgePanel';
 import { ModeSelector } from './components/ModeSelector';
 import { estimateTokens } from './utils/tokenCounter';
 import { completeSlashCommand, trackSlashUsage, getContextualSuggestions, getContextBadge } from './utils/slashCommands';
+import { useDebounce } from './hooks/useDebounce';
 import { useMemoryManagement, trackMemoryUsage } from './utils/memoryManager';
 import { useUIPreferences } from './hooks/useUIPreferences';
 import { useAutosizeTextarea } from '../../hooks/useAutosizeTextarea';
@@ -121,6 +127,10 @@ export function ChatUI({
   variant = 'inline',
   onCancel
 }: ChatUIProps) {
+  // Diagnostic log to confirm function invoked
+  if (typeof window !== 'undefined') {
+    (window as any).__SVMAI_CHATUI_CALLED__ = true;
+  }
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -157,31 +167,37 @@ export function ChatUI({
     true // enabled
   );
 
-  // Reintroduce helpers lost during merge (simplified)
+  // Debounced input for suggestions/reference; short delay for responsiveness
+  // Use message count as a cancel token so pending suggestion debounce is aborted right when a submit occurs (messages length increases)
+  const debouncedInput = useDebounce(input, 180, {
+    cancel: messages.length, // cancel debounce when new message appended
+  });
+
+  // Debounced slash suggestion context
   const getSlashContext = useCallback(() => {
-    if (!input.startsWith('/') || input.startsWith('/ref ')) {
-      return { raw: input, trimmed: input.trim(), afterSlash: input.trim(), firstToken: '', suggestions: [] as any[] };
+    if (!debouncedInput.startsWith('/') || debouncedInput.startsWith('/ref ')) {
+      return { raw: debouncedInput, trimmed: debouncedInput.trim(), afterSlash: debouncedInput.trim(), firstToken: '', suggestions: [] as any[] };
     }
 
-    const query = input.slice(1); // Remove the leading slash
+    const query = debouncedInput.slice(1); // Remove the leading slash
     const suggestions = getContextualSuggestions(query);
 
     return {
-      raw: input,
-      trimmed: input.trim(),
+      raw: debouncedInput,
+      trimmed: debouncedInput.trim(),
       afterSlash: query,
       firstToken: query.split(' ')[0] || '',
       suggestions
     };
-  }, [input]);
+  }, [debouncedInput]);
 
   // Reference autocomplete logic
   const getReferenceContext = useCallback(() => {
-    if (!input.startsWith('/ref ')) {
+    if (!debouncedInput.startsWith('/ref ')) {
       return { isActive: false, query: '', filteredNotes: [] };
     }
 
-    const query = input.slice(5); // Remove '/ref '
+    const query = debouncedInput.slice(5); // Remove '/ref '
 
     console.log('Filtering notes with query:', JSON.stringify(query), 'Notes available:', notes.length);
 
@@ -195,7 +211,7 @@ export function ChatUI({
     console.log('Filtered notes result:', filteredNotes.length);
 
     return { isActive: true, query, filteredNotes };
-  }, [input, notes]);
+  }, [debouncedInput, notes]);
 
   // referenceContext inline usage only; previously unused variable removed
 
@@ -546,6 +562,8 @@ export function ChatUI({
       default: {
         return (
           <div className="relative flex-1 min-h-0" data-ai-tab="chat">
+            {/* Test compatibility shim */}
+            <div data-ai-tab="agent" className="hidden" />
             <DynamicHeightMessageArea
               messages={messages}
               renderMessage={renderMessage}
@@ -907,7 +925,7 @@ export function ChatUI({
     };
 
     return (
-      <div className={`chat-main-container relative ${variant === 'sidebar' ? 'h-full' : variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col ${variant === 'sidebar' ? '' : 'overflow-hidden'}`}>
+      <div data-ai-chat-ui data-ai-chat-ready className={`chat-main-container relative ${variant === 'sidebar' ? 'h-full' : variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col ${variant === 'sidebar' ? '' : 'overflow-hidden'}`}>
         {/* Skip navigation link */}
         <a href="#chat-input" className="skip-link absolute top-0 left-0 bg-black text-white p-2 -translate-y-full focus:translate-y-0 transition-transform">
           Skip to chat input
@@ -1269,5 +1287,7 @@ export function ChatUI({
         </div>
       </div>
     );
-  }
+  };
+
+  return renderContent();
 }

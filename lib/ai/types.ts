@@ -3,7 +3,16 @@ export enum ExecutionMode {
   Parallel = 'parallel'
 }
 
-export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'anomaly_detection';
+export type CapabilityType = 'transaction' | 'account' | 'network' | 'general' | 'anomaly_detection' | 'planning';
+
+export interface ProgressEvent {
+  type: 'plan_generated' | 'step_start' | 'step_complete' | 'step_error' | 'reflection_start' | 'final';
+  stepIndex?: number;
+  totalSteps?: number;
+  toolName?: string;
+  message?: string;
+  data?: any;
+}
 
 export interface Note {
   id: string;
@@ -14,18 +23,18 @@ export interface Note {
 
 export interface AgentAction {
   id: string;
-  type: 
-    | 'fetch_transaction'
-    | 'fetch_account' 
-    | 'fetch_token'
-    | 'analyze_wallet'
-    | 'track_program'
-    | 'rank_wallets'
-    | 'pumpfun_listen'
-    | 'pumpfun_buy'
-    | 'pumpfun_sell'
-    | 'pumpfun_track'
-    | 'wallet_path_finding';
+  type:
+  | 'fetch_transaction'
+  | 'fetch_account'
+  | 'fetch_token'
+  | 'analyze_wallet'
+  | 'track_program'
+  | 'rank_wallets'
+  | 'pumpfun_listen'
+  | 'pumpfun_buy'
+  | 'pumpfun_sell'
+  | 'pumpfun_track'
+  | 'wallet_path_finding';
   status: 'pending' | 'in_progress' | 'completed' | 'failed';
   description: string;
   error?: string;

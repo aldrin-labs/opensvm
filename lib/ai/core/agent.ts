@@ -6,13 +6,15 @@ import type {
   ToolParams,
   CapabilityType,
   AgentAction,
-  AgentCapability
+  AgentCapability,
+  ProgressEvent
 } from '../types';
 import { NETWORK_PERFORMANCE_KNOWLEDGE } from './knowledge';
 
 export class SolanaAgent {
   private config: AgentConfig;
   private context: AgentContext;
+  private progressCallback?: (event: ProgressEvent) => void;
 
   constructor(config: AgentConfig) {
     this.config = config;
@@ -27,6 +29,14 @@ export class SolanaAgent {
         content: config.systemPrompt
       }]
     };
+  }
+
+  public setProgressCallback(callback: (event: ProgressEvent) => void) {
+    this.progressCallback = callback;
+  }
+
+  private emitProgress(event: ProgressEvent) {
+    this.progressCallback?.(event);
   }
 
   private extractActionsFromResponse(response: string): AgentAction[] {
@@ -74,16 +84,18 @@ export class SolanaAgent {
       const queryLower = message.content.toLowerCase();
       if (queryLower.includes('tps') || queryLower.includes('transactions per second')) {
         // Generate action for TPS query
+        this.emitProgress({ type: 'step_start', toolName: 'analyzeNetworkLoad', message: 'Analyzing network TPS...' });
         const actionPlan = '[ACTION]network.analyzeNetworkLoad:Get current TPS and network load metrics[/ACTION]';
         const actions = this.extractActionsFromResponse(actionPlan);
 
         if (actions.length > 0) {
           const results = await this.executeActions(actions);
+          this.emitProgress({ type: 'step_complete', toolName: 'analyzeNetworkLoad', message: 'TPS analysis complete' });
           return this.createResponse('network' as CapabilityType, results);
         }
       }
 
-      return this.createErrorResponse('I apologize, but I\'m not sure how to handle that request.');
+      return this.createResponse('network', 'I can help you explore Solana blockchain data. Try asking about network status, transaction details, or account information.');
     }
 
     try {
@@ -112,7 +124,15 @@ export class SolanaAgent {
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
       console.error('Error processing message:', errorMessage);
-      return this.createErrorResponse('I encountered an error while processing your request.');
+
+      // Provide more helpful error responses
+      if (errorMessage.includes('fetch')) {
+        return this.createResponse('network', 'I had trouble connecting to the Solana network. Please try again in a moment.');
+      } else if (errorMessage.includes('timeout')) {
+        return this.createResponse('network', 'The request timed out. The network might be busy - please try again.');
+      } else {
+        return this.createResponse('network', 'Something went wrong with your request. Please try rephrasing or ask about something else.');
+      }
     }
   }
 
@@ -398,32 +418,22 @@ export class SolanaAgent {
     };
   }
 
-  private createErrorResponse(content: string): Message {
-    return {
-      role: 'assistant',
-      content,
-      metadata: {
-        type: 'general' as CapabilityType,
-        data: null
-      }
-    };
-  }
 
   private generateResponse(result: any): string {
     if (!result) {
-      return "I wasn't able to get any results for your request.";
+      return "I wasn't able to retrieve any data for your request. This might be due to network issues or the data not being available.";
     }
 
     // Handle array of results from multiple tools
     if (Array.isArray(result)) {
       if (result.length === 0) {
-        return "I completed the operation but there were no results to report.";
+        return "I processed your request but didn't find any specific data to show.";
       }
 
       // Process each result and combine into a coherent response
       const responses = result.map((item: any) => {
         if (item.status === 'failed') {
-          return `Error: ${item.error}`;
+          return `Operation failed: ${item.error}`;
         }
 
         // Extract the actual result data
@@ -435,32 +445,48 @@ export class SolanaAgent {
 
         // Handle custom actions
         if (data.actionName && typeof data.params === 'object') {
-          return `I'll find the path between these wallets for you. Processing...`;
+          return `Processing ${data.actionName} with the provided parameters...`;
         }
 
-        // Handle network performance data
-        if (item.tool === 'analyzeNetworkLoad' && typeof data === 'object') {
-          const { averageTps, maxTps, load, loadDescription, tpsRange } = data;
-          return `The current TPS is ${averageTps} (${tpsRange}). Peak TPS: ${maxTps}. Network load is ${load} (${loadDescription}).`;
+        // Handle network data
+        if (data.tps || data.networkLoad || data.validators) {
+          const parts = [];
+          if (data.tps) parts.push(`Current TPS: ${data.tps}`);
+          if (data.networkLoad) parts.push(`Network Load: ${data.networkLoad}%`);
+          if (data.validators) parts.push(`Active Validators: ${data.validators}`);
+          return parts.join('\n');
         }
 
-        // Handle different types of data
+        // Handle transaction data
+        if (data.signature || data.slot) {
+          const parts = [];
+          if (data.signature) parts.push(`Transaction: ${data.signature}`);
+          if (data.slot) parts.push(`Slot: ${data.slot}`);
+          if (data.status) parts.push(`Status: ${data.status}`);
+          return parts.join('\n');
+        }
+
+        // Handle account data
+        if (data.balance !== undefined || data.owner) {
+          const parts = [];
+          if (data.balance !== undefined) parts.push(`Balance: ${data.balance} SOL`);
+          if (data.owner) parts.push(`Owner: ${data.owner}`);
+          return parts.join('\n');
+        }
+
+        // Generic object handling
         if (typeof data === 'object') {
-          if (data.message) {
-            return data.message;
-          }
-          // Convert meaningful object properties to natural text
           const details = Object.entries(data)
             .filter(([key]) => !['id', '_id', 'type', 'status'].includes(key))
             .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
             .join('\n');
-          return details || null;
+          return details || 'Operation completed successfully';
         }
 
         return String(data);
-      }).filter(Boolean);
+      }).filter(response => response && response !== null);
 
-      return responses.join('\n');
+      return responses.length > 0 ? responses.join('\n\n') : "I processed your request but the results were empty.";
     }
 
     // Handle single result
@@ -480,9 +506,7 @@ export class SolanaAgent {
     }
 
     return String(result);
-  }
-
-  // Utility methods
+  }  // Utility methods
   public getContext(): AgentContext {
     return this.context;
   }

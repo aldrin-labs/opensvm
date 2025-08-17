@@ -113,7 +113,36 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     const existing = tabs.find(t => t.id === tabId)?.messages || [];
     const baseMessages = [...existing, userMessage];
 
-    // Optimistically add user message and mark processing
+    // Set up progress callback to stream interim messages
+    let lastProgressTime = 0;
+    agent.setProgressCallback((event) => {
+      // Throttle progress updates to avoid spam
+      const now = Date.now();
+      if (now - lastProgressTime < 500) return;
+      lastProgressTime = now;
+
+      const progressMessage: Message = {
+        role: 'assistant',
+        content: `🔄 ${event.message || ''}`,
+        metadata: {
+          type: 'planning',
+          data: {
+            progress: true,
+            stepIndex: event.stepIndex,
+            totalSteps: event.totalSteps,
+            toolName: event.toolName,
+            eventType: event.type
+          }
+        }
+      };
+
+      // Get current messages and append progress
+      const currentTab = tabs.find(t => t.id === tabId);
+      const currentMessages = currentTab?.messages || baseMessages;
+      updateTab(tabId, {
+        messages: [...currentMessages, progressMessage]
+      });
+    });    // Optimistically add user message and mark processing
     updateTab(tabId, {
       messages: baseMessages,
       isProcessing: true,
@@ -129,9 +158,16 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         content: rawResponse.content,
         metadata: rawResponse.metadata
       };
-      // Append assistant response to the preserved baseMessages so the user message isn't lost by stale state
+
+      // Get final messages (remove progress messages and add real response)
+      const currentTab = tabs.find(t => t.id === tabId);
+      const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+        !m.metadata?.data?.progress
+      );
+
+      // Append final assistant response
       updateTab(tabId, {
-        messages: [...baseMessages, normalized],
+        messages: [...finalMessages, normalized],
         isProcessing: false,
         status: 'idle',
         lastActivity: Date.now()
@@ -142,8 +178,15 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         role: 'assistant',
         content: 'I encountered an error while processing your request. Please try again.'
       };
+
+      // Get current messages without progress and add error
+      const currentTab = tabs.find(t => t.id === tabId);
+      const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+        !m.metadata?.data?.progress
+      );
+
       updateTab(tabId, {
-        messages: [...baseMessages, errorMessage],
+        messages: [...finalMessages, errorMessage],
         isProcessing: false,
         status: 'error',
         lastActivity: Date.now()

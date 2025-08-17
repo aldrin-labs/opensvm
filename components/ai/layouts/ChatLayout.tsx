@@ -1,3 +1,8 @@
+"use client";
+
+// Added explicit client directive because this component uses React hooks and was likely
+// being treated as a server component by Next.js, preventing it (and its children)
+// from rendering properly inside the AI sidebar (blank panel issue).
 import { useState, useRef, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import { Maximize2, RotateCcw, Plus, MoreHorizontal, X, Settings, HelpCircle, Download, Share2 } from 'lucide-react';
