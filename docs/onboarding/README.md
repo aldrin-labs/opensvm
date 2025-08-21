@@ -41,36 +41,27 @@ flowchart TD
 ```
 
 ### Codebase Layout
-apps/web         → Frontend (Next.js + React)
-packages/core    → Core VM logic, Solana program parsing
-packages/ai      → AI integrations (Together AI, Qdrant)
-packages/viz     → Visualization (D3, Cytoscape, Chart.js, Three.js)
-tests/           → Playwright + Jest tests
+- apps/web         → Frontend (Next.js + React)
+- packages/core    → Core VM logic, Solana program parsing
+- packages/ai      → AI integrations (Together AI, Qdrant)
+- packages/viz     → Visualization (D3, Cytoscape, Chart.js, Three.js)
+- tests/           → Playwright + Jest tests
 
 ### 📂 Code Walkthrough
 
 - Transaction Parsing: Uses @debridge-finance/solana-transaction-parser
-
 - AI Layer: LLMs from @mlc-ai/web-llm + Together AI APIs
-
 - Visualizations: Graphs (D3.js), network maps (Cytoscape.js), 3D exploration (Three.js)
-
 - State Machines: Workflow logic modeled with XState
-
 - Data Store: Semantic embeddings stored in Qdrant
 
 ### Key Components
 
 1. Frontend: Next.js + React + TailwindCSS
-
 2. Blockchain Integration: Solana Web3.js, SPL Token
-
 3. AI Components: LLMs via Together AI, MLC.ai for in-browser inference
-
 4. Vector DB: Qdrant for semantic search and embeddings
-
 5. Visualization: D3.js, Cytoscape, Three.js, Chart.js
-
 6. Workflow Orchestration: XState for complex workflows    
 
 ## ⚙️ Development Environment Setup
@@ -173,42 +164,40 @@ cp .env.example .env.local
 pnpm dev
 
 
-# Example .env.local for OpenSVM (only to run locally)
+### Example .env.local for OpenSVM (only to run locally)
 
-# One of these is required for search
-# Choose ONE (either BING or SERPER)
+One of these is required for search
+
 SERPER_API_KEY=demo
-# BING_API_KEY=demo
 
-# Required API keys (replace with real/test keys if needed)
+
 TOGETHER_API_KEY=demo
 HELICONE_API_KEY=demo
 FLIPSIDE_API_KEY=demo
 
-# OpenSVM RPC endpoints
+
 OPENSVM_RPC_LIST=https://mainnet.infura.io/v3/demo
 OPENSVM_RPC_LIST_2=https://rpc.ankr.com/eth
 
-# Qdrant vector DB config (public test endpoint or mock)
+
 QDRANT=demo-qdrant-key
 QDRANT_SERVER=https://your-qdrant-instance.qdrant.tech
 
-# Debug settings
+
 DEBUG=false
 LOG_LEVEL=error
 
-# Example .env.local for OpenSVM 
+### Example .env.local for OpenSVM 
 
-# Solana RPC endpoint (public or custom)
+
 NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
-# Local development cluster (optional)
+
 NEXT_PUBLIC_SOLANA_RPC_DEV=http://127.0.0.1:8899
 
-# Qdrant vector database URL
+
 NEXT_PUBLIC_QDRANT_URL=http://localhost:6333
 
-# Together AI API key (for LLM integration)
 TOGETHER_API_KEY=your_together_ai_api_key_here
 
 
