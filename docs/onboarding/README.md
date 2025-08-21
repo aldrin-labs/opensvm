@@ -181,23 +181,23 @@ Example .env.local
 # Example .env.local for OpenSVM
 
 One of these is required for search
-# ✅ Choose ONE (either BING or SERPER)
+✅ Choose ONE (either BING or SERPER)
 SERPER_API_KEY=demo
-# BING_API_KEY=demo
+BING_API_KEY=demo
 
-# ✅ Solana RPC endpoint (public or custom)
+✅ Solana RPC endpoint (public or custom)
 NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
-# ✅ Local development cluster (optional)
+✅ Local development cluster (optional)
 NEXT_PUBLIC_SOLANA_RPC_DEV=http://127.0.0.1:8899
 
-# ✅ Qdrant vector database URL
+✅ Qdrant vector database URL
 NEXT_PUBLIC_QDRANT_URL=http://localhost:6333
 
-# ✅ Together AI API key (for LLM integration)
+✅ Together AI API key (for LLM integration)
 TOGETHER_API_KEY=your_together_ai_api_key_here
 
-# ✅ Debug settings
+✅ Debug settings
 DEBUG=false
 LOG_LEVEL=error
 
