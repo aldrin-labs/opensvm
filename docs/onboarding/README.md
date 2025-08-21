@@ -268,7 +268,7 @@ console.log(response.output[0].text);
 
 - Cytoscape.js
 
-## 🔄 Maintenance & Ownerships
+## 🔄 Maintenance & Ownership
 
 - Docs owned by @aldrin-labs/opensvm-maintainers
 
