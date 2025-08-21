@@ -26,7 +26,7 @@ pnpm dev
 
 Visit 👉 http://localhost:3000 (or the port you configured)
 
----
+```
 
 ## 🏗️ Architecture & System Design
 ### High-Level System
@@ -38,6 +38,7 @@ flowchart TD
     API --> AI[LLM via Together AI]
     API --> VectorDB[Qdrant Vector DB]
     API --> Viz[Visualization Engines: D3, Cytoscape, Three.js]
+```
 
 ### Codebase Layout
 apps/web         → Frontend (Next.js + React)
@@ -86,16 +87,17 @@ tests/           → Playwright + Jest tests
 - Git + Cursor IDE / VSCode
 
 ### Clone, Install and run
-git clone https://github.com/vibecode98-svm/opensvm.git
+```
+git clone https://github.com/aldrin-labs/opensvm.git
 cd opensvm
 pnpm install
-
+```
 
 ### Run Locally
-pnpm dev
+``` pnpm dev ```
 
 ### Run Tests
-pnpm test
+``` pnpm test ```
 
 ## 🧑‍💻 Coding Standards & Best Practices
 
@@ -132,21 +134,25 @@ pnpm test
 1. Port Already in Use (3000)
 - Symptom: App won’t start, error about port 3000.
 - Fix (Linux/Mac): bash command
-kill -9 $(lsof -ti:3000) 
+ ``` kill -9 $(lsof -ti:3000) ```
 - Fix (Windows PowerShell):
-Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess
+``` Stop-Process -Id (Get-NetTCPConnection -LocalPort 3000).OwningProcess ```
 
 2. Solana RPC Errors
 - Symptom: Calls to Solana RPC fail with “connection refused” or “invalid endpoint.”
 - Fix: Ensure your CLI is configured:
 
-solana config get
+``` solana config get
 solana config set --url https://api.devnet.solana.com
+```
 
 3. Build or Install Issues
 - Symptom: Project fails during pnpm install or pnpm dev.
-- Fix: pnpm clean
+- Fix: 
+```
+pnpm clean
 pnpm install
+```
 
 4. PNPM Not Found on Windows
 - Symptom: Running pnpm gives “command not recognized.”
@@ -156,7 +162,7 @@ pnpm install
 C:\Users\<YourUser>\AppData\Roaming\npm
 2. Add this folder to your System Environment Variables → PATH.
 3. Restart PowerShell or your IDE, then run:
-pnpm -v
+``` pnpm -v ```
 to confirm installation.
 
 5. Missing .env.local File
@@ -168,32 +174,34 @@ copy .env.example .env.local  (or cp .example.env .env.local)
 3. Restart the dev server:
 pnpm dev
 
-Example .env.local to run locally
-✅ One of these is required for search
-# Choose ONE (either BING or SERPER)
+Example .env.local 
+
+
+
+# Example .env.local for OpenSVM
+
+One of these is required for search
+# ✅ Choose ONE (either BING or SERPER)
 SERPER_API_KEY=demo
 # BING_API_KEY=demo
 
-# ✅ Required API keys (replace with real/test keys if needed)
-TOGETHER_API_KEY=demo
-HELICONE_API_KEY=demo
-FLIPSIDE_API_KEY=demo
+# ✅ Solana RPC endpoint (public or custom)
+NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
 
-# ✅ OpenSVM RPC endpoints
-OPENSVM_RPC_LIST=https://mainnet.infura.io/v3/demo
-OPENSVM_RPC_LIST_2=https://rpc.ankr.com/eth
+# ✅ Local development cluster (optional)
+NEXT_PUBLIC_SOLANA_RPC_DEV=http://127.0.0.1:8899
 
-# ✅ Qdrant vector DB config (public test endpoint or mock)
-QDRANT=demo-qdrant-key
-QDRANT_SERVER=https://your-qdrant-instance.qdrant.tech
+# ✅ Qdrant vector database URL
+NEXT_PUBLIC_QDRANT_URL=http://localhost:6333
+
+# ✅ Together AI API key (for LLM integration)
+TOGETHER_API_KEY=your_together_ai_api_key_here
 
 # ✅ Debug settings
 DEBUG=false
 LOG_LEVEL=error
 
-Fix:
 
-- Build Fails → Run pnpm clean && pnpm install
 
 ## 🤝 Contribution Workflow
 
@@ -221,6 +229,7 @@ Request review from maintainers
 ## 💻 Example Code Snippets
 
 ### Fetch Balance (Solana Web3.js)
+```
 import { Connection, clusterApiUrl, PublicKey } from "@solana/web3.js";
 
 const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
@@ -232,9 +241,9 @@ async function getBalance(pubKeyStr: string) {
 }
 
 getBalance("YourPublicKeyHere");
-
+```
 ###Query LLM (Together AI)
-
+```
 import Together from "together-ai";
 
 const together = new Together({ apiKey: process.env.TOGETHER_API_KEY });
@@ -245,7 +254,7 @@ const response = await together.completions.create({
 });
 
 console.log(response.output[0].text);
-
+```
 
 ## 📚 Useful Resources
 
