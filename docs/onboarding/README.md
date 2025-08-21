@@ -73,8 +73,6 @@ tests/           → Playwright + Jest tests
 
 6. Workflow Orchestration: XState for complex workflows    
 
-
-
 ## ⚙️ Development Environment Setup
 ### Prerequisites
 
@@ -174,57 +172,64 @@ cp .env.example .env.local
 3. Restart the dev server:
 pnpm dev
 
-Example .env.local 
 
+# Example .env.local for OpenSVM (only to run locally)
 
-
-# Example .env.local for OpenSVM
-
-One of these is required for search
-✅ Choose ONE (either BING or SERPER)
+# One of these is required for search
+# Choose ONE (either BING or SERPER)
 SERPER_API_KEY=demo
-BING_API_KEY=demo
+# BING_API_KEY=demo
 
-✅ Solana RPC endpoint (public or custom)
-NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
+# Required API keys (replace with real/test keys if needed)
+TOGETHER_API_KEY=demo
+HELICONE_API_KEY=demo
+FLIPSIDE_API_KEY=demo
 
-✅ Local development cluster (optional)
-NEXT_PUBLIC_SOLANA_RPC_DEV=http://127.0.0.1:8899
+# OpenSVM RPC endpoints
+OPENSVM_RPC_LIST=https://mainnet.infura.io/v3/demo
+OPENSVM_RPC_LIST_2=https://rpc.ankr.com/eth
 
-✅ Qdrant vector database URL
-NEXT_PUBLIC_QDRANT_URL=http://localhost:6333
+# Qdrant vector DB config (public test endpoint or mock)
+QDRANT=demo-qdrant-key
+QDRANT_SERVER=https://your-qdrant-instance.qdrant.tech
 
-✅ Together AI API key (for LLM integration)
-TOGETHER_API_KEY=your_together_ai_api_key_here
-
-✅ Debug settings
+# Debug settings
 DEBUG=false
 LOG_LEVEL=error
 
+# Example .env.local for OpenSVM 
+
+# Solana RPC endpoint (public or custom)
+NEXT_PUBLIC_SOLANA_RPC=https://api.mainnet-beta.solana.com
+
+# Local development cluster (optional)
+NEXT_PUBLIC_SOLANA_RPC_DEV=http://127.0.0.1:8899
+
+# Qdrant vector database URL
+NEXT_PUBLIC_QDRANT_URL=http://localhost:6333
+
+# Together AI API key (for LLM integration)
+TOGETHER_API_KEY=your_together_ai_api_key_here
 
 
 ## 🤝 Contribution Workflow
 
 flowchart LR
-    A[Fork Repo] --> B[Clone Locally]
-    B --> C[Create Feature Branch]
-    C --> D[Write Code + Docs]
-    D --> E[Run Tests + Lint]
-    E --> F[Push to Fork]
-    F --> G[Open PR]
-    G --> H[Review & Merge]
+  1. A[Fork Repo] --> B[Clone Locally]
+  2. B --> C[Create Feature Branch]
+  3. C --> D[Write Code + Docs]
+  4. D --> E[Run Tests + Lint]
+  5. E --> F[Push to Fork]
+  6. F --> G[Open PR]
+  7. G --> H[Review & Merge]
 
 Steps:
 
-Fork repo
-
-Create branch: git checkout -b feat/my-feature
-
-Commit using conventional commits
-
-Push branch → open PR to main
-
-Request review from maintainers
+1. Fork repo
+2. Create branch: git checkout -b feat/my-feature
+3. Commit using conventional commits
+4. Push branch → open PR to main
+5. Request review from maintainers
 
 ## 💻 Example Code Snippets
 
@@ -278,19 +283,19 @@ console.log(response.output[0].text);
 
 - documentation issues must be triaged within 7 days
 
-## ✅ Checklist for New Developers
+##  Checklist for New Developers
 
- - [] Set up dev environment
+ - ✅ Set up dev environment
 
- - [] Run the app locally
+ - ✅ Run the app locally
 
- - [] Explore /packages to understand modules
+ - ✅ Explore /packages to understand modules
 
- - [] Run tests successfully
+ - ✅ Run tests successfully
 
- - [] Read contribution guidelines
+ - ✅ Read contribution guidelines
 
- - [] Open first “Good First Issue” PR 🎉
+ - ✅ Open first “Good First Issue” PR 🎉
 
  ## 🧪 Testing the Docs
 
