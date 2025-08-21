@@ -169,7 +169,7 @@ to confirm installation.
 - Symptom: App boots but fails with missing environment variables.
 - Fix:
 1. Copy the provided .env.example to .env.local:
-copy .env.example .env.local  (or cp .example.env .env.local)
+cp .env.example .env.local
 2. Open .env.local and update values (e.g., TOGETHER_API_KEY, Solana RPC endpoints).
 3. Restart the dev server:
 pnpm dev
