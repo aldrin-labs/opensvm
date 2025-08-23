@@ -187,7 +187,7 @@ export async function POST(req: NextRequest) {
           'Content-Type': 'text/event-stream',
           'Cache-Control': 'no-cache, no-transform',
           'Connection': 'keep-alive',
-          'Access-Control-Allow-Origin': '*',
+          ...corsHeaders,
           'X-Accel-Buffering': 'no',
           'X-RateLimit-Limit': '60',
           'X-RateLimit-Remaining': '59',

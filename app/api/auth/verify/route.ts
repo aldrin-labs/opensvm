@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     }
     
     // Verify signature
-    const isValid = verifySignature(sanitizedMessage, sanitizedSignature, validatedAddress);
+    const isValid = await verifySignature(sanitizedMessage, sanitizedSignature, validatedAddress);
     
     if (!isValid) {
       console.error('Signature verification failed for wallet:', validatedAddress);

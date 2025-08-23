@@ -199,13 +199,17 @@ export async function POST(request: NextRequest) {
                 // Handle streaming request
                 const stream = await anthropicClient.sendStreamingMessage(anthropicRequest);
 
+                // Get secure CORS headers
+                const { getCorsHeaders } = await import('@/lib/cors-utils');
+                const corsHeaders = getCorsHeaders(request);
+
                 // Convert ReadableStream to Response
                 return new Response(stream, {
                     headers: {
                         'Content-Type': 'text/event-stream',
                         'Cache-Control': 'no-cache, no-transform',
                         'Connection': 'keep-alive',
-                        'Access-Control-Allow-Origin': '*',
+                        ...corsHeaders,
                         'Access-Control-Allow-Headers': 'Content-Type, Authorization',
                         'X-Accel-Buffering': 'no',
                         'X-Request-ID': requestId,
@@ -383,11 +387,14 @@ export async function POST(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(_request: NextRequest) {
+export async function OPTIONS(request: NextRequest) {
+    const { getCorsHeaders } = await import('@/lib/cors-utils');
+    const corsHeaders = getCorsHeaders(request);
+    
     return new NextResponse(null, {
         status: 204,
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            ...corsHeaders,
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version',
             'Access-Control-Max-Age': '86400'

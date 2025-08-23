@@ -3,7 +3,7 @@ import { getTokenInfo } from '@/lib/token-registry';
 import { getConnection } from '@/lib/solana-connection-server';
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    ...corsHeaders,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };

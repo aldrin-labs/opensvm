@@ -7,6 +7,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { getSessionFromCookie } from '@/lib/auth-server';
 import { qdrantClient } from '@/lib/qdrant';
 
+// In-memory lock for preventing race conditions in claims
+const claimLocks = new Set<string>();
+
 export async function POST(request: Request) {
   try {
     // Authenticate the user
@@ -34,6 +37,20 @@ export async function POST(request: Request) {
         code: 'UNAUTHORIZED_WALLET'
       }, { status: 403 });
     }
+
+    // Implement atomic claim protection to prevent race conditions
+    const lockKey = `claim_${walletAddress}`;
+    if (claimLocks.has(lockKey)) {
+      return NextResponse.json({
+        error: 'A claim is already in progress for this wallet',
+        code: 'CLAIM_IN_PROGRESS'
+      }, { status: 409 });
+    }
+
+    // Acquire lock
+    claimLocks.add(lockKey);
+    
+    try {
 
     // Get user's profile to check follower count
     let userProfileResult;
@@ -274,6 +291,11 @@ export async function POST(request: Request) {
       newBalance: currentBalance + potentialRewards,
       nextClaimAt: new Date(rewardEntry.claimedAt + 24 * 60 * 60 * 1000).getTime()
     });
+
+    } finally {
+      // Always release the lock
+      claimLocks.delete(lockKey);
+    }
   } catch (error) {
     console.error('Error claiming rewards:', error);
     return NextResponse.json({

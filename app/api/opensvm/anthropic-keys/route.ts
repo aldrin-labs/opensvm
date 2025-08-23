@@ -219,10 +219,12 @@ export async function DELETE(request: NextRequest) {
 }
 
 export async function OPTIONS(_request: NextRequest) {
+    const { getCorsHeaders } = await import('@/lib/cors-utils');
+    const corsHeaders = getCorsHeaders(request);
     return new NextResponse(null, {
         status: 204,
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            ...corsHeaders,
             'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-User-ID',
             'Access-Control-Max-Age': '86400'

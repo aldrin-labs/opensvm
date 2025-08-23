@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
+  ...corsHeaders,
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 } as const;

@@ -7,16 +7,19 @@ import { getTokenInfoServer } from '@/lib/server/token-metadata-cache';
 
 const defaultHeaders = {
   'Content-Type': 'application/json',
-  'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 } as const;
 
-export async function OPTIONS() {
+export async function OPTIONS(request: NextRequest) {
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const corsHeaders = getCorsHeaders(request);
+  
   return new Response(null, {
     status: 200,
     headers: new Headers({
       ...defaultHeaders,
+      ...corsHeaders,
       'Access-Control-Max-Age': '86400',
     })
   });
@@ -28,6 +31,11 @@ export async function GET(
 ) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+  // Get secure CORS headers
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const corsHeaders = getCorsHeaders(request);
+  const secureHeaders = { ...secureHeaders, ...corsHeaders };
 
   try {
     // Extract the address parameter
@@ -45,7 +53,7 @@ export async function GET(
         JSON.stringify({ error: 'Account address is required' }),
         {
           status: 400,
-          headers: new Headers(defaultHeaders)
+          headers: new Headers(secureHeaders)
         }
       );
     }
@@ -57,7 +65,7 @@ export async function GET(
         JSON.stringify({ error: 'Invalid Solana address' }),
         {
           status: 400,
-          headers: new Headers(defaultHeaders)
+          headers: new Headers(secureHeaders)
         }
       );
     }
@@ -232,7 +240,7 @@ export async function GET(
       }),
       {
         status: 200,
-        headers: new Headers(defaultHeaders)
+        headers: new Headers(secureHeaders)
       }
     );
   } catch (error) {
@@ -262,7 +270,7 @@ export async function GET(
       }),
       {
         status,
-        headers: new Headers(defaultHeaders)
+        headers: new Headers(secureHeaders)
       }
     );
   }

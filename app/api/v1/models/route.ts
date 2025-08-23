@@ -116,11 +116,14 @@ export async function GET(request: NextRequest) {
     }
 }
 
-export async function OPTIONS(_request: NextRequest) {
+export async function OPTIONS(request: NextRequest) {
+    const { getCorsHeaders } = await import('@/lib/cors-utils');
+    const corsHeaders = getCorsHeaders(request);
+    
     return new NextResponse(null, {
         status: 204,
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            ...corsHeaders,
             'Access-Control-Allow-Methods': 'GET, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type, Authorization, anthropic-version',
             'Access-Control-Max-Age': '86400'
