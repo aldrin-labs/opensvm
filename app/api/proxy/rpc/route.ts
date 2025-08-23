@@ -3,7 +3,9 @@ import { getRpcEndpoints } from '@/lib/opensvm-rpc';
 
 const defaultHeaders = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production' 
+        ? 'https://opensvm.com' 
+        : '*', // Allow all origins only in development
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization'
 } as const;

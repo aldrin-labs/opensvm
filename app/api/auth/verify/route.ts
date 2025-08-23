@@ -41,13 +41,7 @@ export async function POST(request: NextRequest) {
     
     if (!isValid) {
       console.error('Signature verification failed for wallet:', validatedAddress);
-      
-      // In development mode, allow authentication to proceed with a warning
-      if (process.env.NODE_ENV === 'development') {
-        console.warn('Development mode: allowing authentication despite signature verification failure');
-      } else {
-        return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
-      }
+      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 });
     }
     
     // Create session data
