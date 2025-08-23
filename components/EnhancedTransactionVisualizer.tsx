@@ -3,7 +3,19 @@
 import React from 'react';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import { useEffect, useRef, useCallback } from 'react';
-import * as d3 from 'd3';
+import { 
+  select, 
+  forceSimulation, 
+  forceLink, 
+  forceManyBody, 
+  forceCenter, 
+  forceY, 
+  forceX, 
+  forceCollide, 
+  drag,
+  type Simulation,
+  type D3DragEvent 
+} from 'd3';
 
 interface ParsedInstruction {
   program: string;
@@ -54,7 +66,7 @@ function isValidAccount(account: any): account is TransactionAccount {
 const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisualizerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
-  const simulationRef = useRef<d3.Simulation<Node, undefined> | null>(null);
+  const simulationRef = useRef<Simulation<Node, undefined> | null>(null);
 
   // Memoize helper functions
   const getNodeRadius = useCallback((node: Node): number => {
@@ -102,18 +114,18 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
   }, []);
 
   // Memoize drag functions to prevent recreation on each render
-  const dragstarted = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+  const dragstarted = useCallback((event: D3DragEvent<SVGGElement, Node, Node>) => {
     if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0.3).restart();
     event.subject.fx = event.subject.x;
     event.subject.fy = event.subject.y;
   }, []);
 
-  const dragged = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+  const dragged = useCallback((event: D3DragEvent<SVGGElement, Node, Node>) => {
     event.subject.fx = event.x;
     event.subject.fy = event.y;
   }, []);
 
-  const dragended = useCallback((event: d3.D3DragEvent<SVGGElement, Node, Node>) => {
+  const dragended = useCallback((event: D3DragEvent<SVGGElement, Node, Node>) => {
     if (!event.active && simulationRef.current) simulationRef.current.alphaTarget(0);
     event.subject.fx = null;
     event.subject.fy = null;
@@ -130,7 +142,7 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
     const svgElement = svgRef.current;
 
     // Clear previous content
-    d3.select(svgElement).selectAll('*').remove();
+    select(svgElement).selectAll('*').remove();
 
     // Prepare data structures
     const nodes: Node[] = [];
@@ -193,7 +205,7 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
     // Setup SVG
     const width = 800;
     const height = 600;
-    const svg = d3.select(svgElement)
+    const svg = select(svgElement)
       .attr('width', width)
       .attr('height', height)
       .attr('viewBox', [-width / 2, -height / 2, width, height]);
@@ -212,19 +224,19 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
       .attr('fill', '#666');
 
     // Create force simulation with optimized parameters for top-to-bottom layout
-    const simulation = d3.forceSimulation<Node>(nodes)
-      .force('link', d3.forceLink<Node, Link>(links).id(d => d.id).distance(80))
-      .force('charge', d3.forceManyBody().strength(-150))
-      .force('center', d3.forceCenter(0, 0))
+    const simulation = forceSimulation<Node>(nodes)
+      .force('link', forceLink<Node, Link>(links).id(d => d.id).distance(80))
+      .force('charge', forceManyBody().strength(-150))
+      .force('center', forceCenter(0, 0))
       // Add vertical positioning bias for top-to-bottom flow
-      .force('y', d3.forceY((d: any) => {
+      .force('y', forceY((d: any) => {
         // Position instructions at top, programs in middle, accounts at bottom
         if (d.type === 'instruction') return -height/4;
         if (d.type === 'program') return 0;
         return height/4;
       }).strength(0.3))
-      .force('x', d3.forceX().strength(0.1)) // Weak horizontal centering
-      .force('collision', d3.forceCollide().radius((d: any) => getNodeRadius(d) + 8))
+      .force('x', forceX().strength(0.1)) // Weak horizontal centering
+      .force('collision', forceCollide().radius((d: any) => getNodeRadius(d) + 8))
       // Reduce alpha decay for faster stabilization
       .alphaDecay(0.05)
       .alphaMin(0.001);
@@ -246,7 +258,7 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
       .selectAll('g')
       .data(nodes)
       .join('g')
-      .call(d3.drag<SVGGElement, Node>()
+      .call(drag<SVGGElement, Node>()
         .on('start', dragstarted)
         .on('drag', dragged)
         .on('end', dragended) as any);
@@ -291,7 +303,7 @@ const EnhancedTransactionVisualizer = function({ tx }: EnhancedTransactionVisual
       
       // Clear all SVG content and event listeners using captured ref
       if (svgElement) {
-        const svg = d3.select(svgElement);
+        const svg = select(svgElement);
         svg.selectAll('*').remove();
         svg.on('.drag', null);
       }

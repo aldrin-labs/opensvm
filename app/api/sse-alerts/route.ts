@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache, no-transform',
             'Connection': 'keep-alive',
-            ...corsHeaders,
+            'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Headers': 'Cache-Control',
             'X-Accel-Buffering': 'no', // Disable proxy buffering
             'X-RateLimit-Limit': '100', // Add rate limit headers

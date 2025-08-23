@@ -36,8 +36,11 @@ export interface SavedGraphState {
 }
 
 // Cache TTL in milliseconds (30 minutes)
-// Maximum number of transaction states to store in memory
-const MAX_MEMORY_CACHE_SIZE = 200000000;
+// Maximum number of transaction states to store in memory (reasonable limit)
+const MAX_MEMORY_CACHE_ENTRIES = 50;
+
+// Maximum memory size per cache entry (2MB)
+const MAX_ENTRY_SIZE_BYTES = 2 * 1024 * 1024;
 
 // Storage key
 const GRAPH_STATE_STORAGE_KEY = 'opensvm-graph-state';
@@ -102,7 +105,7 @@ export class GraphStateCache {
           
           // Check memory usage before storing
           const memorySize = this.estimateMemoryUsage(enhancedState);
-          if (memorySize > MAX_MEMORY_CACHE_SIZE / 100) { // Don't let single item exceed 1% of max
+          if (memorySize > MAX_ENTRY_SIZE_BYTES) {
             console.warn(`State object too large (${memorySize} bytes), skipping memory cache`);
           } else {
             GraphStateCache.memoryCache.set(signature, enhancedState);
@@ -492,14 +495,14 @@ export class GraphStateCache {
    * Uses LRU strategy based on access timestamp
    */
   private static trimMemoryCache(): void {
-    if (GraphStateCache.memoryCache.size <= MAX_MEMORY_CACHE_SIZE) return;
+    if (GraphStateCache.memoryCache.size <= MAX_MEMORY_CACHE_ENTRIES) return;
     
     // Convert to array and sort by timestamp (oldest first)
     const entries = Array.from(GraphStateCache.memoryCache.entries())
       .sort((a, b) => (a[1].expandedTimestamp || 0) - (b[1].expandedTimestamp || 0));
       
     // Remove oldest entries until we're under the limit
-    while (entries.length > MAX_MEMORY_CACHE_SIZE) {
+    while (entries.length > MAX_MEMORY_CACHE_ENTRIES) {
       const oldest = entries.shift();
       if (oldest) {
         GraphStateCache.memoryCache.delete(oldest[0]);

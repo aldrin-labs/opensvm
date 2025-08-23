@@ -987,11 +987,20 @@ export class TransactionMetricsCalculator {
       comparison: 0.1
     };
 
-    const efficiencyScore = metrics.efficiency.overall;
-    const costScore = 100 - Math.min(100, (metrics.costAnalysis.comparison.vsOptimalTransaction / 2));
-    const complexityScore = Math.max(0, 100 - metrics.complexity.overall);
-    const performanceScore = metrics.performance.scalability.scalabilityScore;
-    const comparisonScore = metrics.comparison.percentiles.efficiencyPercentile;
+    // Safely extract scores with fallbacks for NaN/undefined values
+    const efficiencyScore = Number.isFinite(metrics.efficiency.overall) ? metrics.efficiency.overall : 50;
+    const costScore = Number.isFinite(metrics.costAnalysis.comparison.vsOptimalTransaction) 
+      ? 100 - Math.min(100, (metrics.costAnalysis.comparison.vsOptimalTransaction / 2))
+      : 50;
+    const complexityScore = Number.isFinite(metrics.complexity.overall) 
+      ? Math.max(0, 100 - metrics.complexity.overall)
+      : 50;
+    const performanceScore = Number.isFinite(metrics.performance.scalability.scalabilityScore)
+      ? metrics.performance.scalability.scalabilityScore
+      : 50;
+    const comparisonScore = Number.isFinite(metrics.comparison.percentiles.efficiencyPercentile)
+      ? metrics.comparison.percentiles.efficiencyPercentile
+      : 50;
 
     const overallScore = (
       efficiencyScore * weights.efficiency +
@@ -1000,6 +1009,12 @@ export class TransactionMetricsCalculator {
       performanceScore * weights.performance +
       comparisonScore * weights.comparison
     );
+
+    // Ensure score is finite and within valid range
+    if (!Number.isFinite(overallScore)) {
+      console.warn('Calculated non-finite overall score, using default of 50');
+      return 50;
+    }
 
     return Math.max(0, Math.min(100, overallScore));
   }
