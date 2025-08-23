@@ -36,9 +36,11 @@ export function calculateStats(history: UserHistoryEntry[]): UserHistoryStats {
     return acc;
   }, {} as Record<string, number>);
 
-  const mostVisitedType = Object.entries(pageTypes).reduce((a, b) =>
-    pageTypes[a[0]] > pageTypes[b[0]] ? a : b
-  )[0];
+  // Safe calculation of most visited type with fallback
+  const pageTypeEntries = Object.entries(pageTypes);
+  const mostVisitedType = pageTypeEntries.length > 0 
+    ? pageTypeEntries.reduce((a, b) => pageTypes[a[0]] > pageTypes[b[0]] ? a : b)[0]
+    : 'other';
 
   // Calculate daily activity
   const dailyActivity = history.reduce((acc, h) => {

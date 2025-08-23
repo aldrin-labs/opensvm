@@ -9,7 +9,69 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    const { messages } = body;
+
+    // Validate messages parameter
+    if (!messages || !Array.isArray(messages)) {
+      return NextResponse.json(
+        { error: 'Messages parameter is required and must be an array' },
+        { status: 400 }
+      );
+    }
+
+    // Validate message count and structure
+    if (messages.length === 0) {
+      return NextResponse.json(
+        { error: 'At least one message is required' },
+        { status: 400 }
+      );
+    }
+
+    if (messages.length > 20) {
+      return NextResponse.json(
+        { error: 'Too many messages. Maximum 20 messages allowed' },
+        { status: 400 }
+      );
+    }
+
+    // Validate each message structure and content length
+    for (const [index, msg] of messages.entries()) {
+      if (!msg || typeof msg !== 'object') {
+        return NextResponse.json(
+          { error: `Message at index ${index} must be an object` },
+          { status: 400 }
+        );
+      }
+
+      if (!msg.role || !msg.content) {
+        return NextResponse.json(
+          { error: `Message at index ${index} must have 'role' and 'content' properties` },
+          { status: 400 }
+        );
+      }
+
+      if (typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+        return NextResponse.json(
+          { error: `Message at index ${index} role and content must be strings` },
+          { status: 400 }
+        );
+      }
+
+      if (msg.content.length > 4000) {
+        return NextResponse.json(
+          { error: `Message at index ${index} content too long. Maximum 4000 characters` },
+          { status: 400 }
+        );
+      }
+
+      if (!['user', 'assistant'].includes(msg.role)) {
+        return NextResponse.json(
+          { error: `Message at index ${index} has invalid role. Must be 'user' or 'assistant'` },
+          { status: 400 }
+        );
+      }
+    }
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',

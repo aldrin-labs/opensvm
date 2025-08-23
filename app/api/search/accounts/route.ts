@@ -14,19 +14,31 @@ const SEARCH_RATE_LIMIT = {
   maxRetryDelay: 5000
 };
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
+const corsHeadersTemplate = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const corsHeaders = getCorsHeaders(request);
+  
+  return NextResponse.json({}, { 
+    headers: {
+      ...corsHeadersTemplate,
+      ...corsHeaders
+    }
+  });
 }
 
 export async function GET(request: NextRequest) {
+  // Get secure CORS headers
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const corsHeaders = getCorsHeaders(request);
+  
   // Add CORS headers to all responses
   const baseHeaders = {
+    ...corsHeadersTemplate,
     ...corsHeaders,
     'Content-Type': 'application/json',
   };
@@ -76,10 +88,21 @@ export async function GET(request: NextRequest) {
       ) as Promise<ReturnType<typeof getConnection>>
     ]);
 
-    // First validate the query format
-    if (query.length > 30 && !isValidSolanaAddress(query)) {
+    // First validate the query format - be more specific about address validation
+    if (query.length >= 32 && query.length <= 44 && !isValidSolanaAddress(query)) {
       return NextResponse.json(
         { error: 'Invalid Solana address format' },
+        {
+          status: 400,
+          headers: baseHeaders
+        }
+      );
+    }
+
+    // If it's too long to be a valid Solana address, reject it
+    if (query.length > 44) {
+      return NextResponse.json(
+        { error: 'Search query too long' },
         {
           status: 400,
           headers: baseHeaders

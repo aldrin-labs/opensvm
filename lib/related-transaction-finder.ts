@@ -184,6 +184,7 @@ class RelatedTransactionFinder {
 
   /**
    * Discover related transactions using multiple relationship detection strategies
+   * Each strategy is wrapped in error handling to ensure one failure doesn't break the entire process
    */
   private async discoverRelatedTransactions(
     sourceTransaction: DetailedTransactionInfo,
@@ -193,32 +194,56 @@ class RelatedTransactionFinder {
     const seenSignatures = new Set<string>([sourceTransaction.signature]);
 
     // Strategy 1: Account-based relationships
-    const accountRelated = await this.findAccountBasedRelationships(sourceTransaction, query);
-    this.addUniqueTransactions(relatedTransactions, accountRelated, seenSignatures);
+    try {
+      const accountRelated = await this.findAccountBasedRelationships(sourceTransaction, query);
+      this.addUniqueTransactions(relatedTransactions, accountRelated, seenSignatures);
+    } catch (error) {
+      console.warn('Error in account-based relationship discovery:', error);
+    }
 
     // Strategy 2: Program usage patterns
-    const programRelated = await this.findProgramBasedRelationships(sourceTransaction, query);
-    this.addUniqueTransactions(relatedTransactions, programRelated, seenSignatures);
+    try {
+      const programRelated = await this.findProgramBasedRelationships(sourceTransaction, query);
+      this.addUniqueTransactions(relatedTransactions, programRelated, seenSignatures);
+    } catch (error) {
+      console.warn('Error in program-based relationship discovery:', error);
+    }
 
     // Strategy 3: Temporal proximity
-    const temporalRelated = await this.findTemporalRelationships(sourceTransaction, query);
-    this.addUniqueTransactions(relatedTransactions, temporalRelated, seenSignatures);
+    try {
+      const temporalRelated = await this.findTemporalRelationships(sourceTransaction, query);
+      this.addUniqueTransactions(relatedTransactions, temporalRelated, seenSignatures);
+    } catch (error) {
+      console.warn('Error in temporal relationship discovery:', error);
+    }
 
     // Strategy 4: Token flow patterns
     if (query.includeTokenFlows !== false) {
-      const tokenFlowRelated = await this.findTokenFlowRelationships(sourceTransaction, query);
-      this.addUniqueTransactions(relatedTransactions, tokenFlowRelated, seenSignatures);
+      try {
+        const tokenFlowRelated = await this.findTokenFlowRelationships(sourceTransaction, query);
+        this.addUniqueTransactions(relatedTransactions, tokenFlowRelated, seenSignatures);
+      } catch (error) {
+        console.warn('Error in token flow relationship discovery:', error);
+      }
     }
 
     // Strategy 5: DeFi protocol patterns
     if (query.includeDeFiPatterns !== false) {
-      const defiRelated = await this.findDeFiProtocolRelationships(sourceTransaction, query);
-      this.addUniqueTransactions(relatedTransactions, defiRelated, seenSignatures);
+      try {
+        const defiRelated = await this.findDeFiProtocolRelationships(sourceTransaction, query);
+        this.addUniqueTransactions(relatedTransactions, defiRelated, seenSignatures);
+      } catch (error) {
+        console.warn('Error in DeFi protocol relationship discovery:', error);
+      }
     }
 
     // Strategy 6: Multi-step transaction sequences
-    const sequenceRelated = await this.findTransactionSequences(sourceTransaction, query);
-    this.addUniqueTransactions(relatedTransactions, sequenceRelated, seenSignatures);
+    try {
+      const sequenceRelated = await this.findTransactionSequences(sourceTransaction, query);
+      this.addUniqueTransactions(relatedTransactions, sequenceRelated, seenSignatures);
+    } catch (error) {
+      console.warn('Error in transaction sequence discovery:', error);
+    }
 
     return relatedTransactions;
   }

@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
 import { getConnection } from "@/lib/solana-connection-server";
 import { rateLimiter, RateLimitError } from "@/lib/rate-limit";
@@ -43,7 +43,6 @@ const METADATA_FETCH_CONFIG = {
 };
 
 const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization",
 };
@@ -222,13 +221,25 @@ async function fetchCollections(
 }
 
 // API Routes
-export async function OPTIONS() {
-  return NextResponse.json({}, { headers: corsHeaders });
+export async function OPTIONS(request: NextRequest) {
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const secureCorsHeaders = getCorsHeaders(request);
+  
+  return NextResponse.json({}, { 
+    headers: {
+      ...corsHeaders,
+      ...secureCorsHeaders
+    }
+  });
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const { getCorsHeaders } = await import('@/lib/cors-utils');
+  const secureCorsHeaders = getCorsHeaders(request);
+  
   const baseHeaders = {
     ...corsHeaders,
+    ...secureCorsHeaders,
     "Content-Type": "application/json",
   };
 

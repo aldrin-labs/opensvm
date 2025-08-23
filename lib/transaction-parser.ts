@@ -141,7 +141,7 @@ export async function parseTransaction(
         if (retries === 0) {
           console.error('All parse attempts failed, falling back to basic parsing');
           // Fallback to basic parsing without advanced IDL
-          rawInstructions = await parseTransactionBasic(tx);
+          rawInstructions = parseTransactionBasic(tx);
         } else {
           await new Promise(resolve => setTimeout(resolve, Math.pow(2, 3 - retries) * 100));
         }
@@ -151,7 +151,7 @@ export async function parseTransaction(
     // Ensure rawInstructions is not null before processing
     if (!rawInstructions || !Array.isArray(rawInstructions)) {
       console.warn('No instructions parsed, falling back to basic parsing');
-      rawInstructions = await parseTransactionBasic(tx);
+      rawInstructions = parseTransactionBasic(tx);
     }
 
     // Transform instructions to match our interface
@@ -199,7 +199,7 @@ function getProgramName(programId: string): string {
 }
 
 // Fallback parsing function for when advanced parsing fails
-async function parseTransactionBasic(tx: ParsedTransactionWithMeta): Promise<any[]> {
+function parseTransactionBasic(tx: ParsedTransactionWithMeta): any[] {
   console.log('Using basic transaction parsing fallback');
 
   const instructions = tx.transaction.message.instructions || [];
@@ -243,7 +243,11 @@ function getAccountBalance(
 
     // Get balance from metadata
     const balances = type === 'pre' ? tx.meta.preBalances : tx.meta.postBalances;
-    return balances?.[accountIndex];
+    if (!balances || accountIndex >= balances.length) {
+      console.warn(`Balance array missing or too short for account index ${accountIndex}`);
+      return undefined;
+    }
+    return balances[accountIndex];
   } catch (error) {
     console.warn(`Error getting ${type} balance for account:`, error);
     return undefined;

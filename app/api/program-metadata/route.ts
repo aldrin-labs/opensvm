@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getProgramInfoWithQdrantCache } from '@/lib/program-metadata-cache';
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': process.env.NODE_ENV === 'production' 
+        ? 'https://opensvm.com' 
+        : '*', // Allow all origins only in development
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
