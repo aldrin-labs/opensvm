@@ -2,7 +2,22 @@
 interface Window {
     SpeechRecognition: any;
     webkitSpeechRecognition: any;
+
+    // Backward compatibility seeding helper alias (legacy E2E tests)
+    __SVMAI_SEED__?: (count?: number, options?: { tabId?: string; clear?: boolean }) => { tabId: string; total: number } | void;
+
     SVMAI?: {
+        // Core sidebar controls (exposed via AIChatSidebarContext)
+        open?: () => void;
+        close?: () => void;
+        toggle?: (next?: boolean) => void;
+        prompt?: (text: string, submit?: boolean) => void;
+        setWidth?: (w: number) => void;
+        getWidth?: () => number;
+
+        // Seeding helper (added for virtualization & perf testing)
+        seed?: (count?: number, options?: { tabId?: string; clear?: boolean }) => { tabId: string; total: number } | void;
+
         // Phase 3.1: Performance monitoring
         getPerfSnapshot?: () => {
             droppedFrames: number;

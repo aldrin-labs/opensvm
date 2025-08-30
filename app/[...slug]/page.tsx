@@ -7,45 +7,44 @@ import { useSettings } from '@/lib/settings';
 import { useRouter } from 'next/navigation'
 import { isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils'
 
-export default function CatchAllRoute({ params }: { params: Promise<{ slug: string[] }> }) {
+export default function CatchAllRoute({ params }: { params: { slug?: string[] } }) {
+  // Access settings to ensure any side-effects (e.g., network / feature flags) still initialize
   const settings = useSettings();
-  const router = useRouter()
+  const router = useRouter();
 
   useEffect(() => {
-    async function handleRedirect() {
-      try {
-        const resolvedParams = await params;
-        const input = resolvedParams.slug.join('/')
-        
-        // Check if it's a numeric value (potential block number)
-        if (/^\d+$/.test(input)) {
-          router.push(`/block/${input}`)
-          return
-        }
+    // If no slug parts, do nothing (could be the root which should normally route elsewhere)
+    const slugParts = params?.slug ?? [];
+    if (!slugParts.length) return;
 
-        // Check if it's a transaction signature (64-88 character base58 string)
-        if (isValidTransactionSignature(input)) {
-          router.push(`/tx/${input}`)
-          return
-        }
+    const input = slugParts.join('/');
 
-        // Check if it's a valid Solana address (44 character base58 string)
-        if (isValidSolanaAddress(input)) {
-          router.push(`/account/${input}`)
-          return
-        }
-
-        // For everything else that doesn't match any pattern, redirect to search
-        router.push(`/search?q=${encodeURIComponent(input)}`)
-      } catch (error) {
-        console.error('Error in catch-all route:', error)
-        // Fallback to search page on any error - use empty string as fallback
-        router.push(`/search`)
+    try {
+      // Numeric => block number
+      if (/^\d+$/.test(input)) {
+        router.push(`/block/${input}`);
+        return;
       }
-    }
 
-    handleRedirect()
-  }, [params, router])
+      // Transaction signature
+      if (isValidTransactionSignature(input)) {
+        router.push(`/tx/${input}`);
+        return;
+      }
+
+      // Account address
+      if (isValidSolanaAddress(input)) {
+        router.push(`/account/${input}`);
+        return;
+      }
+
+      // Fallback: search
+      router.push(`/search?q=${encodeURIComponent(input)}`);
+    } catch (error) {
+      console.error('Error in catch-all route:', error);
+      router.push(`/search`);
+    }
+  }, [params?.slug, router]);
 
   return (
     <div className="flex items-center justify-center min-h-screen">
@@ -53,5 +52,5 @@ export default function CatchAllRoute({ params }: { params: Promise<{ slug: stri
         <p className="text-lg">Analyzing input...</p>
       </div>
     </div>
-  )
+  );
 }

@@ -160,7 +160,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     e.preventDefault();
 
     // Use router.push with scroll: false to prevent page reload
-    router.push(`/account/${targetAddress}?tab=transactions`, {
+    router.push(`/account/${targetAddress}?tab=account-transfers`, {
       scroll: false
     });
   }, [router]);
@@ -301,7 +301,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
         <Tooltip content={row.from || ''}>
           <div className="truncate font-mono text-xs" data-test="from">
             <Link
-              href={row.from ? `/account/${row.from}?tab=transactions` : '#'}
+              href={row.from ? `/account/${row.from}?tab=account-transfers` : '#'}
               className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.from || '')}
               data-address={row.from || ''}
@@ -321,7 +321,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
         <Tooltip content={row.to || ''}>
           <div className="truncate font-mono text-xs" data-test="to">
             <Link
-              href={row.to ? `/account/${row.to}?tab=transactions` : '#'}
+              href={row.to ? `/account/${row.to}?tab=account-transfers` : '#'}
               className="hover:underline hover:text-primary text-primary/80 transition-colors"
               onClick={(e) => handleAddressClick(e, row.to || '')}
               data-address={row.to || ''}

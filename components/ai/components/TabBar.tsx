@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Pin } from 'lucide-react';
 import type { ChatTab } from '../hooks/useChatTabs';
 
 interface TabBarProps {
@@ -9,7 +9,11 @@ interface TabBarProps {
     onTabClose: (tabId: string) => void;
     onNewTab: () => void;
     onTabRename?: (tabId: string, name: string) => void;
+    onTabTogglePin?: (tabId: string) => void;
     className?: string;
+    // Knowledge view integration
+    knowledgeActive?: boolean;
+    onSelectKnowledge?: () => void;
 }
 
 interface TabItemProps {
@@ -18,9 +22,10 @@ interface TabItemProps {
     onTabClick: (tabId: string) => void;
     onTabClose: (tabId: string) => void;
     onTabRename?: (tabId: string, name: string) => void;
+    onTabTogglePin?: (tabId: string) => void;
 }
 
-function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename }: TabItemProps) {
+function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename, onTabTogglePin }: TabItemProps) {
     const [isEditing, setIsEditing] = useState(false);
     const [editName, setEditName] = useState(tab.name);
 
@@ -49,10 +54,10 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename }: TabItem
 
     const getStatusIndicator = () => {
         if (tab.isProcessing) {
-            return <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" />;
+            return <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" data-ai-tab-status="processing" />;
         }
         if (tab.status) {
-            return <div className="w-2 h-2 bg-green-400 rounded-full" />;
+            return <div className="w-2 h-2 bg-green-400 rounded-full" data-ai-tab-status="ready" />;
         }
         return null;
     };
@@ -69,6 +74,12 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename }: TabItem
       `}
             onClick={() => onTabClick(tab.id)}
             onDoubleClick={handleDoubleClick}
+            role="tab"
+            aria-selected={isActive}
+            data-ai-tab-header
+            data-active={isActive ? 'true' : 'false'}
+            data-ai-tab-id={tab.id}
+            data-testid="ai-tab-header"
         >
             {/* Status indicator */}
             <div className="flex-shrink-0">
@@ -87,25 +98,49 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename }: TabItem
                         className="w-full bg-transparent border-none outline-none text-sm font-medium"
                         autoFocus
                         onClick={(e) => e.stopPropagation()}
+                        data-ai-tab-rename
+                        aria-label={`Rename tab ${tab.name}`}
                     />
                 ) : (
-                    <span className="text-sm font-medium truncate block">
+                    <span className="text-sm font-medium truncate block" data-ai-tab-name>
                         {tab.name}
                     </span>
                 )}
             </div>
 
             {/* Mode indicator */}
-            <div className={`text-xs opacity-60 ${isActive ? 'text-black/60' : 'text-white/60'}`}>
+            <div className={`text-xs opacity-60 ${isActive ? 'text-black/60' : 'text-white/60'}`} data-ai-tab-mode={tab.mode}>
                 {tab.mode === 'agent' ? 'A' : 'AI'}
             </div>
 
             {/* Status text */}
             {tab.status && (
-                <div className={`text-xs opacity-60 max-w-[80px] truncate ${isActive ? 'text-black/60' : 'text-white/60'}`}>
+                <div className={`text-xs opacity-60 max-w-[80px] truncate ${isActive ? 'text-black/60' : 'text-white/60'}`} data-ai-tab-status-text>
                     {tab.status}
                 </div>
             )}
+
+            {/* Pin / Unpin button */}
+            <button
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onTabTogglePin?.(tab.id);
+                }}
+                className={`
+          flex-shrink-0 p-1 rounded-sm transition-opacity
+          ${tab.pinned ? '' : 'opacity-0 group-hover:opacity-100'}
+          ${isActive
+                        ? 'hover:bg-black/10 text-black/60 hover:text-black'
+                        : 'hover:bg-white/20 text-white/60 hover:text-white'
+                    }
+        `}
+                aria-label={`${tab.pinned ? 'Unpin' : 'Pin'} ${tab.name}`}
+                aria-pressed={tab.pinned}
+                title={tab.pinned ? 'Unpin tab' : 'Pin tab'}
+                data-ai-tab-pin
+            >
+                <Pin size={12} className={tab.pinned ? 'fill-current' : ''} />
+            </button>
 
             {/* Close button */}
             <button
@@ -121,6 +156,7 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename }: TabItem
                     }
         `}
                 aria-label={`Close ${tab.name}`}
+                data-ai-tab-close
             >
                 <X size={12} />
             </button>
@@ -135,10 +171,18 @@ export function TabBar({
     onTabClose,
     onNewTab,
     onTabRename,
-    className = ''
+    onTabTogglePin,
+    className = '',
+    knowledgeActive = false,
+    onSelectKnowledge
 }: TabBarProps) {
     return (
-        <div className={`flex items-center bg-black border-b border-white/20 ${className}`}>
+        <div
+            className={`flex items-center bg-black border-b border-white/20 ${className}`}
+            data-ai-tabs
+            role="tablist"
+            aria-label="AI chat tabs"
+        >
             {/* Tabs container with horizontal scroll */}
             <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
                 <div className="flex items-center min-w-max">
@@ -150,19 +194,37 @@ export function TabBar({
                             onTabClick={onTabClick}
                             onTabClose={onTabClose}
                             onTabRename={onTabRename}
+                            onTabTogglePin={onTabTogglePin}
                         />
                     ))}
                 </div>
             </div>
 
+            {/* Knowledge (Notes) pseudo-tab button */}
+            <button
+                type="button"
+                onClick={() => onSelectKnowledge?.()}
+                className={`
+                  flex-shrink-0 px-3 py-2 text-sm font-medium border-l border-white/20
+                  ${knowledgeActive ? 'bg-white text-black' : 'text-white/80 hover:text-white hover:bg-white/10'}
+                `}
+                aria-label="Knowledge"
+                data-ai-tab="knowledge"
+                data-testid="knowledge-tab"
+                title="Knowledge notes"
+                role="tab"
+                aria-selected={knowledgeActive}
+            >
+                Knowledge
+            </button>
+
             {/* New tab button */}
             <button
-                // Wrap to avoid React synthetic event being forwarded as the first arg
-                // which previously caused an object to be stored as tab.name and crash rendering
                 onClick={() => onNewTab()}
                 className="flex-shrink-0 p-3 text-white/80 hover:text-white hover:bg-white/10 transition-colors border-l border-white/20"
                 aria-label="New tab"
                 title="New tab"
+                data-ai-new-tab
             >
                 <Plus size={16} />
             </button>

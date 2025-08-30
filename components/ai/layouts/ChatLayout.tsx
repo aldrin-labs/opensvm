@@ -33,6 +33,10 @@ export interface ChatLayoutProps {
   onTabClose?: (tabId: string) => void;
   onNewTab?: () => void;
   onTabRename?: (tabId: string, name: string) => void;
+  onTabTogglePin?: (tabId: string) => void;
+  // Knowledge pseudo-tab state
+  knowledgeActive?: boolean;
+  onSelectKnowledge?: () => void;
   // Legacy props for backward compatibility
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -62,6 +66,10 @@ export function ChatLayout({
   onTabClose,
   onNewTab,
   onTabRename,
+  onTabTogglePin,
+  // Knowledge pseudo-tab
+  knowledgeActive = false,
+  onSelectKnowledge,
   // Legacy props for backward compatibility
   activeTab = 'agent',
   onTabChange,
@@ -75,8 +83,11 @@ export function ChatLayout({
 }: ChatLayoutProps) {
   const [width, setWidth] = useState(() => {
     const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const base = typeof initialWidth === 'number' ? initialWidth : (viewport < 640 ? viewport : 480);
-    return Math.min(viewport, Math.max(300, base));
+    const minLimit = Math.min(560, viewport);
+    const base = typeof initialWidth === 'number'
+      ? initialWidth
+      : (viewport < 640 ? viewport : 560);
+    return Math.min(viewport, Math.max(minLimit, base));
   });
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -97,9 +108,10 @@ export function ChatLayout({
     requestAnimationFrame(() => {
       const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
       const maxWidth = Math.max(320, viewportWidth); // allow up to full viewport width
+      const minLimit = Math.min(560, viewportWidth);
       // Use current logical width as base to avoid layout reads while dragging
       const baseWidth = width + deltaX;
-      const newWidth = Math.min(maxWidth, Math.max(300, baseWidth));
+      const newWidth = Math.min(maxWidth, Math.max(minLimit, baseWidth));
       setWidth(newWidth);
       onWidthChange?.(newWidth);
     });
@@ -179,7 +191,8 @@ export function ChatLayout({
   useEffect(() => {
     if (typeof initialWidth !== 'number') return;
     const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
-    const clamped = Math.min(viewport, Math.max(300, initialWidth));
+    const minLimit = Math.min(560, viewport);
+    const clamped = Math.min(viewport, Math.max(minLimit, initialWidth));
     setWidth(prev => (prev !== clamped ? clamped : prev));
     // Do not echo back via onWidthChange here to avoid feedback loops
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -244,7 +257,8 @@ export function ChatLayout({
       setIsExpanded(true);
     } else {
       // Restore previous collapsed width
-      const restored = Math.min(viewportWidth, Math.max(300, lastCollapsedWidthRef.current || 480));
+      const minLimit = Math.min(560, viewportWidth);
+      const restored = Math.min(viewportWidth, Math.max(minLimit, lastCollapsedWidthRef.current || minLimit));
       setWidth(restored);
       setIsExpanded(false);
     }
@@ -294,7 +308,10 @@ export function ChatLayout({
           role="complementary"
           aria-label="AI Chat Sidebar"
           data-ai-sidebar
-          data-ai-sidebar-width={isExpanded ? '100vw' : undefined}
+          data-ai-sidebar-root
+          data-ai-mode={activeTab}
+          data-ai-sidebar-visible="1"
+          data-ai-sidebar-width={String(width)}
         >
           {/* Skip link for keyboard navigation */}
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
@@ -318,7 +335,8 @@ export function ChatLayout({
                 const delta = e.key === 'ArrowLeft' ? -24 : 24;
                 const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 1920;
                 const oldWidth = isExpanded ? viewportWidth : width;
-                const newWidth = Math.min(viewportWidth, Math.max(300, oldWidth + delta));
+                const minLimit = Math.min(560, viewportWidth);
+                const newWidth = Math.min(viewportWidth, Math.max(minLimit, oldWidth + delta));
                 setWidth(newWidth);
                 onWidthChange?.(newWidth);
 
@@ -365,6 +383,9 @@ export function ChatLayout({
                   onTabClose={onTabClose || (() => { })}
                   onNewTab={onNewTab || (() => { })}
                   onTabRename={onTabRename}
+                  onTabTogglePin={onTabTogglePin}
+                  knowledgeActive={knowledgeActive}
+                  onSelectKnowledge={onSelectKnowledge}
                 />
                 {/* Action buttons row */}
                 <div className="flex items-center justify-end h-10 px-4 border-b border-white/20 bg-black/20">
@@ -424,11 +445,11 @@ export function ChatLayout({
                             onClick={handleOpenSettings}
                             className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
                             role="menuitem"
-                            data-ai-token-panel
-                            title="Manage SVMAI Tokens"
+                            data-ai-open-token-panel
+                            title="Open settings and token management"
                           >
                             <Settings size={16} />
-                            💰 Tokens
+                            Settings
                           </button>
                           <button
                             onClick={handleHelp}
@@ -574,11 +595,11 @@ export function ChatLayout({
                           onClick={handleOpenSettings}
                           className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
                           role="menuitem"
-                          data-ai-token-panel
-                          title="Manage SVMAI Tokens"
+                          data-ai-open-token-panel
+                          title="Open settings and token management"
                         >
                           <Settings size={16} />
-                          💰 Tokens
+                          Settings
                         </button>
                         <button
                           onClick={handleHelp}

@@ -3,7 +3,7 @@ import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from '
 import { jest, expect } from '@jest/globals';
 
 // Polyfills for Next.js and Web APIs
-global.TextEncoder = NodeTextEncoder;
+global.TextEncoder = NodeTextEncoder as unknown as typeof global.TextEncoder;
 global.TextDecoder = NodeTextDecoder as typeof global.TextDecoder;
 
 // Mock Web Crypto API for Solana operations
@@ -108,6 +108,20 @@ global.TransformStream = class MockTransformStream {
   readable = new MockReadableStream();
   writable = new MockWritableStream();
 } as any;
+
+// Polyfill ResizeObserver for tests (needed by ChatUI and other components relying on layout measurement)
+if (typeof global.ResizeObserver === 'undefined') {
+  class MockResizeObserver {
+    observe() { /* no-op */ }
+    unobserve() { /* no-op */ }
+    disconnect() { /* no-op */ }
+  }
+  // Assign to both global and window (if window exists)
+  (global as any).ResizeObserver = MockResizeObserver;
+  if (typeof window !== 'undefined') {
+    (window as any).ResizeObserver = MockResizeObserver;
+  }
+}
 
 // Mock Request for Next.js API routes
 export class MockRequest {

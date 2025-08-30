@@ -35,6 +35,17 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
 
   // Keep local state in sync if parent prop changes (e.g., on initial mount or external nav)
   useEffect(() => {
+    const validIds = tabs.map(t => t.id);
+    // Backwards compatibility / old links
+    if (activeTab === 'transactions') {
+      setSelectedTab('account-transfers');
+      return;
+    }
+    // Fallback if an unknown tab id is provided
+    if (!validIds.includes(activeTab)) {
+      setSelectedTab('account-transfers');
+      return;
+    }
     setSelectedTab(activeTab);
   }, [activeTab]);
 

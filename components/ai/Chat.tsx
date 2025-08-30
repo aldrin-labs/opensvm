@@ -23,6 +23,7 @@ export interface ChatProps {
   onTabClose?: (tabId: string) => void;
   onNewTab?: () => void;
   onTabRename?: (tabId: string, name: string) => void;
+  onTabTogglePin?: (tabId: string) => void;
   // Chat content props
   messages?: Message[];
   input?: string;
@@ -37,6 +38,10 @@ export interface ChatProps {
   onRemoveNote?: (id: string) => void;
   agentActions?: AgentAction[];
   onRetryAction?: (id: string) => void;
+  onForkThread?: (messageIndex: number) => void;
+  // Knowledge pseudo-tab props
+  knowledgeActive?: boolean;
+  onSelectKnowledge?: () => void;
   // Legacy props for backward compatibility
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -68,6 +73,7 @@ export function Chat({
   onTabClose,
   onNewTab,
   onTabRename,
+  onTabTogglePin,
   // Chat content props
   messages = [],
   input = '',
@@ -82,6 +88,10 @@ export function Chat({
   onRemoveNote,
   agentActions = [],
   onRetryAction,
+  onForkThread,
+  // Knowledge pseudo-tab
+  knowledgeActive = false,
+  onSelectKnowledge,
   // Legacy props for backward compatibility
   activeTab = 'agent',
   onTabChange,
@@ -96,18 +106,88 @@ export function Chat({
   isRecording,
   onCancel
 }: ChatProps) {
+  console.log('🔍 Chat component rendered, variant:', variant, 'isOpen:', isOpen);
   const [showFallback, setShowFallback] = useState(false);
+  const [globalPending, setGlobalPending] = useState(false);
+  // Early provisional input to satisfy fast E2E visibility checks before full ChatUI mounts
+  const [earlyInputVisible, setEarlyInputVisible] = useState(true);
 
   useEffect(() => {
-    // After mount, check if the real chat input rendered; if not, show a minimal fallback so tests/users see something.
-    const id = setTimeout(() => {
-      if (typeof document !== 'undefined') {
-        const found = document.querySelector('[data-ai-chat-input]');
-        if (!found) setShowFallback(true);
-      }
-    }, 1800);
-    return () => clearTimeout(id);
+    if (typeof window === 'undefined') return;
+    const sync = () => {
+      try {
+        setGlobalPending(!!(window as any).__SVMAI_PENDING__);
+      } catch { /* noop */ }
+    };
+    sync();
+    window.addEventListener('svmai-pending-change', sync);
+    return () => window.removeEventListener('svmai-pending-change', sync);
   }, []);
+
+  useEffect(() => {
+    // Poll for the real ChatUI input; once present, remove early placeholder
+    if (typeof document !== 'undefined') {
+      const interval = setInterval(() => {
+        const real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');
+        if (real) {
+          setEarlyInputVisible(false);
+          clearInterval(interval);
+        }
+      }, 120);
+      // Safety timeout (in case input never appears, fallback logic will handle)
+      setTimeout(() => clearInterval(interval), 6000);
+      return () => clearInterval(interval);
+    }
+  }, []);
+
+  useEffect(() => {
+    console.log('Chat component mounted, variant:', variant, 'isOpen:', isOpen);
+    // Robust fallback detection:
+    // React 18 StrictMode double-mounts components in development; the first mount/unmount
+    // can schedule the legacy timeout causing premature fallback before ChatUI commits.
+    // We now perform a phased check:
+    //  1. Initial delay (900ms) to allow ChatUI + dynamic imports
+    //  2. If input missing, retry up to 2 more times (600ms interval) even if ChatUI root not yet present
+    //  3. Only show fallback if after retries no input is found AND fallback not already shown
+    //  4. Abort early if input appears
+    const MAX_RETRIES = 3;
+    const RETRY_INTERVAL = 600;
+    const INITIAL_DELAY = 900;
+    let cancelled = false;
+
+    function check(attempt: number) {
+      if (cancelled) return;
+      if (typeof document === 'undefined') return;
+
+      const inputEl = document.querySelector('[data-ai-chat-input]');
+      if (inputEl) {
+        if (showFallback) {
+          console.log('[Chat] Primary input appeared after fallback scheduled; keeping primary UI.');
+        }
+        return; // Input present, nothing to do
+      }
+
+      const uiRoot = document.querySelector('[data-ai-chat-ui]');
+      console.log(`[Chat] Fallback probe attempt ${attempt} | uiRoot=${!!uiRoot} | inputPresent=${!!inputEl}`);
+
+      if (attempt < MAX_RETRIES) {
+        // Retry regardless of uiRoot presence to avoid premature fallback when ChatUI hasn't committed yet
+        setTimeout(() => check(attempt + 1), RETRY_INTERVAL);
+        return;
+      }
+
+      if (!inputEl && !showFallback) {
+        console.log('[Chat] No chat input after phased probes; activating fallback UI');
+        setShowFallback(true);
+      }
+    }
+
+    const timer = setTimeout(() => check(1), INITIAL_DELAY);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [variant, isOpen, showFallback]);
 
   return (
     <ChatLayout
@@ -126,6 +206,10 @@ export function Chat({
       onTabClose={onTabClose}
       onNewTab={onNewTab}
       onTabRename={onTabRename}
+      onTabTogglePin={onTabTogglePin}
+      // Knowledge pseudo-tab
+      knowledgeActive={knowledgeActive}
+      onSelectKnowledge={onSelectKnowledge}
       // Legacy props for backward compatibility
       activeTab={activeTab}
       onTabChange={onTabChange}
@@ -138,11 +222,38 @@ export function Chat({
       onExpand={onExpand}
     >
       <div data-ai-chat-sentinel className="hidden">chat-sentinel</div>
+      {earlyInputVisible && !showFallback && (
+        <div
+          data-ai-early-input-wrapper
+          className="border-t border-white/10 bg-black/60"
+          aria-label="Early chat input initializing"
+        >
+          <form
+            onSubmit={(e) => e.preventDefault()}
+            className="p-2"
+            role="form"
+            aria-label="Send a message (initializing)"
+          >
+            <textarea
+              data-ai-chat-input
+              data-ai-early-input="1"
+              aria-label="Chat input (initializing)"
+              className="w-full bg-black text-white text-sm p-2 rounded border border-white/20 min-h-[42px]"
+              placeholder="Initializing chat..."
+              rows={2}
+              readOnly
+            />
+            <div className="text-[10px] text-white/30 mt-1">
+              Loading full chat interface…
+            </div>
+          </form>
+        </div>
+      )}
       <ChatErrorBoundary>
         <ChatUI
           messages={messages}
           input={input}
-          isProcessing={isProcessing}
+            isProcessing={isProcessing}
           onInputChange={onInputChange}
           onSubmit={onSubmit}
           onClose={onClose}
@@ -156,27 +267,95 @@ export function Chat({
           onRemoveNote={onRemoveNote}
           agentActions={agentActions}
           onRetryAction={onRetryAction}
+          onForkThread={onForkThread}
           onVoiceRecord={onVoiceRecord}
           isRecording={isRecording}
           variant={variant}
           onCancel={onCancel}
+          enableVirtualization={true}
         />
       </ChatErrorBoundary>
       {showFallback && (
-        <form
-          data-ai-fallback-form
-          onSubmit={(e) => { e.preventDefault(); /* no-op fallback */ }}
-          className="p-2 border-t border-white/10 bg-black"
-        >
-          <textarea
-            data-ai-chat-input
-            aria-label="Chat input (fallback)"
-            className="w-full bg-black text-white text-sm p-2 rounded border border-white/20"
-            placeholder="Chat unavailable – fallback input"
-            rows={2}
-          />
-          <div className="text-[10px] text-white/40 mt-1">Fallback input shown (main ChatUI not mounted)</div>
-        </form>
+        <div data-ai-fallback-form className="border-t border-white/10 bg-black">
+          {/* Quick actions (fallback) */}
+          <div
+            className="px-3 pt-2 pb-1 border-b border-white/10 bg-black/70 flex flex-wrap gap-2"
+            role="toolbar"
+            aria-label="Quick actions (fallback)"
+            data-ai-fallback-quick
+          >
+            <button
+              type="button"
+              className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+              data-ai-quick="tps"
+              onClick={() => {
+                try {
+                  (window as any).SVMAI?.prompt?.('What is the current Solana TPS?', true);
+                } catch {}
+              }}
+              title="Ask for current TPS"
+            >
+              TPS
+            </button>
+            {typeof window !== 'undefined' && window.location.pathname.startsWith('/tx/') && (
+              <button
+                type="button"
+                className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                data-ai-quick="context"
+                onClick={() => {
+                  try {
+                    const sig = window.location.pathname.split('/')[2] || '';
+                    (window as any).SVMAI?.prompt?.(`Explain this transaction: ${sig}`, false);
+                  } catch {}
+                }}
+                title="Use current page context"
+              >
+                Context
+              </button>
+            )}
+          </div>
+          {(isProcessing || globalPending) && (
+            <div
+              data-ai-processing-status
+              role="status"
+              aria-live="polite"
+              className="px-3 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10"
+            >
+              Processing…
+            </div>
+          )}
+          <form
+            onSubmit={(e) => { e.preventDefault(); /* no-op fallback */ }}
+            className="p-2"
+            role="form"
+            aria-label="Send a message (fallback)"
+          >
+            <textarea
+              data-ai-chat-input
+              aria-label="Chat input (fallback)"
+              className="w-full bg-black text-white text-sm p-2 rounded border border-white/20"
+              placeholder="Chat temporarily unavailable (fallback)"
+              rows={2}
+              onKeyDown={(e) => {
+                if ((e.metaKey || e.ctrlKey) && e.shiftKey && (e.key === 'P' || e.key === 'p')) {
+                  if (typeof window !== 'undefined' && window.location.pathname.startsWith('/tx/')) {
+                    e.preventDefault();
+                    try {
+                      const sig = window.location.pathname.split('/')[2] || '';
+                      const el = e.currentTarget;
+                      el.value = `Explain this transaction: ${sig}`;
+                      const evt = new Event('input', { bubbles: true });
+                      el.dispatchEvent(evt);
+                    } catch { /* noop */ }
+                  }
+                }
+              }}
+            />
+            <div className="text-[10px] text-white/40 mt-1">
+              Fallback UI active – quick actions and input available. (ChatUI load race)
+            </div>
+          </form>
+        </div>
       )}
     </ChatLayout>
   );

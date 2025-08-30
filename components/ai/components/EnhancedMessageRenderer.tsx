@@ -10,8 +10,6 @@ import { CodeHighlighter } from './CodeHighlighter';
 import { MermaidDiagram, isMermaidContent } from './MermaidDiagram';
 import { CollapsibleTable, isTableContent, AutoTableBlock } from './CollapsibleTable';
 import { track } from '@/lib/ai/telemetry';
-import { parseAssistantMessage } from '@/lib/ai/reasoning/parseAssistantMessage';
-import { ReasoningBlock } from '../reasoning/ReasoningBlock';
 
 interface EnhancedMessageRendererProps {
     content: string;
@@ -116,21 +114,8 @@ export function EnhancedMessageRenderer({
     className = '',
     role
 }: EnhancedMessageRendererProps) {
-    // Phase 3.4: Reasoning block extraction (only for assistant messages)
-    const reasoningParsed = useMemo(() => {
-        if (role !== 'assistant') return null;
-        try {
-            const parsed = parseAssistantMessage(content);
-            return parsed;
-        } catch (e) {
-            console.warn('Reasoning parse failed', e);
-            return null;
-        }
-    }, [content, role]);
-
-    const effectiveContent = reasoningParsed?.reasoning ? reasoningParsed.visible : content;
     const contentBlocks = useMemo(() => {
-        const blocks = parseMessageContent(effectiveContent);
+        const blocks = parseMessageContent(content);
 
         // Track content analysis
         track('message_content_analyzed', {
@@ -144,7 +129,7 @@ export function EnhancedMessageRenderer({
         });
 
         return blocks;
-    }, [effectiveContent, messageId]);
+    }, [content, messageId]);
 
     const renderBlock = (block: ContentBlock, index: number) => {
         const key = `${messageId}-block-${index}`;
@@ -222,15 +207,8 @@ export function EnhancedMessageRenderer({
         >
             {/* Visible content blocks */}
             {contentBlocks.map(renderBlock)}
-            {/* Collapsible reasoning section */}
-            {reasoningParsed?.reasoning && (
-                <ReasoningBlock
-                    text={reasoningParsed.reasoning.text}
-                    tokensEst={reasoningParsed.reasoning.tokensEst}
-                    messageId={messageId}
-                    initiallyExpanded={false}
-                />
-            )}
+            {/* Reasoning block intentionally rendered by parent (ChatUI) after parsing.
+                Removed duplicated parsing & rendering here to avoid prop mismatch and runtime errors. */}
         </div>
     );
 }

@@ -110,6 +110,37 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     };
   }, [isAIChatOpen, sidebarWidth, isResizing]);
 
+  // Remove SSR placeholder once hydrated and real sidebar present
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const ph = document.getElementById('ai-sidebar-ssr-placeholder');
+    if (!ph) return;
+
+    const tryRemove = () => {
+      try {
+        const real = document.querySelector('[data-ai-sidebar-root]:not(#ai-sidebar-ssr-placeholder)');
+        if (real && ph.parentElement) {
+          ph.parentElement.removeChild(ph);
+          try {
+            window.dispatchEvent(new CustomEvent('svmai-ssr-placeholder-removed', { detail: { ts: Date.now() } }));
+          } catch (e) { /* noop */ }
+        }
+      } catch (e) { /* noop */ }
+    };
+
+    // Attempt multiple times to tolerate hydration timing variability
+    tryRemove();
+    const t1 = setTimeout(tryRemove, 60);
+    const t2 = setTimeout(tryRemove, 180);
+    const t3 = setTimeout(tryRemove, 400);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+      clearTimeout(t3);
+    };
+  }, []);
+
   // Dropdown icon component - DRY pattern
   const DropdownIcon = () => (
     <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">

@@ -41,6 +41,7 @@
   "include": [
     "components/transaction-graph/**/*.ts",
     "components/transaction-graph/**/*.tsx",
+    "components/NavbarInteractive.tsx",
     "components/ui/badge.tsx",
     "components/ui/button.tsx",
     "components/ui/dropdown-menu.tsx",

@@ -316,7 +316,7 @@ export const TEST_CONSTANTS = {
         NETWORK_IDLE: 15000 // Specific timeout for network idle
     },
     TEST_ADDRESSES: {
-        VALID_ACCOUNT: 'DtdSSG8ZJRZVv5Jx7K1MeWp7Zxcu19GD5wQRGRpQ9uMF',
+        VALID_ACCOUNT: '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU',
         VALID_TOKEN: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
         VALID_TRANSACTION: '4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43',
         INVALID_ADDRESS: 'invalid_address_format'

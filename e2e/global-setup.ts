@@ -23,7 +23,8 @@ async function globalSetup(config: FullConfig) {
 
   // Determine baseURL preference order
   const configuredBase = (config.projects?.[0]?.use as any)?.baseURL as string | undefined;
-  const explicitBaseEnv = process.env.PLAYWRIGHT_BASE_URL;
+  // Treat either PLAYWRIGHT_BASE_URL or BASE_URL as an explicit instruction not to fallback/port-scan
+  const explicitBaseEnv = process.env.PLAYWRIGHT_BASE_URL || process.env.BASE_URL;
   let baseURL = explicitBaseEnv || configuredBase || 'https://osvm.ai';
   const isLocal = (url: string) => /localhost|127\.0\.0\.1/.test(url);
 
@@ -71,6 +72,7 @@ async function globalSetup(config: FullConfig) {
 
     // If pointing to localhost and failing repeatedly, fallback to production once
     // Only fallback to production if baseURL was not explicitly provided
+    // Only attempt alternate ports / production fallback when NO explicit base env provided
     if (!serverReady && isLocal(baseURL) && !explicitBaseEnv) {
       if (/:3000\/?$/.test(baseURL) && fallbackIndex < localFallbacks.length) {
         const alt = localFallbacks[fallbackIndex](baseURL);

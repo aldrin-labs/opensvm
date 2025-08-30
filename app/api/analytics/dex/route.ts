@@ -73,63 +73,102 @@ async function fetchPythPrices(): Promise<PriceData[]> {
   }
 }
 
-// Fetch real price data from Jupiter API for multiple tokens with enhanced error handling
+/**
+ * Fetch real price data from Jupiter API with:
+ *  - Per-request 2s timeout per token
+ *  - Caching (30s) to avoid hammering endpoint & reduce dev noise
+ *  - Throttled error logging (1 log per token per 60s for network/DNS failures)
+ *  - Graceful degradation returning last cached prices on failure
+ *
+ * This mitigates extremely noisy dev console output when offline or when DNS
+ * for price.jup.ag is unreachable (original implementation spammed repeated errors).
+ */
+const JUPITER_TOKENS = ['SOL', 'USDC', 'USDT', 'RAY', 'ORCA'];
+interface JupiterCacheEntry {
+  data: PriceData[];
+  ts: number;
+}
+let jupiterCache: JupiterCacheEntry | null = null;
+const JUPITER_CACHE_TTL_MS = 30_000;
+
+const jupiterErrorLogMap: Record<string, number> = {}; // token -> lastLogTs
+const JUPITER_ERROR_LOG_INTERVAL = 60_000; // 1 minute per token
+
 async function fetchJupiterPrices(): Promise<PriceData[]> {
-  try {
-    const tokens = ['SOL', 'USDC', 'USDT', 'RAY', 'ORCA'];
-    const prices: PriceData[] = [];
-    
-    // Use Promise.allSettled to handle individual token failures
-    const tokenPromises = tokens.map(async (token) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 2000); // 2s timeout per token
-        
-        const response = await fetch(`https://price.jup.ag/v6/price?ids=${token}`, {
-          signal: controller.signal,
-          headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'OpenSVM/1.0'
-          }
-        });
-        
-        clearTimeout(timeoutId);
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.data?.[token]) {
-            return {
-              token: `${token}/USD`,
-              price: data.data[token].price,
-              dex: 'Jupiter',
-              timestamp: Date.now()
-            };
-          }
-        } else {
-          console.warn(`Jupiter API returned ${response.status} for ${token}`);
-        }
-      } catch (error) {
-        if (error instanceof Error && error.name === 'AbortError') {
-          console.warn(`Jupiter API timeout for ${token}`);
-        } else {
-          console.warn(`Error fetching ${token} price:`, error);
-        }
-      }
-      return null;
-    });
-    
-    const results = await Promise.allSettled(tokenPromises);
-    results.forEach(result => {
-      if (result.status === 'fulfilled' && result.value) {
-        prices.push(result.value);
-      }
-    });
-    
-    return prices;
-  } catch (error) {
-    console.warn('Error fetching Jupiter prices:', error);
-    return [];
+  // Serve from cache if fresh
+  const now = Date.now();
+  if (jupiterCache && (now - jupiterCache.ts) < JUPITER_CACHE_TTL_MS) {
+    return jupiterCache.data;
   }
+
+  const prices: PriceData[] = [];
+
+  const tokenPromises = JUPITER_TOKENS.map(async (token) => {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 2000);
+
+      const response = await fetch(`https://price.jup.ag/v6/price?ids=${token}`, {
+        signal: controller.signal,
+        headers: {
+          'Accept': 'application/json',
+          'User-Agent': 'OpenSVM/1.0'
+        }
+      });
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.data?.[token]) {
+          return {
+            token: `${token}/USD`,
+            price: data.data[token].price,
+            dex: 'Jupiter',
+            timestamp: Date.now()
+          } as PriceData;
+        } else {
+          // Throttle unexpected structure logging
+          const lastLog = jupiterErrorLogMap[token] || 0;
+            if (now - lastLog > JUPITER_ERROR_LOG_INTERVAL) {
+              console.warn(`[Jupiter] Missing data structure for ${token}`);
+              jupiterErrorLogMap[token] = now;
+            }
+        }
+      } else {
+        const lastLog = jupiterErrorLogMap[token] || 0;
+        if (now - lastLog > JUPITER_ERROR_LOG_INTERVAL) {
+          console.warn(`[Jupiter] HTTP ${response.status} for ${token}`);
+          jupiterErrorLogMap[token] = now;
+        }
+      }
+    } catch (error: any) {
+      const lastLog = jupiterErrorLogMap[token] || 0;
+      if (now - lastLog > JUPITER_ERROR_LOG_INTERVAL) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.warn(`[Jupiter] Timeout for ${token}`);
+        } else {
+          const msg = (error?.code === 'ENOTFOUND' || /ENOTFOUND/i.test(String(error))) ? 'DNS/Network error' : 'Fetch error';
+          console.warn(`[Jupiter] ${msg} for ${token}:`, error?.message || error);
+        }
+        jupiterErrorLogMap[token] = now;
+      }
+    }
+    return null;
+  });
+
+  const results = await Promise.allSettled(tokenPromises);
+  for (const r of results) {
+    if (r.status === 'fulfilled' && r.value) prices.push(r.value);
+  }
+
+  if (prices.length === 0 && jupiterCache) {
+    // All failed: return stale cache (better than empty & prevents down‑stream zeroing)
+    return jupiterCache.data;
+  }
+
+  jupiterCache = { data: prices, ts: Date.now() };
+  return prices;
 }
 
 // Fetch price data from CoinGecko API with enhanced error handling

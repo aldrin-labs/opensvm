@@ -3,9 +3,17 @@ import { screen, fireEvent } from '@testing-library/dom';
 import { NavbarInteractive } from '@/components/NavbarInteractive';
 import { useRouter } from 'next/navigation';
 
-// Mock next/navigation
+ // Mock next/navigation
 jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
+}));
+
+// Mock Solana wallet adapter to avoid provider errors
+jest.mock('@solana/wallet-adapter-react', () => ({
+  useWallet: () => ({
+    connected: false,
+    publicKey: null,
+  }),
 }));
 
 // Mock child components to simplify testing
@@ -14,7 +22,7 @@ jest.mock('@/components/SettingsMenu', () => ({
 }));
 
 jest.mock('@/components/WalletButton', () => ({
-  WalletButton: () => <div data-testid="wallet-button">join</div>,
+  WalletButton: () => <div data-testid="wallet-button">Connect Wallet</div>,
 }));
 
 jest.mock('@/components/ai/AIChatSidebar', () => ({
@@ -40,8 +48,8 @@ describe('Navbar', () => {
     render(<NavbarInteractive>{mockChildren}</NavbarInteractive>);
 
     // Check logo and branding
-    expect(screen.getByText('OPENSVM')).toBeInTheDocument();
-    expect(screen.getByText('[AI]')).toBeInTheDocument();
+    expect(screen.getByText('OpenSVM')).toBeInTheDocument();
+    expect(screen.getByText('[ai]')).toBeInTheDocument();
 
     // Check search input
     expect(screen.getAllByPlaceholderText('Search accounts, tokens, or programs...')[0]).toBeInTheDocument();
@@ -49,12 +57,14 @@ describe('Navbar', () => {
     // Check navigation dropdowns
     expect(screen.getByTestId('nav-dropdown-explore')).toBeInTheDocument();
     expect(screen.getByTestId('nav-dropdown-tokens')).toBeInTheDocument();
-    expect(screen.getByTestId('nav-dropdown-nfts')).toBeInTheDocument();
+    expect(screen.getByTestId('nav-dropdown-defi')).toBeInTheDocument();
     expect(screen.getByTestId('nav-dropdown-analytics')).toBeInTheDocument();
 
-    // Check settings and wallet button
-    expect(screen.getByTestId('settings-menu')).toBeInTheDocument();
-    expect(screen.getByText('Connect Wallet')).toBeInTheDocument();
+    // Check settings and wallet button (allow multiple occurrences due to mobile + desktop)
+    const settingsMenus = screen.getAllByTestId('settings-menu');
+    expect(settingsMenus.length).toBeGreaterThan(0);
+    const walletButtons = screen.getAllByText('Connect Wallet');
+    expect(walletButtons.length).toBeGreaterThan(0);
   });
 
   it('handles Solana address search correctly', async () => {
@@ -119,6 +129,6 @@ describe('Navbar', () => {
     const generalQuery = 'general search';
     fireEvent.change(searchInput, { target: { value: generalQuery } });
     fireEvent.submit(searchInput.closest('form')!);
-    expect(mockPush).toHaveBeenCalledWith(`/search?q=${generalQuery}`);
+    expect(mockPush).toHaveBeenCalledWith(`/search?q=${encodeURIComponent(generalQuery)}`);
   });
 });

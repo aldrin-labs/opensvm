@@ -30,9 +30,19 @@ export function TokenManagementPanel({ isOpen, onClose }: { isOpen: boolean; onC
     };
 
     return (
-        <div className={`fixed inset-0 z-[500] ${isOpen ? '' : 'pointer-events-none opacity-0'} transition-opacity`}>
+        <div
+            className={`fixed inset-0 z-[500] ${isOpen ? '' : 'pointer-events-none opacity-0'} transition-opacity`}
+            data-ai-token-panel
+            data-open={isOpen ? '1' : '0'}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Token management panel"
+        >
             <div className="absolute inset-0 bg-black/70" onClick={onClose} />
-            <div className="absolute right-4 top-4 w-[360px] bg-black border border-white/20 rounded-lg shadow-lg p-4 text-white">
+            <div
+                className="absolute right-4 top-4 w-[360px] bg-black border border-white/20 rounded-lg shadow-lg p-4 text-white"
+                data-ai-token-panel-inner
+            >
                 <div className="flex items-center justify-between mb-2">
                     <div className="text-sm font-semibold">SVMAI Tokens</div>
                     <button onClick={onClose} className="text-white/70 hover:text-white">✕</button>

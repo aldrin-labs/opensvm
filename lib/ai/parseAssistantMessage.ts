@@ -21,6 +21,26 @@ export function parseAssistantMessage(content: string): ParsedMessage {
         return { visible: content || '' };
     }
 
+    // Normalize any HTML-escaped reasoning delimiters to raw tags so parsing works
+    // Some render paths or legacy persistence may have stored <REASONING>...</REASONING>
+    // We ONLY replace the specific reasoning tag sequences to avoid broad HTML decoding side-effects.
+    if (
+        content.includes('<REASONING>') ||
+        content.includes('</REASONING>') ||
+        content.includes('&lt;REASONING&gt;') ||
+        content.includes('&lt;/REASONING&gt;')
+    ) {
+        // Normalize escaped tags (single or double-escaped) to raw delimiters
+        content = content
+            .replace(/&lt;REASONING&gt;/g, '<REASONING>')
+            .replace(/&lt;\/REASONING&gt;/g, '</REASONING>')
+            .replace(/<REASONING>/g, '<REASONING>')
+            .replace(/<\/REASONING>/g, '</REASONING>');
+    } else if (content.includes('<REASONING>')) {
+        // Already raw tags; no-op retained for clarity / future hook
+        content = content;
+    }
+
     // Look for <REASONING>...</REASONING> tags (handle nested tags properly)
     const startIndex = content.indexOf('<REASONING>');
     if (startIndex !== -1) {
