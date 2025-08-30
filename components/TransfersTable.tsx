@@ -444,7 +444,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     });
 
     return sorted;
-  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transactionCategory, filterPreferences.transactionCategory, filterPreferences.solanaOnlyFilter, filterPreferences.customProgramAddress, categorizeTransaction]);
+  }, [transfers, sortField, sortDirection, searchTerm, typeFilter, tokenFilter, amountFilter, transactionCategory, filterPreferences.transactionCategory, filterPreferences.solanaOnlyFilter, categorizeTransaction]);
 
   // Get unique values for filter dropdowns
   const uniqueTypes = useMemo(() => {

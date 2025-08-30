@@ -213,14 +213,15 @@ export function CollapsibleTable({
         ? displayData.slice(virtualizedStart, virtualizedEnd)
         : displayData;
 
-    // Virtualization scroll handler
+    // Virtualization scroll handler (stabilize ref usage to avoid lint ref-change warning)
     useEffect(() => {
-        if (!shouldVirtualize || !tableRef.current) return;
+        if (!shouldVirtualize) return;
+        const el = tableRef.current;
+        if (!el) return;
 
         const handleScroll = () => {
-            const container = tableRef.current;
-            if (!container) return;
-
+            // Use captured element reference for stability
+            const container = el;
             const scrollTop = container.scrollTop;
             const rowHeight = 40; // Estimated row height
             const containerHeight = container.clientHeight;
@@ -232,8 +233,10 @@ export function CollapsibleTable({
             setVirtualizedEnd(Math.min(displayData.length, start + visibleCount));
         };
 
-        tableRef.current.addEventListener('scroll', handleScroll);
-        return () => tableRef.current?.removeEventListener('scroll', handleScroll);
+        el.addEventListener('scroll', handleScroll);
+        return () => {
+            el.removeEventListener('scroll', handleScroll);
+        };
     }, [shouldVirtualize, displayData.length]);
 
     const handleSort = (key: string) => {

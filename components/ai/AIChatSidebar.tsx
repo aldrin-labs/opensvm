@@ -410,11 +410,18 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     } catch (e) { /* noop */ }
   }, [sidebarWidth, initialWidth]);
 
+  // Share handler uses refs to avoid unnecessary deep object dependencies triggering lint warnings.
   const handleShare = useCallback(() => {
     try {
       const url = new URL(window.location.href);
       url.searchParams.set('ai', '1');
-      const prefill = activeTab?.input?.trim() || (activeTab?.messages?.slice().reverse().find(m => m.role === 'user')?.content ?? '');
+      const currentTabs = tabsRef.current;
+      const currentActive = currentTabs.find(t => t.id === activeTabId);
+      let prefill: string | undefined;
+      if (currentActive) {
+        prefill = currentActive.input?.trim() ||
+          (currentActive.messages?.slice().reverse().find(m => m.role === 'user')?.content ?? '');
+      }
       if (prefill) url.searchParams.set('aitext', prefill);
       navigator.clipboard?.writeText(url.toString());
       setShareNotice(true);
@@ -422,7 +429,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     } catch (e) {
       console.error('Share failed:', e);
     }
-  }, [activeTab?.input, activeTab?.messages]);
+  }, [activeTabId]);
 
   useEffect(() => { /* lazy fetch handled inside panel */ }, [tokenPanelOpen]);
 
@@ -453,7 +460,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     } catch (e) {
       console.error('Export failed:', e);
     }
-  }, [activeTab?.messages, activeTab]);
+  }, [activeTab]);
 
   const handleHelp = useCallback(() => {
     try {

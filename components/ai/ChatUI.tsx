@@ -182,7 +182,7 @@ export function ChatUI({
   const { textareaRef } = useAutosizeTextarea(input, { maxRows: 6, minRows: 1 });
 
   // Memory Management
-  const { stats: memoryStats, shouldCleanup: needsCleanup } = useMemoryManagement(
+  const { stats: memoryStats, shouldCleanup: needsCleanup, cleanup: performMemoryCleanup } = useMemoryManagement(
     messages,
     {
       maxMessages: 500,
@@ -446,18 +446,12 @@ export function ChatUI({
     trackMemoryUsage(memoryStats);
     if (needsCleanup && memoryStats.percentUsed > 90) {
       console.warn('Memory usage high, triggering cleanup:', memoryStats);
-      const { cleanup } = useMemoryManagement(messages, {
-        maxMessages: 500,
-        maxTokens: 25000,
-        retentionRatio: 0.7,
-        preserveRecent: 30
-      }, true);
-      const result = cleanup();
+      const result = performMemoryCleanup();
       if (result.removedCount > 0) {
         console.log(`Cleaned up ${result.removedCount} messages, preserved ${result.preservedImportant} important ones`);
       }
     }
-  }, [memoryStats, needsCleanup, messages]);
+  }, [memoryStats, needsCleanup, performMemoryCleanup]);
 
   // Scroll to bottom on agentActions or tab change
   useEffect(() => {
