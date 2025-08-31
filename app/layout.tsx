@@ -6,6 +6,7 @@ import "./styles/scrollbar-themes.css";
 import "../styles/rtl.css";
 import { NavbarInteractive } from "@/components/NavbarInteractive";
 import { Providers } from "./providers";
+import { AIChatSidebarWrapper } from "@/components/ai/AIChatSidebarWrapper";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -245,6 +246,7 @@ try {
           <NavbarInteractive>
             {children}
           </NavbarInteractive>
+          <AIChatSidebarWrapper />
         </Providers>
       </body>
     </html>

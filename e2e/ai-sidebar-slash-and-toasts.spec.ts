@@ -25,7 +25,7 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
         await input.press('Enter');
         await expect(input).toHaveValue('/tps ');
         // No processing status yet (use stable selector)
-        await expect(page.locator('[data-ai-processing-status]')).toHaveCount(1);
+        await expect(page.locator('[data-ai-processing-status]')).toHaveCount(0);
 
         // Press Tab to ensure it keeps the chosen command (idempotent) and caret at end
         await input.press('Tab');

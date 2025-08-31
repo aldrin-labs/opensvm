@@ -15,7 +15,6 @@ import { SettingsMenu } from './SettingsMenu';
 import { WalletButton } from './WalletButton';
 import { ChangelogNotification } from './ChangelogNotification';
 import { X, User } from 'lucide-react';
-import { AIChatSidebar } from './ai/AIChatSidebar';
 import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { useWallet } from '@solana/wallet-adapter-react';
 
@@ -727,15 +726,6 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
         </div>
       </div>
 
-      {/* AI Chat Sidebar (single instance at layout level via provider) */}
-      <AIChatSidebar
-        isOpen={isAIChatOpen}
-        onClose={closeAIChat}
-        onWidthChange={handleWidthChange}
-        onResizeStart={onResizeStart}
-        onResizeEnd={onResizeEnd}
-        initialWidth={sidebarWidth}
-      />
 
       {/* Main content */}
       <div id="layout-content" className="pt-14">

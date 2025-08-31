@@ -769,23 +769,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   }, [activeTab?.isProcessing]);
 
   return (
-    <div
-      data-ai-sidebar="1"
-      data-ai-sidebar-container="1"
-      data-ai-mode={activeTab?.mode || 'agent'}
-      data-open={isOpen ? '1' : '0'}
-      data-ai-sidebar-visible={isOpen ? '1' : '0'}
-      data-ai-sidebar-width={String(sidebarWidth || initialWidth || 560)}
-      data-ai-sidebar-early="1"
-      style={{
-        display: isOpen ? 'block' : 'none',
-        position: 'relative',
-        width: '100%',
-        height: '100%',
-        opacity: isOpen ? 1 : 0,
-        visibility: isOpen ? 'visible' : 'hidden'
-      }}
-    >
+    <>
       {shareNotice && (
         <div
           role="status"
@@ -955,6 +939,6 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         onSettings={() => setTokenPanelOpen(true)}
       />
       <TokenManagementPanel isOpen={tokenPanelOpen} onClose={() => setTokenPanelOpen(false)} />
-    </div>
+    </>
   );
 };

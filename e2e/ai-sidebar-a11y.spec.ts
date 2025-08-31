@@ -24,6 +24,7 @@ test.describe('AI Sidebar Accessibility', () => {
             }
         });
 
+
         // Wait for sidebar state to update and become visible
         // First check that data-open attribute is set to "1" on the root element
         const sidebar = page.locator('[data-ai-sidebar-root]').first();

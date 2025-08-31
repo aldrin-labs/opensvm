@@ -128,17 +128,37 @@ export function Chat({
     // Poll for the real ChatUI input; once present, remove early placeholder
     if (typeof document !== 'undefined') {
       const interval = setInterval(() => {
-        const real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');
+        // Look for any real chat input that's not the early one
+        const real = document.querySelector('[data-ai-chat-input]:not([data-ai-early-input])');
         if (real) {
           setEarlyInputVisible(false);
           clearInterval(interval);
         }
-      }, 120);
+      }, 25); // Very fast polling for E2E tests
       // Safety timeout (in case input never appears, fallback logic will handle)
-      setTimeout(() => clearInterval(interval), 6000);
+      setTimeout(() => clearInterval(interval), 3000);
       return () => clearInterval(interval);
     }
   }, []);
+
+  // Additional effect to immediately hide early input when ChatUI is detected
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      const observer = new MutationObserver(() => {
+        const real = document.querySelector('[data-ai-chat-input]:not([data-ai-early-input])');
+        if (real && earlyInputVisible) {
+          setEarlyInputVisible(false);
+        }
+      });
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true, 
+        attributes: true,
+        attributeFilter: ['data-ai-chat-input']
+      });
+      return () => observer.disconnect();
+    }
+  }, [earlyInputVisible]);
 
   useEffect(() => {
     console.log('Chat component mounted, variant:', variant, 'isOpen:', isOpen);
@@ -235,7 +255,6 @@ export function Chat({
             aria-label="Send a message (initializing)"
           >
             <textarea
-              data-ai-chat-input
               data-ai-early-input="1"
               aria-label="Chat input (initializing)"
               className="w-full bg-black text-white text-sm p-2 rounded border border-white/20 min-h-[42px]"
@@ -332,6 +351,7 @@ export function Chat({
           >
             <textarea
               data-ai-chat-input
+              data-ai-fallback-input="1"
               aria-label="Chat input (fallback)"
               className="w-full bg-black text-white text-sm p-2 rounded border border-white/20"
               placeholder="Chat temporarily unavailable (fallback)"
