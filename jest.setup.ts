@@ -123,54 +123,98 @@ if (typeof global.ResizeObserver === 'undefined') {
   }
 }
 
-// Mock Request for Next.js API routes
-export class MockRequest {
-  public url: string;
-  public method: string;
-  public headers: Headers;
-  public body: ReadableStream<Uint8Array> | null;
-  public bodyUsed: boolean;
-
-  constructor(input: string | URL, init?: RequestInit) {
-    this.url = typeof input === 'string' ? input : input.toString();
-    this.method = init?.method || 'GET';
-    this.headers = new Headers(init?.headers);
-    this.body = null;
-    this.bodyUsed = false;
-  }
-
-  json(): Promise<any> {
-    this.bodyUsed = true;
-    return Promise.resolve({});
-  }
-
-  text(): Promise<string> {
-    this.bodyUsed = true;
-    return Promise.resolve('');
-  }
-
-  arrayBuffer(): Promise<ArrayBuffer> {
-    this.bodyUsed = true;
-    return Promise.resolve(new ArrayBuffer(0));
-  }
-
-  blob(): Promise<Blob> {
-    this.bodyUsed = true;
-    return Promise.resolve(new Blob());
-  }
-
-  formData(): Promise<FormData> {
-    this.bodyUsed = true;
-    return Promise.resolve(new FormData());
-  }
-
-  clone(): MockRequest {
-    return new MockRequest(this.url, {
-      method: this.method,
-      headers: Object.fromEntries(this.headers.entries())
-    });
-  }
-}
+ // Mock Request for Next.js API routes (enhanced to preserve JSON body for tests)
+ export class MockRequest {
+   public url: string;
+   public method: string;
+   public headers: Headers;
+   public body: ReadableStream<Uint8Array> | null;
+   public bodyUsed: boolean;
+   private _rawBody?: string;
+   private _jsonCache: any | undefined;
+ 
+   constructor(input: string | URL, init?: RequestInit) {
+     this.url = typeof input === 'string' ? input : input.toString();
+     this.method = init?.method || 'GET';
+     this.headers = new Headers(init?.headers);
+     this.body = null; // We don't simulate streaming; route under test uses json()/text()
+     this.bodyUsed = false;
+ 
+     // Capture provided body (tests pass a string via JSON.stringify)
+     const b: any = (init as any)?.body;
+     if (typeof b === 'string') {
+       this._rawBody = b;
+     } else if (b instanceof Uint8Array) {
+       this._rawBody = new TextDecoder().decode(b);
+     } else if (b && typeof b === 'object') {
+       // If an object is passed (unlikely in tests), serialize it
+       try {
+         this._rawBody = JSON.stringify(b);
+       } catch {
+         this._rawBody = '';
+       }
+     } else {
+       this._rawBody = '';
+     }
+   }
+ 
+   async json(): Promise<any> {
+     this.bodyUsed = true;
+     if (this._jsonCache !== undefined) return this._jsonCache;
+     if (!this._rawBody || !this._rawBody.trim()) {
+       this._jsonCache = {};
+       return this._jsonCache;
+     }
+     try {
+       this._jsonCache = JSON.parse(this._rawBody);
+     } catch {
+       this._jsonCache = {};
+     }
+     return this._jsonCache;
+   }
+ 
+   async text(): Promise<string> {
+     this.bodyUsed = true;
+     return this._rawBody || '';
+   }
+ 
+   async arrayBuffer(): Promise<ArrayBuffer> {
+     this.bodyUsed = true;
+     const enc = new TextEncoder();
+     const bytes = enc.encode(this._rawBody || '');
+     const copy = new Uint8Array(bytes); // ensure plain ArrayBuffer
+     return copy.buffer;
+   }
+ 
+   async blob(): Promise<Blob> {
+     this.bodyUsed = true;
+     return new Blob([this._rawBody || '']);
+   }
+ 
+   async formData(): Promise<FormData> {
+     this.bodyUsed = true;
+     const fd = new FormData();
+     try {
+       const parsed = await this.json();
+       if (parsed && typeof parsed === 'object') {
+         for (const [k, v] of Object.entries(parsed)) {
+           fd.append(k, typeof v === 'string' ? v : JSON.stringify(v));
+         }
+       }
+     } catch {
+       fd.append('body', this._rawBody || '');
+     }
+     return fd;
+   }
+ 
+   clone(): MockRequest {
+     return new MockRequest(this.url, {
+       method: this.method,
+       headers: Object.fromEntries(this.headers.entries()),
+       body: this._rawBody
+     });
+   }
+ }
 
 global.Request = MockRequest as unknown as typeof Request;
 
@@ -237,8 +281,8 @@ export class MockResponse {
     this.bodyUsed = true;
     const encoder = new TextEncoder();
     const uint8Array = encoder.encode(this.bodyContent);
-    const arrayBuffer = uint8Array.buffer.slice(uint8Array.byteOffset, uint8Array.byteOffset + uint8Array.byteLength);
-    return Promise.resolve(arrayBuffer as ArrayBuffer);
+    const copy = new Uint8Array(uint8Array); // copy to guarantee ArrayBuffer type
+    return Promise.resolve(copy.buffer);
   }
 
   blob(): Promise<Blob> {

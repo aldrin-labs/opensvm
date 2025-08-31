@@ -242,8 +242,9 @@ try {
       </head>
       <body>
         <Providers>
-          <NavbarInteractive />
-          {children}
+          <NavbarInteractive>
+            {children}
+          </NavbarInteractive>
         </Providers>
       </body>
     </html>

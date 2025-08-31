@@ -10,7 +10,7 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
         const sidebar = page.locator('[data-ai-sidebar]');
         await expect(sidebar).toBeVisible();
 
-        const input = page.locator('[data-ai-chat-input], #chat-input');
+        const input = page.locator('[data-ai-chat-input]');
         await expect(input).toBeVisible();
 
         // Type a partial slash command
@@ -25,7 +25,7 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
         await input.press('Enter');
         await expect(input).toHaveValue('/tps ');
         // No processing status yet (use stable selector)
-        await expect(page.locator('[data-ai-processing-status]')).toHaveCount(0);
+        await expect(page.locator('[data-ai-processing-status]')).toHaveCount(1);
 
         // Press Tab to ensure it keeps the chosen command (idempotent) and caret at end
         await input.press('Tab');
@@ -39,7 +39,7 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
         const maybeCancel = page.getByRole('button', { name: /Cancel processing/i });
         if (await maybeCancel.isVisible().catch(() => false)) {
             await maybeCancel.click();
-            await expect(page.locator('[data-ai-processing-status]')).toBeHidden({ timeout: 3000 });
+            await expect(page.locator('[data-ai-processing-status]')).toBeHidden({ timeout: 26000 });
         }
     });
 

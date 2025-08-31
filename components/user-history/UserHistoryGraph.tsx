@@ -367,6 +367,8 @@ export function UserHistoryGraph({ history }: UserHistoryGraphProps) {
               ref={canvasRef}
               className="w-full h-96 border border-gray-200 dark:border-gray-700 rounded-lg"
               style={{ width: '100%', height: '384px' }}
+              role="img"
+              aria-label={`User activity graph showing ${currentPoints.length} data points over time`}
             />
 
             {currentPoints.length === 0 && (

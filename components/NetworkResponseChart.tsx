@@ -94,12 +94,27 @@ export default function NetworkResponseChart({ data }: Props) {
       title: {
         display: false
       }
+    },
+    // Add accessibility configuration for Chart.js canvas
+    onResize: (chart) => {
+      // Set accessibility attributes on the canvas element
+      const canvas = chart.canvas;
+      if (canvas) {
+        canvas.setAttribute('role', 'img');
+        canvas.setAttribute('aria-label', `Network performance chart showing success rate and latency over ${data.length} data points`);
+      }
     }
   };
 
   return (
     <div className="w-full h-full">
-      <Line data={chartData} options={options} />
+      <Line 
+        data={chartData} 
+        options={options}
+        // Add accessibility props directly to the Line component
+        aria-label={`Network performance chart showing success rate and latency over ${data.length} data points`}
+        role="img"
+      />
     </div>
   );
 }

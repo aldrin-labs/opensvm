@@ -265,7 +265,8 @@ export function ChatLayout({
     onExpand?.();
   };
 
-  if (!isOpen) return null;
+  // Always render sidebar container (even when closed) so tests can locate the landmark immediately.
+  // Visibility & off-screen positioning handled via transform + data attributes.
 
   switch (variant) {
     case 'dialog':
@@ -310,8 +311,9 @@ export function ChatLayout({
           data-ai-sidebar
           data-ai-sidebar-root
           data-ai-mode={activeTab}
-          data-ai-sidebar-visible="1"
+          data-ai-sidebar-visible={isOpen ? '1' : '0'}
           data-ai-sidebar-width={String(width)}
+          data-open={isOpen ? '1' : '0'}
         >
           {/* Skip link for keyboard navigation */}
           <a href="#chat-input" className="skip-link sr-only focus:not-sr-only">
@@ -640,7 +642,7 @@ export function ChatLayout({
               </div>
             )}
             {/* Main content area with proper flex and overflow handling */}
-            <div className="flex-1 min-h-0 bg-black">
+            <div className="flex-1 min-h-0 bg-black overflow-hidden">
               {children}
             </div>
           </div>

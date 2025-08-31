@@ -158,6 +158,8 @@ export const CyberpunkPerlin = ({
       <canvas
         ref={canvasRef}
         className="w-full h-full"
+        role="img"
+        aria-label="Cyberpunk perlin noise animation visualization"
       />
       <div className="absolute bottom-32 left-4 flex gap-4 bg-white/90 p-6 rounded-lg backdrop-blur-sm border border-gray-200 shadow-sm">
         <button

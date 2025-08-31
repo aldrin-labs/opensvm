@@ -1,7 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
-import { getTransactionDetails } from '@/lib/solana';
-import { analyzeTransactionWithAI } from '@/lib/ai-transaction-analyzer';
+
+// Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+async function loadDeps() {
+  const [
+    { getTransactionDetails },
+    { analyzeTransactionWithAI }
+  ] = await Promise.all([
+    import('@/lib/solana'),
+    import('@/lib/ai-transaction-analyzer')
+  ]);
+  return { getTransactionDetails, analyzeTransactionWithAI };
+}
 
 // Request validation schema
 const ExplainRequestSchema = z.object({
@@ -12,6 +22,23 @@ const ExplainRequestSchema = z.object({
   regenerate: z.boolean().optional().default(false),
   language: z.string().optional().default('en')
 });
+
+// Test-safe JSON response helper (mirrors batch/analysis/related endpoints)
+function jsonResponse(
+  body: any,
+  init?: { status?: number; headers?: Record<string, string> }
+): any {
+  if (process.env.NODE_ENV === 'test') {
+    return new Response(JSON.stringify(body), {
+      status: init?.status || 200,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init?.headers || {})
+      }
+    }) as any;
+  }
+  return NextResponse.json(body, init as any);
+}
 
 // Response interface
 interface ExplainTransactionResponse {
@@ -90,7 +117,7 @@ export async function GET(
 
     // Validate signature format
     if (!signature || signature.length !== 88) {
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         error: {
           code: 'INVALID_SIGNATURE',
@@ -132,11 +159,12 @@ export async function GET(
       // }
     }
 
-    // Fetch transaction details
+    // Fetch transaction details (lazy-loaded for Jest mocking)
+    const { getTransactionDetails, analyzeTransactionWithAI } = await loadDeps();
     const transaction = await getTransactionDetails(signature);
 
     if (!transaction) {
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         error: {
           code: 'TRANSACTION_NOT_FOUND',
@@ -180,7 +208,7 @@ export async function GET(
     //   60 * 60 * 1000 // 1 hour
     // );
 
-    return NextResponse.json({
+    return jsonResponse({
       success: true,
       data: result,
       timestamp: Date.now()
@@ -196,7 +224,7 @@ export async function GET(
 
     // Handle specific AI service errors
     if (error instanceof Error && error.message.includes('rate limit')) {
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         error: {
           code: 'RATE_LIMIT_EXCEEDED',
@@ -207,7 +235,7 @@ export async function GET(
     }
 
     if (error instanceof Error && error.message.includes('context too large')) {
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         error: {
           code: 'TRANSACTION_TOO_COMPLEX',
@@ -217,7 +245,7 @@ export async function GET(
       }, { status: 413 });
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       success: false,
       error: {
         code: 'EXPLANATION_ERROR',
@@ -261,7 +289,7 @@ export async function POST(
 
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({
+      return jsonResponse({
         success: false,
         error: {
           code: 'VALIDATION_ERROR',
@@ -272,7 +300,7 @@ export async function POST(
       }, { status: 400 });
     }
 
-    return NextResponse.json({
+    return jsonResponse({
       success: false,
       error: {
         code: 'REQUEST_ERROR',
@@ -349,6 +377,9 @@ async function handleStreamingExplanation(signature: string, params: any): Promi
           type: 'status',
           message: 'Fetching transaction details...'
         })}\n\n`));
+
+        // Lazy-load deps for Jest mocking
+        const { getTransactionDetails, analyzeTransactionWithAI } = await loadDeps();
 
         // Fetch transaction
         const transaction = await getTransactionDetails(signature);

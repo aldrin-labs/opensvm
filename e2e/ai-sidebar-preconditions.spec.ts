@@ -201,7 +201,9 @@ test.describe('AI Sidebar Preconditions & Initial Access', () => {
     await page.waitForTimeout(1500);
 
     // Broader noise pattern includes aborted fetches & React double-render warning
-    const noisePattern = /Jupiter]|jup.ag|coingecko|defillama|pyth|net::ERR_ABORTED|Cannot update a component/i;
+    // Expanded noise pattern to suppress known transient external RPC noise (Solana vote account 429s, rate limits)
+    // while still surfacing genuine internal errors.
+    const noisePattern = /Jupiter]|jup.ag|coingecko|defillama|pyth|net::ERR_ABORTED|Cannot update a component|Too Many Requests|getVoteAccounts|solana.*429|Status(?:\s+Code)?\s+429|Error fetching data: TypeError: Failed to fetch/i;
     const filteredErrors = errors.filter(e => !noisePattern.test(e));
     const ignoredErrors = errors.filter(e => noisePattern.test(e));
     if (ignoredErrors.length) {
