@@ -46,9 +46,8 @@ test.describe('AI Sidebar Reasoning Blocks', () => {
       expect(toggleText).toMatch(/Reasoning\s*\(\d+\s*token/);
 
       const content = block.locator('[data-ai-reasoning-content]');
-      // Collapsed means aria-hidden="true" or effectively zero height
-      const ariaHidden = await content.getAttribute('aria-hidden');
-      expect(ariaHidden).toBe('true');
+      // Wait for the content to be in collapsed state (aria-hidden="true")
+      await expect(content).toHaveAttribute('aria-hidden', 'true', { timeout: 2000 });
     }
 
     // Attach listener for custom events before interaction

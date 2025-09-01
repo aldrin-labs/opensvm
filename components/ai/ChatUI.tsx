@@ -3,7 +3,11 @@
 // Added explicit client directive since this file makes extensive use of React hooks.
 // Without it, Next.js may treat the module as a server component when imported, causing
 // runtime hook errors or a silent hydration failure leading to an empty (black) chat area.
-console.log('🔍 ChatUI module loaded');
+const __AI_DEBUG__ = typeof window !== 'undefined' && (window.location.search.includes('ai=1') || window.location.search.includes('aimock=1'));
+if (__AI_DEBUG__) {
+  // Lightweight guarded debug log (was unconditional)
+  console.log('🔍 ChatUI module loaded');
+}
 import { Loader, Mic, Send } from 'lucide-react';
 import type { Message, Note, AgentAction } from './types';
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -119,7 +123,9 @@ export function ChatUI({
   enableVirtualization = false,
   onCancel,
 }: ChatUIProps) {
-  console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
+  if (__AI_DEBUG__) {
+    console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
+  }
   if (typeof window !== 'undefined') {
     (window as any).__SVMAI_CHATUI_CALLED__ = true;
   }
@@ -169,7 +175,7 @@ export function ChatUI({
   // cleared when processing finishes.
   const [showProcessingUI, setShowProcessingUI] = useState(false);
   // Track if we're in a mock/test environment where isProcessing might not change
-  const isMockMode = typeof window !== 'undefined' && (window.location.search.includes('aimock=1'));
+  const isMockMode = typeof window !== 'undefined' && (window.location.search.includes('aimock=1') || window.location.search.includes('ai=1'));
   const [newMessageCount, setNewMessageCount] = useState(0);
   const [isScrolledUp, setIsScrolledUp] = useState(false);
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
@@ -280,6 +286,25 @@ export function ChatUI({
       setShowProcessingUI(true);
     }
   }, [isProcessing, showProcessingUI]);
+
+  // Listen for mock mode processing UI trigger events
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    console.log('🔍 ChatUI: Setting up svmai-show-processing-ui event listener');
+    const handleShowProcessingUI = (event: any) => {
+      console.log('🔍 ChatUI: Received svmai-show-processing-ui event', event?.detail);
+      if (event?.detail?.source === 'mock-prompt') {
+        console.log('🔍 ChatUI: Setting processing UI for mock mode');
+        setShowProcessingUI(true);
+        setOptimisticProcessing(true);
+      }
+    };
+    window.addEventListener('svmai-show-processing-ui', handleShowProcessingUI);
+    return () => {
+      console.log('🔍 ChatUI: Removing svmai-show-processing-ui event listener');
+      window.removeEventListener('svmai-show-processing-ui', handleShowProcessingUI);
+    };
+  }, []);
 
   // Global pending fallback - coordinates with SVMAI.prompt pending state
   const pendingStartRef = useRef<number>(0);
@@ -527,6 +552,14 @@ export function ChatUI({
           // Mark hydrated on first pass (even if zero notes) for deterministic E2E
           rootRef.current.setAttribute('data-ai-knowledge-hydrated', '1');
         }
+        // Propagate to authoritative sidebar root for E2E selectors that target [data-ai-sidebar-root]
+        const outerRoot = rootRef.current.closest('[data-ai-sidebar-root]') as HTMLElement | null;
+        if (outerRoot) {
+          outerRoot.setAttribute('data-ai-knowledge-count', String(notes.length));
+          if (!outerRoot.getAttribute('data-ai-knowledge-hydrated')) {
+            outerRoot.setAttribute('data-ai-knowledge-hydrated', '1');
+          }
+        }
       }
     } catch { /* noop */ }
   }, [notes.length]);
@@ -544,6 +577,14 @@ export function ChatUI({
           window.dispatchEvent(new CustomEvent('svmai-messages-hydrated', {
             detail: { count: messages.length, ts: Date.now() }
           }));
+        }
+        // Propagate to authoritative sidebar root
+        const outerRoot = rootRef.current.closest('[data-ai-sidebar-root]') as HTMLElement | null;
+        if (outerRoot) {
+          outerRoot.setAttribute('data-ai-total-messages', String(messages.length));
+          if (messages.length > 0 && !outerRoot.getAttribute('data-ai-messages-hydrated')) {
+            outerRoot.setAttribute('data-ai-messages-hydrated', '1');
+          }
         }
       }
     } catch { /* noop */ }
@@ -736,14 +777,36 @@ export function ChatUI({
 
     // Immediate Tab completion safeguard for slash commands (handles debounce race before suggestions list mounts)
     if (e.key === 'Tab' && !e.shiftKey) {
-      const rawVal = (inputRef.current?.value || input).trim();
-      if (rawVal.startsWith('/') && !rawVal.startsWith('/ref ')) {
-        const partial = rawVal.slice(1);
+      // IMPORTANT: Do NOT trim here. We need to preserve a trailing space after a completed
+      // slash command ("/tps ") so that the next Enter submits instead of triggering the
+      // fallback completion logic again. Trimming caused the trailing space to be lost,
+      // resulting in the second Enter being intercepted and the Processing UI never showing.
+      const currentValue = (inputRef.current?.value || input);
+
+      // Idempotent guard: if we already have a completed command with trailing space, keep focus
+      // and prevent default so the Tab key doesn't move focus out of the textarea.
+      if (/^\/[a-zA-Z]+ $/.test(currentValue)) {
+        e.preventDefault();
+        // Ensure suggestions are hidden so next Enter submits.
+        if (showSlashHelp) {
+          setShowSlashHelp(false);
+          setSlashIndex(0);
+        }
+        return;
+      }
+
+      // Standard completion path (works even before suggestions list fully mounts)
+      if (currentValue.startsWith('/') && !currentValue.startsWith('/ref ')) {
+        // Use a trimmed value ONLY for computing suggestions (not for deciding completion state)
+        const trimmedForSuggestions = currentValue.trim();
+        const partial = trimmedForSuggestions.slice(1);
         const suggestions = getContextualSuggestions(partial);
         if (suggestions.length > 0) {
           e.preventDefault();
-          const result = completeSlashCommand(rawVal, 0, suggestions, 'tab');
-          onInputChange(result.completed);
+          const result = completeSlashCommand(trimmedForSuggestions, 0, suggestions, 'tab');
+          // Always ensure a trailing space after completion for reliable Enter submission
+          const completedWithSpace = result.completed.endsWith(' ') ? result.completed : (result.completed + ' ');
+          onInputChange(completedWithSpace);
           // Hide suggestions after auto-complete so next Enter submits
           setShowSlashHelp(false);
           setSlashIndex(0);
@@ -827,18 +890,23 @@ export function ChatUI({
     }
 
     if (e.key === 'Enter' && !e.shiftKey) {
-      // Fallback slash autocomplete safeguard:
-      // If user typed only a partial or exact slash command (no args, no trailing space)
-      // and suggestions UI may not have resolved (debounce race), perform inline completion instead of submitting.
+      // Fallback slash autocomplete safeguard (bugfix):
+      // Only perform inline completion when user has typed a partial or exact slash command token
+      // WITHOUT a trailing space. Previously we also triggered when the input already ended
+      // with a space (e.g. "/tps ") because we trimmed before testing. That caused the second
+      // Enter (after auto-completion added the space) to be intercepted and prevented submit,
+      // so the Processing… status bar never appeared in E2E tests.
       const rawValue = inputRef.current?.value || input;
-      if (/^\/[a-zA-Z]+$/.test(rawValue.trim())) {
-        const token = rawValue.trim().slice(1).toLowerCase();
+      const trimmed = rawValue.trim();
+      const hasTrailingSpace = rawValue.endsWith(' ');
+      if (!hasTrailingSpace && /^\/[a-zA-Z]+$/.test(trimmed)) {
+        const token = trimmed.slice(1).toLowerCase();
         const match = SLASH_COMMANDS.find(c => c.cmd.startsWith(token));
         if (match) {
           e.preventDefault();
           const completed = `/${match.cmd} `;
           onInputChange(completed);
-          // After inline completion, hide suggestions so Enter submits
+          // After inline completion, hide suggestions so next Enter submits
           setShowSlashHelp(false);
           setSlashIndex(0);
           requestAnimationFrame(() => {
@@ -853,8 +921,8 @@ export function ChatUI({
       if (!isProcessing) {
         try {
           // Immediate optimistic processing to ensure status bar appears before async submit resolves
-          setShowProcessingUI(true);
-          setOptimisticProcessing(true);
+            setShowProcessingUI(true);
+            setOptimisticProcessing(true);
           const form = inputRef.current?.closest('form');
           if (form) {
             const evt = new Event('submit', { bubbles: true, cancelable: true });
@@ -1137,6 +1205,15 @@ export function ChatUI({
             }}
           >
             Processing…
+          </div>
+        )}
+        {/* Debug info for mock mode */}
+        {isMockMode && (
+          <div
+            className="px-4 py-1 text-[9px] text-yellow-300 bg-yellow-900/20 border-t border-yellow-500/20"
+            data-ai-debug-info
+          >
+            Debug: showProcessingUI={String(showProcessingUI)}, optimisticProcessing={String(optimisticProcessing)}, isProcessing={String(isProcessing)}, isMockMode={String(isMockMode)}, url={typeof window !== 'undefined' ? window.location.search : 'no-window'}
           </div>
         )}
 

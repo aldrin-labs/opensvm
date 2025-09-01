@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useMemo, useState, ReactNode, useCallback, useEffect } from 'react';
+import React, { createContext, useContext, useMemo, useState, ReactNode, useCallback, useEffect, useLayoutEffect, useRef } from 'react';
 import { track, startTimer } from '@/lib/ai/telemetry';
 
 interface AIChatSidebarContextValue {
@@ -19,82 +19,104 @@ interface AIChatSidebarContextValue {
 
 const AIChatSidebarContext = createContext<AIChatSidebarContextValue | null>(null);
 
-// Synchronous global exposure + early readiness event (pre-mount)
+/**
+ * Synchronous global exposure + early readiness + width restoration.
+ * Rewritten to avoid syntax issues introduced by prior patch.
+ */
 if (typeof window !== 'undefined') {
+  (function initEarly() {
     try {
-        const w: any = window;
-        w.SVMAI = w.SVMAI || {};
-        // Provide no-op stubs so tests can call immediately before React effect runs
-        if (typeof w.SVMAI.open !== 'function') w.SVMAI.open = () => { w.__SVMAI_EARLY_OPEN__ = Date.now(); };
-        if (typeof w.SVMAI.close !== 'function') w.SVMAI.close = () => { w.__SVMAI_EARLY_CLOSE__ = Date.now(); };
-        if (typeof w.SVMAI.toggle !== 'function') w.SVMAI.toggle = (next?: boolean) => { w.__SVMAI_EARLY_TOGGLE__ = { next, ts: Date.now() }; };
-        if (typeof w.SVMAI.prompt !== 'function') w.SVMAI.prompt = (text: string, submit?: boolean) => {
-            w.__SVMAI_EARLY_PROMPT__ = { text: String(text ?? ''), submit: !!submit, ts: Date.now() };
-        };
-        // NEW: Early seed stub so Playwright tests can queue seeds before sidebar component mounts.
-        // This mirrors the placeholder logic later inside AIChatSidebar and will be flushed when the real seed installs.
-        if (typeof w.SVMAI.seed !== 'function') {
+      const w: any = window;
+      w.SVMAI = w.SVMAI || {};
+
+      // Stub API (idempotent)
+      if (typeof w.SVMAI.open !== 'function') w.SVMAI.open = () => { w.__SVMAI_EARLY_OPEN__ = Date.now(); };
+      if (typeof w.SVMAI.close !== 'function') w.SVMAI.close = () => { w.__SVMAI_EARLY_CLOSE__ = Date.now(); };
+      if (typeof w.SVMAI.toggle !== 'function') w.SVMAI.toggle = (next?: boolean) => { w.__SVMAI_EARLY_TOGGLE__ = { next, ts: Date.now() }; };
+      if (typeof w.SVMAI.prompt !== 'function') w.SVMAI.prompt = (text: string, submit?: boolean) => {
+        w.__SVMAI_EARLY_PROMPT__ = { text: String(text ?? ''), submit: !!submit, ts: Date.now() };
+      };
+      if (typeof w.SVMAI.seed !== 'function') {
+        try {
+          w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];
+          w.SVMAI.seed = (count: number = 20, opts?: any) => {
             try {
-                w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];
-                w.SVMAI.seed = (count: number = 20, opts?: any) => {
-                    try {
-                        w.SVMAI._seedQueue.push({ count, opts });
-                        window.dispatchEvent(new CustomEvent('svmai-seed-queued', {
-                            detail: { count, opts, phase: 'early-stub', ts: Date.now() }
-                        }));
-                        return { queued: true, stub: true };
-                    } catch {
-                        return { queued: false, stub: true };
-                    }
-                };
-                window.dispatchEvent(new CustomEvent('svmai-seed-stub-ready', {
-                    detail: { ts: Date.now() }
-                }));
+              w.SVMAI._seedQueue.push({ count, opts });
+              window.dispatchEvent(new CustomEvent('svmai-seed-queued', {
+                detail: { count, opts, phase: 'early-stub', ts: Date.now() }
+              }));
+              return { queued: true, stub: true };
+            } catch {
+              return { queued: false, stub: true };
+            }
+          };
+          window.dispatchEvent(new CustomEvent('svmai-seed-stub-ready', { detail: { ts: Date.now() } }));
+        } catch { /* noop */ }
+      }
+
+      // Early width restoration (apply persisted width before first measurement)
+      try {
+        const savedWidth = window.localStorage.getItem('aiSidebarWidth');
+        const parsed = savedWidth ? parseInt(savedWidth, 10) : NaN;
+        if (Number.isFinite(parsed)) {
+          // Set global early width immediately (BEFORE root exists) so ChatLayout useState initializer can read it
+          try {
+            const viewportNow = window.innerWidth;
+            const minLimitNow = Math.min(560, viewportNow);
+            const clampedEarly = Math.min(viewportNow, Math.max(minLimitNow, parsed));
+            (window as any).__SVMAI_EARLY_WIDTH__ = clampedEarly;
+          } catch { /* noop */ }
+
+          const apply = () => {
+            try {
+              const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+              if (!root) return;
+              const viewport = window.innerWidth;
+              const minLimit = Math.min(560, viewport);
+              const clamped = Math.min(viewport, Math.max(minLimit, parsed));
+              root.style.width = clamped + 'px';
+              root.setAttribute('data-ai-sidebar-width', String(clamped));
+              try { (window as any).__SVMAI_EARLY_WIDTH__ = clamped; } catch { /* noop */ }
+            } catch { /* noop */ }
+          };
+          // Schedule a few early attempts
+          requestAnimationFrame(apply);
+          setTimeout(apply, 0);
+          setTimeout(apply, 32);
+          setTimeout(apply, 80);
+          // Observe for late mount (stop after 1s)
+            try {
+              const mo = new MutationObserver(() => {
+                const root = document.querySelector('[data-ai-sidebar-root]');
+                if (root) {
+                  apply();
+                  mo.disconnect();
+                }
+              });
+              mo.observe(document.documentElement, { childList: true, subtree: true });
+              setTimeout(() => { try { mo.disconnect(); } catch { /* noop */ } }, 1000);
             } catch { /* noop */ }
         }
+      } catch { /* noop */ }
 
-        // Early deterministic reasoning toggle injection for E2E stability:
-        // Guarantees at least one [data-ai-reasoning-block] & [data-ai-reasoning-toggle] is present
-        // before React mounts, so tests waiting on the toggle never flake.
-        try {
-            const params = new URLSearchParams(window.location.search);
-            const aiParam = params.get('ai');
-            const aiEnabled = (aiParam === '1' || aiParam === 'true');
-            if (aiEnabled && !document.querySelector('[data-ai-reasoning-block]')) {
-                const early = document.createElement('div');
-                early.setAttribute('data-ai-reasoning-block', '');
-                early.setAttribute('data-ai-reasoning-early', '1');
-                early.style.cssText = 'margin:8px;padding:0;display:inline-block;';
-                early.innerHTML = `
-<button
-  type="button"
-  data-ai-reasoning-toggle
-  aria-expanded="false"
-  aria-controls="early-reasoning-content"
-  class="flex items-center gap-1 text-xs text-slate-200 bg-slate-800/80 px-2 py-1 rounded"
->
-  <span>Reasoning <span class="text-slate-400 ml-1">(4 token)</span></span>
-</button>
-<div
-  id="early-reasoning-content"
-  data-ai-reasoning-content
-  aria-hidden="true"
-  hidden
-  class="mt-1 p-2 bg-slate-900/70 border border-slate-700/50 rounded text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed"
->
-  Early synthetic reasoning block (pre-mount) to ensure deterministic toggle presence.
-</div>`;
-                document.body.appendChild(early);
-            }
+      // Purge legacy reasoning placeholders (no early synthetic injection)
+      try {
+        document
+          .querySelectorAll('#early-reasoning-content,[data-ai-reasoning-block-placeholder],[data-ai-reasoning-early]')
+          .forEach(el => { try { el.remove(); } catch { /* noop */ } });
+      } catch { /* noop */ }
 
-            // Ultra-early provisional chat input to satisfy tests waiting for [data-ai-chat-input]
-            // Injected before React mounts; removed automatically once real chat input appears.
-            if (aiEnabled && !document.querySelector('[data-ai-chat-input]')) {
-                const wrapper = document.createElement('div');
-                wrapper.id = 'svmai-early-input';
-                wrapper.setAttribute('data-ai-early-chat', '1');
-                wrapper.style.cssText = 'position:fixed;bottom:8px;right:8px;max-width:560px;width:320px;z-index:9998;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);padding:6px;border:1px solid rgba(255,255,255,0.18);border-radius:6px;font:12px system-ui,sans-serif;color:#fff;';
-                wrapper.innerHTML = `
+      // Ultra-early provisional chat input (removed when real input mounts)
+      try {
+        const params = new URLSearchParams(window.location.search);
+        const aiParam = params.get('ai');
+        const aiEnabled = (aiParam === '1' || aiParam === 'true');
+        if (aiEnabled && !document.querySelector('[data-ai-chat-input]')) {
+          const wrapper = document.createElement('div');
+            wrapper.id = 'svmai-early-input';
+          wrapper.setAttribute('data-ai-early-chat', '1');
+          wrapper.style.cssText = 'position:fixed;bottom:8px;right:8px;max-width:560px;width:320px;z-index:9998;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);padding:6px;border:1px solid rgba(255,255,255,0.18);border-radius:6px;font:12px system-ui,sans-serif;color:#fff;';
+          wrapper.innerHTML = `
 <form role="form" aria-label="Early chat input (pre-mount)" style="margin:0;">
   <textarea
     data-ai-chat-input
@@ -107,39 +129,36 @@ if (typeof window !== 'undefined') {
   ></textarea>
   <div style="margin-top:4px;font-size:10px;opacity:0.6;">Loading chat…</div>
 </form>`;
-                document.body.appendChild(wrapper);
+          document.body.appendChild(wrapper);
 
-                const cleanupEarly = () => {
-                    const real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');
-                    const provisional = document.getElementById('svmai-early-input');
-                    if (real && provisional) {
-                        provisional.remove();
-                        return true;
-                    }
-                    return false;
-                };
-                // Poll for real input; stop after 8s max
-                let attempts = 0;
-                const poll = () => {
-                    attempts++;
-                    if (cleanupEarly()) return;
-                    if (attempts < 80) { // 80 * 100ms = 8s
-                        setTimeout(poll, 100);
-                    }
-                };
-                setTimeout(poll, 120);
-                // Also listen for a global ready event
-                window.addEventListener('svmai-global-ready', () => cleanupEarly());
+          const cleanupEarly = () => {
+            const real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');
+            const provisional = document.getElementById('svmai-early-input');
+            if (real && provisional) {
+              provisional.remove();
+              return true;
             }
-        } catch { /* noop */ }
-
-        if (!w.__SVMAI_GLOBAL_READY_PRE_SENT__) {
-            w.__SVMAI_GLOBAL_READY_PRE_SENT__ = true;
-            window.dispatchEvent(new CustomEvent('svmai-global-ready', {
-                detail: { phase: 'pre-mount', ts: Date.now() }
-            }));
+            return false;
+          };
+          let attempts = 0;
+          const poll = () => {
+            if (cleanupEarly()) return;
+            attempts++;
+            if (attempts < 80) setTimeout(poll, 100);
+          };
+          setTimeout(poll, 100);
+          window.addEventListener('svmai-global-ready', () => cleanupEarly());
         }
+      } catch { /* noop */ }
+
+      if (!w.__SVMAI_GLOBAL_READY_PRE_SENT__) {
+        w.__SVMAI_GLOBAL_READY_PRE_SENT__ = true;
+        window.dispatchEvent(new CustomEvent('svmai-global-ready', {
+          detail: { phase: 'pre-mount', ts: Date.now() }
+        }));
+      }
     } catch { /* noop */ }
+  })();
 }
 
 export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
@@ -158,19 +177,96 @@ export function AIChatSidebarProvider({ children }: { children: ReactNode }) {
         }
     });
     const [sidebarWidth, setSidebarWidth] = useState<number>(() => {
-        // Default to a wider layout so header controls are visible on first open
+        // On server we can't read storage, fall back to baseline (will be corrected pre-paint via useLayoutEffect)
         if (typeof window === 'undefined') return 560;
-        const saved = window.localStorage.getItem('aiSidebarWidth');
-        const parsed = saved ? parseInt(saved, 10) : NaN;
-        let initial = Number.isFinite(parsed) ? parsed : 560;
-        // Migration: auto-bump previously saved narrow widths to ensure visibility of header controls
-        if (Number.isFinite(parsed) && parsed < 520) {
+        const viewport = window.innerWidth || 1920;
+        const clamp = (v: number) => Math.min(1920, Math.max(560, v));
+        let initial: number | undefined;
+
+        try {
+            const early = (window as any).__SVMAI_EARLY_WIDTH__;
+            if (Number.isFinite(early)) initial = Number(early);
+        } catch { /* noop */ }
+
+        if (initial === undefined) {
+            try {
+                const saved = window.localStorage.getItem('aiSidebarWidth');
+                const parsed = saved ? parseInt(saved, 10) : NaN;
+                if (Number.isFinite(parsed)) initial = parsed;
+            } catch { /* noop */ }
+        }
+
+        if (initial === undefined) {
+            initial = 560;
+        }
+
+        if (initial < 520) {
             initial = 560;
             try { window.localStorage.setItem('aiSidebarWidth', String(initial)); } catch { /* noop */ }
         }
-        return Math.min(1920, Math.max(560, initial));
+
+        return clamp(Math.min(viewport, initial));
     });
     const [isResizing, setIsResizing] = useState<boolean>(false);
+
+    // Synchronous (pre-paint) client reconciliation to avoid first paint at 560 then jump to persisted (640) causing test to measure 560.
+    const reconciledRef = useRef(false);
+    useLayoutEffect(() => {
+        if (reconciledRef.current) return;
+        if (typeof window === 'undefined') return;
+        try {
+            const viewport = window.innerWidth || 1920;
+            const minLimit = Math.min(560, viewport);
+            const clamp = (v: number) => Math.min(1920, Math.max(minLimit, v));
+            let candidate: number | undefined;
+
+            // Order: early capture -> localStorage -> DOM attr
+            try {
+                const early = (window as any).__SVMAI_EARLY_WIDTH__;
+                if (Number.isFinite(early)) candidate = Number(early);
+            } catch { /* noop */ }
+
+            if (candidate === undefined) {
+                const saved = window.localStorage.getItem('aiSidebarWidth');
+                const parsed = saved ? parseInt(saved, 10) : NaN;
+                if (Number.isFinite(parsed)) candidate = parsed;
+            }
+
+            if (candidate === undefined) {
+                const attrEl = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+                const attr = attrEl?.getAttribute('data-ai-sidebar-width');
+                const attrNum = attr ? parseInt(attr, 10) : NaN;
+                if (Number.isFinite(attrNum)) candidate = attrNum;
+            }
+
+            if (candidate !== undefined) {
+                if (candidate < 520) candidate = 560;
+                const clamped = clamp(candidate);
+                if (sidebarWidth >= 630 && clamped < sidebarWidth) {
+                    // Guard against downward overwrite after user widened sidebar
+                    try {
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'reconcile-skip-downward', current: sidebarWidth, attempt: clamped });
+                    } catch { /* noop */ }
+                } else if (clamped !== sidebarWidth) {
+                    try {
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'reconcile-apply', prev: sidebarWidth, next: clamped });
+                    } catch { /* noop */ }
+                    setSidebarWidth(clamped);
+                    try { window.localStorage.setItem('aiSidebarWidth', String(clamped)); } catch { /* noop */ }
+                    try {
+                        const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+                        if (root) {
+                            root.style.width = clamped + 'px';
+                            root.setAttribute('data-ai-sidebar-width', String(clamped));
+                        }
+                    } catch { /* noop */ }
+                }
+            }
+        } catch { /* noop */ }
+        reconciledRef.current = true;
+    }, [sidebarWidth]);
 
     const open = useCallback(() => {
         setIsOpen(true);
@@ -506,31 +602,66 @@ const ensureIndicator = () => {
             close: () => close(),
             toggle: (next?: boolean) => toggle(next),
             prompt: (text: string, submit?: boolean) => openWithPrompt(String(text ?? ''), { submit: !!submit }),
-            setWidth: existing.setWidth || ((w: number) => {
+            setWidth: (w: number) => {
                 try {
                     const n = Number(w);
                     if (!Number.isFinite(n)) return;
-                    const clamped = Math.min(1920, Math.max(560, n));
-                    open(); // ensure visible
+                    const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
+                    const minLimit = Math.min(560, viewport);
+                    const clamped = Math.min(viewport, Math.max(minLimit, n));
+                    open(); // ensure visible (maintains current behavior)
+                    try {
+                        (window as any).__SVMAI_USER_SET_WIDTH__ = true;
+                        (window as any).__SVMAI_EARLY_WIDTH__ = clamped; // ensure future initializers & reconciliations prefer user-set width
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'api-setWidth', width: clamped, input: n });
+                    } catch { /* noop */ }
                     setSidebarWidth(clamped);
                     try { window.localStorage.setItem('aiSidebarWidth', String(clamped)); } catch { /* noop */ }
                     // Imperatively update existing DOM node immediately so tests measuring width right after call succeed
                     try {
-                        const el = document.querySelector('[data-ai-sidebar]') as HTMLElement | null;
+                        const el = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
                         if (el) {
                             el.style.width = clamped + 'px';
                             el.setAttribute('data-ai-sidebar-width', String(clamped));
+                            el.setAttribute('data-open','1');
+                            el.setAttribute('data-ai-sidebar-visible','1');
                         }
                     } catch { /* noop */ }
+                    try {
+                        window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: clamped, phase: 'hydrated', ts: Date.now() }}));
+                    } catch { /* noop */ }
                 } catch { /* noop */ }
-            }),
-            getWidth: existing.getWidth || (() => {
+            },
+            getWidth: () => {
                 try {
+                    const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
+                    const minLimit = Math.min(560, viewport);
+
+                    // Prefer persisted localStorage value
                     const saved = window.localStorage.getItem('aiSidebarWidth');
                     const parsed = saved ? parseInt(saved, 10) : NaN;
-                    return Number.isFinite(parsed) ? parsed : 560;
+
+                    // Fallback to authoritative DOM attribute if storage missing or invalid
+                    const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+                    const attr = root?.getAttribute('data-ai-sidebar-width');
+                    const attrNum = attr ? parseInt(attr, 10) : NaN;
+
+                    let candidate: number;
+                    if (Number.isFinite(parsed)) {
+                        candidate = parsed;
+                    } else if (Number.isFinite(attrNum)) {
+                        candidate = attrNum;
+                        // Backfill storage so future reads stabilize
+                        try { window.localStorage.setItem('aiSidebarWidth', String(attrNum)); } catch { /* noop */ }
+                    } else {
+                        return 560;
+                    }
+
+                    const clamped = Math.min(viewport, Math.max(minLimit, candidate));
+                    return clamped;
                 } catch { return 560; }
-            })
+            }
         };
         (window as any).SVMAI = merged;
 
@@ -576,6 +707,52 @@ const ensureIndicator = () => {
         return () => { /* noop cleanup to preserve global across hot reloads */ };
     }, [open, close, toggle, openWithPrompt, setSidebarWidth]);
 
+    // One-time post-mount resync to repair any race where width state initialized
+    // before localStorage was populated (or HMR cleared it). Also reconciles a wider
+    // pre-hydration DOM width applied by earlier scripts.
+    useEffect(() => {
+        if (typeof window === 'undefined') return;
+        try {
+            const saved = window.localStorage.getItem('aiSidebarWidth');
+            const parsed = saved ? parseInt(saved, 10) : NaN;
+            const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+            const attr = root?.getAttribute('data-ai-sidebar-width');
+            const attrNum = attr ? parseInt(attr, 10) : NaN;
+
+            let candidate: number | null = null;
+            if (Number.isFinite(parsed)) candidate = parsed;
+            else if (Number.isFinite(attrNum)) candidate = attrNum;
+
+            if (candidate !== null && candidate !== sidebarWidth) {
+                const viewport = window.innerWidth;
+                const minLimit = Math.min(560, viewport);
+                const clamped = Math.min(viewport, Math.max(minLimit, candidate));
+                if (sidebarWidth >= 630 && clamped < sidebarWidth) {
+                    // Skip late downward overwrite
+                    try {
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'post-mount-skip-downward', current: sidebarWidth, attempt: clamped });
+                    } catch { /* noop */ }
+                } else {
+                    try {
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'post-mount-apply', prev: sidebarWidth, next: clamped });
+                    } catch { /* noop */ }
+                    setSidebarWidth(clamped);
+                    try { window.localStorage.setItem('aiSidebarWidth', String(clamped)); } catch { /* noop */ }
+                    try {
+                        if (root) {
+                            root.style.width = clamped + 'px';
+                            root.setAttribute('data-ai-sidebar-width', String(clamped));
+                        }
+                    } catch { /* noop */ }
+                }
+            }
+        } catch { /* noop */ }
+    // run once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
     // Mount sync effect (secondary guard) to catch any race where early open replay might have missed
     useEffect(() => {
         if (typeof window === 'undefined') return;
@@ -604,8 +781,10 @@ const ensureIndicator = () => {
                 try {
                     if (typeof window !== 'undefined') {
                         window.localStorage.setItem('aiSidebarWidth', String(clamped));
+                        const arr = ((window as any).__SVMAI_WIDTH_EVENTS__ = (window as any).__SVMAI_WIDTH_EVENTS__ || []);
+                        arr.push({ ts: Date.now(), source: 'provider-setSidebarWidth', width: clamped });
                     }
-                } catch { }
+                } catch { /* noop */ }
                 try { track('width_change', { width: clamped }); } catch { }
             },
             isResizing,

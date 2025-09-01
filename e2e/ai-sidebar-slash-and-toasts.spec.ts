@@ -24,6 +24,8 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
         // Press Enter: since it's a prefix, it should autocomplete to /tps and not submit yet
         await input.press('Enter');
         await expect(input).toHaveValue('/tps ');
+        // Wait a moment for any state updates
+        await page.waitForTimeout(100);
         // No processing status yet (use stable selector)
         await expect(page.locator('[data-ai-processing-status]')).toHaveCount(0);
 
@@ -33,7 +35,8 @@ test.describe('AI Sidebar - Slash completion and toasts', () => {
 
         // Now submit; should show Processing status
         await input.press('Enter');
-        await expect(page.locator('[data-ai-processing-status]')).toContainText(/Processing/i);
+        // Wait for processing indicator with longer timeout (processing might take a moment to appear)
+        await expect(page.locator('[data-ai-processing-status]')).toContainText(/Processing/i, { timeout: 5000 });
 
         // Cancel to clean up state quickly (optional if cancel button present)
         const maybeCancel = page.getByRole('button', { name: /Cancel processing/i });

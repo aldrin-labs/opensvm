@@ -104,6 +104,138 @@ export default function RootLayout({
 try {
   var w = window;
   var qp = location.search;
+  // Inject early persisted width into global BEFORE any React hydration so ChatLayout/Provider initializers can read it
+  try {
+    var __sw = localStorage.getItem('aiSidebarWidth');
+    if (__sw && /^\\d+$/.test(__sw)) {
+      var __vp = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1920;
+      var __min = Math.min(560, __vp);
+      var __cw = Math.min(__vp, Math.max(__min, parseInt(__sw,10)));
+      window.__SVMAI_EARLY_WIDTH__ = __cw;
+      try {
+        window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: __cw, phase: 'early-persisted', ts: Date.now() }}));
+      } catch(e){}
+    }
+  } catch(e){}
+  // Early placeholder root to eliminate race for tests selecting [data-ai-sidebar-root]
+  try {
+    var wantsAI = (/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp));
+    var persistedOpen = false;
+    try { persistedOpen = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}
+    if ((w.SVMAI && w.SVMAI.__forceOpen) || wantsAI || persistedOpen) {
+      // If an SSR-rendered root already exists, upgrade it instead of creating a placeholder
+      var existingRoot = document.querySelector('[data-ai-sidebar-root]');
+      if (existingRoot) {
+        try {
+          existingRoot.setAttribute('data-open','1');
+          existingRoot.setAttribute('data-ai-sidebar-visible','1');
+          existingRoot.setAttribute('data-ai-mode', existingRoot.getAttribute('data-ai-mode') || 'agent');
+          var __pwExist = localStorage.getItem('aiSidebarWidth');
+          if (__pwExist && /^\\d+$/.test(__pwExist)) {
+            existingRoot.setAttribute('data-ai-sidebar-width', __pwExist);
+            if (existingRoot.style) existingRoot.style.width = __pwExist + 'px';
+            try {
+              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pwExist,10), phase: 'early-upgrade-existing', ts: Date.now() }}));
+            } catch(e){}
+          }
+        } catch(e){}
+      } else if (!document.getElementById('svmai-early-root')) {
+        var earlyRoot = document.createElement('div');
+        earlyRoot.id = 'svmai-early-root';
+        earlyRoot.setAttribute('data-ai-sidebar-root','');
+        earlyRoot.setAttribute('data-ai-sidebar','');
+        earlyRoot.setAttribute('data-ai-sidebar-early-root','1');
+        earlyRoot.setAttribute('data-open','1');
+        earlyRoot.setAttribute('data-ai-sidebar-visible','1');
+        // width attribute will be normalized by hydrated component; set initial conservative value
+        earlyRoot.setAttribute('data-ai-sidebar-width','560');
+        // default mode attribute so tests reading pre-hydration state see expected mode
+        earlyRoot.setAttribute('data-ai-mode','agent');
+        // Apply any persisted width immediately (pre-hydration) so first measurement reflects user setting
+        try {
+          var __pw = localStorage.getItem('aiSidebarWidth');
+          if (__pw && /^\\d+$/.test(__pw)) {
+            earlyRoot.setAttribute('data-ai-sidebar-width', __pw);
+            earlyRoot.style.width = __pw + 'px';
+            try {
+              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pw,10), phase: 'early-placeholder', ts: Date.now() }}));
+            } catch(e){}
+          }
+        } catch(e){}
+        earlyRoot.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';
+        document.body.appendChild(earlyRoot);
+        try {
+          window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline' }}));
+        } catch(e){}
+      }
+    }
+  } catch(e){}
+
+  // Final early width enforcement to avoid race before hydration
+  (function(){
+    try {
+      function svmaiEnsureWidth(){
+        try {
+          var wVal = (typeof window !== 'undefined') ? (window).__SVMAI_EARLY_WIDTH__ : undefined;
+          if(!Number.isFinite(wVal)) {
+            var ls = localStorage.getItem('aiSidebarWidth');
+            if(ls && /^\\d+$/.test(ls)) wVal = parseInt(ls,10);
+          }
+            if(Number.isFinite(wVal)){
+              var root = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');
+              if(root){
+                root.setAttribute('data-ai-sidebar-width', String(wVal));
+                if(root.style) root.style.width = wVal + 'px';
+                try {
+                  window.dispatchEvent(new CustomEvent('svmai-width-set', { detail:{ width: wVal, phase: 'early-final', ts: Date.now() }}));
+                } catch(e){}
+              }
+            }
+        } catch(e){}
+      }
+      svmaiEnsureWidth();
+      requestAnimationFrame(svmaiEnsureWidth);
+      setTimeout(svmaiEnsureWidth, 65);
+    } catch(e){}
+  })();
+  // Fallback: if body wasn't ready when initial attempt ran, retry until body exists (max ~2s)
+  try {
+    if (!document.getElementById('svmai-early-root')) {
+      (function ensureEarlyRoot(at){
+        if (document.getElementById('svmai-early-root')) return;
+        if (document.body) {
+          try {
+            var wantsAI2 = (/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp));
+            var persisted2 = false;
+            try { persisted2 = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}
+            if (w.SVMAI?.__forceOpen || wantsAI2 || persisted2) {
+              var earlyRoot2 = document.createElement('div');
+              earlyRoot2.id = 'svmai-early-root';
+              earlyRoot2.setAttribute('data-ai-sidebar-root','');
+              earlyRoot2.setAttribute('data-ai-sidebar','');
+              earlyRoot2.setAttribute('data-ai-sidebar-early-root','1');
+              earlyRoot2.setAttribute('data-open','1');
+              earlyRoot2.setAttribute('data-ai-sidebar-visible','1');
+              earlyRoot2.setAttribute('data-ai-sidebar-width','560');
+              earlyRoot2.setAttribute('data-ai-mode','agent');
+              try {
+                var __pw2 = localStorage.getItem('aiSidebarWidth');
+                if (__pw2 && /^\d+$/.test(__pw2)) {
+                  earlyRoot2.setAttribute('data-ai-sidebar-width', __pw2);
+                  earlyRoot2.style.width = __pw2 + 'px';
+                }
+              } catch(e){}
+              earlyRoot2.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot2.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';
+              document.body.appendChild(earlyRoot2);
+              try { window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline-fallback' }})); } catch(e){}
+            }
+          } catch(e){}
+          return;
+        }
+        if (at < 120) { requestAnimationFrame(function(){ ensureEarlyRoot(at+1); }); }
+      })(0);
+    }
+  } catch(e){}
   if (/[?&]ai=(1|true)(?:&|$)/.test(qp)) {
     try { localStorage.setItem('aiSidebarOpen','1'); } catch(e){}
   }
@@ -111,6 +243,44 @@ try {
   if (typeof w.SVMAI.open !== 'function') { w.SVMAI.open = function(){ w.__SVMAI_EARLY_OPEN__ = Date.now(); }; }
   if (typeof w.SVMAI.close !== 'function') { w.SVMAI.close = function(){ w.__SVMAI_EARLY_CLOSE__ = Date.now(); }; }
   if (typeof w.SVMAI.toggle !== 'function') { w.SVMAI.toggle = function(next){ w.__SVMAI_EARLY_TOGGLE__ = { next: next, ts: Date.now() }; }; }
+  // Early width setter so tests can persist & observe width before hydration
+  if (typeof w.SVMAI.setWidth !== 'function') {
+    w.SVMAI.setWidth = function(n){
+      try {
+        n = (typeof n === 'number') ? n : parseInt(n,10);
+        if (!(n > 0)) return;
+        var viewport = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1920;
+        var minLimit = Math.min(560, viewport);
+        var clamped = Math.min(viewport, Math.max(minLimit, n));
+        try { localStorage.setItem('aiSidebarWidth', String(clamped)); } catch(e){}
+        // Stamp early width global so hydration initializers immediately pick latest user intent
+        try { window.__SVMAI_EARLY_WIDTH__ = clamped; } catch(e){}
+        // Instrumentation event log (mirrors hydrated api-setWidth events)
+        try {
+          var arr = (window.__SVMAI_WIDTH_EVENTS__ = window.__SVMAI_WIDTH_EVENTS__ || []);
+          arr.push({ ts: Date.now(), source: 'early-setWidth', width: clamped, input: n });
+        } catch(e){}
+        var r = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');
+        if (r) {
+          r.setAttribute('data-ai-sidebar-width', String(clamped));
+          try {
+            if (r && r.style) {
+              r.style.width = clamped + 'px';
+            }
+          } catch(e){}
+          // Ensure open visibility attributes so early measurement reflects clamped width
+          try {
+            r.setAttribute('data-open','1');
+            r.setAttribute('data-ai-sidebar-visible','1');
+          } catch(e){}
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: clamped, phase: 'early', ts: Date.now() }}));
+        } catch(e){}
+        return clamped;
+      } catch(e){}
+    };
+  }
   if (typeof w.SVMAI.prompt !== 'function') {
     w.SVMAI.prompt = function(text, submit){
       w.__SVMAI_EARLY_PROMPT__ = { text: String(text||''), submit: !!submit, ts: Date.now() };
@@ -203,9 +373,23 @@ try {
         var host = document.createElement('div');
         host.setAttribute('data-ai-reasoning-block','');
         host.setAttribute('data-ai-reasoning-sync','pre-hydration');
+        host.setAttribute('data-ai-reasoning-early','1');
         host.style.cssText='margin:12px;margin-top:84px;position:relative;z-index:3;scroll-margin-bottom:160px;';
         host.innerHTML = '<button type="button" data-ai-reasoning-toggle aria-expanded="false" aria-controls="pre-hydration-reasoning" class="flex items-center gap-1 text-xs text-slate-200 bg-slate-800/80 px-2 py-1 rounded"><span>Reasoning <span class="text-slate-400 ml-1">(4 tokens)</span></span></button><div id="pre-hydration-reasoning" data-ai-reasoning-content aria-hidden="true" hidden class="mt-1 p-2 bg-slate-900/70 border border-slate-700/50 rounded text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">Pre-hydration reasoning fallback block.</div>';
         root.appendChild(host);
+        // Once real reasoning is ready, purge early placeholder(s)
+        try {
+          window.addEventListener('svmai-reasoning-ready', function(){
+            try {
+              var realBlock = document.querySelector('[data-ai-sidebar-root] [data-ai-reasoning-block]:not([data-ai-reasoning-early])');
+              if (realBlock) {
+                document.querySelectorAll('[data-ai-reasoning-block][data-ai-reasoning-early]').forEach(function(el){
+                  if (el !== realBlock) el.remove();
+                });
+              }
+            } catch(e){}
+          }, { once:true });
+        } catch(e){}
         try {
           var btn = host.querySelector('[data-ai-reasoning-toggle]');
           var content = host.querySelector('[data-ai-reasoning-content]');

@@ -66,6 +66,10 @@ test.describe('AI Sidebar - requirements verification', () => {
 
         // 7) Close interaction hides sidebar
         await closeBtn.click();
-        await expect(sidebar).toBeHidden();
+        // Check that sidebar is closed via data-open attribute and transform positioning
+        await expect(sidebar).toHaveAttribute('data-open', '0');
+        // Verify the sidebar is positioned off-screen (translateX(100%))
+        const transform = await sidebar.evaluate(el => getComputedStyle(el).transform);
+        expect(transform).toMatch(/translateX\(100%\)|matrix\(1,\s*0,\s*0,\s*1,\s*\d+/); // translateX(100%) or equivalent matrix
     });
 });

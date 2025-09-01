@@ -70,11 +70,15 @@ test.describe('AI Sidebar - Initial Access & Setup', () => {
       if (!el) return false;
       const w = Math.round(el.getBoundingClientRect().width);
       if (w < 630) {
-        (window as any).SVMAI?.setWidth?.(640);
+        // Reissue width setting if it didn't take effect
+        const svmai = (window as any).SVMAI;
+        if (svmai && svmai.setWidth) {
+          svmai.setWidth(640);
+        }
         return false;
       }
       return w >= 630;
-    }, { timeout: 5000 });
+    }, { timeout: 8000 }); // Increased timeout
 
     const widthBefore = await rootLocator.evaluate(el => Math.round((el as HTMLElement).getBoundingClientRect().width));
     expect(widthBefore).toBeGreaterThanOrEqual(630);

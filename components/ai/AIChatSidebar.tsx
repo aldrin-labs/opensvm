@@ -731,20 +731,29 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             if (isMockMode) {
               // For mock mode, ensure minimum processing time for E2E tests
               const MIN_PROCESSING_MS = 450;
-              
+
               // Set pending flags FIRST for E2E detection
               if (!w.__SVMAI_PENDING__) {
                 w.__SVMAI_PENDING__ = true;
                 w.__SVMAI_PENDING_START__ = performance.now();
                 w.__SVMAI_LAST_PENDING_VALUE__ = true;
-                window.dispatchEvent(new CustomEvent('svmai-pending-change', { 
-                  detail: { phase: 'pending-set-prompt', tabId: id } 
+                window.dispatchEvent(new CustomEvent('svmai-pending-change', {
+                  detail: { phase: 'pending-set-prompt', tabId: id }
                 }));
               }
-              
+
               // Set processing state immediately after pending
               updateTab(id, { isProcessing: true, status: 'processing' });
-              
+
+              // Dispatch event to trigger processing UI in ChatUI
+              console.log('🔍 AIChatSidebar: Dispatching svmai-show-processing-ui event for tab', id);
+              const event = new CustomEvent('svmai-show-processing-ui', {
+                detail: { tabId: id, source: 'mock-prompt' }
+              });
+              console.log('🔍 AIChatSidebar: Event created:', event);
+              window.dispatchEvent(event);
+              console.log('🔍 AIChatSidebar: Event dispatched');
+
               // Process message after minimum delay
               setTimeout(() => {
                 processTabMessage(id, text);

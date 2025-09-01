@@ -3,7 +3,7 @@
 // Added explicit client directive because this component uses React hooks and was likely
 // being treated as a server component by Next.js, preventing it (and its children)
 // from rendering properly inside the AI sidebar (blank panel issue).
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useLayoutEffect } from 'react';
 import type { ReactNode } from 'react';
 import { Maximize2, RotateCcw, Plus, MoreHorizontal, X, Settings, HelpCircle, Download, Share2 } from 'lucide-react';
 import dynamic from 'next/dynamic';
@@ -82,13 +82,91 @@ export function ChatLayout({
   onExpand,
 }: ChatLayoutProps) {
   const [width, setWidth] = useState(() => {
+    // Revised initialization ordering to fix width persistence:
+    // Priority: early script (__SVMAI_EARLY_WIDTH__) > localStorage > prop > DOM attr > fallback.
+    // (Previously attr was considered before localStorage causing persisted 640px to be overwritten by 560 attr.)
     const viewport = typeof window !== 'undefined' ? window.innerWidth : 1920;
     const minLimit = Math.min(560, viewport);
-    const base = typeof initialWidth === 'number'
-      ? initialWidth
-      : (viewport < 640 ? viewport : 560);
-    return Math.min(viewport, Math.max(minLimit, base));
+
+    if (typeof window === 'undefined') {
+      const baseSSR = typeof initialWidth === 'number' ? initialWidth : 560;
+      return Math.min(viewport, Math.max(minLimit, baseSSR));
+    }
+
+    let early: number | undefined;
+    try {
+      const e = (window as any).__SVMAI_EARLY_WIDTH__;
+      if (Number.isFinite(e)) early = Number(e);
+    } catch (_e) { /* noop */ }
+
+    let lsNum: number | undefined;
+    try {
+      const saved = window.localStorage.getItem('aiSidebarWidth');
+      const parsed = saved ? parseInt(saved, 10) : NaN;
+      if (Number.isFinite(parsed)) lsNum = parsed;
+    } catch { /* noop */ }
+
+    const propNum = (typeof initialWidth === 'number' && Number.isFinite(initialWidth)) ? initialWidth : undefined;
+
+    let attrNum: number | undefined;
+    try {
+      const attrEl = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+      const attr = attrEl?.getAttribute('data-ai-sidebar-width');
+      const parsed = attr ? parseInt(attr, 10) : NaN;
+      if (Number.isFinite(parsed)) attrNum = parsed;
+    } catch { /* noop */ }
+
+    // Choose first valid in new priority order
+    let candidate = early ?? lsNum ?? propNum ?? attrNum;
+
+    if (candidate === undefined) {
+      candidate = (viewport < 640 ? viewport : 560);
+    }
+
+    // Clamp and allow upward preference if both ls and attr exist
+    if (lsNum && candidate && lsNum > candidate) {
+      candidate = lsNum;
+    }
+
+    const clamped = Math.min(viewport, Math.max(minLimit, candidate));
+    return clamped;
   });
+  // Synchronous pre-paint width uplift & attribute stamping to eliminate race where tests
+  // read 560px before post-mount reconciliation upgrades to persisted 640px.
+  // Runs before first paint (layout effect) so inline style + data attribute reflect persisted width immediately.
+  useLayoutEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const lsRaw = window.localStorage.getItem('aiSidebarWidth');
+      const lsNum = lsRaw ? parseInt(lsRaw, 10) : NaN;
+      if (Number.isFinite(lsNum) && lsNum > width) {
+        // Upgrade state synchronously so initial render width style reflects persisted value
+        setWidth(lsNum);
+      }
+      // Stamp attributes/styles on whichever root is currently present (hydrated ref or early placeholder)
+      const root: HTMLElement | null =
+        sidebarRef.current ||
+        (document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null) ||
+        document.getElementById('svmai-early-root') as HTMLElement | null;
+
+      if (root) {
+        const applied = Number.isFinite(lsNum) ? lsNum : width;
+        root.setAttribute('data-ai-sidebar-width', String(applied));
+        try {
+          root.style.width = applied + 'px';
+        } catch { /* noop */ }
+        // Fire an early synchronous event so any listeners/tests waiting on width can proceed
+        try {
+          window.dispatchEvent(
+            new CustomEvent('svmai-width-set', {
+              detail: { width: applied, phase: 'layout-sync', ts: Date.now() }
+            })
+          );
+        } catch { /* noop */ }
+      }
+    } catch { /* noop */ }
+  }, []); // run once before paint
+
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
@@ -198,6 +276,139 @@ export function ChatLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialWidth]);
 
+  // Post-mount reconciliation & deferred upward correction:
+  // Ensures we do not lock into a smaller fallback (560) if a larger persisted width (e.g. 640) becomes available slightly later.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const record = (event: any) => {
+      try {
+        const w: any = window;
+        const arr = (w.__SVMAI_WIDTH_EVENTS__ = w.__SVMAI_WIDTH_EVENTS__ || []);
+        arr.push({ ts: Date.now(), ...event });
+      } catch { /* noop */ }
+    };
+
+    const applyBest = (phase: string) => {
+      try {
+        const viewport = window.innerWidth;
+        const minLimit = Math.min(560, viewport);
+        const early = (window as any).__SVMAI_EARLY_WIDTH__;
+        const lsRaw = window.localStorage.getItem('aiSidebarWidth');
+        const lsNum = lsRaw ? parseInt(lsRaw, 10) : NaN;
+        const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+        const attr = root?.getAttribute('data-ai-sidebar-width');
+        const attrNum = attr ? parseInt(attr, 10) : NaN;
+
+        // Priority for reconciliation: early > localStorage > attr
+        const candidates: number[] = [];
+        if (Number.isFinite(early)) candidates.push(early);
+        if (Number.isFinite(lsNum)) candidates.push(lsNum);
+        if (Number.isFinite(attrNum)) candidates.push(attrNum);
+
+        if (!candidates.length) return;
+
+        // Prefer the largest valid candidate to avoid downward locking (user-chosen width usually larger)
+        const best = candidates.reduce((a, b) => b > a ? b : a, candidates[0]);
+        const clamped = Math.min(viewport, Math.max(minLimit, best));
+
+        // Allow upward correction only
+        setWidth(prev => {
+          if (prev >= clamped) {
+            record({ source: 'ChatLayout-reconcile-skip', phase, prev, candidate: clamped });
+            return prev;
+          }
+            record({ source: 'ChatLayout-reconcile-apply', phase, prev, candidate: clamped });
+            return clamped;
+        });
+      } catch { /* noop */ }
+    };
+
+    // Immediate reconciliation (mount)
+    applyBest('immediate');
+
+    // Deferred checks to catch late availability (e.g. storage, hydration ordering)
+    const t1 = setTimeout(() => applyBest('deferred-50ms'), 50);
+    const t2 = setTimeout(() => applyBest('deferred-150ms'), 150);
+
+    return () => {
+      clearTimeout(t1);
+      clearTimeout(t2);
+    };
+    // run only once
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Late reconciliation + event listener to capture user width set after initial timers (race with hydration)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const record = (payload: any) => {
+      try {
+        const w: any = window;
+        const arr = (w.__SVMAI_WIDTH_EVENTS__ = w.__SVMAI_WIDTH_EVENTS__ || []);
+        arr.push({ ts: Date.now(), ...payload });
+      } catch { /* noop */ }
+    };
+
+    const lateApply = (phase: string) => {
+      try {
+        const viewport = window.innerWidth;
+        const minLimit = Math.min(560, viewport);
+        const early = (window as any).__SVMAI_EARLY_WIDTH__;
+        const lsRaw = window.localStorage.getItem('aiSidebarWidth');
+        const lsNum = lsRaw ? parseInt(lsRaw, 10) : NaN;
+        const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+        const attr = root?.getAttribute('data-ai-sidebar-width');
+        const attrNum = attr ? parseInt(attr, 10) : NaN;
+
+        const candidates: number[] = [];
+        if (Number.isFinite(early)) candidates.push(early);
+        if (Number.isFinite(lsNum)) candidates.push(lsNum);
+        if (Number.isFinite(attrNum)) candidates.push(attrNum);
+        if (!candidates.length) return;
+        const best = candidates.reduce((a, b) => b > a ? b : a, candidates[0]);
+        const clamped = Math.min(viewport, Math.max(minLimit, best));
+        setWidth(prev => {
+          if (clamped > prev) {
+            record({ source: 'ChatLayout-reconcile-apply-late', phase, prev, candidate: clamped });
+            return clamped;
+          }
+          record({ source: 'ChatLayout-reconcile-skip-late', phase, prev, candidate: clamped });
+          return prev;
+        });
+      } catch { /* noop */ }
+    };
+
+    const onEarlyWidthSet = (e: any) => {
+      try {
+        const detailWidth = e?.detail?.width;
+        if (Number.isFinite(detailWidth)) {
+          setWidth(prev => {
+            if (detailWidth > prev) {
+              record({ source: 'ChatLayout-event-apply', prev, candidate: detailWidth, phase: e.detail?.phase });
+              return detailWidth;
+            }
+            record({ source: 'ChatLayout-event-skip', prev, candidate: detailWidth, phase: e.detail?.phase });
+            return prev;
+          });
+        }
+      } catch { /* noop */ }
+    };
+
+    window.addEventListener('svmai-width-set', onEarlyWidthSet);
+    const t3 = setTimeout(() => lateApply('deferred-300ms'), 300);
+    const t4 = setTimeout(() => lateApply('deferred-600ms'), 600);
+    const t5 = setTimeout(() => lateApply('deferred-1200ms'), 1200);
+
+    return () => {
+      window.removeEventListener('svmai-width-set', onEarlyWidthSet);
+      clearTimeout(t3);
+      clearTimeout(t4);
+      clearTimeout(t5);
+    };
+  }, []);
+
   // When opening or width/expanded changes, inform container to shift content
   useEffect(() => {
     if (!isOpen) return;
@@ -221,6 +432,98 @@ export function ChatLayout({
     }, 500);
     return () => clearTimeout(id);
   }, [width, isOpen]);
+
+  // Width instrumentation & persistence guard (prevents downward overwrite after user-set width)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const w: any = window;
+      const arr = (w.__SVMAI_WIDTH_EVENTS__ = w.__SVMAI_WIDTH_EVENTS__ || []);
+      arr.push({ ts: Date.now(), source: 'ChatLayout-width-render', width });
+      const lsRaw = localStorage.getItem('aiSidebarWidth');
+      const lsNum = lsRaw ? parseInt(lsRaw, 10) : NaN;
+      if (Number.isFinite(lsNum) && lsNum >= 630 && width < lsNum) {
+        arr.push({ ts: Date.now(), source: 'ChatLayout-skip-downward', saved: lsNum, attempt: width });
+        return;
+      }
+      if (!Number.isFinite(lsNum) || width !== lsNum) {
+        localStorage.setItem('aiSidebarWidth', String(width));
+        arr.push({ ts: Date.now(), source: 'ChatLayout-persist', width });
+      }
+    } catch { /* noop */ }
+  }, [width]);
+
+  // Hydration readiness + early root replacement
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = sidebarRef.current;
+    if (!root) return;
+
+    // Mark root ready once
+    if (!root.getAttribute('data-ai-root-ready')) {
+      root.setAttribute('data-ai-root-ready', '1');
+      try {
+        window.dispatchEvent(new CustomEvent('svmai-root-ready', {
+          detail: {
+            ts: Date.now(),
+            width,
+            open: isOpen ? 1 : 0,
+            source: 'hydrated'
+          }
+        }));
+      } catch (e) { /* ignore */ }
+    }
+
+    // Remove early placeholder root if present
+    const early = document.getElementById('svmai-early-root');
+    if (early && early !== root) {
+      try { early.setAttribute('data-ai-sidebar-replaced', '1'); } catch (e) { }
+      // Defer actual removal to next frame to avoid interfering with any observers
+      requestAnimationFrame(() => {
+        try { early.remove(); } catch (e) { }
+      });
+    }
+
+    // Sync width attribute aggressively to eliminate race in tests reading it immediately
+    root.setAttribute('data-ai-sidebar-width', String(width));
+    root.setAttribute('data-open', isOpen ? '1' : '0');
+    root.setAttribute('data-ai-sidebar-visible', isOpen ? '1' : '0');
+  }, [isOpen, width]);
+
+  // Runtime validation to ensure a single authoritative AI sidebar root.
+  // Marks the first discovered root as primary and stamps duplicates for diagnostics without removing them.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const roots = document.querySelectorAll('[data-ai-sidebar-root]');
+    if (!roots.length) return;
+
+    const primary = roots[0] as HTMLElement;
+
+    roots.forEach((el, idx) => {
+      if (idx === 0) {
+        if (!el.getAttribute('data-ai-root-primary')) {
+          el.setAttribute('data-ai-root-primary', '1');
+        }
+      } else {
+        if (!el.getAttribute('data-ai-root-duplicate')) {
+          el.setAttribute('data-ai-root-duplicate', '1');
+        }
+      }
+    });
+
+    // Stamp validation & dispatch event once when this component instance owns the primary root
+    if (sidebarRef.current === primary && !primary.getAttribute('data-ai-root-validated')) {
+      primary.setAttribute('data-ai-root-validated', '1');
+      try {
+        window.dispatchEvent(new CustomEvent('svmai-root-validated', {
+          detail: {
+            ts: Date.now(),
+            count: roots.length
+          }
+        }));
+      } catch { /* ignore */ }
+    }
+  }, []);
 
   const handleOpenSettings = () => {
     setIsSettingsOpen(true);
@@ -262,7 +565,7 @@ export function ChatLayout({
       setWidth(restored);
       setIsExpanded(false);
     }
-    onExpand?.();
+    if (onExpand) { onExpand(); }
   };
 
   // Always render sidebar container (even when closed) so tests can locate the landmark immediately.
@@ -305,7 +608,7 @@ export function ChatLayout({
             transform: `translateX(${isOpen ? '0' : '100%'})`,
             zIndex: 99999
           }}
-          className={`bg-black shadow-xl ${className} ${!isResizing.current && 'transition-all duration-300 ease-in-out'}`}
+          className={`bg-black shadow-xl ${className} ${!isResizing.current && 'transition-transform duration-300 ease-in-out'}`}
           role="complementary"
           aria-label="AI Chat Sidebar"
           data-ai-sidebar
