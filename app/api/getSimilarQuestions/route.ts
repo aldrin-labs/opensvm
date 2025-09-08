@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
-import Together from "together-ai";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import Together from "together-ai";
 
 // Check if required environment variables are present
 if (!process.env.TOGETHER_API_KEY) {

@@ -36,9 +36,6 @@ export async function TogetherAIStream(payload: TogetherAIStreamPayload) {
     throw new Error('TOGETHER_API_KEY environment variable is not set');
   }
 
-  if (!process.env.HELICONE_API_KEY) {
-    throw new Error('HELICONE_API_KEY environment variable is not set');
-  }
 
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
@@ -47,10 +44,9 @@ export async function TogetherAIStream(payload: TogetherAIStreamPayload) {
   const timeoutId = setTimeout(() => controller.abort(), STREAM_TIMEOUT);
 
   try {
-    const res = await fetch("https://together.helicone.ai/v1/chat/completions", {
+    const res = await fetch("https://api.together.xyz/v1/chat/completions", {
       headers: {
         "Content-Type": "application/json",
-        "Helicone-Auth": `Bearer ${process.env.HELICONE_API_KEY}`,
         Authorization: `Bearer ${process.env.TOGETHER_API_KEY}`,
       },
       method: "POST",

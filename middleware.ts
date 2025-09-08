@@ -214,6 +214,6 @@ export const config = {
     // Apply to all API routes
     '/api/:path*',
     // Apply to all pages except static assets and Next.js internals
-    '/((?!_next|favicon.ico|fonts|images|register-sw\\.js|manifest\\.json).*)',
+    '/((?!_next|_document|favicon.ico|fonts|images|register-sw\\.js|manifest\\.json).*)',
   ],
 };
