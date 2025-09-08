@@ -7,8 +7,10 @@ test.describe('AI Sidebar Accessibility', () => {
     test('no serious or critical issues', async ({ page }) => {
         await page.goto('/?ai=1');
         
-        // Wait for the page to fully load and hydrate
-        await page.waitForLoadState('networkidle');
+        // Wait for the page to load - use domcontentloaded instead of networkidle
+        // to avoid timeout with continuous network activity
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(2000); // Additional wait for React hydration
         
         // Wait for the global SVMAI API to be ready
         try {

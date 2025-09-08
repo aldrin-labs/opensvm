@@ -37,9 +37,10 @@ test.describe('AI Sidebar - full interaction pre-click screenshots', () => {
         await page.setViewportSize({ width: 1600, height: 1000 });
         await page.goto('/?ai=1&aimock=1');
 
-        // Wait for page to load completely
-        await page.waitForLoadState('networkidle');
-        await page.waitForTimeout(1000); // Additional wait for React hydration
+        // Wait for page to load - use domcontentloaded instead of networkidle
+        // to avoid timeout with continuous network activity
+        await page.waitForLoadState('domcontentloaded');
+        await page.waitForTimeout(2000); // Additional wait for React hydration
 
         // Open programmatically for determinism
         try {
