@@ -156,20 +156,20 @@ export default defineConfig({
   /* Run your local dev server before starting the tests - optimized */
   // Disabled webServer here to allow running tests against an already running server
   // Start the server separately with `npm run start` before running Playwright tests
-  // webServer: {
-  //   command: 'npm run build && npm run start',
-  //   url: 'http://localhost:3000',
-  //   reuseExistingServer: !process.env.CI,
-  //   timeout: 120 * 1000,
-  //   stdout: 'pipe',
-  //   stderr: 'pipe',
-  //   env: {
-  //     NODE_ENV: 'test',
-  //     NEXT_TELEMETRY_DISABLED: '1',
-  //     DISABLE_ANALYTICS: 'true',
-  //     DISABLE_TRACKING: 'true'
-  //   }
-  // },
+  webServer: {
+    command: 'npm run build && npm run start',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    env: {
+      NODE_ENV: 'test',
+      NEXT_TELEMETRY_DISABLED: '1',
+      DISABLE_ANALYTICS: 'true',
+      DISABLE_TRACKING: 'true'
+    }
+  },
 
   /* Global setup and teardown for better resource management */
   globalSetup: require.resolve('./e2e/global-setup.ts'),
