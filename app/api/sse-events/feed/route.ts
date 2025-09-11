@@ -56,23 +56,38 @@ export async function GET(request: NextRequest) {
 
         // Keep connection alive with periodic messages
         const keepAliveInterval = setInterval(() => {
+          // Skip if cleaning up
+          if (isCleaningUp) {
+            return;
+          }
+
           try {
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`));
           } catch (e) {
             // If this fails, the connection is likely closed
+            console.log('Keep-alive failed, client likely disconnected');
+            isCleaningUp = true;
             clearInterval(keepAliveInterval);
             clearInterval(realEventsInterval);
-            controller.close();
+            try {
+              controller.close();
+            } catch (closeError) {
+              // Controller may already be closed
+            }
           }
         }, 30000); // Send keep-alive every 30 seconds
 
         // Set up polling for real-time events
         let lastEventTimestamp = Date.now();
         let cachedEvents: FeedEvent[] = [];
+        let isCleaningUp = false; // Flag to prevent operations during cleanup
 
         // Function to convert history entry to feed event
         const historyToFeedEvent = (entry: any): FeedEvent | null => {
           try {
+            // Skip if cleaning up
+            if (isCleaningUp) return null;
+
             // Extract event data from history entry
             const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
 
@@ -129,8 +144,13 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Poll for new events
+        // Poll for new events with better cleanup handling
         const realEventsInterval = setInterval(async () => {
+          // Skip if cleaning up
+          if (isCleaningUp) {
+            return;
+          }
+
           try {
             // Fetch the latest events from the database
             const { history } = await getUserHistory(
@@ -141,6 +161,11 @@ export async function GET(request: NextRequest) {
                 // Filter in-memory after fetching
               }
             );
+
+            // Skip if cleaning up after async operation
+            if (isCleaningUp) {
+              return;
+            }
 
             // Find new events (events with timestamp > lastEventTimestamp)
             const newEntries = history.filter(entry => entry.timestamp > lastEventTimestamp);
@@ -154,11 +179,21 @@ export async function GET(request: NextRequest) {
                 .map(historyToFeedEvent)
                 .filter((event): event is FeedEvent => event !== null);
 
+              // Skip if cleaning up
+              if (isCleaningUp) {
+                return;
+              }
+
               // Update cached events
               cachedEvents = [...newEvents, ...cachedEvents].slice(0, 100); // Keep last 100 events
 
               // Send each new event to the client
               for (const event of newEvents) {
+                // Skip if cleaning up
+                if (isCleaningUp) {
+                  break;
+                }
+
                 const eventUpdate = {
                   type: 'feed-update',
                   event
@@ -168,13 +203,15 @@ export async function GET(request: NextRequest) {
                   controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventUpdate)}\n\n`));
                 } catch (e) {
                   // If enqueueing fails, the connection is likely closed
-                  throw e;
+                  console.log('Client disconnected during event send');
+                  isCleaningUp = true;
+                  break;
                 }
               }
             }
 
-            // Randomly send like updates based on real events
-            if (cachedEvents.length > 0 && Math.random() > 0.8) {
+            // Randomly send like updates based on real events (reduced frequency)
+            if (!isCleaningUp && cachedEvents.length > 0 && Math.random() > 0.95) { // Reduced from 0.8 to 0.95
               const randomEvent = cachedEvents[Math.floor(Math.random() * cachedEvents.length)];
               const newLikes = randomEvent.likes + 1;
 
@@ -194,24 +231,40 @@ export async function GET(request: NextRequest) {
                 );
               } catch (e) {
                 // If enqueueing fails, the connection is likely closed
-                throw e;
+                console.log('Client disconnected during like update');
+                isCleaningUp = true;
               }
             }
 
           } catch (e) {
-            // If this fails, the connection is likely closed
-            clearInterval(realEventsInterval);
-            clearInterval(keepAliveInterval);
-            controller.close();
+            console.error('Error in SSE polling interval:', e);
+            // Don't immediately cleanup on error, let the client handle disconnection
           }
         }, 5000); // Poll for new events every 5 seconds
 
-        // Handle client disconnect
-        request.signal.addEventListener('abort', () => {
+        // Handle client disconnect with improved cleanup
+        const cleanup = () => {
+          isCleaningUp = true;
           clearInterval(keepAliveInterval);
           clearInterval(realEventsInterval);
-          controller.close();
-        });
+          try {
+            controller.close();
+          } catch (e) {
+            // Controller may already be closed
+            console.log('Controller already closed during cleanup');
+          }
+        };
+
+        request.signal.addEventListener('abort', cleanup);
+
+        // Also handle cleanup when the controller is about to close
+        const originalClose = controller.close.bind(controller);
+        controller.close = () => {
+          isCleaningUp = true;
+          clearInterval(keepAliveInterval);
+          clearInterval(realEventsInterval);
+          originalClose();
+        };
       }
     });
 
