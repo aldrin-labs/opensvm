@@ -114,7 +114,6 @@ class ProxyConnection extends Connection {
 // Connection pool for load balancing across RPC endpoints
 class ConnectionPool {
     private connections: Map<string, ProxyConnection> = new Map();
-    private currentIndex = 0;
     private endpoints: string[] = [];
 
     constructor() {
@@ -131,8 +130,8 @@ class ConnectionPool {
         }
 
         // Round-robin load balancing
-        const selectedEndpoint = this.endpoints[this.currentIndex % this.endpoints.length];
-        this.currentIndex++;
+        const salt = Date.now() * Math.floor(Math.random() * 1000);
+        const selectedEndpoint = this.endpoints[salt % this.endpoints.length];
 
         if (!this.connections.has(selectedEndpoint)) {
             this.connections.set(selectedEndpoint, new ProxyConnection(selectedEndpoint));
@@ -145,7 +144,6 @@ class ConnectionPool {
         this.endpoints = newEndpoints;
         // Clear existing connections to force new ones with new endpoints
         this.connections.clear();
-        this.currentIndex = 0;
     }
 
     getAllEndpoints(): string[] {
@@ -186,7 +184,7 @@ function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
 // Primary connection getter
 export function getConnection(endpoint?: string): ProxyConnection {
     // If an explicit endpoint is requested, honor it; otherwise use pool
-    return connectionPool.getConnection(endpoint);
+    return connectionPool.getConnection(endpoint ? resolveClusterToEndpoint(endpoint) || undefined : undefined);
 }
 
 // Update RPC endpoint

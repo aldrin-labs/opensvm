@@ -86,8 +86,13 @@ export async function POST(request: Request) {
   const toolResult = await toolRegistry.executeTools(toolContext);
 
   if (toolResult.handled && toolResult.response) {
-    // Tool handled the query - return the response directly
-    return toolResult.response;
+    return new Response(toolResult.response.body, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
+    });
   }
 
   // Fallback: use LLM (Together) to craft an answer if no tool handled it
