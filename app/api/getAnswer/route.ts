@@ -16,7 +16,22 @@ import getConnection from "../../../lib/solana-connection-server";
  */
 
 
-const SOLANA_RPC_KNOWLEDGE = `
+// Read the full Solana RPC documentation from the docs file
+async function getSolanaRpcKnowledge(): Promise<string> {
+  try {
+    const fs = await import('fs/promises');
+    const path = await import('path');
+    const docPath = path.join(process.cwd(), 'public', 'solana-rpc-llms.md');
+    const content = await fs.readFile(docPath, 'utf-8');
+    return `# Complete Solana RPC API Specification for AI Analysis
+
+You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics. Use this knowledge to provide detailed, accurate analysis.
+
+${content}`;
+  } catch (error) {
+    console.error('Failed to load Solana RPC documentation:', error);
+    // Fallback to abbreviated version if file can't be read
+    return `
 # Complete Solana RPC API Specification for AI Analysis
 
 You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics. Use this knowledge to provide detailed, accurate analysis.
@@ -49,364 +64,14 @@ Result: Subscription id (number)
 
 Notification format matches \`getAccountInfo\` RPC HTTP method.
 
-### accountUnsubscribe
-
-Unsubscribe from account change notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "accountUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: Subscription id (number, required)
-
-Result: boolean (unsubscribe success)
-
-### blockSubscribe
-
-Subscribe to receive notification anytime a new block is \`confirmed\` or \`finalized\`.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": "1",
-  "method": "blockSubscribe",
-  "params": [
-    { "mentionsAccountOrProgram": "<pubkey>" },
-    {
-      "commitment": "confirmed",
-      "encoding": "base64",
-      "transactionDetails": "full",
-      "maxSupportedTransactionVersion": 0,
-      "showRewards": true
-    }
-  ]
-}
-\`\`\`
-- Param 0: filter criteria (string | object, required)
-- Param 1: Config object
-
-Result: subscription id (integer)
-
-Notification format: see \`getBlock\` RPC HTTP method.
-
-### blockUnsubscribe
-
-Unsubscribe from block notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "blockUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
-### logsSubscribe
-
-Subscribe to transaction logging.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "logsSubscribe",
-  "params": [
-    { "mentions": ["<pubkey>"] },
-    { "commitment": "finalized" }
-  ]
-}
-\`\`\`
-- Param 0: filter criteria (string | object, required)
-- Param 1: Config object
-
-Result: subscription id (integer)
-
-Notification includes: signature, err, logs.
-
-### logsUnsubscribe
-
-Unsubscribe from transaction logging.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "logsUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
-### programSubscribe
-
-Subscribe to a program to receive notifications when the lamports or data for an account owned by the given program changes.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "programSubscribe",
-  "params": [
-    "<program_id>",
-    {
-      "encoding": "base64",
-      "filters": [{ "dataSize": 80 }]
-    }
-  ]
-}
-\`\`\`
-- Param 0: program_id (string, required)
-- Param 1: Config object
-
-Result: subscription id (integer)
-
-Notification format matches \`getProgramAccounts\` RPC HTTP method.
-
-### programUnsubscribe
-
-Unsubscribe from program-owned account change notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "programUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (number, required)
-
-Result: boolean
-
-### rootSubscribe
-
-Subscribe to receive notification anytime a new root is set by the validator.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "rootSubscribe"
-}
-\`\`\`
-
-Result: subscription id (integer)
-
-Notification: latest root slot number.
-
-### rootUnsubscribe
-
-Unsubscribe from root notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "rootUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
-### signatureSubscribe
-
-Subscribe to receive a notification when the transaction with the given signature reaches the specified commitment level.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "signatureSubscribe",
-  "params": [
-    "<signature>",
-    {
-      "commitment": "finalized",
-      "enableReceivedNotification": false
-    }
-  ]
-}
-\`\`\`
-- Param 0: signature (string, required)
-- Param 1: Config object
-
-Result: subscription id (integer)
-
-Notification: slot, value (err or "receivedSignature").
-
-### signatureUnsubscribe
-
-Unsubscribe from signature confirmation notification.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "signatureUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (number, required)
-
-Result: boolean
-
-### slotSubscribe
-
-Subscribe to receive notification anytime a slot is processed by the validator.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "slotSubscribe"
-}
-\`\`\`
-
-Result: subscription id (integer)
-
-Notification: parent, root, slot.
-
-### slotUnsubscribe
-
-Unsubscribe from slot notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "slotUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
-### slotsUpdatesSubscribe
-
-Subscribe to receive a notification from the validator on a variety of updates on every slot.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "slotsUpdatesSubscribe"
-}
-\`\`\`
-
-Result: subscription id (integer)
-
-Notification: err, parent, slot, stats, timestamp, type.
-
-### slotsUpdatesUnsubscribe
-
-Unsubscribe from slot-update notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "slotsUpdatesUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
-### voteSubscribe
-
-Subscribe to receive notification anytime a new vote is observed in gossip.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "voteSubscribe"
-}
-\`\`\`
-
-Result: subscription id (integer)
-
-Notification: hash, slots, timestamp, signature, votePubkey.
-
-### voteUnsubscribe
-
-Unsubscribe from vote notifications.
-
-Example request:
-\`\`\`jsonc
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "voteUnsubscribe",
-  "params": [0]
-}
-\`\`\`
-- Param 0: subscription id (integer, required)
-
-Result: boolean
-
 ## See HTTP Methods for full details on each RPC call.
 
-... (rest of the HTTP methods and details omitted for brevity) ...
+... (abbreviated due to file loading error) ...
 `;
-
-export const maxDuration = 45;
-
-async function fetchWithTimeout(url: string, options = {}, timeout = 3000) {
-  const controller = new AbortController();
-  const { signal } = controller;
-  const fetchTimeout = setTimeout(() => controller.abort(), timeout);
-  return fetch(url, { ...options, signal })
-    .then((response) => {
-      clearTimeout(fetchTimeout);
-      return response;
-    })
-    .catch((error) => {
-      if ((error as any).name === "AbortError") throw new Error("Fetch request timed out");
-      throw error;
-    });
+  }
 }
 
-const cleanedText = (text: string) => {
-  let newText = text
-    .trim()
-    .replace(/(\n){4,}/g, "\n\n\n")
-    .replace(/\n\n/g, " ")
-    .replace(/ {3,}/g, "  ")
-    .replace(/\t/g, "")
-    .replace(/\n+(\s*\n)*/g, "\n");
-
-  return newText.substring(0, 20000);
-};
+export const maxDuration = 45;
 
 function extractFirstSolanaAddress(text: string): string | null {
   // Rough base58 heuristic: 32-44 chars from the Base58 alphabet
@@ -427,7 +92,7 @@ export async function POST(request: Request) {
 
   const conn = getConnection();
 
-  let { question, sources } = await request.json();
+  let { question } = await request.json();
   const qLower = String(question || "").toLowerCase();
 
   // Dynamic Plan Execution System
@@ -829,7 +494,14 @@ IMPORTANT: Provide a complete response. Don't stop mid-sentence.`;
       return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
     }
 
-    // 2) Block height & epoch
+    // 2) Current slot
+    if (qLower.includes("current slot") || qLower.includes("what is the slot")) {
+      const currentSlot = await conn.getSlot();
+      const reply = `Current slot: ${currentSlot}`;
+      return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
+    }
+
+    // 3) Block height & epoch
     if (qLower.includes("block height") || qLower.includes("epoch")) {
       const [blockHeight, epochInfo] = await Promise.all([conn.getBlockHeight(), conn.getEpochInfo()]);
       const reply = `Current chain info:
@@ -874,74 +546,80 @@ IMPORTANT: Provide a complete response. Don't stop mid-sentence.`;
                 blockTime: block.blockTime
               }));
               allTransactions.push(...blockTxs);
-            }        // Sort by slot (most recent first) and take the requested number
-            allTransactions.sort((a, b) => b.slot - a.slot);
-            const limit = qLower.includes("10") ? 10 : qLower.includes("5") ? 5 : 15;
-            const recentTxs = allTransactions.slice(0, limit);
-
-            if (recentTxs.length === 0) {
-              return new Response("No recent transactions found in the last few blocks.", {
-                status: 200,
-                headers: { "Content-Type": "text/plain" }
-              });
             }
+          } catch (error) {
+            // Skip blocks that can't be fetched
+          }
+        }
 
-            const reply = `Recent Transactions (Last ${recentTxs.length}):
+        // Sort by slot (most recent first) and take the requested number
+        allTransactions.sort((a, b) => b.slot - a.slot);
+        const limit = qLower.includes("10") ? 10 : qLower.includes("5") ? 5 : 15;
+        const recentTxs = allTransactions.slice(0, limit);
+
+        if (recentTxs.length === 0) {
+          return new Response("No recent transactions found in the last few blocks.", {
+            status: 200,
+            headers: { "Content-Type": "text/plain" }
+          });
+        }
+
+        const reply = `Recent Transactions (Last ${recentTxs.length}):
 
 ${recentTxs.map((tx, i) => {
-              const timeStr = tx.blockTime ? new Date(tx.blockTime * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Unknown time';
-              return `${i + 1}. ${tx.signature}
+          const timeStr = tx.blockTime ? new Date(tx.blockTime * 1000).toISOString().replace('T', ' ').slice(0, 19) + ' UTC' : 'Unknown time';
+          return `${i + 1}. ${tx.signature}
    Slot: ${tx.slot} | Time: ${timeStr}`;
-            }).join('\n\n')}
+        }).join('\n\n')}
 
 💡 These are actual transaction signatures from recent blocks on Solana mainnet.
    You can explore them further on osvm.ai.`;
 
-            return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
+        return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
 
-          } catch (error) {
-            console.error('Error fetching recent transactions:', error);
-            return new Response(`Error fetching recent transactions: ${(error as Error).message}`, {
-              status: 200,
-              headers: { "Content-Type": "text/plain" }
-            });
-          }
+      } catch (error) {
+        console.error('Error fetching recent transactions:', error);
+        return new Response(`Error fetching recent transactions: ${(error as Error).message}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" }
+        });
+      }
+    }
+
+    // 4) Wallet balance (if an address is present)
+    if (qLower.includes("balance") || qLower.includes("wallet balance") || qLower.includes("balance of")) {
+      const addr = extractFirstSolanaAddress(String(question || ""));
+      if (addr) {
+        try {
+          const bal = await conn.getBalance(new PublicKey(addr));
+          const sol = bal / 1_000_000_000;
+          const reply = `Balance for ${addr}:\n- Lamports: ${bal}\n- SOL: ${sol}`;
+          return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
+        } catch (e) {
+          return new Response(`Failed to fetch balance for ${addr}: ${(e as Error).message}`, { status: 200, headers: { "Content-Type": "text/plain" } });
+        }
+      }
+      // If no address provided, fallthrough to LLM guidance
+    }
+
+    // 4) Account analysis (if an address is present in queries like "check on", "analyze", "account info")
+    const addr = extractFirstSolanaAddress(String(question || ""));
+    if (addr && (qLower.includes("check") || qLower.includes("analyze") || qLower.includes("account") || qLower.includes("info") || qLower.includes("details"))) {
+      try {
+        const [accountInfo, balance] = await Promise.all([
+          conn.getAccountInfo(new PublicKey(addr)),
+          conn.getBalance(new PublicKey(addr))
+        ]);
+
+        if (!accountInfo) {
+          return new Response(`Account ${addr} does not exist or has no data.`, {
+            status: 200,
+            headers: { "Content-Type": "text/plain" }
+          });
         }
 
-        // 4) Wallet balance (if an address is present)
-        if (qLower.includes("balance") || qLower.includes("wallet balance") || qLower.includes("balance of")) {
-          const addr = extractFirstSolanaAddress(String(question || ""));
-          if (addr) {
-            try {
-              const bal = await conn.getBalance(new PublicKey(addr));
-              const sol = bal / 1_000_000_000;
-              const reply = `Balance for ${addr}:\n- Lamports: ${bal}\n- SOL: ${sol}`;
-              return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
-            } catch (e) {
-              return new Response(`Failed to fetch balance for ${addr}: ${(e as Error).message}`, { status: 200, headers: { "Content-Type": "text/plain" } });
-            }
-          }
-          // If no address provided, fallthrough to LLM guidance
-        }
-
-        // 4) Account analysis (if an address is present in queries like "check on", "analyze", "account info")
-        const addr = extractFirstSolanaAddress(String(question || ""));
-        if (addr && (qLower.includes("check") || qLower.includes("analyze") || qLower.includes("account") || qLower.includes("info") || qLower.includes("details"))) {
-          try {
-            const [accountInfo, balance] = await Promise.all([
-              conn.getAccountInfo(new PublicKey(addr)),
-              conn.getBalance(new PublicKey(addr))
-            ]);
-
-            if (!accountInfo) {
-              return new Response(`Account ${addr} does not exist or has no data.`, {
-                status: 200,
-                headers: { "Content-Type": "text/plain" }
-              });
-            }
-
-            const sol = balance / 1_000_000_000;
-            const reply = `Account Analysis for ${addr}:
+        const sol = balance / 1_000_000_000;
+        const reply = `Account Analysis for ${addr}:
 
 **Balance:**
 - SOL: ${sol}
@@ -955,71 +633,67 @@ ${recentTxs.map((tx, i) => {
 
 **Account Type:**
 ${accountInfo.executable ? '🔧 This is an executable program account' :
-                accountInfo.data.length > 0 ? '📄 This is a data account (may contain tokens, NFTs, or program state)' :
-                  '💰 This is a simple wallet account'}`;
+            accountInfo.data.length > 0 ? '📄 This is a data account (may contain tokens, NFTs, or program state)' :
+              '💰 This is a simple wallet account'}`;
 
-            return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
-          } catch (e) {
-            return new Response(`Failed to analyze account ${addr}: ${(e as Error).message}`, {
-              status: 200,
-              headers: { "Content-Type": "text/plain" }
-            });
-          }
-        }
+        return new Response(reply, { status: 200, headers: { "Content-Type": "text/plain" } });
       } catch (e) {
-        console.error("Server-side RPC check failed:", e);
-        // Fallthrough to LLM fallback below so the user still receives an answer
+        return new Response(`Failed to analyze account ${addr}: ${(e as Error).message}`, {
+          status: 200,
+          headers: { "Content-Type": "text/plain" }
+        });
       }
+    }
+  } catch (e) {
+    console.error("Server-side RPC check failed:", e);
+    // Fallthrough to LLM fallback below so the user still receives an answer
+  }
 
-      // Fallback: use LLM (Together) to craft an answer (previous behavior)
-      const together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-      });
+  // Fallback: use LLM (Together) to craft an answer (previous behavior)
+  const together = new Together({
+    apiKey: process.env.TOGETHER_API_KEY,
+  });
 
-      const mainAnswerPrompt = `You are an expert Solana blockchain analyst with comprehensive knowledge of the Solana ecosystem and RPC APIs. Given a user question and some context, please write a clean, concise and accurate answer to the question based on the context. You will be given a set of related contexts to the question, each starting with a reference number like [[citation:x]], where x is a number. Please use the context when crafting your answer.
+  const solanaRpcKnowledge = await getSolanaRpcKnowledge();
+  const mainAnswerPrompt = `You are an expert Solana blockchain analyst with comprehensive knowledge of the Solana ecosystem and RPC APIs. Given a user question and some context, please write a clean, concise and accurate answer to the question based on the context. You will be given a set of related contexts to the question, each starting with a reference number like [[citation:x]], where x is a number. Please use the context when crafting your answer.
 
 Your answer must be correct, accurate and written by an expert using an unbiased and professional tone. Please limit to 1024 tokens. Do not give any information that is not related to the question, and do not repeat. Say "information is missing on" followed by the related topic, if the given context do not provide sufficient information.
 
-${SOLANA_RPC_KNOWLEDGE}
+${solanaRpcKnowledge}
 
 Remember, don't blindly repeat the contexts verbatim and don't tell the user how you used the citations – just respond with the answer. It is very important for my career that you follow these instructions. Do not generate plan objects in your response. Here is the user question:`;
 
-      try {
-        // Use non-streaming response for better control over post-processing
-        console.log("[getAnswer] Fetching non-stream answer from Together API");
+  try {
+    // Use non-streaming response for better control over post-processing
+    console.log("[getAnswer] Fetching non-stream answer from Together API");
 
-        let answer = await together.chat.completions.create({
-          model: "moonshotai/Kimi-K2-Instruct-0905",
-          messages: [
-            { role: "system", content: mainAnswerPrompt },
-            {
-              role: "user",
-              content: question,
-            },
-          ],
-          stream: false,
-        });
+    let answer = await together.chat.completions.create({
+      model: "moonshotai/Kimi-K2-Instruct-0905",
+      messages: [
+        { role: "system", content: mainAnswerPrompt },
+        {
+          role: "user",
+          content: question,
+        },
+      ],
+      stream: false,
+    });
 
-        let parsedAnswer = answer.choices?.[0]?.message?.content || "Failed to get answer";
+    let parsedAnswer = answer.choices?.[0]?.message?.content || "Failed to get answer";
 
-        // Post-process the response to handle plan objects and improve formatting
-        const generativeCapability = new GenerativeCapability();
-        parsedAnswer = generativeCapability.postProcessResponse(parsedAnswer);
+    // Post-process the response to handle plan objects and improve formatting
+    const generativeCapability = new GenerativeCapability();
+    parsedAnswer = generativeCapability.postProcessResponse(parsedAnswer);
 
-        return new Response(parsedAnswer, {
-          status: 200,
-          headers: {
-            "Content-Type": "text/plain",
-            "Cache-Control": "no-cache",
-          },
-        });
-      } catch (e) {
-        console.log("Error is: ", e);
-        return new Response("Failed to get answer", { status: 500 });
-      }
-    }
-  } catch (error) {
-    console.error('Server error:', error);
-    return new Response("Internal server error", { status: 500 });
+    return new Response(parsedAnswer, {
+      status: 200,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+      },
+    });
+  } catch (e) {
+    console.log("Error is: ", e);
+    return new Response("Failed to get answer", { status: 500 });
   }
 }
