@@ -958,7 +958,7 @@ export function ChatLayout({
               </div>
             )}
             {/* Main content area with proper flex and overflow handling */}
-            <div className="flex-1 min-h-0 bg-black overflow-hidden">
+            <div className="flex-1 min-h-0 bg-black overflow-y-auto">
               {children}
             </div>
           </div>

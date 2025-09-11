@@ -907,6 +907,53 @@ export function ChatUI({
         }
       }
     }
+
+    // Input history navigation
+    if (!showSlashHelp && !showReferenceAutocomplete) {
+      const el = inputRef.current;
+      if (el) {
+        // ArrowUp: Navigate to previous input in history (when cursor is at start)
+        if (e.key === 'ArrowUp' && el.selectionStart === 0 && el.selectionEnd === 0) {
+          e.preventDefault();
+          if (inputHistory.length > 0) {
+            let newIndex: number;
+            if (historyIndex === null) {
+              // First time navigating - save current input as draft and go to last item
+              setDraftBeforeHistory(input);
+              newIndex = inputHistory.length - 1;
+            } else if (historyIndex > 0) {
+              // Go further back in history
+              newIndex = historyIndex - 1;
+            } else {
+              // Already at the beginning of history
+              return;
+            }
+            setHistoryIndex(newIndex);
+            onInputChange(inputHistory[newIndex]);
+          }
+          return;
+        }
+
+        // ArrowDown: Navigate to next input in history (when cursor is at end)
+        if (e.key === 'ArrowDown' && el.selectionStart === el.value.length && el.selectionEnd === el.value.length) {
+          e.preventDefault();
+          if (historyIndex !== null) {
+            if (historyIndex < inputHistory.length - 1) {
+              // Go forward in history
+              const newIndex = historyIndex + 1;
+              setHistoryIndex(newIndex);
+              onInputChange(inputHistory[newIndex]);
+            } else {
+              // At the end of history - restore draft or clear
+              setHistoryIndex(null);
+              onInputChange(draftBeforeHistory);
+              setDraftBeforeHistory('');
+            }
+          }
+          return;
+        }
+      }
+    }
   };
 
   // Build chat (messages) content
@@ -1096,7 +1143,7 @@ export function ChatUI({
           role="region"
           aria-label="AI Chat Interface"
         >
-          <div className={`relative z-0 flex-1 min-h-0 overflow-hidden ${variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'}`}>
+          <div className={`relative z-0 flex-1 min-h-0 overflow-y-auto ${variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'}`}>
             {mainScrollableContent}
           </div>
 

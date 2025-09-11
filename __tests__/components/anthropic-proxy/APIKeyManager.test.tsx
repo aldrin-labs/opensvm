@@ -16,7 +16,28 @@ jest.mock('sonner', () => ({
     },
 }));
 
-// Mock fetch for API calls
+jest.mock('react-hot-toast', () => ({
+    toast: {
+        success: jest.fn(),
+        error: jest.fn(),
+    },
+}));
+
+jest.mock('@/lib/settings', () => ({
+    useSettings: jest.fn(() => ({
+        font: 'Inter',
+        theme: 'light'
+    })),
+}));
+
+jest.mock('@/contexts/AuthContext', () => ({
+    useAuthContext: jest.fn(() => ({
+        user: { id: 'test-user-id' },
+        isAuthenticated: true,
+        login: jest.fn(),
+        logout: jest.fn(),
+    })),
+}));// Mock fetch for API calls
 global.fetch = jest.fn();
 
 describe('Anthropic Proxy UI Components', () => {
@@ -518,7 +539,7 @@ describe('Anthropic Proxy UI Components', () => {
             // Switch to JavaScript tab
             const jsTab = screen.getByText('JavaScript');
             fireEvent.click(jsTab);
-            expect(screen.getByText('JavaScript/TypeScript SDK')).toBeInTheDocument();
+            expect(screen.getAllByText('JavaScript/TypeScript SDK')[0]).toBeInTheDocument();
 
             // Switch to CLI tab
             const cliTab = screen.getByText('CLI');

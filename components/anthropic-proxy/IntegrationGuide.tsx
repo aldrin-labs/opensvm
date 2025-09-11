@@ -4,16 +4,16 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  CodeIcon,
-  TerminalIcon,
-  ExternalLinkIcon,
-  CopyIcon,
-  CheckIcon,
-  AlertTriangleIcon,
-  InfoIcon,
-  BookOpenIcon,
-  LightbulbIcon
+import {
+    CodeIcon,
+    TerminalIcon,
+    ExternalLinkIcon,
+    CopyIcon,
+    CheckIcon,
+    AlertTriangleIcon,
+    InfoIcon,
+    BookOpenIcon,
+    LightbulbIcon
 } from 'lucide-react';
 import { toast } from 'react-hot-toast';
 import { useSettings } from '@/lib/settings';
@@ -25,11 +25,20 @@ interface CodeExample {
     description?: string;
 }
 
-export default function IntegrationGuide() {
+interface IntegrationGuideProps {
+    apiKey?: string;
+}
+
+export default function IntegrationGuide({ apiKey }: IntegrationGuideProps = {}) {
     const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
-    // Get user settings for theme and font
-    const settings = useSettings();
+    // Get user settings for theme and font - use fallback if hook fails
+    let settings;
+    try {
+        settings = useSettings();
+    } catch {
+        settings = { font: 'Inter', theme: 'light' };
+    }
 
     // Theme-aware CSS classes
     const themeClasses = {
@@ -72,14 +81,19 @@ export default function IntegrationGuide() {
             'text-base';
 
     const baseUrl = 'https://opensvm.com/v1';
-    const exampleKey = 'sk-ant-api03-your-key-here'; // Placeholder, will be replaced by actual API key
+    const exampleKey = apiKey || 'sk-ant-api03-your-key-here'; // Use provided API key or placeholder
 
     const copyToClipboard = (code: string, label: string) => {
         if (typeof navigator !== 'undefined' && navigator.clipboard) {
-      navigator.clipboard.writeText(code);
-    }
+            navigator.clipboard.writeText(code);
+        }
         setCopiedCode(label);
-        toast.success(`${label} copied to clipboard!`);
+        try {
+            toast.success(`${label} copied to clipboard!`);
+        } catch {
+            // Fallback if toast fails
+            console.log(`${label} copied to clipboard!`);
+        }
         setTimeout(() => setCopiedCode(null), 2000);
     };
 
@@ -92,12 +106,15 @@ export default function IntegrationGuide() {
                     size="sm"
                     onClick={() => copyToClipboard(example.code, label)}
                     className="h-8"
+                    aria-label={`Copy ${example.title}`}
+                    title={`Copy ${example.title}`}
                 >
                     {copiedCode === label ? (
                         <CheckIcon className="h-3 w-3 text-success" />
                     ) : (
                         <CopyIcon className="h-3 w-3" />
                     )}
+                    <span className="sr-only">Copy</span>
                 </Button>
             </div>
             {example.description && (
@@ -699,7 +716,7 @@ console.log(message.content);`}</code>
                             <ul className={themeClasses.featureList}>
                                 <li className={themeClasses.featureItem}>
                                     <CheckIcon className="h-4 w-4 text-success mt-0.5" />
-                                    <span>Store API keys securely in environment variables</span>
+                                    <span>Use environment variables for API keys</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
                                     <CheckIcon className="h-4 w-4 text-success mt-0.5" />
@@ -717,7 +734,7 @@ console.log(message.content);`}</code>
                             <ul className={themeClasses.featureList}>
                                 <li className={themeClasses.featureItem}>
                                     <AlertTriangleIcon className="h-4 w-4 text-destructive mt-0.5" />
-                                    <span>Hardcode API keys in your source code</span>
+                                    <span>Don't hardcode API keys in your source code</span>
                                 </li>
                                 <li className={themeClasses.featureItem}>
                                     <AlertTriangleIcon className="h-4 w-4 text-destructive mt-0.5" />
