@@ -7,18 +7,18 @@ export const runtime = 'edge';
 // Function to extract potential sources from AI response
 function extractSourcesFromText(text: string): { title: string, url: string }[] {
   const sources: { title: string, url: string }[] = [];
-  
+
   // Default sources if none are extracted
   const defaultSources = [
     { title: 'Solana Documentation', url: 'https://docs.solana.com' },
     { title: 'Solana Explorer', url: 'https://explorer.solana.com' },
     { title: 'OpenSVM GitHub', url: 'https://github.com/aldrin-labs/opensvm' }
   ];
-  
+
   // Try to extract URLs from the text
   const urlRegex = /(https?:\/\/[^\s]+)/g;
   const matches = text.match(urlRegex);
-  
+
   if (matches && matches.length > 0) {
     // For each URL found, create a source entry
     matches.forEach(url => {
@@ -26,7 +26,7 @@ function extractSourcesFromText(text: string): { title: string, url: string }[] 
         const urlObj = new URL(url);
         const domain = urlObj.hostname.replace('www.', '');
         const title = domain.split('.')[0].charAt(0).toUpperCase() + domain.split('.')[0].slice(1);
-        
+
         sources.push({
           title: `${title}`,
           url: url
@@ -35,10 +35,10 @@ function extractSourcesFromText(text: string): { title: string, url: string }[] 
         console.error('Error parsing URL:', e);
       }
     });
-    
+
     return sources.length > 0 ? sources : defaultSources;
   }
-  
+
   return defaultSources;
 }
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
     } catch {
       query = undefined;
     }
-    
+
     if (!query) {
       return NextResponse.json(
         { error: 'Query parameter is required' },
@@ -61,7 +61,7 @@ export async function POST(req: NextRequest) {
 
     // Check for API key
     const apiKey = process.env.TOGETHER_API_KEY;
-    
+
     if (!apiKey) {
       // Return a fallback response when API key is missing
       return NextResponse.json({
@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Define the model to use
-    const MODEL = 'mistralai/Mixtral-8x7B-Instruct-v0.1';
+    const MODEL = 'moonshotai/Kimi-K2-Instruct-0905';
 
     // Create a system prompt for blockchain and Solana-specific information
     const systemPrompt = `You are an AI assistant specialized in blockchain technology, particularly Solana. 
@@ -99,10 +99,10 @@ export async function POST(req: NextRequest) {
     // Set up streaming response
     const encoder = new TextEncoder();
     const decoder = new TextDecoder();
-    
+
     // Store the complete response to extract sources at the end
     let completeResponse = '';
-    
+
     try {
       const stream = new ReadableStream({
         async start(controller) {
@@ -110,12 +110,12 @@ export async function POST(req: NextRequest) {
           function onParse(event: { type: string; data?: string }) {
             if (event.type === 'event') {
               const data = event.data;
-              
+
               // Handle different event types
               try {
                 if (!data) return;
                 const json = JSON.parse(data);
-                
+
                 if (json.choices?.[0]?.delta?.content) {
                   const text = json.choices[0].delta.content;
                   completeResponse += text;
@@ -135,7 +135,7 @@ export async function POST(req: NextRequest) {
 
           // Create parser for SSE
           const parser = createParser({ onParse } as any);
-          
+
           // Call Together AI API with streaming
           try {
             const response = await together.chat.completions.create({
@@ -148,28 +148,28 @@ export async function POST(req: NextRequest) {
               max_tokens: 800,
               stream: true,
             } as any);
-            
+
             // Process the streaming response
             // @ts-ignore: body may exist on the response
             if (response.body) {
               // @ts-ignore: body may exist on the response
               const reader = response.body.getReader();
-              
+
               while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
-                
+
                 // Parse chunks as they arrive
                 parser.feed(decoder.decode(value));
               }
             }
           } catch (error) {
             console.error('Error calling Together AI API:', error);
-            
+
             // Send error message to client
             const errorMessage = "Sorry, there was an error connecting to the AI service. Please try again later.";
             controller.enqueue(encoder.encode(`data: ${JSON.stringify({ text: errorMessage })}\n\n`));
-            
+
             // Add default sources
             const defaultSources = [
               { title: 'Solana Documentation', url: 'https://docs.solana.com' },
@@ -206,7 +206,7 @@ export async function POST(req: NextRequest) {
   } catch (error) {
     console.error('Error in AI response API:', error);
     return NextResponse.json(
-      { 
+      {
         error: 'Failed to generate AI response',
         message: error instanceof Error ? error.message : String(error),
         text: `There was an error processing your query "${typeof query !== "undefined" ? query : ""}". Please try again later.`,

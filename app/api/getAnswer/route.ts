@@ -64,7 +64,8 @@ export async function POST(request: Request) {
   }
 
   const conn = getConnection();
-  let { question } = await request.json();
+  let body = await request.json();
+  let question = body.question || body.message || "";
 
   // Create tool context for modular tool execution
   const toolContext: ToolContext = {
@@ -102,11 +103,10 @@ Remember, don't blindly repeat the contexts verbatim and don't tell the user how
     let answer = await together.chat.completions.create({
       model: "moonshotai/Kimi-K2-Instruct-0905",
       messages: [
-        { role: "system", content: mainAnswerPrompt },
         {
-          role: "user",
-          content: question,
-        },
+          role: "system",
+          content: `${mainAnswerPrompt}\n\nUser Question: ${question}`
+        }
       ],
       stream: false,
     });
@@ -125,7 +125,41 @@ Remember, don't blindly repeat the contexts verbatim and don't tell the user how
       },
     });
   } catch (e) {
-    console.log("Error is: ", e);
-    return new Response("Failed to get answer", { status: 500 });
+    console.log("Error with primary model, trying fallback: ", e);
+
+    // Try a fallback model that supports 'user' role
+    try {
+      let answer = await together.chat.completions.create({
+        model: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
+        messages: [
+          { role: "system", content: mainAnswerPrompt },
+          { role: "user", content: question }
+        ],
+        stream: false,
+      });
+
+      let parsedAnswer = answer.choices?.[0]?.message?.content || "Failed to get answer";
+
+      // Post-process the response to handle plan objects and improve formatting
+      const generativeCapability = new GenerativeCapability();
+      parsedAnswer = generativeCapability.postProcessResponse(parsedAnswer);
+
+      return new Response(parsedAnswer, {
+        status: 200,
+        headers: {
+          "Content-Type": "text/plain",
+          "Cache-Control": "no-cache",
+        },
+      });
+    } catch (fallbackError) {
+      console.log("Fallback model also failed: ", fallbackError);
+      return new Response(
+        JSON.stringify({ error: "Failed to get answer from both primary and fallback models" }),
+        {
+          status: 500,
+          headers: { "Content-Type": "application/json" }
+        }
+      );
+    }
   }
 }

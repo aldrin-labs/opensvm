@@ -63,52 +63,59 @@ export class GenerativeCapability extends BaseCapability {
     ];
 
     /**
-     * Post-process AI response to handle plan objects and improve formatting
+     * Post-process AI response to handle unwanted plan objects while preserving legitimate content
      */
     postProcessResponse(text: string): string {
         if (!text) return text;
 
-        // Check if the response is a JSON array of tools (the main issue)
+        // Check if the ENTIRE response is a bare JSON array of tool plans (this is unwanted)
         try {
             const trimmed = text.trim();
-            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+            // Only process if it's ONLY a JSON array with no other content
+            if (trimmed.startsWith('[') && trimmed.endsWith(']') && !trimmed.includes('```') && !trimmed.includes('curl')) {
                 const parsed = JSON.parse(trimmed);
-                if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].tool) {
-                    // Convert tool plan to natural language explanation
+                if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(item =>
+                    item && typeof item === 'object' && item.tool && typeof item.tool === 'string'
+                )) {
+                    // This is likely an unwanted bare tool execution plan
                     const toolCount = parsed.length;
                     const toolNames = parsed.map((item: any) => item.tool).join(', ');
-                    
+
                     return `I've identified ${toolCount} step${toolCount !== 1 ? 's' : ''} to analyze this request: ${toolNames}. However, the tool execution system is currently not functioning properly. The system should execute these tools and provide you with a comprehensive analysis, but it's only returning the execution plan instead of the results.
 
 This appears to be a backend configuration issue where the AI planning system is working correctly, but the tool execution and result synthesis components are not functioning as expected.`;
                 }
             }
         } catch (e) {
-            // Not JSON, continue with other processing
+            // Not JSON or parsing failed, continue with other processing
         }
 
-        // Handle plan objects that appear as "plan: [object Object]"
+        // Only handle obvious serialization issues, not legitimate structured content
         let processed = text;
 
-        // Handle the specific case where the response contains "plan: [object Object]"
+        // Handle the specific case where the response contains "plan: [object Object]" (serialization error)
         if (processed.includes('plan: [object Object]')) {
             // This indicates the AI returned a plan object that wasn't properly serialized
-            // Replace with a helpful message explaining the issue
-            processed = processed.replace(/plan:\s*\[object Object\](?:,\s*\[object Object\])*/g, 
+            processed = processed.replace(/plan:\s*\[object Object\](?:,\s*\[object Object\])*/g,
                 'The AI generated an execution plan but there was an issue displaying it. The system should execute the planned tools and return results, but the plan object serialization failed.');
         }
 
-        // Replace plan object references with readable format
-        processed = processed.replace(/plan:\s*\[object Object\](?:,\s*\[object Object\])*/g, (match) => {
-            const objectCount = (match.match(/\[object Object\]/g) || []).length;
-            return `📋 **Execution Plan** (${objectCount} step${objectCount !== 1 ? 's' : ''})`;
-        });
+        // Only replace obvious object serialization errors, not legitimate content
+        // Be more conservative - only replace if it's clearly a serialization issue
+        if (processed.includes('plan: [object Object]') ||
+            (processed.includes('[object Object]') && !processed.includes('curl') && !processed.includes('```'))) {
 
-        // Handle other common object references
-        processed = processed.replace(/\[object Object\]/g, '[Plan Step]');
+            processed = processed.replace(/plan:\s*\[object Object\](?:,\s*\[object Object\])*/g, (match) => {
+                const objectCount = (match.match(/\[object Object\]/g) || []).length;
+                return `📋 **Execution Plan** (${objectCount} step${objectCount !== 1 ? 's' : ''})`;
+            });
 
-        // Clean up any remaining formatting issues
-        processed = processed.replace(/plan:\s*\[Plan Step\](?:,\s*\[Plan Step\])*/g, '📋 **Execution Plan**');
+            // Only replace isolated [object Object] references that aren't part of code examples
+            processed = processed.replace(/(?<!\w)\[object Object\](?!\w)/g, '[Plan Step]');
+
+            // Clean up any remaining formatting issues
+            processed = processed.replace(/plan:\s*\[Plan Step\](?:,\s*\[Plan Step\])*/g, '📋 **Execution Plan**');
+        }
 
         return processed;
     }

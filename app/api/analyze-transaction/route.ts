@@ -11,8 +11,8 @@ const MAX_LOG_LENGTH = 10000; // Maximum length per log entry
 // Simple server-side logging (in production, use proper logging service)
 function serverLog(level: 'error' | 'warn' | 'info', message: string, context?: Record<string, any>) {
   if (process.env.NODE_ENV !== 'production') {
-    const logMethod = level === 'error' ? console.error : 
-                     level === 'warn' ? console.warn : console.log;
+    const logMethod = level === 'error' ? console.error :
+      level === 'warn' ? console.warn : console.log;
     logMethod(`[API] ${message}`, context || {});
   }
   // In production, send to external logging service
@@ -29,23 +29,23 @@ function sanitizeString(str: string): string {
 function checkRateLimit(ip: string): boolean {
   const now = Date.now();
   const record = rateLimitMap.get(ip);
-  
+
   if (!record) {
     rateLimitMap.set(ip, { count: 1, lastRequest: now });
     return true;
   }
-  
+
   // Reset count if window has passed
   if (now - record.lastRequest > RATE_LIMIT_WINDOW) {
     rateLimitMap.set(ip, { count: 1, lastRequest: now });
     return true;
   }
-  
+
   // Check if within limit
   if (record.count >= RATE_LIMIT_MAX_REQUESTS) {
     return false;
   }
-  
+
   // Increment count
   record.count++;
   record.lastRequest = now;
@@ -147,7 +147,7 @@ Please explain in simple terms what happened in this transaction, including:
         'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'mistralai/Mixtral-8x7B-Instruct-v0.1',
+        model: 'moonshotai/Kimi-K2-Instruct-0905',
         prompt,
         max_tokens: 500,
         temperature: 0.7,
@@ -159,23 +159,23 @@ Please explain in simple terms what happened in this transaction, including:
     });
 
     if (!response.ok) {
-      serverLog('error', 'GPT API response not OK', { 
-        status: response.status, 
-        statusText: response.statusText 
+      serverLog('error', 'GPT API response not OK', {
+        status: response.status,
+        statusText: response.statusText
       });
       throw new Error('GPT API request failed');
     }
 
     const data = await response.json();
-    
+
     if (!data?.output?.choices?.[0]?.text) {
       serverLog('error', 'Unexpected API response format', { responseData: data });
       throw new Error('Invalid API response format');
     }
-    
+
     return NextResponse.json({ analysis: data.output.choices[0].text.trim() });
   } catch (error) {
-    serverLog('error', 'Error analyzing transaction', { 
+    serverLog('error', 'Error analyzing transaction', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });

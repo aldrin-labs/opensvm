@@ -1,5 +1,5 @@
-import { Tool, ToolContext, ToolResult } from "./types.ts";
-import { extractAllTransactionSignatures, getProgramName, decodeInstructionData } from "./utils.ts";
+import { Tool, ToolContext, ToolResult } from "./types";
+import { extractAllTransactionSignatures, getProgramName, decodeInstructionData } from "./utils";
 
 export const transactionInstructionAnalysisTool: Tool = {
     name: "transactionInstructionAnalysis",

@@ -6,10 +6,19 @@ export const networkAnalysisTool: Tool = {
 
     canHandle: (context: ToolContext): boolean => {
         const { qLower } = context;
+
+        // Don't handle if the user is asking for examples, tutorials, or how-to information
+        if (qLower.includes("example") || qLower.includes("how to") || qLower.includes("curl") ||
+            qLower.includes("tutorial") || qLower.includes("explain how") || qLower.includes("show me how")) {
+            return false;
+        }
+
         return qLower.includes("tps") || qLower.includes("transactions per second") ||
             qLower.includes("network load") || qLower.includes("current slot") ||
             qLower.includes("what is the slot") || qLower.includes("block height") ||
-            qLower.includes("epoch");
+            (qLower.includes("epoch") && (qLower.includes("current") || qLower.includes("what"))) ||
+            qLower.includes("validator count") || qLower.includes("validators") ||
+            qLower.includes("how many validators");
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -76,6 +85,27 @@ export const networkAnalysisTool: Tool = {
 - Block height: ${epochInfo.blockHeight}
 - Slot in epoch: ${epochInfo.slotIndex}/${epochInfo.slotsInEpoch}
 - Progress: ${((epochInfo.slotIndex / epochInfo.slotsInEpoch) * 100).toFixed(2)}%`;
+
+                return {
+                    handled: true,
+                    response: new Response(reply, {
+                        status: 200,
+                        headers: { "Content-Type": "text/plain" }
+                    })
+                };
+            }
+
+            // 4) Validator count
+            if (qLower.includes("validator count") || qLower.includes("validators") || qLower.includes("how many validators")) {
+                const voteAccounts = await conn.getVoteAccounts();
+                const activeValidators = voteAccounts.current.length;
+                const delinquentValidators = voteAccounts.delinquent.length;
+                const totalValidators = activeValidators + delinquentValidators;
+
+                const reply = `Current validator count:
+- Active validators: ${activeValidators}
+- Delinquent validators: ${delinquentValidators}
+- Total validators: ${totalValidators}`;
 
                 return {
                     handled: true,

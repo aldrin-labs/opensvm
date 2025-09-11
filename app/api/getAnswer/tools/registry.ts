@@ -1,8 +1,9 @@
-import { Tool, ToolContext, ToolResult } from "./types.ts";
-import { transactionInstructionAnalysisTool } from "./transactionInstructionAnalysis.ts";
-import { transactionAnalysisTool } from "./transactionAnalysis.ts";
-import { networkAnalysisTool } from "./networkAnalysis.ts";
-import { accountAnalysisTool } from "./accountAnalysis.ts";
+import { Tool, ToolContext, ToolResult } from "./types";
+import { transactionInstructionAnalysisTool } from "./transactionInstructionAnalysis";
+import { transactionAnalysisTool } from "./transactionAnalysis";
+import { networkAnalysisTool } from "./networkAnalysis";
+import { accountAnalysisTool } from "./accountAnalysis";
+import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
 
 export class ToolRegistry {
     private tools: Tool[] = [
@@ -10,6 +11,7 @@ export class ToolRegistry {
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
         accountAnalysisTool,
+        dynamicPlanExecutionTool, // Dynamic tool comes before static ones
         networkAnalysisTool,
     ];
 
