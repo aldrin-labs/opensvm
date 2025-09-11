@@ -44,7 +44,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     updateActiveTabMode,
     renameTab,
     togglePin,
-    forkTabAtMessage
+    forkTabAtMessage,
   } = useChatTabs();
 
   const [shareNotice, setShareNotice] = useState(false);
@@ -62,12 +62,29 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   const [knowledgeActive, setKnowledgeActive] = useState(false);
   // History pseudo-tab state
   const [historyActive, setHistoryActive] = useState(false);
+  const [showHistoryReload, setShowHistoryReload] = useState(false); // For visual indicator
   // Speech recognition reference (Web Speech API) NOTE: Resizing handled entirely by ChatLayout now.
   // Removed duplicated sidebar resize refs (isResizing, lastX, startXRef, startWidthRef) to avoid conflicting width logic.
   const isResizing = useRef(false); // kept only if future logic needs a flag; currently unused
   // Speech recognition reference (Web Speech API)
   // Speech recognition reference (Web Speech API) - typed as any for broader browser support
   const recognitionRef = useRef<any>(null);
+
+  // Function to trigger history reload in the HistoryPanel
+  const reloadHistory = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      setShowHistoryReload(true);
+      // Debounce actual reload to allow UI to settle
+      setTimeout(() => {
+        // Use a custom event or direct call to a global function that HistoryPanel listens to
+        // For simplicity, we'll use a global window function that HistoryPanel can define
+        if (typeof (window as any).SVMAI_HISTORY_RELOAD === 'function') {
+          (window as any).SVMAI_HISTORY_RELOAD();
+        }
+        setShowHistoryReload(false); // Hide the indicator after reload
+      }, 100);
+    }
+  }, []);
 
   // Ensure a seed function is available immediately for E2E tests.
   if (typeof window !== 'undefined') {
@@ -943,6 +960,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         onShare={handleShare}
         onExport={handleExport}
         onSettings={() => setTokenPanelOpen(true)}
+        onHistoryReload={reloadHistory}
       />
       <TokenManagementPanel isOpen={tokenPanelOpen} onClose={() => setTokenPanelOpen(false)} />
     </>

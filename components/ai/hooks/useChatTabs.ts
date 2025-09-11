@@ -126,9 +126,11 @@ export function useChatTabs(): UseChatTabsReturn {
     const closeTab = useCallback(async (tabId: string) => {
         // Find the tab to be closed and save it to persistence if it has meaningful content
         const tabToClose = tabs.find(tab => tab.id === tabId);
+        let saveSuccessful = false;
         if (tabToClose && tabToClose.messages.length > 1) { // Only save if there are messages beyond initial greeting
             try {
                 await chatPersistenceService.saveChatFromTab(tabToClose);
+                saveSuccessful = true;
             } catch (error) {
                 console.error('Error saving tab to persistence before closing:', error);
                 // Continue with tab closure even if save fails
@@ -156,9 +158,15 @@ export function useChatTabs(): UseChatTabsReturn {
                     setActiveTabId(null);
                 }
             }
-
             return filtered;
         });
+
+        if (saveSuccessful) {
+            // Trigger a reload of persisted tabs, assuming AIChatSidebar passes a reload func
+            if (typeof window !== 'undefined' && (window as any).SVMAI_HISTORY_RELOAD) {
+                (window as any).SVMAI_HISTORY_RELOAD();
+            }
+        }
     }, [activeTabId, tabs]);
 
     // Switch to a tab
@@ -242,12 +250,13 @@ export function useChatTabs(): UseChatTabsReturn {
 
     // Persist tabs + activeTabId (ensure pinned ordering persisted as-is)
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        try {
-            const payload = JSON.stringify({ tabs, activeTabId });
-            window.localStorage.setItem('aiChatTabsState', payload);
-        } catch {
-            // ignore persistence errors
+        if (typeof window !== 'undefined') {
+            try {
+                const payload = JSON.stringify({ tabs, activeTabId });
+                (window as any).localStorage.setItem('aiChatTabsState', payload);
+            } catch {
+                // ignore persistence errors
+            }
         }
     }, [tabs, activeTabId]);
 
@@ -266,26 +275,27 @@ export function useChatTabs(): UseChatTabsReturn {
     // Dispatch one-time tabs hydration event & set attributes for E2E observers
     const tabsHydrationDispatchedRef = useRef(false);
     useEffect(() => {
-        if (typeof window === 'undefined') return;
-        if (tabsHydrationDispatchedRef.current) return;
-        tabsHydrationDispatchedRef.current = true;
-        try {
-            const totalMessages = tabs.reduce((acc, t) => acc + t.messages.length, 0);
-            const pinnedCount = tabs.filter(t => t.pinned).length;
-            const detail = {
-                count: tabs.length,
-                activeTabId,
-                pinned: pinnedCount,
-                totalMessages
-            };
-            const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
-            if (root) {
-                root.setAttribute('data-ai-tabs-hydrated', '1');
-                root.setAttribute('data-ai-tab-count', String(tabs.length));
-                root.setAttribute('data-ai-total-messages', String(totalMessages));
-            }
-            window.dispatchEvent(new CustomEvent('svmai-tabs-hydrated', { detail }));
-        } catch { /* noop */ }
+        if (typeof window !== 'undefined') {
+            if (tabsHydrationDispatchedRef.current) return;
+            tabsHydrationDispatchedRef.current = true;
+            try {
+                const totalMessages = tabs.reduce((acc, t) => acc + t.messages.length, 0);
+                const pinnedCount = tabs.filter(t => t.pinned).length;
+                const detail = {
+                    count: tabs.length,
+                    activeTabId,
+                    pinned: pinnedCount,
+                    totalMessages
+                };
+                const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+                if (root) {
+                    root.setAttribute('data-ai-tabs-hydrated', '1');
+                    root.setAttribute('data-ai-tab-count', String(tabs.length));
+                    root.setAttribute('data-ai-total-messages', String(totalMessages));
+                }
+                window.dispatchEvent(new CustomEvent('svmai-tabs-hydrated', { detail }));
+            } catch { /* noop */ }
+        }
     }, [tabs, activeTabId]);
 
     return {
@@ -300,6 +310,6 @@ export function useChatTabs(): UseChatTabsReturn {
         renameTab,
         duplicateTab,
         togglePin,
-        forkTabAtMessage
+        forkTabAtMessage,
     };
 }

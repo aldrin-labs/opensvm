@@ -69,6 +69,7 @@ interface ChatUIProps {
   // Chat persistence props
   userId?: string;
   enablePersistence?: boolean;
+  onHistoryReload?: () => void;
 }
 
 // Lightweight dynamic height wrapper replacing fixed 400px container.
@@ -145,6 +146,7 @@ export function ChatUI({
   activeTabId = null,
   userId,
   enablePersistence = false,
+  onHistoryReload,
 }: ChatUIProps) {
   if (__AI_DEBUG__) {
     console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
@@ -1111,6 +1113,7 @@ export function ChatUI({
         className="h-full"
         userId={userId}
         enablePersistence={enablePersistence}
+        onReload={onHistoryReload}
       />
     </div>
   );

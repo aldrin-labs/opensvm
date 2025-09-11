@@ -59,6 +59,7 @@ export interface ChatProps {
   isRecording?: boolean;
   onCancel?: () => void;
   onDirectResponse?: (message: Message) => void;
+  onHistoryReload?: () => void; // Added onHistoryReload
 }
 
 export function Chat({
@@ -112,7 +113,8 @@ export function Chat({
   onVoiceRecord,
   isRecording,
   onCancel,
-  onDirectResponse
+  onDirectResponse,
+  onHistoryReload // Added onHistoryReload
 }: ChatProps) {
   console.log('🔍 Chat component rendered, variant:', variant, 'isOpen:', isOpen);
   const [showFallback, setShowFallback] = useState(false);
@@ -255,7 +257,6 @@ export function Chat({
       <div data-ai-chat-sentinel className="hidden">chat-sentinel</div>
       {earlyInputVisible && !showFallback && (
         <div
-          data-ai-early-input-wrapper
           className="border-t border-white/10 bg-black/60"
           aria-label="Early chat input initializing"
         >
@@ -309,10 +310,11 @@ export function Chat({
           onTabDelete={onTabClose}
           historyActive={historyActive}
           activeTabId={activeTabId}
+          onHistoryReload={onHistoryReload}
         />
       </ChatErrorBoundary>
       {showFallback && (
-        <div data-ai-fallback-form className="border-t border-white/10 bg-black">
+        <div className="border-t border-white/10 bg-black">
           {/* Quick actions (fallback) */}
           <div
             className="px-3 pt-2 pb-1 border-b border-white/10 bg-black/70 flex flex-wrap gap-2"

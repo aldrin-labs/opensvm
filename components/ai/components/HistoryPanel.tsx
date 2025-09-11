@@ -6,6 +6,13 @@ import type { ChatTab } from '../hooks/useChatTabs';
 import { chatPersistenceService } from '../../../lib/ai/services/ChatPersistenceService';
 import type { AIChatModel, ChatSearchResult, MessageSearchResult } from '../../../lib/ai/models/ChatModels';
 
+// Extend the Window interface to include SVMAI_HISTORY_RELOAD globally
+declare global {
+    interface Window {
+        SVMAI_HISTORY_RELOAD?: () => void;
+    }
+}
+
 interface HistoryPanelProps {
     tabs: ChatTab[];
     activeTabId: string | null;
@@ -14,6 +21,7 @@ interface HistoryPanelProps {
     className?: string;
     userId?: string;
     enablePersistence?: boolean;
+    onReload?: () => void;
 }
 
 interface ChatStats {
@@ -75,7 +83,8 @@ export function HistoryPanel({
     onTabDelete,
     className = '',
     userId,
-    enablePersistence = false
+    enablePersistence = false,
+    onReload
 }: HistoryPanelProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'lastUpdated' | 'created' | 'messages' | 'tokens'>('lastUpdated');
@@ -124,6 +133,23 @@ export function HistoryPanel({
         }
     };
 
+    // Expose loadPersistedChats globally for external triggers (e.g., from AIChatSidebar's closeTab)
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            window.SVMAI_HISTORY_RELOAD = loadPersistedChats;
+            return () => {
+                delete window.SVMAI_HISTORY_RELOAD;
+            };
+        }
+    }, [loadPersistedChats]); // Depend on loadPersistedChats to ensure correct context for loading chats
+
+    // Trigger reload when the onReload prop changes (from AIChatSidebar)
+    useEffect(() => {
+        if (onReload) {
+            onReload(); // Call the actual reload function passed from AIChatSidebar
+        }
+    }, [onReload]);
+
     const performSemanticSearch = async (query: string) => {
         if (!query.trim() || !userId) return;
 
@@ -171,17 +197,20 @@ export function HistoryPanel({
         }
     }, [searchQuery, searchMode, searchType, userId]);
 
-    // Convert tabs to stats with proper date handling
+
+    // Convert both active tabs and persisted chats to ChatStats for unified display
     const chatStats: ChatStats[] = useMemo(() => {
-        const localChats = tabs.map(tab => {
-            // Use lastActivity as creation time (or current time if not available)
+        // Create a map to keep track of chat IDs to avoid duplicates, preferring active tabs
+        const uniqueChats = new Map<string, ChatStats>();
+
+        // Add currently active tabs
+        tabs.forEach(tab => {
             const createdAt = new Date(tab.lastActivity || Date.now());
-            // For last updated, use the most recent activity or creation time
             const lastUpdated = tab.messages && tab.messages.length > 0
                 ? new Date(tab.lastActivity || Date.now())
                 : createdAt;
 
-            return {
+            uniqueChats.set(tab.id, {
                 id: tab.id,
                 name: tab.name,
                 createdAt,
@@ -190,30 +219,34 @@ export function HistoryPanel({
                 estimatedTokens: estimateTokensFromMessages(tab.messages || []),
                 mode: tab.mode,
                 status: tab.status
-            };
+            });
         });
 
-        // Add persisted chats that are not in current tabs
-        const persistedChatsStats = persistedChats
-            .filter(chat => !tabs.find(tab => tab.id === chat.id))
-            .map(chat => ({
-                id: chat.id,
-                name: chat.title,
-                createdAt: new Date(chat.created_at),
-                lastUpdated: new Date(chat.updated_at),
-                messageCount: chat.metadata.total_messages,
-                estimatedTokens: chat.metadata.estimated_tokens,
-                mode: chat.mode,
-                status: chat.status
-            }));
+        // Add persisted chats, only if an active tab with the same ID doesn't already exist
+        persistedChats.forEach(chat => {
+            if (!uniqueChats.has(chat.id)) {
+                uniqueChats.set(chat.id, {
+                    id: chat.id,
+                    name: chat.title,
+                    createdAt: new Date(chat.created_at),
+                    lastUpdated: new Date(chat.updated_at),
+                    messageCount: chat.metadata.total_messages,
+                    estimatedTokens: chat.metadata.estimated_tokens,
+                    mode: chat.mode,
+                    status: chat.status
+                });
+            }
+        });
 
-        return [...localChats, ...persistedChatsStats];
-    }, [tabs, persistedChats]);    // Filter and sort chats
+        return Array.from(uniqueChats.values());
+    }, [tabs, persistedChats]);
+
+    // Filter and sort chats
     const filteredAndSortedChats = useMemo(() => {
         let filtered = chatStats;
 
         // Apply search filter
-        if (searchQuery.trim()) {
+        if (searchQuery.trim() && searchMode === 'local') { // Only apply local search filter for local mode
             const query = searchQuery.toLowerCase();
             filtered = filtered.filter(chat =>
                 chat.name.toLowerCase().includes(query)
@@ -237,7 +270,7 @@ export function HistoryPanel({
         });
 
         return filtered;
-    }, [chatStats, searchQuery, sortBy]);
+    }, [chatStats, searchQuery, sortBy, searchMode]);
 
     // Calculate total stats
     const totalStats = useMemo(() => {
