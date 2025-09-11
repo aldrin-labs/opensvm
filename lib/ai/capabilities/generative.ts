@@ -18,10 +18,8 @@ export class GenerativeCapability extends BaseCapability {
                 'Generates a natural language answer using the LLM backend',
                 async ({ message }: ToolParams) => {
                     const trimmed = message.content.trim();
-                    // Fast path for greetings / very short inputs
-                    // Fast path for greetings / very short inputs
                     if (/^(hi|hello|hey|yo|gm|hi there)$/i.test(trimmed)) {
-                        return { role: 'assistant', content: 'Hi! Paste a transaction signature, an account address, or ask about TPS / validators / balances. How can I help?' };
+                        return { role: 'assistant', content: 'Hello! How can I help you today?' };
                     }
                     try {
                         const res = await fetch('/api/getAnswer', {
@@ -44,8 +42,22 @@ export class GenerativeCapability extends BaseCapability {
                         } else {
                             text = 'No content generated.';
                         }
-                        const processedText = this.postProcessResponse(text.trim());
-                        return { role: 'assistant', content: processedText || 'No content generated.' };
+                        const processed = this.postProcessResponse(text.trim());
+
+                        if (typeof processed === 'object' && 'plan' in processed) {
+                            return {
+                                role: 'assistant',
+                                content: `Executing plan...`,
+                                metadata: {
+                                    type: 'execution_plan',
+                                    data: {
+                                        plan: processed.plan
+                                    }
+                                }
+                            };
+                        }
+                        
+                        return { role: 'assistant', content: processed || 'No content generated.' };
                     } catch (e) {
                         // Ensure error messages also conform to the Message interface, and are strings.
                         // Handle potential non-string error objects by stringifying them.
@@ -65,29 +77,21 @@ export class GenerativeCapability extends BaseCapability {
     /**
      * Post-process AI response to handle unwanted plan objects while preserving legitimate content
      */
-    postProcessResponse(text: string): string {
+    postProcessResponse(text: string): string | { plan: any[] } {
         if (!text) return text;
 
-        // Check if the ENTIRE response is a bare JSON array of tool plans (this is unwanted)
+        // Check if the ENTIRE response is a bare JSON array of tool plans
         try {
             const trimmed = text.trim();
-            // Only process if it's ONLY a JSON array with no other content
-            if (trimmed.startsWith('[') && trimmed.endsWith(']') && !trimmed.includes('```') && !trimmed.includes('curl')) {
+            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
                 const parsed = JSON.parse(trimmed);
-                if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(item =>
-                    item && typeof item === 'object' && item.tool && typeof item.tool === 'string'
-                )) {
-                    // This is likely an unwanted bare tool execution plan
-                    const toolCount = parsed.length;
-                    const toolNames = parsed.map((item: any) => item.tool).join(', ');
-
-                    return `I've identified ${toolCount} step${toolCount !== 1 ? 's' : ''} to analyze this request: ${toolNames}. However, the tool execution system is currently not functioning properly. The system should execute these tools and provide you with a comprehensive analysis, but it's only returning the execution plan instead of the results.
-
-This appears to be a backend configuration issue where the AI planning system is working correctly, but the tool execution and result synthesis components are not functioning as expected.`;
+                if (Array.isArray(parsed) && parsed.length > 0 && parsed.every(item => item && typeof item === 'object' && item.tool && typeof item.tool === 'string')) {
+                    // It's a plan, return it as an object
+                    return { plan: parsed };
                 }
             }
         } catch (e) {
-            // Not JSON or parsing failed, continue with other processing
+            // Not a plan, continue
         }
 
         // Only handle obvious serialization issues, not legitimate structured content

@@ -566,23 +566,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         }
         try { setKnowledgeActive(false); } catch (e) { /* noop */ }
         const base = options?.clear ? [] : [...target.messages];
-        const startIndex = base.length;
         const newMessages: Message[] = [];
-        for (let i = 0; i < count; i++) {
-          const isUser = i % 2 === 0;
-          let content = `Seed message ${startIndex + i + 1}`;
-          if (!isUser && options?.reasoningEvery && options.reasoningEvery > 0) {
-            const assistantSeq = Math.floor(i / 2) + 1;
-            if (assistantSeq % options.reasoningEvery === 0) {
-              const reasoningBody = options.reasoningText || `Generating synthetic reasoning for assistant message #${assistantSeq}. This block simulates model chain-of-thought tokens.`;
-              content = `<REASONING>${reasoningBody}</REASONING>Answer for assistant message #${assistantSeq}.`;
-            }
-          }
-          newMessages.push({
-            role: isUser ? 'user' : 'assistant',
-            content
-          });
-        }
+
         const total = base.length + newMessages.length;
         updateTab(targetId, { messages: [...base, ...newMessages] });
 

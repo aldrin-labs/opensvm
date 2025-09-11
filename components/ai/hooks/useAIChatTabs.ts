@@ -109,9 +109,7 @@ export function useAIChatTabs({ agent }: UseAIChatTabsProps) {
     (window as any).__SVMAI_SEED__ = (n: number) => {
       const count = Math.min(10000, Math.max(0, Number(n)));
       const seeded: Message[] = [];
-      for (let i = 0; i < count; i++) {
-        seeded.push({ role: i % 2 === 0 ? 'user' : 'assistant', content: `Seed message #${i}` });
-      }
+
       setAgentMessages(prev => [...prev, ...seeded]);
       return count;
     };

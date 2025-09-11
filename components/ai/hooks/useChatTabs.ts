@@ -67,34 +67,11 @@ export function useChatTabs(): UseChatTabsReturn {
             }
         }
         // Fallback default tab
-        const initialMessage = {
-            role: 'assistant' as const,
-            content: `Welcome to the OpenSVM AI Sidebar!
-
-I can help you analyze Solana transactions, accounts, programs, and provide general assistance.
-
-Available commands:
-  /help              Show all commands
-  /tx [signature]    Analyze a transaction
-  /wallet [address]  Inspect a wallet/account
-  /tps               Current network performance
-  /path              Relationship / path finding
-  /ref               Reference a saved knowledge note (autocomplete)
-  
-Tips:
-  - Press Enter to send, Shift+Enter for newline
-  - Use the mode selector (Agent / Assistant) at the top
-  - Resize the sidebar by dragging its edge (width persists)
-  - Save useful answers into Notes and reuse them with /ref
-  - Use the Share button to copy a link with your current context
-
-What would you like to explore first?`
-        };
         const defaultTab: ChatTab = {
             id: 'chat-1',
             name: 'CHAT',
             mode: 'agent',
-            messages: [initialMessage],
+            messages: [],
             input: '',
             isProcessing: false,
             notes: [],
@@ -127,18 +104,11 @@ What would you like to explore first?`
             name = undefined;
         }
         const tabNumber = tabs.length + 1;
-        const initialMessage = {
-            role: 'assistant' as const,
-            content: mode === 'assistant'
-                ? 'Hello! I\'m your helpful assistant. How can I help you today?'
-                : 'Hello! I\'m your Solana blockchain agent. I can help you analyze transactions, accounts, smart contracts, and more. What would you like to explore?'
-        };
-
         const newTab: ChatTab = {
             id: `chat-${Date.now()}`,
             name: name || `CHAT ${tabNumber}`,
             mode,
-            messages: [initialMessage],
+            messages: [],
             input: '',
             isProcessing: false,
             notes: [],

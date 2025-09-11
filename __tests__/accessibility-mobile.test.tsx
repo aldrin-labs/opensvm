@@ -3,7 +3,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent, within } from '@testing-library/react';
 import { jest } from '@jest/globals';
 
 // Import accessibility utilities
@@ -386,7 +386,7 @@ describe('Component Accessibility', () => {
       if (graphControlsToolbar) {
         expect(graphControlsToolbar).toHaveAttribute('aria-label', 'Graph controls');
 
-        const buttons = screen.getAllByRole('button');
+        const buttons = within(graphControlsToolbar).getAllByRole('button');
         buttons.forEach(button => {
           expect(button).toHaveAttribute('aria-label');
           expect(button).toHaveAttribute('type', 'button');
