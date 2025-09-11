@@ -1,4 +1,4 @@
-# OpenSVM - Solana Virtual Machine Explorer
+# OpenSVM - Solana Virtual Machine Explorer [![Netlify Status](https://api.netlify.com/api/v1/badges/8b8a6766-17da-4f33-a698-2e760c05c933/deploy-status)](https://app.netlify.com/projects/opensvm/deploys)
 
 ![image](https://github.com/user-attachments/assets/6d829b8f-12b7-429a-a6fc-ef5916d9288b)
 
