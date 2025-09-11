@@ -316,6 +316,7 @@ export function ChatUI({
   useEffect(() => {
     if (isProcessing) {
       setOptimisticProcessing(true);
+      setShowProcessingUI(true); // Ensure UI shows when processing starts
     } else if (optimisticProcessing) {
       const t = setTimeout(() => setOptimisticProcessing(false), 25000);
       return () => clearTimeout(t);
@@ -325,7 +326,7 @@ export function ChatUI({
       // completions (without new submit) don't show stale bar.
       setShowProcessingUI(false);
     }
-  }, [isProcessing, optimisticProcessing, showProcessingUI]);
+  }, [isProcessing, optimisticProcessing, showProcessingUI, setOptimisticProcessing, setShowProcessingUI]);
 
   // Auto-enable processing UI when processing starts via programmatic prompts (window.SVMAI.prompt)
   // which bypass the local form submit path that normally sets showProcessingUI.
@@ -405,7 +406,7 @@ export function ChatUI({
     window.addEventListener('svmai-pending-change', handler);
     handler(); // Check initial state
     return () => window.removeEventListener('svmai-pending-change', handler);
-  }, []); // Remove optimisticProcessing from dependency array to avoid infinite loop
+  }, [setOptimisticProcessing, setShowProcessingUI]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -486,7 +487,7 @@ export function ChatUI({
       setActionNotice('Action failed');
     }
     setTimeout(() => setActionNotice(''), 3000);
-  }, [onAddNote, onForkThread, onNewChat, messages, mode]);
+  }, [onAddNote, onForkThread, onNewChat, messages, mode, setActionNotice]);
 
   // Clear action notice timer cleanup
   useEffect(() => {
@@ -494,7 +495,7 @@ export function ChatUI({
       const timer = setTimeout(() => setActionNotice(''), 3000);
       return () => clearTimeout(timer);
     }
-  }, [actionNotice]);
+  }, [actionNotice, setActionNotice]);
 
   // Scroll handling
   const handleScroll = useCallback((scrollTop: number, scrollHeight: number, clientHeight: number) => {
@@ -505,7 +506,7 @@ export function ChatUI({
     if (isAtBottom && newMessageCount > 0) {
       setNewMessageCount(0);
     }
-  }, [newMessageCount]);
+  }, [newMessageCount, setIsScrolledUp, setShouldAutoScroll]);
 
   const handleNewMessageBadgeClick = useCallback(() => {
     scrollToBottom();
@@ -521,7 +522,7 @@ export function ChatUI({
       setNewMessageCount(prev => prev + (currentMessageCount - previousCount));
     }
     lastMessageCountRef.current = currentMessageCount;
-  }, [messages.length, isScrolledUp, setNewMessageCount]);
+  }, [messages.length, isScrolledUp, setNewMessageCount, shouldAutoScroll]);
 
   // Auto-scroll to bottom (optimized with message length instead of full messages array)
   useEffect(() => {
@@ -540,7 +541,7 @@ export function ChatUI({
         console.log(`Cleaned up ${result.removedCount} messages, preserved ${result.preservedImportant} important ones`);
       }
     }
-  }, [memoryStats, needsCleanup, performMemoryCleanup]);
+  }, [memoryStats, needsCleanup, performMemoryCleanup, messages.length]);
 
   useEffect(() => {
     memoryCleanupCallback();

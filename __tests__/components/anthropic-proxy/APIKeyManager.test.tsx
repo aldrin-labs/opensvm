@@ -32,10 +32,15 @@ jest.mock('@/lib/settings', () => ({
 
 jest.mock('@/contexts/AuthContext', () => ({
     useAuthContext: jest.fn(() => ({
-        user: { id: 'test-user-id' },
         isAuthenticated: true,
+        walletAddress: 'test-wallet-address',
+        loading: false,
+        error: null,
+        userCancelled: false,
         login: jest.fn(),
         logout: jest.fn(),
+        refreshSession: jest.fn(),
+        clearCancellation: jest.fn(),
     })),
 }));// Mock fetch for API calls
 global.fetch = jest.fn();

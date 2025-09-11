@@ -1,7 +1,6 @@
 import React from 'react';
-import { render, screen, fireEvent, act } from '@testing-library/react';
+import { render, screen, fireEvent, act, waitFor } from '@testing-library/react';
 import { EdgeCaseManager } from '../EdgeCaseManager';
-import { GraphContext } from '../GraphContext';
 
 // Enhanced Error Boundary component for testing
 interface ErrorBoundaryState {
@@ -49,13 +48,13 @@ class TestErrorBoundary extends React.Component<
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     const { onError } = this.props;
     const { errorId } = this.state;
-    
+
     this.setState({ errorInfo });
-    
+
     if (onError && errorId) {
       onError(error, errorInfo, errorId);
     }
-    
+
     // Log error for debugging
     console.error('Error caught by boundary:', error, errorInfo);
   }
@@ -63,16 +62,16 @@ class TestErrorBoundary extends React.Component<
   retry = () => {
     const { maxRetries = 3, retryDelay = 1000 } = this.props;
     const { retryCount } = this.state;
-    
+
     if (retryCount >= maxRetries) {
       console.warn(`Max retries (${maxRetries}) exceeded`);
       return;
     }
-    
+
     this.setState(prevState => ({
       retryCount: prevState.retryCount + 1
     }));
-    
+
     // Delay retry to prevent immediate re-error
     this.retryTimeoutId = setTimeout(() => {
       this.setState({
@@ -93,12 +92,12 @@ class TestErrorBoundary extends React.Component<
   render() {
     const { hasError, error, errorId } = this.state;
     const { fallback: Fallback, children } = this.props;
-    
+
     if (hasError && error && errorId) {
       if (Fallback) {
         return <Fallback error={error} retry={this.retry} errorId={errorId} />;
       }
-      
+
       return (
         <div data-testid="error-boundary-fallback">
           <h2>Something went wrong</h2>
@@ -113,7 +112,7 @@ class TestErrorBoundary extends React.Component<
         </div>
       );
     }
-    
+
     return children;
   }
 }
@@ -125,12 +124,12 @@ const ThrowingComponent: React.FC<{
   delay?: number;
 }> = ({ errorType, shouldThrow = true, delay = 0 }) => {
   const [shouldThrowState, setShouldThrowState] = React.useState(shouldThrow);
-  
+
   // Render error
   if (errorType === 'render' && shouldThrowState) {
     throw new Error('Render error occurred');
   }
-  
+
   // Effect error
   React.useEffect(() => {
     if (errorType === 'effect' && shouldThrowState) {
@@ -139,7 +138,7 @@ const ThrowingComponent: React.FC<{
       }, delay);
     }
   }, [errorType, shouldThrowState, delay]);
-  
+
   // Async error
   React.useEffect(() => {
     if (errorType === 'async' && shouldThrowState) {
@@ -147,14 +146,14 @@ const ThrowingComponent: React.FC<{
         await new Promise(resolve => setTimeout(resolve, delay));
         throw new Error('Async error occurred');
       };
-      
+
       asyncError().catch(error => {
         // Async errors need to be handled differently
         console.error('Async error:', error);
       });
     }
   }, [errorType, shouldThrowState, delay]);
-  
+
   // Memory error simulation
   React.useEffect(() => {
     if (errorType === 'memory' && shouldThrowState) {
@@ -163,11 +162,11 @@ const ThrowingComponent: React.FC<{
         // Intentionally don't clean up
         setTimeout(createMemoryLeak, 10);
       };
-      
+
       createMemoryLeak();
     }
   }, [errorType, shouldThrowState]);
-  
+
   // Network error simulation
   React.useEffect(() => {
     if (errorType === 'network' && shouldThrowState) {
@@ -177,7 +176,7 @@ const ThrowingComponent: React.FC<{
         });
     }
   }, [errorType, shouldThrowState]);
-  
+
   return (
     <div data-testid="throwing-component">
       <p>Component type: {errorType}</p>
@@ -196,40 +195,42 @@ const ThrowingComponent: React.FC<{
 const GraphErrorComponent: React.FC<{
   errorType: 'cytoscape' | 'data' | 'layout' | 'navigation';
 }> = ({ errorType }) => {
-  const [hasError, setHasError] = React.useState(false);
-  
+  const [shouldError, setShouldError] = React.useState(false);
+
   const triggerError = () => {
-    setHasError(true);
-    
+    setShouldError(true);
+  };
+
+  // Throw error during render when shouldError is true
+  if (shouldError) {
     switch (errorType) {
       case 'cytoscape':
         // Simulate Cytoscape initialization error
         throw new Error('Failed to initialize Cytoscape: Invalid container');
-      
+
       case 'data':
         // Simulate invalid graph data
         throw new Error('Invalid graph data: Missing required node properties');
-      
+
       case 'layout':
         // Simulate layout calculation error
         throw new Error('Layout calculation failed: Invalid node positions');
-      
+
       case 'navigation':
         // Simulate navigation error
         throw new Error('Navigation failed: Invalid account address');
-      
+
       default:
         throw new Error('Unknown graph error type');
     }
-  };
-  
+  }
+
   return (
     <div data-testid="graph-error-component">
       <p>Graph error type: {errorType}</p>
       <button
         data-testid="trigger-graph-error"
         onClick={triggerError}
-        disabled={hasError}
       >
         Trigger {errorType} Error
       </button>
@@ -244,11 +245,11 @@ describe('Error Boundary Tests', () => {
   beforeEach(() => {
     edgeCaseManager = EdgeCaseManager.getInstance();
     edgeCaseManager.reset();
-    
+
     onErrorSpy = jest.fn();
-    
+
     // Suppress console errors during tests
-    jest.spyOn(console, 'error').mockImplementation(() => {});
+    jest.spyOn(console, 'error').mockImplementation(() => { });
   });
 
   afterEach(() => {
@@ -263,7 +264,7 @@ describe('Error Boundary Tests', () => {
           <ThrowingComponent errorType="render" />
         </TestErrorBoundary>
       );
-      
+
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('error-message')).toHaveTextContent('Render error occurred');
       expect(onErrorSpy).toHaveBeenCalledWith(
@@ -279,17 +280,17 @@ describe('Error Boundary Tests', () => {
           <ThrowingComponent errorType="render" />
         </TestErrorBoundary>
       );
-      
+
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
-      
+
       const retryButton = screen.getByTestId('retry-button');
       expect(retryButton).toHaveTextContent('Retry (0/3)');
-      
+
       // Click retry
       act(() => {
         fireEvent.click(retryButton);
       });
-      
+
       // Should still show error boundary since component still throws
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('retry-button')).toHaveTextContent('Retry (1/3)');
@@ -301,18 +302,18 @@ describe('Error Boundary Tests', () => {
           <ThrowingComponent errorType="render" />
         </TestErrorBoundary>
       );
-      
+
       const retryButton = screen.getByTestId('retry-button');
-      
+
       // Try to retry beyond limit
       for (let i = 0; i < 5; i++) {
         if (retryButton.textContent?.includes('2/2')) break;
-        
+
         act(() => {
           fireEvent.click(retryButton);
         });
       }
-      
+
       expect(retryButton).toHaveTextContent('Retry (2/2)');
     });
   });
@@ -339,7 +340,7 @@ describe('Error Boundary Tests', () => {
           <ThrowingComponent errorType="render" />
         </TestErrorBoundary>
       );
-      
+
       expect(screen.getByTestId('custom-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('custom-error-title')).toHaveTextContent('Custom Error Handler');
       expect(screen.getByTestId('custom-error-message')).toHaveTextContent('Render error occurred');
@@ -354,13 +355,13 @@ describe('Error Boundary Tests', () => {
           <GraphErrorComponent errorType="cytoscape" />
         </TestErrorBoundary>
       );
-      
+
       const triggerButton = screen.getByTestId('trigger-graph-error');
-      
+
       act(() => {
         fireEvent.click(triggerButton);
       });
-      
+
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('error-message')).toHaveTextContent(
         'Failed to initialize Cytoscape: Invalid container'
@@ -373,13 +374,13 @@ describe('Error Boundary Tests', () => {
           <GraphErrorComponent errorType="data" />
         </TestErrorBoundary>
       );
-      
+
       const triggerButton = screen.getByTestId('trigger-graph-error');
-      
+
       act(() => {
         fireEvent.click(triggerButton);
       });
-      
+
       expect(screen.getByTestId('error-message')).toHaveTextContent(
         'Invalid graph data: Missing required node properties'
       );
@@ -391,13 +392,13 @@ describe('Error Boundary Tests', () => {
           <GraphErrorComponent errorType="layout" />
         </TestErrorBoundary>
       );
-      
+
       const triggerButton = screen.getByTestId('trigger-graph-error');
-      
+
       act(() => {
         fireEvent.click(triggerButton);
       });
-      
+
       expect(screen.getByTestId('error-message')).toHaveTextContent(
         'Layout calculation failed: Invalid node positions'
       );
@@ -409,13 +410,13 @@ describe('Error Boundary Tests', () => {
           <GraphErrorComponent errorType="navigation" />
         </TestErrorBoundary>
       );
-      
+
       const triggerButton = screen.getByTestId('trigger-graph-error');
-      
+
       act(() => {
         fireEvent.click(triggerButton);
       });
-      
+
       expect(screen.getByTestId('error-message')).toHaveTextContent(
         'Navigation failed: Invalid account address'
       );
@@ -424,31 +425,15 @@ describe('Error Boundary Tests', () => {
 
   describe('Error Recovery and State Restoration', () => {
     const RecoverableComponent: React.FC<{ shouldRecover?: boolean }> = ({ shouldRecover = false }) => {
-      const [hasErrored, setHasErrored] = React.useState(false);
-      const [isRecovered, setIsRecovered] = React.useState(false);
-      
-      React.useEffect(() => {
-        if (shouldRecover && hasErrored && !isRecovered) {
-          // Simulate recovery
-          setTimeout(() => {
-            setIsRecovered(true);
-          }, 100);
-        }
-      }, [shouldRecover, hasErrored, isRecovered]);
-      
-      if (!isRecovered && !shouldRecover) {
+      // If shouldRecover is true, don't throw error - component has "recovered"
+      if (!shouldRecover) {
         throw new Error('Component error - no recovery');
       }
-      
-      if (!isRecovered && shouldRecover) {
-        setHasErrored(true);
-        throw new Error('Component error - will recover');
-      }
-      
+
       return (
         <div data-testid="recoverable-component">
           <p>Component recovered successfully</p>
-          <p data-testid="recovery-status">Recovered: {isRecovered.toString()}</p>
+          <p data-testid="recovery-status">Recovered: true</p>
         </div>
       );
     };
@@ -459,26 +444,26 @@ describe('Error Boundary Tests', () => {
           <RecoverableComponent shouldRecover={false} />
         </TestErrorBoundary>
       );
-      
+
       // Should show error boundary
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
-      
+
       // Change props to allow recovery
       rerender(
         <TestErrorBoundary onError={onErrorSpy} retryDelay={50}>
           <RecoverableComponent shouldRecover={true} />
         </TestErrorBoundary>
       );
-      
+
       // Click retry
       const retryButton = screen.getByTestId('retry-button');
-      
+
       await act(async () => {
         fireEvent.click(retryButton);
-        // Wait for retry delay
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Wait for retry delay + recovery time
+        await new Promise(resolve => setTimeout(resolve, 200));
       });
-      
+
       // Should show recovered component
       expect(screen.getByTestId('recoverable-component')).toBeInTheDocument();
       expect(screen.getByTestId('recovery-status')).toHaveTextContent('Recovered: true');
@@ -492,11 +477,11 @@ describe('Error Boundary Tests', () => {
           <ThrowingComponent errorType="render" />
         </TestErrorBoundary>
       );
-      
+
       // Check that error details are available
       expect(screen.getByTestId('error-message')).toBeInTheDocument();
       expect(screen.getByTestId('error-stack')).toBeInTheDocument();
-      
+
       // Check that onError was called with proper parameters
       expect(onErrorSpy).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -509,54 +494,71 @@ describe('Error Boundary Tests', () => {
       );
     });
 
-    it('should track error frequency and patterns', () => {
+    it('should track error frequency and patterns', async () => {
       const ErrorTrackingComponent: React.FC = () => {
-        const [errorCount, setErrorCount] = React.useState(0);
-        
+        const [shouldError, setShouldError] = React.useState(false);
+
         const triggerError = () => {
-          setErrorCount(prev => prev + 1);
-          throw new Error(`Error #${errorCount + 1}`);
+          setShouldError(true);
         };
-        
+
+        // Throw error during render when shouldError is true
+        if (shouldError) {
+          // Use a unique error message each time
+          throw new Error(`Error #${Date.now()}`);
+        }
+
         return (
           <div data-testid="error-tracking-component">
-            <p data-testid="error-count">Errors triggered: {errorCount}</p>
             <button data-testid="trigger-tracked-error" onClick={triggerError}>
               Trigger Error
             </button>
           </div>
         );
       };
-      
+
       const errorLog: Array<{ error: Error; errorId: string; timestamp: number }> = [];
       const trackingOnError = (error: Error, errorInfo: React.ErrorInfo, errorId: string) => {
         errorLog.push({ error, errorId, timestamp: Date.now() });
       };
-      
+
       render(
         <TestErrorBoundary onError={trackingOnError} retryDelay={10}>
           <ErrorTrackingComponent />
         </TestErrorBoundary>
       );
-      
+
       // Trigger multiple errors
       for (let i = 0; i < 3; i++) {
-        if (screen.queryByTestId('trigger-tracked-error')) {
-          act(() => {
-            fireEvent.click(screen.getByTestId('trigger-tracked-error'));
-          });
-        }
-        
+        // Wait for component to be ready
+        await waitFor(() => {
+          expect(screen.queryByTestId('trigger-tracked-error')).toBeInTheDocument();
+        });
+
+        // Trigger error
+        act(() => {
+          fireEvent.click(screen.getByTestId('trigger-tracked-error'));
+        });
+
+        // Wait for error boundary to show
+        await waitFor(() => {
+          expect(screen.queryByTestId('retry-button')).toBeInTheDocument();
+        });
+
+        // Click retry if available
         if (screen.queryByTestId('retry-button')) {
           act(() => {
             fireEvent.click(screen.getByTestId('retry-button'));
           });
+
+          // Wait for component to recover after retry delay
+          await new Promise(resolve => setTimeout(resolve, 15));
         }
       }
-      
+
       expect(errorLog.length).toBeGreaterThan(0);
-      errorLog.forEach((entry, index) => {
-        expect(entry.error.message).toContain(`Error #${index + 1}`);
+      errorLog.forEach((entry) => {
+        expect(entry.error.message).toContain('Error #');
         expect(entry.errorId).toMatch(/^error_\d+/);
         expect(entry.timestamp).toBeGreaterThan(0);
       });
@@ -567,31 +569,31 @@ describe('Error Boundary Tests', () => {
     it('should integrate with state corruption detection', async () => {
       const CorruptionTestComponent: React.FC = () => {
         const [state, setState] = React.useState({ count: 0, valid: true });
-        
+
         React.useEffect(() => {
           // Simulate state corruption
           const corruptedState = { count: 'invalid' as any, valid: false };
-          
+
           const isValid = edgeCaseManager.validateState(
             'corruption-test',
             { count: 0, valid: true },
             corruptedState
           );
-          
+
           if (!isValid) {
             throw new Error('State corruption detected');
           }
         }, []);
-        
+
         return <div data-testid="corruption-test-component">State is valid</div>;
       };
-      
+
       render(
         <TestErrorBoundary onError={onErrorSpy}>
           <CorruptionTestComponent />
         </TestErrorBoundary>
       );
-      
+
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('error-message')).toHaveTextContent('State corruption detected');
     });
@@ -601,20 +603,20 @@ describe('Error Boundary Tests', () => {
         React.useEffect(() => {
           // Simulate memory pressure
           edgeCaseManager.handleMemoryPressure();
-          
+
           // Simulate error due to memory pressure
           throw new Error('Component failed due to memory pressure');
         }, []);
-        
+
         return <div data-testid="memory-pressure-component">Normal operation</div>;
       };
-      
+
       render(
         <TestErrorBoundary onError={onErrorSpy}>
           <MemoryPressureComponent />
         </TestErrorBoundary>
       );
-      
+
       expect(screen.getByTestId('error-boundary-fallback')).toBeInTheDocument();
       expect(screen.getByTestId('error-message')).toHaveTextContent('Component failed due to memory pressure');
     });

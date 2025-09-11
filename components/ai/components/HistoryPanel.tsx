@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { Clock, MessageCircle, Coins, Calendar, Search, Trash2, MoreVertical, RefreshCw, Database, X } from 'lucide-react';
 import type { ChatTab } from '../hooks/useChatTabs';
 import { chatPersistenceService } from '../../../lib/ai/services/ChatPersistenceService';
@@ -97,29 +97,8 @@ export function HistoryPanel({
     const [searchMode, setSearchMode] = useState<'local' | 'semantic'>('local');
     const [searchType, setSearchType] = useState<'messages' | 'chats' | 'both'>('both');
 
-    // Configure persistence service when component mounts or userId changes
-    useEffect(() => {
-        if (enablePersistence && userId) {
-            chatPersistenceService.configure({
-                autoSave: true,
-                userId,
-                enableSearch: true
-            });
-            loadPersistedChats();
-        }
-    }, [userId, enablePersistence]);
-
-    // Auto-save active tab changes
-    useEffect(() => {
-        if (enablePersistence && userId && activeTabId) {
-            const activeTab = tabs.find(tab => tab.id === activeTabId);
-            if (activeTab) {
-                chatPersistenceService.saveChatFromTab(activeTab).catch(console.error);
-            }
-        }
-    }, [activeTabId, tabs, userId, enablePersistence]);
-
-    const loadPersistedChats = async () => {
+    // Define loadPersistedChats using useCallback before it's used in useEffect
+    const loadPersistedChats = useCallback(async () => {
         if (!userId) return;
 
         setIsLoadingPersisted(true);
@@ -131,7 +110,29 @@ export function HistoryPanel({
         } finally {
             setIsLoadingPersisted(false);
         }
-    };
+    }, [userId, setIsLoadingPersisted, setPersistedChats]); // Add userId to dependencies as it's used inside and setState functions
+
+    // Configure persistence service when component mounts or userId changes
+    useEffect(() => {
+        if (enablePersistence && userId) {
+            chatPersistenceService.configure({
+                autoSave: true,
+                userId,
+                enableSearch: true
+            });
+            loadPersistedChats();
+        }
+    }, [userId, enablePersistence, loadPersistedChats]);
+
+    // Auto-save active tab changes
+    useEffect(() => {
+        if (enablePersistence && userId && activeTabId) {
+            const activeTab = tabs.find(tab => tab.id === activeTabId);
+            if (activeTab) {
+                chatPersistenceService.saveChatFromTab(activeTab).catch(console.error);
+            }
+        }
+    }, [activeTabId, tabs, userId, enablePersistence]);
 
     // Expose loadPersistedChats globally for external triggers (e.g., from AIChatSidebar's closeTab)
     useEffect(() => {
@@ -141,7 +142,7 @@ export function HistoryPanel({
                 delete window.SVMAI_HISTORY_RELOAD;
             };
         }
-    }, [loadPersistedChats]); // Depend on loadPersistedChats to ensure correct context for loading chats
+    }, [loadPersistedChats]);
 
     // Trigger reload when the onReload prop changes (from AIChatSidebar)
     useEffect(() => {
@@ -150,7 +151,7 @@ export function HistoryPanel({
         }
     }, [onReload]);
 
-    const performSemanticSearch = async (query: string) => {
+    const performSemanticSearch = useCallback(async (query: string) => {
         if (!query.trim() || !userId) return;
 
         setIsSearching(true);
@@ -182,7 +183,7 @@ export function HistoryPanel({
         } finally {
             setIsSearching(false);
         }
-    };
+    }, [userId, searchType, setIsSearching, setSearchResults, setChatSearchResults]);
 
     // Handle search query changes
     useEffect(() => {
@@ -195,7 +196,7 @@ export function HistoryPanel({
             setSearchResults([]);
             setChatSearchResults([]);
         }
-    }, [searchQuery, searchMode, searchType, userId]);
+    }, [searchQuery, searchMode, searchType, userId, performSemanticSearch, setSearchResults, setChatSearchResults]);
 
 
     // Convert both active tabs and persisted chats to ChatStats for unified display
@@ -203,7 +204,7 @@ export function HistoryPanel({
         // Create a map to keep track of chat IDs to avoid duplicates, preferring active tabs
         const uniqueChats = new Map<string, ChatStats>();
 
-        // Add currently active tabs
+        // Add currently active tabs, prioritizing them
         tabs.forEach(tab => {
             const createdAt = new Date(tab.lastActivity || Date.now());
             const lastUpdated = tab.messages && tab.messages.length > 0
@@ -222,7 +223,8 @@ export function HistoryPanel({
             });
         });
 
-        // Add persisted chats, only if an active tab with the same ID doesn't already exist
+        // Add persisted chats that are not currently active tabs
+        // Only add if an entry with the same ID doesn't already exist from the active tabs
         persistedChats.forEach(chat => {
             if (!uniqueChats.has(chat.id)) {
                 uniqueChats.set(chat.id, {

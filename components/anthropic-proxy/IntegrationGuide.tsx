@@ -32,13 +32,8 @@ interface IntegrationGuideProps {
 export default function IntegrationGuide({ apiKey }: IntegrationGuideProps = {}) {
     const [copiedCode, setCopiedCode] = React.useState<string | null>(null);
 
-    // Get user settings for theme and font - use fallback if hook fails
-    let settings;
-    try {
-        settings = useSettings();
-    } catch {
-        settings = { font: 'Inter', theme: 'light' };
-    }
+    // Get user settings for theme and font
+    const settings = useSettings();
 
     // Theme-aware CSS classes
     const themeClasses = {
