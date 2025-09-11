@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import type { Message, Note, AgentAction } from '../types';
+import { chatPersistenceService } from '../../../lib/ai/services/ChatPersistenceService';
 
 export type ChatMode = 'agent' | 'assistant';
 
@@ -152,7 +153,18 @@ What would you like to explore first?`
     }, [tabs.length]);
 
     // Close a tab
-    const closeTab = useCallback((tabId: string) => {
+    const closeTab = useCallback(async (tabId: string) => {
+        // Find the tab to be closed and save it to persistence if it has meaningful content
+        const tabToClose = tabs.find(tab => tab.id === tabId);
+        if (tabToClose && tabToClose.messages.length > 1) { // Only save if there are messages beyond initial greeting
+            try {
+                await chatPersistenceService.saveChatFromTab(tabToClose);
+            } catch (error) {
+                console.error('Error saving tab to persistence before closing:', error);
+                // Continue with tab closure even if save fails
+            }
+        }
+
         setTabs(prev => {
             // Prevent closing the last remaining tab
             if (prev.length === 1) return prev;
@@ -177,7 +189,7 @@ What would you like to explore first?`
 
             return filtered;
         });
-    }, [activeTabId]);
+    }, [activeTabId, tabs]);
 
     // Switch to a tab
     const switchToTab = useCallback((tabId: string) => {

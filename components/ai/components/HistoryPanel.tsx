@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useMemo, useEffect } from 'react';
-import { Clock, MessageCircle, Coins, Calendar, Search, Trash2, MoreVertical, RefreshCw, Database } from 'lucide-react';
+import { Clock, MessageCircle, Coins, Calendar, Search, Trash2, MoreVertical, RefreshCw, Database, X } from 'lucide-react';
 import type { ChatTab } from '../hooks/useChatTabs';
 import { chatPersistenceService } from '../../../lib/ai/services/ChatPersistenceService';
 import type { AIChatModel, ChatSearchResult, MessageSearchResult } from '../../../lib/ai/models/ChatModels';
@@ -509,19 +509,46 @@ export function HistoryPanel({
                                             </button>
 
                                             {expandedItem === chat.id && (
-                                                <div className="absolute right-0 top-full mt-1 w-32 bg-slate-800 border border-white/20 rounded-md shadow-lg z-10">
-                                                    {onTabDelete && (
-                                                        <button
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                onTabDelete(chat.id);
-                                                                setExpandedItem(null);
-                                                            }}
-                                                            className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 flex items-center gap-2 text-red-400"
-                                                        >
-                                                            <Trash2 size={14} />
-                                                            Delete
-                                                        </button>
+                                                <div className="absolute right-0 top-full mt-1 w-48 bg-slate-800 border border-white/20 rounded-md shadow-lg z-10">
+                                                    {/* Check if this chat is currently an active tab */}
+                                                    {tabs.find(tab => tab.id === chat.id) ? (
+                                                        // If it's an active tab, show "Close Tab" option
+                                                        onTabDelete && (
+                                                            <button
+                                                                onClick={(e) => {
+                                                                    e.stopPropagation();
+                                                                    onTabDelete(chat.id);
+                                                                    setExpandedItem(null);
+                                                                }}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 flex items-center gap-2 text-orange-400"
+                                                            >
+                                                                <X size={14} />
+                                                                Close Tab
+                                                            </button>
+                                                        )
+                                                    ) : (
+                                                        // If it's a persisted chat, show "Delete from History" option
+                                                        enablePersistence && userId && (
+                                                            <button
+                                                                onClick={async (e) => {
+                                                                    e.stopPropagation();
+                                                                    try {
+                                                                        const success = await chatPersistenceService.deleteUserChat(chat.id);
+                                                                        if (success) {
+                                                                            // Refresh persisted chats to update UI
+                                                                            await loadPersistedChats();
+                                                                        }
+                                                                    } catch (error) {
+                                                                        console.error('Error deleting chat from history:', error);
+                                                                    }
+                                                                    setExpandedItem(null);
+                                                                }}
+                                                                className="w-full text-left px-3 py-2 text-sm hover:bg-white/10 flex items-center gap-2 text-red-400"
+                                                            >
+                                                                <Trash2 size={14} />
+                                                                Delete from History
+                                                            </button>
+                                                        )
                                                     )}
                                                 </div>
                                             )}
