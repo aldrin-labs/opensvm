@@ -30,6 +30,7 @@ export function parseAssistantMessage(content: string): ParsedMessage {
         content.includes('</REASONING>') ||
         content.includes('&lt;REASONING&gt;') ||
         content.includes('&lt;/REASONING&gt;') ||
+        content.includes('**Reasoning:**') ||
         content.includes('plan:') ||
         /(?:^|\n)(?:#+\s*)?(?:Plan|Action Plan|Execution Plan)(?:\s*:)?/im.test(content) ||
         /(?:^|\n)(?:#+\s*)?(?:Final Answer|Answer|Result|Conclusion)(?:\s*:)?/im.test(content);
@@ -50,26 +51,25 @@ export function parseAssistantMessage(content: string): ParsedMessage {
         // Replace the [object Object] with a helpful message since the actual plan data was lost
         parsedContent = parsedContent.replace(/plan:\s*(\[object Object\](?:,\s*\[object Object\])*)/g,
             'The AI generated an execution plan, but there was an issue with the response formatting. The system should have executed the planned tools and returned the results.');
+    }
 
-        // Try to extract plan from the raw content if it contains JSON-like structures
-        const jsonMatch = parsedContent.match(/\[{[^}]*"tool"[^}]*}[^\]]*\]/);
-        if (jsonMatch) {
-            try {
-                const planArray = JSON.parse(jsonMatch[0]);
-                if (Array.isArray(planArray)) {
-                    plan = planArray;
-                }
-            } catch {
-                // If JSON parsing fails, continue with the replacement message
-                console.warn('Failed to parse plan JSON, using replacement message');
+    // Try to extract plan from JSON code blocks (```json...\n[\n{}\n]...\n``` or similar)
+    const jsonCodeBlockMatch = parsedContent.match(/```(?:json|javascript)\s*([\s\S]*?)\s*```/);
+    if (jsonCodeBlockMatch && !plan) {
+        try {
+            const json = JSON.parse(jsonCodeBlockMatch[1].trim());
+            if (Array.isArray(json) && json.every(item => item && typeof item === 'object' && item.tool)) {
+                plan = json;
             }
+        } catch {
+            // Parsing failed, continue with other plan detection
         }
     }
 
     // Look for plan in various text formats
     if (!plan) {
-        // Look for plan sections in markdown format
-        const planSectionMatch = parsedContent.match(/(?:^|\n)(?:#+\s*)?(?:Plan|Action Plan|Execution Plan)(?:\s*:)?\s*\n((?:(?:\d+\.|\*|-)\s*[^\n]+\n?)+)/im);
+        // Look for plan sections in markdown format (without Object replacement needed)
+        const planSectionMatch = parsedContent.match(/(?:^|\n)(?:#+\s*)?(?:Plan|Action Plan|Execution Plan)(?:\s*:)?\s*\n((?:(?:\d+\.|\*|-)\s*(?!.*\[object Object\])[^\n]+\n?)+)/im);
         if (planSectionMatch) {
             const planText = planSectionMatch[1];
             const steps = planText.split(/\n(?=\d+\.|\*|-)/).filter(step => step.trim());
@@ -153,7 +153,7 @@ export function parseAssistantMessage(content: string): ParsedMessage {
     }
 
     // Fallback: Look for legacy **Reasoning:** ... **Answer:** format
-    const legacyMatch = parsedContent.match(/^\*\*Reasoning:\*\*\s*(.*?)\s*\*\*Answer:\*\*\s*(.*?)$/s);
+    const legacyMatch = parsedContent.match(/^\*\*Reasoning:\*\*\s*\n?(.*?)\n?\s*\*\*Answer:\*\*\s*\n?(.*?)$/s);
     if (legacyMatch) {
         const [, reasoningContent, answerContent] = legacyMatch;
         const reasoningText = reasoningContent.trim();

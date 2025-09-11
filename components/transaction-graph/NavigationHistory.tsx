@@ -64,6 +64,7 @@ export const NavigationHistory: React.FC<NavigationHistoryProps> = ({
                     className="h-7 w-7"
                     title="Go to initial account"
                     aria-label="Go to initial account"
+                    type="button"
                 >
                     <Home className="h-4 w-4" />
                 </Button>
@@ -76,6 +77,7 @@ export const NavigationHistory: React.FC<NavigationHistoryProps> = ({
                     className="h-7 w-7"
                     title="Back"
                     aria-label="Back"
+                    type="button"
                 >
                     <ChevronLeft className="h-4 w-4" />
                 </Button>
@@ -87,6 +89,7 @@ export const NavigationHistory: React.FC<NavigationHistoryProps> = ({
                     className="h-7 w-7"
                     title="Forward"
                     aria-label="Forward"
+                    type="button"
                 >
                     <ChevronRight className="h-4 w-4" />
                 </Button>
@@ -101,6 +104,7 @@ export const NavigationHistory: React.FC<NavigationHistoryProps> = ({
                             className="h-7 w-7"
                             title="History"
                             aria-label="History"
+                            type="button"
                         >
                             <HistoryIcon className="h-4 w-4" />
                         </Button>

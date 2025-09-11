@@ -61,14 +61,14 @@ export class SolanaAgent {
   async processMessage(message: Message): Promise<Message> {
     // Check for mock mode
     const isMockMode = typeof window !== 'undefined' && (
-      window.location.search.includes('aimock=1') || 
+      window.location.search.includes('aimock=1') ||
       window.location.search.includes('ai=1')
     );
 
     if (isMockMode) {
       // Add minimum delay to ensure processing indicator stays visible for at least 400ms as required by E2E tests
       await new Promise(resolve => setTimeout(resolve, 450));
-      
+
       // Return mock responses for E2E testing
       const mockResponse = this.getMockResponse(message.content);
       const response = {
@@ -575,6 +575,28 @@ Ask me about any of these topics and I'll provide detailed analysis!`;
         return "I processed your request but didn't find any specific data to show.";
       }
 
+      // Special handling: if any tool result contains a plan array, aggregate and format
+      const planSteps: Array<{ tool: string; reason?: string; input?: string }> = [];
+      for (const item of result) {
+        const maybePlanObj = item?.result;
+        if (maybePlanObj && typeof maybePlanObj === 'object' && Array.isArray(maybePlanObj.plan)) {
+          for (const step of maybePlanObj.plan) {
+            if (step && typeof step === 'object' && typeof step.tool === 'string') {
+              planSteps.push({ tool: step.tool, reason: step.reason, input: step.input });
+            }
+          }
+        }
+      }
+      if (planSteps.length > 0) {
+        const formatted = planSteps.map((step, i) => {
+          const parts = [`${i + 1}. ${step.tool}`];
+          if (step.reason) parts.push(`- ${step.reason}`);
+          if (step.input) parts.push(`input: ${typeof step.input === 'string' ? step.input : JSON.stringify(step.input)}`);
+          return parts.join(' ');
+        }).join('\n');
+        return `📋 Execution Plan (${planSteps.length} step${planSteps.length !== 1 ? 's' : ''})\n\n${formatted}\n\n(Plan generated; executing tools or refining analysis will produce detailed results.)`;
+      }
+
       // Process each result and combine into a coherent response
       const responses = result.map((item: any) => {
         if (item.status === 'failed') {
@@ -636,6 +658,17 @@ Ask me about any of these topics and I'll provide detailed analysis!`;
 
     // Handle single result
     if (typeof result === 'object') {
+      // Special handling: capability/tool returned a planning object with plan array
+      if (result.plan && Array.isArray(result.plan) && result.plan.every((s: any) => s && typeof s === 'object')) {
+        const steps = result.plan as Array<{ tool: string; reason?: string; input?: string }>;
+        const formatted = steps.map((step, i) => {
+          const parts = [`${i + 1}. ${step.tool}`];
+          if (step.reason) parts.push(`- ${step.reason}`);
+          if (step.input) parts.push(`input: ${typeof step.input === 'string' ? step.input : JSON.stringify(step.input)}`);
+          return parts.join(' ');
+        }).join('\n');
+        return `📋 Execution Plan (${steps.length} step${steps.length !== 1 ? 's' : ''})\n\n${formatted}\n\n(Plan generated; executing tools or refining analysis will produce detailed results.)`;
+      }
       if (result.message) {
         return result.message;
       } else if (result.error) {

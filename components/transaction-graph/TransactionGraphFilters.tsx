@@ -389,6 +389,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => toggleSection('basic')}
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+          type="button"
         >
           <span className="font-medium">Basic Filters</span>
           {expandedSections.has('basic') ?
@@ -416,6 +417,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                     onClick={() => updateFilters({ searchQuery: '' })}
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 p-1 hover:bg-muted rounded transition-colors"
                     title="Clear search"
+                    type="button"
                   >
                     <XIcon className="w-3 h-3 text-muted-foreground" />
                   </button>
@@ -516,6 +518,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => toggleSection('advanced')}
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+          type="button"
         >
           <span className="font-medium">Advanced Filters</span>
           {expandedSections.has('advanced') ?
@@ -668,6 +671,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => toggleSection('layout')}
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+          type="button"
         >
           <span className="font-medium">Layout & Positioning</span>
           {expandedSections.has('layout') ?
@@ -732,6 +736,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => toggleSection('appearance')}
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+          type="button"
         >
           <span className="font-medium">Visual Appearance</span>
           {expandedSections.has('appearance') ?
@@ -810,6 +815,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => toggleSection('display')}
           className="w-full flex items-center justify-between p-3 text-left hover:bg-muted/50 transition-colors"
+          type="button"
         >
           <span className="font-medium">Display Options</span>
           {expandedSections.has('display') ?
@@ -928,6 +934,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                   <button
                     onClick={() => applyPreset(preset)}
                     className="px-3 py-1 bg-primary text-primary-foreground rounded text-sm hover:bg-primary/90 transition-colors"
+                    type="button"
                   >
                     Apply
                   </button>
@@ -940,6 +947,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                     }}
                     className="p-1 hover:bg-muted rounded transition-colors"
                     title="Copy configuration"
+                    type="button"
                   >
                     {copiedPreset === preset.id ?
                       <CheckIcon className="w-4 h-4 text-green-500" /> :
@@ -982,6 +990,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
             }}
             disabled={!customPresetName.trim()}
             className="w-full px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            type="button"
           >
             <SaveIcon className="w-4 h-4 inline mr-2" />
             Save Current Settings as Preset
@@ -1016,6 +1025,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
             includeCustomization: true
           })}
           className="w-full flex items-center justify-center space-x-2 px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+          type="button"
         >
           <DownloadIcon className="w-4 h-4" />
           <span>Export Graph</span>
@@ -1024,6 +1034,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => exportConfiguration('json')}
           className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-border rounded hover:bg-muted transition-colors"
+          type="button"
         >
           <DownloadIcon className="w-4 h-4" />
           <span>Export Configuration</span>
@@ -1032,6 +1043,7 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
         <button
           onClick={() => exportConfiguration('url')}
           className="w-full flex items-center justify-center space-x-2 px-4 py-2 border border-border rounded hover:bg-muted transition-colors"
+          type="button"
         >
           {copiedPreset === 'url' ? <CheckIcon className="w-4 h-4" /> : <ShareIcon className="w-4 h-4" />}
           <span>{copiedPreset === 'url' ? 'Copied!' : 'Share Configuration URL'}</span>

@@ -78,6 +78,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     className="h-7 w-7"
                     title="Zoom In"
                     aria-label="Zoom in"
+                    type="button"
                 >
                     <ZoomIn className="h-4 w-4" />
                 </Button>
@@ -88,6 +89,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     className="h-7 w-7"
                     title="Zoom Out"
                     aria-label="Zoom out"
+                    type="button"
                 >
                     <ZoomOut className="h-4 w-4" />
                 </Button>
@@ -98,6 +100,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     className="h-7 w-7"
                     title="Fit to view"
                     aria-label="Fit to view"
+                    type="button"
                 >
                     <Maximize2 className="h-4 w-4" />
                 </Button>
@@ -108,6 +111,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     className="h-7 w-7"
                     title="Reset view"
                     aria-label="Reset view"
+                    type="button"
                 >
                     <RotateCcw className="h-4 w-4" />
                 </Button>
@@ -122,6 +126,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                             className="h-7 w-7"
                             title="Filters"
                             aria-label="Filters"
+                            type="button"
                         >
                             <Filter className="h-4 w-4" />
                         </Button>
@@ -158,6 +163,7 @@ export const GraphControls: React.FC<GraphControlsProps> = ({
                     className="h-7 w-7"
                     title={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
                     aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+                    type="button"
                 >
                     {isFullscreen ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
                 </Button>

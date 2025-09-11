@@ -449,12 +449,12 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
   // Get unique values for filter dropdowns
   const uniqueTypes = useMemo(() => {
     const types = [...new Set(transfers.map(t => t.type || 'transfer'))];
-    return types.sort();
+    return types.sort() as string[];
   }, [transfers]);
 
   const uniqueTokens = useMemo(() => {
     const tokens = [...new Set(transfers.map(t => t.tokenSymbol || t.token || 'SOL'))];
-    return tokens.sort();
+    return tokens.sort() as string[];
   }, [transfers]);
 
   // Row identity function for selection
@@ -566,6 +566,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
               className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Filter by transaction type"
             >
               <option value="all">All Types</option>
               {uniqueTypes.map(type => (
@@ -580,6 +581,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
               value={tokenFilter}
               onChange={(e) => setTokenFilter(e.target.value)}
               className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              aria-label="Filter by token"
             >
               <option value="all">All Tokens</option>
               {uniqueTokens.map(token => (

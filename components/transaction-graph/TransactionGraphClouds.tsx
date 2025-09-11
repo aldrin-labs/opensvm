@@ -75,6 +75,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
         onClick={() => setIsOpen(!isOpen)}
         aria-expanded={isOpen}
         aria-label="Saved graph states"
+        type="button"
       >
         <Cloud className="w-5 h-5" />
         <span className="hidden md:inline">Saved Graphs</span>
@@ -92,6 +93,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
                 setTimeout(() => setSavedGraphs(GraphStateCache.getSavedGraphs()), 100);
               }}
               aria-label="Save current graph state"
+              type="button"
             >
               <Save className="w-4 h-4" />
               <span>Save Current</span>
@@ -139,6 +141,7 @@ const TransactionGraphClouds: React.FC<TransactionGraphCloudsProps> = ({ graphs,
                       className="text-destructive hover:text-destructive/90 p-1 transition-colors"
                       onClick={(e) => handleDelete(e, graph.signature)}
                       aria-label="Delete saved graph"
+                      type="button"
                     >
                       <Trash className="w-4 h-4" />
                     </button>

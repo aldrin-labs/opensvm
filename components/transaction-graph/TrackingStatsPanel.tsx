@@ -38,7 +38,7 @@ export const TrackingStatsPanel: React.FC<TrackingStatsPanelProps> = ({
     const now = Date.now();
     const diff = now - timestamp;
     const seconds = Math.floor(diff / 1000);
-    
+
     if (seconds < 60) return `${seconds}s ago`;
     if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
     return `${Math.floor(seconds / 3600)}h ago`;
@@ -57,6 +57,7 @@ export const TrackingStatsPanel: React.FC<TrackingStatsPanelProps> = ({
           onClick={onStopTracking}
           className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
           title="Stop tracking"
+          type="button"
         >
           ✕
         </button>

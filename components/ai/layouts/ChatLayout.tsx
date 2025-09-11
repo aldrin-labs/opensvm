@@ -618,6 +618,7 @@ export function ChatLayout({
           className={`bg-black shadow-xl overflow-hidden ${className} ${!isResizing.current && 'transition-transform duration-300 ease-in-out'}`}
           role="complementary"
           aria-label="AI Chat Sidebar"
+          data-testid="ai-chat-sidebar"
           data-ai-sidebar
           data-ai-sidebar-root
           data-ai-mode={activeTab}
