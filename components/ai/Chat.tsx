@@ -42,6 +42,9 @@ export interface ChatProps {
   // Knowledge pseudo-tab props
   knowledgeActive?: boolean;
   onSelectKnowledge?: () => void;
+  // History pseudo-tab props
+  historyActive?: boolean;
+  onSelectHistory?: () => void;
   // Legacy props for backward compatibility
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -93,6 +96,9 @@ export function Chat({
   // Knowledge pseudo-tab
   knowledgeActive = false,
   onSelectKnowledge,
+  // History pseudo-tab
+  historyActive = false,
+  onSelectHistory,
   // Legacy props for backward compatibility
   activeTab = 'agent',
   onTabChange,
@@ -232,6 +238,9 @@ export function Chat({
       // Knowledge pseudo-tab
       knowledgeActive={knowledgeActive}
       onSelectKnowledge={onSelectKnowledge}
+      // History pseudo-tab
+      historyActive={historyActive}
+      onSelectHistory={onSelectHistory}
       // Legacy props for backward compatibility
       activeTab={activeTab}
       onTabChange={onTabChange}
@@ -295,6 +304,11 @@ export function Chat({
           onCancel={onCancel}
           onDirectResponse={onDirectResponse}
           enableVirtualization={true}
+          tabs={tabs}
+          onTabClick={onTabClick}
+          onTabDelete={onTabClose}
+          historyActive={historyActive}
+          activeTabId={activeTabId}
         />
       </ChatErrorBoundary>
       {showFallback && (

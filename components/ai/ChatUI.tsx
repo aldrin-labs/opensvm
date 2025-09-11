@@ -23,6 +23,7 @@ import { MessageRenderer } from './components/MessageRenderer';
 import { ChatErrorBoundary } from './components/ChatErrorBoundary';
 import { parseAssistantMessage } from '../../lib/ai/parseAssistantMessage';
 import { KnowledgePanel } from './components/KnowledgePanel';
+import { HistoryPanel } from './components/HistoryPanel';
 import { ModeSelector } from './components/ModeSelector';
 import { estimateTokens } from './utils/tokenCounter';
 import { SLASH_COMMANDS, completeSlashCommand, trackSlashUsage, getContextualSuggestions, getContextBadge } from './utils/slashCommands';
@@ -59,6 +60,12 @@ interface ChatUIProps {
   enableVirtualization?: boolean;
   onCancel?: () => void;
   onDirectResponse?: (message: Message) => void; // Direct RPC / fast path response handler
+  // History panel props
+  tabs?: any[]; // Using any[] to avoid circular dependency with ChatTab
+  onTabClick?: (tabId: string) => void;
+  onTabDelete?: (tabId: string) => void;
+  historyActive?: boolean;
+  activeTabId?: string | null;
 }
 
 // Lightweight dynamic height wrapper replacing fixed 400px container.
@@ -128,6 +135,11 @@ export function ChatUI({
   enableVirtualization = false,
   onCancel,
   onDirectResponse,
+  tabs = [],
+  onTabClick,
+  onTabDelete,
+  historyActive = false,
+  activeTabId = null,
 }: ChatUIProps) {
   if (__AI_DEBUG__) {
     console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
@@ -1036,8 +1048,24 @@ export function ChatUI({
     </div>
   );
 
+  // History panel content
+  const historyPanelContent = (
+    <div className="relative flex-1 min-h-0" data-ai-tab="history">
+      <HistoryPanel
+        tabs={tabs}
+        activeTabId={activeTabId}
+        onTabClick={onTabClick || (() => { })}
+        onTabDelete={onTabDelete}
+        className="h-full"
+      />
+    </div>
+  );
+
   const isNotesTab = activeTab === 'notes';
-  const mainScrollableContent = isNotesTab ? knowledgePanelContent : chatMessagesContent;
+  const isHistoryTab = historyActive;
+  const mainScrollableContent = isNotesTab ? knowledgePanelContent :
+    isHistoryTab ? historyPanelContent :
+      chatMessagesContent;
 
   return (
     <ChatErrorBoundary>
@@ -1053,6 +1081,8 @@ export function ChatUI({
         </a>
 
         {variant !== 'sidebar' && <VantaBackground />}
+
+
 
         <div
           className={`chat-flex-container flex flex-col flex-1 min-h-0 relative z-10 ${className}`}

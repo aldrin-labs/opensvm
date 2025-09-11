@@ -14,6 +14,9 @@ interface TabBarProps {
     // Knowledge view integration
     knowledgeActive?: boolean;
     onSelectKnowledge?: () => void;
+    // History view integration
+    historyActive?: boolean;
+    onSelectHistory?: () => void;
 }
 
 interface TabItemProps {
@@ -65,7 +68,7 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename, onTabTogg
     return (
         <div
             className={`
-        group flex items-center gap-2 min-w-0 max-w-[200px] relative
+        group flex items-center gap-2 min-w-0 max-w-[150px] relative
         ${isActive
                     ? 'bg-white text-black'
                     : 'text-white/80 hover:text-white hover:bg-white/10'
@@ -121,7 +124,7 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename, onTabTogg
 
                 {/* Mode indicator */}
                 <div className={`text-xs opacity-60 ${isActive ? 'text-black/60' : 'text-white/60'}`} data-ai-tab-mode={tab.mode}>
-                    {tab.mode === 'agent' ? 'A' : 'AI'}
+                    {tab.mode === 'agent' ? 'AI' : 'QA'}
                 </div>
 
                 {/* Status text */}
@@ -189,12 +192,14 @@ export function TabBar({
     onTabTogglePin,
     className = '',
     knowledgeActive = false,
-    onSelectKnowledge
+    onSelectKnowledge,
+    historyActive = false,
+    onSelectHistory
 }: TabBarProps) {
     return (
         <div className={`flex items-center bg-black border-b border-white/20 ${className}`} data-ai-tabs>
             {/* Tabs container with horizontal scroll */}
-            <div className="flex-1 flex items-center overflow-x-auto scrollbar-none">
+            <div className="flex-1 flex items-center overflow-x-auto scrollbar-thin">
                 {/* Tab area with separate tablist and action buttons */}
                 <div className="flex items-center min-w-max relative">
                     {/* Tablist with only tab elements - no buttons allowed */}
@@ -204,146 +209,81 @@ export function TabBar({
                         className="flex items-center"
                     >
                         {tabs.map((tab) => (
-                            <div
+                            <TabItem
                                 key={tab.id}
-                                className={`
-                                    flex items-center gap-2 px-3 py-2 min-w-0 max-w-[150px] cursor-pointer transition-colors
-                                    ${tab.id === activeTabId
-                                        ? 'bg-white text-black'
-                                        : 'text-white/80 hover:text-white hover:bg-white/10'
-                                    }
-                                    border-r border-white/20
-                                `}
-                                onClick={() => onTabClick(tab.id)}
-                                role="tab"
-                                aria-selected={tab.id === activeTabId}
-                                data-ai-tab-header
-                                data-active={tab.id === activeTabId ? 'true' : 'false'}
-                                data-ai-tab-id={tab.id}
-                                data-testid="ai-tab-header"
-                                tabIndex={0}
-                                onKeyDown={(e) => {
-                                    if (e.key === 'Enter' || e.key === ' ') {
-                                        e.preventDefault();
-                                        onTabClick(tab.id);
-                                    }
-                                }}
-                            >
-                                {/* Status indicator */}
-                                <div className="flex-shrink-0">
-                                    {tab.isProcessing && (
-                                        <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" data-ai-tab-status="processing" />
-                                    )}
-                                    {tab.status && !tab.isProcessing && (
-                                        <div className="w-2 h-2 bg-green-400 rounded-full" data-ai-tab-status="ready" />
-                                    )}
-                                </div>
-
-                                {/* Tab name */}
-                                <div className="flex-1 min-w-0">
-                                    <span className="text-sm font-medium truncate block" data-ai-tab-name>
-                                        {tab.name}
-                                    </span>
-                                </div>
-
-                                {/* Mode indicator */}
-                                <div className={`text-xs opacity-60 ${tab.id === activeTabId ? 'text-black/60' : 'text-white/60'}`} data-ai-tab-mode={tab.mode}>
-                                    {tab.mode === 'agent' ? 'A' : 'AI'}
-                                </div>
-                            </div>
+                                tab={tab}
+                                isActive={tab.id === activeTabId}
+                                onTabClick={onTabClick}
+                                onTabClose={onTabClose}
+                                onTabRename={onTabRename}
+                                onTabTogglePin={onTabTogglePin}
+                            />
                         ))}
 
                         {/* Knowledge tab */}
-                        <div
-                            className={`
-                                flex-shrink-0 px-3 py-2 text-sm font-medium border-l border-white/20 cursor-pointer
-                                ${knowledgeActive ? 'bg-white text-black' : 'text-white/80 hover:text-white hover:bg-white/10'}
-                            `}
-                            onClick={() => onSelectKnowledge?.()}
-                            role="tab"
-                            aria-selected={knowledgeActive}
-                            aria-label="Knowledge notes"
-                            data-ai-tab="knowledge"
-                            data-testid="knowledge-tab"
-                            tabIndex={0}
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter' || e.key === ' ') {
-                                    e.preventDefault();
-                                    onSelectKnowledge?.();
-                                }
-                            }}
-                        >
-                            Knowledge
-                        </div>
-                    </div>
-
-                    {/* Action buttons overlay - positioned absolutely to avoid being in tablist */}
-                    {tabs.map((tab) => (
-                        <div
-                            key={`actions-${tab.id}`}
-                            className="absolute top-0 right-0 h-full flex items-center pointer-events-none"
-                            style={{
-                                right: `${tabs.findIndex(t => t.id === tab.id) * 150}px`, // Approximate tab width
-                            }}
-                        >
-                            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
-                                {/* Pin button */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onTabTogglePin?.(tab.id);
-                                    }}
-                                    className={`
-                                        p-1 rounded-sm transition-opacity
-                                        ${tab.pinned ? 'opacity-100' : ''}
-                                        ${tab.id === activeTabId
-                                            ? 'hover:bg-black/10 text-black/60 hover:text-black'
-                                            : 'hover:bg-white/20 text-white/60 hover:text-white'
-                                        }
-                                    `}
-                                    aria-label={`${tab.pinned ? 'Unpin' : 'Pin'} ${tab.name}`}
-                                    aria-pressed={tab.pinned}
-                                    title={tab.pinned ? 'Unpin tab' : 'Pin tab'}
-                                    data-ai-tab-pin="true"
-                                >
-                                    <Pin size={10} className={tab.pinned ? 'fill-current' : ''} />
-                                </button>
-
-                                {/* Close button */}
-                                <button
-                                    onClick={(e) => {
-                                        e.stopPropagation();
-                                        onTabClose(tab.id);
-                                    }}
-                                    className={`
-                                        p-1 rounded-sm
-                                        ${tab.id === activeTabId
-                                            ? 'hover:bg-black/10 text-black/60 hover:text-black'
-                                            : 'hover:bg-white/20 text-white/60 hover:text-white'
-                                        }
-                                    `}
-                                    aria-label={`Close ${tab.name}`}
-                                    data-ai-tab-close="true"
-                                >
-                                    <X size={10} />
-                                </button>
+                        {onSelectKnowledge && (
+                            <div
+                                className={`
+            group flex items-center gap-2 min-w-0 max-w-[200px] relative
+            ${knowledgeActive
+                                        ? 'bg-white text-black'
+                                        : 'text-white/80 hover:text-white hover:bg-white/10'
+                                    }
+            border-r border-white/20 transition-colors cursor-pointer
+          `}
+                                onClick={onSelectKnowledge}
+                                data-ai-tab-header
+                                data-active={knowledgeActive ? 'true' : 'false'}
+                                data-ai-tab-id="knowledge-tab"
+                                data-testid="knowledge-tab-header"
+                                role="tab"
+                                aria-selected={knowledgeActive}
+                                tabIndex={0}
+                            >
+                                <div className="flex items-center gap-2 px-3 py-2 flex-1 min-w-0">
+                                    <span className="truncate">Knowledge</span>
+                                </div>
                             </div>
-                        </div>
-                    ))}
-                </div>
-            </div>
+                        )}
 
-            {/* New tab button - completely outside tablist */}
-            <div className="flex-shrink-0 border-l border-white/20">
-                <button
-                    onClick={() => onNewTab()}
-                    className="p-3 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
-                    aria-label="New tab"
-                    title="New tab"
-                    data-ai-new-tab
-                >
-                    <Plus size={16} />
-                </button>
+                        {/* History tab */}
+                        {onSelectHistory && (
+                            <div
+                                className={`
+            group flex items-center gap-2 min-w-0 max-w-[200px] relative
+            ${historyActive
+                                        ? 'bg-white text-black'
+                                        : 'text-white/80 hover:text-white hover:bg-white/10'
+                                    }
+            border-r border-white/20 transition-colors cursor-pointer
+          `}
+                                onClick={onSelectHistory}
+                                data-ai-tab-header
+                                data-active={historyActive ? 'true' : 'false'}
+                                data-ai-tab-id="history-tab"
+                                data-testid="history-tab-header"
+                                role="tab"
+                                aria-selected={historyActive}
+                                tabIndex={0}
+                            >
+                                <div className="flex items-center gap-2 px-3 py-2 flex-1 min-w-0">
+                                    <span className="truncate">History</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* New Tab Button */}
+                        <button
+                            onClick={() => onNewTab()}
+                            className="p-3 text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="New tab"
+                            title="New tab"
+                            data-ai-new-tab
+                        >
+                            <Plus size={16} />
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     );

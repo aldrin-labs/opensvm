@@ -60,6 +60,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   const [knowledgeNotes, setKnowledgeNotes] = useState<Note[]>([]);
   // Knowledge pseudo-tab state
   const [knowledgeActive, setKnowledgeActive] = useState(false);
+  // History pseudo-tab state
+  const [historyActive, setHistoryActive] = useState(false);
   // Speech recognition reference (Web Speech API) NOTE: Resizing handled entirely by ChatLayout now.
   // Removed duplicated sidebar resize refs (isResizing, lastX, startXRef, startWidthRef) to avoid conflicting width logic.
   const isResizing = useRef(false); // kept only if future logic needs a flag; currently unused
@@ -792,13 +794,15 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         onResizeEnd={onResizeEnd}
         tabs={tabs}
         activeTabId={activeTabId}
-        onTabClick={(id) => { setKnowledgeActive(false); switchToTab(id); }}
+        onTabClick={(id) => { setKnowledgeActive(false); setHistoryActive(false); switchToTab(id); }}
         onTabClose={closeTab}
-        onNewTab={() => { setKnowledgeActive(false); createTab(); }}
+        onNewTab={() => { setKnowledgeActive(false); setHistoryActive(false); createTab(); }}
         onTabRename={renameTab}
         onTabTogglePin={togglePin}
         knowledgeActive={knowledgeActive}
-        onSelectKnowledge={() => setKnowledgeActive(true)}
+        onSelectKnowledge={() => { setKnowledgeActive(true); setHistoryActive(false); }}
+        historyActive={historyActive}
+        onSelectHistory={() => { setHistoryActive(true); setKnowledgeActive(false); }}
         messages={activeTab?.messages || []}
         input={activeTab?.input || ''}
         isProcessing={activeTab?.isProcessing || false}

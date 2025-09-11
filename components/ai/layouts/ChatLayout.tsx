@@ -37,6 +37,9 @@ export interface ChatLayoutProps {
   // Knowledge pseudo-tab state
   knowledgeActive?: boolean;
   onSelectKnowledge?: () => void;
+  // History pseudo-tab state
+  historyActive?: boolean;
+  onSelectHistory?: () => void;
   // Legacy props for backward compatibility
   activeTab?: string;
   onTabChange?: (tab: string) => void;
@@ -70,6 +73,9 @@ export function ChatLayout({
   // Knowledge pseudo-tab
   knowledgeActive = false,
   onSelectKnowledge,
+  // History pseudo-tab
+  historyActive = false,
+  onSelectHistory,
   // Legacy props for backward compatibility
   activeTab = 'agent',
   onTabChange,
@@ -319,8 +325,8 @@ export function ChatLayout({
             record({ source: 'ChatLayout-reconcile-skip', phase, prev, candidate: clamped });
             return prev;
           }
-            record({ source: 'ChatLayout-reconcile-apply', phase, prev, candidate: clamped });
-            return clamped;
+          record({ source: 'ChatLayout-reconcile-apply', phase, prev, candidate: clamped });
+          return clamped;
         });
       } catch { /* noop */ }
     };
@@ -692,6 +698,8 @@ export function ChatLayout({
                   onTabTogglePin={onTabTogglePin}
                   knowledgeActive={knowledgeActive}
                   onSelectKnowledge={onSelectKnowledge}
+                  historyActive={historyActive}
+                  onSelectHistory={onSelectHistory}
                 />
                 {/* Action buttons row */}
                 <div className="flex items-center justify-end h-10 px-4 border-b border-white/20 bg-black/20">
@@ -781,17 +789,20 @@ export function ChatLayout({
                             <Share2 size={16} />
                             Share
                           </button>
+                          <button
+                            onClick={() => {
+                              setIsMenuOpen(false);
+                              onClose?.();
+                            }}
+                            className="w-full px-4 py-2 text-sm text-white hover:bg-white/10 flex items-center gap-2 transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                            role="menuitem"
+                          >
+                            <X size={16} />
+                            Close Chat
+                          </button>
                         </div>
                       </div>
                     </div>
-                    <button
-                      className="p-2 text-white hover:bg-white/10 rounded-sm transition-colors focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                      onClick={onClose}
-                      title="Close"
-                      aria-label="Close sidebar"
-                    >
-                      <X size={14} />
-                    </button>
                   </div>
                 </div>
               </div>
