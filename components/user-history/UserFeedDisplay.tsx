@@ -122,7 +122,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [groupByTime, setGroupByTime] = useState(true);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set());
 
-  // Function to fetch feed data with caching
+  // Function to fetch feed data with caching - stabilized with reduced dependencies
   const fetchFeed = useCallback(async (feedType: 'for-you' | 'following', reset = true) => {
     try {
       if (reset) {
@@ -132,8 +132,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         setHasMore(true);
       }
 
-      // Create filter object for cache
-      const filterObj: FeedFilters = {
+      // Create filter object for cache - access current values directly to avoid stale closures
+      const currentFilters = {
         eventTypes: filters.eventTypes,
         dateRange: filters.dateRange,
         sortOrder: filters.sortOrder,
@@ -143,7 +143,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       // Check cache first if this is the initial load
       if (reset) {
         console.log('Checking cache for feed data...');
-        const cachedEvents = await getCachedFeedEvents(walletAddress, feedType, filterObj);
+        const cachedEvents = await getCachedFeedEvents(walletAddress, feedType, currentFilters);
 
         if (cachedEvents) {
           console.log('Using cached feed data');
@@ -174,9 +174,9 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         type: feedType,
         page: reset ? '1' : page.toString(),
         limit: '10',
-        dateRange: filters.dateRange,
-        eventTypes: filters.eventTypes.join(','),
-        sort: filters.sortOrder
+        dateRange: currentFilters.dateRange,
+        eventTypes: currentFilters.eventTypes.join(','),
+        sort: currentFilters.sortOrder
       });
 
       const response = await fetch(`/api/user-feed/${walletAddress}?${queryParams}`);
@@ -192,7 +192,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         setEvents(data.events);
 
         // Cache the events for future use
-        cacheFeedEvents(walletAddress, feedType, data.events, filterObj)
+        cacheFeedEvents(walletAddress, feedType, data.events, currentFilters)
           .catch(error => console.error('Error caching feed events:', error));
       } else {
         setEvents(prev => [...prev, ...data.events]);
@@ -218,60 +218,62 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       setLoading(false);
       loadingMore.current = false;
     }
-  }, [walletAddress, page, filters, searchQuery]);
+  }, [walletAddress, page, filters.dateRange, filters.eventTypes, filters.sortOrder, searchQuery]);
 
-  // Load more events for infinite scrolling
+  // Load more events for infinite scrolling - stabilized dependencies
   const loadMoreEvents = useCallback(async () => {
     if (loading || !hasMore || loadingMore.current) return;
 
     loadingMore.current = true;
-    setPage(prevPage => prevPage + 1);
-    await fetchFeed(activeTab, false);
-  }, [loading, hasMore, activeTab, fetchFeed]);
+    const nextPage = page + 1;
+    setPage(nextPage);
+    
+    // Call fetchFeed with current page and activeTab values
+    try {
+      // Create filter object for current request
+      const currentFilters = {
+        eventTypes: filters.eventTypes,
+        dateRange: filters.dateRange,
+        sortOrder: filters.sortOrder,
+        searchQuery: searchQuery
+      };
 
-  // Check if an event should be shown based on current filters
-  const shouldShowEvent = useCallback((event: FeedEvent): boolean => {
-    // Validate event has required fields
-    if (!event || !event.eventType || typeof event.timestamp !== 'number') {
-      console.error('Invalid event in shouldShowEvent:', event);
-      return false;
+      const queryParams = new URLSearchParams({
+        type: activeTab,
+        page: nextPage.toString(),
+        limit: '10',
+        dateRange: currentFilters.dateRange,
+        eventTypes: currentFilters.eventTypes.join(','),
+        sort: currentFilters.sortOrder
+      });
+
+      const response = await fetch(`/api/user-feed/${walletAddress}?${queryParams}`);
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch more feed data');
+      }
+
+      const data = await response.json();
+      
+      setEvents(prev => [...prev, ...data.events]);
+      setHasMore(data.events.length === 10);
+
+      // Add new events to cache
+      if (data.events.length > 0) {
+        data.events.forEach((event: FeedEvent) => {
+          addEventToCache(walletAddress, activeTab, event)
+            .catch(error => console.error('Error adding event to cache:', error));
+        });
+      }
+    } catch (err) {
+      console.error('Error loading more events:', err);
+      setError('Failed to load more events');
+    } finally {
+      loadingMore.current = false;
     }
+  }, [loading, hasMore, walletAddress, activeTab, page, filters.dateRange, filters.eventTypes, filters.sortOrder, searchQuery]);
 
-    // Check event type filter
-    if (!filters.eventTypes.includes(event.eventType)) {
-      return false;
-    }
 
-    // Check date range filter
-    const now = Date.now();
-    const eventDate = event.timestamp;
-
-    if (filters.dateRange === 'today') {
-      const todayStart = new Date().setHours(0, 0, 0, 0);
-      if (eventDate < todayStart) return false;
-    } else if (filters.dateRange === 'week') {
-      const weekStart = now - 7 * 24 * 60 * 60 * 1000;
-      if (eventDate < weekStart) return false;
-    } else if (filters.dateRange === 'month') {
-      const monthStart = now - 30 * 24 * 60 * 60 * 1000;
-      if (eventDate < monthStart) return false;
-    }
-
-    // Check search query
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-
-      // Ensure we always return a boolean by checking each condition separately
-      const contentMatch = event.content ? event.content.toLowerCase().includes(query) : false;
-      const userNameMatch = event.userName ? event.userName.toLowerCase().includes(query) : false;
-      const eventTypeMatch = event.eventType ? event.eventType.toLowerCase().includes(query) : false;
-      const addressMatch = event.userAddress ? event.userAddress.toLowerCase().includes(query) : false;
-
-      return contentMatch || userNameMatch || eventTypeMatch || addressMatch;
-    }
-
-    return true;
-  }, [filters, searchQuery]);
 
   // Custom hook for intersection observer (for infinite scrolling)
   useEffect(() => {
@@ -305,13 +307,44 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     };
   }, [hasMore, loading, events.length, loadMoreEvents]);
 
-  // Initialize SSE connection for real-time updates
+  // Separate effect for filter/search changes (no SSE reconnection needed)
   useEffect(() => {
+    // When filters or search change, just refetch data without changing SSE connection
+    // Debounce the search query changes to avoid excessive API calls
+    const debounceTimeout = setTimeout(() => {
+      if (searchQuery || filters.dateRange !== 'all' || filters.eventTypes.length !== 5) {
+        fetchFeed(activeTab, true);
+      }
+    }, 300); // 300ms debounce
+
+    return () => clearTimeout(debounceTimeout);
+  }, [filters.dateRange, filters.eventTypes, filters.sortOrder, searchQuery, activeTab, fetchFeed]);
+
+  // Separate effect for initial data loading when tab changes
+  useEffect(() => {
+    // Reset state and fetch initial data when wallet address or tab changes
+    setEvents([]);
+    setError(null);
+    setPage(1);
+    setHasMore(true);
+    
+    // Fetch initial feed data
+    fetchFeed(activeTab, true);
+  }, [walletAddress, activeTab, fetchFeed]);
+
+  // Separate, more stable effect for SSE connection management
+  useEffect(() => {
+    let currentEventSource: EventSource | null = null;
+    let reconnectTimeout: NodeJS.Timeout | null = null;
+    let currentRetryCount = 0;
+    const maxRetries = 5;
+    const baseRetryDelay = 2000;
+
     const setupEventSource = () => {
       // Clear any existing retry timeout
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-        setRetryTimeout(null);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
 
       setConnectionStatus('connecting');
@@ -322,20 +355,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         eventTypes: filters.eventTypes.join(',')
       });
 
-      const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
+      currentEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
 
-      newEventSource.onopen = () => {
+      currentEventSource.onopen = () => {
         setConnectionStatus('connected');
-        setRetryCount(0); // Reset retry count on successful connection
+        currentRetryCount = 0; // Reset retry count on successful connection
+        setRetryCount(0);
         console.log('SSE connection established');
       };
 
-      newEventSource.onmessage = (event) => {
+      currentEventSource.onmessage = (event) => {
         // Set to connected on first message as a fallback
-        if (connectionStatus !== 'connected') {
-          setConnectionStatus('connected');
-          setRetryCount(0); // Reset retry count on successful message
-        }
+        setConnectionStatus('connected');
+        currentRetryCount = 0;
+        setRetryCount(0);
 
         try {
           console.log('SSE raw data:', event.data);
@@ -365,8 +398,46 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               data.event.userAddress = 'unknown-address';
             }
 
-            // Check if event matches current filters
-            if (shouldShowEvent(data.event)) {
+            // Get current filter values for event validation
+            const currentFilters = {
+              eventTypes: filters.eventTypes,
+              dateRange: filters.dateRange,
+              sortOrder: filters.sortOrder,
+              searchQuery: searchQuery
+            };
+
+            // Check if event matches current filters using a simplified validation
+            const shouldShow = (event: FeedEvent): boolean => {
+              if (!event || !event.eventType || typeof event.timestamp !== 'number') {
+                return false;
+              }
+              
+              if (!currentFilters.eventTypes.includes(event.eventType)) {
+                return false;
+              }
+
+              // Basic date range check for real-time events (simplified)
+              if (currentFilters.dateRange === 'today') {
+                const todayStart = new Date().setHours(0, 0, 0, 0);
+                if (event.timestamp < todayStart) return false;
+              }
+
+              // Basic search query check
+              if (currentFilters.searchQuery) {
+                const query = currentFilters.searchQuery.toLowerCase();
+                const content = event.content?.toLowerCase() || '';
+                const userName = event.userName?.toLowerCase() || '';
+                const userAddress = event.userAddress?.toLowerCase() || '';
+                
+                if (!content.includes(query) && !userName.includes(query) && !userAddress.includes(query)) {
+                  return false;
+                }
+              }
+
+              return true;
+            };
+
+            if (shouldShow(data.event)) {
               console.log('Adding new event:', data.event);
               // Add new event to the feed
               setEvents(prevEvents => {
@@ -379,7 +450,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                   return prevEvents.map(e => e.id === data.event.id ? data.event : e);
                 } else {
                   // Add to beginning for 'newest' sort, or in correct position for 'popular'
-                  if (filters.sortOrder === 'newest') {
+                  if (currentFilters.sortOrder === 'newest') {
                     // Add new event to cache
                     addEventToCache(walletAddress, activeTab, data.event)
                       .catch(error => console.error('Error adding event to cache:', error));
@@ -438,83 +509,109 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         }
       };
 
-      newEventSource.onerror = (error) => {
+      currentEventSource.onerror = (error) => {
         console.error('Detailed EventSource error:', {
           error,
-          readyState: newEventSource.readyState,
-          retryCount,
+          readyState: currentEventSource?.readyState,
+          retryCount: currentRetryCount,
           maxRetries
         });
         
         setConnectionStatus('disconnected');
-        newEventSource.close();
+        currentEventSource?.close();
         
         // Implement exponential backoff with retry limits
-        if (retryCount < maxRetries) {
-          const retryDelay = Math.min(baseRetryDelay * Math.pow(2, retryCount), 30000); // Cap at 30 seconds
-          console.log(`Attempting to reconnect in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        if (currentRetryCount < maxRetries) {
+          const retryDelay = Math.min(baseRetryDelay * Math.pow(2, currentRetryCount), 30000); // Cap at 30 seconds
+          console.log(`Attempting to reconnect in ${retryDelay}ms (attempt ${currentRetryCount + 1}/${maxRetries})`);
           
-          const timeoutId = setTimeout(() => {
-            setRetryCount(prev => prev + 1);
+          reconnectTimeout = setTimeout(() => {
+            currentRetryCount++;
+            setRetryCount(currentRetryCount);
             setupEventSource();
           }, retryDelay);
-          
-          setRetryTimeout(timeoutId);
         } else {
           console.error('Max retry attempts reached. SSE connection failed permanently.');
           setConnectionStatus('disconnected');
-          // Optionally show a user-friendly message or fallback to polling
         }
       };
 
-      setEventSource(newEventSource);
+      setEventSource(currentEventSource);
     };
 
-    // Initial fetch
-    fetchFeed(activeTab);
-
-    // Setup SSE
+    // Setup SSE connection
     setupEventSource();
 
-    // Cleanup on unmount
+    // Cleanup on unmount or when dependencies change
     return () => {
-      if (eventSource) {
-        eventSource.close();
+      if (currentEventSource) {
+        currentEventSource.close();
+        currentEventSource = null;
       }
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
+      if (reconnectTimeout) {
+        clearTimeout(reconnectTimeout);
+        reconnectTimeout = null;
       }
+      setEventSource(null);
     };
-  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, filters.sortOrder, shouldShowEvent, connectionStatus, eventSource, retryCount, retryTimeout]);
+  }, [walletAddress, activeTab]); // Only depend on wallet address and active tab
 
-  // Handle tab change
+  // Handle tab change - simplified to avoid triggering unnecessary effects
   const handleTabChange = (value: string) => {
     const newTab = value as 'for-you' | 'following';
+    
+    // Only change tab if it's actually different
+    if (newTab === activeTab) return;
+    
     setActiveTab(newTab);
-    fetchFeed(newTab);
-
-    // Reconnect SSE with new parameters
-    if (eventSource) {
-      eventSource.close();
-    }
+    // The useEffect hooks will handle the rest (data fetching and SSE reconnection)
     
-    // Clear any pending retry timeout
-    if (retryTimeout) {
-      clearTimeout(retryTimeout);
-      setRetryTimeout(null);
-    }
-    
-    // Reset retry state for new tab
-    setRetryCount(0);
-
     // Reset search query when changing tabs
     setSearchQuery('');
   };
 
   // Filter events based on current filters and search query
   const filteredEvents = useMemo(() => {
-    return events.filter(shouldShowEvent);
-  }, [events, shouldShowEvent]);
+    return events.filter(event => {
+      // Inline filtering logic to avoid stale closure issues
+      if (!event || !event.eventType || typeof event.timestamp !== 'number') {
+        return false;
+      }
+
+      // Check event type filter
+      if (!filters.eventTypes.includes(event.eventType)) {
+        return false;
+      }
+
+      // Check date range filter
+      const now = Date.now();
+      const eventDate = event.timestamp;
+
+      if (filters.dateRange === 'today') {
+        const todayStart = new Date().setHours(0, 0, 0, 0);
+        if (eventDate < todayStart) return false;
+      } else if (filters.dateRange === 'week') {
+        const weekStart = now - 7 * 24 * 60 * 60 * 1000;
+        if (eventDate < weekStart) return false;
+      } else if (filters.dateRange === 'month') {
+        const monthStart = now - 30 * 24 * 60 * 60 * 1000;
+        if (eventDate < monthStart) return false;
+      }
+
+      // Check search query
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const contentMatch = event.content ? event.content.toLowerCase().includes(query) : false;
+        const userNameMatch = event.userName ? event.userName.toLowerCase().includes(query) : false;
+        const eventTypeMatch = event.eventType ? event.eventType.toLowerCase().includes(query) : false;
+        const addressMatch = event.userAddress ? event.userAddress.toLowerCase().includes(query) : false;
+
+        return contentMatch || userNameMatch || eventTypeMatch || addressMatch;
+      }
+
+      return true;
+    });
+  }, [events, filters.eventTypes, filters.dateRange, searchQuery]);
 
   // Group events by time period
   const groupedEvents = useMemo(() => {
