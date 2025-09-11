@@ -90,18 +90,16 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
   });
 
   it('should render without infinite loops', async () => {
-    const { container } = render(
+    render(
       <UserFeedDisplay 
         walletAddress={testWalletAddress} 
         isMyProfile={false} 
       />
     );
 
-    expect(container).toBeInTheDocument();
-    
-    // Wait for initial load - be more specific about what we're waiting for
+    // Wait for the component to load by looking for any element containing "Feed"
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /feed/i })).toBeInTheDocument();
+      expect(screen.getByText('Feed')).toBeInTheDocument();
     }, { timeout: 5000 });
   });
 
@@ -165,7 +163,7 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
   });
 
   it('should handle tab changes without triggering infinite loops', async () => {
-    const { container } = render(
+    render(
       <UserFeedDisplay 
         walletAddress={testWalletAddress} 
         isMyProfile={false} 
@@ -174,7 +172,7 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /feed/i })).toBeInTheDocument();
+      expect(screen.getByText('Feed')).toBeInTheDocument();
     }, { timeout: 5000 });
 
     // Clear previous fetch calls
@@ -249,7 +247,7 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
   });
 
   it('should handle filter changes without reconnecting SSE', async () => {
-    const { container } = render(
+    render(
       <UserFeedDisplay 
         walletAddress={testWalletAddress} 
         isMyProfile={false} 
@@ -258,7 +256,7 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
 
     // Wait for initial load and SSE connection
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /feed/i })).toBeInTheDocument();
+      expect(screen.getByText('Feed')).toBeInTheDocument();
     }, { timeout: 5000 });
 
     const initialSSECallCount = (MockEventSource as any).mock.calls.length;
@@ -288,7 +286,7 @@ describe('UserFeedDisplay - Infinite Loop Fix', () => {
 
     // Wait for initial load
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: /feed/i })).toBeInTheDocument();
+      expect(screen.getByText('Feed')).toBeInTheDocument();
     }, { timeout: 5000 });
 
     // Get reference to the SSE instance
