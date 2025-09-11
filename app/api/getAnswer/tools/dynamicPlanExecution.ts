@@ -7,7 +7,27 @@ interface PlanStep {
     input?: string;
 }
 
-export const dynamicPlanExecutionTool: Tool = {
+// Well-known DeFi protocol addresses for analysis
+const DEFI_PROTOCOLS = {
+    // DEX Programs
+    RAYDIUM: 'RVKd61ztZW9GUwhRbbLoYVRE5Xf1B2tVscKqwZqXgEr',
+    SERUM: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin',
+    ORCA: 'DjVE6JNiYqPL2QXyCUUh8rNjHrbz9hXHNYt99MQ59qw1',
+    JUPITER: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+
+    // Lending Protocols  
+    SOLEND: 'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo',
+    MANGO: 'mv3ekLzLbnVPNxjSKvqBpU3ZeZXPQdEC3bp5MDEBG68',
+
+    // Yield Farming
+    TULIP: 'TuLipcqtGVXP9XR62wM8WWCm6a9vhLs7T1uoWBk6FDs',
+    FRANCIUM: 'FC81tbGt6JWRXidaWYFXxGnTk4VgobhJHATvTRVMqgWj',
+
+    // Token Mints
+    USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+    SOL: 'So11111111111111111111111111111111111111112'
+}; export const dynamicPlanExecutionTool: Tool = {
     name: "dynamicPlanExecution",
     description: "Dynamically generates and executes plans to answer user questions",
 
@@ -30,7 +50,13 @@ export const dynamicPlanExecutionTool: Tool = {
             qLower.includes("producing") || qLower.includes("block") ||
             qLower.includes("account") || qLower.includes("balance") ||
             qLower.includes("address") || qLower.includes("transaction") ||
-            qLower.includes("history") || qLower.includes("analytics");
+            qLower.includes("history") || qLower.includes("analytics") ||
+            qLower.includes("defi") || qLower.includes("amm") ||
+            qLower.includes("liquidity") || qLower.includes("lending") ||
+            qLower.includes("yield") || qLower.includes("farming") ||
+            qLower.includes("protocol") || qLower.includes("dex") ||
+            qLower.includes("swap") || qLower.includes("pool") ||
+            qLower.includes("active") || qLower.includes("patterns");
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -55,7 +81,7 @@ export const dynamicPlanExecutionTool: Tool = {
                     status: 200,
                     headers: {
                         "Content-Type": "text/plain; charset=utf-8",
-                        "Content-Length": finalAnswer.length.toString()
+                        "Cache-Control": "no-cache",
                     }
                 })
             };
@@ -253,7 +279,64 @@ function generateSmartPlan(question: string): PlanStep[] {
                 reason: 'Get current slot number'
             });
         }
-    }    // If no specific plan generated, provide general network overview
+    }
+
+    // DeFi and protocol analysis queries
+    if (qLower.includes('defi') || qLower.includes('amm') || qLower.includes('liquidity') ||
+        qLower.includes('lending') || qLower.includes('yield') || qLower.includes('farming') ||
+        qLower.includes('protocol') || qLower.includes('dex') || qLower.includes('swap') ||
+        qLower.includes('pool') || (qLower.includes('active') && qLower.includes('patterns'))) {
+
+        // Get network performance for DeFi activity analysis
+        if (!plan.some(step => step.tool === 'getRecentPerformanceSamples')) {
+            plan.push({
+                tool: 'getRecentPerformanceSamples',
+                reason: 'Get recent network performance metrics to analyze DeFi activity levels'
+            });
+        }
+
+        // Get current epoch context
+        if (!plan.some(step => step.tool === 'getEpochInfo')) {
+            plan.push({
+                tool: 'getEpochInfo',
+                reason: 'Get current epoch and network context for DeFi analysis'
+            });
+        }
+
+        // Get validator information to understand network health for DeFi
+        if (!plan.some(step => step.tool === 'getVoteAccounts')) {
+            plan.push({
+                tool: 'getVoteAccounts',
+                reason: 'Get validator status to assess network stability for DeFi protocols'
+            });
+        }
+
+        // Get current slot and block height for comprehensive activity context
+        if (!plan.some(step => step.tool === 'getSlot')) {
+            plan.push({
+                tool: 'getSlot',
+                reason: 'Get current slot for DeFi activity timing context'
+            });
+        }
+
+        // Add intelligent DeFi analysis steps combining Solana RPC + Moralis API
+        plan.push({
+            tool: 'analyzeDeFiEcosystem',
+            reason: 'Comprehensive DeFi ecosystem analysis using both Solana RPC and Moralis market data'
+        });
+
+        plan.push({
+            tool: 'analyzeDeFiProtocolActivity',
+            reason: 'Analyze specific DeFi protocol account activity and trading patterns'
+        });
+
+        plan.push({
+            tool: 'analyzeDeFiMarketTrends',
+            reason: 'Get real-time market trends, top gainers, and new token listings from Moralis'
+        });
+    }
+
+    // If no specific plan generated, provide general network overview
     if (plan.length === 0) {
         plan.push({
             tool: 'getEpochInfo',
@@ -269,8 +352,16 @@ function generateSmartPlan(question: string): PlanStep[] {
         try {
             let result;
 
+            // Handle custom DeFi analysis methods
+            if (step.tool === 'analyzeDeFiEcosystem') {
+                result = await analyzeDeFiEcosystem(conn);
+            } else if (step.tool === 'analyzeDeFiProtocolActivity') {
+                result = await analyzeDeFiProtocolActivity(conn);
+            } else if (step.tool === 'analyzeDeFiMarketTrends') {
+                result = await analyzeDeFiMarketTrends();
+            }
             // Check if the method exists on the connection object
-            if (typeof conn[step.tool] === 'function') {
+            else if (typeof conn[step.tool] === 'function') {
                 // Handle methods that need specific parameters
                 if (step.tool === 'getRecentPerformanceSamples') {
                     result = await conn[step.tool](20);
@@ -296,6 +387,223 @@ function generateSmartPlan(question: string): PlanStep[] {
     }
 
     return results;
+}
+
+// Enhanced DeFi Analysis Functions using both Solana RPC and Moralis API
+
+async function analyzeDeFiEcosystem(conn: any): Promise<any> {
+    try {
+        console.log('Starting comprehensive DeFi ecosystem analysis...');
+        const ecosystem = {
+            networkMetrics: {} as any,
+            protocolActivity: [] as any[],
+            marketTrends: {} as any,
+            liquidityAnalysis: {} as any,
+            summary: '' as string
+        };
+
+        // Step 1: Network performance analysis (Solana RPC)
+        try {
+            const performance = await conn.getRecentPerformanceSamples(20);
+            if (Array.isArray(performance) && performance.length > 0) {
+                const validSamples = performance.filter(s => s && typeof s.numTransactions === 'number' && s.samplePeriodSecs > 0);
+                if (validSamples.length > 0) {
+                    const avgTps = validSamples.reduce((acc, s) => acc + (s.numTransactions / s.samplePeriodSecs), 0) / validSamples.length;
+                    const maxTps = Math.max(...validSamples.map(s => s.numTransactions / s.samplePeriodSecs));
+                    ecosystem.networkMetrics = {
+                        avgTps: Math.round(avgTps),
+                        maxTps: Math.round(maxTps),
+                        samples: validSamples.length,
+                        defiActivityLevel: avgTps > 2000 ? 'High' : avgTps > 1000 ? 'Medium' : 'Low'
+                    };
+                }
+            }
+        } catch (error) {
+            console.warn('Network metrics analysis failed:', error);
+            ecosystem.networkMetrics = { error: 'Failed to fetch network metrics' };
+        }
+
+        // Step 2: Moralis market trends analysis
+        try {
+            // Import Moralis functions dynamically to avoid import issues
+            const { getTopGainers, getTopTokens, getTrendingTokens } = await import('../../../../lib/moralis-api');
+
+            const [topGainers, topTokens, trending] = await Promise.allSettled([
+                getTopGainers(10, 'mainnet'),
+                getTopTokens(20, 'mainnet'),
+                getTrendingTokens(10, '24h', 'mainnet')
+            ]);
+
+            ecosystem.marketTrends = {
+                topGainers: topGainers.status === 'fulfilled' ? topGainers.value : null,
+                topTokens: topTokens.status === 'fulfilled' ? topTokens.value : null,
+                trending: trending.status === 'fulfilled' ? trending.value : null
+            };
+        } catch (error) {
+            console.warn('Moralis market trends analysis failed:', error);
+            ecosystem.marketTrends = { error: 'Failed to fetch market trends from Moralis' };
+        }
+
+        // Step 3: Major protocol analysis
+        const protocolPromises = Object.entries(DEFI_PROTOCOLS).map(async ([name, address]) => {
+            try {
+                const [accountInfo, balance] = await Promise.all([
+                    conn.getAccountInfo(address),
+                    conn.getBalance(address)
+                ]);
+
+                return {
+                    name,
+                    address,
+                    balance: balance || 0,
+                    status: accountInfo?.value ? 'Active' : 'Inactive',
+                    executable: accountInfo?.value?.executable || false,
+                    dataSize: accountInfo?.value?.data?.length || 0
+                };
+            } catch (error) {
+                return {
+                    name,
+                    address,
+                    status: 'Error',
+                    error: (error as Error).message
+                };
+            }
+        });
+
+        ecosystem.protocolActivity = await Promise.all(protocolPromises);
+
+        // Generate intelligent summary
+        const activeProtocols = ecosystem.protocolActivity.filter(p => p.status === 'Active').length;
+        const networkActivity = ecosystem.networkMetrics.defiActivityLevel || 'Unknown';
+
+        ecosystem.summary = `DeFi Ecosystem Health: ${activeProtocols}/${ecosystem.protocolActivity.length} protocols active, Network activity: ${networkActivity}`;
+
+        return ecosystem;
+    } catch (error) {
+        console.error('Error in analyzeDeFiEcosystem:', error);
+        return { error: (error as Error).message };
+    }
+}
+
+async function analyzeDeFiProtocolActivity(conn: any): Promise<any> {
+    try {
+        console.log('Analyzing DeFi protocol activity patterns...');
+        const activity = {
+            dexAnalysis: {} as any,
+            lendingAnalysis: {} as any,
+            yieldFarmingAnalysis: {} as any,
+            tokenData: {} as any
+        };
+
+        // Analyze DEX protocols
+        const dexProtocols = ['RAYDIUM', 'SERUM', 'ORCA', 'JUPITER'];
+        const dexResults = await Promise.allSettled(
+            dexProtocols.map(async (protocol) => {
+                const address = DEFI_PROTOCOLS[protocol as keyof typeof DEFI_PROTOCOLS];
+                try {
+                    // Get swap data from Moralis if available
+                    const { getSwapsByTokenAddress } = await import('../../../../lib/moralis-api');
+                    const swaps = await getSwapsByTokenAddress(address, { limit: 10 }, 'mainnet');
+
+                    const accountInfo = await conn.getAccountInfo(address);
+                    return {
+                        protocol,
+                        swapActivity: swaps,
+                        accountActive: !!accountInfo?.value,
+                        accountData: accountInfo?.value
+                    };
+                } catch (error) {
+                    return {
+                        protocol,
+                        error: (error as Error).message
+                    };
+                }
+            })
+        );
+
+        activity.dexAnalysis = dexResults.map((result, index) => ({
+            protocol: dexProtocols[index],
+            data: result.status === 'fulfilled' ? result.value : { error: 'Failed to analyze' }
+        }));
+
+        // Analyze major tokens with price data
+        const majorTokens = ['USDC', 'USDT', 'SOL'];
+        try {
+            const { getTokenPrice } = await import('../../../../lib/moralis-api');
+            const tokenPrices = await Promise.allSettled(
+                majorTokens.map(token => {
+                    const address = DEFI_PROTOCOLS[token as keyof typeof DEFI_PROTOCOLS];
+                    return getTokenPrice(address, 'mainnet');
+                })
+            );
+
+            activity.tokenData = majorTokens.map((token, index) => ({
+                token,
+                address: DEFI_PROTOCOLS[token as keyof typeof DEFI_PROTOCOLS],
+                priceData: tokenPrices[index].status === 'fulfilled' ? tokenPrices[index].value : null
+            }));
+        } catch (error) {
+            console.warn('Token price analysis failed:', error);
+            activity.tokenData = { error: 'Failed to fetch token prices' };
+        }
+
+        return activity;
+    } catch (error) {
+        console.error('Error in analyzeDeFiProtocolActivity:', error);
+        return { error: (error as Error).message };
+    }
+}
+
+async function analyzeDeFiMarketTrends(): Promise<any> {
+    try {
+        console.log('Analyzing DeFi market trends with Moralis API...');
+        const trends = {
+            newListings: null as any,
+            marketData: null as any,
+            topPerformers: null as any,
+            insights: [] as string[]
+        };
+
+        try {
+            const { getNewListings, getTokenMarketData, getTopGainers } = await import('../../../../lib/moralis-api');
+
+            // Get comprehensive market data
+            const [newListings, marketData, topGainers] = await Promise.allSettled([
+                getNewListings(20, 7, 'mainnet'),
+                getTokenMarketData({ limit: 50, sort_by: 'volume', sort_order: 'desc' }, 'mainnet'),
+                getTopGainers(15, 'mainnet')
+            ]);
+
+            trends.newListings = newListings.status === 'fulfilled' ? newListings.value : null;
+            trends.marketData = marketData.status === 'fulfilled' ? marketData.value : null;
+            trends.topPerformers = topGainers.status === 'fulfilled' ? topGainers.value : null;
+
+            // Generate insights
+            if (trends.newListings && Array.isArray(trends.newListings)) {
+                trends.insights.push(`${trends.newListings.length} new tokens listed in the past 7 days`);
+            }
+
+            if (trends.topPerformers && Array.isArray(trends.topPerformers)) {
+                const avgGain = trends.topPerformers
+                    .slice(0, 5)
+                    .reduce((acc, token) => acc + (token.priceChange24h || 0), 0) / 5;
+                trends.insights.push(`Top 5 gainers averaging ${avgGain.toFixed(2)}% 24h change`);
+            }
+
+            if (trends.marketData && trends.marketData.tokens) {
+                trends.insights.push(`Market analysis includes ${trends.marketData.tokens.length} tokens by volume`);
+            }
+
+        } catch (error) {
+            console.warn('Moralis API calls failed:', error);
+            trends.insights.push('Market trend analysis limited due to API access');
+        }
+
+        return trends;
+    } catch (error) {
+        console.error('Error in analyzeDeFiMarketTrends:', error);
+        return { error: (error as Error).message };
+    }
 }
 
 async function synthesizeResults(question: string, plan: PlanStep[], results: Record<string, any>): Promise<string> {
@@ -345,6 +653,43 @@ ${result.length > sampleSize ? `  ... and ${result.length - sampleSize} more tra
                     return `${method}: Transaction ${success ? 'succeeded' : 'failed'} - Fee: ${fee} lamports, Accounts involved: ${accounts}, Block time: ${tx.blockTime || 'unknown'}`;
                 }
 
+                // Handle DeFi protocol analysis
+                if (method === 'analyzeDeFiProtocols' && result && result.protocols) {
+                    const activeProtocols = result.protocols.filter((p: any) => p.status === 'Active');
+                    const summary = `DeFi Protocol Analysis: ${result.activeProtocols}/${result.totalAccounts} protocols active`;
+                    const protocolDetails = activeProtocols.slice(0, 5).map((p: any) =>
+                        `  ${p.name}: ${(p.balance / 1e9).toFixed(4)} SOL, ${p.executable ? 'Program' : 'Account'}`
+                    ).join('\n');
+                    return `${method}: ${summary}\n${protocolDetails}${activeProtocols.length > 5 ? '\n  ... and more' : ''}`;
+                }
+
+                // Handle DeFi token analysis
+                if (method === 'analyzeDeFiTokens' && result && result.tokens) {
+                    const tokenSummary = result.tokens.map((t: any) =>
+                        `  ${t.name}: ${(t.balance / 1e9).toFixed(4)} SOL (${t.accountType})`
+                    ).join('\n');
+                    return `${method}: Major DeFi Token Analysis:\n${tokenSummary}`;
+                }
+
+                // Handle DeFi activity analysis
+                if (method === 'analyzeDeFiActivity' && result) {
+                    let activitySummary = `${method}: DeFi Activity Analysis:\n`;
+
+                    if (result.networkMetrics && result.networkMetrics.avgTps) {
+                        activitySummary += `  Network: ${result.networkMetrics.avgTps} avg TPS (${result.networkMetrics.minTps}-${result.networkMetrics.maxTps} range)\n`;
+                    }
+
+                    if (result.defiInferences && result.defiInferences.length > 0) {
+                        activitySummary += `  Insights: ${result.defiInferences.slice(0, 3).join('; ')}\n`;
+                    }
+
+                    if (result.liquidityIndicators && result.liquidityIndicators.length > 0) {
+                        activitySummary += `  Liquidity: ${result.liquidityIndicators[0]}\n`;
+                    }
+
+                    return activitySummary;
+                }
+
                 // Handle other large datasets by limiting size
                 let jsonString = JSON.stringify(result, null, 2);
                 if (jsonString.length > 10000) {
@@ -378,6 +723,11 @@ Instructions:
 - Be specific with numbers, values, and technical details from the data
 - For account analytics, provide insights about account type, purpose, activity patterns, and potential use cases
 - For transaction analysis, explain the transaction flow, involved accounts, and any notable patterns
+- For DeFi analysis, use network performance metrics (TPS, validator health) to infer DeFi activity levels and provide insights about:
+  * Current network throughput capacity for DeFi protocols
+  * Network stability and validator participation affecting DeFi reliability
+  * Transaction volume patterns that may indicate DeFi usage trends
+  * General insights about AMM liquidity, yield farming, and lending based on network activity
 - If analyzing balances, provide context about the amounts in both lamports and SOL
 - If any data is missing or errored, mention it briefly but focus on what was successfully retrieved
 - Use AI-powered analysis to identify patterns, anomalies, or interesting insights from the data
