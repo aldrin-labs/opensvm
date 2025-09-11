@@ -66,6 +66,9 @@ interface ChatUIProps {
   onTabDelete?: (tabId: string) => void;
   historyActive?: boolean;
   activeTabId?: string | null;
+  // Chat persistence props
+  userId?: string;
+  enablePersistence?: boolean;
 }
 
 // Lightweight dynamic height wrapper replacing fixed 400px container.
@@ -140,6 +143,8 @@ export function ChatUI({
   onTabDelete,
   historyActive = false,
   activeTabId = null,
+  userId,
+  enablePersistence = false,
 }: ChatUIProps) {
   if (__AI_DEBUG__) {
     console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
@@ -1057,6 +1062,8 @@ export function ChatUI({
         onTabClick={onTabClick || (() => { })}
         onTabDelete={onTabDelete}
         className="h-full"
+        userId={userId}
+        enablePersistence={enablePersistence}
       />
     </div>
   );

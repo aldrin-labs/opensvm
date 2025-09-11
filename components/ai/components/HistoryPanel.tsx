@@ -1,8 +1,10 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
-import { Clock, MessageCircle, Coins, Calendar, Search, Trash2, MoreVertical } from 'lucide-react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { Clock, MessageCircle, Coins, Calendar, Search, Trash2, MoreVertical, RefreshCw, Database } from 'lucide-react';
 import type { ChatTab } from '../hooks/useChatTabs';
+import { chatPersistenceService } from '../../../lib/ai/services/ChatPersistenceService';
+import type { AIChatModel, ChatSearchResult, MessageSearchResult } from '../../../lib/ai/models/ChatModels';
 
 interface HistoryPanelProps {
     tabs: ChatTab[];
@@ -10,6 +12,8 @@ interface HistoryPanelProps {
     onTabClick: (tabId: string) => void;
     onTabDelete?: (tabId: string) => void;
     className?: string;
+    userId?: string;
+    enablePersistence?: boolean;
 }
 
 interface ChatStats {
@@ -69,15 +73,107 @@ export function HistoryPanel({
     activeTabId,
     onTabClick,
     onTabDelete,
-    className = ''
+    className = '',
+    userId,
+    enablePersistence = false
 }: HistoryPanelProps) {
     const [searchQuery, setSearchQuery] = useState('');
     const [sortBy, setSortBy] = useState<'lastUpdated' | 'created' | 'messages' | 'tokens'>('lastUpdated');
     const [expandedItem, setExpandedItem] = useState<string | null>(null);
+    const [persistedChats, setPersistedChats] = useState<AIChatModel[]>([]);
+    const [searchResults, setSearchResults] = useState<MessageSearchResult[]>([]);
+    const [chatSearchResults, setChatSearchResults] = useState<ChatSearchResult[]>([]);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isLoadingPersisted, setIsLoadingPersisted] = useState(false);
+    const [searchMode, setSearchMode] = useState<'local' | 'semantic'>('local');
+    const [searchType, setSearchType] = useState<'messages' | 'chats' | 'both'>('both');
+
+    // Configure persistence service when component mounts or userId changes
+    useEffect(() => {
+        if (enablePersistence && userId) {
+            chatPersistenceService.configure({
+                autoSave: true,
+                userId,
+                enableSearch: true
+            });
+            loadPersistedChats();
+        }
+    }, [userId, enablePersistence]);
+
+    // Auto-save active tab changes
+    useEffect(() => {
+        if (enablePersistence && userId && activeTabId) {
+            const activeTab = tabs.find(tab => tab.id === activeTabId);
+            if (activeTab) {
+                chatPersistenceService.saveChatFromTab(activeTab).catch(console.error);
+            }
+        }
+    }, [activeTabId, tabs, userId, enablePersistence]);
+
+    const loadPersistedChats = async () => {
+        if (!userId) return;
+
+        setIsLoadingPersisted(true);
+        try {
+            const chats = await chatPersistenceService.getUserChats(userId);
+            setPersistedChats(chats);
+        } catch (error) {
+            console.error('Error loading persisted chats:', error);
+        } finally {
+            setIsLoadingPersisted(false);
+        }
+    };
+
+    const performSemanticSearch = async (query: string) => {
+        if (!query.trim() || !userId) return;
+
+        setIsSearching(true);
+        try {
+            if (searchType === 'messages' || searchType === 'both') {
+                const results = await chatPersistenceService.searchChatHistory({
+                    query,
+                    user_id: userId,
+                    limit: 20,
+                    include_context: true
+                });
+                setSearchResults(results);
+            }
+
+            if (searchType === 'chats' || searchType === 'both') {
+                const chatResults = await chatPersistenceService.searchChats({
+                    query,
+                    user_id: userId,
+                    limit: 10,
+                    search_titles: true,
+                    search_summaries: true
+                });
+                setChatSearchResults(chatResults);
+            }
+        } catch (error) {
+            console.error('Error performing semantic search:', error);
+            setSearchResults([]);
+            setChatSearchResults([]);
+        } finally {
+            setIsSearching(false);
+        }
+    };
+
+    // Handle search query changes
+    useEffect(() => {
+        if (searchMode === 'semantic' && searchQuery.trim()) {
+            const debounceTimer = setTimeout(() => {
+                performSemanticSearch(searchQuery);
+            }, 500);
+            return () => clearTimeout(debounceTimer);
+        } else {
+            setSearchResults([]);
+            setChatSearchResults([]);
+        }
+    }, [searchQuery, searchMode, searchType, userId]);
 
     // Convert tabs to stats with proper date handling
     const chatStats: ChatStats[] = useMemo(() => {
-        return tabs.map(tab => {
+        const localChats = tabs.map(tab => {
             // Use lastActivity as creation time (or current time if not available)
             const createdAt = new Date(tab.lastActivity || Date.now());
             // For last updated, use the most recent activity or creation time
@@ -96,7 +192,23 @@ export function HistoryPanel({
                 status: tab.status
             };
         });
-    }, [tabs]);    // Filter and sort chats
+
+        // Add persisted chats that are not in current tabs
+        const persistedChatsStats = persistedChats
+            .filter(chat => !tabs.find(tab => tab.id === chat.id))
+            .map(chat => ({
+                id: chat.id,
+                name: chat.title,
+                createdAt: new Date(chat.created_at),
+                lastUpdated: new Date(chat.updated_at),
+                messageCount: chat.metadata.total_messages,
+                estimatedTokens: chat.metadata.estimated_tokens,
+                mode: chat.mode,
+                status: chat.status
+            }));
+
+        return [...localChats, ...persistedChatsStats];
+    }, [tabs, persistedChats]);    // Filter and sort chats
     const filteredAndSortedChats = useMemo(() => {
         let filtered = chatStats;
 
@@ -141,9 +253,29 @@ export function HistoryPanel({
             {/* Header */}
             <div className="flex-shrink-0 p-4 border-b border-white/20">
                 <div className="flex items-center justify-between mb-4">
-                    <h2 className="text-lg font-semibold">Chat History</h2>
-                    <div className="text-sm text-white/60">
-                        {totalStats.totalChats} chats
+                    <div className="flex items-center gap-2">
+                        <h2 className="text-lg font-semibold">Chat History</h2>
+                        {enablePersistence && userId && (
+                            <div className="flex items-center gap-1">
+                                <Database size={14} className="text-green-400" />
+                                <span className="text-xs text-green-400">Persisted</span>
+                            </div>
+                        )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <div className="text-sm text-white/60">
+                            {totalStats.totalChats} chats
+                        </div>
+                        {enablePersistence && (
+                            <button
+                                onClick={loadPersistedChats}
+                                disabled={isLoadingPersisted}
+                                className="p-1 hover:bg-white/10 rounded transition-colors"
+                                title="Refresh persisted chats"
+                            >
+                                <RefreshCw size={14} className={`text-white/60 ${isLoadingPersisted ? 'animate-spin' : ''}`} />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -152,12 +284,80 @@ export function HistoryPanel({
                     <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-white/50" />
                     <input
                         type="text"
-                        placeholder="Search chats..."
+                        placeholder={searchMode === 'semantic' ? "Semantic search across all chats..." : "Search chats..."}
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
                         className="w-full bg-white/10 border border-white/20 rounded-lg pl-10 pr-4 py-2 text-sm focus:outline-none focus:border-white/40 focus:bg-white/15"
                     />
+                    {isSearching && (
+                        <RefreshCw size={16} className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/50 animate-spin" />
+                    )}
                 </div>
+
+                {/* Search mode toggle (only show if persistence is enabled) */}
+                {enablePersistence && userId && (
+                    <div className="space-y-2 mb-3">
+                        <div className="flex items-center gap-2">
+                            <span className="text-sm text-white/60">Mode:</span>
+                            <div className="flex bg-white/10 rounded-lg p-1">
+                                <button
+                                    onClick={() => setSearchMode('local')}
+                                    className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'local'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-white/60 hover:text-white/80'
+                                        }`}
+                                >
+                                    Local
+                                </button>
+                                <button
+                                    onClick={() => setSearchMode('semantic')}
+                                    className={`px-2 py-1 text-xs rounded transition-colors ${searchMode === 'semantic'
+                                        ? 'bg-white/20 text-white'
+                                        : 'text-white/60 hover:text-white/80'
+                                        }`}
+                                >
+                                    Semantic
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* Search type toggle (only show for semantic search) */}
+                        {searchMode === 'semantic' && (
+                            <div className="flex items-center gap-2">
+                                <span className="text-sm text-white/60">Type:</span>
+                                <div className="flex bg-white/10 rounded-lg p-1">
+                                    <button
+                                        onClick={() => setSearchType('both')}
+                                        className={`px-2 py-1 text-xs rounded transition-colors ${searchType === 'both'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-white/60 hover:text-white/80'
+                                            }`}
+                                    >
+                                        Both
+                                    </button>
+                                    <button
+                                        onClick={() => setSearchType('chats')}
+                                        className={`px-2 py-1 text-xs rounded transition-colors ${searchType === 'chats'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-white/60 hover:text-white/80'
+                                            }`}
+                                    >
+                                        Chats
+                                    </button>
+                                    <button
+                                        onClick={() => setSearchType('messages')}
+                                        className={`px-2 py-1 text-xs rounded transition-colors ${searchType === 'messages'
+                                            ? 'bg-white/20 text-white'
+                                            : 'text-white/60 hover:text-white/80'
+                                            }`}
+                                    >
+                                        Messages
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
 
                 {/* Sort selector */}
                 <div className="flex items-center gap-2">
@@ -193,11 +393,82 @@ export function HistoryPanel({
 
             {/* Chat list */}
             <div className="flex-1 overflow-y-auto p-2">
-                {filteredAndSortedChats.length === 0 ? (
-                    <div className="text-center text-white/50 py-8">
-                        {searchQuery ? 'No chats found matching your search.' : 'No chat history yet.'}
+                {/* Show semantic search results if available */}
+                {searchMode === 'semantic' && searchResults.length > 0 && (
+                    <div className="mb-4">
+                        <h3 className="text-sm font-medium text-white/80 mb-2 flex items-center gap-2">
+                            <Search size={14} />
+                            Search Results ({searchResults.length})
+                        </h3>
+                        <div className="space-y-2">
+                            {searchResults.map((result, index) => (
+                                <div
+                                    key={`${result.message.id}-${index}`}
+                                    className="bg-blue-500/10 border border-blue-500/20 rounded-lg p-3 cursor-pointer hover:bg-blue-500/15 transition-colors"
+                                    onClick={() => onTabClick(result.chat.id)}
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-medium truncate text-blue-300">{result.chat.title}</h4>
+                                            <div className="text-xs text-white/60 mt-1">
+                                                Relevance: {(result.relevance_score * 100).toFixed(1)}%
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-white/80 bg-white/5 rounded p-2 mt-2">
+                                        <div className="font-medium text-xs text-white/60 mb-1">
+                                            {result.message.role === 'user' ? 'You' : 'Assistant'}:
+                                        </div>
+                                        {result.message.content.substring(0, 150)}
+                                        {result.message.content.length > 150 && '...'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <hr className="border-white/20 my-4" />
                     </div>
-                ) : (
+                )}
+
+                {/* Show chat search results if available */}
+                {searchMode === 'semantic' && chatSearchResults.length > 0 && (
+                    <div className="mb-4">
+                        <h3 className="text-sm font-medium text-white/80 mb-2 flex items-center gap-2">
+                            <MessageCircle size={14} />
+                            Chat Results ({chatSearchResults.length})
+                        </h3>
+                        <div className="space-y-2">
+                            {chatSearchResults.map((result, index) => (
+                                <div
+                                    key={`${result.chat.id}-chat-${index}`}
+                                    className="bg-green-500/10 border border-green-500/20 rounded-lg p-3 cursor-pointer hover:bg-green-500/15 transition-colors"
+                                    onClick={() => onTabClick(result.chat.id)}
+                                >
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-medium truncate text-green-300">{result.chat.title}</h4>
+                                            <div className="text-xs text-white/60 mt-1">
+                                                Relevance: {(result.relevance_score * 100).toFixed(1)}% • {result.messages.length} messages
+                                            </div>
+                                            <div className="text-xs text-white/50 mt-1">
+                                                Matched: {result.matched_content.join(', ')}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="text-sm text-white/80 bg-white/5 rounded p-2 mt-2">
+                                        <div className="font-medium text-xs text-white/60 mb-1">
+                                            Summary:
+                                        </div>
+                                        {result.chat.metadata.summary || 'No summary available'}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        <hr className="border-white/20 my-4" />
+                    </div>
+                )}
+
+                {/* Regular chat list (show when no semantic search or when local search) */}
+                {(searchMode === 'local' || !searchQuery.trim()) && filteredAndSortedChats.length > 0 && (
                     <div className="space-y-2">
                         {filteredAndSortedChats.map((chat) => (
                             <div
@@ -285,6 +556,19 @@ export function HistoryPanel({
                         ))}
                     </div>
                 )}
+
+                {/* Show empty state when no chats or search results */}
+                {((searchMode === 'local' || !searchQuery.trim()) && filteredAndSortedChats.length === 0) &&
+                    (searchMode !== 'semantic' || searchResults.length === 0) && (
+                        <div className="text-center text-white/50 py-8">
+                            {searchQuery ? 'No chats found matching your search.' : 'No chat history yet.'}
+                            {enablePersistence && userId && !isLoadingPersisted && (
+                                <div className="mt-2 text-xs">
+                                    Your chats will be automatically saved when logged in.
+                                </div>
+                            )}
+                        </div>
+                    )}
             </div>
         </div>
     );

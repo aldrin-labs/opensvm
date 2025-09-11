@@ -188,7 +188,7 @@ function useKeyboardDetection() {
 // Main accessibility provider
 export function AccessibilityProvider({ children }: { children: React.ReactNode }) {
   const keyboardNavigation = useKeyboardDetection();
-  const [announcer, setAnnouncer] = useState<((message: string, priority?: 'polite' | 'assertive') => void) | null>(null);
+  const announcerRef = useRef<((message: string, priority?: 'polite' | 'assertive') => void) | null>(null);
   const [reducedMotion, setReducedMotion] = useState(false);
   const [highContrast, setHighContrast] = useState(false);
 
@@ -244,8 +244,20 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
     },
   };
 
+  // Stable announcer function that uses the ref
+  const stableAnnouncer = useCallback((message: string, priority?: 'polite' | 'assertive') => {
+    if (announcerRef.current) {
+      announcerRef.current(message, priority);
+    }
+  }, []);
+
+  // Handle announcer registration without causing render-time state updates
+  const handleAnnouncerReady = useCallback((announcer: (message: string, priority?: 'polite' | 'assertive') => void) => {
+    announcerRef.current = announcer;
+  }, []);
+
   const contextValue: AccessibilityContextType = {
-    announceToScreenReader: announcer || (() => { }),
+    announceToScreenReader: stableAnnouncer,
     focusManager,
     keyboardNavigation,
     reducedMotion,
@@ -255,7 +267,7 @@ export function AccessibilityProvider({ children }: { children: React.ReactNode 
 
   return (
     <AccessibilityContext.Provider value={contextValue}>
-      <ScreenReaderAnnouncer onAnnouncerReady={setAnnouncer} />
+      <ScreenReaderAnnouncer onAnnouncerReady={handleAnnouncerReady} />
       {children}
     </AccessibilityContext.Provider>
   );
