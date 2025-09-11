@@ -134,6 +134,7 @@ export function ChatLayout({
   // Synchronous pre-paint width uplift & attribute stamping to eliminate race where tests
   // read 560px before post-mount reconciliation upgrades to persisted 640px.
   // Runs before first paint (layout effect) so inline style + data attribute reflect persisted width immediately.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -608,7 +609,7 @@ export function ChatLayout({
             transform: `translateX(${isOpen ? '0' : '100%'})`,
             zIndex: 99999
           }}
-          className={`bg-black shadow-xl ${className} ${!isResizing.current && 'transition-transform duration-300 ease-in-out'}`}
+          className={`bg-black shadow-xl overflow-hidden ${className} ${!isResizing.current && 'transition-transform duration-300 ease-in-out'}`}
           role="complementary"
           aria-label="AI Chat Sidebar"
           data-ai-sidebar

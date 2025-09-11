@@ -8,14 +8,17 @@ import type {
   AgentAction,
   AgentCapability
 } from '../types';
-import { generateSecureActionId } from '@/lib/crypto-utils';
+import { generateSecureActionId } from '../../../lib/crypto-utils';
 
 export class SolanaAgent {
   private config: AgentConfig;
   private context: AgentContext;
+  private isAgentModeActive: boolean = false;
 
   constructor(config: AgentConfig) {
     this.config = config;
+    
+    // Simple system context - detailed API knowledge is now applied server-side in getAnswer.ts
     this.context = {
       messages: [{
         role: 'system',
@@ -23,6 +26,15 @@ export class SolanaAgent {
       }]
     };
   }
+
+  /**
+   * Set agent mode status
+   */
+  public setAgentMode(isActive: boolean): void {
+    this.isAgentModeActive = isActive;
+    console.log(`Agent mode ${isActive ? 'activated' : 'deactivated'}`);
+  }
+
 
   private extractActionsFromResponse(response: string): AgentAction[] {
     const actionMatches = response.match(/\[ACTION\](.*?)\[\/ACTION\]/g) || [];
@@ -47,7 +59,7 @@ export class SolanaAgent {
     // Add message to context
     this.context.messages.push(message);
 
-    // If this is a planning request (system message), generate action plan
+    // If this is a planning request (system message), generate action plan (legacy support)
     if (message.role === 'system') {
       const planningResponse = {
         role: 'assistant' as const,
@@ -69,27 +81,56 @@ export class SolanaAgent {
     }
 
     try {
-      // Get the last assistant message which should contain the action plan
+      // Always honor explicit [ACTION] tags from previous assistant replies (back-compat)
       const lastAssistantMessage = [...this.context.messages]
         .reverse()
         .find(m => m.role === 'assistant') || null;
-
-      // Extract actions from the last assistant message if it exists
-      const actions = lastAssistantMessage
+      const legacyActions = lastAssistantMessage
         ? this.extractActionsFromResponse(lastAssistantMessage.content)
         : [];
 
-      // Execute actions if present, otherwise use capability directly
-      const result = actions.length > 0
-        ? await this.executeActions(actions)
-        : await this.executeCapability(capability, message);
+      if (legacyActions.length > 0) {
+        const legacyResults = await this.executeActions(legacyActions);
+        const legacyResponse = this.createResponse(capability.type, legacyResults);
+        this.context.messages.push(legacyResponse);
+        return legacyResponse;
+      }
 
-      // Generate response using result
+      // New flow: If the chosen capability is planning, generate a plan, render it, then execute it.
+      if (capability.type === 'planning') {
+        const planningResults = await this.executeCapability(capability, message);
+        const plan = this.extractPlanFromResult(planningResults);
+
+        // Render plan for the user (no arbitrary 3-step cap)
+        const planText = plan && plan.length ? this.formatPlan(plan) : 'No actionable steps were identified for this request.';
+        const planMessage: Message = {
+          role: 'assistant',
+          content: planText,
+          metadata: { type: 'planning', data: { plan } }
+        };
+        this.context.messages.push(planMessage);
+
+        // Execute the plan steps if any
+        if (plan && plan.length) {
+          const executionResults = await this.executePlanSteps(plan, message);
+          const finalText = this.generateResponse(executionResults);
+          const finalMessage: Message = {
+            role: 'assistant',
+            content: finalText,
+            metadata: { type: 'general', data: executionResults }
+          };
+          this.context.messages.push(finalMessage);
+          return finalMessage;
+        }
+
+        // Nothing to execute; return the plan itself
+        return planMessage;
+      }
+
+      // Non-planning capabilities: execute directly
+      const result = await this.executeCapability(capability, message);
       const response = this.createResponse(capability.type, result);
-
-      // Add response to context
       this.context.messages.push(response);
-
       return response;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error);
@@ -172,7 +213,7 @@ export class SolanaAgent {
   }
 
   private async executeActions(actions: AgentAction[]): Promise<any[]> {
-    const results = [];
+    const results: any[] = [];
     for (const action of actions) {
       try {
         // Parse action type to extract capability
@@ -283,7 +324,7 @@ export class SolanaAgent {
     const capabilityAliases: Record<string, string[]> = {
       'network': ['net', 'performance', 'status', 'metrics'],
       'transaction': ['tx', 'transactions'],
-      'account': ['accounts', 'wallet', 'balance']
+      'account': ['accounts', 'wallet', 'balance', 'addy', 'acc', 'address']
     };
 
     // Check if the action type matches any alias for the capability
@@ -293,7 +334,7 @@ export class SolanaAgent {
   private async executeCapability(capability: AgentCapability, message: Message): Promise<any> {
     // Get all tools for this capability
     const tools = capability.tools;
-    const results = [];
+    const results: any[] = [];
 
     // Filter tools based on relevance to the message
     const relevantTools = tools.filter(tool => {
@@ -369,6 +410,175 @@ export class SolanaAgent {
     }
   }
 
+  // Extract a plan array from a capability result (handles several shapes)
+  private extractPlanFromResult(result: any): Array<{ tool: string; reason?: string; input?: string }> | null {
+    try {
+      // Case 1: Array of tool execution results with 'plan' payload
+      if (Array.isArray(result)) {
+        for (const item of result) {
+          const data = item?.result?.result ?? item?.result ?? item;
+          if (data && typeof data === 'object' && Array.isArray((data as any).plan)) {
+            return (data as any).plan as Array<{ tool: string; reason?: string; input?: string }>;
+          }
+        }
+      }
+      // Case 2: Object with plan
+      if (result && typeof result === 'object' && Array.isArray((result as any).plan)) {
+        return (result as any).plan as Array<{ tool: string; reason?: string; input?: string }>;
+      }
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  private formatPlan(plan: Array<{ tool: string; reason?: string; input?: string }>): string {
+    const lines: string[] = ['📋 **Action Plan**', ''];
+
+    if (!plan || plan.length === 0) {
+      return 'No actionable steps identified.';
+    }
+
+    plan.forEach((step, idx) => {
+      const parts: string[] = [];
+
+      // Format the tool name nicely
+      const toolDisplay = step.tool
+        .replace(/_/g, ' ')
+        .replace(/([A-Z])/g, ' $1')
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      lines.push(`**Step ${idx + 1}: ${toolDisplay}**`);
+
+      if (step.reason) {
+        lines.push(`   📝 ${step.reason}`);
+      }
+
+      if (step.input) {
+        // Truncate long inputs for readability
+        const inputDisplay = step.input.length > 100
+          ? step.input.substring(0, 97) + '...'
+          : step.input;
+        lines.push(`   📥 Input: \`${inputDisplay}\``);
+      }
+
+      lines.push(''); // Add spacing between steps
+    });
+
+    return lines.join('\n').trim();
+  }
+
+  private findToolByName(toolName: string): { capability: AgentCapability; tool: Tool } | null {
+    const nameLc = (toolName || '').toLowerCase();
+    for (const cap of this.config.capabilities) {
+      for (const tool of cap.tools) {
+        if (tool.name.toLowerCase() === nameLc) {
+          return { capability: cap, tool };
+        }
+      }
+    }
+    return null;
+  }
+
+  private async executePlanSteps(
+    plan: Array<{ tool: string; reason?: string; input?: string }>,
+    originalMessage: Message
+  ): Promise<any[]> {
+    // If agent mode is active, use the enhanced plan dispatcher
+    if (this.isAgentModeActive) {
+      return this.executeWithPlanDispatcher(plan, originalMessage);
+    }
+
+    // Legacy execution flow for non-agent mode
+    const out: any[] = [];
+    for (let i = 0; i < plan.length; i++) {
+      const step = plan[i];
+      const found = this.findToolByName(step.tool);
+      if (!found) {
+        out.push({
+          action: { type: step.tool, description: step.reason || '' },
+          status: 'failed',
+          error: `No matching tool found for "${step.tool}"`
+        });
+        continue;
+      }
+      try {
+        const paramsMessage: Message = {
+          role: 'user',
+          content: step.input?.trim() ? step.input : originalMessage.content
+        };
+        const res = await this.executeTool(found.tool, paramsMessage);
+        out.push({
+          tool: found.tool.name,
+          result: res,
+          status: 'completed' as const
+        });
+      } catch (e) {
+        out.push({
+          tool: found.tool.name,
+          status: 'failed' as const,
+          error: e instanceof Error ? e.message : String(e)
+        });
+      }
+    }
+    return out;
+  }
+
+  /**
+   * Execute plan using simplified approach - complex API knowledge is now server-side
+   */
+  private async executeWithPlanDispatcher(
+    plan: Array<{ tool: string; reason?: string; input?: string }>,
+    originalMessage: Message
+  ): Promise<any[]> {
+    // Fallback to legacy execution since dispatcher logic moved to server-side
+    return this.executePlanStepsLegacy(plan, originalMessage);
+  }
+
+  /**
+   * Legacy plan execution (now the main execution path)
+   */
+  private async executePlanStepsLegacy(
+    plan: Array<{ tool: string; reason?: string; input?: string }>,
+    originalMessage: Message
+  ): Promise<any[]> {
+    const out: any[] = [];
+    for (let i = 0; i < plan.length; i++) {
+      const step = plan[i];
+      const found = this.findToolByName(step.tool);
+      if (!found) {
+        out.push({
+          action: { type: step.tool, description: step.reason || '' },
+          status: 'failed',
+          error: `No matching tool found for "${step.tool}"`
+        });
+        continue;
+      }
+      try {
+        const paramsMessage: Message = {
+          role: 'user',
+          content: step.input?.trim() ? step.input : originalMessage.content
+        };
+        const res = await this.executeTool(found.tool, paramsMessage);
+        out.push({
+          tool: found.tool.name,
+          result: res,
+          status: 'completed' as const
+        });
+      } catch (e) {
+        out.push({
+          tool: found.tool.name,
+          status: 'failed' as const,
+          error: e instanceof Error ? e.message : String(e)
+        });
+      }
+    }
+    return out;
+  }
+
   private createResponse(type: CapabilityType, data: any): Message {
     return {
       role: 'assistant',
@@ -396,72 +606,167 @@ export class SolanaAgent {
       return "I wasn't able to get any results for your request.";
     }
 
-    // Handle array of results from multiple tools
+    const formatAnyObject = (v: any): string => {
+      if (v == null) return '';
+      if (typeof v === 'string') return v;
+      if (typeof v === 'number' || typeof v === 'boolean') return String(v);
+
+      // Handle objects by trying to extract meaningful information
+      if (typeof v === 'object' && v !== null) {
+        // If it's an array, try to format each element
+        if (Array.isArray(v)) {
+          if (v.length === 0) return '[]';
+          
+          // Check if it looks like a plan array
+          if (v.some(item => item && typeof item === 'object' && (item.tool || item.action || item.step))) {
+            return this.formatPlanSafely(v);
+          }
+          
+          // Format as a list
+          return v.map((item, idx) => `${idx + 1}. ${formatAnyObject(item)}`).join('\n');
+        }
+
+        // For objects, extract key-value pairs meaningfully
+        try {
+          const entries = Object.entries(v);
+          if (entries.length === 0) return '{}';
+          
+          // Check for plan-like properties
+          if (v.tool || v.action || v.step || v.method) {
+            return this.formatPlanSafely([v]);
+          }
+          
+          // Format as key-value pairs
+          return entries
+            .filter(([key]) => !['id', '_id', '__typename'].includes(key))
+            .map(([key, value]) => {
+              const cleanKey = key.replace(/_/g, ' ').replace(/([A-Z])/g, ' $1').trim();
+              return `${cleanKey}: ${formatAnyObject(value)}`;
+            })
+            .join('\n');
+        } catch {
+          return '[Complex Object]';
+        }
+      }
+
+      return String(v);
+    };
+
+    // Check if the entire result is a plan
+    if (Array.isArray(result) && result.some(item => item && typeof item === 'object' && (item.tool || item.action))) {
+      return this.formatPlanSafely(result);
+    }
+
+    // Check for plan in result properties
+    if (typeof result === 'object' && result !== null) {
+      if (Array.isArray((result as any).plan)) {
+        return this.formatPlanSafely((result as any).plan);
+      }
+      if (Array.isArray((result as any).actions)) {
+        return this.formatPlanSafely((result as any).actions);
+      }
+    }
+
+    // Handle array of tool results
     if (Array.isArray(result)) {
       if (result.length === 0) {
         return "I completed the operation but there were no results to report.";
       }
 
-      // Process each result and combine into a coherent response
-      const responses = result.map((item: any) => {
-        if (item.status === 'failed') {
-          return `Error: ${item.error}`;
+      const lines: string[] = [];
+      for (const item of result) {
+        if (item?.status === 'failed') {
+          lines.push(`❌ ${item.tool ?? 'Step'} failed: ${item.error}`);
+          continue;
         }
 
-        // Extract the actual result data
-        const data = item.result?.result || item.result;
-
-        if (!data) {
-          return null;
+        const data = item?.result?.result ?? item?.result ?? item;
+        
+        // Check if this item contains a plan
+        if (data && typeof data === 'object' && Array.isArray(data.plan)) {
+          lines.push(this.formatPlanSafely(data.plan));
+          continue;
         }
 
-        // Handle custom actions
-        if (data.actionName && typeof data.params === 'object') {
-          return `I'll find the path between these wallets for you. Processing...`;
-        }
-
-        // Handle network performance data
-        if (item.tool === 'analyzeNetworkLoad' && typeof data === 'object') {
-          const { averageTps, maxTps, load, loadDescription, tpsRange } = data;
-          return `The current TPS is ${averageTps} (${tpsRange}). Peak TPS: ${maxTps}. Network load is ${load} (${loadDescription}).`;
-        }
-
-        // Handle different types of data
-        if (typeof data === 'object') {
-          if (data.message) {
-            return data.message;
+        // Special case: network performance
+        if (item?.tool === 'analyzeNetworkLoad' && data && typeof data === 'object') {
+          const { averageTps, maxTps, load, loadDescription, tpsRange } = data as any;
+          if (averageTps) {
+            lines.push(`📊 Network Performance: ${averageTps} TPS (${tpsRange || 'current'}), Peak: ${maxTps}, Load: ${load} (${loadDescription})`);
+            continue;
           }
-          // Convert meaningful object properties to natural text
-          const details = Object.entries(data)
-            .filter(([key]) => !['id', '_id', 'type', 'status'].includes(key))
-            .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
-            .join('\n');
-          return details || null;
         }
 
-        return String(data);
-      }).filter(Boolean);
+        // Handle message responses
+        if (data && typeof data === 'object' && 'message' in data) {
+          lines.push(`✅ ${item.tool ?? 'Result'}: ${data.message}`);
+          continue;
+        }
 
-      return responses.join('\n');
-    }
-
-    // Handle single result
-    if (typeof result === 'object') {
-      if (result.message) {
-        return result.message;
-      } else if (result.error) {
-        return `Error: ${result.error}`;
-      } else {
-        // Convert object to readable text
-        const details = Object.entries(result)
-          .filter(([key]) => !['id', '_id', 'type', 'status'].includes(key))
-          .map(([key, value]) => `${key.replace(/_/g, ' ')}: ${value}`)
-          .join('\n');
-        return details || 'Operation completed successfully.';
+        // Generic formatting
+        const formatted = formatAnyObject(data);
+        if (formatted && formatted !== '[Complex Object]') {
+          lines.push(`📋 ${item.tool ?? 'Result'}:\n${formatted}`);
+        } else {
+          lines.push(`✅ ${item.tool ?? 'Step'} completed`);
+        }
       }
+      return lines.join('\n\n');
     }
 
-    return String(result);
+    // Single result formatting
+    return formatAnyObject(result);
+  }
+
+  /**
+   * Safe plan formatting that handles any plan-like structure
+   */
+  private formatPlanSafely(plan: any[]): string {
+    if (!Array.isArray(plan) || plan.length === 0) {
+      return 'No actionable steps identified.';
+    }
+
+    const lines: string[] = ['📋 **Execution Plan**', ''];
+
+    plan.forEach((step, idx) => {
+      if (!step || typeof step !== 'object') {
+        lines.push(`${idx + 1}. ${String(step)}`);
+        return;
+      }
+
+      // Extract step information from various possible formats
+      const tool = step.tool || step.action || step.method || step.name || 'Unknown Step';
+      const reason = step.reason || step.description || step.purpose || '';
+      const input = step.input || step.params || step.data || '';
+
+      // Format the tool name nicely
+      const toolDisplay = String(tool)
+        .replace(/_/g, ' ')
+        .replace(/([A-Z])/g, ' $1')
+        .trim()
+        .split(' ')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+        .join(' ');
+
+      lines.push(`**Step ${idx + 1}: ${toolDisplay}**`);
+
+      if (reason) {
+        lines.push(`   📝 ${reason}`);
+      }
+
+      if (input) {
+        // Truncate long inputs for readability
+        const inputStr = typeof input === 'string' ? input : JSON.stringify(input);
+        const inputDisplay = inputStr.length > 100
+          ? inputStr.substring(0, 97) + '...'
+          : inputStr;
+        lines.push(`   📥 Input: \`${inputDisplay}\``);
+      }
+
+      lines.push(''); // Add spacing between steps
+    });
+
+    return lines.join('\n').trim();
   }
 
   // Utility methods

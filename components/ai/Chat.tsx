@@ -55,6 +55,7 @@ export interface ChatProps {
   onVoiceRecord?: () => void;
   isRecording?: boolean;
   onCancel?: () => void;
+  onDirectResponse?: (message: Message) => void;
 }
 
 export function Chat({
@@ -104,7 +105,8 @@ export function Chat({
   onExpand,
   onVoiceRecord,
   isRecording,
-  onCancel
+  onCancel,
+  onDirectResponse
 }: ChatProps) {
   console.log('🔍 Chat component rendered, variant:', variant, 'isOpen:', isOpen);
   const [showFallback, setShowFallback] = useState(false);
@@ -150,9 +152,9 @@ export function Chat({
           setEarlyInputVisible(false);
         }
       });
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true, 
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
         attributes: true,
         attributeFilter: ['data-ai-chat-input']
       });
@@ -272,7 +274,7 @@ export function Chat({
         <ChatUI
           messages={messages}
           input={input}
-            isProcessing={isProcessing}
+          isProcessing={isProcessing}
           onInputChange={onInputChange}
           onSubmit={onSubmit}
           onClose={onClose}
@@ -291,6 +293,7 @@ export function Chat({
           isRecording={isRecording}
           variant={variant}
           onCancel={onCancel}
+          onDirectResponse={onDirectResponse}
           enableVirtualization={true}
         />
       </ChatErrorBoundary>
@@ -310,7 +313,7 @@ export function Chat({
               onClick={() => {
                 try {
                   (window as any).SVMAI?.prompt?.('What is the current Solana TPS?', true);
-                } catch {}
+                } catch { }
               }}
               title="Ask for current TPS"
             >
@@ -325,7 +328,7 @@ export function Chat({
                   try {
                     const sig = window.location.pathname.split('/')[2] || '';
                     (window as any).SVMAI?.prompt?.(`Explain this transaction: ${sig}`, false);
-                  } catch {}
+                  } catch { }
                 }}
                 title="Use current page context"
               >

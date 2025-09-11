@@ -69,6 +69,7 @@ export type CapabilityType =
   | 'transaction'
   | 'account'
   | 'planning'
+  | 'anomaly_detection'
   | 'analysis'
   | 'search'
   | 'monitoring'

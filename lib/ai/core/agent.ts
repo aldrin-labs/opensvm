@@ -476,15 +476,15 @@ Ask me about any of these topics and I'll provide detailed analysis!`;
       return toolMatches || isRequired;
     });
 
-    if (relevantTools.length === 0) {
-      return [];
-    }
+    // If nothing explicitly matched, fall back to all tools so capabilities
+    // without "matches" still execute in their declared order
+    const initialTools = relevantTools.length > 0 ? relevantTools : tools;
 
     // Create a map of completed tools
     const completedTools = new Set<string>();
 
     // Keep track of tools left to execute
-    let remainingTools = [...relevantTools];
+    let remainingTools = [...initialTools];
 
     // Execute tools respecting dependencies
     while (remainingTools.length > 0) {
@@ -530,6 +530,17 @@ Ask me about any of these topics and I'll provide detailed analysis!`;
 
     try {
       const result = await tool.execute(params);
+
+      // Update active analysis context for downstream tools in the same capability
+      try {
+        (this.context as any).activeAnalysis = {
+          tool: tool.name,
+          data: (result && (result as any).result) ?? result
+        };
+      } catch {
+        // noop
+      }
+
       return {
         tool: tool.name,
         result

@@ -15,26 +15,28 @@ export class TransactionCapability extends BaseCapability {
   private static readonly ASSOCIATED_TOKEN_PROGRAM_ID = 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL';
 
   tools = [
-    this.createToolExecutor(
-      'fetchTransaction',
-      'Fetches transaction details by signature',
-      async ({ message }: ToolParams) => {
+    {
+      name: 'fetchTransaction',
+      description: 'Fetches transaction details by signature',
+      matches: (message: Message) => this.extractSignature(message.content) !== null,
+      execute: async ({ message }: ToolParams) => {
         const signature = this.extractSignature(message.content);
         if (!signature) throw new Error('No transaction signature found in message');
         
         return this.executeWithConnection(async (connection) => {
           return connection.getTransaction(signature, {
-            maxSupportedTransactionVersion: 0
+            maxSupportedTransactionVersion: 0,
           });
         });
-      }
-    ),
-    this.createToolExecutor(
-      'analyzeTransaction',
-      'Analyzes transaction details for patterns and key information',
-      async ({ context }: ToolParams) => {
+      },
+    },
+    {
+      name: 'analyzeTransaction',
+      description: 'Analyzes transaction details for patterns and key information',
+      dependencies: ['fetchTransaction'],
+      execute: async ({ context }: ToolParams) => {
         const tx = context.activeAnalysis?.data;
-        if (!tx) throw new Error('No transaction data available');
+        if (!tx) throw new Error('No transaction data available for analysis');
 
         return {
           type: this.classifyTransaction(tx),
@@ -43,8 +45,8 @@ export class TransactionCapability extends BaseCapability {
           fees: tx.meta?.fee,
           status: tx.meta?.err ? 'failed' : 'success'
         };
-      }
-    )
+      },
+    }
   ];
 
   canHandle(message: Message): boolean {

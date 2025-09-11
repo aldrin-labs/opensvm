@@ -11,7 +11,7 @@ interface ModeSelectorProps {
 
 export function ModeSelector({ mode, onChange, disabled = false, className = '' }: ModeSelectorProps) {
     return (
-        <div className={`flex items-center bg-white/5 rounded-lg p-1 ${className}`}>
+        <div className={`flex items-center rounded-lg p-1 ${className} bg-black border border-white/20`}>
             <button
                 type="button"
                 onClick={() => onChange('agent')}

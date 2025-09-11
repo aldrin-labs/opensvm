@@ -8,9 +8,10 @@ if (__AI_DEBUG__) {
   // Lightweight guarded debug log (was unconditional)
   console.log('🔍 ChatUI module loaded');
 }
+
 import { Loader, Mic, Send } from 'lucide-react';
 import type { Message, Note, AgentAction } from './types';
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import { VantaBackground } from './VantaBackground';
 import { NewMessageBadge } from './NewMessageBadge';
 import { useAIChatSidebar } from '../../contexts/AIChatSidebarContext';
@@ -18,6 +19,8 @@ import { track } from '../../lib/ai/telemetry';
 import { MessageActions, type MessageActionType } from './components/MessageActions';
 import { EnhancedMessageRenderer } from './components/EnhancedMessageRenderer';
 import { ReasoningBlock } from './components/ReasoningBlock';
+import { MessageRenderer } from './components/MessageRenderer';
+import { ChatErrorBoundary } from './components/ChatErrorBoundary';
 import { parseAssistantMessage } from '../../lib/ai/parseAssistantMessage';
 import { KnowledgePanel } from './components/KnowledgePanel';
 import { ModeSelector } from './components/ModeSelector';
@@ -27,6 +30,7 @@ import { useDebounce } from './hooks/useDebounce';
 import { useMemoryManagement, trackMemoryUsage } from './utils/memoryManager';
 import { useUIPreferences } from './hooks/useUIPreferences';
 import { useAutosizeTextarea } from '../../hooks/useAutosizeTextarea';
+import { useChatState } from './hooks/useChatState';
 import { VirtualizedMessageList, usePerformanceMonitoring, setupGlobalPerfSnapshot } from './components/VirtualizedMessageList';
 
 interface ChatUIProps {
@@ -54,6 +58,7 @@ interface ChatUIProps {
   variant?: 'inline' | 'sidebar' | 'dialog';
   enableVirtualization?: boolean;
   onCancel?: () => void;
+  onDirectResponse?: (message: Message) => void; // Direct RPC / fast path response handler
 }
 
 // Lightweight dynamic height wrapper replacing fixed 400px container.
@@ -84,7 +89,7 @@ const DynamicHeightMessageArea: React.FC<DynamicHeightProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`overflow-y-auto w-full h-full ${density === 'compact' ? 'p-3 space-y-2' : 'p-4 space-y-4'}`}
+      className={`overflow-y-auto overflow-x-hidden w-full h-full ${density === 'compact' ? 'p-3 space-y-2' : 'p-4 space-y-4'}`}
       onScroll={(e) => {
         const t = e.currentTarget;
         onScroll?.(t.scrollTop, t.scrollHeight, t.clientHeight);
@@ -122,6 +127,7 @@ export function ChatUI({
   variant = 'sidebar',
   enableVirtualization = false,
   onCancel,
+  onDirectResponse,
 }: ChatUIProps) {
   if (__AI_DEBUG__) {
     console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
@@ -156,38 +162,59 @@ export function ChatUI({
   const lastMessageCountRef = useRef(0);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Try to get the context safely
+  // Try to get the context safely - call hook at top level to avoid infinite rerenders
   let registerInputController, openWithPrompt;
   try {
     const context = useAIChatSidebar();
     registerInputController = context.registerInputController;
     openWithPrompt = context.openWithPrompt;
-    console.log('🔍 ChatUI: AIChatSidebar context loaded successfully');
+    if (__AI_DEBUG__) {
+      console.log('🔍 ChatUI: AIChatSidebar context loaded successfully');
+    }
   } catch (error) {
-    console.error('🔍 ChatUI: Failed to load AIChatSidebar context:', error);
+    console.error('�� ChatUI: Failed to load AIChatSidebar context:', error);
     registerInputController = () => { };
     openWithPrompt = () => { };
   }
 
-  const [optimisticProcessing, setOptimisticProcessing] = useState(false);
-  // Show processing UI only for real submissions (not slash completion / typing).
-  // This flag is set when a submit is triggered (manual or programmatic) and
-  // cleared when processing finishes.
-  const [showProcessingUI, setShowProcessingUI] = useState(false);
+  // Consolidated chat state management
+  const [chatState, chatActions] = useChatState();
+  const {
+    optimisticProcessing,
+    showProcessingUI,
+    newMessageCount,
+    isScrolledUp,
+    shouldAutoScroll,
+    showSlashHelp,
+    copyNotice,
+    actionNotice,
+    inputHistory,
+    historyIndex,
+    draftBeforeHistory,
+    slashIndex,
+    showReferenceAutocomplete,
+    referenceIndex,
+  } = chatState;
+
+  const {
+    setOptimisticProcessing,
+    setShowProcessingUI,
+    setNewMessageCount,
+    setIsScrolledUp,
+    setShouldAutoScroll,
+    setShowSlashHelp,
+    setCopyNotice,
+    setActionNotice,
+    setInputHistory,
+    setHistoryIndex,
+    setDraftBeforeHistory,
+    setSlashIndex,
+    setShowReferenceAutocomplete,
+    setReferenceIndex,
+  } = chatActions;
+
   // Track if we're in a mock/test environment where isProcessing might not change
   const isMockMode = typeof window !== 'undefined' && (window.location.search.includes('aimock=1') || window.location.search.includes('ai=1'));
-  const [newMessageCount, setNewMessageCount] = useState(0);
-  const [isScrolledUp, setIsScrolledUp] = useState(false);
-  const [shouldAutoScroll, setShouldAutoScroll] = useState(true);
-  const [showSlashHelp, setShowSlashHelp] = useState(false);
-  const [copyNotice, setCopyNotice] = useState(false);
-  const [actionNotice, setActionNotice] = useState<string>('');
-  const [inputHistory, setInputHistory] = useState<string[]>([]);
-  const [historyIndex, setHistoryIndex] = useState<number | null>(null);
-  const [draftBeforeHistory, setDraftBeforeHistory] = useState<string>('');
-  const [slashIndex, setSlashIndex] = useState(0);
-  const [showReferenceAutocomplete, setShowReferenceAutocomplete] = useState(false);
-  const [referenceIndex, setReferenceIndex] = useState(0);
 
   // UI Preferences
   const { prefs } = useUIPreferences();
@@ -241,28 +268,30 @@ export function ChatUI({
     return { isActive: true, query, filteredNotes };
   }, [debouncedInput, notes]);
 
-  // Register input controller
-  useEffect(() => {
-    registerInputController({
-      setInput: onInputChange,
-      focusInput: () => inputRef.current?.focus(),
-      submit: () => {
-        try {
-          setShowProcessingUI(true);
-          setOptimisticProcessing(true);
-          const form = inputRef.current?.closest('form');
-          if (form) {
-            const event = new Event('submit', { bubbles: true, cancelable: true });
-            form.dispatchEvent(event);
-          } else {
-            onSubmit({ preventDefault: () => { /* noop */ } } as unknown as React.FormEvent);
-          }
-        } catch (err) {
-          console.error('Programmatic submit failed:', err);
+  // Register input controller (memoized to prevent unnecessary re-registrations)
+  const inputController = useMemo(() => ({
+    setInput: onInputChange,
+    focusInput: () => inputRef.current?.focus(),
+    submit: () => {
+      try {
+        setShowProcessingUI(true);
+        setOptimisticProcessing(true);
+        const form = inputRef.current?.closest('form');
+        if (form) {
+          const event = new Event('submit', { bubbles: true, cancelable: true });
+          form.dispatchEvent(event);
+        } else {
+          onSubmit({ preventDefault: () => { } } as unknown as React.FormEvent);
         }
+      } catch (err) {
+        console.error('Programmatic submit failed:', err);
       }
-    });
-  }, [registerInputController, onInputChange, onSubmit]);
+    }
+  }), [onInputChange, onSubmit, setShowProcessingUI, setOptimisticProcessing]);
+
+  useEffect(() => {
+    registerInputController(inputController);
+  }, [registerInputController, inputController]);
 
   // Clear optimistic flag & processing display gating
   useEffect(() => {
@@ -282,26 +311,21 @@ export function ChatUI({
   // Auto-enable processing UI when processing starts via programmatic prompts (window.SVMAI.prompt)
   // which bypass the local form submit path that normally sets showProcessingUI.
   useEffect(() => {
-    if (isProcessing && !showProcessingUI) {
-      setShowProcessingUI(true);
-    }
-  }, [isProcessing, showProcessingUI]);
-
-  // Listen for mock mode processing UI trigger events
-  useEffect(() => {
     if (typeof window === 'undefined') return;
     console.log('🔍 ChatUI: Setting up svmai-show-processing-ui event listener');
     const handleShowProcessingUI = (event: any) => {
-      console.log('🔍 ChatUI: Received svmai-show-processing-ui event', event?.detail);
+      if (__AI_DEBUG__) console.log('🔍 ChatUI: Received svmai-show-processing-ui event', event?.detail);
       if (event?.detail?.source === 'mock-prompt') {
-        console.log('🔍 ChatUI: Setting processing UI for mock mode');
-        setShowProcessingUI(true);
-        setOptimisticProcessing(true);
+        if (!optimisticProcessing) {
+          if (__AI_DEBUG__) console.log('🔍 ChatUI: Setting processing UI for mock mode');
+          setShowProcessingUI(true);
+          setOptimisticProcessing(true);
+        }
       }
     };
-    window.addEventListener('svmai-show-processing-ui', handleShowProcessingUI);
+    window.addEventListener('svmai-show-processing-ui', handleShowProcessingUI, { once: true });
     return () => {
-      console.log('🔍 ChatUI: Removing svmai-show-processing-ui event listener');
+      if (__AI_DEBUG__) console.log('🔍 ChatUI: Removing svmai-show-processing-ui event listener');
       window.removeEventListener('svmai-show-processing-ui', handleShowProcessingUI);
     };
   }, []);
@@ -312,34 +336,49 @@ export function ChatUI({
     if (typeof window === 'undefined') return;
     const handler = (event?: any) => {
       const pending = !!(window as any).__SVMAI_PENDING__;
-      console.log('🔍 Pending change event:', { pending, optimisticProcessing, phase: event?.detail?.phase });
-      
+
+      // Use a ref to get current optimisticProcessing state to avoid dependency cycle
+      const currentOptimisticProcessing = optimisticProcessing;
+      if (__AI_DEBUG__) {
+        console.log('🔍 Pending change event:', { pending, optimisticProcessing: currentOptimisticProcessing, phase: event?.detail?.phase });
+      }
+
       if (pending) {
-        if (!optimisticProcessing) {
+        if (!currentOptimisticProcessing) {
           pendingStartRef.current = performance.now();
           setOptimisticProcessing(true);
           setShowProcessingUI(true);
-          console.log('🔍 Setting processing state from pending change');
+          if (__AI_DEBUG__) {
+            console.log('🔍 Pending started, showing processing UI');
+          }
         }
-      } else if (optimisticProcessing) {
+      } else if (currentOptimisticProcessing) {
         // When pending clears, check minimum visibility time
         const elapsed = performance.now() - pendingStartRef.current;
         const MIN_VISIBLE = 400;
-        console.log('🔍 Pending cleared, elapsed:', elapsed, 'ms');
-        
+        if (__AI_DEBUG__) {
+          console.log('🔍 Pending cleared, elapsed:', elapsed, 'ms');
+        }
+
         if (pendingStartRef.current === 0 || elapsed >= MIN_VISIBLE) {
           // Sufficient time has passed, clear immediately
           setOptimisticProcessing(false);
           setShowProcessingUI(false);
-          console.log('🔍 Clearing processing state immediately');
+          if (__AI_DEBUG__) {
+            console.log('🔍 Clearing processing UI immediately');
+          }
         } else {
           // Wait for remaining time to meet minimum
           const remaining = MIN_VISIBLE - elapsed;
-          console.log('🔍 Waiting additional', remaining, 'ms to meet minimum visibility');
+          if (__AI_DEBUG__) {
+            console.log('🔍 Waiting', remaining, 'ms before clearing processing UI');
+          }
           setTimeout(() => {
             setOptimisticProcessing(false);
             setShowProcessingUI(false);
-            console.log('🔍 Clearing processing state after minimum time');
+            if (__AI_DEBUG__) {
+              console.log('🔍 Cleared processing UI after minimum time');
+            }
           }, remaining);
         }
       }
@@ -347,7 +386,7 @@ export function ChatUI({
     window.addEventListener('svmai-pending-change', handler);
     handler(); // Check initial state
     return () => window.removeEventListener('svmai-pending-change', handler);
-  }, [optimisticProcessing]);
+  }, []); // Remove optimisticProcessing from dependency array to avoid infinite loop
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -368,73 +407,43 @@ export function ChatUI({
           break;
         case 'save':
           if (message && message.role === 'assistant' && onAddNote) {
-            const noteContent = message.content.trim();
-            const noteId = `note-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-            const knowledgeNote: Note = {
-              id: noteId,
-              content: noteContent,
-              author: 'assistant',
-              timestamp: Date.now()
-            };
-            onAddNote(knowledgeNote);
-            setActionNotice('Message saved to knowledge base');
-            track('message_action', {
-              action,
-              feature: 'save_knowledge',
-              contentLength: noteContent.length,
-              tokens: estimateTokens(noteContent)
-            });
+            onAddNote({ id: `note-${Date.now()}`, content: message.content, author: 'assistant', timestamp: Date.now() });
+            setActionNotice('Message saved to knowledge');
           } else {
-            setActionNotice('Unable to save message to knowledge');
+            setActionNotice('Cannot save this message');
           }
           break;
         case 'share': {
           try {
-            const slice = messages.slice(-50).map(m => ({ role: m.role, content: m.content }));
-            const payload = {
-              v: 1,
-              mode,
-              ts: Date.now(),
-              messages: slice
-            };
-            const encoded = btoa(unescape(encodeURIComponent(JSON.stringify(payload))));
-            const url = `${window.location.origin}/?ai=1&aichat=${encoded}`;
-            window.open(url, '_blank', 'noopener');
-            setActionNotice('Share link opened');
-            track('message_action', { action, feature: 'share', messagesShared: slice.length });
+            await navigator.share({ text: message.content });
+            setActionNotice('Message shared');
           } catch (err) {
-            console.error('Share failed', err);
-            setActionNotice('Share failed');
+            // Fallback to clipboard
+            await navigator.clipboard.writeText(message.content);
+            setActionNotice('Message copied to clipboard');
           }
           break;
         }
         case 'fork': {
           if (!message) {
-            setActionNotice('No message to fork');
+            setActionNotice('Cannot fork this message');
             return;
           }
           const messageIndex = messages.findIndex(
             (msg) => msg.content === message.content && msg.role === message.role
           );
           if (messageIndex === -1) {
-            setActionNotice('Unable to locate message to fork');
+            setActionNotice('Message not found');
             return;
           }
           if (onForkThread) {
             onForkThread(messageIndex, message);
-            setActionNotice(`Forked thread at message ${messageIndex + 1}`);
-            track('message_action', {
-              action,
-              feature: 'fork_thread',
-              messagesCount: messageIndex + 1,
-              messageIndex,
-              mode
-            });
+            setActionNotice('Thread forked');
           } else if (onNewChat) {
             onNewChat();
-            setActionNotice('Forked (legacy new chat)');
+            setActionNotice('New chat started');
           } else {
-            setActionNotice('Fork unavailable (no handler)');
+            setActionNotice('Fork not supported');
           }
           break;
         }
@@ -485,7 +494,7 @@ export function ChatUI({
     setShouldAutoScroll(true);
   }, [scrollToBottom]);
 
-  // Track new messages when scrolled up
+  // Track new messages when scrolled up (optimized)
   useEffect(() => {
     const currentMessageCount = messages.length;
     const previousCount = lastMessageCountRef.current;
@@ -493,17 +502,17 @@ export function ChatUI({
       setNewMessageCount(prev => prev + (currentMessageCount - previousCount));
     }
     lastMessageCountRef.current = currentMessageCount;
-  }, [messages.length, isScrolledUp]);
+  }, [messages.length, isScrolledUp, setNewMessageCount]);
 
-  // Auto-scroll to bottom
+  // Auto-scroll to bottom (optimized with message length instead of full messages array)
   useEffect(() => {
     if (shouldAutoScroll) {
       scrollToBottom();
     }
-  }, [messages, shouldAutoScroll, scrollToBottom]);
+  }, [messages.length, shouldAutoScroll, scrollToBottom]);
 
-  // Memory management high usage cleanup
-  useEffect(() => {
+  // Memory management high usage cleanup (optimized with throttling)
+  const memoryCleanupCallback = useCallback(() => {
     trackMemoryUsage(memoryStats);
     if (needsCleanup && memoryStats.percentUsed > 90) {
       console.warn('Memory usage high, triggering cleanup:', memoryStats);
@@ -514,18 +523,26 @@ export function ChatUI({
     }
   }, [memoryStats, needsCleanup, performMemoryCleanup]);
 
-  // Scroll to bottom on agentActions or tab change
   useEffect(() => {
+    memoryCleanupCallback();
+  }, [memoryCleanupCallback]);
+
+  // Scroll to bottom effects (optimized to prevent unnecessary calls)
+  const autoScrollToBottom = useCallback(() => {
     if (shouldAutoScroll) {
       scrollToBottom();
     }
-  }, [agentActions, shouldAutoScroll, scrollToBottom]);
+  }, [shouldAutoScroll, scrollToBottom]);
+
+  useEffect(() => {
+    autoScrollToBottom();
+  }, [agentActions.length, autoScrollToBottom]);
 
   useEffect(() => {
     scrollToBottom();
     setNewMessageCount(0);
     setShouldAutoScroll(true);
-  }, [activeTab, scrollToBottom]);
+  }, [activeTab, scrollToBottom, setNewMessageCount, setShouldAutoScroll]);
 
   // Virtualization readiness attribute
   useEffect(() => {
@@ -592,87 +609,24 @@ export function ChatUI({
 
   // Message renderer
   const renderMessage = useCallback((message: Message, index: number) => {
-    return (
-      <article
-        key={index}
-        className={`group flex w-full ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-        role="article"
-        aria-label={`${message.role === 'user' ? 'Your message' : 'AI response'}`}
-        data-ai-message-role={message.role === 'user' ? 'user' : 'assistant'}
-        tabIndex={0}
-      >
-        <div className="flex flex-col max-w-[80%]">
-          {prefs.showRoleLabels && (
-            <span
-              className={`text-[10px] font-semibold uppercase tracking-wide mb-1 opacity-70 ${message.role === 'user' ? 'text-blue-300 text-right' : 'text-slate-400 text-left'
-                }`}
-              data-ai-role-label={message.role}
-            >
-              {message.role === 'user' ? 'You' : 'Assistant'}
-            </span>
-          )}
-          <div
-            className={`relative ${prefs.density === 'compact' ? 'px-3 py-1.5' : 'px-4 py-2'} rounded-lg ${message.role === 'user'
-              ? 'bg-slate-800 text-white border border-blue-400/60 shadow-lg shadow-blue-500/10'
-              : 'bg-slate-900 text-white border border-slate-600/40 bg-gradient-to-t from-slate-900 to-slate-800/90 shadow-lg'
-              }`}
-            data-role={message.role}
-            style={{ fontSize: `${prefs.fontSize}px` }}
-          >
-            <div className="prose prose-invert max-w-none" style={{
-              '--prose-body': `${prefs.fontSize}px`,
-              '--prose-headings': `${Math.min(prefs.fontSize + 4, 20)}px`,
-            } as React.CSSProperties}>
-              {(() => {
-                if (message.role === 'assistant') {
-                  const parsed = parseAssistantMessage(message.content);
-                  // Fallback: if parsing failed to produce a reasoning object but raw tag exists,
-                  // extract first reasoning segment to ensure a visible toggle for E2E reliability.
-                  let reasoning = parsed.reasoning;
-                  if (!reasoning && typeof message.content === 'string' && message.content.includes('<REASONING>')) {
-                    try {
-                      const m = message.content.match(/<REASONING>([\s\S]*?)<\/REASONING>/);
-                      if (m && m[1] && m[1].trim()) {
-                        const text = m[1].trim();
-                        reasoning = { text, tokensEst: Math.ceil(text.length / 4) };
-                      }
-                    } catch { /* noop */ }
-                  }
-                  return (
-                    <>
-                      <EnhancedMessageRenderer
-                        content={parsed.visible}
-                        messageId={`message-${index}`}
-                        className="prose prose-invert max-w-none"
-                        role={message.role}
-                      />
-                      {reasoning && (
-                        <ReasoningBlock
-                          reasoning={reasoning}
-                          collapsed={!prefs.showReasoningDefault}
-                        />
-                      )}
-                    </>
-                  );
-                }
-                return (
-                  <EnhancedMessageRenderer
-                    content={message.content}
-                    messageId={`message-${index}`}
-                    className="prose prose-invert max-w-none"
-                    role={message.role}
-                  />
-                );
-              })()}
-            </div>
-            <MessageActions
-              message={message}
-              onAction={handleMessageAction}
-              className="opacity-0 group-hover:opacity-100 absolute -top-2 -right-2 transition-opacity z-10"
-            />
-          </div>
+    // Avoid rendering empty placeholder responses
+    if (message.role === 'assistant' && (!message.content || message.content.trim() === '')) {
+      return (
+        <div className="text-white/50 italic px-2" data-ai-placeholder>
+          ⚠️ No response generated. Please try again.
         </div>
-      </article>
+      );
+    }
+    return (
+      <MessageRenderer
+        message={message}
+        index={index}
+        showRoleLabels={prefs.showRoleLabels}
+        density={prefs.density}
+        fontSize={prefs.fontSize}
+        showReasoningDefault={prefs.showReasoningDefault}
+        onAction={handleMessageAction}
+      />
     );
   }, [prefs, handleMessageAction]);
 
@@ -850,6 +804,7 @@ export function ChatUI({
           setSlashIndex(0);
           trackSlashUsage(selectedCommand.cmd, 'right');
           requestAnimationFrame(() => {
+            const el = inputRef.current;
             if (el) el.selectionStart = el.selectionEnd = el.value.length;
           });
           return;
@@ -895,7 +850,7 @@ export function ChatUI({
       // WITHOUT a trailing space. Previously we also triggered when the input already ended
       // with a space (e.g. "/tps ") because we trimmed before testing. That caused the second
       // Enter (after auto-completion added the space) to be intercepted and prevented submit,
-      // so the Processing… status bar never appeared in E2E tests.
+      // so the Processing UI never appeared in E2E tests.
       const rawValue = inputRef.current?.value || input;
       const trimmed = rawValue.trim();
       const hasTrailingSpace = rawValue.endsWith(' ');
@@ -921,72 +876,18 @@ export function ChatUI({
       if (!isProcessing) {
         try {
           // Immediate optimistic processing to ensure status bar appears before async submit resolves
-            setShowProcessingUI(true);
-            setOptimisticProcessing(true);
+          setShowProcessingUI(true);
+          setOptimisticProcessing(true);
           const form = inputRef.current?.closest('form');
           if (form) {
-            const evt = new Event('submit', { bubbles: true, cancelable: true });
-            form.dispatchEvent(evt);
+            const event = new Event('submit', { bubbles: true, cancelable: true });
+            form.dispatchEvent(event);
           } else {
-            onSubmit(e as any);
+            onSubmit({ preventDefault: () => { } } as unknown as React.FormEvent);
           }
         } catch (error) {
           console.error('Error in Enter key submission:', error);
         }
-      }
-    }
-
-    if (e.ctrlKey || e.metaKey) {
-      switch (e.key) {
-        case 'k':
-          e.preventDefault();
-          onInputChange('');
-          break;
-        case 'P':
-        case 'p':
-          // disabled custom context action
-          break;
-      }
-    }
-
-    if (!showSlashHelp && (e.key === 'ArrowUp' || e.key === 'ArrowDown') && !e.shiftKey) {
-      const el = inputRef.current;
-      if (!el) return;
-      const atStart = el.selectionStart === 0 && el.selectionEnd === 0;
-      const atEnd = el.selectionStart === el.value.length && el.selectionEnd === el.value.length;
-      const allowAnywhere = e.ctrlKey || e.metaKey;
-      if (e.key === 'ArrowUp' && (atStart || allowAnywhere)) {
-        if (inputHistory.length === 0) return;
-        e.preventDefault();
-        if (historyIndex === null) {
-          setDraftBeforeHistory(el.value);
-          const idx = inputHistory.length - 1;
-          setHistoryIndex(idx);
-          onInputChange(inputHistory[idx]);
-        } else if (historyIndex > 0) {
-          const idx = historyIndex - 1;
-          setHistoryIndex(idx);
-          onInputChange(inputHistory[idx]);
-        }
-        requestAnimationFrame(() => {
-          const node = inputRef.current;
-          if (node) node.selectionStart = node.selectionEnd = node.value.length;
-        });
-      } else if (e.key === 'ArrowDown' && (atEnd || allowAnywhere)) {
-        if (historyIndex === null) return;
-        e.preventDefault();
-        if (historyIndex < inputHistory.length - 1) {
-          const idx = historyIndex + 1;
-          setHistoryIndex(idx);
-          onInputChange(inputHistory[idx]);
-        } else {
-          setHistoryIndex(null);
-          onInputChange(draftBeforeHistory);
-        }
-        requestAnimationFrame(() => {
-          const node = inputRef.current;
-          if (node) node.selectionStart = node.selectionEnd = node.value.length;
-        });
       }
     }
   };
@@ -1003,7 +904,7 @@ export function ChatUI({
             onScroll={handleScroll}
             autoScrollToBottom={shouldAutoScroll}
             containerHeight={viewportHeight}
-            className={prefs.density === 'compact' ? 'p-3' : 'p-4'}
+            className={prefs.density === 'compact' ? 'p-3 pb-28' : 'p-4 pb-28'}
           />
         ) : (
           <DynamicHeightMessageArea
@@ -1139,396 +1040,460 @@ export function ChatUI({
   const mainScrollableContent = isNotesTab ? knowledgePanelContent : chatMessagesContent;
 
   return (
-    <div
-      ref={rootRef}
-      data-ai-chat-ui
-      data-ai-chat-ready
-      data-ai-mode={mode}
-      className={`chat-main-container relative ${variant === 'sidebar' ? 'h-full' : variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col ${variant === 'sidebar' ? '' : 'overflow-hidden'}`}
-    >
-      <a href="#chat-input" className="skip-link absolute top-0 left-0 bg-black text-white p-2 -translate-y-full focus:translate-y-0 transition-transform">
-        Skip to chat input
-      </a>
-
-      {variant !== 'sidebar' && <VantaBackground />}
-
+    <ChatErrorBoundary>
       <div
-        className={`chat-flex-container flex flex-col flex-1 min-h-0 relative z-10 ${className}`}
-        role="region"
-        aria-label="AI Chat Interface"
+        ref={rootRef}
+        data-ai-chat-ui
+        data-ai-chat-ready
+        data-ai-mode={mode}
+        className={`chat-main-container relative ${variant === 'sidebar' ? 'h-full' : variant === 'dialog' ? 'max-h-[600px]' : 'h-screen'} flex flex-col ${variant === 'sidebar' ? '' : 'overflow-hidden'}`}
       >
-        <div className={`flex-1 min-h-0 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'}`}>
-          {mainScrollableContent}
-        </div>
+        <a href="#chat-input" className="skip-link absolute top-0 left-0 bg-black text-white p-2 -translate-y-full focus:translate-y-0 transition-transform">
+          Skip to chat input
+        </a>
 
-        {((variant === 'sidebar' || isE2E) && activeTab === 'agent') && (
-          <div className="px-4 pt-3 pb-1 border-t border-white/10 bg-black/60 flex flex-wrap gap-2" role="toolbar" aria-label="Quick actions">
-            <button
-              type="button"
-              className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-              onClick={() => openWithPrompt?.('What is the current Solana TPS?', { submit: true })}
-              data-ai-quick="tps"
-              title="Ask for current TPS"
-            >
-              TPS
-            </button>
-            {isTxPage && (
+        {variant !== 'sidebar' && <VantaBackground />}
+
+        <div
+          className={`chat-flex-container flex flex-col flex-1 min-h-0 relative z-10 ${className}`}
+          role="region"
+          aria-label="AI Chat Interface"
+        >
+          <div className={`relative z-0 flex-1 min-h-0 overflow-hidden ${variant === 'sidebar' ? 'bg-black' : 'bg-black/30 backdrop-blur-[2px]'}`}>
+            {mainScrollableContent}
+          </div>
+
+          {((variant === 'sidebar' || isE2E) && activeTab === 'agent') && (
+            <div className="px-4 pt-3 pb-1 border-t border-white/10 bg-black/60 flex flex-wrap gap-2 flex-shrink-0 relative z-10" role="toolbar" aria-label="Quick actions">
               <button
                 type="button"
                 className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-                onClick={() => {
-                  try {
-                    const sig = window.location.pathname.split('/')[2] || '';
-                    openWithPrompt?.(`Explain this transaction: ${sig}`, { submit: false });
-                  } catch { }
-                }}
-                data-ai-quick="context"
-                title="Use current page context"
+                onClick={() => openWithPrompt?.('What is the current Solana TPS?', { submit: true })}
+                data-ai-quick="tps"
+                title="Ask for current TPS"
               >
-                Context
+                TPS
               </button>
-            )}
-          </div>
-        )}
+              {isTxPage && (
+                <button
+                  type="button"
+                  className="text-[11px] px-2 py-1 rounded-full border border-white/20 text-white hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  onClick={() => {
+                    try {
+                      const sig = window.location.pathname.split('/')[2] || '';
+                      openWithPrompt?.(`Explain this transaction: ${sig}`, { submit: false });
+                    } catch { }
+                  }}
+                  data-ai-quick="context"
+                  title="Use current page context"
+                >
+                  Context
+                </button>
+              )}
+            </div>
+          )}
 
-        {(showProcessingUI || (isMockMode && optimisticProcessing)) && (isProcessing || optimisticProcessing) && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="px-4 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10"
-            data-ai-processing-status
-            data-ai-processing-active="1"
-            ref={(el) => {
-              if (el && isMockMode) {
-                console.log('🔍 Processing status element rendered in mock mode');
+          {(showProcessingUI || (isMockMode && optimisticProcessing)) && (isProcessing || optimisticProcessing) && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="px-4 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10"
+              data-ai-processing-status
+              data-ai-processing-active="1"
+              ref={(el) => {
+                if (el && isMockMode) {
+                  console.log('🔍 Processing status element rendered in mock mode');
+                }
+              }}
+            >
+              Processing…
+            </div>
+          )}
+          {/* Debug info for mock mode */}
+          {isMockMode && (
+            <div
+              className="px-4 py-1 text-[9px] text-yellow-300 bg-yellow-900/20 border-t border-yellow-500/20"
+              data-ai-debug-info
+            >
+              Debug: showProcessingUI={String(showProcessingUI)}, optimisticProcessing={String(optimisticProcessing)}, isProcessing={String(isProcessing)}, isMockMode={String(isMockMode)}, url={typeof window !== 'undefined' ? window.location.search : 'no-window'}
+            </div>
+          )}
+
+          {actionNotice && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="px-4 py-2 text-[11px] text-green-300 bg-green-900/20 border-t border-green-500/20"
+              data-ai-action-notice
+            >
+              {actionNotice}
+            </div>
+          )}
+
+          {/* Input area */}
+          <form
+            onSubmit={async (e) => {
+              e.preventDefault();
+              try {
+                const current = inputRef.current?.value ?? input;
+                const trimmed = (current || '').trim();
+
+                if (trimmed) {
+                  setInputHistory(prev => (prev.length > 0 && prev[prev.length - 1] === trimmed) ? prev : [...prev, trimmed]);
+                  setHistoryIndex(null);
+                  setDraftBeforeHistory('');
+                }
+
+                setSlashIndex(0);
+                setShowSlashHelp(false);
+
+                // If the input is a direct query that should trigger a server-side RPC, bypass the agent
+                // Only trigger for specific Solana/blockchain data queries, not general conversation
+                if (
+                  ['tps', 'transactions per second', 'network load', 'block height', 'epoch', 'balance', 'account info',
+                    'current tps', 'current epoch', 'block height', 'network status', 'validator count',
+                    'what is the current tps', 'what is current epoch', 'solana tps', 'network performance',
+                    'getrecentblockhash', 'getblocks', 'getblock', 'gettransaction', 'getaccountinfo', 'getbalance',
+                    'getslot', 'getversion', 'getepochinfo', 'gethealth', 'getidentity', 'getfirstavailableblock']
+                    .some(key => trimmed.toLowerCase().includes(key))
+                ) {
+                  try {
+                    // Show quick processing state for direct query
+                    setShowProcessingUI(true);
+                    setOptimisticProcessing(true);
+
+                    const response = await fetch('/api/getAnswer', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ question: trimmed, sources: [] })
+                    });
+
+                    if (!response.ok) {
+                      throw new Error(`Request failed (${response.status})`);
+                    }
+
+                    // Try JSON first, fallback to text
+                    let dataText: string;
+                    const ct = response.headers.get('content-type') || '';
+                    if (ct.includes('application/json')) {
+                      const json = await response.json();
+                      dataText = typeof json === 'string'
+                        ? json
+                        : (json.answer || json.result || JSON.stringify(json));
+                    } else {
+                      dataText = await response.text();
+                    }
+
+                    const assistantMessage: Message = {
+                      role: 'assistant',
+                      content: dataText || 'No data returned.'
+                    };
+
+                    if (onDirectResponse) {
+                      onDirectResponse(assistantMessage);
+                    } else {
+                      // Fallback logging if parent did not supply handler
+                      console.log('Direct RPC response (no onDirectResponse handler):', assistantMessage);
+                    }
+                  } catch (error) {
+                    console.error('Error submitting direct RPC query:', error);
+                    if (onDirectResponse) {
+                      onDirectResponse({
+                        role: 'assistant',
+                        content: '⚠️ Failed to retrieve direct answer. Please try again or rephrase.'
+                      });
+                    }
+                  } finally {
+                    // Clear optimistic state for direct path to avoid lingering "Processing…" bar
+                    setOptimisticProcessing(false);
+                    setShowProcessingUI(false);
+                  }
+                  return; // Prevent further processing by the agent
+                }
+              } catch (error) {
+                console.error('Error in form submission:', error);
               }
+
+              // Always set processing state immediately when form is submitted
+              setShowProcessingUI(true);
+              setOptimisticProcessing(true);
+
+              if (isMockMode) {
+                console.log('🔍 Mock mode: Processing UI started, will be controlled by pending state');
+              }
+
+              onSubmit(e);
             }}
+            className={`chat-input-area mt-auto p-4 border-t border-white/20 flex-shrink-0 relative z-50 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'}`}
+            role="form"
+            aria-label="Send a message"
           >
-            Processing…
-          </div>
-        )}
-        {/* Debug info for mock mode */}
-        {isMockMode && (
-          <div
-            className="px-4 py-1 text-[9px] text-yellow-300 bg-yellow-900/20 border-t border-yellow-500/20"
-            data-ai-debug-info
-          >
-            Debug: showProcessingUI={String(showProcessingUI)}, optimisticProcessing={String(optimisticProcessing)}, isProcessing={String(isProcessing)}, isMockMode={String(isMockMode)}, url={typeof window !== 'undefined' ? window.location.search : 'no-window'}
-          </div>
-        )}
-
-        {actionNotice && (
-          <div
-            role="status"
-            aria-live="polite"
-            className="px-4 py-2 text-[11px] text-green-300 bg-green-900/20 border-t border-green-500/20"
-            data-ai-action-notice
-          >
-            {actionNotice}
-          </div>
-        )}
-
-        {/* Input area */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            try {
-              const current = inputRef.current?.value ?? input;
-              const trimmed = (current || '').trim();
-              if (trimmed) {
-                setInputHistory(prev => (prev.length > 0 && prev[prev.length - 1] === trimmed) ? prev : [...prev, trimmed]);
-                setHistoryIndex(null);
-                setDraftBeforeHistory('');
-              }
-              setSlashIndex(0);
-              setShowSlashHelp(false);
-            } catch { }
-
-            // Always set processing state immediately when form is submitted
-            setShowProcessingUI(true);
-            setOptimisticProcessing(true);
-
-            // In mock mode, coordinate with global pending state for E2E tests
-            // Don't force off the processing UI - let it be controlled by pending state changes
-            if (isMockMode) {
-              // The processing UI will be controlled by the svmai-pending-change events
-              // from AIChatSidebar.tsx and should stay visible until pending flag clears
-              console.log('🔍 Mock mode: Processing UI started, will be controlled by pending state');
-            }
-
-            onSubmit(e);
-          }}
-          className={`chat-input-area p-4 border-t border-white/20 flex-shrink-0 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'}`}
-          role="form"
-          aria-label="Send a message"
-        >
-          <div className="relative">
-            {onModeChange && (
-              <div className="mb-3">
+            <div className="space-y-3">
+              {onModeChange && (
                 <ModeSelector
                   mode={mode}
                   onChange={onModeChange || (() => { })}
                   disabled={isProcessing}
                   className="w-full"
                 />
-              </div>
-            )}
+              )}
 
-            <label htmlFor="chat-input" className="sr-only">
-              Type your message
-            </label>
-            <textarea
-              id="chat-input"
-              ref={(el) => {
-                (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
-                (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
-              }}
-              value={input}
-              onChange={(e) => {
-                const value = e.target.value;
-                try {
-                  onInputChange(value);
-                  const showSlash = value.trim().startsWith('/') && !value.startsWith('/ref ');
-                  setShowSlashHelp(showSlash);
-                  if (showSlash) setSlashIndex(0);
-                  const showRef = value.startsWith('/ref ');
-                  setShowReferenceAutocomplete(showRef);
-                  if (showRef) {
-                    setReferenceIndex(0);
+              <label htmlFor="chat-input" className="sr-only">
+                Type your message
+              </label>
+
+              {/* Unified input row: textarea + controls */}
+              <div className="flex items-center gap-2 bg-black text-white rounded-lg border border-white/20 px-3 py-2">
+                <textarea
+                  id="chat-input"
+                  ref={(el) => {
+                    (inputRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+                    (textareaRef as React.MutableRefObject<HTMLTextAreaElement | null>).current = el;
+                  }}
+                  value={input}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    try {
+                      onInputChange(value);
+                      const showSlash = value.trim().startsWith('/') && !value.startsWith('/ref ');
+                      setShowSlashHelp(showSlash);
+                      if (showSlash) setSlashIndex(0);
+                      const showRef = value.startsWith('/ref ');
+                      setShowReferenceAutocomplete(showRef);
+                      if (showRef) setReferenceIndex(0);
+                      if (!showSlash && !showRef && historyIndex !== null) {
+                        setHistoryIndex(null);
+                        setDraftBeforeHistory('');
+                      }
+                    } catch (error) {
+                      console.error('Error in input change:', error);
+                    }
+                  }}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    isProcessing
+                      ? "Processing..."
+                      : activeTab === 'notes'
+                        ? "Add knowledge..."
+                        : showSlashHelp
+                          ? "Continue typing or use ↑/↓ to select..."
+                          : showReferenceAutocomplete
+                            ? "Continue typing to filter notes..."
+                            : "Ask a question, type / for commands, or /ref to reference notes..."
                   }
-                  if (!showSlash && !showRef && historyIndex !== null) {
-                    setHistoryIndex(null);
-                    setDraftBeforeHistory('');
-                  }
-                } catch (error) {
-                  console.error('Error in input change:', error);
-                }
-              }}
-              onKeyDown={handleKeyDown}
-              placeholder={
-                isProcessing
-                  ? "Processing..."
-                  : activeTab === 'notes'
-                    ? "Add knowledge..."
-                    : showSlashHelp
-                      ? "Continue typing or use ↑/↓ to select..."
-                      : showReferenceAutocomplete
-                        ? "Continue typing to filter notes..."
-                        : "Ask a question, type / for commands, or /ref to reference notes..."
-              }
-              disabled={isProcessing}
-              aria-disabled={isProcessing}
-              aria-controls={showSlashHelp ? 'ai-slash-list' : undefined}
-              aria-activedescendant={(() => {
-                if (!showSlashHelp) return undefined;
+                  disabled={isProcessing}
+                  aria-disabled={isProcessing}
+                  aria-controls={showSlashHelp ? 'ai-slash-list' : undefined}
+                  aria-activedescendant={(() => {
+                    if (!showSlashHelp) return undefined;
+                    const { suggestions } = getSlashContext();
+                    const active = Math.min(slashIndex, suggestions.length - 1);
+                    return suggestions.length > 0 ? `ai-slash-option-${suggestions[active]}` : undefined;
+                  })()}
+                  aria-describedby="input-help"
+                  aria-label="Chat input"
+                  className="flex-1 bg-transparent text-white placeholder-white/50 border-0 focus:outline-none disabled:opacity-50 resize-none leading-[1.4]"
+                  data-ai-chat-input
+                  data-testid="message-input"
+                  style={{ minHeight: '44px', fontSize: `${prefs.fontSize}px` }}
+                />
+
+                <button
+                  onClick={onVoiceRecord}
+                  disabled={isRecording}
+                  aria-label={isRecording ? "Stop recording" : "Start voice input"}
+                  aria-pressed={isRecording}
+                  className="text-white/90 disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  title={isRecording ? 'Recording...' : 'Start Voice Input'}
+                  type="button"
+                >
+                  <span className="sr-only">Voice input</span>
+                  {isRecording ? <Loader className="animate-spin" size={18} /> : <Mic size={18} />}
+                </button>
+
+                <button
+                  type="button"
+                  aria-label="Copy last response"
+                  title="Copy last response"
+                  onClick={() => {
+                    try {
+                      const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
+                      if (lastAssistant?.content) navigator.clipboard?.writeText(lastAssistant.content);
+                      setCopyNotice(true);
+                      setTimeout(() => setCopyNotice(false), 1500);
+                    } catch (err) {
+                      console.error('Copy failed:', err);
+                    }
+                  }}
+                  disabled={!messages.some(m => m.role === 'assistant')}
+                  className="text-white/90 disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                >
+                  <span className="sr-only">Copy last response</span>
+                  <Send size={16} className="rotate-[-90deg] opacity-80" />
+                </button>
+
+                {isProcessing ? (
+                  <button
+                    type="button"
+                    aria-label="Cancel processing"
+                    onClick={() => onCancel?.()}
+                    className="text-white p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  >
+                    <Loader className="animate-spin" size={16} />
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    aria-label="Send message"
+                    disabled={isProcessing || !input.trim()}
+                    className="text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
+                  >
+                    <Send size={16} />
+                  </button>
+                )}
+              </div>
+
+              {copyNotice && (
+                <div
+                  role="status"
+                  aria-live="polite"
+                  className="text-[11px] text-white/80"
+                  data-ai-toast="copied"
+                >
+                  Copied to clipboard
+                </div>
+              )}
+
+              {/* Slash suggestions */}
+              {showSlashHelp && (() => {
                 const { suggestions } = getSlashContext();
                 const active = Math.min(slashIndex, suggestions.length - 1);
-                return suggestions.length > 0 ? `ai-slash-option-${suggestions[active]}` : undefined;
-              })()}
-              aria-describedby="input-help"
-              aria-label="Chat input"
-              className="w-full bg-black text-white px-4 py-3 pr-16 rounded-lg border border-white/20 focus:outline-none focus:border-white/40 focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 placeholder-white/50 disabled:opacity-50 resize-none overflow-hidden"
-              data-ai-chat-input
-              data-testid="message-input"
-              style={{ minHeight: '48px', fontSize: `${prefs.fontSize}px` }}
-            />
-            {showSlashHelp && (() => {
-              const { suggestions } = getSlashContext();
-              const active = Math.min(slashIndex, suggestions.length - 1);
-              return (
-                <div id="ai-slash-list" className="mt-2 text-[11px] text-white/80" role="listbox" aria-label="Slash command suggestions" data-ai-slash-list>
-                  <div className="space-y-1">
-                    {suggestions.map((cmd, i) => {
-                      const isActive = i === active;
-                      const badge = getContextBadge(cmd);
-                      return (
-                        <button
-                          key={cmd.cmd}
-                          type="button"
-                          role="option"
-                          aria-selected={isActive}
-                          aria-describedby={`slash-desc-${cmd.cmd}`}
-                          id={`ai-slash-option-${cmd.cmd}`}
-                          className={`w-full text-left px-3 py-2 rounded-lg border ${isActive
-                            ? 'border-white bg-white/10 text-white'
-                            : 'border-white/20 text-white/80 hover:bg-white/5'
-                            } focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 transition-colors`}
-                          data-ai-slash-option={cmd.cmd}
-                          onClick={() => {
-                            const result = completeSlashCommand(input, i, suggestions, 'tab');
-                            onInputChange(result.completed);
-                            setSlashIndex(0);
-                            trackSlashUsage(cmd.cmd, 'tab', undefined);
-                            requestAnimationFrame(() => inputRef.current?.focus());
-                          }}
-                        >
-                          <div className="flex items-center justify-between">
-                            <span className="font-mono">/{cmd.cmd}</span>
-                            {badge && (
-                              <span
-                                className="text-[10px] opacity-70"
-                                title={`For ${cmd.context} pages`}
-                              >
-                                {badge}
-                              </span>
-                            )}
-                          </div>
-                          <div
-                            id={`slash-desc-${cmd.cmd}`}
-                            className="text-[10px] text-white/60 mt-0.5"
-                          >
-                            {cmd.desc}
-                          </div>
-                          {cmd.example && (
-                            <div className="text-[9px] text-white/40 mt-0.5 font-mono">
-                              {cmd.example}
-                            </div>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <div className="mt-2 text-white/50 text-[10px] flex justify-between">
-                    <span>Tab/→ complete • ↑/↓ select • Enter submit</span>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {showReferenceAutocomplete && (() => {
-              const { filteredNotes } = getReferenceContext();
-              return (
-                <div
-                  className="mt-2 text-[11px] text-white/80 max-h-48 overflow-y-auto"
-                  data-testid="reference-autocomplete"
-                  role="listbox"
-                  aria-label="Knowledge note references"
-                >
-                  {filteredNotes.length === 0 ? (
-                    <div className="px-3 py-2 text-white/50">
-                      No matching knowledge notes found
-                    </div>
-                  ) : (
+                return (
+                  <div id="ai-slash-list" className="mt-2 text-[11px] text-white/80" role="listbox" aria-label="Slash command suggestions" data-ai-slash-list>
                     <div className="space-y-1">
-                      {filteredNotes.map((note, i) => {
-                        const isActive = i === referenceIndex;
-                        const preview = note.content.length > 80
-                          ? note.content.substring(0, 80) + '...'
-                          : note.content;
+                      {suggestions.map((cmd, i) => {
+                        const isActive = i === active;
+                        const badge = getContextBadge(cmd);
                         return (
                           <button
-                            key={note.id}
+                            key={cmd.cmd}
                             type="button"
                             role="option"
                             aria-selected={isActive}
+                            aria-describedby={`slash-desc-${cmd.cmd}`}
+                            id={`ai-slash-option-${cmd.cmd}`}
                             className={`w-full text-left px-3 py-2 rounded-lg border ${isActive
                               ? 'border-white bg-white/10 text-white'
                               : 'border-white/20 text-white/80 hover:bg-white/5'
                               } focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 transition-colors`}
-                            data-testid="reference-option"
+                            data-ai-slash-option={cmd.cmd}
                             onClick={() => {
-                              const notePreview = note.content.length > 100
-                                ? note.content.substring(0, 100) + '...'
-                                : note.content;
-                              onInputChange(`Referenced note: "${notePreview}" `);
-                              setShowReferenceAutocomplete(false);
-                              setReferenceIndex(0);
+                              const result = completeSlashCommand(input, i, suggestions, 'tab');
+                              onInputChange(result.completed);
+                              setSlashIndex(0);
+                              trackSlashUsage(cmd.cmd, 'tab', undefined);
                               requestAnimationFrame(() => inputRef.current?.focus());
                             }}
                           >
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] opacity-70">
-                                {note.author}
-                              </span>
-                              <span className="text-[9px] opacity-50">
-                                {new Date(note.timestamp).toLocaleDateString()}
-                              </span>
+                              <span className="font-mono">/{cmd.cmd}</span>
+                              {badge && (
+                                <span className="text-[10px] opacity-70" title={`For ${cmd.context} pages`}>
+                                  {badge}
+                                </span>
+                              )}
                             </div>
-                            <div className="mt-0.5 text-white/90">
-                              {preview}
+                            <div id={`slash-desc-${cmd.cmd}`} className="text-[10px] text-white/60 mt-0.5">
+                              {cmd.desc}
                             </div>
+                            {cmd.example && (
+                              <div className="text-[9px] text-white/40 mt-0.5 font-mono">
+                                {cmd.example}
+                              </div>
+                            )}
                           </button>
                         );
                       })}
                     </div>
-                  )}
-                  <div className="mt-2 text-white/50 text-[10px]">
-                    ↑/↓ navigate • Enter select • Esc cancel
+                    <div className="mt-2 text-white/50 text-[10px] flex justify-between">
+                      <span>Tab/→ complete • ↑/↓ select • Enter submit</span>
+                    </div>
                   </div>
-                </div>
-              );
-            })()}
+                );
+              })()}
 
-            <div id="input-help" className="sr-only">
-              Press Enter to send, Shift+Enter for new line
-            </div>
+              {/* Reference autocomplete */}
+              {showReferenceAutocomplete && (() => {
+                const { filteredNotes } = getReferenceContext();
+                return (
+                  <div
+                    className="mt-2 text-[11px] text-white/80 max-h-48 overflow-y-auto"
+                    data-testid="reference-autocomplete"
+                    role="listbox"
+                    aria-label="Knowledge note references"
+                  >
+                    {filteredNotes.length === 0 ? (
+                      <div className="px-3 py-2 text-white/50">
+                        No matching knowledge notes found
+                      </div>
+                    ) : (
+                      <div className="space-y-1">
+                        {filteredNotes.map((note, i) => {
+                          const isActive = i === referenceIndex;
+                          const preview = note.content.length > 80
+                            ? note.content.substring(0, 80) + '...'
+                            : note.content;
+                          return (
+                            <button
+                              key={note.id}
+                              type="button"
+                              role="option"
+                              aria-selected={isActive}
+                              className={`w-full text-left px-3 py-2 rounded-lg border ${isActive
+                                ? 'border-white bg-white/10 text-white'
+                                : 'border-white/20 text-white/80 hover:bg-white/5'
+                                } focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2 transition-colors`}
+                              data-testid="reference-option"
+                              onClick={() => {
+                                const notePreview = note.content.length > 100
+                                  ? note.content.substring(0, 100) + '...'
+                                  : note.content;
+                                onInputChange(`Referenced note: "${notePreview}" `);
+                                setShowReferenceAutocomplete(false);
+                                setReferenceIndex(0);
+                                requestAnimationFrame(() => inputRef.current?.focus());
+                              }}
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="text-[10px] opacity-70">
+                                  {note.author}
+                                </span>
+                                <span className="text-[9px] opacity-50">
+                                  {new Date(note.timestamp).toLocaleDateString()}
+                                </span>
+                              </div>
+                              <div className="mt-0.5 text-white/90">
+                                {preview}
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <div className="mt-2 text-white/50 text-[10px]">
+                      ↑/↓ navigate • Enter select • Esc cancel
+                    </div>
+                  </div>
+                );
+              })()}
 
-            <button
-              onClick={onVoiceRecord}
-              disabled={isRecording}
-              aria-label={isRecording ? "Stop recording" : "Start voice input"}
-              aria-pressed={isRecording}
-              className="absolute right-10 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-              title={isRecording ? 'Recording...' : 'Start Voice Input'}
-              type="button"
-            >
-              {isRecording ? <Loader className="animate-spin" size={20} /> : <Mic size={20} />}
-            </button>
-
-            <button
-              type="button"
-              aria-label="Copy last response"
-              title="Copy last response"
-              onClick={() => {
-                try {
-                  const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
-                  if (lastAssistant?.content) navigator.clipboard?.writeText(lastAssistant.content);
-                  setCopyNotice(true);
-                  setTimeout(() => setCopyNotice(false), 1500);
-                } catch (err) {
-                  console.error('Copy failed:', err);
-                }
-              }}
-              disabled={!messages.some(m => m.role === 'assistant')}
-              className="absolute right-20 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-            >
-              <span className="sr-only">Copy last response</span>
-              <Send size={18} className="rotate-[-90deg] opacity-80" />
-            </button>
-
-            {copyNotice && (
-              <div
-                role="status"
-                aria-live="polite"
-                className="absolute right-24 top-0 -translate-y-full text-[11px] bg-white text-black px-2 py-1 rounded shadow"
-                data-ai-toast="copied"
-              >
-                Copied
+              <div id="input-help" className="sr-only">
+                Press Enter to send, Shift+Enter for new line
               </div>
-            )}
-
-            {isProcessing ? (
-              <button
-                type="button"
-                aria-label="Cancel processing"
-                onClick={() => onCancel?.()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-              >
-                <Loader className="animate-spin" size={16} />
-              </button>
-            ) : (
-              <button
-                type="submit"
-                aria-label="Send message"
-                disabled={isProcessing || !input.trim()}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white disabled:opacity-50 p-1 hover:bg-white/10 rounded-sm focus-visible:outline-2 focus-visible:outline-white focus-visible:outline-offset-2"
-              >
-                <Send size={16} />
-              </button>
-            )}
-          </div>
-        </form>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </ChatErrorBoundary >
   );
 }

@@ -25,7 +25,7 @@ interface NavbarInteractiveProps {
 export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }) => {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
-  const { isOpen: isAIChatOpen, open: openAIChat, close: closeAIChat, sidebarWidth, setSidebarWidth, isResizing, onResizeStart, onResizeEnd } = useAIChatSidebar();
+  const { isOpen: isAIChatOpen, open: openAIChat, close: _closeAIChat, sidebarWidth, setSidebarWidth, isResizing, onResizeStart: _onResizeStart, onResizeEnd: _onResizeEnd } = useAIChatSidebar();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
   const menuRef = useRef<HTMLDivElement>(null);
@@ -160,7 +160,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     }
   };
 
-  const handleWidthChange = (newWidth: number) => {
+  const _handleWidthChange = (newWidth: number) => {
     setSidebarWidth(newWidth);
   };
 

@@ -104,22 +104,15 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     const target = currentTabs.find(t => t.id === targetId);
     if (!target) return;
 
-    const hasReasoning = target.messages?.some(m => m.role === 'assistant' && /<REASONING>/.test(m.content));
-    if ((target.messages?.length || 0) === 0 || !hasReasoning) {
-      updateTab(targetId, {
-        messages: [
-          { role: 'user', content: 'Bootstrap test seed message 1' },
-          { role: 'assistant', content: '<REASONING>Bootstrap initial reasoning block for test visibility.</REASONING>Answer: Bootstrap ensures reasoning toggle appears.' }
-        ]
-      });
-      try {
-        const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
-        if (root) root.setAttribute('data-ai-reasoning-ready', '1');
-        window.dispatchEvent(new CustomEvent('svmai-reasoning-ready', {
-          detail: { source: 'bootstrap', tabId: targetId, ts: Date.now() }
-        }));
-      } catch (e) { /* noop */ }
-    }
+    // Don't bootstrap default messages - start with empty conversation
+    // Just ensure reasoning readiness attributes are set
+    try {
+      const root = document.querySelector('[data-ai-sidebar-root]') as HTMLElement | null;
+      if (root) root.setAttribute('data-ai-reasoning-ready', '1');
+      window.dispatchEvent(new CustomEvent('svmai-reasoning-ready', {
+        detail: { source: 'bootstrap', tabId: targetId, ts: Date.now() }
+      }));
+    } catch (e) { /* noop */ }
     // Removed 700ms watchdog reasoning injection to simplify to single path
   }, [activeTabId, tabs, updateTab]);
 
@@ -381,9 +374,9 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         }
         updateTab(tabId, {
           messages: [...finalMessages, errorMessage],
-            isProcessing: false,
-            status: 'error',
-            lastActivity: Date.now()
+          isProcessing: false,
+          status: 'error',
+          lastActivity: Date.now()
         });
       };
       if (elapsedErr < MIN_PROCESSING_MS) {
@@ -549,7 +542,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         let target = tabsRef.current.find(t => t.id === targetId);
         if (!target) {
           const retryDelay = 24;
-            setTimeout(() => {
+          setTimeout(() => {
             try {
               const retry = tabsRef.current.find(t => t.id === targetId);
               if (retry) {
@@ -682,7 +675,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         try {
           const currentTabs = tabsRef.current;
           const activeId = activeTabId || (currentTabs[0]?.id);
-            if (!activeId) return;
+          if (!activeId) return;
           const t = currentTabs.find(tt => tt.id === activeId);
           const hasReasoning = t?.messages?.some(m => m.role === 'assistant' && /<REASONING>/.test(m.content));
           if (!hasReasoning) {
@@ -727,7 +720,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
           if (submit) {
             // Check if we're in mock mode (for E2E tests)
             const isMockMode = w.location.search.includes('aimock=1') || w.location.search.includes('ai=1');
-            
+
             if (isMockMode) {
               // For mock mode, ensure minimum processing time for E2E tests
               const MIN_PROCESSING_MS = 450;
@@ -940,6 +933,21 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
                 window.dispatchEvent(new CustomEvent('svmai-pending-change'));
               } catch (e) { /* noop */ }
             }
+          }
+        }}
+        onDirectResponse={(assistantMessage) => {
+          // Handle direct RPC responses by adding both user message and assistant response to chat
+          if (activeTabId && activeTab) {
+            const userMessage = {
+              role: 'user' as const,
+              content: activeTab.input || ''
+            };
+            const updatedMessages = [...(activeTab.messages || []), userMessage, assistantMessage];
+            updateTab(activeTabId, {
+              messages: updatedMessages,
+              input: '',
+              isProcessing: false
+            });
           }
         }}
         onHelp={handleHelp}
