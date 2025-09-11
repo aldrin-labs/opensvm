@@ -31,6 +31,11 @@ export class UserHistoryService {
         JSON.stringify(updatedHistory)
       );
       
+      // Also store to server-side Qdrant for persistence
+      this.syncHistoryEntryToServer(entry).catch(error => {
+        console.warn('Failed to sync history entry to server:', error);
+      });
+      
       // Broadcast feed event for real-time updates
       const sseManager = SSEManager.getInstance();
       sseManager.broadcastFeedEvent({
@@ -48,8 +53,66 @@ export class UserHistoryService {
       
       // Update user profile with recalculated stats
       this.updateUserProfile(validatedAddress, updatedHistory);
+      
+      // Also sync updated profile to server
+      this.syncProfileToServer(validatedAddress, updatedHistory).catch(error => {
+        console.warn('Failed to sync profile to server:', error);
+      });
     } catch (error) {
       console.error('Error adding history entry:', error);
+    }
+  }
+
+  /**
+   * Sync history entry to server-side Qdrant storage
+   */
+  private static async syncHistoryEntryToServer(entry: UserHistoryEntry): Promise<void> {
+    try {
+      const response = await fetch('/api/user-history/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ entry })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to sync history entry: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error syncing history entry to server:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sync user profile and stats to server-side Qdrant storage
+   */
+  private static async syncProfileToServer(walletAddress: string, history: UserHistoryEntry[]): Promise<void> {
+    try {
+      const profile = this.getUserProfile(walletAddress);
+      if (!profile) return;
+
+      const response = await fetch('/api/user-profile/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          profile: {
+            ...profile,
+            stats: calculateStats(history),
+            history: history.slice(0, 100) // Only sync recent history to avoid large payloads
+          }
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to sync profile: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Error syncing profile to server:', error);
+      throw error;
     }
   }
 

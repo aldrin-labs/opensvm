@@ -33,7 +33,7 @@ const DEFI_PROTOCOLS = {
 
     canHandle: (context: ToolContext): boolean => {
         // Handle questions that need dynamic analysis but aren't hardcoded
-        const { qLower } = context;
+        const { qLower, question } = context;
 
         // Don't handle if asking for examples/tutorials
         if (qLower.includes("example") || qLower.includes("how to") || qLower.includes("curl") ||
@@ -41,8 +41,19 @@ const DEFI_PROTOCOLS = {
             return false;
         }
 
+        // Check if input looks like a potential Solana address (base58, 32-44 chars)
+        const trimmedQuestion = question.trim();
+        const base58Pattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+        const isPotentialSolanaAddress = base58Pattern.test(trimmedQuestion);
+        
+        // Check if it's random characters that might be mistaken for an address
+        const isRandomStringLikeAddress = trimmedQuestion.length >= 10 && 
+                                        /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
+                                        !qLower.includes("what") && !qLower.includes("how") && 
+                                        !qLower.includes("why") && !qLower.includes("when");
+
         // Handle analytical questions that need data fetching
-        return qLower.includes("validator") || qLower.includes("count") ||
+        const hasAnalyticalKeywords = qLower.includes("validator") || qLower.includes("count") ||
             qLower.includes("network") || qLower.includes("current") ||
             qLower.includes("epoch") || qLower.includes("performance") ||
             qLower.includes("tps") || qLower.includes("slot") ||
@@ -57,6 +68,8 @@ const DEFI_PROTOCOLS = {
             qLower.includes("protocol") || qLower.includes("dex") ||
             qLower.includes("swap") || qLower.includes("pool") ||
             qLower.includes("active") || qLower.includes("patterns");
+
+        return hasAnalyticalKeywords || isPotentialSolanaAddress || isRandomStringLikeAddress;
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -336,12 +349,42 @@ function generateSmartPlan(question: string): PlanStep[] {
         });
     }
 
-    // If no specific plan generated, provide general network overview
+    // Check if this might be a potential Solana address or random string that could be mistaken for one
     if (plan.length === 0) {
-        plan.push({
-            tool: 'getEpochInfo',
-            reason: 'Get current network status as starting point for analysis'
-        });
+        const trimmedQuestion = question.trim();
+        const base58Pattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
+        const isPotentialAddress = base58Pattern.test(trimmedQuestion);
+        
+        // Also check for shorter strings or strings with spaces that might be intended as addresses
+        const couldBeAddressAttempt = trimmedQuestion.length >= 10 && 
+                                    /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
+                                    !qLower.includes("what") && !qLower.includes("how");
+
+        if (isPotentialAddress || couldBeAddressAttempt) {
+            // Remove spaces and try to validate as address
+            const cleanedInput = trimmedQuestion.replace(/\s+/g, '');
+            
+            plan.push({
+                tool: 'getAccountInfo',
+                reason: `Check if the provided string '${trimmedQuestion}' is a valid base-58 Solana address; if not, no further action can be taken.`,
+                input: cleanedInput
+            });
+
+            // Also try to get balance if it might be valid
+            if (base58Pattern.test(cleanedInput)) {
+                plan.push({
+                    tool: 'getBalance',
+                    reason: 'Get account balance if the address is valid',
+                    input: cleanedInput
+                });
+            }
+        } else {
+            // Provide general network overview for other cases
+            plan.push({
+                tool: 'getEpochInfo',
+                reason: 'Get current network status as starting point for analysis'
+            });
+        }
     }
 
     return plan;

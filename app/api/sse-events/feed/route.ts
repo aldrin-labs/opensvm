@@ -26,6 +26,44 @@ interface FeedEvent {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+// Global connection registry for real-time broadcasting
+interface SSEConnection {
+  id: string;
+  controller: ReadableStreamDefaultController;
+  walletAddress: string;
+  feedType: string;
+  isActive: boolean;
+}
+
+declare global {
+  var sseConnections: Map<string, SSEConnection> | undefined;
+}
+
+// Initialize global connections registry
+if (!global.sseConnections) {
+  global.sseConnections = new Map();
+}
+
+// Function to broadcast to all connections
+export function broadcastToSSE(event: any) {
+  if (!global.sseConnections) return;
+
+  const encoder = new TextEncoder();
+  const eventData = encoder.encode(`data: ${JSON.stringify(event)}\n\n`);
+
+  for (const [connectionId, connection] of global.sseConnections.entries()) {
+    try {
+      if (connection.isActive && connection.controller) {
+        connection.controller.enqueue(eventData);
+      }
+    } catch (error) {
+      // Connection failed, remove it
+      connection.isActive = false;
+      global.sseConnections.delete(connectionId);
+    }
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     // Get wallet address from query params
@@ -46,23 +84,67 @@ export async function GET(request: NextRequest) {
     const encoder = new TextEncoder();
     const stream = new ReadableStream({
       start: async (controller) => {
+        let isControllerClosed = false;
+        const connectionId = `sse-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+
+        const safeClose = () => {
+          if (!isControllerClosed) {
+            try {
+              controller.close();
+              isControllerClosed = true;
+              // Remove from global registry
+              if (global.sseConnections) {
+                global.sseConnections.delete(connectionId);
+              }
+            } catch (e) {
+              // Controller already closed, ignore
+            }
+          }
+        };
+
+        const safeEnqueue = (data: Uint8Array) => {
+          if (!isControllerClosed) {
+            try {
+              controller.enqueue(data);
+              return true;
+            } catch (e) {
+              isControllerClosed = true;
+              if (global.sseConnections) {
+                const connection = global.sseConnections.get(connectionId);
+                if (connection) {
+                  connection.isActive = false;
+                }
+              }
+              return false;
+            }
+          }
+          return false;
+        };
+
+        // Register this connection in global registry
+        if (global.sseConnections) {
+          global.sseConnections.set(connectionId, {
+            id: connectionId,
+            controller,
+            walletAddress,
+            feedType,
+            isActive: true
+          });
+        }
+
         // Send initial connection confirmation
         const message = {
           type: 'connection',
           message: 'Connected to feed events',
           timestamp: Date.now()
         };
-        controller.enqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`));
+        safeEnqueue(encoder.encode(`data: ${JSON.stringify(message)}\n\n`));
 
         // Keep connection alive with periodic messages
         const keepAliveInterval = setInterval(() => {
-          try {
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`));
-          } catch (e) {
-            // If this fails, the connection is likely closed
+          if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify({ type: 'ping', timestamp: Date.now() })}\n\n`))) {
             clearInterval(keepAliveInterval);
             clearInterval(realEventsInterval);
-            controller.close();
           }
         }, 30000); // Send keep-alive every 30 seconds
 
@@ -131,10 +213,17 @@ export async function GET(request: NextRequest) {
 
         // Poll for new events
         const realEventsInterval = setInterval(async () => {
+          if (isControllerClosed) {
+            clearInterval(realEventsInterval);
+            clearInterval(keepAliveInterval);
+            return;
+          }
+
           try {
             // Fetch the latest events from the database
+            // Use a valid wallet address instead of empty string
             const { history } = await getUserHistory(
-              '', // Empty string to get all events
+              walletAddress, // Use the actual wallet address
               {
                 limit: 20,
                 // Only get events newer than the last one we've seen
@@ -164,11 +253,11 @@ export async function GET(request: NextRequest) {
                   event
                 };
 
-                try {
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify(eventUpdate)}\n\n`));
-                } catch (e) {
+                if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify(eventUpdate)}\n\n`))) {
                   // If enqueueing fails, the connection is likely closed
-                  throw e;
+                  clearInterval(realEventsInterval);
+                  clearInterval(keepAliveInterval);
+                  return;
                 }
               }
             }
@@ -185,24 +274,25 @@ export async function GET(request: NextRequest) {
                 userHasLiked: authenticatedWallet
               };
 
-              try {
-                controller.enqueue(encoder.encode(`data: ${JSON.stringify(likeUpdate)}\n\n`));
-
+              if (safeEnqueue(encoder.encode(`data: ${JSON.stringify(likeUpdate)}\n\n`))) {
                 // Update cached event
                 cachedEvents = cachedEvents.map(e =>
                   e.id === randomEvent.id ? { ...e, likes: newLikes } : e
                 );
-              } catch (e) {
+              } else {
                 // If enqueueing fails, the connection is likely closed
-                throw e;
+                clearInterval(realEventsInterval);
+                clearInterval(keepAliveInterval);
+                return;
               }
             }
 
           } catch (e) {
+            console.error('Error in SSE polling:', e);
             // If this fails, the connection is likely closed
             clearInterval(realEventsInterval);
             clearInterval(keepAliveInterval);
-            controller.close();
+            safeClose();
           }
         }, 5000); // Poll for new events every 5 seconds
 
@@ -210,7 +300,10 @@ export async function GET(request: NextRequest) {
         request.signal.addEventListener('abort', () => {
           clearInterval(keepAliveInterval);
           clearInterval(realEventsInterval);
-          controller.close();
+          if (global.sseConnections) {
+            global.sseConnections.delete(connectionId);
+          }
+          safeClose();
         });
       }
     });

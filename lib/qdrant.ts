@@ -261,7 +261,7 @@ export async function getUserHistory(
       });
     }
 
-    // If no filters are specified, remove the filter entirely to get all entries
+    // Use search instead of scroll to avoid Bad Request issues with order_by
     const searchParams: any = {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
       limit,
@@ -273,24 +273,8 @@ export async function getUserHistory(
       searchParams.filter = filter;
     }
 
-    // Use scroll instead of search to get results ordered by timestamp
-    // Scroll API allows us to get results in insertion order and we can sort by timestamp
-    const scrollParams: any = {
-      limit,
-      offset,
-      with_payload: true,
-      order_by: {
-        key: 'timestamp',
-        direction: 'desc' // Most recent first
-      }
-    };
-
-    if (filter.must.length > 0) {
-      scrollParams.filter = filter;
-    }
-
-    // Use scroll API to get properly ordered results
-    const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
+    // Use search API which is more reliable than scroll with ordering
+    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, searchParams);
 
     // Get total count
     const countParams: any = {};
@@ -299,9 +283,8 @@ export async function getUserHistory(
     }
     const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
 
-    // Scroll API returns { points: [...] } instead of direct array
-    const points = result.points || result;
-    const history = points.map(point => point.payload as unknown as UserHistoryEntry);
+    // Search API returns array directly
+    const history = result.map(point => point.payload as unknown as UserHistoryEntry);
 
     // Debug logging for results
     if (process.env.NODE_ENV === 'development') {
@@ -324,8 +307,8 @@ export async function getUserHistory(
       }
     }
 
-    // Data is already sorted by timestamp via order_by in the query
-    // No need to sort again as scroll API with order_by returns pre-sorted results
+    // Sort by timestamp in memory since we can't rely on Qdrant ordering
+    history.sort((a, b) => b.timestamp - a.timestamp);
 
     return {
       history,
