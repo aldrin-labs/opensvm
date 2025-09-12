@@ -15,7 +15,6 @@ function analyzeEnvVars() {
     const commonVars = [
         'OPENSVM_RPC_LIST',
         'OPENSVM_RPC_LIST_2',
-        'ANTHROPIC_API_KEY',
         'TOGETHER_API_KEY',
         'NETLIFY_DATABASE_URL',
         'NETLIFY_DATABASE_URL_UNPOOLED',

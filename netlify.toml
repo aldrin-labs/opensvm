@@ -27,7 +27,7 @@
   [plugins.inputs]
     buildEvent = "onBuild"
     # Only include essential API keys, not large RPC lists
-    include = ["ANTHROPIC_API_KEY", "TOGETHER_API_KEY"]
+    include = ["TOGETHER_API_KEY"]
 
 # Headers for static assets
 [[headers]]

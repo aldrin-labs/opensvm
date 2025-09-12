@@ -188,9 +188,9 @@ export async function POST(request: NextRequest) {
         // Initialize Anthropic client. On first use, an API key is required.
         // Prefer a specific proxy key if provided via environment; otherwise fall back to the caller's key.
         const initKey =
-          process.env.ANTHROPIC_PROXY_API_KEY ||
-          process.env.ANTHROPIC_API_KEY ||
-          apiKey;
+            process.env.ANTHROPIC_PROXY_API_KEY ||
+            process.env.ANTHROPIC_API_KEY ||
+            apiKey;
 
         const anthropicClient = getAnthropicClient(initKey);
 
