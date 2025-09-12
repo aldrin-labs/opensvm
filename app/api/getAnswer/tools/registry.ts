@@ -10,8 +10,8 @@ export class ToolRegistry {
         // Order matters - more specific tools should come first
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
-        accountAnalysisTool,
-        dynamicPlanExecutionTool, // Dynamic tool comes before static ones
+        dynamicPlanExecutionTool, // Dynamic tool comes first for comprehensive analysis
+        accountAnalysisTool, // Fallback for simpler account queries
         networkAnalysisTool,
     ];
 

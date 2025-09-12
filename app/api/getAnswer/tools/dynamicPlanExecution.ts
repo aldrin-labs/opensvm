@@ -4,7 +4,7 @@ import Together from "together-ai";
 interface PlanStep {
     tool: string;
     reason: string;
-    input?: string;
+    input?: string | any; // Allow both string and object inputs for advanced analytics
 }
 
 // Well-known DeFi protocol addresses for analysis
@@ -70,6 +70,8 @@ const DEFI_PROTOCOLS = {
             qLower.includes("account") || qLower.includes("balance") ||
             qLower.includes("address") || qLower.includes("transaction") ||
             qLower.includes("history") || qLower.includes("analytics") ||
+            qLower.includes("analyze") || qLower.includes("check") ||
+            qLower.includes("info") || qLower.includes("details") ||
             qLower.includes("defi") || qLower.includes("amm") ||
             qLower.includes("liquidity") || qLower.includes("lending") ||
             qLower.includes("yield") || qLower.includes("farming") ||
@@ -89,14 +91,14 @@ const DEFI_PROTOCOLS = {
         );
 
         // Handle explicit call/execution requests
-        const hasCallKeywords = qLower.includes("call") || qLower.includes("invoke") || 
+        const hasCallKeywords = qLower.includes("call") || qLower.includes("invoke") ||
             qLower.includes("execute") || qLower.includes("run") ||
             qLower.includes("show response") || qLower.includes("response of");
 
         // Handle RPC-specific terminology
         const hasRPCTerminology = qLower.includes("rpc") || qLower.includes("method") ||
             qLower.includes("endpoint") || qLower.includes("api");
-        
+
         return hasAnalyticalKeywords || hasRPCMethodNames || hasCallKeywords || hasRPCTerminology || isPotentialSolanaAddress || isRandomStringLikeAddress;
     },
 
@@ -234,32 +236,152 @@ function generateSmartPlan(question: string): PlanStep[] {
     }
 
     // Account analytics queries
-    else if (qLower.includes('account') || qLower.includes('address') || qLower.includes('balance')) {
+    else if (qLower.includes('account') || qLower.includes('address') || qLower.includes('balance') ||
+        qLower.includes('analyze') || qLower.includes('check') || qLower.includes('info') || qLower.includes('details')) {
         // Check if it looks like a Solana address (base58, roughly 32-44 chars)
         const addressPattern = /[1-9A-HJ-NP-Za-km-z]{32,44}/;
         const potentialAddress = question.match(addressPattern);
 
         if (potentialAddress) {
             const address = potentialAddress[0];
+
+            // Core account information (Solana RPC)
             plan.push({
                 tool: 'getAccountInfo',
-                reason: 'Get account information and data',
+                reason: 'Get basic account information including owner, data, executable status',
                 input: address
             });
             plan.push({
                 tool: 'getBalance',
-                reason: 'Get account SOL balance',
+                reason: 'Get current SOL balance in lamports',
                 input: address
             });
 
-            // If asking about transaction history
-            if (qLower.includes('transaction') || qLower.includes('history')) {
-                plan.push({
-                    tool: 'getConfirmedSignaturesForAddress2',
-                    reason: 'Get recent transaction history for the account',
-                    input: address
-                });
-            }
+            // Enhanced Moralis API analytics
+            plan.push({
+                tool: 'getMoralisPortfolio',
+                reason: 'Get complete portfolio including native SOL and all token holdings with USD values',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisTokenBalances',
+                reason: 'Get detailed SPL token balances with metadata, prices, and USD values',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisNFTs',
+                reason: 'Get NFT holdings with metadata, collections, and valuations',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisSwapHistory',
+                reason: 'Get recent swap transactions and DeFi activity patterns',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisTransactionHistory',
+                reason: 'Get comprehensive transaction history with enhanced metadata',
+                input: address
+            });
+
+            // Advanced financial analytics with Moralis
+            plan.push({
+                tool: 'getMoralisAdvancedAnalytics',
+                reason: 'Get comprehensive financial analytics including PnL, fees, and volume analysis',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisPnlAnalysis',
+                reason: 'Calculate profit/loss for each token position with entry/exit prices and unrealized gains',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisFeesAnalysis',
+                reason: 'Analyze total fees paid across all transactions, swaps, and network costs',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisInflowOutflow',
+                reason: 'Get top inflow/outflow analysis by value and frequency',
+                input: address
+            });
+
+            plan.push({
+                tool: 'getMoralisVolumeAnalysis',
+                reason: 'Get top 10 tokens by volume and top 10 transactions by USD value',
+                input: address
+            });
+
+            // Enhanced Analytics Suite - Next Level Intelligence
+            plan.push({
+                tool: 'getMultiTimeframeAnalytics',
+                reason: 'Comprehensive performance analysis across multiple timeframes with ROI and volatility metrics',
+                input: { address: address, timeframes: ['7d', '30d', '90d'] }
+            });
+
+            plan.push({
+                tool: 'getBehavioralPatterns',
+                reason: 'Advanced behavioral analysis including trading patterns, risk tolerance, and timing analysis',
+                input: { address: address, includeTimePatterns: true, includeRiskProfile: true }
+            });
+
+            plan.push({
+                tool: 'getPortfolioRiskAnalytics',
+                reason: 'Comprehensive risk analysis including concentration, correlation, and diversification metrics',
+                input: { address: address, includeCorrelations: true, riskTimeframe: '30d' }
+            });
+
+            plan.push({
+                tool: 'getPredictiveAnalytics',
+                reason: 'AI-powered trend forecasting and portfolio optimization recommendations',
+                input: { address: address, predictionHorizon: '7d', includeOptimization: true }
+            });
+
+            plan.push({
+                tool: 'getDefiProtocolAnalytics',
+                reason: 'Deep analysis of DeFi protocol interactions and yield farming performance',
+                input: { address: address, includeYieldAnalysis: true }
+            });
+
+            plan.push({
+                tool: 'getAiPoweredInsights',
+                reason: 'Generate AI-powered insights with personalized recommendations and strategic advice',
+                input: { address: address, insightTypes: ['summary', 'recommendations', 'opportunities', 'warnings'] }
+            });
+
+            plan.push({
+                tool: 'getAdvancedVisualizationData',
+                reason: 'Generate data for advanced visualizations including portfolio maps and correlation heatmaps',
+                input: { address: address, visualizationType: 'all', timeframe: '30d' }
+            });
+
+            // Token holdings analysis (Solana RPC for comparison)
+            plan.push({
+                tool: 'getParsedTokenAccountsByOwner',
+                reason: 'Get raw SPL token accounts from RPC for data verification',
+                input: address
+            });
+
+            // Get detailed transactions for pattern analysis (Solana RPC)
+            plan.push({
+                tool: 'getRecentTransactionsDetails',
+                reason: 'Get detailed transaction data for analyzing transfer patterns and account usage',
+                input: address
+            });
+
+            // Get epoch info for context
+            plan.push({
+                tool: 'getEpochInfo',
+                reason: 'Get current epoch context for rent exemption and timing analysis'
+            });
+
         } else {
             // General account info request without specific address
             plan.push({
@@ -267,9 +389,7 @@ function generateSmartPlan(question: string): PlanStep[] {
                 reason: 'Get current network context for account analysis'
             });
         }
-    }
-
-    // Transaction analysis queries
+    }    // Transaction analysis queries
     else if (qLower.includes('transaction') && !qLower.includes('account')) {
         // Check if it looks like a transaction signature
         const txPattern = /[1-9A-HJ-NP-Za-km-z]{64,88}/;
@@ -424,7 +544,109 @@ function generateSmartPlan(question: string): PlanStep[] {
     }
 
     return plan;
-} async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, any>> {
+}
+
+// ASCII Chart Generation Functions
+function generateTimelineChart(leaders: any[], currentSlot: number, rangeSlots: number): string {
+    const timeBlocks = 20; // 20 time segments
+    const slotsPerBlock = Math.floor(rangeSlots / timeBlocks);
+    const chart = [];
+
+    // Header
+    chart.push('Timeline Chart (Next 600 minutes):');
+    chart.push('Time  │' + '─'.repeat(60) + '│');
+    chart.push('      │' + Array.from({ length: 6 }, (_, i) => `${i * 100}min`.padEnd(10)).join('') + '│');
+    chart.push('      │' + '─'.repeat(60) + '│');
+
+    // Activity levels for each time block
+    const activity = new Array(timeBlocks).fill(0);
+    leaders.forEach(leader => {
+        leader.upcomingSlots.forEach((slot: number) => {
+            const blockIndex = Math.floor((slot - currentSlot) / slotsPerBlock);
+            if (blockIndex >= 0 && blockIndex < timeBlocks) {
+                activity[blockIndex]++;
+            }
+        });
+    });
+
+    const maxActivity = Math.max(...activity);
+    const heights = activity.map(a => Math.floor((a / maxActivity) * 10));
+
+    // Draw bars
+    for (let row = 10; row >= 0; row--) {
+        let line = `${row.toString().padStart(3)}   │`;
+        for (let col = 0; col < timeBlocks; col++) {
+            const chars = Math.floor(60 / timeBlocks);
+            const bar = heights[col] >= row ? '█'.repeat(chars) : ' '.repeat(chars);
+            line += bar;
+        }
+        line += '│';
+        chart.push(line);
+    }
+
+    chart.push('      │' + '─'.repeat(60) + '│');
+    chart.push('      └' + '─'.repeat(60) + '┘');
+    chart.push('');
+
+    return chart.join('\n');
+}
+
+function generateValidatorDistributionChart(leaders: any[]): string {
+    const chart = [];
+    chart.push('Validator Slot Distribution:');
+    chart.push('');
+
+    // Sort by total slots and take top 15
+    const sorted = leaders.sort((a, b) => b.totalNearSlots - a.totalNearSlots).slice(0, 15);
+    const maxSlots = sorted[0]?.totalNearSlots || 1;
+
+    sorted.forEach((leader, index) => {
+        const shortName = leader.validator.substring(0, 8) + '...';
+        const slots = leader.totalNearSlots;
+        const barLength = Math.floor((slots / maxSlots) * 40);
+        const bar = '█'.repeat(barLength) + '░'.repeat(40 - barLength);
+        chart.push(`${(index + 1).toString().padStart(2)}. ${shortName} │${bar}│ ${slots} slots`);
+    });
+
+    chart.push('');
+    return chart.join('\n');
+}
+
+function generateSlotPatternChart(leaders: any[], currentSlot: number): string {
+    const chart = [];
+    chart.push('Slot Assignment Pattern (Next 100 slots):');
+    chart.push('');
+
+    // Create a map of next 100 slots
+    const slotMap = new Map();
+    leaders.forEach(leader => {
+        leader.upcomingSlots.forEach((slot: number) => {
+            if (slot >= currentSlot && slot < currentSlot + 100) {
+                slotMap.set(slot, leader.validator.substring(0, 6));
+            }
+        });
+    });
+
+    // Draw pattern
+    for (let row = 0; row < 10; row++) {
+        let line = `${(currentSlot + row * 10).toString().padStart(8)} │`;
+        for (let col = 0; col < 10; col++) {
+            const slot = currentSlot + row * 10 + col;
+            const validator = slotMap.get(slot);
+            line += validator ? '●' : '·';
+        }
+        line += '│';
+        chart.push(line);
+    }
+
+    chart.push('         └' + '─'.repeat(10) + '┘');
+    chart.push('Legend: ● = Assigned slot, · = Empty/Other validator');
+    chart.push('');
+
+    return chart.join('\n');
+}
+
+async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
 
     for (const step of plan) {
@@ -439,6 +661,316 @@ function generateSmartPlan(question: string): PlanStep[] {
             } else if (step.tool === 'analyzeDeFiMarketTrends') {
                 result = await analyzeDeFiMarketTrends();
             }
+            // Handle Moralis API methods for enhanced account analysis
+            else if (step.tool === 'getMoralisPortfolio' && step.input) {
+                const { getPortfolio } = await import('../../../../lib/moralis-api');
+                result = await getPortfolio(step.input, true, 'mainnet');
+            } else if (step.tool === 'getMoralisTokenBalances' && step.input) {
+                const { getTokenBalances } = await import('../../../../lib/moralis-api');
+                result = await getTokenBalances(step.input, 'mainnet');
+            } else if (step.tool === 'getMoralisNFTs' && step.input) {
+                const { getNFTsForAddress } = await import('../../../../lib/moralis-api');
+                result = await getNFTsForAddress(step.input, { nftMetadata: true, limit: 20 }, 'mainnet');
+            } else if (step.tool === 'getMoralisSwapHistory' && step.input) {
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                result = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+            } else if (step.tool === 'getMoralisTransactionHistory' && step.input) {
+                const { getTransactionsByAddress } = await import('../../../../lib/moralis-api');
+                result = await getTransactionsByAddress(step.input, { limit: 50 }, 'mainnet');
+            }
+            // Enhanced financial analytics with Moralis
+            else if (step.tool === 'getMoralisAdvancedAnalytics' && step.input) {
+                // Comprehensive analytics combining multiple Moralis APIs
+                const { getSwapsByWalletAddress, getTokenBalances, getPortfolio } = await import('../../../../lib/moralis-api');
+                const [swaps, tokens, portfolio] = await Promise.all([
+                    getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
+                    getTokenBalances(step.input, 'mainnet'),
+                    getPortfolio(step.input, true, 'mainnet')
+                ]);
+                result = {
+                    address: step.input,
+                    swapHistory: swaps,
+                    tokenBalances: tokens,
+                    portfolio: portfolio,
+                    analytics: 'comprehensive_financial_analysis'
+                };
+            } else if (step.tool === 'getMoralisPnlAnalysis' && step.input) {
+                // PnL analysis using swap history
+                const { getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
+                const [swaps, currentTokens] = await Promise.all([
+                    getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
+                    getTokenBalances(step.input, 'mainnet')
+                ]);
+                result = {
+                    address: step.input,
+                    swapHistory: swaps,
+                    currentPositions: currentTokens,
+                    analysis: 'position_pnl_calculation'
+                };
+            } else if (step.tool === 'getMoralisFeesAnalysis' && step.input) {
+                // Fees analysis from transaction history
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                result = {
+                    address: step.input,
+                    transactionData: swaps,
+                    analysis: 'fees_and_costs_breakdown'
+                };
+            } else if (step.tool === 'getMoralisInflowOutflow' && step.input) {
+                // Inflow/outflow analysis
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                result = {
+                    address: step.input,
+                    transactionData: swaps,
+                    analysis: 'fund_flow_patterns'
+                };
+            } else if (step.tool === 'getMoralisVolumeAnalysis' && step.input) {
+                // Volume and top transactions analysis
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                result = {
+                    address: step.input,
+                    transactionData: swaps,
+                    analysis: 'volume_and_top_transactions'
+                };
+            }
+            // Advanced Analytics Tools
+            else if (step.tool === 'getMultiTimeframeAnalytics' && step.input) {
+                // Multi-timeframe performance analysis
+                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [swaps, portfolio] = await Promise.all([
+                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
+                    getPortfolio(params.address, true, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    timeframes: params.timeframes || ['7d', '30d', '90d'],
+                    swapHistory: swaps,
+                    portfolio: portfolio,
+                    analysis: 'multi_timeframe_performance'
+                };
+            } else if (step.tool === 'getBehavioralPatterns' && step.input) {
+                // Behavioral pattern analysis
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const swaps = await getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet');
+                result = {
+                    address: params.address,
+                    includeTimePatterns: params.includeTimePatterns || true,
+                    includeRiskProfile: params.includeRiskProfile || true,
+                    swapHistory: swaps,
+                    analysis: 'behavioral_patterns'
+                };
+            } else if (step.tool === 'getPortfolioRiskAnalytics' && step.input) {
+                // Portfolio risk analysis
+                const { getPortfolio, getTokenBalances, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [portfolio, tokens, swaps] = await Promise.all([
+                    getPortfolio(params.address, true, 'mainnet'),
+                    getTokenBalances(params.address, 'mainnet'),
+                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    includeCorrelations: params.includeCorrelations || true,
+                    riskTimeframe: params.riskTimeframe || '30d',
+                    portfolio: portfolio,
+                    tokens: tokens,
+                    swapHistory: swaps,
+                    analysis: 'risk_analytics'
+                };
+            } else if (step.tool === 'getCompetitiveBenchmarking' && step.input) {
+                // Competitive benchmarking analysis
+                const { getPortfolio, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [portfolio, swaps] = await Promise.all([
+                    getPortfolio(params.address, true, 'mainnet'),
+                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    benchmarkType: params.benchmarkType || 'all',
+                    portfolioSize: params.portfolioSize,
+                    portfolio: portfolio,
+                    swapHistory: swaps,
+                    analysis: 'competitive_benchmarking'
+                };
+            } else if (step.tool === 'getPredictiveAnalytics' && step.input) {
+                // Predictive analytics
+                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [swaps, portfolio] = await Promise.all([
+                    getSwapsByWalletAddress(params.address, { limit: 150 }, 'mainnet'),
+                    getPortfolio(params.address, true, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    predictionHorizon: params.predictionHorizon || '7d',
+                    includeOptimization: params.includeOptimization || true,
+                    swapHistory: swaps,
+                    portfolio: portfolio,
+                    analysis: 'predictive_analytics'
+                };
+            } else if (step.tool === 'getDefiProtocolAnalytics' && step.input) {
+                // DeFi protocol analytics
+                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [swaps, portfolio] = await Promise.all([
+                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
+                    getPortfolio(params.address, true, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    protocols: params.protocols,
+                    includeYieldAnalysis: params.includeYieldAnalysis || true,
+                    swapHistory: swaps,
+                    portfolio: portfolio,
+                    analysis: 'defi_protocol_analytics'
+                };
+            } else if (step.tool === 'getTokenSpecificAnalytics' && step.input) {
+                // Token-specific analytics
+                const { getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [swaps, tokens] = await Promise.all([
+                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
+                    getTokenBalances(params.address, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    tokenAddress: params.tokenAddress,
+                    includeMarketImpact: params.includeMarketImpact || true,
+                    swapHistory: swaps,
+                    tokens: tokens,
+                    analysis: 'token_specific_analytics'
+                };
+            } else if (step.tool === 'getNftPortfolioAnalytics' && step.input) {
+                // NFT portfolio analytics
+                const { getNFTsForAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const nfts = await getNFTsForAddress(params.address, { nftMetadata: true, limit: 50 }, 'mainnet');
+                result = {
+                    address: params.address,
+                    includeRarityAnalysis: params.includeRarityAnalysis || true,
+                    includeMarketTrends: params.includeMarketTrends || true,
+                    nfts: nfts,
+                    analysis: 'nft_portfolio_analytics'
+                };
+            } else if (step.tool === 'getTransactionOptimization' && step.input) {
+                // Transaction optimization analysis
+                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const swaps = await getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet');
+                result = {
+                    address: params.address,
+                    optimizationType: params.optimizationType || 'all',
+                    timeframe: params.timeframe || '30d',
+                    swapHistory: swaps,
+                    analysis: 'transaction_optimization'
+                };
+            } else if (step.tool === 'setupRealTimeMonitoring' && step.input) {
+                // Real-time monitoring setup
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                result = {
+                    address: params.address,
+                    alertTypes: params.alertTypes || ['large_transactions', 'portfolio_changes', 'risk_alerts'],
+                    thresholds: params.thresholds || {},
+                    analysis: 'real_time_monitoring_setup'
+                };
+            } else if (step.tool === 'getCrossChainAnalytics' && step.input) {
+                // Cross-chain analytics
+                const { getPortfolio } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const portfolio = await getPortfolio(params.address, true, 'mainnet');
+                result = {
+                    address: params.address,
+                    relatedAddresses: params.relatedAddresses || [],
+                    includePortfolioCorrelation: params.includePortfolioCorrelation || true,
+                    portfolio: portfolio,
+                    analysis: 'cross_chain_analytics'
+                };
+            } else if (step.tool === 'getAdvancedVisualizationData' && step.input) {
+                // Advanced visualization data
+                const { getPortfolio, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [portfolio, swaps] = await Promise.all([
+                    getPortfolio(params.address, true, 'mainnet'),
+                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    visualizationType: params.visualizationType || 'all',
+                    timeframe: params.timeframe || '30d',
+                    portfolio: portfolio,
+                    swapHistory: swaps,
+                    analysis: 'advanced_visualization_data'
+                };
+            } else if (step.tool === 'getAiPoweredInsights' && step.input) {
+                // AI-powered insights
+                const { getPortfolio, getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [portfolio, swaps, tokens] = await Promise.all([
+                    getPortfolio(params.address, true, 'mainnet'),
+                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet'),
+                    getTokenBalances(params.address, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    insightTypes: params.insightTypes || ['summary', 'recommendations', 'opportunities'],
+                    personalityProfile: params.personalityProfile || 'auto_detect',
+                    portfolio: portfolio,
+                    swapHistory: swaps,
+                    tokens: tokens,
+                    analysis: 'ai_powered_insights'
+                };
+            } else if (step.tool === 'getGamificationMetrics' && step.input) {
+                // Gamification metrics
+                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                const [swaps, portfolio] = await Promise.all([
+                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
+                    getPortfolio(params.address, true, 'mainnet')
+                ]);
+                result = {
+                    address: params.address,
+                    includeLeaderboards: params.includeLeaderboards || true,
+                    includeAchievements: params.includeAchievements || true,
+                    swapHistory: swaps,
+                    portfolio: portfolio,
+                    analysis: 'gamification_metrics'
+                };
+            }
+            // Handle custom account analysis methods
+            else if (step.tool === 'getParsedTokenAccountsByOwner' && step.input) {
+                // Get SPL token accounts for the address
+                const { PublicKey } = await import('@solana/web3.js');
+                const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                result = await conn.getParsedTokenAccountsByOwner(new PublicKey(step.input), {
+                    programId: tokenProgramId
+                });
+            } else if (step.tool === 'getRecentTransactionsDetails' && step.input) {
+                // Get detailed transaction data for analysis
+                const { PublicKey } = await import('@solana/web3.js');
+                try {
+                    const signatures = await conn.getSignaturesForAddress(new PublicKey(step.input), { limit: 10 });
+                    const detailedTxs = await Promise.all(
+                        signatures.slice(0, 5).map(async (sig: any) => {
+                            try {
+                                const tx = await conn.getParsedTransaction(sig.signature, {
+                                    maxSupportedTransactionVersion: 0
+                                });
+                                return { signature: sig, transaction: tx };
+                            } catch (e) {
+                                return { signature: sig, transaction: null, error: (e as Error).message };
+                            }
+                        })
+                    );
+                    result = detailedTxs;
+                } catch (error) {
+                    result = { error: (error as Error).message };
+                }
+            }
             // Check if the method exists on the connection object
             else if (typeof conn[step.tool] === 'function') {
                 // Handle methods that need specific parameters
@@ -446,7 +978,18 @@ function generateSmartPlan(question: string): PlanStep[] {
                     result = await conn[step.tool](20);
                 } else if (step.input) {
                     // If step has input parameter, pass it
-                    result = await conn[step.tool](step.input);
+                    // For Solana RPC methods that need PublicKey, convert string to PublicKey
+                    if (step.tool === 'getAccountInfo' || step.tool === 'getBalance') {
+                        const { PublicKey } = await import('@solana/web3.js');
+                        try {
+                            const pubkey = new PublicKey(step.input);
+                            result = await conn[step.tool](pubkey);
+                        } catch (error) {
+                            result = { error: `Invalid address for ${step.tool}: ${(error as Error).message}` };
+                        }
+                    } else {
+                        result = await conn[step.tool](step.input);
+                    }
                 } else {
                     // Call method without parameters
                     result = await conn[step.tool]();
@@ -459,12 +1002,23 @@ function generateSmartPlan(question: string): PlanStep[] {
 
             results[step.tool] = result;
 
+            // Debug logging for leader schedule
+            if (step.tool === 'getLeaderSchedule' && result) {
+                console.log(`[DEBUG] ${step.tool} result type:`, typeof result);
+                if (typeof result === 'object' && result !== null) {
+                    const entries = Object.entries(result);
+                    console.log(`[DEBUG] ${step.tool} entries count:`, entries.length);
+                    console.log(`[DEBUG] ${step.tool} first 3 entries:`, entries.slice(0, 3));
+                }
+            }
+
         } catch (error) {
             console.error(`Error executing ${step.tool}:`, error);
             results[step.tool] = { error: (error as Error).message };
         }
     }
 
+    console.log('[DEBUG] All plan results:', Object.keys(results));
     return results;
 }
 
@@ -692,26 +1246,228 @@ async function synthesizeResults(question: string, plan: PlanStep[], results: Re
         throw new Error("TOGETHER_API_KEY environment variable is not set");
     }
 
+    // Extract requested number of validators from question
+    const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
+    const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 10;
+    console.log(`[DEBUG] Requested validator count: ${requestedCount}`);
+
+    // Special processing for leader schedule to handle requested count
+    if (results['getLeaderSchedule'] && typeof results['getLeaderSchedule'] === 'object') {
+        const scheduleResult = results['getLeaderSchedule'];
+        const scheduleEntries = Object.entries(scheduleResult);
+        const currentSlotInfo = results['getSlot'];
+        const epochInfo = results['getEpochInfo'];
+
+        if (currentSlotInfo && epochInfo) {
+            const currentSlotInEpoch = epochInfo.slotIndex;
+            const currentLeaders = [];
+            // 600 minutes = 36,000 seconds = ~90,000 slots (each slot ~400ms)
+            const nearFutureRange = 90000;
+
+            for (const [validatorPubkey, slots] of scheduleEntries) {
+                if (Array.isArray(slots)) {
+                    const nearSlots = slots.filter(slot =>
+                        slot >= currentSlotInEpoch &&
+                        slot <= currentSlotInEpoch + nearFutureRange
+                    );
+
+                    if (nearSlots.length > 0) {
+                        currentLeaders.push({
+                            validator: validatorPubkey,
+                            upcomingSlots: nearSlots.slice(0, 5),
+                            totalNearSlots: nearSlots.length
+                        });
+                    }
+                }
+            }
+
+            currentLeaders.sort((a, b) => a.upcomingSlots[0] - b.upcomingSlots[0]);
+            const sampleSize = Math.min(requestedCount, currentLeaders.length);
+            const currentSample = currentLeaders.slice(0, sampleSize);
+
+            // Update the results with processed leader schedule
+            results['getLeaderSchedule'] = {
+                processedData: `Current/upcoming leaders around slot ${currentSlotInEpoch} (next 600 minutes):
+${currentSample.map(leader =>
+                    `  ${leader.validator} will produce blocks at slots: ${leader.upcomingSlots.join(', ')}${leader.totalNearSlots > 5 ? ` (and ${leader.totalNearSlots - 5} more)` : ''}`
+                ).join('\n')}
+${currentLeaders.length > sampleSize ? `  ... and ${currentLeaders.length - sampleSize} more validators with upcoming slots` : ''}
+Total validators in epoch: ${scheduleEntries.length}`
+            };
+        }
+    }
+
     // Prepare data context for LLM
     const dataContext = Object.entries(results)
         .map(([method, result]) => {
             if (result && !result.error) {
-                // Handle large datasets like leader schedule
-                if (method === 'getLeaderSchedule' && result && typeof result === 'object') {
-                    // Summarize leader schedule instead of including full data
+                // Handle processed leader schedule data
+                if (method === 'getLeaderSchedule' && result.processedData) {
+                    return `${method}: ${result.processedData}`;
+                }
+
+                // Handle original leader schedule fallback
+                if (method === 'getLeaderSchedule' && result && typeof result === 'object' && !result.processedData) {
                     const scheduleEntries = Object.entries(result);
-                    const sampleSize = Math.min(10, scheduleEntries.length);
+                    const sampleSize = Math.min(requestedCount, scheduleEntries.length);
                     const sample = scheduleEntries.slice(0, sampleSize);
 
-                    return `${method}: Leader schedule retrieved with ${scheduleEntries.length} slots mapped to validators. Sample entries:
-${sample.map(([slot, pubkey]) => `  Slot ${slot}: ${pubkey}`).join('\n')}
-${scheduleEntries.length > sampleSize ? `  ... and ${scheduleEntries.length - sampleSize} more slot assignments` : ''}`;
+                    return `${method}: Leader schedule retrieved with ${scheduleEntries.length} validators. Sample entries:
+${sample.map(([validator, slots]) => `  ${validator} has ${Array.isArray(slots) ? slots.length : 'unknown'} slots`).join('\n')}
+${scheduleEntries.length > sampleSize ? `  ... and ${scheduleEntries.length - sampleSize} more validators` : ''}`;
                 }
 
                 // Handle account information
                 if (method === 'getAccountInfo' && result && result.value) {
                     const account = result.value;
-                    return `${method}: Account found - Owner: ${account.owner}, Lamports: ${account.lamports}, Data size: ${account.data?.length || 0} bytes, Executable: ${account.executable}`;
+                    return `${method}: Account found - Owner: ${account.owner}, Lamports: ${account.lamports} (${(account.lamports / 1e9).toFixed(4)} SOL), Data size: ${account.data?.length || 0} bytes, Executable: ${account.executable}`;
+                }
+
+                // Handle Moralis portfolio data
+                if (method === 'getMoralisPortfolio' && result) {
+                    let portfolioSummary = `${method}: Portfolio Analysis:\n`;
+
+                    if (result.tokens && Array.isArray(result.tokens)) {
+                        const totalTokens = result.tokens.length;
+                        const tokensWithValue = result.tokens.filter((t: any) => t.usdValue && parseFloat(t.usdValue) > 0);
+                        portfolioSummary += `  • ${totalTokens} tokens held (${tokensWithValue.length} with USD value)\n`;
+
+                        // Show top tokens by value
+                        const topTokens = tokensWithValue
+                            .sort((a: any, b: any) => parseFloat(b.usdValue || '0') - parseFloat(a.usdValue || '0'))
+                            .slice(0, 5);
+
+                        if (topTokens.length > 0) {
+                            portfolioSummary += `  Top holdings:\n`;
+                            topTokens.forEach((token: any, i: number) => {
+                                portfolioSummary += `    ${i + 1}. ${token.symbol || 'Unknown'}: $${parseFloat(token.usdValue).toFixed(2)} (${token.amount} tokens)\n`;
+                            });
+                        }
+                    }
+
+                    if (result.nativeBalance) {
+                        portfolioSummary += `  • Native SOL: ${result.nativeBalance.solana || 'N/A'} SOL`;
+                        if (result.nativeBalance.usdValue) {
+                            portfolioSummary += ` ($${parseFloat(result.nativeBalance.usdValue).toFixed(2)})`;
+                        }
+                        portfolioSummary += '\n';
+                    }
+
+                    if (result.nfts && Array.isArray(result.nfts)) {
+                        portfolioSummary += `  • ${result.nfts.length} NFTs owned\n`;
+                    }
+
+                    return portfolioSummary;
+                }
+
+                // Handle Moralis token balances
+                if (method === 'getMoralisTokenBalances' && result && Array.isArray(result)) {
+                    if (result.length > 0) {
+                        const tokenSummary = result.slice(0, 10).map((token: any, index: number) => {
+                            const symbol = token.symbol || 'Unknown';
+                            const amount = token.amount || '0';
+                            const decimals = token.decimals || 0;
+                            const usdValue = token.usdValue ? ` ($${parseFloat(token.usdValue).toFixed(2)})` : '';
+                            return `    ${index + 1}. ${symbol}: ${amount} (${decimals} decimals)${usdValue}`;
+                        }).join('\n');
+
+                        return `${method}: Found ${result.length} token holdings:\n${tokenSummary}${result.length > 10 ? `\n    ... and ${result.length - 10} more tokens` : ''}`;
+                    } else {
+                        return `${method}: No token holdings found`;
+                    }
+                }
+
+                // Handle Moralis NFT data
+                if (method === 'getMoralisNFTs' && result && Array.isArray(result)) {
+                    if (result.length > 0) {
+                        const nftSummary = result.slice(0, 5).map((nft: any, index: number) => {
+                            const name = nft.name || nft.metadata?.name || 'Unnamed NFT';
+                            const collection = nft.collection || 'Unknown Collection';
+                            const mint = nft.mint || 'Unknown';
+                            return `    ${index + 1}. ${name} (${collection}) - Mint: ${mint}`;
+                        }).join('\n');
+
+                        return `${method}: Found ${result.length} NFTs:\n${nftSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more NFTs` : ''}`;
+                    } else {
+                        return `${method}: No NFTs found`;
+                    }
+                }
+
+                // Handle Moralis swap history
+                if (method === 'getMoralisSwapHistory' && result && Array.isArray(result)) {
+                    if (result.length > 0) {
+                        const swapSummary = result.slice(0, 5).map((swap: any, index: number) => {
+                            const fromToken = swap.fromTokenSymbol || 'Unknown';
+                            const toToken = swap.toTokenSymbol || 'Unknown';
+                            const fromAmount = swap.fromTokenAmount || '0';
+                            const toAmount = swap.toTokenAmount || '0';
+                            const date = swap.blockTime ? new Date(swap.blockTime * 1000).toLocaleDateString() : 'Unknown';
+                            return `    ${index + 1}. ${fromAmount} ${fromToken} → ${toAmount} ${toToken} (${date})`;
+                        }).join('\n');
+
+                        return `${method}: Found ${result.length} swap transactions:\n${swapSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more swaps` : ''}`;
+                    } else {
+                        return `${method}: No swap transactions found`;
+                    }
+                }
+
+                // Handle Moralis transaction history
+                if (method === 'getMoralisTransactionHistory' && result && Array.isArray(result)) {
+                    if (result.length > 0) {
+                        const txSummary = result.slice(0, 5).map((tx: any, index: number) => {
+                            const signature = tx.signature || 'Unknown';
+                            const type = tx.type || 'Unknown';
+                            const status = tx.status || 'Unknown';
+                            const date = tx.blockTime ? new Date(tx.blockTime * 1000).toLocaleDateString() : 'Unknown';
+                            const fee = tx.fee ? `${(tx.fee / 1e9).toFixed(6)} SOL` : 'Unknown';
+                            return `    ${index + 1}. ${signature} - ${type} (${status}) - Fee: ${fee} (${date})`;
+                        }).join('\n');
+
+                        return `${method}: Found ${result.length} transactions:\n${txSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more transactions` : ''}`;
+                    } else {
+                        return `${method}: No transactions found`;
+                    }
+                }
+
+                // Handle token accounts data  
+                if (method === 'getParsedTokenAccountsByOwner' && result && result.value) {
+                    const tokenAccounts = result.value;
+                    if (tokenAccounts.length > 0) {
+                        const tokenList = tokenAccounts.slice(0, 10).map((token: any, index: number) => {
+                            const mint = token.account.data.parsed.info.mint;
+                            const amount = token.account.data.parsed.info.tokenAmount.uiAmount || 0;
+                            const decimals = token.account.data.parsed.info.tokenAmount.decimals;
+                            return `  ${index + 1}. Mint: ${mint}, Amount: ${amount} (${decimals} decimals)`;
+                        }).join('\n');
+
+                        return `${method}: Found ${tokenAccounts.length} SPL token accounts:
+${tokenList}
+${tokenAccounts.length > 10 ? `... and ${tokenAccounts.length - 10} more tokens` : ''}`;
+                    } else {
+                        return `${method}: No SPL token accounts found`;
+                    }
+                }
+
+                // Handle detailed transaction analysis
+                if (method === 'getRecentTransactionsDetails' && Array.isArray(result)) {
+                    const validTxs = result.filter(tx => tx.transaction && !tx.error);
+                    if (validTxs.length > 0) {
+                        const txSummary = validTxs.map((tx: any, index: number) => {
+                            const txData = tx.transaction;
+                            const fee = txData.meta?.fee || 0;
+                            const success = !txData.meta?.err;
+                            const accounts = txData.transaction?.message?.accountKeys?.length || 0;
+                            const instructions = txData.transaction?.message?.instructions?.length || 0;
+                            const blockTime = txData.blockTime ? new Date(txData.blockTime * 1000).toLocaleString() : 'Unknown';
+
+                            return `  ${index + 1}. ${tx.signature.signature} - ${success ? 'Success' : 'Failed'}, Fee: ${(fee / 1e9).toFixed(6)} SOL, ${accounts} accounts, ${instructions} instructions, Time: ${blockTime}`;
+                        }).join('\n');
+
+                        return `${method}: Analyzed ${validTxs.length} detailed transactions:
+${txSummary}`;
+                    } else {
+                        return `${method}: No valid transaction details found`;
+                    }
                 }
 
                 // Handle transaction signatures list
@@ -730,6 +1486,34 @@ ${result.length > sampleSize ? `  ... and ${result.length - sampleSize} more tra
                     const success = !tx.meta?.err;
                     const accounts = tx.transaction?.message?.accountKeys?.length || 0;
                     return `${method}: Transaction ${success ? 'succeeded' : 'failed'} - Fee: ${fee} lamports, Accounts involved: ${accounts}, Block time: ${tx.blockTime || 'unknown'}`;
+                }
+
+                // Handle vote accounts data with requested count
+                if (method === 'getVoteAccounts' && result && (result.current || result.delinquent)) {
+                    const current = result.current || [];
+                    const delinquent = result.delinquent || [];
+                    const allValidators = [...current, ...delinquent];
+
+                    // Sort by activated stake (descending)
+                    const sortedValidators = allValidators.sort((a, b) => (b.activatedStake || 0) - (a.activatedStake || 0));
+
+                    const sampleSize = Math.min(requestedCount, sortedValidators.length);
+                    const topValidators = sortedValidators.slice(0, sampleSize);
+
+                    const validatorList = topValidators.map((validator, index) => {
+                        const stake = validator.activatedStake || 0;
+                        const commission = validator.commission || 0;
+                        const votePubkey = validator.votePubkey || 'unknown';
+                        const nodePubkey = validator.nodePubkey || 'unknown';
+                        return `  ${index + 1}. ${stake} lamports - vote: ${votePubkey}, node: ${nodePubkey} (${commission}% commission)`;
+                    }).join('\n');
+
+                    console.log(`[DEBUG] Generated validator list has ${validatorList.length} characters and ${sampleSize} validators`);
+
+                    return `${method}: Top ${sampleSize} validators by stake:
+${validatorList}
+${sortedValidators.length > sampleSize ? `... and ${sortedValidators.length - sampleSize} more validators` : ''}
+Total: ${current.length} active, ${delinquent.length} delinquent`;
                 }
 
                 // Handle DeFi protocol analysis
@@ -783,38 +1567,42 @@ ${result.length > sampleSize ? `  ... and ${result.length - sampleSize} more tra
         })
         .join('\n\n');
 
+    console.log(`[DEBUG] Data context being sent to LLM (${dataContext.length} characters):`, dataContext.substring(0, 1000) + '...');
+
     const together = new Together({
         apiKey: process.env.TOGETHER_API_KEY,
     });
 
-    const synthesisPrompt = `You are an expert Solana blockchain analyst with deep knowledge of account analytics, transaction patterns, and DeFi protocols. You have executed a plan to gather data and now need to synthesize the results into a clear, informative answer with AI-powered insights.
+    const synthesisPrompt = `You are a Solana blockchain analyst. Your task is to format the retrieved data into a clear response using ONLY the actual data provided. Do not add specifics that aren't in the raw data.
 
-Original Question: ${question}
-
-Plan Executed:
-${plan.map((step, i) => `${i + 1}. ${step.tool}: ${step.reason}`).join('\n')}
+Question: ${question}
 
 Data Retrieved:
 ${dataContext}
 
 Instructions:
-- Provide a clear, direct answer to the user's question using the retrieved data
-- Be specific with numbers, values, and technical details from the data
-- For account analytics, provide insights about account type, purpose, activity patterns, and potential use cases
-- For transaction analysis, explain the transaction flow, involved accounts, and any notable patterns
-- For DeFi analysis, use network performance metrics (TPS, validator health) to infer DeFi activity levels and provide insights about:
-  * Current network throughput capacity for DeFi protocols
-  * Network stability and validator participation affecting DeFi reliability
-  * Transaction volume patterns that may indicate DeFi usage trends
-  * General insights about AMM liquidity, yield farming, and lending based on network activity
-- If analyzing balances, provide context about the amounts in both lamports and SOL
-- If any data is missing or errored, mention it briefly but focus on what was successfully retrieved
-- Use AI-powered analysis to identify patterns, anomalies, or interesting insights from the data
-- Keep the response concise but informative with actionable insights
-- Do not mention the plan execution or tools - just provide the analysis
-- Format the response in a clean, readable way with headers and bullet points where appropriate
+- Use ONLY the exact data provided - do not add specific validator addresses, slot counts, or other details not explicitly shown
+- EXCEPTION: When the user requests a specific number of validators (like "top 50 validators") and the raw data contains that full list, show ALL requested validators in a CONCISE format to fit within response limits
+- If the data shows "921 validators" then say "921 validators" - don't make up which specific validators or their exact slot counts
+- For leader schedules, summarize the overall structure rather than citing specific validator performance
+- CRITICAL: Always show FULL addresses, transaction signatures, and mint addresses - NEVER truncate them with "..." or abbreviations
+- All Solana addresses are 32-44 characters long and must be shown in their entirety for usability
+- Transaction signatures are 64-88 characters and must be displayed completely
+- Token mint addresses must be shown in full for verification purposes
+- For balances, use the exact amounts provided
+- For transaction data, use only the signatures and details actually returned
+- Keep the response factual and based strictly on the retrieved data
+- For validator lists with many entries, use a compact format like: "Rank. Stake lamports (Commission%)"
+- Format clearly with headers and structure, but avoid speculation or creative analysis
+- If data is missing or incomplete, state that clearly
+- When showing validator lists, include all details provided: stake amounts, addresses, commission rates
+- VISUAL CHARTS: When appropriate (especially for validator rankings, leader schedules, or time-based data), create ASCII charts or graphs to visually represent the data. Use characters like |, -, *, #, █, ░, ▓ to create bar charts, timelines, or distribution visualizations that help explain patterns in the data
+- For leader schedules over time periods, consider creating ASCII timelines showing when validators lead
+- For validator rankings, consider ASCII bar charts showing relative stake sizes
+- For time-based analysis, create ASCII graphs showing trends or distributions
+- Be creative with ASCII visualization while staying strictly factual to the data
 
-Answer:`;
+Answer based strictly on the provided data:`;
 
     try {
         const answer = await together.chat.completions.create({
@@ -826,6 +1614,8 @@ Answer:`;
                 }
             ],
             stream: false,
+            max_tokens: 81920,
+            temperature: 0.1,
         });
 
         const response = answer.choices?.[0]?.message?.content || "Failed to synthesize results";

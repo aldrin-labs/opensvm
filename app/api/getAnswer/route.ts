@@ -181,6 +181,7 @@ export async function POST(request: Request) {
         { role: "user", content: question }
       ],
       stream: false,
+      max_tokens: 150000,
     });
 
     let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
