@@ -77,7 +77,27 @@ const DEFI_PROTOCOLS = {
             qLower.includes("swap") || qLower.includes("pool") ||
             qLower.includes("active") || qLower.includes("patterns");
 
-        return hasAnalyticalKeywords || isPotentialSolanaAddress || isRandomStringLikeAddress;
+        // Handle explicit RPC method calls
+        const hasRPCMethodNames = qLower.includes("get") && (
+            qLower.includes("cluster") || qLower.includes("nodes") ||
+            qLower.includes("supply") || qLower.includes("vote") ||
+            qLower.includes("signatures") || qLower.includes("confirmed") ||
+            qLower.includes("recent") || qLower.includes("minimum") ||
+            qLower.includes("stake") || qLower.includes("inflation") ||
+            qLower.includes("genesis") || qLower.includes("version") ||
+            qLower.includes("identity") || qLower.includes("fees")
+        );
+
+        // Handle explicit call/execution requests
+        const hasCallKeywords = qLower.includes("call") || qLower.includes("invoke") || 
+            qLower.includes("execute") || qLower.includes("run") ||
+            qLower.includes("show response") || qLower.includes("response of");
+
+        // Handle RPC-specific terminology
+        const hasRPCTerminology = qLower.includes("rpc") || qLower.includes("method") ||
+            qLower.includes("endpoint") || qLower.includes("api");
+        
+        return hasAnalyticalKeywords || hasRPCMethodNames || hasCallKeywords || hasRPCTerminology || isPotentialSolanaAddress || isRandomStringLikeAddress;
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -126,6 +146,14 @@ function generateSmartPlan(question: string): PlanStep[] {
     const plan: PlanStep[] = [];
 
     // Analyze question intent and generate appropriate plan
+
+    // Explicit cluster nodes queries
+    if (qLower.includes('getcluster') || (qLower.includes('cluster') && qLower.includes('nodes'))) {
+        plan.push({
+            tool: 'getClusterNodes',
+            reason: 'Get cluster nodes information showing network topology and validator connectivity'
+        });
+    }
 
     // Validator-related queries
     if (qLower.includes('validator')) {
