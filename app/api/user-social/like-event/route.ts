@@ -1,59 +1,22 @@
 /**
- * User Social Like Event API Endpoint
- * Handles liking events in the feed
+ * API endpoint for liking/unliking feed events
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import {
-  checkQdrantHealth,
-  getUserHistory,
-  storeHistoryEntry
-} from '@/lib/qdrant';
-import { generateId } from '@/lib/user-history-utils';
 import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
-import { SSEManager } from '@/lib/sse-manager';
+import { toggleEventLike } from '@/lib/feed-events';
 
-// Event Like entry interface
-interface EventLikeEntry {
-  id: string;
-  eventId: string;
-  walletAddress: string;
-  timestamp: number;
-}
-
-// Authentication check using session validation
-async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean; walletAddress?: string }> {
+export async function POST(request: Request) {
   try {
+    // Authenticate the user
     const session = await getSessionFromCookie();
-    if (!session) return { isValid: false };
-
-    // Check if session is expired
-    if (Date.now() > session.expiresAt) return { isValid: false };
-
-    return { isValid: true, walletAddress: session.walletAddress };
-  } catch (error) {
-    console.error('Session validation error:', error);
-    return { isValid: false };
-  }
-}
-
-export async function POST(request: NextRequest) {
-  try {
-    // Check Qdrant health first
-    const isHealthy = await checkQdrantHealth();
-    if (!isHealthy) {
-      return NextResponse.json({ error: 'Database unavailable' }, { status: 503 });
-    }
-
-    // Authentication check
-    const auth = await isValidRequest(request);
-    if (!auth.isValid || !auth.walletAddress) {
+    if (!session || Date.now() > session.expiresAt) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check if user has enough SVMAI tokens to like events
-    const tokenGatingResult = await checkSVMAIAccess(auth.walletAddress);
+    const tokenGatingResult = await checkSVMAIAccess(session.walletAddress);
     if (!tokenGatingResult.hasAccess) {
       return NextResponse.json({
         error: `You need at least ${MIN_SVMAI_BALANCE} SVMAI tokens to like events. Your current balance: ${tokenGatingResult.balance}`,
@@ -65,70 +28,29 @@ export async function POST(request: NextRequest) {
       }, { status: 403 });
     }
 
-    // Get request body
-    const body = await request.json();
-    const { eventId } = body;
+    const { eventId } = await request.json();
 
-    if (!eventId) {
-      return NextResponse.json({ error: 'Event ID is required' }, { status: 400 });
+    if (!eventId || typeof eventId !== 'string') {
+      return NextResponse.json({ error: 'Invalid event ID' }, { status: 400 });
     }
 
-    // Create like entry
-    const likeEntry: EventLikeEntry = {
-      id: generateId(),
-      walletAddress: auth.walletAddress,
-      eventId,
-      timestamp: Date.now()
-    };
+    // Toggle like status for the event
+    const result = await toggleEventLike(eventId, session.walletAddress);
 
-    // Find the event in history to update like count
-    // Get all history entries to find the specific event by ID
-    const { history } = await getUserHistory('', { limit: 1000 });
-
-    // Find the event by id
-    const eventEntry = history.find(entry => entry.id === eventId);
-    if (!eventEntry) {
-      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
-    }
-
-    // Check if user already liked this event
-    const likedBy = eventEntry.metadata?.likedBy || [];
-    if (likedBy.includes(auth.walletAddress)) {
-      return NextResponse.json({
-        success: false,
-        message: 'User already liked this event',
-        like: null
-      });
-    }
-
-    // Update event metadata with new like
-    eventEntry.metadata = {
-      ...eventEntry.metadata,
-      likes: (eventEntry.metadata?.likes || 0) + 1,
-      likedBy: [...likedBy, auth.walletAddress]
-    };
-
-    // Save updated event back to database
-    await storeHistoryEntry(eventEntry);
-
-    // Broadcast feed event for real-time updates
-    const sseManager = SSEManager.getInstance();
-    sseManager.broadcastFeedEvent({
-      type: 'like_event',
-      walletAddress: auth.walletAddress,
-      eventId,
-      newLikeCount: eventEntry.metadata.likes,
-      timestamp: Date.now()
-    });
-
-    // Return success response
     return NextResponse.json({
       success: true,
-      like: likeEntry,
-      newLikeCount: eventEntry.metadata.likes
+      eventId,
+      likes: result.likes,
+      hasLiked: result.hasLiked
     });
+
   } catch (error) {
-    console.error('Error processing like event:', error);
+    console.error('Error liking/unliking event:', error);
+    
+    if (error instanceof Error && error.message === 'Event not found') {
+      return NextResponse.json({ error: 'Event not found' }, { status: 404 });
+    }
+    
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

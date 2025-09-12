@@ -7,6 +7,8 @@ import { qdrantClient } from '@/lib/qdrant';
 import { v4 as uuidv4 } from 'uuid';
 import { getSessionFromCookie } from '@/lib/auth-server';
 import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
+import { syncUserProfileStats } from '@/lib/user-stats-sync';
+import { createLikeEvent } from '@/lib/feed-events';
 
 export async function POST(request: Request) {
   try {
@@ -102,44 +104,23 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update likes count for target user
-    const targetProfileResult = await qdrantClient.search('user_profiles', {
-      vector: Array(384).fill(0),
-      filter: {
-        must: [{ key: 'walletAddress', match: { value: targetAddress } }]
-      },
-      limit: 1
-    });
+    // Create feed event for this like action
+    try {
+      await createLikeEvent(session.walletAddress, targetAddress);
+    } catch (feedError) {
+      console.error('Error creating like feed event:', feedError);
+      // Don't fail the like operation if feed event creation fails
+    }
 
-    if (targetProfileResult.length > 0) {
-      const targetProfile = targetProfileResult[0].payload as any;
-      const currentSocialStats = targetProfile.socialStats || {
-        visitsByUsers: 0,
-        followers: 0,
-        following: 0,
-        likes: 0,
-        profileViews: 0
-      };
-      const updatedProfile = {
-        ...targetProfile,
-        socialStats: {
-          ...currentSocialStats,
-          likes: (currentSocialStats.likes || 0) + 1
-        }
-      };
-
-      // Get the existing point ID from the search result
-      const pointId = targetProfileResult[0].id;
-
-      await qdrantClient.upsert('user_profiles', {
-        points: [
-          {
-            id: pointId,
-            vector: Array(384).fill(0),
-            payload: updatedProfile
-          }
-        ]
-      });
+    // Use unified stats synchronization instead of manual updates
+    try {
+      // Sync stats for target user to ensure accurate like count
+      await syncUserProfileStats(targetAddress);
+      
+      console.log(`Synchronized stats after like: ${session.walletAddress} liked ${targetAddress}`);
+    } catch (syncError) {
+      console.error('Error synchronizing stats after like:', syncError);
+      // Don't fail the like operation if sync fails
     }
 
     return NextResponse.json({ success: true });

@@ -5,23 +5,11 @@
 import { NextRequest } from 'next/server';
 import { validateWalletAddress } from '@/lib/user-history-utils';
 import { getSessionFromCookie } from '@/lib/auth-server';
-import { getUserHistory, getUserFollowing } from '@/lib/qdrant';
+import { getUserFollowing } from '@/lib/qdrant';
+import { getFeedEvents, SocialFeedEvent } from '@/lib/feed-events';
 
-// Feed event interface
-interface FeedEvent {
-  id: string;
-  eventType: 'transaction' | 'visit' | 'like' | 'follow' | 'other';
-  timestamp: number;
-  userAddress: string;
-  userName?: string;
-  userAvatar?: string;
-  content: string;
-  targetAddress?: string;
-  targetId?: string;
-  metadata?: Record<string, any>;
-  likes: number;
-  hasLiked: boolean;
-}
+// Use SocialFeedEvent from feed-events module
+type FeedEvent = SocialFeedEvent;
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -152,55 +140,6 @@ export async function GET(request: NextRequest) {
         let lastEventTimestamp = Date.now();
         let cachedEvents: FeedEvent[] = [];
 
-        // Function to convert history entry to feed event
-        const historyToFeedEvent = (entry: any): FeedEvent | null => {
-          try {
-            // Extract event data from history entry
-            const eventType = entry.pageType as 'transaction' | 'visit' | 'like' | 'follow' | 'other';
-
-            // Apply feed type filtering
-            if (feedType === 'following') {
-              // For 'following' feed, only include events from followed users
-              if (!followingList.some(f => f.targetAddress === entry.walletAddress)) {
-                return null;
-              }
-            } else if (feedType === 'for-you') {
-              // For 'for-you' feed, show recent activity from today or content with engagement
-              const todayStart = new Date().setHours(0, 0, 0, 0);
-              const isFromToday = entry.timestamp >= todayStart;
-              const hasEngagement = entry.metadata?.likes && entry.metadata.likes > 0;
-
-              // Include if: recent activity from today OR has some engagement OR is from profile owner
-              if (!isFromToday && !hasEngagement && entry.walletAddress !== walletAddress) {
-                return null;
-              }
-            }
-
-            // Prepare user data for the event
-            const userName = entry.metadata?.userName || `User ${entry.walletAddress.slice(0, 6)}`;
-            const userAvatar = entry.metadata?.userAvatar ||
-              `https://api.dicebear.com/7.x/adventurer/svg?seed=${entry.walletAddress}`;
-
-            return {
-              id: entry.id,
-              eventType,
-              timestamp: entry.timestamp,
-              userAddress: entry.walletAddress,
-              userName,
-              userAvatar,
-              content: entry.pageTitle || entry.path || 'Performed an action',
-              targetAddress: entry.metadata?.targetAddress,
-              targetId: entry.metadata?.targetId,
-              metadata: entry.metadata,
-              likes: entry.metadata?.likes || 0,
-              hasLiked: authenticatedWallet ? entry.metadata?.likedBy?.includes(authenticatedWallet) : false
-            };
-          } catch (error) {
-            console.error('Error converting history entry to feed event:', error);
-            return null;
-          }
-        };
-
         // Get initial list of following if needed
         let followingList: any[] = [];
         if (feedType === 'following' && walletAddress) {
@@ -211,7 +150,7 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        // Poll for new events
+        // Poll for new social feed events
         const realEventsInterval = setInterval(async () => {
           if (isControllerClosed) {
             clearInterval(realEventsInterval);
@@ -220,37 +159,37 @@ export async function GET(request: NextRequest) {
           }
 
           try {
-            // Fetch the latest events from the database
-            // Use a valid wallet address instead of empty string
-            const { history } = await getUserHistory(
-              walletAddress, // Use the actual wallet address
-              {
-                limit: 20,
-                // Only get events newer than the last one we've seen
-                // Filter in-memory after fetching
-              }
-            );
+            // Get the latest social feed events
+            const followingAddresses = followingList.map(f => f.targetAddress);
+            
+            const newEvents = await getFeedEvents({
+              feedType: feedType as 'for-you' | 'following',
+              userAddress: walletAddress,
+              followingAddresses,
+              limit: 10,
+              offset: 0,
+              dateRange: 'all',
+              sortOrder: 'newest'
+            });
 
-            // Find new events (events with timestamp > lastEventTimestamp)
-            const newEntries = history.filter(entry => entry.timestamp > lastEventTimestamp);
+            // Find events newer than our last check
+            const recentEvents = newEvents.filter(event => event.timestamp > lastEventTimestamp);
 
-            if (newEntries.length > 0) {
+            if (recentEvents.length > 0) {
               // Update lastEventTimestamp to the newest event's timestamp
-              lastEventTimestamp = Math.max(...newEntries.map(entry => entry.timestamp));
-
-              // Convert new entries to feed events
-              const newEvents = newEntries
-                .map(historyToFeedEvent)
-                .filter((event): event is FeedEvent => event !== null);
+              lastEventTimestamp = Math.max(...recentEvents.map(event => event.timestamp));
 
               // Update cached events
-              cachedEvents = [...newEvents, ...cachedEvents].slice(0, 100); // Keep last 100 events
+              cachedEvents = [...recentEvents, ...cachedEvents].slice(0, 100); // Keep last 100 events
 
               // Send each new event to the client
-              for (const event of newEvents) {
+              for (const event of recentEvents) {
                 const eventUpdate = {
                   type: 'feed-update',
-                  event
+                  event: {
+                    ...event,
+                    hasLiked: authenticatedWallet ? event.metadata?.likedBy?.includes(authenticatedWallet) || false : false
+                  }
                 };
 
                 if (!safeEnqueue(encoder.encode(`data: ${JSON.stringify(eventUpdate)}\n\n`))) {
@@ -259,31 +198,6 @@ export async function GET(request: NextRequest) {
                   clearInterval(keepAliveInterval);
                   return;
                 }
-              }
-            }
-
-            // Randomly send like updates based on real events
-            if (cachedEvents.length > 0 && Math.random() > 0.8) {
-              const randomEvent = cachedEvents[Math.floor(Math.random() * cachedEvents.length)];
-              const newLikes = randomEvent.likes + 1;
-
-              const likeUpdate = {
-                type: 'like-update',
-                eventId: randomEvent.id,
-                likes: newLikes,
-                userHasLiked: authenticatedWallet
-              };
-
-              if (safeEnqueue(encoder.encode(`data: ${JSON.stringify(likeUpdate)}\n\n`))) {
-                // Update cached event
-                cachedEvents = cachedEvents.map(e =>
-                  e.id === randomEvent.id ? { ...e, likes: newLikes } : e
-                );
-              } else {
-                // If enqueueing fails, the connection is likely closed
-                clearInterval(realEventsInterval);
-                clearInterval(keepAliveInterval);
-                return;
               }
             }
 

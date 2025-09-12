@@ -13,9 +13,9 @@ import {
   updateCachedEvent,
   addEventToCache,
   clearCache,
-  FeedEvent as CachedFeedEvent,
   FeedFilters
 } from '@/lib/feed-cache';
+import { SocialFeedEvent } from '@/lib/feed-events';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Loader2,
@@ -47,21 +47,8 @@ import {
   DropdownMenuItem
 } from '@/components/ui/dropdown-menu';
 
-// Type definitions for feed events
-interface FeedEvent {
-  id: string;
-  eventType: 'transaction' | 'visit' | 'like' | 'follow' | 'other';
-  timestamp: number;
-  userAddress: string;
-  userName?: string;
-  userAvatar?: string;
-  content: string;
-  targetAddress?: string;
-  targetId?: string;
-  metadata?: Record<string, any>;
-  likes: number;
-  hasLiked: boolean;
-}
+// Use SocialFeedEvent from the proper module
+type FeedEvent = SocialFeedEvent & { hasLiked: boolean };
 
 interface UserFeedDisplayProps {
   walletAddress: string;
@@ -147,8 +134,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
 
         if (cachedEvents) {
           console.log('Using cached feed data');
-          // Convert CachedFeedEvent to FeedEvent format
-          const convertedEvents = cachedEvents.map((cachedEvent: CachedFeedEvent) => ({
+          // Convert cached events to FeedEvent format  
+          const convertedEvents = cachedEvents.map((cachedEvent: any) => ({
             id: cachedEvent.id,
             eventType: cachedEvent.eventType,
             timestamp: cachedEvent.timestamp,

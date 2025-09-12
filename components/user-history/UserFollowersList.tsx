@@ -20,6 +20,12 @@ interface Follower {
   timestamp: number;
 }
 
+interface UserFollowEntry {
+  followerAddress: string;
+  targetAddress: string;
+  timestamp: number;
+}
+
 interface UserFollowersListProps {
   walletAddress: string;
   type: 'followers' | 'following';
@@ -35,7 +41,17 @@ export function UserFollowersList({ walletAddress, type }: UserFollowersListProp
         const response = await fetch(`/api/user-social/follow/${walletAddress}?type=${type}`);
         if (response.ok) {
           const data = await response.json();
-          setUsers(data[type] || []);
+          const rawUsers = data[type] || [];
+          
+          // Transform the data structure based on type
+          const transformedUsers = rawUsers.map((entry: UserFollowEntry) => ({
+            walletAddress: type === 'followers' 
+              ? entry.followerAddress  // For followers, show who is following
+              : entry.targetAddress,   // For following, show who the user follows
+            timestamp: entry.timestamp
+          }));
+          
+          setUsers(transformedUsers);
         } else {
           console.warn(`Failed to fetch ${type} data:`, response.status);
           setUsers([]);

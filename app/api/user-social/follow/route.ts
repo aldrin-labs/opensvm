@@ -7,6 +7,8 @@ import { qdrantClient } from '@/lib/qdrant';
 import { v4 as uuidv4 } from 'uuid';
 import { getSessionFromCookie } from '@/lib/auth-server';
 import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
+import { syncUserProfileStats } from '@/lib/user-stats-sync';
+import { createFollowEvent } from '@/lib/feed-events';
 
 export async function POST(request: Request) {
   try {
@@ -47,7 +49,7 @@ export async function POST(request: Request) {
         filter: {
           must: [
             { key: 'followerAddress', match: { value: session.walletAddress } },
-            { key: 'followingAddress', match: { value: targetAddress } }
+            { key: 'targetAddress', match: { value: targetAddress } }
           ]
         },
         limit: 1
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
     const followEntry = {
       id: uuidv4(),
       followerAddress: session.walletAddress,
-      followingAddress: targetAddress,
+      targetAddress: targetAddress,
       timestamp: Date.now()
     };
 
@@ -102,84 +104,26 @@ export async function POST(request: Request) {
       }
     }
 
-    // Update follower count for target user
-    const targetProfileResult = await qdrantClient.search('user_profiles', {
-      vector: Array(384).fill(0),
-      filter: {
-        must: [{ key: 'walletAddress', match: { value: targetAddress } }]
-      },
-      limit: 1
-    });
-
-    if (targetProfileResult.length > 0) {
-      const targetProfile = targetProfileResult[0].payload as any;
-      const currentSocialStats = targetProfile.socialStats || {
-        visitsByUsers: 0,
-        followers: 0,
-        following: 0,
-        likes: 0,
-        profileViews: 0
-      };
-      const updatedProfile = {
-        ...targetProfile,
-        socialStats: {
-          ...currentSocialStats,
-          followers: (currentSocialStats.followers || 0) + 1
-        }
-      };
-
-      // Get the existing point ID from the search result
-      const targetPointId = targetProfileResult[0].id;
-
-      await qdrantClient.upsert('user_profiles', {
-        points: [
-          {
-            id: targetPointId,
-            vector: Array(384).fill(0),
-            payload: updatedProfile
-          }
-        ]
-      });
+    // Create feed event for this follow action
+    try {
+      await createFollowEvent(session.walletAddress, targetAddress);
+    } catch (feedError) {
+      console.error('Error creating follow feed event:', feedError);
+      // Don't fail the follow operation if feed event creation fails
     }
 
-    // Update following count for current user
-    const currentProfileResult = await qdrantClient.search('user_profiles', {
-      vector: Array(384).fill(0),
-      filter: {
-        must: [{ key: 'walletAddress', match: { value: session.walletAddress } }]
-      },
-      limit: 1
-    });
-
-    if (currentProfileResult.length > 0) {
-      const currentProfile = currentProfileResult[0].payload as any;
-      const currentSocialStats = currentProfile.socialStats || {
-        visitsByUsers: 0,
-        followers: 0,
-        following: 0,
-        likes: 0,
-        profileViews: 0
-      };
-      const updatedProfile = {
-        ...currentProfile,
-        socialStats: {
-          ...currentSocialStats,
-          following: (currentSocialStats.following || 0) + 1
-        }
-      };
-
-      // Get the existing point ID from the search result
-      const currentPointId = currentProfileResult[0].id;
-
-      await qdrantClient.upsert('user_profiles', {
-        points: [
-          {
-            id: currentPointId,
-            vector: Array(384).fill(0),
-            payload: updatedProfile
-          }
-        ]
-      });
+    // Use unified stats synchronization instead of manual updates
+    try {
+      // Sync stats for both users to ensure accurate counts
+      await Promise.all([
+        syncUserProfileStats(targetAddress),
+        syncUserProfileStats(session.walletAddress)
+      ]);
+      
+      console.log(`Synchronized stats after follow: ${session.walletAddress} -> ${targetAddress}`);
+    } catch (syncError) {
+      console.error('Error synchronizing stats after follow:', syncError);
+      // Don't fail the follow operation if sync fails
     }
 
     return NextResponse.json({ success: true });

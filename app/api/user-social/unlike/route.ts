@@ -5,6 +5,7 @@
 import { NextResponse } from 'next/server';
 import { qdrantClient } from '@/lib/qdrant';
 import { getSessionFromCookie } from '@/lib/auth-server';
+import { syncUserProfileStats } from '@/lib/user-stats-sync';
 
 export async function POST(request: Request) {
   try {
@@ -41,45 +42,15 @@ export async function POST(request: Request) {
       points: [existingLikeResult[0].id]
     });
 
-    // Update likes count for target user
-    const targetProfileResult = await qdrantClient.search('user_profiles', {
-      vector: Array(384).fill(0),
-      filter: {
-        must: [{ key: 'walletAddress', match: { value: targetAddress } }]
-      },
-      limit: 1
-    });
-
-    if (targetProfileResult.length > 0) {
-      const targetProfile = targetProfileResult[0].payload as any;
-      const currentSocialStats = targetProfile.socialStats || {
-        visitsByUsers: 0,
-        followers: 0,
-        following: 0,
-        likes: 0,
-        profileViews: 0
-      };
-
-      const updatedProfile = {
-        ...targetProfile,
-        socialStats: {
-          ...currentSocialStats,
-          likes: Math.max(0, (currentSocialStats.likes || 0) - 1)
-        }
-      };
-
-      // Get the existing point ID from the search result
-      const pointId = targetProfileResult[0].id;
-
-      await qdrantClient.upsert('user_profiles', {
-        points: [
-          {
-            id: pointId,
-            vector: Array(384).fill(0),
-            payload: updatedProfile
-          }
-        ]
-      });
+    // Use unified stats synchronization instead of manual updates
+    try {
+      // Sync stats for target user to ensure accurate like count
+      await syncUserProfileStats(targetAddress);
+      
+      console.log(`Synchronized stats after unlike: ${session.walletAddress} unliked ${targetAddress}`);
+    } catch (syncError) {
+      console.error('Error synchronizing stats after unlike:', syncError);
+      // Don't fail the unlike operation if sync fails
     }
 
     return NextResponse.json({ success: true });

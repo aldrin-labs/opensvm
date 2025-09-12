@@ -8,10 +8,10 @@
 // Cache expiration time (24 hours)
 const CACHE_EXPIRATION = 24 * 60 * 60 * 1000;
 
-// Interface for event data
+// Interface for event data - aligned with SocialFeedEvent
 export interface FeedEvent {
   id: string;
-  eventType: 'transaction' | 'visit' | 'like' | 'follow' | 'other';
+  eventType: 'transaction' | 'follow' | 'like' | 'profile_update' | 'token_transfer';
   timestamp: number;
   userAddress: string;
   userName?: string;
@@ -21,7 +21,7 @@ export interface FeedEvent {
   targetId?: string;
   metadata?: Record<string, any>;
   likes: number;
-  hasLiked: boolean;
+  hasLiked?: boolean;
 }
 
 // Interface for filters

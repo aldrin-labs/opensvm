@@ -12,6 +12,10 @@ import {
   getUserHistory,
   checkQdrantHealth
 } from '@/lib/qdrant';
+import {
+  syncUserProfileStats,
+  needsStatsSync
+} from '@/lib/user-stats-sync';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest): Promise<boolean> {
@@ -96,6 +100,22 @@ export async function GET(
       } catch (error) {
         console.warn('Failed to get user history, using empty history:', error);
         profile.history = [];
+      }
+    }
+
+    // Check if profile stats need synchronization and sync if needed
+    if (isHealthy) {
+      try {
+        const syncNeeded = await needsStatsSync(validatedAddress);
+        if (syncNeeded) {
+          console.log(`Stats synchronization needed for ${validatedAddress}, syncing...`);
+          const syncedProfile = await syncUserProfileStats(validatedAddress);
+          if (syncedProfile) {
+            profile = syncedProfile;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to sync profile stats:', error);
       }
     }
 
