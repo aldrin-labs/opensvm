@@ -16,6 +16,8 @@
 [functions]
   # Include the RPC configuration file in functions from protected directory
   included_files = ["config/rpc-config.json", "config/rpc-endpoints.js"]
+  # Increase timeout for AI-heavy API functions
+  timeout = 45
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"

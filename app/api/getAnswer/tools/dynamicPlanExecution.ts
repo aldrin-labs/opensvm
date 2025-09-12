@@ -114,7 +114,7 @@ const DEFI_PROTOCOLS = {
             const results = await executePlan(plan, conn);
 
             // Step 3: Synthesize the results into a final answer
-            const finalAnswer = await synthesizeResults(question, plan, results);
+            const finalAnswer = await synthesizeResults(context, plan, results);
             console.log('Final answer length:', finalAnswer.length);
             console.log('Final answer content:', JSON.stringify(finalAnswer));
 
@@ -648,8 +648,17 @@ function generateSlotPatternChart(leaders: any[], currentSlot: number): string {
 
 async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
+    const startTime = Date.now();
+    const MAX_EXECUTION_TIME = 25000; // 25 seconds to leave room for synthesis
 
     for (const step of plan) {
+        // Check if we're approaching timeout
+        if (Date.now() - startTime > MAX_EXECUTION_TIME) {
+            console.warn(`Plan execution stopped due to timeout after ${Date.now() - startTime}ms`);
+            results[step.tool] = { error: 'Execution timeout - plan truncated' };
+            break;
+        }
+
         try {
             let result;
 
@@ -973,26 +982,39 @@ async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, 
             }
             // Check if the method exists on the connection object
             else if (typeof conn[step.tool] === 'function') {
-                // Handle methods that need specific parameters
-                if (step.tool === 'getRecentPerformanceSamples') {
-                    result = await conn[step.tool](20);
-                } else if (step.input) {
-                    // If step has input parameter, pass it
-                    // For Solana RPC methods that need PublicKey, convert string to PublicKey
-                    if (step.tool === 'getAccountInfo' || step.tool === 'getBalance') {
-                        const { PublicKey } = await import('@solana/web3.js');
-                        try {
-                            const pubkey = new PublicKey(step.input);
-                            result = await conn[step.tool](pubkey);
-                        } catch (error) {
-                            result = { error: `Invalid address for ${step.tool}: ${(error as Error).message}` };
+                // Add timeout wrapper for RPC calls to prevent hanging
+                const timeoutPromise = new Promise((_, reject) => {
+                    setTimeout(() => reject(new Error(`RPC call ${step.tool} timed out after 10 seconds`)), 10000);
+                });
+
+                const rpcCallPromise = (async () => {
+                    // Handle methods that need specific parameters
+                    if (step.tool === 'getRecentPerformanceSamples') {
+                        return await conn[step.tool](20);
+                    } else if (step.input) {
+                        // If step has input parameter, pass it
+                        // For Solana RPC methods that need PublicKey, convert string to PublicKey
+                        if (step.tool === 'getAccountInfo' || step.tool === 'getBalance') {
+                            const { PublicKey } = await import('@solana/web3.js');
+                            try {
+                                const pubkey = new PublicKey(step.input);
+                                return await conn[step.tool](pubkey);
+                            } catch (error) {
+                                return { error: `Invalid address for ${step.tool}: ${(error as Error).message}` };
+                            }
+                        } else {
+                            return await conn[step.tool](step.input);
                         }
                     } else {
-                        result = await conn[step.tool](step.input);
+                        // Call method without parameters
+                        return await conn[step.tool]();
                     }
-                } else {
-                    // Call method without parameters
-                    result = await conn[step.tool]();
+                })();
+
+                try {
+                    result = await Promise.race([rpcCallPromise, timeoutPromise]);
+                } catch (error) {
+                    result = { error: `RPC call failed: ${(error as Error).message}` };
                 }
             } else {
                 console.warn(`Method ${step.tool} not found on connection object`);
@@ -1239,7 +1261,8 @@ async function analyzeDeFiMarketTrends(): Promise<any> {
     }
 }
 
-async function synthesizeResults(question: string, plan: PlanStep[], results: Record<string, any>): Promise<string> {
+async function synthesizeResults(context: ToolContext, plan: PlanStep[], results: Record<string, any>): Promise<string> {
+    const { question } = context;
     console.log(`Synthesizing results for ${plan.length} plan steps:`, plan.map(p => p.tool).join(', '));
 
     if (!process.env.TOGETHER_API_KEY) {
@@ -1605,7 +1628,12 @@ Instructions:
 Answer based strictly on the provided data:`;
 
     try {
-        const answer = await together.chat.completions.create({
+        // Add timeout to LLM synthesis
+        const llmTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('LLM synthesis timed out after 15 seconds')), 15000);
+        });
+
+        const llmCallPromise = together.chat.completions.create({
             model: "google/gemma-3n-E4B-it",
             messages: [
                 {
@@ -1614,9 +1642,12 @@ Answer based strictly on the provided data:`;
                 }
             ],
             stream: false,
-            max_tokens: 81920,
+            max_tokens: 4096, // Reduced from 81920 to prevent timeouts
             temperature: 0.1,
+            stop: ["---", "END_RESPONSE"] // Add stop sequences to limit response length
         });
+
+        const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
 
         const response = answer.choices?.[0]?.message?.content || "Failed to synthesize results";
         console.log('LLM synthesized response:', response);
@@ -1645,6 +1676,40 @@ Answer based strictly on the provided data:`;
                         const active = result.current?.length || 0;
                         const delinquent = result.delinquent?.length || 0;
                         fallback += `Validators: ${active + delinquent} total (${active} active, ${delinquent} delinquent)\n`;
+
+                        // If user asked for top validators, show them sorted by stake
+                        if (context.qLower.includes('top') || context.qLower.includes('best') || context.qLower.includes('first')) {
+                            if (result.current && Array.isArray(result.current) && result.current.length > 0) {
+                                // Extract number from user's question (e.g., "top 10", "best 5", "first 20")
+                                const extractNumber = (text: string): number => {
+                                    const matches = text.match(/(?:top|best|first|show)\s+(\d+)/i);
+                                    if (matches && matches[1]) {
+                                        const num = parseInt(matches[1]);
+                                        return num > 0 && num <= 100 ? num : 10; // Default to 10, max 100
+                                    }
+                                    return 10; // Default fallback
+                                };
+
+                                const requestedCount = extractNumber(context.question);
+
+                                // Sort validators by activated stake (descending)
+                                const sortedValidators = result.current
+                                    .filter((v: any) => v && typeof v.activatedStake === 'string')
+                                    .sort((a: any, b: any) => parseInt(b.activatedStake) - parseInt(a.activatedStake))
+                                    .slice(0, requestedCount);
+
+                                if (sortedValidators.length > 0) {
+                                    fallback += `\nTop ${sortedValidators.length} Validators by Stake:\n`;
+                                    sortedValidators.forEach((validator: any, index: number) => {
+                                        const stakeSOL = (parseInt(validator.activatedStake) / 1e9).toFixed(0);
+                                        const commission = validator.commission || 0;
+                                        const identity = validator.nodePubkey || 'Unknown';
+                                        const shortIdentity = identity.substring(0, 8) + '...' + identity.substring(identity.length - 4);
+                                        fallback += `${index + 1}. ${shortIdentity} - ${parseInt(stakeSOL).toLocaleString()} SOL (${commission}% commission)\n`;
+                                    });
+                                }
+                            }
+                        }
                         break;
                     case 'getRecentPerformanceSamples':
                         if (Array.isArray(result) && result.length > 0) {
