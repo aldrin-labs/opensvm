@@ -21,28 +21,56 @@ async function getSolanaRpcKnowledge(): Promise<string> {
     const path = await import('path');
     const docPath = path.join(process.cwd(), 'public', 'solana-rpc-llms.md');
     const content = await fs.readFile(docPath, 'utf-8');
-    return `# Complete Solana RPC and Moralis API Specification for AI Analysis
+    return `
+# Complete Solana RPC and Moralis API Specification for AI Analysis
 
-You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics. Use this knowledge to provide detailed, accurate analysis.
+You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics through both Solana RPC and Moralis API endpoints.
 
-${content}
---------
-You also have access to the following Moralis Solana API endpoints for enhanced data retrieval and analysis:
+## API Access Strategy
+When analyzing Solana data, prioritize using:
+1. **Moralis API** for enhanced data retrieval, token analytics, and DeFi insights
+2. **Solana RPC** for direct blockchain queries and real-time data
 
+## Moralis Solana API Endpoints
 ${moralis}
+
+## Additional Analysis Capabilities
+- Use Moralis for token price data, portfolio analysis, and DeFi protocol interactions
+- Combine RPC data with Moralis insights for comprehensive transaction analysis
+- Leverage Moralis historical data for trend analysis and market insights
+- Use RPC for real-time network status and direct blockchain state queries
+
+## Solana RPC Documentation
+${content}
+
+## Integration Guidelines
+- Cross-reference RPC transaction data with Moralis analytics for deeper insights
+- Use Moralis token metadata and pricing alongside RPC account information
+- Combine network performance data (RPC) with market data (Moralis) for holistic analysis
+- Provide specific API endpoints and parameters when suggesting data retrieval methods
+
+When responding to queries, always consider both API sources and suggest the most appropriate combination for comprehensive analysis.
+--------
 `;
   } catch (error) {
     console.error('Failed to load Solana RPC documentation:', error);
     // Fallback to abbreviated version if file can't be read
     return `
-# Complete Solana RPC API Specification for AI Analysis
+# Complete Solana RPC and Moralis API Specification for AI Analysis
 
-You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics. Use this knowledge to provide detailed, accurate analysis.
+You are an expert Solana blockchain analyst with access to comprehensive RPC APIs and enhanced analytics through both Solana RPC and Moralis API endpoints.
 
-## Basic RPC Methods Available
+## API Access Strategy
+When analyzing Solana data, prioritize using:
+1. **Moralis API** for enhanced data retrieval, token analytics, and DeFi insights
+2. **Solana RPC** for direct blockchain queries and real-time data
 
+## Moralis Solana API Endpoints
+${moralis}
+
+## Basic Solana RPC Methods Available
 - getAccountInfo: Get account details
-- getBalance: Get account balance
+- getBalance: Get account balance  
 - getTransaction: Get transaction details
 - getSlot: Get current slot
 - getEpochInfo: Get epoch information
@@ -51,8 +79,15 @@ You are an expert Solana blockchain analyst with access to comprehensive RPC API
 - getBlocks: Get blocks in range
 - getBlock: Get block details
 
+## Integration Guidelines
+- Cross-reference RPC transaction data with Moralis analytics for deeper insights
+- Use Moralis token metadata and pricing alongside RPC account information
+- Combine network performance data (RPC) with market data (Moralis) for holistic analysis
+- Provide specific API endpoints and parameters when suggesting data retrieval methods
+
+When responding to queries, always consider both API sources and suggest the most appropriate combination for comprehensive analysis.
+
 ... (abbreviated due to file loading error) ...
-${moralis}
 `;
   }
 }
@@ -109,18 +144,46 @@ export async function POST(request: Request) {
       messages: [
         {
           role: "system",
-          content: `You are an expert Solana blockchain analyst. Use your knowledge of Solana RPC and Moralis APIs to provide detailed, accurate analysis.
+          content: `You are an expert Solana blockchain analyst and planning agent. Your primary role is to create detailed execution plans for complex blockchain analysis tasks.
 
-${solanaRpcKnowledge}
+  ${solanaRpcKnowledge}
 
-Provide comprehensive answers with specific data points and technical insights.`
+  ## Planning Guidelines for Agent Execution
+
+  When creating plans, structure responses as actionable steps that can be executed by automated tools:
+
+  1. **Identify Data Requirements**: What specific blockchain data is needed?
+  2. **API Selection Strategy**: Choose between Solana RPC and Moralis APIs based on:
+     - Moralis: For token analytics, DeFi insights, portfolio analysis, historical data
+     - Solana RPC: For real-time network data, direct blockchain state, transaction details
+  3. **Execution Sequence**: Order operations logically (e.g., get account info before analyzing transactions)
+  4. **Data Correlation**: Plan how to combine multiple data sources for comprehensive analysis
+
+  ## Response Format for Planning Queries
+
+  For queries requiring multi-step analysis, provide:
+  - **Analysis Plan**: Step-by-step breakdown of required operations
+  - **API Endpoints**: Specific RPC methods or Moralis endpoints to use
+  - **Data Flow**: How outputs from one step inform the next
+  - **Expected Insights**: What conclusions can be drawn from the gathered data
+
+  ## Technical Implementation Details
+
+  Always include:
+  - Exact API method names (e.g., "getAccountInfo", "moralis/account/tokens")
+  - Required parameters and their sources
+  - Error handling considerations
+  - Data validation steps
+  - Performance optimization suggestions
+
+  Focus on creating actionable, technically precise plans that an automated agent can execute reliably.`
         },
         { role: "user", content: question }
       ],
       stream: false,
     });
 
-    let parsedAnswer = answer.choices?.[0]?.message?.content || "Failed to get answer";
+    let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
 
     // Post-process the response to handle plan objects and improve formatting
     const generativeCapability = new GenerativeCapability();

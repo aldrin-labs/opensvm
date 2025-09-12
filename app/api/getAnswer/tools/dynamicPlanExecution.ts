@@ -41,16 +41,24 @@ const DEFI_PROTOCOLS = {
             return false;
         }
 
+        // Don't handle simple greetings or short nonsensical queries
+        if (/^(hi|hello|hey|yo|gm|hi there|ok|yes|no|thanks|thank you)$/i.test(question.trim())) {
+            return false;
+        }
+
         // Check if input looks like a potential Solana address (base58, 32-44 chars)
         const trimmedQuestion = question.trim();
         const base58Pattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
         const isPotentialSolanaAddress = base58Pattern.test(trimmedQuestion);
-        
-        // Check if it's random characters that might be mistaken for an address
-        const isRandomStringLikeAddress = trimmedQuestion.length >= 10 && 
-                                        /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
-                                        !qLower.includes("what") && !qLower.includes("how") && 
-                                        !qLower.includes("why") && !qLower.includes("when");
+
+        // Be more strict about random strings - require longer length and more context
+        const isRandomStringLikeAddress = trimmedQuestion.length >= 20 &&
+            /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
+            !qLower.includes("what") && !qLower.includes("how") &&
+            !qLower.includes("why") && !qLower.includes("when") &&
+            !qLower.includes("explain") && !qLower.includes("tell") &&
+            (qLower.includes("account") || qLower.includes("address") ||
+                qLower.includes("transaction") || qLower.includes("balance"));
 
         // Handle analytical questions that need data fetching
         const hasAnalyticalKeywords = qLower.includes("validator") || qLower.includes("count") ||
@@ -354,16 +362,16 @@ function generateSmartPlan(question: string): PlanStep[] {
         const trimmedQuestion = question.trim();
         const base58Pattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
         const isPotentialAddress = base58Pattern.test(trimmedQuestion);
-        
+
         // Also check for shorter strings or strings with spaces that might be intended as addresses
-        const couldBeAddressAttempt = trimmedQuestion.length >= 10 && 
-                                    /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
-                                    !qLower.includes("what") && !qLower.includes("how");
+        const couldBeAddressAttempt = trimmedQuestion.length >= 10 &&
+            /^[a-zA-Z0-9\s]+$/.test(trimmedQuestion) &&
+            !qLower.includes("what") && !qLower.includes("how");
 
         if (isPotentialAddress || couldBeAddressAttempt) {
             // Remove spaces and try to validate as address
             const cleanedInput = trimmedQuestion.replace(/\s+/g, '');
-            
+
             plan.push({
                 tool: 'getAccountInfo',
                 reason: `Check if the provided string '${trimmedQuestion}' is a valid base-58 Solana address; if not, no further action can be taken.`,

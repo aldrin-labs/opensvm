@@ -56,7 +56,7 @@ export class GenerativeCapability extends BaseCapability {
                                 }
                             };
                         }
-                        
+
                         return { role: 'assistant', content: processed || 'No content generated.' };
                     } catch (e) {
                         // Ensure error messages also conform to the Message interface, and are strings.
@@ -125,9 +125,47 @@ export class GenerativeCapability extends BaseCapability {
     }
 
     // Handle broad questions not clearly matched by other capabilities
-    canHandle(_message: Message): boolean {
-        // Always return true so this serves as a fallback capability. Specialized
-        // capabilities earlier in the list will short-circuit first if they match.
+    canHandle(message: Message): boolean {
+        if (message.role !== 'user') return false;
+
+        const content = message.content.toLowerCase().trim();
+
+        // Don't handle analytical/blockchain queries - let other capabilities handle those
+        const analyticalKeywords = [
+            'analyze', 'transaction', 'account', 'balance', 'validator',
+            'network', 'block', 'epoch', 'program', 'defi', 'dex'
+        ];
+
+        if (analyticalKeywords.some(keyword => content.includes(keyword))) {
+            return false;
+        }
+
+        // Handle simple greetings and conversational queries
+        if (/^(hi|hello|hey|yo|gm|hi there|ok|yes|no|thanks|thank you|why|how|what|when|where|who)$/i.test(content)) {
+            return true;
+        }
+
+        // Handle general questions and explanations
+        if (content.includes('what is') ||
+            content.includes('how to') ||
+            content.includes('explain') ||
+            content.includes('tell me') ||
+            content.includes('can you') ||
+            content.includes('example') ||
+            content.includes('tutorial') ||
+            content.includes('guide')) {
+            return true;
+        }
+
+        // Handle short general queries that aren't blockchain-specific
+        if (content.length < 20 && !content.includes(' ')) {
+            // Check if it's NOT a blockchain address
+            if (!/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(content)) {
+                return true;
+            }
+        }
+
+        // Fallback for other conversational queries
         return true;
     }
 }
