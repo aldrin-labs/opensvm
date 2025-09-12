@@ -147,7 +147,7 @@ Please explain in simple terms what happened in this transaction, including:
         'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'google/gemma-3n-E4B-it',
+        model: 'larp/openai/gpt-oss-20b-0ca1a4fd',
         prompt,
         max_tokens: 500,
         temperature: 0.7,

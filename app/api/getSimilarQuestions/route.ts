@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       ],
       // @ts-ignore
       response_format: { type: "json_object", schema: jsonSchema },
-      model: "google/gemma-3n-E4B-it",
+      model: "larp/openai/gpt-oss-20b-0ca1a4fd",
     }) as ChatCompletion;
 
     // Safely access the response with proper null checks

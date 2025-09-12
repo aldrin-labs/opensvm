@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     });
 
     // Define the model to use
-    const MODEL = 'google/gemma-3n-E4B-it';
+    const MODEL = 'larp/openai/gpt-oss-20b-0ca1a4fd';
 
     // Create a system prompt for blockchain and Solana-specific information
     const systemPrompt = `You are an AI assistant specialized in blockchain technology, particularly Solana. 

@@ -1630,11 +1630,11 @@ Answer based strictly on the provided data:`;
     try {
         // Add timeout to LLM synthesis
         const llmTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('LLM synthesis timed out after 15 seconds')), 15000);
+            setTimeout(() => reject(new Error('LLM synthesis timed out after 25 seconds')), 25000);
         });
 
         const llmCallPromise = together.chat.completions.create({
-            model: "google/gemma-3n-E4B-it",
+            model: "larp/openai/gpt-oss-20b-0ca1a4fd",
             messages: [
                 {
                     role: "system",
@@ -1642,9 +1642,7 @@ Answer based strictly on the provided data:`;
                 }
             ],
             stream: false,
-            max_tokens: 4096, // Reduced from 81920 to prevent timeouts
-            temperature: 0.1,
-            stop: ["---", "END_RESPONSE"] // Add stop sequences to limit response length
+            max_tokens: 120000, // Reduced from 81920 to prevent timeouts
         });
 
         const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
