@@ -140,7 +140,7 @@ export async function POST(request: Request) {
   console.log("[getAnswer] No tool handled query, using LLM fallback");
   try {
     let answer = await together.chat.completions.create({
-      model: "moonshotai/Kimi-K2-Instruct-0905",
+      model: "google/gemma-3n-E4B-it",
       messages: [
         {
           role: "system",

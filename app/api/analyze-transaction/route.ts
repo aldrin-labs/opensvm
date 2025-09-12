@@ -147,7 +147,7 @@ Please explain in simple terms what happened in this transaction, including:
         'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`,
       },
       body: JSON.stringify({
-        model: 'moonshotai/Kimi-K2-Instruct-0905',
+        model: 'google/gemma-3n-E4B-it',
         prompt,
         max_tokens: 500,
         temperature: 0.7,

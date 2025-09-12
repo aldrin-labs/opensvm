@@ -1606,7 +1606,7 @@ Answer based strictly on the provided data:`;
 
     try {
         const answer = await together.chat.completions.create({
-            model: "moonshotai/Kimi-K2-Instruct-0905",
+            model: "google/gemma-3n-E4B-it",
             messages: [
                 {
                     role: "system",

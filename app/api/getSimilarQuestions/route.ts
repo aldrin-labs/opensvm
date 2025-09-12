@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       ],
       // @ts-ignore
       response_format: { type: "json_object", schema: jsonSchema },
-      model: "moonshotai/Kimi-K2-Instruct-0905",
+      model: "google/gemma-3n-E4B-it",
     }) as ChatCompletion;
 
     // Safely access the response with proper null checks
