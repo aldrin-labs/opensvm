@@ -24,6 +24,7 @@ interface SSEConnection {
 }
 
 declare global {
+  // eslint-disable-next-line no-var
   var sseConnections: Map<string, SSEConnection> | undefined;
 }
 
@@ -161,7 +162,7 @@ export async function GET(request: NextRequest) {
           try {
             // Get the latest social feed events
             const followingAddresses = followingList.map(f => f.targetAddress);
-            
+
             const newEvents = await getFeedEvents({
               feedType: feedType as 'for-you' | 'following',
               userAddress: walletAddress,

@@ -406,7 +406,7 @@ export function ChatUI({
     window.addEventListener('svmai-pending-change', handler);
     handler(); // Check initial state
     return () => window.removeEventListener('svmai-pending-change', handler);
-  }, [setOptimisticProcessing, setShowProcessingUI]);
+  }, [optimisticProcessing, setOptimisticProcessing, setShowProcessingUI]);
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -487,7 +487,7 @@ export function ChatUI({
       setActionNotice('Action failed');
     }
     setTimeout(() => setActionNotice(''), 3000);
-  }, [onAddNote, onForkThread, onNewChat, messages, mode, setActionNotice]);
+  }, [onAddNote, onForkThread, onNewChat, messages, setActionNotice]);
 
   // Clear action notice timer cleanup
   useEffect(() => {
@@ -506,13 +506,13 @@ export function ChatUI({
     if (isAtBottom && newMessageCount > 0) {
       setNewMessageCount(0);
     }
-  }, [newMessageCount, setIsScrolledUp, setShouldAutoScroll]);
+  }, [newMessageCount, setIsScrolledUp, setShouldAutoScroll, setNewMessageCount]);
 
   const handleNewMessageBadgeClick = useCallback(() => {
     scrollToBottom();
     setNewMessageCount(0);
     setShouldAutoScroll(true);
-  }, [scrollToBottom]);
+  }, [scrollToBottom, setNewMessageCount, setShouldAutoScroll]);
 
   // Track new messages when scrolled up (optimized)
   useEffect(() => {
@@ -541,7 +541,7 @@ export function ChatUI({
         console.log(`Cleaned up ${result.removedCount} messages, preserved ${result.preservedImportant} important ones`);
       }
     }
-  }, [memoryStats, needsCleanup, performMemoryCleanup, messages.length]);
+  }, [memoryStats, needsCleanup, performMemoryCleanup]);
 
   useEffect(() => {
     memoryCleanupCallback();

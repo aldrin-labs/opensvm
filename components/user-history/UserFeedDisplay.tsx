@@ -292,10 +292,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     };
   }, [hasMore, loading, events.length, loadMoreEvents]);
 
-  // Initialize SSE connection for real-time updates
+  // Initialize feed data on mount and tab change
   useEffect(() => {
+    fetchFeed(activeTab);
+  }, [walletAddress, activeTab]);
+
+  // Setup SSE connection separately to avoid infinite loops
+  useEffect(() => {
+    if (!walletAddress) return;
+
     const setupEventSource = () => {
-      // Clear any existing retry timeout
+      // Clear any existing connections
+      if (eventSource) {
+        eventSource.close();
+      }
       if (retryTimeout) {
         clearTimeout(retryTimeout);
         setRetryTimeout(null);
@@ -313,157 +323,52 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
 
       newEventSource.onopen = () => {
         setConnectionStatus('connected');
-        setRetryCount(0); // Reset retry count on successful connection
+        setRetryCount(0);
         console.log('SSE connection established');
       };
 
       newEventSource.onmessage = (event) => {
-        // Set to connected on first message as a fallback
-        if (connectionStatus !== 'connected') {
-          setConnectionStatus('connected');
-          setRetryCount(0); // Reset retry count on successful message
-        }
-
         try {
-          console.log('SSE raw data:', event.data);
           const data = JSON.parse(event.data);
-          console.log('Parsed SSE data:', data);
-
-          if (!data) {
-            console.error('SSE event data is null or undefined');
-            return;
-          }
-
-          if (data.type === 'feed-update') {
-            // Validate event data exists and has required fields
-            if (!data.event) {
-              console.error('SSE feed-update missing event data');
-              return;
-            }
-
-            if (!data.event.id) {
-              console.error('SSE event missing id', data.event);
-              return;
-            }
-
-            // Ensure userAddress exists to prevent slice errors
-            if (!data.event.userAddress) {
-              console.warn('SSE event missing userAddress, adding placeholder', data.event);
-              data.event.userAddress = 'unknown-address';
-            }
-
-            // Check if event matches current filters
-            if (shouldShowEvent(data.event)) {
-              console.log('Adding new event:', data.event);
-              // Add new event to the feed
-              setEvents(prevEvents => {
-                const exists = prevEvents.some(e => e.id === data.event.id);
-                if (exists) {
-                  // Update cache for this event
-                  updateCachedEvent(data.event.id, data.event)
-                    .catch(error => console.error('Error updating cached event:', error));
-
-                  return prevEvents.map(e => e.id === data.event.id ? data.event : e);
-                } else {
-                  // Add to beginning for 'newest' sort, or in correct position for 'popular'
-                  if (filters.sortOrder === 'newest') {
-                    // Add new event to cache
-                    addEventToCache(walletAddress, activeTab, data.event)
-                      .catch(error => console.error('Error adding event to cache:', error));
-
-                    return [data.event, ...prevEvents];
-                  } else {
-                    const newEvents = [...prevEvents, data.event];
-
-                    // Add new event to cache
-                    addEventToCache(walletAddress, activeTab, data.event)
-                      .catch(error => console.error('Error adding event to cache:', error));
-
-                    return newEvents.sort((a, b) => b.likes - a.likes);
-                  }
-                }
-              });
-            }
-          } else if (data.type === 'like-update') {
-            // Validate like-update data
-            if (!data.eventId || typeof data.likes !== 'number') {
-              console.error('SSE like-update missing required fields', data);
-              return;
-            }
-
-            // Update likes count for an event
+          if (data.type === 'feed-update' && data.event) {
             setEvents(prevEvents => {
-              const updatedEvents = prevEvents.map(event =>
-                event.id === data.eventId
-                  ? {
-                    ...event,
-                    likes: data.likes,
-                    hasLiked: data.userHasLiked === walletAddress ? true : event.hasLiked
-                  }
-                  : event
-              );
-
-              // Update cache for this event if it exists
-              const updatedEvent = updatedEvents.find(e => e.id === data.eventId);
-              if (updatedEvent) {
-                updateCachedEvent(data.eventId, {
-                  likes: data.likes,
-                  hasLiked: data.userHasLiked === walletAddress
-                }).catch(error => console.error('Error updating cached event:', error));
+              const exists = prevEvents.some(e => e.id === data.event.id);
+              if (!exists) {
+                return [data.event, ...prevEvents];
               }
-
-              return updatedEvents;
+              return prevEvents;
             });
-
-            // If sorted by popularity, re-sort the events
-            if (filters.sortOrder === 'popular') {
-              setEvents(prev => [...prev].sort((a, b) => b.likes - a.likes));
-            }
           }
         } catch (err) {
           console.error('Error parsing SSE event:', err);
         }
       };
 
-      newEventSource.onerror = (error) => {
-        console.error('Detailed EventSource error:', {
-          error,
-          readyState: newEventSource.readyState,
-          retryCount,
-          maxRetries
-        });
-        
+      newEventSource.onerror = () => {
         setConnectionStatus('disconnected');
         newEventSource.close();
         
-        // Implement exponential backoff with retry limits
+        // Implement exponential backoff retry logic
         if (retryCount < maxRetries) {
-          const retryDelay = Math.min(baseRetryDelay * Math.pow(2, retryCount), 30000); // Cap at 30 seconds
-          console.log(`Attempting to reconnect in ${retryDelay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+          const delay = baseRetryDelay * Math.pow(2, retryCount);
+          console.log(`SSE connection failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
           
-          const timeoutId = setTimeout(() => {
+          const timeout = setTimeout(() => {
             setRetryCount(prev => prev + 1);
             setupEventSource();
-          }, retryDelay);
+          }, delay);
           
-          setRetryTimeout(timeoutId);
+          setRetryTimeout(timeout);
         } else {
-          console.error('Max retry attempts reached. SSE connection failed permanently.');
-          setConnectionStatus('disconnected');
-          // Optionally show a user-friendly message or fallback to polling
+          console.log('Max retry attempts reached, SSE connection abandoned');
         }
       };
 
       setEventSource(newEventSource);
     };
 
-    // Initial fetch
-    fetchFeed(activeTab);
-
-    // Setup SSE
     setupEventSource();
 
-    // Cleanup on unmount
     return () => {
       if (eventSource) {
         eventSource.close();
@@ -472,7 +377,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         clearTimeout(retryTimeout);
       }
     };
-  }, [walletAddress, activeTab, fetchFeed, filters.eventTypes, filters.sortOrder, shouldShowEvent, connectionStatus, eventSource, retryCount, retryTimeout]);
+  }, [walletAddress, activeTab]); // Only depend on essential props
 
   // Handle tab change
   const handleTabChange = (value: string) => {

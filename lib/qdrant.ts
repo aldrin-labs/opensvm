@@ -62,10 +62,10 @@ export async function initializeCollections() {
         }
       });
       console.log('Created user_history collection');
+      // Ensure walletAddress index exists for user_history
+      await ensureIndex(COLLECTIONS.USER_HISTORY, 'walletAddress');
     }
 
-    // Ensure walletAddress index exists for user_history
-    await ensureIndex(COLLECTIONS.USER_HISTORY, 'walletAddress');
 
     // Check if user_profiles collection exists
     const profilesExists = await qdrantClient.getCollection(COLLECTIONS.USER_PROFILES).catch(() => null);
@@ -78,10 +78,10 @@ export async function initializeCollections() {
         }
       });
       console.log('Created user_profiles collection');
+      // Ensure walletAddress index exists for user_profiles
+      await ensureIndex(COLLECTIONS.USER_PROFILES, 'walletAddress');
     }
 
-    // Ensure walletAddress index exists for user_profiles
-    await ensureIndex(COLLECTIONS.USER_PROFILES, 'walletAddress');
 
     // Check if user_follows collection exists
     const followsExists = await qdrantClient.getCollection(COLLECTIONS.USER_FOLLOWS).catch(() => null);
@@ -94,11 +94,11 @@ export async function initializeCollections() {
         }
       });
       console.log('Created user_follows collection');
+      // Ensure indexes exist for user_follows
+      await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'followerAddress');
+      await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'targetAddress');
     }
 
-    // Ensure indexes exist for user_follows
-    await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'followerAddress');
-    await ensureIndex(COLLECTIONS.USER_FOLLOWS, 'targetAddress');
 
     // Check if user_likes collection exists
     const likesExists = await qdrantClient.getCollection(COLLECTIONS.USER_LIKES).catch(() => null);
@@ -111,11 +111,11 @@ export async function initializeCollections() {
         }
       });
       console.log('Created user_likes collection');
+      // Ensure indexes exist for user_likes
+      await ensureIndex(COLLECTIONS.USER_LIKES, 'likerAddress');
+      await ensureIndex(COLLECTIONS.USER_LIKES, 'targetAddress');
     }
 
-    // Ensure indexes exist for user_likes
-    await ensureIndex(COLLECTIONS.USER_LIKES, 'likerAddress');
-    await ensureIndex(COLLECTIONS.USER_LIKES, 'targetAddress');
 
     // Check if shares collection exists
     const sharesExists = await qdrantClient.getCollection(COLLECTIONS.SHARES).catch(() => null);
@@ -128,13 +128,13 @@ export async function initializeCollections() {
         }
       });
       console.log('Created shares collection');
-    }
+      // Ensure indexes exist for shares
+      await ensureIndex(COLLECTIONS.SHARES, 'shareCode');
+      await ensureIndex(COLLECTIONS.SHARES, 'referrerAddress');
+      await ensureIndex(COLLECTIONS.SHARES, 'entityType');
+      await ensureIndex(COLLECTIONS.SHARES, 'entityId');
 
-    // Ensure indexes exist for shares
-    await ensureIndex(COLLECTIONS.SHARES, 'shareCode');
-    await ensureIndex(COLLECTIONS.SHARES, 'referrerAddress');
-    await ensureIndex(COLLECTIONS.SHARES, 'entityType');
-    await ensureIndex(COLLECTIONS.SHARES, 'entityId');
+    }
 
     // Check if share_clicks collection exists
     const shareClicksExists = await qdrantClient.getCollection(COLLECTIONS.SHARE_CLICKS).catch(() => null);
@@ -147,11 +147,11 @@ export async function initializeCollections() {
         }
       });
       console.log('Created share_clicks collection');
+      // Ensure indexes exist for share_clicks
+      await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'shareCode');
+      await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'clickerAddress');
     }
 
-    // Ensure indexes exist for share_clicks
-    await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'shareCode');
-    await ensureIndex(COLLECTIONS.SHARE_CLICKS, 'clickerAddress');
 
     console.log('Qdrant collections initialized successfully');
   } catch (error) {
@@ -855,18 +855,6 @@ async function ensureTransfersCollection() {
   }
 
   try {
-    const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
-
-    if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.TRANSFERS, {
-        vectors: {
-          size: 384,
-          distance: 'Cosine'
-        }
-      });
-      console.log('Created transfers collection');
-    }
-
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string) => {
       try {
@@ -885,16 +873,28 @@ async function ensureTransfersCollection() {
         }
       }
     };
+    const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
 
-    // Ensure necessary indexes exist (only on first initialization)
-    await ensureIndex('walletAddress');
-    await ensureIndex('signature');
-    await ensureIndex('token');
-    await ensureIndex('isSolanaOnly');
-    await ensureIndex('cached');
+    if (!exists) {
+      await qdrantClient.createCollection(COLLECTIONS.TRANSFERS, {
+        vectors: {
+          size: 384,
+          distance: 'Cosine'
+        }
+      });
 
-    // Mark as initialized
-    collectionInitialized.set(cacheKey, true);
+      // Ensure necessary indexes exist (only on first initialization)
+      await ensureIndex('walletAddress');
+      await ensureIndex('signature');
+      await ensureIndex('token');
+      await ensureIndex('isSolanaOnly');
+      await ensureIndex('cached');
+      // Mark as initialized
+      collectionInitialized.set(cacheKey, true);
+
+      console.log('Created transfers collection');
+    }
+
     console.log('Transfers collection and indexes initialized successfully');
 
   } catch (error) {
@@ -917,16 +917,6 @@ async function ensureTokenMetadataCollection(): Promise<void> {
   try {
     const exists = await qdrantClient.getCollection(COLLECTIONS.TOKEN_METADATA).catch(() => null);
 
-    if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.TOKEN_METADATA, {
-        vectors: {
-          size: 384,
-          distance: 'Cosine'
-        }
-      });
-      console.log('Created token metadata collection');
-    }
-
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string) => {
       try {
@@ -944,15 +934,25 @@ async function ensureTokenMetadataCollection(): Promise<void> {
         }
       }
     };
+    if (!exists) {
+      await qdrantClient.createCollection(COLLECTIONS.TOKEN_METADATA, {
+        vectors: {
+          size: 384,
+          distance: 'Cosine'
+        }
+      });
+      // Ensure necessary indexes exist
+      await ensureIndex('mintAddress');
+      await ensureIndex('symbol');
+      await ensureIndex('cached');
+      await ensureIndex('verified');
 
-    // Ensure necessary indexes exist
-    await ensureIndex('mintAddress');
-    await ensureIndex('symbol');
-    await ensureIndex('cached');
-    await ensureIndex('verified');
+      // Mark as initialized
+      collectionInitialized.set(cacheKey, true);
+      console.log('Created token metadata collection');
+    }
 
-    // Mark as initialized
-    collectionInitialized.set(cacheKey, true);
+
     console.log('Token metadata collection and indexes initialized successfully');
 
   } catch (error) {
@@ -1454,36 +1454,36 @@ async function ensureProgramMetadataCollection(): Promise<void> {
           distance: 'Cosine'
         }
       });
+      // Helper function to ensure index exists
+      const ensureIndex = async (fieldName: string) => {
+        try {
+          await qdrantClient.createPayloadIndex(COLLECTIONS.PROGRAM_METADATA, {
+            field_name: fieldName,
+            field_schema: 'keyword'
+          });
+          console.log(`Created index for ${fieldName} in program metadata`);
+        } catch (error: any) {
+          if (error?.data?.status?.error?.includes('already exists') ||
+            error?.message?.includes('already exists')) {
+            // Index already exists, this is expected and not an error
+          } else {
+            console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
+          }
+        }
+      };
+
+      // Ensure necessary indexes exist
+      await ensureIndex('programId');
+      await ensureIndex('name');
+      await ensureIndex('category');
+      await ensureIndex('verified');
+      await ensureIndex('cached');
+      // Mark as initialized
+      collectionInitialized.set(cacheKey, true);
+
       console.log('Created program metadata collection');
     }
 
-    // Helper function to ensure index exists
-    const ensureIndex = async (fieldName: string) => {
-      try {
-        await qdrantClient.createPayloadIndex(COLLECTIONS.PROGRAM_METADATA, {
-          field_name: fieldName,
-          field_schema: 'keyword'
-        });
-        console.log(`Created index for ${fieldName} in program metadata`);
-      } catch (error: any) {
-        if (error?.data?.status?.error?.includes('already exists') ||
-          error?.message?.includes('already exists')) {
-          // Index already exists, this is expected and not an error
-        } else {
-          console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
-        }
-      }
-    };
-
-    // Ensure necessary indexes exist
-    await ensureIndex('programId');
-    await ensureIndex('name');
-    await ensureIndex('category');
-    await ensureIndex('verified');
-    await ensureIndex('cached');
-
-    // Mark as initialized
-    collectionInitialized.set(cacheKey, true);
     console.log('Program metadata collection and indexes initialized successfully');
 
   } catch (error) {

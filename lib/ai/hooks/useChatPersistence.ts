@@ -44,13 +44,6 @@ export function useChatPersistence(options?: UseChatPersistenceOptions): UseChat
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    // Configure the service when options change
-    useEffect(() => {
-        if (options) {
-            configure(options);
-        }
-    }, [options?.userId, options?.autoSave, options?.enableSearch]);
-
     const configure = useCallback((newOptions: UseChatPersistenceOptions) => {
         try {
             chatPersistenceService.configure({
@@ -67,6 +60,28 @@ export function useChatPersistence(options?: UseChatPersistenceOptions): UseChat
             setError(err instanceof Error ? err.message : 'Configuration failed');
         }
     }, []);
+
+    const loadChatHistory = useCallback(async (): Promise<AIChatModel[]> => {
+        try {
+            setIsLoading(true);
+            setError(null);
+            const history = await chatPersistenceService.getUserChatHistory();
+            setChatHistory(history);
+            return history;
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Failed to load chat history');
+            return [];
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
+    // Configure the service when options change
+    useEffect(() => {
+        if (options) {
+            configure(options);
+        }
+    }, [options, configure]);
 
     const saveChat = useCallback(async (chatTab: ChatTab): Promise<boolean> => {
         try {
@@ -86,7 +101,7 @@ export function useChatPersistence(options?: UseChatPersistenceOptions): UseChat
         } finally {
             setIsLoading(false);
         }
-    }, []);
+    }, [loadChatHistory]);
 
     const searchChats = useCallback(async (query: string): Promise<MessageSearchResult[]> => {
         try {
@@ -97,21 +112,6 @@ export function useChatPersistence(options?: UseChatPersistenceOptions): UseChat
             return results;
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Search failed');
-            return [];
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
-
-    const loadChatHistory = useCallback(async (): Promise<AIChatModel[]> => {
-        try {
-            setIsLoading(true);
-            setError(null);
-            const history = await chatPersistenceService.getUserChatHistory();
-            setChatHistory(history);
-            return history;
-        } catch (err) {
-            setError(err instanceof Error ? err.message : 'Failed to load chat history');
             return [];
         } finally {
             setIsLoading(false);
