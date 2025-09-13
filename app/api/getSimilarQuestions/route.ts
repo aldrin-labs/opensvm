@@ -51,7 +51,7 @@ export async function POST(request: Request) {
       ],
       // @ts-ignore
       response_format: { type: "json_object", schema: jsonSchema },
-      model: "larp/openai/gpt-oss-20b-0ca1a4fd",
+      model: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
     }) as ChatCompletion;
 
     // Safely access the response with proper null checks

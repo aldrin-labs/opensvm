@@ -140,7 +140,7 @@ export async function POST(request: Request) {
   console.log("[getAnswer] No tool handled query, using LLM fallback");
   try {
     let answer = await together.chat.completions.create({
-      model: "larp/openai/gpt-oss-20b-0ca1a4fd",
+      model: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
       messages: [
         {
           role: "system",

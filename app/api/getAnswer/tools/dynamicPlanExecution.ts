@@ -1634,7 +1634,7 @@ Answer based strictly on the provided data:`;
         });
 
         const llmCallPromise = together.chat.completions.create({
-            model: "larp/openai/gpt-oss-20b-0ca1a4fd",
+            model: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
             messages: [
                 {
                     role: "system",
