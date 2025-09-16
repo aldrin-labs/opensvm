@@ -1,0 +1,32 @@
+{
+  "startedAt": "2025-09-08T08:03:10.094Z",
+  "finishedAt": "2025-09-08T08:03:19.463Z",
+  "queries": [
+    {
+      "id": "NET-TPS",
+      "query": "What is the current TPS on Solana?",
+      "passed": true,
+      "patternsFound": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"]"
+    },
+    {
+      "id": "ACC-ANALYZE",
+      "query": "Analyze this account: 11111111111111111111111111111111",
+      "passed": true,
+      "patternsFound": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"]"
+    },
+    {
+      "id": "TX-EXPLAIN",
+      "query": "Explain this transaction: abc123",
+      "passed": true,
+      "patternsFound": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"]"
+    }
+  ],
+  "summary": {
+    "total": 3,
+    "passed": 3,
+    "failed": 0
+  }
+}

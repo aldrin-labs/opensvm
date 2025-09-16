@@ -1,0 +1,316 @@
+{
+  "mode": "real",
+  "startedAt": "2025-09-08T08:07:35.483Z",
+  "finishedAt": "2025-09-08T08:07:41.854Z",
+  "summary": {
+    "total": 3,
+    "passed": 1,
+    "failed": 2
+  },
+  "queries": [
+    {
+      "id": "NET-TPS",
+      "query": "What is the current TPS on Solana?",
+      "passed": true,
+      "started": true,
+      "finished": true,
+      "grew": true,
+      "apiCallsRecorded": 1,
+      "api2xxCount": 1,
+      "contentOK": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"],\\\"ClientPageRoot\\\"]"
+    },
+    {
+      "id": "ACC-ANALYZE",
+      "query": "Analyze this account: 11111111111111111111111111111111",
+      "passed": false,
+      "started": true,
+      "finished": true,
+      "grew": true,
+      "apiCallsRecorded": 0,
+      "api2xxCount": 0,
+      "contentOK": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"],\\\"ClientPageRoot\\\"]"
+    },
+    {
+      "id": "TX-EXPLAIN",
+      "query": "Explain this transaction: 5j7sVQs1F3bV5Gq1Z1Q1",
+      "passed": false,
+      "started": true,
+      "finished": true,
+      "grew": true,
+      "apiCallsRecorded": 0,
+      "api2xxCount": 0,
+      "contentOK": true,
+      "excerpt": "requestAnimationFrame(function(){$RT=performance.now()});(self.__next_f=self.__next_f||[]).push([0])self.__next_f.push([1,\"7:\\\"$Sreact.fragment\\\"\\n28:I[\\\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\\\",[\\\"app-pages-internals\\\",\\\"static/chunks/app-pages-internals.js\\\"],\\\"ClientPageRoot\\\"]"
+    }
+  ],
+  "network": {
+    "apiCalls": [
+      {
+        "ts": "2025-09-08T08:07:35.636Z",
+        "url": "http://localhost:3000/?ai=true",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.654Z",
+        "url": "http://localhost:3000/_next/static/media/bb3ef058b751a6ad-s.p.woff2",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.655Z",
+        "url": "http://localhost:3000/_next/static/css/app/layout.css?v=1757318855616",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.656Z",
+        "url": "http://localhost:3000/_next/static/media/e4af272ccee01ff0-s.p.woff2",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.657Z",
+        "url": "http://localhost:3000/fonts/BerkeleyMono-Regular.woff2",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.657Z",
+        "url": "http://localhost:3000/fonts/BerkeleyMono-Bold.woff2",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.663Z",
+        "url": "http://localhost:3000/favicon.svg",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.665Z",
+        "url": "http://localhost:3000/_next/static/chunks/webpack.js?v=1757318855616",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.850Z",
+        "url": "http://localhost:3000/_next/static/chunks/app-pages-internals.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.851Z",
+        "url": "http://localhost:3000/register-sw.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:35.872Z",
+        "url": "http://localhost:3000/_next/static/chunks/main-app.js?v=1757318855616",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.117Z",
+        "url": "http://localhost:3000/_next/static/chunks/app/page.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.258Z",
+        "url": "http://localhost:3000/_next/static/chunks/app/layout.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.592Z",
+        "url": "http://localhost:3000/_next/static/chunks/_app-pages-browser_components_ai_modals_SettingsModal_tsx.js",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.593Z",
+        "url": "http://localhost:3000/config/anomaly-patterns.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.593Z",
+        "url": "http://localhost:3000/api/auth/session",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.660Z",
+        "url": "http://localhost:3000/api/sso/providers",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.670Z",
+        "url": "http://localhost:3000/config/anomaly-patterns.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.676Z",
+        "url": "http://localhost:3000/__nextjs_font/geist-latin.woff2",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.707Z",
+        "url": "http://localhost:3000/__nextjs_original-stack-frames",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.717Z",
+        "url": "http://localhost:3000/api/auth/session",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:36.759Z",
+        "url": "http://localhost:3000/api/sso/providers",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.036Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.043Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.067Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.216Z",
+        "url": "http://localhost:3000/config/anomaly-patterns.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.217Z",
+        "url": "http://localhost:3000/api/auth/session",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.217Z",
+        "url": "http://localhost:3000/config/anomaly-patterns.json",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.257Z",
+        "url": "http://localhost:3000/api/sso/providers",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.258Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.259Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.291Z",
+        "url": "http://localhost:3000/api/auth/session",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.337Z",
+        "url": "http://localhost:3000/api/sso/providers",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.390Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.391Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.424Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.497Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.504Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.540Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.631Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.638Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.751Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.760Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      },
+      {
+        "ts": "2025-09-08T08:07:37.940Z",
+        "url": "http://localhost:3000/api/proxy/rpc",
+        "status": 200,
+        "ok": true
+      }
+    ]
+  }
+}

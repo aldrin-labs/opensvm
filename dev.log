@@ -1,0 +1,75 @@
+npm warn using --force Recommended protections disabled.
+
+> opensvm@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by process 240867
+321906
+1082808, using available port 3003 instead.
+   ▲ Next.js 15.4.4
+   - Local:        http://localhost:3003
+   - Network:      http://192.168.0.19:3003
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     ✓ optimizeCss
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 2.5s
+ ✓ Compiled /middleware in 257ms (108 modules)
+ ○ Compiling /api/getAnswer ...
+ ✓ Compiled /api/getAnswer in 2.5s (437 modules)
+Debug - Question: Show instruction calling chain for transaction 54LLChweD8JUKUva8HPnsQNNApFNYwSiJfyee2Dm2DbfVt3CWktxnzqRn8UNynxg3EURT6jtbucAudrQhtZkJpi9
+Debug - Extracted address/signature: 54LLChweD8JUKUva8HPnsQNNApFNYwSiJfyee2Dm2DbfVt3CWktxnzqRn8UNynxg3EURT6jtbucAudrQhtZkJpi9 length: 88
+Debug - Attempting transaction signature detection for: 54LLChweD8JUKUva8HPnsQNNApFNYwSiJfyee2Dm2DbfVt3CWktxnzqRn8UNynxg3EURT6jtbucAudrQhtZkJpi9
+ POST /api/getAnswer 200 in 3397ms
+ ✓ Compiled in 977ms (253 modules)
+ ✓ Compiled in 397ms (253 modules)
+ ⨯ Error: Cannot find module './vendor-chunks/undici.js'
+Require stack:
+- /home/larp/aldrin/opensvm/.next/server/webpack-runtime.js
+- /home/larp/aldrin/opensvm/.next/server/app/[...slug]/page.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/require.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/load-components.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/utils.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/swc/options.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/swc/index.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/analysis/parse-module.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/router-server.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/start-server.js
+    at <unknown> (.next/server/app/[...slug]/page.js:1875:47)
+    at Object.<anonymous> (.next/server/app/[...slug]/page.js:1878:3) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/api/getAnswer'
+}
+ ○ Compiling[?25h
+r ...
+ ✓ Compiled /_error in 5.4s (764 modules)
+Time 4ms
+ POST /api/getAnswer 500 in 6535ms
+ ⨯ Error: Cannot find module './vendor-chunks/undici.js'
+Require stack:
+- /home/larp/aldrin/opensvm/.next/server/webpack-runtime.js
+- /home/larp/aldrin/opensvm/.next/server/pages/_document.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/require.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/load-components.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/utils.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/swc/options.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/swc/index.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/analysis/parse-module.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/build/analysis/get-page-static-info.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/router-utils/setup-dev-bundler.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/router-server.js
+- /home/larp/aldrin/opensvm/node_modules/next/dist/server/lib/start-server.js
+    at <unknown> (.next/server/app/[...slug]/page.js:1875:47)
+    at Object.<anonymous> (.next/server/app/[...slug]/page.js:1878:3) {
+  code: 'MODULE_NOT_FOUND',
+  requireStack: [Array],
+  page: '/api/getAnswer'
+}
+Time 1ms
+ POST /api/getAnswer 500 in 303ms
+[?25h

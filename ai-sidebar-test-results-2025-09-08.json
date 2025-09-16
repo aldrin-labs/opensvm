@@ -1,0 +1,38 @@
+{
+  "passed": [
+    {
+      "testId": "G0.1",
+      "description": "Dev server running",
+      "status": "P",
+      "notes": "Server responding with 200 OK",
+      "timestamp": "2025-09-08T06:48:26.194Z"
+    },
+    {
+      "testId": "G0.6",
+      "description": "Window API SVMAI defined with required methods",
+      "status": "P",
+      "notes": "",
+      "timestamp": "2025-09-08T06:48:30.314Z"
+    }
+  ],
+  "failed": [
+    {
+      "testId": "G0.2",
+      "description": "No console errors on initial load",
+      "status": "F",
+      "notes": "Found 1 errors: Cannot update a component (`%s`) while rendering a different component (`%s`). To locate the bad setState() call inside `%s`, follow the stack trace as described in https://react.dev/link/setstate-in-render ScreenReaderAnnouncer AccessibilityProvider AccessibilityProvider",
+      "timestamp": "2025-09-08T06:48:30.309Z"
+    },
+    {
+      "testId": "1.1",
+      "description": "First-Time User Activation",
+      "status": "F",
+      "notes": "Sidebar did not open via button or keyboard shortcut",
+      "timestamp": "2025-09-08T06:48:32.506Z"
+    }
+  ],
+  "blocked": [],
+  "na": [],
+  "startTime": "2025-09-08T06:48:23.762Z",
+  "endTime": "2025-09-08T06:48:32.506Z"
+}

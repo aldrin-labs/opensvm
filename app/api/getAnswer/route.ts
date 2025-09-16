@@ -195,45 +195,96 @@ export async function POST(request: Request) {
   const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
   console.log("[getAnswer] No tool handled query, using LLM fallback");
+  
+  // Detect user's vibe and adjust response style accordingly
+  function detectUserVibe(query: string) {
+    const lowerQuery = query.toLowerCase().trim();
+    
+    // Check for casual/fun expressions
+    const casualPatterns = [
+      /uwu|owo|xd|lol|lmao|bruh|yo|hey|sup|wassup/,
+      /😂|😎|🚀|🔥|💯|😭|😍|🤔|👀|💀/,
+      /hows?\s*(it\s*)?(going|goin)/,
+      /whats?\s*up/,
+      /how\s*(are\s*)?you/
+    ];
+    
+    const isCasual = casualPatterns.some(pattern => pattern.test(lowerQuery));
+    
+    // Check for technical/analytical queries
+    const technicalPatterns = [
+      /analyze|transaction|account|balance|validator|network|block|epoch|program|defi|dex/,
+      /rpc|api|endpoint|smart\s*contract|liquidity|yield|farming|staking/,
+      /sol|solana|usdc|usdt|ray|srm|mango|serum|jupiter|raydium/
+    ];
+    
+    const isTechnical = technicalPatterns.some(pattern => pattern.test(lowerQuery));
+    
+    return { isCasual, isTechnical, originalQuery: query };
+  }
+  
+  const userVibe = detectUserVibe(question);
+  
+  // Create adaptive system prompt based on user's vibe
+  let systemPrompt = "";
+  
+  if (userVibe.isCasual && !userVibe.isTechnical) {
+    systemPrompt = `You are a friendly, knowledgeable assistant with expertise in Solana blockchain. You match the user's energy and communication style while being helpful and informative.
+
+**Vibe Matching Guidelines:**
+- If the user is casual/playful, be casual and playful back
+- Use similar expressions and tone as the user
+- Keep responses engaging and conversational
+- Use emojis if the user uses them
+- Be concise for simple questions
+- Still provide accurate information when needed
+
+**For Solana-related casual queries:**
+- Give brief, accessible explanations
+- Use analogies and simple language
+- Focus on what's most interesting or relevant
+- Keep the energy up!
+
+**For general casual conversation:**
+- Just be a friendly, helpful assistant
+- Match their vibe while being genuine
+- Ask follow-up questions if appropriate
+
+Remember: Match their energy, be genuine, and have fun with it! 🚀`;
+  } else {
+    systemPrompt = `You are an expert Solana blockchain analyst who can adapt your communication style to match the user's vibe. You have deep technical knowledge but can explain things casually or formally as needed.
+
+  ${solanaRpcKnowledge}
+
+  ## Adaptive Communication Style
+  - **Casual queries**: Respond in a friendly, conversational tone with accessible language
+  - **Technical queries**: Provide detailed, precise technical information
+  - **Mixed queries**: Balance technical accuracy with approachable explanations
+  - Always match the user's energy level and communication style
+
+  ## For Technical Analysis
+  When creating plans, structure responses as actionable steps:
+  1. **Identify Data Requirements**: What specific blockchain data is needed?
+  2. **API Selection Strategy**: Choose between Solana RPC and Moralis APIs
+  3. **Execution Sequence**: Order operations logically
+  4. **Data Correlation**: Plan how to combine multiple data sources
+
+  ## For Casual Conversation
+  - Keep it engaging and match their vibe
+  - Use simple explanations for complex concepts
+  - Ask follow-up questions when appropriate
+  - Use emojis and casual language if they do
+
+  Focus on being helpful while matching the user's communication style and energy level.`;
+  }
+
   try {
     let answer = await together.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
         {
           role: "system",
-          content: `You are an expert Solana blockchain analyst and planning agent. Your primary role is to create detailed execution plans for complex blockchain analysis tasks.
-
-  ${solanaRpcKnowledge}
-
-  ## Planning Guidelines for Agent Execution
-
-  When creating plans, structure responses as actionable steps that can be executed by automated tools:
-
-  1. **Identify Data Requirements**: What specific blockchain data is needed?
-  2. **API Selection Strategy**: Choose between Solana RPC and Moralis APIs based on:
-     - Moralis: For token analytics, DeFi insights, portfolio analysis, historical data
-     - Solana RPC: For real-time network data, direct blockchain state, transaction details
-  3. **Execution Sequence**: Order operations logically (e.g., get account info before analyzing transactions)
-  4. **Data Correlation**: Plan how to combine multiple data sources for comprehensive analysis
-
-  ## Response Format for Planning Queries
-
-  For queries requiring multi-step analysis, provide:
-  - **Analysis Plan**: Step-by-step breakdown of required operations
-  - **API Endpoints**: Specific RPC methods or Moralis endpoints to use
-  - **Data Flow**: How outputs from one step inform the next
-  - **Expected Insights**: What conclusions can be drawn from the gathered data
-
-  ## Technical Implementation Details
-
-  Always include:
-  - Exact API method names (e.g., "getAccountInfo", "moralis/account/tokens")
-  - Required parameters and their sources
-  - Error handling considerations
-  - Data validation steps
-  - Performance optimization suggestions
-
-  Focus on creating actionable, technically precise plans that an automated agent can execute reliably.`
+          content: systemPrompt
         },
         { role: "user", content: question }
       ],
@@ -255,13 +306,26 @@ export async function POST(request: Request) {
       },
     });
   } catch (e) {
-    console.log("Error with LLM: ", e);
-    return new Response(
-      JSON.stringify({ error: "Failed to process query" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
+    console.error("Error with LLM processing:", e);
+    console.error("Query that failed:", question);
+    console.error("User vibe detected:", userVibe);
+    console.error("Error details:", {
+      name: e instanceof Error ? e.name : 'Unknown',
+      message: e instanceof Error ? e.message : String(e),
+      stack: e instanceof Error ? e.stack : 'No stack trace'
+    });
+    
+    // Return a more helpful error response that still matches potential user vibe
+    const errorResponse = userVibe?.isCasual 
+      ? "Oops! Something went wrong on my end 😅 Could you try asking again?"
+      : "I encountered an error while processing your query. Please try again.";
+    
+    return new Response(errorResponse, {
+      status: 500,
+      headers: { 
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache"
       }
-    );
+    });
   }
 }
