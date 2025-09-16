@@ -1613,17 +1613,45 @@ Instructions:
 - Transaction signatures are 64-88 characters and must be displayed completely
 - Token mint addresses must be shown in full for verification purposes
 - For balances, use the exact amounts provided
-- For transaction data, use only the signatures and details actually returned
+- For transaction data, use only the signatures and details actually returned, TRY TO GET FULL DETAILS VIA getTransaction calls and getAccountInfo calls on relevant accounts 
+- For any percentages, fees, or commission rates, use the exact numbers given
+- If the data includes timestamps, convert them to human-readable dates
+- If the data includes slot numbers, show them as-is without inferring timeframes
+- If the data includes stake amounts, show them in SOL (1,337.42069 SOL)
+- try to decode any base64 encoded data if possible on transaction instructions or account data, use relevant IDLs for known relevant programs or show raw if unknown but do make an attempt
 - Keep the response factual and based strictly on the retrieved data
-- For validator lists with many entries, use a compact format like: "Rank. Stake lamports (Commission%)"
-- Format clearly with headers and structure, but avoid speculation or creative analysis
+- For validator lists with many entries, use a compact format like: "Rank. Staked SOL. Amount of delegators, fees q%)"
+- Format clearly with headers and structure, but avoid speculation or creative analysis, like "these 3 validators earn the most today", or these validators are "MEV boosted"
+- Avoid filler phrases like "Based on the data retrieved" or "According to the information provided"
+- Prioritize clarity and conciseness while ensuring all critical data points are included
+- If multiple data points are available (like current slot, epoch info, vote accounts), integrate them into a cohesive summary
+- If data is contradictory or unclear, state that fact without assuming which is correct
 - If data is missing or incomplete, state that clearly
-- When showing validator lists, include all details provided: stake amounts, addresses, commission rates
+- When showing validator lists, include all details provided: stake amounts, addresses, fees rates
 - VISUAL CHARTS: When appropriate (especially for validator rankings, leader schedules, or time-based data), create ASCII charts or graphs to visually represent the data. Use characters like |, -, *, #, █, ░, ▓ to create bar charts, timelines, or distribution visualizations that help explain patterns in the data
 - For leader schedules over time periods, consider creating ASCII timelines showing when validators lead
-- For validator rankings, consider ASCII bar charts showing relative stake sizes
-- For time-based analysis, create ASCII graphs showing trends or distributions
-- Be creative with ASCII visualization while staying strictly factual to the data
+- For validator rankings, consider ASCII bar charts showing relative stake sizes or up to 10 key metrics
+- For time-based analysis, create ASCII graphs showing trends or distributions or up to your taste
+- For geographic data, use ASCII maps or other visualizations to represent data by location
+- Always ensure visualizations fit within typical text width limits (around 80-100 characters wide)
+- Be creative with ASCII visualization while staying strictly factual to the data, avoiding any invented details, and ensuring all critical identifiers are fully shown, never truncated, dont name charts or graphs likr "ASCII Chart" just show them, abd ebsure they fit within twitter width limits
+- Be more concise than usual to fit within response limits, especially when large datasets are involved
+- If the data is too large to fit in one response, summarize key points and indicate that more data exists
+- Always prioritize accuracy and fidelity to the provided data over verbosity or detail
+- NEVER fabricate or assume any data not explicitly provided
+- Your entire response must fit within 4269 characters or less 
+- End with 3 relevant follow-up questions the user might ask next based on the data provided
+- Do NOT reference the process of data retrieval or any tools used
+- Do NOT mention any errors or issues encountered during data retrieval
+- Do NOT include any disclaimers about data accuracy or completeness
+- Do NOT reference any data not explicitly included in the "Data Retrieved" section above
+- Do NOT mention the number of validators, slots, or other counts unless explicitly shown in the data
+- Do NOT make up any specific validator identities, slot assignments, or other details not explicitly shown in the data
+- Do NOT fabricate any details about the Solana network, its performance, or its validators
+- Do NOT include any information about the Solana Foundation, Solana Labs, or any related entities
+- Do NOT mention any specific dates, times, or events unless explicitly included in the data provided
+- Do NOT reference any external sources or data outside of what is provided above
+- Your entire response must be 4269 characters or less
 
 Answer based strictly on the provided data:`;
 

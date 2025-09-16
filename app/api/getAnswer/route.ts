@@ -22,14 +22,14 @@ async function getSolanaRpcKnowledge(): Promise<string> {
     './public/solana-rpc-llms.md',  // Relative path
     '/var/task/public/solana-rpc-llms.md'  // Netlify function absolute path
   ];
-  
+
   let content = '';
   let loadedSuccessfully = false;
-  
+
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
-    
+
     // Try each possible path
     for (const relativePath of possiblePaths) {
       try {
@@ -43,16 +43,16 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         continue;
       }
     }
-    
+
     if (!loadedSuccessfully) {
       throw new Error('Documentation file not found in any expected location');
     }
-    
+
   } catch (error) {
     console.error('❌ Failed to load Solana RPC documentation:', error);
     console.log('🔄 Using fallback abbreviated documentation');
   }
-  
+
   // Return either full documentation or fallback
   if (loadedSuccessfully && content) {
     return `
@@ -195,11 +195,11 @@ export async function POST(request: Request) {
   const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
   console.log("[getAnswer] No tool handled query, using LLM fallback");
-  
+
   // Detect user's vibe and adjust response style accordingly
   function detectUserVibe(query: string) {
     const lowerQuery = query.toLowerCase().trim();
-    
+
     // Check for casual/fun expressions
     const casualPatterns = [
       /uwu|owo|xd|lol|lmao|bruh|yo|hey|sup|wassup/,
@@ -208,26 +208,26 @@ export async function POST(request: Request) {
       /whats?\s*up/,
       /how\s*(are\s*)?you/
     ];
-    
+
     const isCasual = casualPatterns.some(pattern => pattern.test(lowerQuery));
-    
+
     // Check for technical/analytical queries
     const technicalPatterns = [
       /analyze|transaction|account|balance|validator|network|block|epoch|program|defi|dex/,
       /rpc|api|endpoint|smart\s*contract|liquidity|yield|farming|staking/,
       /sol|solana|usdc|usdt|ray|srm|mango|serum|jupiter|raydium/
     ];
-    
+
     const isTechnical = technicalPatterns.some(pattern => pattern.test(lowerQuery));
-    
+
     return { isCasual, isTechnical, originalQuery: query };
   }
-  
+
   const userVibe = detectUserVibe(question);
-  
+
   // Create adaptive system prompt based on user's vibe
   let systemPrompt = "";
-  
+
   if (userVibe.isCasual && !userVibe.isTechnical) {
     systemPrompt = `You are a friendly, knowledgeable assistant with expertise in Solana blockchain. You match the user's energy and communication style while being helpful and informative.
 
@@ -279,6 +279,9 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
   }
 
   try {
+    // Adjust max tokens based on query type
+    const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 150000;
+
     let answer = await together.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
@@ -289,7 +292,7 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
         { role: "user", content: question }
       ],
       stream: false,
-      max_tokens: 150000,
+      max_tokens: maxTokens,
     });
 
     let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
@@ -314,15 +317,15 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
       message: e instanceof Error ? e.message : String(e),
       stack: e instanceof Error ? e.stack : 'No stack trace'
     });
-    
+
     // Return a more helpful error response that still matches potential user vibe
-    const errorResponse = userVibe?.isCasual 
+    const errorResponse = userVibe?.isCasual
       ? "Oops! Something went wrong on my end 😅 Could you try asking again?"
       : "I encountered an error while processing your query. Please try again.";
-    
+
     return new Response(errorResponse, {
       status: 500,
-      headers: { 
+      headers: {
         "Content-Type": "text/plain",
         "Cache-Control": "no-cache"
       }
