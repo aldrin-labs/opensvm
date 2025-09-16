@@ -14,8 +14,8 @@
 
 # Function configuration - selective environment variables
 [functions]
-  # Include the RPC configuration file in functions from protected directory
-  included_files = ["config/rpc-config.json", "config/rpc-endpoints.js"]
+  # Include the RPC configuration file AND Solana documentation in functions
+  included_files = ["config/rpc-config.json", "config/rpc-endpoints.js", "public/solana-rpc-llms.md"]
 
 
 [[plugins]]

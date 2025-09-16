@@ -243,7 +243,7 @@ import Together from "together-ai";
 const together = new Together({ apiKey: process.env.TOGETHER_API_KEY });
 
 const response = await together.completions.create({
-  model: "togethercomputer/llama-2-7b-chat",
+  model: "openai/gpt-oss-120b",
   prompt: "Summarize this Solana transaction in simple terms:",
 });
 

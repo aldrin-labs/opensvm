@@ -16,11 +16,45 @@ import { moralis_swagger as moralis } from "./tools/moralis";
 
 // Read the full Solana RPC documentation from the docs file
 async function getSolanaRpcKnowledge(): Promise<string> {
+  // Try multiple possible locations for the documentation file
+  const possiblePaths = [
+    'public/solana-rpc-llms.md',  // Standard Next.js public directory
+    './public/solana-rpc-llms.md',  // Relative path
+    '/var/task/public/solana-rpc-llms.md'  // Netlify function absolute path
+  ];
+  
+  let content = '';
+  let loadedSuccessfully = false;
+  
   try {
     const fs = await import('fs/promises');
     const path = await import('path');
-    const docPath = path.join(process.cwd(), 'public', 'solana-rpc-llms.md');
-    const content = await fs.readFile(docPath, 'utf-8');
+    
+    // Try each possible path
+    for (const relativePath of possiblePaths) {
+      try {
+        const docPath = path.resolve(process.cwd(), relativePath);
+        content = await fs.readFile(docPath, 'utf-8');
+        loadedSuccessfully = true;
+        console.log(`✅ Successfully loaded Solana RPC documentation from: ${docPath}`);
+        break;
+      } catch (pathError) {
+        // Continue to next path
+        continue;
+      }
+    }
+    
+    if (!loadedSuccessfully) {
+      throw new Error('Documentation file not found in any expected location');
+    }
+    
+  } catch (error) {
+    console.error('❌ Failed to load Solana RPC documentation:', error);
+    console.log('🔄 Using fallback abbreviated documentation');
+  }
+  
+  // Return either full documentation or fallback
+  if (loadedSuccessfully && content) {
     return `
 # Complete Solana RPC and Moralis API Specification for AI Analysis
 
@@ -52,9 +86,8 @@ ${content}
 When responding to queries, always consider both API sources and suggest the most appropriate combination for comprehensive analysis.
 --------
 `;
-  } catch (error) {
-    console.error('Failed to load Solana RPC documentation:', error);
-    // Fallback to abbreviated version if file can't be read
+  } else {
+    // Enhanced fallback with more comprehensive documentation
     return `
 # Complete Solana RPC and Moralis API Specification for AI Analysis
 
@@ -68,26 +101,50 @@ When analyzing Solana data, prioritize using:
 ## Moralis Solana API Endpoints
 ${moralis}
 
-## Basic Solana RPC Methods Available
-- getAccountInfo: Get account details
-- getBalance: Get account balance  
-- getTransaction: Get transaction details
-- getSlot: Get current slot
-- getEpochInfo: Get epoch information
-- getBlockHeight: Get current block height
-- getRecentPerformanceSamples: Get TPS data
-- getBlocks: Get blocks in range
-- getBlock: Get block details
+## Essential Solana RPC Methods Available
+
+### Account Operations
+- **getAccountInfo**: Get account details including balance, owner, executable status
+- **getBalance**: Get lamport balance for any account
+- **getMultipleAccounts**: Batch retrieve multiple account information
+- **getProgramAccounts**: Get all accounts owned by a specific program
+
+### Transaction Operations  
+- **getTransaction**: Get detailed transaction information by signature
+- **getSignaturesForAddress**: Get transaction signatures for an address
+- **getSignatureStatuses**: Check confirmation status of transactions
+- **sendTransaction**: Submit signed transactions to the network
+- **simulateTransaction**: Test transactions before sending
+
+### Block & Network Information
+- **getSlot**: Get current slot number
+- **getBlock**: Get block information and all transactions
+- **getBlockHeight**: Get current block height
+- **getEpochInfo**: Get current epoch information
+- **getRecentPerformanceSamples**: Get network TPS and performance data
+
+### Token Operations
+- **getTokenAccountBalance**: Get SPL token balance
+- **getTokenAccountsByOwner**: Get all token accounts for an owner
+- **getTokenSupply**: Get total supply of a token
+- **getTokenLargestAccounts**: Get largest holders of a token
+
+### Network Status
+- **getHealth**: Check node health status  
+- **getVersion**: Get Solana version information
+- **getGenesisHash**: Get genesis block hash
+- **getRecentPrioritizationFees**: Get fee estimates
 
 ## Integration Guidelines
 - Cross-reference RPC transaction data with Moralis analytics for deeper insights
 - Use Moralis token metadata and pricing alongside RPC account information
 - Combine network performance data (RPC) with market data (Moralis) for holistic analysis
 - Provide specific API endpoints and parameters when suggesting data retrieval methods
+- Always include error handling for network requests
+- Use appropriate commitment levels (processed, confirmed, finalized) based on use case
 
-When responding to queries, always consider both API sources and suggest the most appropriate combination for comprehensive analysis.
-
-... (abbreviated due to file loading error) ...
+⚠️  Note: Running with abbreviated documentation due to file loading issue. Full documentation should be available after deployment fix.
+--------
 `;
   }
 }
@@ -140,7 +197,7 @@ export async function POST(request: Request) {
   console.log("[getAnswer] No tool handled query, using LLM fallback");
   try {
     let answer = await together.chat.completions.create({
-      model: "meta-llama/Llama-3.2-3B-Instruct-Turbo",
+      model: "openai/gpt-oss-120b",
       messages: [
         {
           role: "system",
