@@ -279,8 +279,8 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
   }
 
   try {
-    // Adjust max tokens based on query type
-    const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 150000;
+    // Adjust max tokens based on query type and fix the token overload issue
+    const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 4000;
 
     let answer = await together.chat.completions.create({
       model: "openai/gpt-oss-120b",

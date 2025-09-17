@@ -10,9 +10,9 @@ export class ToolRegistry {
         // Order matters - more specific tools should come first
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
-        dynamicPlanExecutionTool, // Dynamic tool comes first for comprehensive analysis
+        dynamicPlanExecutionTool, // Dynamic tool handles most analytical queries with narrative
         accountAnalysisTool, // Fallback for simpler account queries
-        networkAnalysisTool,
+        // networkAnalysisTool, // Disabled - dynamicPlanExecutionTool handles all network queries better
     ];
 
     async executeTools(context: ToolContext): Promise<ToolResult> {

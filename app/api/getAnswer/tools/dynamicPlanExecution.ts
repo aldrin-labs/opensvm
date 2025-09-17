@@ -1,10 +1,13 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import Together from "together-ai";
 
-interface PlanStep {
+interface StoryDrivenPlanStep {
     tool: string;
     reason: string;
-    input?: string | any; // Allow both string and object inputs for advanced analytics
+    narrative: string;  // How the AI "perceives" this step
+    trigger: string;    // What user words triggered this
+    discovery: string;  // What we hope to find
+    input?: string | any;
 }
 
 // Well-known DeFi protocol addresses for analysis
@@ -27,21 +30,21 @@ const DEFI_PROTOCOLS = {
     USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
     USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
     SOL: 'So11111111111111111111111111111111111111112'
-}; export const dynamicPlanExecutionTool: Tool = {
+};
+
+export const dynamicPlanExecutionTool: Tool = {
     name: "dynamicPlanExecution",
-    description: "Dynamically generates and executes plans to answer user questions",
+    description: "Dynamically generates and executes narrative-driven plans with advanced analytics",
 
     canHandle: (context: ToolContext): boolean => {
-        // Handle questions that need dynamic analysis but aren't hardcoded
         const { qLower, question } = context;
 
-        // Don't handle if asking for examples/tutorials
+        // Skip for simple greetings or examples
         if (qLower.includes("example") || qLower.includes("how to") || qLower.includes("curl") ||
             qLower.includes("tutorial") || qLower.includes("explain how") || qLower.includes("show me how")) {
             return false;
         }
 
-        // Don't handle simple greetings or short nonsensical queries
         if (/^(hi|hello|hey|yo|gm|hi there|ok|yes|no|thanks|thank you)$/i.test(question.trim())) {
             return false;
         }
@@ -60,7 +63,7 @@ const DEFI_PROTOCOLS = {
             (qLower.includes("account") || qLower.includes("address") ||
                 qLower.includes("transaction") || qLower.includes("balance"));
 
-        // Handle analytical questions that need data fetching
+        // Handle analytical queries with narrative flair
         const hasAnalyticalKeywords = qLower.includes("validator") || qLower.includes("count") ||
             qLower.includes("network") || qLower.includes("current") ||
             qLower.includes("epoch") || qLower.includes("performance") ||
@@ -77,7 +80,11 @@ const DEFI_PROTOCOLS = {
             qLower.includes("yield") || qLower.includes("farming") ||
             qLower.includes("protocol") || qLower.includes("dex") ||
             qLower.includes("swap") || qLower.includes("pool") ||
-            qLower.includes("active") || qLower.includes("patterns");
+            qLower.includes("active") || qLower.includes("patterns") ||
+            qLower.includes("wallet") || qLower.includes("portfolio") ||
+            qLower.includes("nft") || qLower.includes("token") ||
+            qLower.includes("everything") || qLower.includes("full") ||
+            qLower.includes("detailed") || qLower.includes("complete");
 
         // Handle explicit RPC method calls
         const hasRPCMethodNames = qLower.includes("get") && (
@@ -106,17 +113,20 @@ const DEFI_PROTOCOLS = {
         const { conn, question } = context;
 
         try {
-            // Step 1: Generate a plan using LLM
-            const plan = await generatePlan(question);
-            console.log('Generated plan:', plan);
+            // Generate narrative-driven plan with personality
+            const plan = generateStoryDrivenPlan(question);
+            console.log('🎭 Generated narrative plan:', plan.map(p => ({
+                tool: p.tool,
+                narrative: p.narrative
+            })));
 
-            // Step 2: Execute the plan steps
-            const results = await executePlan(plan, conn);
-
-            // Step 3: Synthesize the results into a final answer
-            const finalAnswer = await synthesizeResults(context, plan, results);
-            console.log('Final answer length:', finalAnswer.length);
-            console.log('Final answer content:', JSON.stringify(finalAnswer));
+            // Execute plan with drama
+            const results = await executePlanWithNarrative(plan, conn);
+            
+            // Synthesize with unlimited potential
+            const finalAnswer = await synthesizeEpicResults(context, plan, results);
+            
+            console.log('📚 Final answer length:', finalAnswer.length);
 
             return {
                 handled: true,
@@ -130,51 +140,64 @@ const DEFI_PROTOCOLS = {
             };
 
         } catch (error) {
-            console.error('Dynamic plan execution error:', error);
+            console.error('🔥 Dynamic plan execution error:', error);
             return {
-                handled: false // Fall back to LLM
+                handled: false
             };
         }
     }
 };
 
-async function generatePlan(question: string): Promise<PlanStep[]> {
-    // Use intelligent rule-based planning instead of LLM calls to avoid circular dependencies
-    return generateSmartPlan(question);
-}
-
-function generateSmartPlan(question: string): PlanStep[] {
+function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
     const qLower = question.toLowerCase();
-    const plan: PlanStep[] = [];
+    const plan: StoryDrivenPlanStep[] = [];
 
-    // Analyze question intent and generate appropriate plan
+    // Detect query intensity
+    const wantsEverything = qLower.includes("everything") || qLower.includes("full") || 
+                           qLower.includes("complete") || qLower.includes("all") ||
+                           qLower.includes("detailed") || qLower.includes("comprehensive");
 
     // Explicit cluster nodes queries
     if (qLower.includes('getcluster') || (qLower.includes('cluster') && qLower.includes('nodes'))) {
         plan.push({
             tool: 'getClusterNodes',
-            reason: 'Get cluster nodes information showing network topology and validator connectivity'
+            reason: 'Get cluster nodes information showing network topology and validator connectivity',
+            narrative: '🌐 *Mapping the constellation of nodes...* Let me chart the network topology!',
+            trigger: 'Cluster nodes query detected',
+            discovery: 'The interconnected web of Solana validators and RPC nodes'
         });
     }
 
     // Validator-related queries
     if (qLower.includes('validator')) {
+        const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
+        const count = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 10;
+
         plan.push({
             tool: 'getVoteAccounts',
-            reason: 'Get current validator information including active and delinquent validators'
+            reason: `Get ${count ? `top ${count}` : 'all'} validators`,
+            narrative: '⚔️ *Summoning the validator legion...* The guardians of Solana consensus await!',
+            trigger: `User seeks knowledge of ${count ? `the ${count} mightiest` : 'all'} validators`,
+            discovery: 'The power hierarchy of Solana\'s consensus warriors'
         });
 
         if (qLower.includes('network') || qLower.includes('status') || qLower.includes('overall')) {
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current epoch and network status information'
+                reason: 'Get current epoch and network status information',
+                narrative: '🌅 *Checking the cosmic clock...* Which epoch are we in this grand cycle?',
+                trigger: 'Network status context required for validator analysis',
+                discovery: 'The temporal coordinates of the blockchain'
             });
         }
 
         if (qLower.includes('node') || qLower.includes('cluster')) {
             plan.push({
                 tool: 'getClusterNodes',
-                reason: 'Get cluster node information for comprehensive validator data'
+                reason: 'Get cluster node information for comprehensive validator data',
+                narrative: '🗺️ *Expanding the validator map...* Revealing the full network topology!',
+                trigger: 'Comprehensive validator network analysis requested',
+                discovery: 'The complete infrastructure supporting consensus'
             });
         }
     }
@@ -183,7 +206,10 @@ function generateSmartPlan(question: string): PlanStep[] {
     if (qLower.includes('epoch') && !plan.some(step => step.tool === 'getEpochInfo')) {
         plan.push({
             tool: 'getEpochInfo',
-            reason: 'Get current epoch information including progress and timing'
+            reason: 'Get current epoch information including progress and timing',
+            narrative: '🕰️ *Tuning into the blockchain\'s heartbeat...* Measuring the pulse of consensus!',
+            trigger: 'Epoch information specifically requested',
+            discovery: 'The rhythm and timing of network consensus cycles'
         });
     }
 
@@ -191,13 +217,29 @@ function generateSmartPlan(question: string): PlanStep[] {
     if (qLower.includes('tps') || qLower.includes('performance') || qLower.includes('speed')) {
         plan.push({
             tool: 'getRecentPerformanceSamples',
-            reason: 'Get recent network performance and TPS metrics'
+            reason: 'Get recent network performance and TPS metrics',
+            narrative: '⚡ *Measuring the blockchain\'s pulse...* How fast does Solana\'s heart beat?',
+            trigger: 'Performance metrics requested - user wants to feel the speed!',
+            discovery: 'The raw throughput power of the network'
         });
 
         if (!plan.some(step => step.tool === 'getEpochInfo')) {
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current network state for performance context'
+                reason: 'Get current network state for performance context',
+                narrative: '📊 *Contextualizing the performance data...* Every metric needs its moment in time!',
+                trigger: 'Performance context requires epoch timing',
+                discovery: 'The temporal framework for understanding network speed'
+            });
+        }
+
+        if (wantsEverything) {
+            plan.push({
+                tool: 'getBlockHeight',
+                reason: 'Current blockchain height for complete performance picture',
+                narrative: '🏔️ *Scaling the blockchain mountain...* How tall has this digital tower grown?',
+                trigger: 'Complete network state analysis requested',
+                discovery: 'The accumulated height of all blocks ever produced'
             });
         }
     }
@@ -207,13 +249,19 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (!plan.some(step => step.tool === 'getEpochInfo')) {
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current epoch and network information'
+                reason: 'Get current epoch and network information',
+                narrative: '🌐 *Establishing network connection...* Syncing with the Solana universe!',
+                trigger: 'Network status baseline required',
+                discovery: 'The fundamental state of the blockchain'
             });
         }
         if (!plan.some(step => step.tool === 'getVoteAccounts')) {
             plan.push({
                 tool: 'getVoteAccounts',
-                reason: 'Get validator status for network health assessment'
+                reason: 'Get validator status for network health assessment',
+                narrative: '🏥 *Performing network health check...* Are the validators strong and ready?',
+                trigger: 'Network health assessment via validator status',
+                discovery: 'The wellness indicators of network consensus'
             });
         }
     }
@@ -223,15 +271,24 @@ function generateSmartPlan(question: string): PlanStep[] {
         (qLower.includes('validator') && (qLower.includes('producing') || qLower.includes('current') || qLower.includes('block')))) {
         plan.push({
             tool: 'getSlot',
-            reason: 'Get current slot number for leader schedule context'
+            reason: 'Get current slot number for leader schedule context',
+            narrative: '🎯 *Pinpointing our position in time...* Which slot are we witnessing?',
+            trigger: 'Leader schedule requires slot context',
+            discovery: 'The exact moment in blockchain time'
         });
         plan.push({
             tool: 'getEpochInfo',
-            reason: 'Get epoch information for leader schedule analysis'
+            reason: 'Get epoch information for leader schedule analysis',
+            narrative: '📅 *Consulting the epoch calendar...* Understanding the greater timeline!',
+            trigger: 'Epoch context needed for leadership analysis',
+            discovery: 'The broader temporal context of block production'
         });
         plan.push({
             tool: 'getLeaderSchedule',
-            reason: 'Get the current leader schedule showing which validators will produce blocks'
+            reason: 'Get the current leader schedule showing which validators will produce blocks',
+            narrative: '👑 *Revealing the throne succession...* Who shall lead and when?',
+            trigger: 'User seeks the sacred schedule of block production',
+            discovery: 'The predetermined order of validator leadership'
         });
     }
 
@@ -249,144 +306,120 @@ function generateSmartPlan(question: string): PlanStep[] {
             plan.push({
                 tool: 'getAccountInfo',
                 reason: 'Get basic account information including owner, data, executable status',
+                narrative: '🔍 *Initiating deep blockchain scan...* A mysterious address appears in the void of Solana! Let me peer into its essence...',
+                trigger: `Detected Solana address pattern: ${address.substring(0, 4)}...${address.substring(address.length - 4)}`,
+                discovery: 'Uncovering the fundamental nature of this account - is it a program? A wallet? A treasury of untold riches?',
                 input: address
             });
             plan.push({
                 tool: 'getBalance',
                 reason: 'Get current SOL balance in lamports',
+                narrative: '💰 *Accessing the cosmic ledger...* Time to reveal the SOL wealth hidden within!',
+                trigger: 'Every address has a story told in lamports',
+                discovery: 'The raw power of SOL contained within this digital vault',
                 input: address
             });
 
-            // Enhanced Moralis API analytics
-            plan.push({
-                tool: 'getMoralisPortfolio',
-                reason: 'Get complete portfolio including native SOL and all token holdings with USD values',
-                input: address
-            });
+            if (wantsEverything || qLower.includes("transaction") || qLower.includes("activity")) {
+                plan.push({
+                    tool: 'getSignaturesForAddress',
+                    reason: 'Get transaction signatures for deep analysis',
+                    narrative: '📜 *Unrolling the ancient scrolls of blockchain history...* Every transaction tells a tale!',
+                    trigger: 'User seeks the complete saga of this address',
+                    discovery: 'The chronological tapestry of all actions and interactions',
+                    input: address
+                });
 
-            plan.push({
-                tool: 'getMoralisTokenBalances',
-                reason: 'Get detailed SPL token balances with metadata, prices, and USD values',
-                input: address
-            });
+                plan.push({
+                    tool: 'getParsedTransaction',
+                    reason: 'Decode the mysteries within recent transactions',
+                    narrative: '🔮 *Decrypting the transaction runes...* Each instruction holds secrets!',
+                    trigger: 'Deep dive into the actual mechanics of wallet activity',
+                    discovery: 'The decoded instructions revealing true intentions',
+                    input: address
+                });
+            }
 
-            plan.push({
-                tool: 'getMoralisNFTs',
-                reason: 'Get NFT holdings with metadata, collections, and valuations',
-                input: address
-            });
+            // Enhanced Moralis API analytics (streamlined for speed)
+            if (process.env.MORALIS_API_KEY) {
+                plan.push({
+                    tool: 'getMoralisPortfolio',
+                    reason: 'Get complete portfolio including native SOL and all token holdings with USD values',
+                    narrative: '🌟 *Summoning the Oracle of Moralis...* Converting cosmic assets to earthly values!',
+                    trigger: wantsEverything ? 'User demands EVERYTHING!' : 'Portfolio valuation requested',
+                    discovery: 'The true USD worth of this digital empire',
+                    input: address
+                });
 
-            plan.push({
-                tool: 'getMoralisSwapHistory',
-                reason: 'Get recent swap transactions and DeFi activity patterns',
-                input: address
-            });
+                plan.push({
+                    tool: 'getMoralisTokenBalances',
+                    reason: 'Get detailed SPL token balances with metadata, prices, and USD values',
+                    narrative: '🎨 *Enriching token data with mystical metadata...* Each token has a name, a symbol, a soul!',
+                    trigger: 'Token analysis with full context',
+                    discovery: 'Complete token profiles with logos, names, and market data',
+                    input: address
+                });
 
-            plan.push({
-                tool: 'getMoralisTransactionHistory',
-                reason: 'Get comprehensive transaction history with enhanced metadata',
-                input: address
-            });
+                if (qLower.includes("nft") || wantsEverything) {
+                    plan.push({
+                        tool: 'getMoralisNFTs',
+                        reason: 'Get NFT holdings with metadata, collections, and valuations',
+                        narrative: '🖼️ *Entering the digital art gallery...* What masterpieces does this collector hold?',
+                        trigger: 'NFT analysis requested or complete portfolio scan',
+                        discovery: 'The NFT collection revealing taste and investment prowess',
+                        input: address
+                    });
+                }
 
-            // Advanced financial analytics with Moralis
-            plan.push({
-                tool: 'getMoralisAdvancedAnalytics',
-                reason: 'Get comprehensive financial analytics including PnL, fees, and volume analysis',
-                input: address
-            });
+                // Only add swap/transaction history for "everything" queries to prevent timeouts
+                if (wantsEverything) {
+                    plan.push({
+                        tool: 'getMoralisSwapHistory',
+                        reason: 'Get recent swap transactions and DeFi activity patterns',
+                        narrative: '🔄 *Tracing the DeFi dance...* Every swap is a strategic move in the grand game!',
+                        trigger: 'DeFi activity analysis for comprehensive history',
+                        discovery: 'Trading patterns revealing strategy and timing',
+                        input: address
+                    });
 
-            plan.push({
-                tool: 'getMoralisPnlAnalysis',
-                reason: 'Calculate profit/loss for each token position with entry/exit prices and unrealized gains',
-                input: address
-            });
+                    plan.push({
+                        tool: 'getMoralisTransactionHistory',
+                        reason: 'Get comprehensive transaction history with enhanced metadata',
+                        narrative: '📚 *Opening the complete chronicles...* EVERY. SINGLE. TRANSACTION. The full epic!',
+                        trigger: 'User wants the COMPLETE story - no stone unturned!',
+                        discovery: 'The exhaustive history of this blockchain entity',
+                        input: address
+                    });
+                }
+            }
 
-            plan.push({
-                tool: 'getMoralisFeesAnalysis',
-                reason: 'Analyze total fees paid across all transactions, swaps, and network costs',
-                input: address
-            });
-
-            plan.push({
-                tool: 'getMoralisInflowOutflow',
-                reason: 'Get top inflow/outflow analysis by value and frequency',
-                input: address
-            });
-
-            plan.push({
-                tool: 'getMoralisVolumeAnalysis',
-                reason: 'Get top 10 tokens by volume and top 10 transactions by USD value',
-                input: address
-            });
-
-            // Enhanced Analytics Suite - Next Level Intelligence
-            plan.push({
-                tool: 'getMultiTimeframeAnalytics',
-                reason: 'Comprehensive performance analysis across multiple timeframes with ROI and volatility metrics',
-                input: { address: address, timeframes: ['7d', '30d', '90d'] }
-            });
-
-            plan.push({
-                tool: 'getBehavioralPatterns',
-                reason: 'Advanced behavioral analysis including trading patterns, risk tolerance, and timing analysis',
-                input: { address: address, includeTimePatterns: true, includeRiskProfile: true }
-            });
-
-            plan.push({
-                tool: 'getPortfolioRiskAnalytics',
-                reason: 'Comprehensive risk analysis including concentration, correlation, and diversification metrics',
-                input: { address: address, includeCorrelations: true, riskTimeframe: '30d' }
-            });
-
-            plan.push({
-                tool: 'getPredictiveAnalytics',
-                reason: 'AI-powered trend forecasting and portfolio optimization recommendations',
-                input: { address: address, predictionHorizon: '7d', includeOptimization: true }
-            });
-
-            plan.push({
-                tool: 'getDefiProtocolAnalytics',
-                reason: 'Deep analysis of DeFi protocol interactions and yield farming performance',
-                input: { address: address, includeYieldAnalysis: true }
-            });
-
-            plan.push({
-                tool: 'getAiPoweredInsights',
-                reason: 'Generate AI-powered insights with personalized recommendations and strategic advice',
-                input: { address: address, insightTypes: ['summary', 'recommendations', 'opportunities', 'warnings'] }
-            });
-
-            plan.push({
-                tool: 'getAdvancedVisualizationData',
-                reason: 'Generate data for advanced visualizations including portfolio maps and correlation heatmaps',
-                input: { address: address, visualizationType: 'all', timeframe: '30d' }
-            });
-
-            // Token holdings analysis (Solana RPC for comparison)
+            // Token holdings analysis (Solana RPC for comparison) with pagination
             plan.push({
                 tool: 'getParsedTokenAccountsByOwner',
                 reason: 'Get raw SPL token accounts from RPC for data verification',
-                input: address
-            });
-
-            // Get detailed transactions for pattern analysis (Solana RPC)
-            plan.push({
-                tool: 'getRecentTransactionsDetails',
-                reason: 'Get detailed transaction data for analyzing transfer patterns and account usage',
+                narrative: '🔍 *Cross-referencing with the Solana ledger...* Double-checking the token treasures!',
+                trigger: 'RPC verification of Moralis token data',
+                discovery: 'Raw blockchain truth about token holdings',
                 input: address
             });
 
             // Get epoch info for context
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current epoch context for rent exemption and timing analysis'
+                reason: 'Get current epoch context for rent exemption and timing analysis',
+                narrative: '⏱️ *Checking the blockchain clock...* Timing is everything in crypto!',
+                trigger: 'Epoch context for temporal analysis',
+                discovery: 'The temporal framework for understanding account activity',
             });
 
         } else {
             // General account info request without specific address
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current network context for account analysis'
+                reason: 'Get current network context for account analysis',
+                narrative: '🌐 *Establishing baseline network context...* Setting the stage for analysis!',
+                trigger: 'General account analysis requires network context',
+                discovery: 'The current state of the Solana ecosystem'
             });
         }
     }    // Transaction analysis queries
@@ -400,13 +433,19 @@ function generateSmartPlan(question: string): PlanStep[] {
             plan.push({
                 tool: 'getTransaction',
                 reason: 'Get detailed transaction information',
+                narrative: '🔐 *Unlocking transaction secrets...* This signature holds mysteries!',
+                trigger: `Transaction signature detected: ${signature.substring(0, 8)}...`,
+                discovery: 'The complete anatomy of this blockchain event',
                 input: signature
             });
         } else {
             // General transaction info - get recent performance data
             plan.push({
                 tool: 'getRecentPerformanceSamples',
-                reason: 'Get recent network transaction activity'
+                reason: 'Get recent network transaction activity',
+                narrative: '📈 *Scanning recent transaction flows...* The pulse of network activity!',
+                trigger: 'General transaction activity analysis',
+                discovery: 'The rhythm and volume of network transactions'
             });
         }
     }
@@ -416,20 +455,32 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (qLower.includes('current')) {
             plan.push({
                 tool: 'getSlot',
-                reason: 'Get current slot number for leader schedule context'
+                reason: 'Get current slot number for leader schedule context',
+                narrative: '🎯 *Pinpointing our exact position...* Which slot witnesses our presence?',
+                trigger: 'Current slot position requested',
+                discovery: 'The exact moment in blockchain time'
             });
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get epoch information for leader schedule analysis'
+                reason: 'Get epoch information for leader schedule analysis',
+                narrative: '📅 *Consulting the epoch calendar...* Understanding the greater timeline!',
+                trigger: 'Epoch context needed for leadership analysis',
+                discovery: 'The broader temporal context of block production'
             });
             plan.push({
                 tool: 'getLeaderSchedule',
-                reason: 'Get the current leader schedule showing which validators will produce blocks'
+                reason: 'Get the current leader schedule showing which validators will produce blocks',
+                narrative: '👑 *Revealing the throne succession...* Who shall lead and when?',
+                trigger: 'User seeks the sacred schedule of block production',
+                discovery: 'The predetermined order of validator leadership'
             });
         } else if (qLower.includes('current')) {
             plan.push({
                 tool: 'getSlot',
-                reason: 'Get current slot number'
+                reason: 'Get current slot number',
+                narrative: '🎯 *Finding our place in the slot stream...* The current moment in blockchain time!',
+                trigger: 'Current slot number requested',
+                discovery: 'The present position in the endless flow of slots'
             });
         }
     }
@@ -438,14 +489,20 @@ function generateSmartPlan(question: string): PlanStep[] {
     if (qLower.includes('block') && qLower.includes('height')) {
         plan.push({
             tool: 'getBlockHeight',
-            reason: 'Get current block height'
+            reason: 'Get current block height',
+            narrative: '🏗️ *Measuring the blockchain tower...* How many blocks tall is our digital edifice?',
+            trigger: 'Block height measurement requested',
+            discovery: 'The accumulated height of the blockchain structure'
         });
 
         // If asking for both slot and block height, add slot too
         if (qLower.includes('slot') && !plan.some(step => step.tool === 'getSlot')) {
             plan.push({
                 tool: 'getSlot',
-                reason: 'Get current slot number'
+                reason: 'Get current slot number',
+                narrative: '📊 *Adding slot context to block height...* The dual coordinates of blockchain time!',
+                trigger: 'Slot context for comprehensive height analysis',
+                discovery: 'The slot coordinate matching the block height'
             });
         }
     }
@@ -460,7 +517,10 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (!plan.some(step => step.tool === 'getRecentPerformanceSamples')) {
             plan.push({
                 tool: 'getRecentPerformanceSamples',
-                reason: 'Get recent network performance metrics to analyze DeFi activity levels'
+                reason: 'Get recent network performance metrics to analyze DeFi activity levels',
+                narrative: '📊 *Measuring DeFi heartbeat...* The network\'s pulse reveals protocol activity!',
+                trigger: 'DeFi analysis requires network performance context',
+                discovery: 'Network throughput indicating DeFi ecosystem health'
             });
         }
 
@@ -468,7 +528,10 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (!plan.some(step => step.tool === 'getEpochInfo')) {
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current epoch and network context for DeFi analysis'
+                reason: 'Get current epoch and network context for DeFi analysis',
+                narrative: '🕰️ *Setting DeFi temporal context...* When did these protocols last harvest yields?',
+                trigger: 'DeFi temporal analysis requires epoch timing',
+                discovery: 'The time dimension of DeFi protocol performance'
             });
         }
 
@@ -476,7 +539,10 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (!plan.some(step => step.tool === 'getVoteAccounts')) {
             plan.push({
                 tool: 'getVoteAccounts',
-                reason: 'Get validator status to assess network stability for DeFi protocols'
+                reason: 'Get validator status to assess network stability for DeFi protocols',
+                narrative: '🛡️ *Checking DeFi infrastructure strength...* Are the network foundations solid?',
+                trigger: 'DeFi stability requires validator health assessment',
+                discovery: 'Network consensus strength supporting DeFi protocols'
             });
         }
 
@@ -484,24 +550,36 @@ function generateSmartPlan(question: string): PlanStep[] {
         if (!plan.some(step => step.tool === 'getSlot')) {
             plan.push({
                 tool: 'getSlot',
-                reason: 'Get current slot for DeFi activity timing context'
+                reason: 'Get current slot for DeFi activity timing context',
+                narrative: '⏱️ *Marking DeFi time coordinates...* Pinpointing protocol activity in blockchain time!',
+                trigger: 'DeFi timing analysis requires slot precision',
+                discovery: 'The exact timing context for DeFi protocol analysis'
             });
         }
 
         // Add intelligent DeFi analysis steps combining Solana RPC + Moralis API
         plan.push({
             tool: 'analyzeDeFiEcosystem',
-            reason: 'Comprehensive DeFi ecosystem analysis using both Solana RPC and Moralis market data'
+            reason: 'Comprehensive DeFi ecosystem analysis using both Solana RPC and Moralis market data',
+            narrative: '🌿 *Exploring the DeFi jungle...* Mapping the ecosystem of yield, liquidity, and innovation!',
+            trigger: 'Complete DeFi ecosystem analysis requested',
+            discovery: 'The interconnected web of DeFi protocols and their performance'
         });
 
         plan.push({
             tool: 'analyzeDeFiProtocolActivity',
-            reason: 'Analyze specific DeFi protocol account activity and trading patterns'
+            reason: 'Analyze specific DeFi protocol account activity and trading patterns',
+            narrative: '🔬 *Dissecting DeFi protocol mechanics...* Understanding the gears that drive yield!',
+            trigger: 'Deep DeFi protocol analysis for specific insights',
+            discovery: 'The operational patterns and efficiency of DeFi protocols'
         });
 
         plan.push({
             tool: 'analyzeDeFiMarketTrends',
-            reason: 'Get real-time market trends, top gainers, and new token listings from Moralis'
+            reason: 'Get real-time market trends, top gainers, and new token listings from Moralis',
+            narrative: '📈 *Reading the DeFi market tea leaves...* What trends shape tomorrow\'s yields?',
+            trigger: 'DeFi market trend analysis for strategic insights',
+            discovery: 'Market movements and opportunities in the DeFi landscape'
         });
     }
 
@@ -523,6 +601,9 @@ function generateSmartPlan(question: string): PlanStep[] {
             plan.push({
                 tool: 'getAccountInfo',
                 reason: `Check if the provided string '${trimmedQuestion}' is a valid base-58 Solana address; if not, no further action can be taken.`,
+                narrative: '🤔 *Investigating mysterious string...* Could this be a hidden Solana address?',
+                trigger: `Potential address pattern detected: ${trimmedQuestion}`,
+                discovery: 'Validation of whether this string represents a blockchain entity',
                 input: cleanedInput
             });
 
@@ -531,6 +612,9 @@ function generateSmartPlan(question: string): PlanStep[] {
                 plan.push({
                     tool: 'getBalance',
                     reason: 'Get account balance if the address is valid',
+                    narrative: '💰 *Testing the address waters...* Does this mysterious string hold treasure?',
+                    trigger: 'Valid address pattern suggests balance check',
+                    discovery: 'The potential wealth contained in this address',
                     input: cleanedInput
                 });
             }
@@ -538,7 +622,10 @@ function generateSmartPlan(question: string): PlanStep[] {
             // Provide general network overview for other cases
             plan.push({
                 tool: 'getEpochInfo',
-                reason: 'Get current network status as starting point for analysis'
+                reason: 'Get current network status as starting point for analysis',
+                narrative: '🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!',
+                trigger: 'General query requires network context',
+                discovery: 'The fundamental state of the network as analysis foundation'
             });
         }
     }
@@ -546,118 +633,20 @@ function generateSmartPlan(question: string): PlanStep[] {
     return plan;
 }
 
-// ASCII Chart Generation Functions
-function generateTimelineChart(leaders: any[], currentSlot: number, rangeSlots: number): string {
-    const timeBlocks = 20; // 20 time segments
-    const slotsPerBlock = Math.floor(rangeSlots / timeBlocks);
-    const chart = [];
-
-    // Header
-    chart.push('Timeline Chart (Next 600 minutes):');
-    chart.push('Time  │' + '─'.repeat(60) + '│');
-    chart.push('      │' + Array.from({ length: 6 }, (_, i) => `${i * 100}min`.padEnd(10)).join('') + '│');
-    chart.push('      │' + '─'.repeat(60) + '│');
-
-    // Activity levels for each time block
-    const activity = new Array(timeBlocks).fill(0);
-    leaders.forEach(leader => {
-        leader.upcomingSlots.forEach((slot: number) => {
-            const blockIndex = Math.floor((slot - currentSlot) / slotsPerBlock);
-            if (blockIndex >= 0 && blockIndex < timeBlocks) {
-                activity[blockIndex]++;
-            }
-        });
-    });
-
-    const maxActivity = Math.max(...activity);
-    const heights = activity.map(a => Math.floor((a / maxActivity) * 10));
-
-    // Draw bars
-    for (let row = 10; row >= 0; row--) {
-        let line = `${row.toString().padStart(3)}   │`;
-        for (let col = 0; col < timeBlocks; col++) {
-            const chars = Math.floor(60 / timeBlocks);
-            const bar = heights[col] >= row ? '█'.repeat(chars) : ' '.repeat(chars);
-            line += bar;
-        }
-        line += '│';
-        chart.push(line);
-    }
-
-    chart.push('      │' + '─'.repeat(60) + '│');
-    chart.push('      └' + '─'.repeat(60) + '┘');
-    chart.push('');
-
-    return chart.join('\n');
-}
-
-function generateValidatorDistributionChart(leaders: any[]): string {
-    const chart = [];
-    chart.push('Validator Slot Distribution:');
-    chart.push('');
-
-    // Sort by total slots and take top 15
-    const sorted = leaders.sort((a, b) => b.totalNearSlots - a.totalNearSlots).slice(0, 15);
-    const maxSlots = sorted[0]?.totalNearSlots || 1;
-
-    sorted.forEach((leader, index) => {
-        const shortName = leader.validator.substring(0, 8) + '...';
-        const slots = leader.totalNearSlots;
-        const barLength = Math.floor((slots / maxSlots) * 40);
-        const bar = '█'.repeat(barLength) + '░'.repeat(40 - barLength);
-        chart.push(`${(index + 1).toString().padStart(2)}. ${shortName} │${bar}│ ${slots} slots`);
-    });
-
-    chart.push('');
-    return chart.join('\n');
-}
-
-function generateSlotPatternChart(leaders: any[], currentSlot: number): string {
-    const chart = [];
-    chart.push('Slot Assignment Pattern (Next 100 slots):');
-    chart.push('');
-
-    // Create a map of next 100 slots
-    const slotMap = new Map();
-    leaders.forEach(leader => {
-        leader.upcomingSlots.forEach((slot: number) => {
-            if (slot >= currentSlot && slot < currentSlot + 100) {
-                slotMap.set(slot, leader.validator.substring(0, 6));
-            }
-        });
-    });
-
-    // Draw pattern
-    for (let row = 0; row < 10; row++) {
-        let line = `${(currentSlot + row * 10).toString().padStart(8)} │`;
-        for (let col = 0; col < 10; col++) {
-            const slot = currentSlot + row * 10 + col;
-            const validator = slotMap.get(slot);
-            line += validator ? '●' : '·';
-        }
-        line += '│';
-        chart.push(line);
-    }
-
-    chart.push('         └' + '─'.repeat(10) + '┘');
-    chart.push('Legend: ● = Assigned slot, · = Empty/Other validator');
-    chart.push('');
-
-    return chart.join('\n');
-}
-
-async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, any>> {
+async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
     const startTime = Date.now();
-    const MAX_EXECUTION_TIME = 25000; // 25 seconds to leave room for synthesis
+    const MAX_EXECUTION_TIME = 30000; // 30 seconds for comprehensive queries
+
+    console.log('🎬 Beginning epic execution saga...');
 
     for (const step of plan) {
-        // Check if we're approaching timeout
         if (Date.now() - startTime > MAX_EXECUTION_TIME) {
-            console.warn(`Plan execution stopped due to timeout after ${Date.now() - startTime}ms`);
-            results[step.tool] = { error: 'Execution timeout - plan truncated' };
+            console.warn(`⏰ Epic cut short at ${Date.now() - startTime}ms - but what a journey it was!`);
             break;
         }
+
+        console.log(`\n${step.narrative}`);
 
         try {
             let result;
@@ -670,382 +659,497 @@ async function executePlan(plan: PlanStep[], conn: any): Promise<Record<string, 
             } else if (step.tool === 'analyzeDeFiMarketTrends') {
                 result = await analyzeDeFiMarketTrends();
             }
-            // Handle Moralis API methods for enhanced account analysis
-            else if (step.tool === 'getMoralisPortfolio' && step.input) {
-                const { getPortfolio } = await import('../../../../lib/moralis-api');
-                result = await getPortfolio(step.input, true, 'mainnet');
-            } else if (step.tool === 'getMoralisTokenBalances' && step.input) {
-                const { getTokenBalances } = await import('../../../../lib/moralis-api');
-                result = await getTokenBalances(step.input, 'mainnet');
-            } else if (step.tool === 'getMoralisNFTs' && step.input) {
-                const { getNFTsForAddress } = await import('../../../../lib/moralis-api');
-                result = await getNFTsForAddress(step.input, { nftMetadata: true, limit: 20 }, 'mainnet');
-            } else if (step.tool === 'getMoralisSwapHistory' && step.input) {
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                result = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
-            } else if (step.tool === 'getMoralisTransactionHistory' && step.input) {
-                const { getTransactionsByAddress } = await import('../../../../lib/moralis-api');
-                result = await getTransactionsByAddress(step.input, { limit: 50 }, 'mainnet');
+            // Handle Moralis API calls with proper error handling
+            else if (step.tool.startsWith('getMoralis') && step.input) {
+                result = await handleMoralisCallWithNarrative(step, step.input);
             }
-            // Enhanced financial analytics with Moralis
-            else if (step.tool === 'getMoralisAdvancedAnalytics' && step.input) {
-                // Comprehensive analytics combining multiple Moralis APIs
-                const { getSwapsByWalletAddress, getTokenBalances, getPortfolio } = await import('../../../../lib/moralis-api');
-                const [swaps, tokens, portfolio] = await Promise.all([
-                    getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
-                    getTokenBalances(step.input, 'mainnet'),
-                    getPortfolio(step.input, true, 'mainnet')
-                ]);
-                result = {
-                    address: step.input,
-                    swapHistory: swaps,
-                    tokenBalances: tokens,
-                    portfolio: portfolio,
-                    analytics: 'comprehensive_financial_analysis'
-                };
-            } else if (step.tool === 'getMoralisPnlAnalysis' && step.input) {
-                // PnL analysis using swap history
-                const { getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
-                const [swaps, currentTokens] = await Promise.all([
-                    getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
-                    getTokenBalances(step.input, 'mainnet')
-                ]);
-                result = {
-                    address: step.input,
-                    swapHistory: swaps,
-                    currentPositions: currentTokens,
-                    analysis: 'position_pnl_calculation'
-                };
-            } else if (step.tool === 'getMoralisFeesAnalysis' && step.input) {
-                // Fees analysis from transaction history
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
-                result = {
-                    address: step.input,
-                    transactionData: swaps,
-                    analysis: 'fees_and_costs_breakdown'
-                };
-            } else if (step.tool === 'getMoralisInflowOutflow' && step.input) {
-                // Inflow/outflow analysis
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
-                result = {
-                    address: step.input,
-                    transactionData: swaps,
-                    analysis: 'fund_flow_patterns'
-                };
-            } else if (step.tool === 'getMoralisVolumeAnalysis' && step.input) {
-                // Volume and top transactions analysis
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const swaps = await getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
-                result = {
-                    address: step.input,
-                    transactionData: swaps,
-                    analysis: 'volume_and_top_transactions'
-                };
-            }
-            // Advanced Analytics Tools
-            else if (step.tool === 'getMultiTimeframeAnalytics' && step.input) {
-                // Multi-timeframe performance analysis
-                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [swaps, portfolio] = await Promise.all([
-                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
-                    getPortfolio(params.address, true, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    timeframes: params.timeframes || ['7d', '30d', '90d'],
-                    swapHistory: swaps,
-                    portfolio: portfolio,
-                    analysis: 'multi_timeframe_performance'
-                };
-            } else if (step.tool === 'getBehavioralPatterns' && step.input) {
-                // Behavioral pattern analysis
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const swaps = await getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet');
-                result = {
-                    address: params.address,
-                    includeTimePatterns: params.includeTimePatterns || true,
-                    includeRiskProfile: params.includeRiskProfile || true,
-                    swapHistory: swaps,
-                    analysis: 'behavioral_patterns'
-                };
-            } else if (step.tool === 'getPortfolioRiskAnalytics' && step.input) {
-                // Portfolio risk analysis
-                const { getPortfolio, getTokenBalances, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [portfolio, tokens, swaps] = await Promise.all([
-                    getPortfolio(params.address, true, 'mainnet'),
-                    getTokenBalances(params.address, 'mainnet'),
-                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    includeCorrelations: params.includeCorrelations || true,
-                    riskTimeframe: params.riskTimeframe || '30d',
-                    portfolio: portfolio,
-                    tokens: tokens,
-                    swapHistory: swaps,
-                    analysis: 'risk_analytics'
-                };
-            } else if (step.tool === 'getCompetitiveBenchmarking' && step.input) {
-                // Competitive benchmarking analysis
-                const { getPortfolio, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [portfolio, swaps] = await Promise.all([
-                    getPortfolio(params.address, true, 'mainnet'),
-                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    benchmarkType: params.benchmarkType || 'all',
-                    portfolioSize: params.portfolioSize,
-                    portfolio: portfolio,
-                    swapHistory: swaps,
-                    analysis: 'competitive_benchmarking'
-                };
-            } else if (step.tool === 'getPredictiveAnalytics' && step.input) {
-                // Predictive analytics
-                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [swaps, portfolio] = await Promise.all([
-                    getSwapsByWalletAddress(params.address, { limit: 150 }, 'mainnet'),
-                    getPortfolio(params.address, true, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    predictionHorizon: params.predictionHorizon || '7d',
-                    includeOptimization: params.includeOptimization || true,
-                    swapHistory: swaps,
-                    portfolio: portfolio,
-                    analysis: 'predictive_analytics'
-                };
-            } else if (step.tool === 'getDefiProtocolAnalytics' && step.input) {
-                // DeFi protocol analytics
-                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [swaps, portfolio] = await Promise.all([
-                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
-                    getPortfolio(params.address, true, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    protocols: params.protocols,
-                    includeYieldAnalysis: params.includeYieldAnalysis || true,
-                    swapHistory: swaps,
-                    portfolio: portfolio,
-                    analysis: 'defi_protocol_analytics'
-                };
-            } else if (step.tool === 'getTokenSpecificAnalytics' && step.input) {
-                // Token-specific analytics
-                const { getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [swaps, tokens] = await Promise.all([
-                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
-                    getTokenBalances(params.address, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    tokenAddress: params.tokenAddress,
-                    includeMarketImpact: params.includeMarketImpact || true,
-                    swapHistory: swaps,
-                    tokens: tokens,
-                    analysis: 'token_specific_analytics'
-                };
-            } else if (step.tool === 'getNftPortfolioAnalytics' && step.input) {
-                // NFT portfolio analytics
-                const { getNFTsForAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const nfts = await getNFTsForAddress(params.address, { nftMetadata: true, limit: 50 }, 'mainnet');
-                result = {
-                    address: params.address,
-                    includeRarityAnalysis: params.includeRarityAnalysis || true,
-                    includeMarketTrends: params.includeMarketTrends || true,
-                    nfts: nfts,
-                    analysis: 'nft_portfolio_analytics'
-                };
-            } else if (step.tool === 'getTransactionOptimization' && step.input) {
-                // Transaction optimization analysis
-                const { getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const swaps = await getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet');
-                result = {
-                    address: params.address,
-                    optimizationType: params.optimizationType || 'all',
-                    timeframe: params.timeframe || '30d',
-                    swapHistory: swaps,
-                    analysis: 'transaction_optimization'
-                };
-            } else if (step.tool === 'setupRealTimeMonitoring' && step.input) {
-                // Real-time monitoring setup
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                result = {
-                    address: params.address,
-                    alertTypes: params.alertTypes || ['large_transactions', 'portfolio_changes', 'risk_alerts'],
-                    thresholds: params.thresholds || {},
-                    analysis: 'real_time_monitoring_setup'
-                };
-            } else if (step.tool === 'getCrossChainAnalytics' && step.input) {
-                // Cross-chain analytics
-                const { getPortfolio } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const portfolio = await getPortfolio(params.address, true, 'mainnet');
-                result = {
-                    address: params.address,
-                    relatedAddresses: params.relatedAddresses || [],
-                    includePortfolioCorrelation: params.includePortfolioCorrelation || true,
-                    portfolio: portfolio,
-                    analysis: 'cross_chain_analytics'
-                };
-            } else if (step.tool === 'getAdvancedVisualizationData' && step.input) {
-                // Advanced visualization data
-                const { getPortfolio, getSwapsByWalletAddress } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [portfolio, swaps] = await Promise.all([
-                    getPortfolio(params.address, true, 'mainnet'),
-                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    visualizationType: params.visualizationType || 'all',
-                    timeframe: params.timeframe || '30d',
-                    portfolio: portfolio,
-                    swapHistory: swaps,
-                    analysis: 'advanced_visualization_data'
-                };
-            } else if (step.tool === 'getAiPoweredInsights' && step.input) {
-                // AI-powered insights
-                const { getPortfolio, getSwapsByWalletAddress, getTokenBalances } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [portfolio, swaps, tokens] = await Promise.all([
-                    getPortfolio(params.address, true, 'mainnet'),
-                    getSwapsByWalletAddress(params.address, { limit: 100 }, 'mainnet'),
-                    getTokenBalances(params.address, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    insightTypes: params.insightTypes || ['summary', 'recommendations', 'opportunities'],
-                    personalityProfile: params.personalityProfile || 'auto_detect',
-                    portfolio: portfolio,
-                    swapHistory: swaps,
-                    tokens: tokens,
-                    analysis: 'ai_powered_insights'
-                };
-            } else if (step.tool === 'getGamificationMetrics' && step.input) {
-                // Gamification metrics
-                const { getSwapsByWalletAddress, getPortfolio } = await import('../../../../lib/moralis-api');
-                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
-                const [swaps, portfolio] = await Promise.all([
-                    getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
-                    getPortfolio(params.address, true, 'mainnet')
-                ]);
-                result = {
-                    address: params.address,
-                    includeLeaderboards: params.includeLeaderboards || true,
-                    includeAchievements: params.includeAchievements || true,
-                    swapHistory: swaps,
-                    portfolio: portfolio,
-                    analysis: 'gamification_metrics'
-                };
-            }
-            // Handle custom account analysis methods
-            else if (step.tool === 'getParsedTokenAccountsByOwner' && step.input) {
-                // Get SPL token accounts for the address
-                const { PublicKey } = await import('@solana/web3.js');
-                const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-                result = await conn.getParsedTokenAccountsByOwner(new PublicKey(step.input), {
-                    programId: tokenProgramId
-                });
-            } else if (step.tool === 'getRecentTransactionsDetails' && step.input) {
-                // Get detailed transaction data for analysis
-                const { PublicKey } = await import('@solana/web3.js');
+            // Enhanced RPC methods
+            else if (step.tool === 'getSignaturesForAddress' && step.input) {
                 try {
-                    const signatures = await conn.getSignaturesForAddress(new PublicKey(step.input), { limit: 10 });
-                    const detailedTxs = await Promise.all(
-                        signatures.slice(0, 5).map(async (sig: any) => {
-                            try {
-                                const tx = await conn.getParsedTransaction(sig.signature, {
-                                    maxSupportedTransactionVersion: 0
-                                });
-                                return { signature: sig, transaction: tx };
-                            } catch (e) {
-                                return { signature: sig, transaction: null, error: (e as Error).message };
-                            }
-                        })
-                    );
-                    result = detailedTxs;
+                    const { PublicKey } = await import('@solana/web3.js');
+                    const pubkey = new PublicKey(step.input);
+                    // Get more signatures for comprehensive analysis
+                    result = await conn.getSignaturesForAddress(pubkey, { limit: 100 });
+                    console.log(`   ✅ Found ${result?.length || 0} transaction signatures!`);
                 } catch (error) {
-                    result = { error: (error as Error).message };
+                    result = { error: `Failed to get signatures: ${(error as Error).message}` };
+                    console.log(`   ❌ Signature retrieval failed`);
                 }
             }
-            // Check if the method exists on the connection object
+            else if (step.tool === 'getTokenAccountsByOwner' && step.input) {
+                try {
+                    const { PublicKey } = await import('@solana/web3.js');
+                    const ownerPubkey = new PublicKey(step.input);
+                    const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                    
+                    // Use timeout and try with minimal encoding to avoid size errors
+                    const tokenPromise = conn.getTokenAccountsByOwner(ownerPubkey, {
+                        programId: tokenProgramId
+                    }, 'confirmed');
+                    
+                    const timeoutPromise = new Promise((_, reject) => {
+                        setTimeout(() => reject(new Error('Token query timeout')), 8000);
+                    });
+                    
+                    result = await Promise.race([tokenPromise, timeoutPromise]);
+                    const tokenCount = result?.value?.length || 0;
+                    console.log(`   💎 Discovered ${tokenCount} token accounts!`);
+                } catch (error) {
+                    // If the error is about string size, try a simpler approach
+                    if ((error as Error).message.includes('string longer than') || (error as Error).message.includes('0x1fffffe8')) {
+                        try {
+                            // Fallback: just count token accounts without parsing
+                            const { PublicKey } = await import('@solana/web3.js');
+                            const ownerPubkey = new PublicKey(step.input);
+                            const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                            const unparsedResult = await conn.getTokenAccountsByOwner(ownerPubkey, {
+                                programId: tokenProgramId
+                            });
+                            result = { 
+                                value: unparsedResult?.value || [], 
+                                note: 'Unparsed due to size limits',
+                                count: unparsedResult?.value?.length || 0
+                            };
+                            console.log(`   💎 Found ${result.count} token accounts (unparsed)!`);
+                        } catch (fallbackError) {
+                            result = { error: `Token accounts too large to query: ${(fallbackError as Error).message}` };
+                            console.log(`   ⚠️ Token query failed due to size limits`);
+                        }
+                    } else {
+                        result = { error: `Failed to get token accounts: ${(error as Error).message}` };
+                        console.log(`   ❌ Token discovery failed`);
+                    }
+                }
+            }
+            else if (step.tool === 'getParsedTransaction' && step.input) {
+                try {
+                    const { PublicKey } = await import('@solana/web3.js');
+                    const pubkey = new PublicKey(step.input);
+                    const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
+                    
+                    if (signatures && signatures.length > 0) {
+                        // Get more detailed transactions for epic analysis
+                        const detailedTxs = await Promise.all(
+                            signatures.slice(0, 10).map(async (sig: any) => {
+                                try {
+                                    const tx = await conn.getParsedTransaction(sig.signature, {
+                                        maxSupportedTransactionVersion: 0
+                                    });
+                                    return { signature: sig.signature, transaction: tx, slot: sig.slot };
+                                } catch (e) {
+                                    return { signature: sig.signature, error: (e as Error).message };
+                                }
+                            })
+                        );
+                        result = {
+                            totalSignatures: signatures.length,
+                            recentTransactions: detailedTxs
+                        };
+                        console.log(`   📜 Decoded ${detailedTxs.length} transactions in detail!`);
+                    } else {
+                        result = { totalSignatures: 0, recentTransactions: [] };
+                        console.log(`   📭 No transactions found yet`);
+                    }
+                } catch (error) {
+                    result = { error: `Failed to parse transactions: ${(error as Error).message}` };
+                    console.log(`   ❌ Transaction parsing failed`);
+                }
+            }
+            // Handle advanced analytics methods
+            else if (step.tool.startsWith('getMoralis') || step.tool.startsWith('get') && 
+                     ['MultiTimeframeAnalytics', 'BehavioralPatterns', 'PortfolioRiskAnalytics', 
+                      'PredictiveAnalytics', 'DefiProtocolAnalytics', 'AiPoweredInsights',
+                      'AdvancedVisualizationData', 'ParsedTokenAccountsByOwner', 'RecentTransactionsDetails'].some(suffix => step.tool.includes(suffix))) {
+                result = await handleAdvancedAnalytics(step, conn);
+            }
+            // Standard RPC calls with timeout protection
             else if (typeof conn[step.tool] === 'function') {
-                // Add timeout wrapper for RPC calls to prevent hanging
                 const timeoutPromise = new Promise((_, reject) => {
-                    setTimeout(() => reject(new Error(`RPC call ${step.tool} timed out after 10 seconds`)), 10000);
+                    setTimeout(() => reject(new Error(`RPC call ${step.tool} timed out`)), 15000);
                 });
 
                 const rpcCallPromise = (async () => {
-                    // Handle methods that need specific parameters
                     if (step.tool === 'getRecentPerformanceSamples') {
-                        return await conn[step.tool](20);
+                        return await conn[step.tool](50); // Get more samples
                     } else if (step.input) {
-                        // If step has input parameter, pass it
-                        // For Solana RPC methods that need PublicKey, convert string to PublicKey
                         if (step.tool === 'getAccountInfo' || step.tool === 'getBalance') {
                             const { PublicKey } = await import('@solana/web3.js');
                             try {
                                 const pubkey = new PublicKey(step.input);
                                 return await conn[step.tool](pubkey);
                             } catch (error) {
-                                return { error: `Invalid address for ${step.tool}: ${(error as Error).message}` };
+                                return { error: `Invalid address: ${(error as Error).message}` };
                             }
                         } else {
                             return await conn[step.tool](step.input);
                         }
                     } else {
-                        // Call method without parameters
                         return await conn[step.tool]();
                     }
                 })();
 
                 try {
                     result = await Promise.race([rpcCallPromise, timeoutPromise]);
+                    console.log(`   ✅ ${step.discovery}`);
                 } catch (error) {
                     result = { error: `RPC call failed: ${(error as Error).message}` };
+                    console.log(`   ⏰ RPC timeout or error`);
                 }
             } else {
-                console.warn(`Method ${step.tool} not found on connection object`);
-                results[step.tool] = { error: `Method ${step.tool} not available` };
-                continue;
+                console.warn(`   ⚠️ Method ${step.tool} not available in this realm`);
+                result = { error: `Method ${step.tool} not available` };
             }
 
             results[step.tool] = result;
 
-            // Debug logging for leader schedule
-            if (step.tool === 'getLeaderSchedule' && result) {
-                console.log(`[DEBUG] ${step.tool} result type:`, typeof result);
-                if (typeof result === 'object' && result !== null) {
-                    const entries = Object.entries(result);
-                    console.log(`[DEBUG] ${step.tool} entries count:`, entries.length);
-                    console.log(`[DEBUG] ${step.tool} first 3 entries:`, entries.slice(0, 3));
-                }
-            }
-
         } catch (error) {
-            console.error(`Error executing ${step.tool}:`, error);
+            console.error(`   🔥 Error in ${step.tool}:`, error);
             results[step.tool] = { error: (error as Error).message };
         }
     }
 
-    console.log('[DEBUG] All plan results:', Object.keys(results));
+    console.log('\n🎭 Plan execution complete! Results gathered:', Object.keys(results).length);
     return results;
 }
 
-// Enhanced DeFi Analysis Functions using both Solana RPC and Moralis API
+async function handleMoralisCallWithNarrative(step: StoryDrivenPlanStep, input: string): Promise<any> {
+    // Check if Moralis API key is available
+    if (!process.env.MORALIS_API_KEY) {
+        console.log(`   ⚠️ Moralis Oracle unavailable - no API key provided`);
+        return { error: 'Moralis API key not configured' };
+    }
 
+    try {
+        // Use dynamic import with correct path and timeout
+        const moralisApi = await import('../../../../lib/moralis-api');
+        
+        console.log(`   🔮 Invoking Moralis ${step.tool}...`);
+        
+        // Create timeout for all Moralis calls
+        const moralisTimeout = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Moralis API timeout')), 8000);
+        });
+        
+        let apiCall: Promise<any>;
+        
+        switch (step.tool) {
+            case 'getMoralisPortfolio':
+                apiCall = moralisApi.getPortfolio(input, true, 'mainnet');
+                break;
+            
+            case 'getMoralisTokenBalances':
+                apiCall = moralisApi.getTokenBalances(input, 'mainnet');
+                break;
+            
+            case 'getMoralisNFTs':
+                apiCall = moralisApi.getNFTsForAddress(input, { nftMetadata: true, limit: 50 }, 'mainnet');
+                break;
+            
+            case 'getMoralisSwapHistory':
+                apiCall = moralisApi.getSwapsByWalletAddress(input, { limit: 50 }, 'mainnet'); // Reduced limit
+                break;
+            
+            case 'getMoralisTransactionHistory':
+                apiCall = moralisApi.getTransactionsByAddress(input, { limit: 50 }, 'mainnet'); // Reduced limit
+                break;
+            
+            default:
+                // Simplified fallback to prevent timeouts
+                apiCall = moralisApi.getPortfolio(input, false, 'mainnet'); // No NFT metadata for speed
+                break;
+        }
+        
+        const result = await Promise.race([apiCall, moralisTimeout]);
+        
+        switch (step.tool) {
+            case 'getMoralisPortfolio':
+                console.log(`   💰 Portfolio retrieved with ${result?.tokens?.length || 0} tokens!`);
+                break;
+            case 'getMoralisTokenBalances':
+                console.log(`   🪙 Found ${result?.length || 0} different tokens!`);
+                break;
+            case 'getMoralisNFTs':
+                console.log(`   🖼️ Discovered ${result?.length || 0} NFTs!`);
+                break;
+            case 'getMoralisSwapHistory':
+                console.log(`   🔄 Found ${result?.length || 0} swap transactions!`);
+                break;
+            case 'getMoralisTransactionHistory':
+                console.log(`   📚 Retrieved ${result?.length || 0} transactions!`);
+                break;
+        }
+        
+        return result || { data: 'empty', note: 'No data returned from Moralis' };
+        
+    } catch (error) {
+        console.log(`   ❌ Moralis invocation failed:`, (error as Error).message);
+        // Return a structured error instead of just error object
+        return { 
+            error: `Moralis API error: ${(error as Error).message}`,
+            tool: step.tool,
+            address: input,
+            fallback: true
+        };
+    }
+}
+
+// Handle all the advanced analytics methods from the original
+async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Promise<any> {
+    try {
+        const moralisApi = await import('../../../../lib/moralis-api');
+        
+        switch (step.tool) {
+            // Enhanced financial analytics with Moralis
+            case 'getMoralisAdvancedAnalytics':
+                if (step.input && typeof step.input === 'string') {
+                    const [swaps, tokens, portfolio] = await Promise.all([
+                        moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
+                        moralisApi.getTokenBalances(step.input, 'mainnet'),
+                        moralisApi.getPortfolio(step.input, true, 'mainnet')
+                    ]);
+                    console.log(`   🧮 Advanced analytics compiled for comprehensive analysis!`);
+                    return {
+                        address: step.input,
+                        swapHistory: swaps,
+                        tokenBalances: tokens,
+                        portfolio: portfolio,
+                        analysis: 'comprehensive_financial_analysis'
+                    };
+                }
+                break;
+                
+            case 'getMoralisPnlAnalysis':
+                if (step.input && typeof step.input === 'string') {
+                    const [swaps, currentTokens] = await Promise.all([
+                        moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet'),
+                        moralisApi.getTokenBalances(step.input, 'mainnet')
+                    ]);
+                    console.log(`   📈 P&L analysis completed - gains and losses revealed!`);
+                    return {
+                        address: step.input,
+                        swapHistory: swaps,
+                        currentPositions: currentTokens,
+                        analysis: 'position_pnl_calculation'
+                    };
+                }
+                break;
+                
+            case 'getMoralisFeesAnalysis':
+                if (step.input && typeof step.input === 'string') {
+                    const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                    console.log(`   💸 Fee analysis complete - transaction costs calculated!`);
+                    return {
+                        address: step.input,
+                        transactionData: swaps,
+                        analysis: 'fees_and_costs_breakdown'
+                    };
+                }
+                break;
+                
+            case 'getMoralisInflowOutflow':
+                if (step.input && typeof step.input === 'string') {
+                    const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                    console.log(`   🌊 Fund flow patterns mapped!`);
+                    return {
+                        address: step.input,
+                        transactionData: swaps,
+                        analysis: 'fund_flow_patterns'
+                    };
+                }
+                break;
+                
+            case 'getMoralisVolumeAnalysis':
+                if (step.input && typeof step.input === 'string') {
+                    const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
+                    console.log(`   📊 Volume analysis complete - heavy hitters identified!`);
+                    return {
+                        address: step.input,
+                        transactionData: swaps,
+                        analysis: 'volume_and_top_transactions'
+                    };
+                }
+                break;
+                
+            // Advanced Analytics Tools
+            case 'getMultiTimeframeAnalytics':
+                const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (params.address) {
+                    const [swaps, portfolio] = await Promise.all([
+                        moralisApi.getSwapsByWalletAddress(params.address, { limit: 200 }, 'mainnet'),
+                        moralisApi.getPortfolio(params.address, true, 'mainnet')
+                    ]);
+                    console.log(`   🕰️ Multi-timeframe analysis across ${params.timeframes?.length || 3} periods!`);
+                    return {
+                        address: params.address,
+                        timeframes: params.timeframes || ['7d', '30d', '90d'],
+                        swapHistory: swaps,
+                        portfolio: portfolio,
+                        analysis: 'multi_timeframe_performance'
+                    };
+                }
+                break;
+                
+            case 'getBehavioralPatterns':
+                const behaviorParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (behaviorParams.address) {
+                    const swaps = await moralisApi.getSwapsByWalletAddress(behaviorParams.address, { limit: 200 }, 'mainnet');
+                    console.log(`   🧠 Behavioral patterns decoded - trading psychology revealed!`);
+                    return {
+                        address: behaviorParams.address,
+                        includeTimePatterns: behaviorParams.includeTimePatterns || true,
+                        includeRiskProfile: behaviorParams.includeRiskProfile || true,
+                        swapHistory: swaps,
+                        analysis: 'behavioral_patterns'
+                    };
+                }
+                break;
+                
+            case 'getPortfolioRiskAnalytics':
+                const riskParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (riskParams.address) {
+                    const [portfolio, tokens, swaps] = await Promise.all([
+                        moralisApi.getPortfolio(riskParams.address, true, 'mainnet'),
+                        moralisApi.getTokenBalances(riskParams.address, 'mainnet'),
+                        moralisApi.getSwapsByWalletAddress(riskParams.address, { limit: 100 }, 'mainnet')
+                    ]);
+                    console.log(`   ⚖️ Risk analysis complete - portfolio vulnerabilities mapped!`);
+                    return {
+                        address: riskParams.address,
+                        includeCorrelations: riskParams.includeCorrelations || true,
+                        riskTimeframe: riskParams.riskTimeframe || '30d',
+                        portfolio: portfolio,
+                        tokens: tokens,
+                        swapHistory: swaps,
+                        analysis: 'risk_analytics'
+                    };
+                }
+                break;
+                
+            case 'getPredictiveAnalytics':
+                const predictParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (predictParams.address) {
+                    const [swaps, portfolio] = await Promise.all([
+                        moralisApi.getSwapsByWalletAddress(predictParams.address, { limit: 150 }, 'mainnet'),
+                        moralisApi.getPortfolio(predictParams.address, true, 'mainnet')
+                    ]);
+                    console.log(`   🔮 Future predictions calculated - optimization paths revealed!`);
+                    return {
+                        address: predictParams.address,
+                        predictionHorizon: predictParams.predictionHorizon || '7d',
+                        includeOptimization: predictParams.includeOptimization || true,
+                        swapHistory: swaps,
+                        portfolio: portfolio,
+                        analysis: 'predictive_analytics'
+                    };
+                }
+                break;
+                
+            case 'getDefiProtocolAnalytics':
+                const defiParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (defiParams.address) {
+                    const [swaps, portfolio] = await Promise.all([
+                        moralisApi.getSwapsByWalletAddress(defiParams.address, { limit: 200 }, 'mainnet'),
+                        moralisApi.getPortfolio(defiParams.address, true, 'mainnet')
+                    ]);
+                    console.log(`   🌾 DeFi protocol analysis complete - yield performance mapped!`);
+                    return {
+                        address: defiParams.address,
+                        protocols: defiParams.protocols,
+                        includeYieldAnalysis: defiParams.includeYieldAnalysis || true,
+                        swapHistory: swaps,
+                        portfolio: portfolio,
+                        analysis: 'defi_protocol_analytics'
+                    };
+                }
+                break;
+                
+            case 'getAiPoweredInsights':
+                const aiParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (aiParams.address) {
+                    const [portfolio, swaps, tokens] = await Promise.all([
+                        moralisApi.getPortfolio(aiParams.address, true, 'mainnet'),
+                        moralisApi.getSwapsByWalletAddress(aiParams.address, { limit: 100 }, 'mainnet'),
+                        moralisApi.getTokenBalances(aiParams.address, 'mainnet')
+                    ]);
+                    console.log(`   🤖 AI insights generated - machine wisdom activated!`);
+                    return {
+                        address: aiParams.address,
+                        insightTypes: aiParams.insightTypes || ['summary', 'recommendations', 'opportunities'],
+                        personalityProfile: aiParams.personalityProfile || 'auto_detect',
+                        portfolio: portfolio,
+                        swapHistory: swaps,
+                        tokens: tokens,
+                        analysis: 'ai_powered_insights'
+                    };
+                }
+                break;
+                
+            case 'getAdvancedVisualizationData':
+                const vizParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
+                if (vizParams.address) {
+                    const [portfolio, swaps] = await Promise.all([
+                        moralisApi.getPortfolio(vizParams.address, true, 'mainnet'),
+                        moralisApi.getSwapsByWalletAddress(vizParams.address, { limit: 100 }, 'mainnet')
+                    ]);
+                    console.log(`   🎨 Visualization data prepared - ready for beautiful charts!`);
+                    return {
+                        address: vizParams.address,
+                        visualizationType: vizParams.visualizationType || 'all',
+                        timeframe: vizParams.timeframe || '30d',
+                        portfolio: portfolio,
+                        swapHistory: swaps,
+                        analysis: 'advanced_visualization_data'
+                    };
+                }
+                break;
+                
+            // Handle custom account analysis methods
+            case 'getParsedTokenAccountsByOwner':
+                if (step.input) {
+                    const { PublicKey } = await import('@solana/web3.js');
+                    const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+                    const result = await conn.getParsedTokenAccountsByOwner(new PublicKey(step.input), {
+                        programId: tokenProgramId
+                    });
+                    console.log(`   🔍 RPC token verification complete!`);
+                    return result;
+                }
+                break;
+                
+            case 'getRecentTransactionsDetails':
+                if (step.input) {
+                    const { PublicKey } = await import('@solana/web3.js');
+                    try {
+                        const signatures = await conn.getSignaturesForAddress(new PublicKey(step.input), { limit: 10 });
+                        const detailedTxs = await Promise.all(
+                            signatures.slice(0, 5).map(async (sig: any) => {
+                                try {
+                                    const tx = await conn.getParsedTransaction(sig.signature, {
+                                        maxSupportedTransactionVersion: 0
+                                    });
+                                    return { signature: sig, transaction: tx };
+                                } catch (e) {
+                                    return { signature: sig, transaction: null, error: (e as Error).message };
+                                }
+                            })
+                        );
+                        console.log(`   📋 Transaction details gathered!`);
+                        return detailedTxs;
+                    } catch (error) {
+                        return { error: (error as Error).message };
+                    }
+                }
+                break;
+        }
+        
+        return { error: 'Unknown analytics method or missing input' };
+    } catch (error) {
+        console.log(`   ❌ Advanced analytics failed:`, (error as Error).message);
+        return { error: `Advanced analytics error: ${(error as Error).message}` };
+    }
+}
+
+// Enhanced DeFi Analysis Functions using both Solana RPC and Moralis API
 async function analyzeDeFiEcosystem(conn: any): Promise<any> {
     try {
         console.log('Starting comprehensive DeFi ecosystem analysis...');
@@ -1080,7 +1184,6 @@ async function analyzeDeFiEcosystem(conn: any): Promise<any> {
 
         // Step 2: Moralis market trends analysis
         try {
-            // Import Moralis functions dynamically to avoid import issues
             const { getTopGainers, getTopTokens, getTrendingTokens } = await import('../../../../lib/moralis-api');
 
             const [topGainers, topTokens, trending] = await Promise.allSettled([
@@ -1156,7 +1259,6 @@ async function analyzeDeFiProtocolActivity(conn: any): Promise<any> {
             dexProtocols.map(async (protocol) => {
                 const address = DEFI_PROTOCOLS[protocol as keyof typeof DEFI_PROTOCOLS];
                 try {
-                    // Get swap data from Moralis if available
                     const { getSwapsByTokenAddress } = await import('../../../../lib/moralis-api');
                     const swaps = await getSwapsByTokenAddress(address, { limit: 10 }, 'mainnet');
 
@@ -1222,7 +1324,6 @@ async function analyzeDeFiMarketTrends(): Promise<any> {
         try {
             const { getNewListings, getTokenMarketData, getTopGainers } = await import('../../../../lib/moralis-api');
 
-            // Get comprehensive market data
             const [newListings, marketData, topGainers] = await Promise.allSettled([
                 getNewListings(20, 7, 'mainnet'),
                 getTokenMarketData({ limit: 50, sort_by: 'volume', sort_order: 'desc' }, 'mainnet'),
@@ -1233,7 +1334,6 @@ async function analyzeDeFiMarketTrends(): Promise<any> {
             trends.marketData = marketData.status === 'fulfilled' ? marketData.value : null;
             trends.topPerformers = topGainers.status === 'fulfilled' ? topGainers.value : null;
 
-            // Generate insights
             if (trends.newListings && Array.isArray(trends.newListings)) {
                 trends.insights.push(`${trends.newListings.length} new tokens listed in the past 7 days`);
             }
@@ -1261,326 +1361,249 @@ async function analyzeDeFiMarketTrends(): Promise<any> {
     }
 }
 
-async function synthesizeResults(context: ToolContext, plan: PlanStep[], results: Record<string, any>): Promise<string> {
+async function synthesizeEpicResults(
+    context: ToolContext,
+    plan: StoryDrivenPlanStep[],
+    results: Record<string, any>
+): Promise<string> {
     const { question } = context;
-    console.log(`Synthesizing results for ${plan.length} plan steps:`, plan.map(p => p.tool).join(', '));
+    
+    // Detect user's request intensity
+    const qLower = question.toLowerCase();
+    const wantsEverything = qLower.includes("everything") || qLower.includes("full") || 
+                           qLower.includes("detailed") || qLower.includes("comprehensive") ||
+                           qLower.includes("complete") || qLower.includes("all");
+    const wantsWallOfText = qLower.includes("wall") || qLower.includes("essay") || 
+                           qLower.includes("verbose") || qLower.includes("maximum");
+
+    console.log(`📖 Synthesizing ${wantsEverything ? 'EPIC' : 'standard'} response...`);
 
     if (!process.env.TOGETHER_API_KEY) {
-        throw new Error("TOGETHER_API_KEY environment variable is not set");
+        throw new Error("TOGETHER_API_KEY not configured for synthesis");
     }
 
-    // Extract requested number of validators from question
+    // Determine response size based on user intent
+    let maxTokens = 8192; // Default generous size
+    let synthesisMode = "COMPREHENSIVE";
+    
+    if (wantsEverything || wantsWallOfText) {
+        maxTokens = 32768; // MAXIMUM POWER!
+        synthesisMode = "EPIC_NARRATIVE";
+        console.log(`🚀 UNLIMITED MODE ACTIVATED - ${maxTokens} tokens allocated!`);
+    } else if (qLower.includes("brief") || qLower.includes("quick") || qLower.includes("summary")) {
+        maxTokens = 2000;
+        synthesisMode = "CONCISE";
+    }
+
+    // Extract validator count if requested
     const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
-    const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 10;
-    console.log(`[DEBUG] Requested validator count: ${requestedCount}`);
+    const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 50;
 
-    // Special processing for leader schedule to handle requested count
-    if (results['getLeaderSchedule'] && typeof results['getLeaderSchedule'] === 'object') {
-        const scheduleResult = results['getLeaderSchedule'];
-        const scheduleEntries = Object.entries(scheduleResult);
-        const currentSlotInfo = results['getSlot'];
-        const epochInfo = results['getEpochInfo'];
+    // Prepare comprehensive data context
+    const dataContext = prepareDataContext(results, requestedCount, synthesisMode === "EPIC_NARRATIVE");
 
-        if (currentSlotInfo && epochInfo) {
-            const currentSlotInEpoch = epochInfo.slotIndex;
-            const currentLeaders = [];
-            // 600 minutes = 36,000 seconds = ~90,000 slots (each slot ~400ms)
-            const nearFutureRange = 90000;
+    console.log(`📊 Data context prepared: ${dataContext.length} characters`);
 
-            for (const [validatorPubkey, slots] of scheduleEntries) {
-                if (Array.isArray(slots)) {
-                    const nearSlots = slots.filter(slot =>
-                        slot >= currentSlotInEpoch &&
-                        slot <= currentSlotInEpoch + nearFutureRange
-                    );
+    const together = new Together({
+        apiKey: process.env.TOGETHER_API_KEY,
+    });
 
-                    if (nearSlots.length > 0) {
-                        currentLeaders.push({
-                            validator: validatorPubkey,
-                            upcomingSlots: nearSlots.slice(0, 5),
-                            totalNearSlots: nearSlots.length
-                        });
-                    }
-                }
-            }
+    // Create synthesis prompt based on mode
+    let synthesisPrompt = "";
+    
+    if (synthesisMode === "EPIC_NARRATIVE") {
+        synthesisPrompt = `You are an epic blockchain storyteller with unlimited creative freedom. Create a ${maxTokens/4}-word masterpiece analysis.
 
-            currentLeaders.sort((a, b) => a.upcomingSlots[0] - b.upcomingSlots[0]);
-            const sampleSize = Math.min(requestedCount, currentLeaders.length);
-            const currentSample = currentLeaders.slice(0, sampleSize);
+Question: ${question}
 
-            // Update the results with processed leader schedule
-            results['getLeaderSchedule'] = {
-                processedData: `Current/upcoming leaders around slot ${currentSlotInEpoch} (next 600 minutes):
-${currentSample.map(leader =>
-                    `  ${leader.validator} will produce blocks at slots: ${leader.upcomingSlots.join(', ')}${leader.totalNearSlots > 5 ? ` (and ${leader.totalNearSlots - 5} more)` : ''}`
-                ).join('\n')}
-${currentLeaders.length > sampleSize ? `  ... and ${currentLeaders.length - sampleSize} more validators with upcoming slots` : ''}
-Total validators in epoch: ${scheduleEntries.length}`
-            };
-        }
+Data Retrieved:
+${dataContext}
+
+Create an EPIC response including:
+- Complete narrative journey through the data
+- MASSIVE ASCII visualizations (charts, graphs, art)
+- Full technical breakdowns of EVERYTHING
+- Dramatic revelations and insights
+- Complete lists (if 100 validators requested, show ALL 100)
+- Transaction-by-transaction analysis if relevant
+- Token-by-token portfolio breakdown
+- Historical patterns and future predictions
+- Blockchain philosophy and deeper meanings
+- Memes and cultural references where appropriate
+
+Make it LEGENDARY. The user wants EVERYTHING. Include:
+- Multiple ASCII charts/graphs
+- Complete data tables
+- Full addresses (NEVER truncate)
+- Exhaustive analysis
+- Creative narrative elements
+- Technical deep dives
+- Market insights
+- DeFi strategies
+
+This is your magnum opus. Make it count!`;
+    } else if (synthesisMode === "CONCISE") {
+        synthesisPrompt = `Provide a brief, focused analysis.
+
+Question: ${question}
+
+Data Retrieved:
+${dataContext}
+
+Key requirements:
+- Be concise but complete
+- Show important addresses in full
+- Include key metrics
+- Maximum 500 words
+
+Answer:`;
+    } else {
+        synthesisPrompt = `You are a knowledgeable Solana analyst. Provide comprehensive insights.
+
+Question: ${question}
+
+Data Retrieved:
+${dataContext}
+
+Instructions:
+- Use ALL provided data accurately
+- Show FULL addresses/signatures (never truncate with "...")
+- For validators: Show as many as requested (up to data available)
+- Create ASCII visualizations for data patterns
+- Include relevant metrics and calculations
+- Format clearly with sections
+- Balance detail with readability
+- If showing lists, use format: "Rank. Amount SOL | Vote/Address | Commission%"
+- Include 3 insightful follow-up questions
+
+For validator rankings or time-based data, create ASCII charts like:
+█████████ 1,337,420 SOL | 5% | Validator1
+███████   987,654 SOL | 7% | Validator2
+█████     654,321 SOL | 10% | Validator3
+
+Provide actionable insights based on the data:`;
     }
 
-    // Prepare data context for LLM
-    const dataContext = Object.entries(results)
+    try {
+        // Reduce data context size if it's too large to prevent API issues
+        let finalDataContext = dataContext;
+        if (dataContext.length > 40000) {
+            console.warn(`📊 Data context too large (${dataContext.length} chars), truncating for LLM...`);
+            finalDataContext = dataContext.substring(0, 40000) + '\n\n[... additional data truncated for LLM processing ...]';
+        }
+        
+        const finalSynthesisPrompt = synthesisPrompt.replace(dataContext, finalDataContext);
+        
+        console.log(`🤖 Calling LLM with ${finalSynthesisPrompt.length} character prompt...`);
+        
+        const llmTimeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('LLM synthesis timeout after 30s')), 30000);
+        });
+
+        const llmCallPromise = together.chat.completions.create({
+            model: "openai/gpt-oss-120b",
+            messages: [
+                {
+                    role: "system",
+                    content: finalSynthesisPrompt
+                }
+            ],
+            stream: false,
+            max_tokens: maxTokens,
+            temperature: 0.3, // Add some creativity but keep it focused
+        });
+
+        const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
+        
+        if (!answer || !answer.choices || !answer.choices[0] || !answer.choices[0].message) {
+            console.error('🚨 Invalid LLM response structure:', JSON.stringify(answer));
+            throw new Error('Invalid LLM response structure');
+        }
+        
+        const response = answer.choices[0].message.content;
+        
+        if (!response || response.trim().length === 0) {
+            console.error('🚨 Empty LLM response received');
+            throw new Error('Empty response from LLM');
+        }
+        
+        console.log(`✨ Epic synthesis complete: ${response.length} characters`);
+        console.log(`🎯 LLM synthesis SUCCESS - using real AI response`);
+        return response;
+
+    } catch (error) {
+        console.error('🔥 LLM synthesis error:', error);
+        console.log(`🎭 Falling back to narrative template due to LLM error`);
+        
+        // Enhanced fallback with narrative
+        return generateNarrativeFallback(results, question, requestedCount);
+    }
+}
+
+function prepareDataContext(
+    results: Record<string, any>,
+    requestedCount: number,
+    epicMode: boolean
+): string {
+    const maxContextSize = epicMode ? 100000 : 20000; // Much larger for epic mode
+    
+    return Object.entries(results)
         .map(([method, result]) => {
             if (result && !result.error) {
-                // Handle processed leader schedule data
-                if (method === 'getLeaderSchedule' && result.processedData) {
-                    return `${method}: ${result.processedData}`;
-                }
-
-                // Handle original leader schedule fallback
-                if (method === 'getLeaderSchedule' && result && typeof result === 'object' && !result.processedData) {
-                    const scheduleEntries = Object.entries(result);
-                    const sampleSize = Math.min(requestedCount, scheduleEntries.length);
-                    const sample = scheduleEntries.slice(0, sampleSize);
-
-                    return `${method}: Leader schedule retrieved with ${scheduleEntries.length} validators. Sample entries:
-${sample.map(([validator, slots]) => `  ${validator} has ${Array.isArray(slots) ? slots.length : 'unknown'} slots`).join('\n')}
-${scheduleEntries.length > sampleSize ? `  ... and ${scheduleEntries.length - sampleSize} more validators` : ''}`;
-                }
-
-                // Handle account information
-                if (method === 'getAccountInfo' && result && result.value) {
-                    const account = result.value;
-                    return `${method}: Account found - Owner: ${account.owner}, Lamports: ${account.lamports} (${(account.lamports / 1e9).toFixed(4)} SOL), Data size: ${account.data?.length || 0} bytes, Executable: ${account.executable}`;
-                }
-
-                // Handle Moralis portfolio data
-                if (method === 'getMoralisPortfolio' && result) {
-                    let portfolioSummary = `${method}: Portfolio Analysis:\n`;
-
-                    if (result.tokens && Array.isArray(result.tokens)) {
-                        const totalTokens = result.tokens.length;
-                        const tokensWithValue = result.tokens.filter((t: any) => t.usdValue && parseFloat(t.usdValue) > 0);
-                        portfolioSummary += `  • ${totalTokens} tokens held (${tokensWithValue.length} with USD value)\n`;
-
-                        // Show top tokens by value
-                        const topTokens = tokensWithValue
-                            .sort((a: any, b: any) => parseFloat(b.usdValue || '0') - parseFloat(a.usdValue || '0'))
-                            .slice(0, 5);
-
-                        if (topTokens.length > 0) {
-                            portfolioSummary += `  Top holdings:\n`;
-                            topTokens.forEach((token: any, i: number) => {
-                                portfolioSummary += `    ${i + 1}. ${token.symbol || 'Unknown'}: $${parseFloat(token.usdValue).toFixed(2)} (${token.amount} tokens)\n`;
-                            });
-                        }
-                    }
-
-                    if (result.nativeBalance) {
-                        portfolioSummary += `  • Native SOL: ${result.nativeBalance.solana || 'N/A'} SOL`;
-                        if (result.nativeBalance.usdValue) {
-                            portfolioSummary += ` ($${parseFloat(result.nativeBalance.usdValue).toFixed(2)})`;
-                        }
-                        portfolioSummary += '\n';
-                    }
-
-                    if (result.nfts && Array.isArray(result.nfts)) {
-                        portfolioSummary += `  • ${result.nfts.length} NFTs owned\n`;
-                    }
-
-                    return portfolioSummary;
-                }
-
-                // Handle Moralis token balances
-                if (method === 'getMoralisTokenBalances' && result && Array.isArray(result)) {
-                    if (result.length > 0) {
-                        const tokenSummary = result.slice(0, 10).map((token: any, index: number) => {
-                            const symbol = token.symbol || 'Unknown';
-                            const amount = token.amount || '0';
-                            const decimals = token.decimals || 0;
-                            const usdValue = token.usdValue ? ` ($${parseFloat(token.usdValue).toFixed(2)})` : '';
-                            return `    ${index + 1}. ${symbol}: ${amount} (${decimals} decimals)${usdValue}`;
-                        }).join('\n');
-
-                        return `${method}: Found ${result.length} token holdings:\n${tokenSummary}${result.length > 10 ? `\n    ... and ${result.length - 10} more tokens` : ''}`;
-                    } else {
-                        return `${method}: No token holdings found`;
-                    }
-                }
-
-                // Handle Moralis NFT data
-                if (method === 'getMoralisNFTs' && result && Array.isArray(result)) {
-                    if (result.length > 0) {
-                        const nftSummary = result.slice(0, 5).map((nft: any, index: number) => {
-                            const name = nft.name || nft.metadata?.name || 'Unnamed NFT';
-                            const collection = nft.collection || 'Unknown Collection';
-                            const mint = nft.mint || 'Unknown';
-                            return `    ${index + 1}. ${name} (${collection}) - Mint: ${mint}`;
-                        }).join('\n');
-
-                        return `${method}: Found ${result.length} NFTs:\n${nftSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more NFTs` : ''}`;
-                    } else {
-                        return `${method}: No NFTs found`;
-                    }
-                }
-
-                // Handle Moralis swap history
-                if (method === 'getMoralisSwapHistory' && result && Array.isArray(result)) {
-                    if (result.length > 0) {
-                        const swapSummary = result.slice(0, 5).map((swap: any, index: number) => {
-                            const fromToken = swap.fromTokenSymbol || 'Unknown';
-                            const toToken = swap.toTokenSymbol || 'Unknown';
-                            const fromAmount = swap.fromTokenAmount || '0';
-                            const toAmount = swap.toTokenAmount || '0';
-                            const date = swap.blockTime ? new Date(swap.blockTime * 1000).toLocaleDateString() : 'Unknown';
-                            return `    ${index + 1}. ${fromAmount} ${fromToken} → ${toAmount} ${toToken} (${date})`;
-                        }).join('\n');
-
-                        return `${method}: Found ${result.length} swap transactions:\n${swapSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more swaps` : ''}`;
-                    } else {
-                        return `${method}: No swap transactions found`;
-                    }
-                }
-
-                // Handle Moralis transaction history
-                if (method === 'getMoralisTransactionHistory' && result && Array.isArray(result)) {
-                    if (result.length > 0) {
-                        const txSummary = result.slice(0, 5).map((tx: any, index: number) => {
-                            const signature = tx.signature || 'Unknown';
-                            const type = tx.type || 'Unknown';
-                            const status = tx.status || 'Unknown';
-                            const date = tx.blockTime ? new Date(tx.blockTime * 1000).toLocaleDateString() : 'Unknown';
-                            const fee = tx.fee ? `${(tx.fee / 1e9).toFixed(6)} SOL` : 'Unknown';
-                            return `    ${index + 1}. ${signature} - ${type} (${status}) - Fee: ${fee} (${date})`;
-                        }).join('\n');
-
-                        return `${method}: Found ${result.length} transactions:\n${txSummary}${result.length > 5 ? `\n    ... and ${result.length - 5} more transactions` : ''}`;
-                    } else {
-                        return `${method}: No transactions found`;
-                    }
-                }
-
-                // Handle token accounts data  
-                if (method === 'getParsedTokenAccountsByOwner' && result && result.value) {
-                    const tokenAccounts = result.value;
-                    if (tokenAccounts.length > 0) {
-                        const tokenList = tokenAccounts.slice(0, 10).map((token: any, index: number) => {
-                            const mint = token.account.data.parsed.info.mint;
-                            const amount = token.account.data.parsed.info.tokenAmount.uiAmount || 0;
-                            const decimals = token.account.data.parsed.info.tokenAmount.decimals;
-                            return `  ${index + 1}. Mint: ${mint}, Amount: ${amount} (${decimals} decimals)`;
-                        }).join('\n');
-
-                        return `${method}: Found ${tokenAccounts.length} SPL token accounts:
-${tokenList}
-${tokenAccounts.length > 10 ? `... and ${tokenAccounts.length - 10} more tokens` : ''}`;
-                    } else {
-                        return `${method}: No SPL token accounts found`;
-                    }
-                }
-
-                // Handle detailed transaction analysis
-                if (method === 'getRecentTransactionsDetails' && Array.isArray(result)) {
-                    const validTxs = result.filter(tx => tx.transaction && !tx.error);
-                    if (validTxs.length > 0) {
-                        const txSummary = validTxs.map((tx: any, index: number) => {
-                            const txData = tx.transaction;
-                            const fee = txData.meta?.fee || 0;
-                            const success = !txData.meta?.err;
-                            const accounts = txData.transaction?.message?.accountKeys?.length || 0;
-                            const instructions = txData.transaction?.message?.instructions?.length || 0;
-                            const blockTime = txData.blockTime ? new Date(txData.blockTime * 1000).toLocaleString() : 'Unknown';
-
-                            return `  ${index + 1}. ${tx.signature.signature} - ${success ? 'Success' : 'Failed'}, Fee: ${(fee / 1e9).toFixed(6)} SOL, ${accounts} accounts, ${instructions} instructions, Time: ${blockTime}`;
-                        }).join('\n');
-
-                        return `${method}: Analyzed ${validTxs.length} detailed transactions:
-${txSummary}`;
-                    } else {
-                        return `${method}: No valid transaction details found`;
-                    }
-                }
-
-                // Handle transaction signatures list
-                if (method === 'getConfirmedSignaturesForAddress2' && Array.isArray(result)) {
-                    const sampleSize = Math.min(5, result.length);
-                    const sample = result.slice(0, sampleSize);
-                    return `${method}: Found ${result.length} recent transactions. Sample signatures:
-${sample.map(tx => `  ${tx.signature} (Slot: ${tx.slot}, ${tx.err ? 'Failed' : 'Success'})`).join('\n')}
-${result.length > sampleSize ? `  ... and ${result.length - sampleSize} more transactions` : ''}`;
-                }
-
-                // Handle detailed transaction data
-                if (method === 'getTransaction' && result) {
-                    const tx = result;
-                    const fee = tx.meta?.fee || 0;
-                    const success = !tx.meta?.err;
-                    const accounts = tx.transaction?.message?.accountKeys?.length || 0;
-                    return `${method}: Transaction ${success ? 'succeeded' : 'failed'} - Fee: ${fee} lamports, Accounts involved: ${accounts}, Block time: ${tx.blockTime || 'unknown'}`;
-                }
-
-                // Handle vote accounts data with requested count
+                // Special handling for vote accounts with comprehensive data
                 if (method === 'getVoteAccounts' && result && (result.current || result.delinquent)) {
                     const current = result.current || [];
                     const delinquent = result.delinquent || [];
-                    const allValidators = [...current, ...delinquent];
+                    
+                    // If we have actual validator data, process it
+                    if (current.length > 0 && current[0].activatedStake !== undefined) {
+                        const allValidators = [...current, ...delinquent];
 
-                    // Sort by activated stake (descending)
-                    const sortedValidators = allValidators.sort((a, b) => (b.activatedStake || 0) - (a.activatedStake || 0));
+                        // Sort by stake (handle both string and number types)
+                        const sortedValidators = allValidators
+                            .filter(v => v && (v.activatedStake !== undefined))
+                            .sort((a, b) => {
+                                const stakeA = typeof a.activatedStake === 'string' ? parseInt(a.activatedStake) : a.activatedStake;
+                                const stakeB = typeof b.activatedStake === 'string' ? parseInt(b.activatedStake) : b.activatedStake;
+                                return stakeB - stakeA;
+                            });
 
-                    const sampleSize = Math.min(requestedCount, sortedValidators.length);
-                    const topValidators = sortedValidators.slice(0, sampleSize);
+                        const sampleSize = epicMode ? 
+                            Math.min(requestedCount * 2, sortedValidators.length) : 
+                            Math.min(requestedCount, sortedValidators.length);
 
-                    const validatorList = topValidators.map((validator, index) => {
-                        const stake = validator.activatedStake || 0;
-                        const commission = validator.commission || 0;
-                        const votePubkey = validator.votePubkey || 'unknown';
-                        const nodePubkey = validator.nodePubkey || 'unknown';
-                        return `  ${index + 1}. ${stake} lamports - vote: ${votePubkey}, node: ${nodePubkey} (${commission}% commission)`;
-                    }).join('\n');
+                        const topValidators = sortedValidators.slice(0, sampleSize);
 
-                    console.log(`[DEBUG] Generated validator list has ${validatorList.length} characters and ${sampleSize} validators`);
+                        const validatorList = topValidators.map((validator, index) => {
+                            const stake = validator.activatedStake || 0;
+                            const stakeValue = typeof stake === 'string' ? parseInt(stake) : stake;
+                            const solAmount = (stakeValue / 1e9).toFixed(2);
+                            const commission = validator.commission || 0;
+                            const votePubkey = validator.votePubkey || 'unknown';
+                            const nodePubkey = validator.nodePubkey || 'unknown';
+                            
+                            return `  ${index + 1}. ${solAmount} SOL (${stakeValue} lamports) - vote: ${votePubkey}, node: ${nodePubkey} (${commission}% commission)`;
+                        }).join('\n');
 
-                    return `${method}: Top ${sampleSize} validators by stake:
+                        return `${method}: Top ${sampleSize} validators by stake:
 ${validatorList}
 ${sortedValidators.length > sampleSize ? `... and ${sortedValidators.length - sampleSize} more validators` : ''}
 Total: ${current.length} active, ${delinquent.length} delinquent`;
-                }
-
-                // Handle DeFi protocol analysis
-                if (method === 'analyzeDeFiProtocols' && result && result.protocols) {
-                    const activeProtocols = result.protocols.filter((p: any) => p.status === 'Active');
-                    const summary = `DeFi Protocol Analysis: ${result.activeProtocols}/${result.totalAccounts} protocols active`;
-                    const protocolDetails = activeProtocols.slice(0, 5).map((p: any) =>
-                        `  ${p.name}: ${(p.balance / 1e9).toFixed(4)} SOL, ${p.executable ? 'Program' : 'Account'}`
-                    ).join('\n');
-                    return `${method}: ${summary}\n${protocolDetails}${activeProtocols.length > 5 ? '\n  ... and more' : ''}`;
-                }
-
-                // Handle DeFi token analysis
-                if (method === 'analyzeDeFiTokens' && result && result.tokens) {
-                    const tokenSummary = result.tokens.map((t: any) =>
-                        `  ${t.name}: ${(t.balance / 1e9).toFixed(4)} SOL (${t.accountType})`
-                    ).join('\n');
-                    return `${method}: Major DeFi Token Analysis:\n${tokenSummary}`;
-                }
-
-                // Handle DeFi activity analysis
-                if (method === 'analyzeDeFiActivity' && result) {
-                    let activitySummary = `${method}: DeFi Activity Analysis:\n`;
-
-                    if (result.networkMetrics && result.networkMetrics.avgTps) {
-                        activitySummary += `  Network: ${result.networkMetrics.avgTps} avg TPS (${result.networkMetrics.minTps}-${result.networkMetrics.maxTps} range)\n`;
+                    } else {
+                        // If we only have counts, return those with explanation
+                        return `${method}: Vote account summary:
+Total: ${current.length} active validators, ${delinquent.length} delinquent validators
+Note: Individual validator stake data not available in this RPC response. 
+To get detailed validator rankings, the RPC node needs to return the full validator list with stake amounts.
+This may be due to RPC node configuration or the specific endpoint being queried.`;
                     }
-
-                    if (result.defiInferences && result.defiInferences.length > 0) {
-                        activitySummary += `  Insights: ${result.defiInferences.slice(0, 3).join('; ')}\n`;
-                    }
-
-                    if (result.liquidityIndicators && result.liquidityIndicators.length > 0) {
-                        activitySummary += `  Liquidity: ${result.liquidityIndicators[0]}\n`;
-                    }
-
-                    return activitySummary;
                 }
 
-                // Handle other large datasets by limiting size
+                // Handle other result types
                 let jsonString = JSON.stringify(result, null, 2);
-                if (jsonString.length > 10000) {
-                    // Truncate very large responses
-                    jsonString = jsonString.substring(0, 10000) + '... [truncated]';
+                const maxSize = epicMode ? 50000 : 5000;
+                if (jsonString.length > maxSize) {
+                    jsonString = jsonString.substring(0, maxSize) + '... [truncated for size]';
                 }
 
                 return `${method}: ${jsonString}`;
@@ -1589,215 +1612,126 @@ Total: ${current.length} active, ${delinquent.length} delinquent`;
             }
         })
         .join('\n\n');
+}
 
-    console.log(`[DEBUG] Data context being sent to LLM (${dataContext.length} characters):`, dataContext.substring(0, 1000) + '...');
+function generateNarrativeFallback(results: Record<string, any>, question: string, requestedCount: number): string {
+    let narrative = `🎭 *The Blockchain Chronicles*\n\n`;
+    narrative += `Query: "${question}"\n\n`;
+    narrative += `📊 *Data Retrieved:*\n\n`;
 
-    const together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-    });
-
-    const synthesisPrompt = `You are a Solana blockchain analyst. Your task is to format the retrieved data into a clear response using ONLY the actual data provided. Do not add specifics that aren't in the raw data.
-
-Question: ${question}
-
-Data Retrieved:
-${dataContext}
-
-Instructions:
-- Use ONLY the exact data provided - do not add specific validator addresses, slot counts, or other details not explicitly shown
-- EXCEPTION: When the user requests a specific number of validators (like "top 50 validators") and the raw data contains that full list, show ALL requested validators in a CONCISE format to fit within response limits
-- If the data shows "921 validators" then say "921 validators" - don't make up which specific validators or their exact slot counts
-- For leader schedules, summarize the overall structure rather than citing specific validator performance
-- CRITICAL: Always show FULL addresses, transaction signatures, and mint addresses - NEVER truncate them with "..." or abbreviations
-- All Solana addresses are 32-44 characters long and must be shown in their entirety for usability
-- Transaction signatures are 64-88 characters and must be displayed completely
-- Token mint addresses must be shown in full for verification purposes
-- For balances, use the exact amounts provided
-- For transaction data, use only the signatures and details actually returned, TRY TO GET FULL DETAILS VIA getTransaction calls and getAccountInfo calls on relevant accounts 
-- For any percentages, fees, or commission rates, use the exact numbers given
-- If the data includes timestamps, convert them to human-readable dates
-- If the data includes slot numbers, show them as-is without inferring timeframes
-- If the data includes stake amounts, show them in SOL (1,337.42069 SOL)
-- try to decode any base64 encoded data if possible on transaction instructions or account data, use relevant IDLs for known relevant programs or show raw if unknown but do make an attempt
-- Keep the response factual and based strictly on the retrieved data
-- For validator lists with many entries, use a compact format like: "Rank. Staked SOL. Amount of delegators, fees q%)"
-- Format clearly with headers and structure, but avoid speculation or creative analysis, like "these 3 validators earn the most today", or these validators are "MEV boosted"
-- Avoid filler phrases like "Based on the data retrieved" or "According to the information provided"
-- Prioritize clarity and conciseness while ensuring all critical data points are included
-- If multiple data points are available (like current slot, epoch info, vote accounts), integrate them into a cohesive summary
-- If data is contradictory or unclear, state that fact without assuming which is correct
-- If data is missing or incomplete, state that clearly
-- When showing validator lists, include all details provided: stake amounts, addresses, fees rates
-- VISUAL CHARTS: When appropriate (especially for validator rankings, leader schedules, or time-based data), create ASCII charts or graphs to visually represent the data. Use characters like |, -, *, #, █, ░, ▓ to create bar charts, timelines, or distribution visualizations that help explain patterns in the data
-- For leader schedules over time periods, consider creating ASCII timelines showing when validators lead
-- For validator rankings, consider ASCII bar charts showing relative stake sizes or up to 10 key metrics
-- For time-based analysis, create ASCII graphs showing trends or distributions or up to your taste
-- For geographic data, use ASCII maps or other visualizations to represent data by location
-- Always ensure visualizations fit within typical text width limits (around 80-100 characters wide)
-- Be creative with ASCII visualization while staying strictly factual to the data, avoiding any invented details, and ensuring all critical identifiers are fully shown, never truncated, dont name charts or graphs likr "ASCII Chart" just show them, abd ebsure they fit within twitter width limits
-- Be more concise than usual to fit within response limits, especially when large datasets are involved
-- If the data is too large to fit in one response, summarize key points and indicate that more data exists
-- Always prioritize accuracy and fidelity to the provided data over verbosity or detail
-- NEVER fabricate or assume any data not explicitly provided
-- Your entire response must fit within 4269 characters or less 
-- End with 3 relevant follow-up questions the user might ask next based on the data provided
-- Do NOT reference the process of data retrieval or any tools used
-- Do NOT mention any errors or issues encountered during data retrieval
-- Do NOT include any disclaimers about data accuracy or completeness
-- Do NOT reference any data not explicitly included in the "Data Retrieved" section above
-- Do NOT mention the number of validators, slots, or other counts unless explicitly shown in the data
-- Do NOT make up any specific validator identities, slot assignments, or other details not explicitly shown in the data
-- Do NOT fabricate any details about the Solana network, its performance, or its validators
-- Do NOT include any information about the Solana Foundation, Solana Labs, or any related entities
-- Do NOT mention any specific dates, times, or events unless explicitly included in the data provided
-- Do NOT reference any external sources or data outside of what is provided above
-- Your entire response must be 4269 characters or less
-
-Answer based strictly on the provided data:`;
-
-    try {
-        // Add timeout to LLM synthesis
-        const llmTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('LLM synthesis timed out after 25 seconds')), 25000);
-        });
-
-        const llmCallPromise = together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
-            messages: [
-                {
-                    role: "system",
-                    content: synthesisPrompt
-                }
-            ],
-            stream: false,
-            max_tokens: 120000, // Reduced from 81920 to prevent timeouts
-        });
-
-        const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
-
-        const response = answer.choices?.[0]?.message?.content || "Failed to synthesize results";
-        console.log('LLM synthesized response:', response);
-        return response;
-
-    } catch (error) {
-        console.error('Error synthesizing results with LLM:', error);
-
-        // Fallback: provide a simple data summary if LLM fails
-        let fallback = `Based on the executed plan, here's what was found:\n\n`;
-
-        for (const [method, result] of Object.entries(results)) {
-            if (result && !result.error) {
-                switch (method) {
-                    case 'getSlot':
-                        fallback += `Current slot: ${result}\n`;
-                        break;
-                    case 'getBlockHeight':
-                        fallback += `Current block height: ${result}\n`;
-                        break;
-                    case 'getEpochInfo':
-                        const progress = ((result.slotIndex / result.slotsInEpoch) * 100).toFixed(2);
-                        fallback += `Epoch ${result.epoch}: slot ${result.slotIndex}/${result.slotsInEpoch} (${progress}% complete)\n`;
-                        break;
-                    case 'getVoteAccounts':
-                        const active = result.current?.length || 0;
-                        const delinquent = result.delinquent?.length || 0;
-                        fallback += `Validators: ${active + delinquent} total (${active} active, ${delinquent} delinquent)\n`;
-
-                        // If user asked for top validators, show them sorted by stake
-                        if (context.qLower.includes('top') || context.qLower.includes('best') || context.qLower.includes('first')) {
-                            if (result.current && Array.isArray(result.current) && result.current.length > 0) {
-                                // Extract number from user's question (e.g., "top 10", "best 5", "first 20")
-                                const extractNumber = (text: string): number => {
-                                    const matches = text.match(/(?:top|best|first|show)\s+(\d+)/i);
-                                    if (matches && matches[1]) {
-                                        const num = parseInt(matches[1]);
-                                        return num > 0 && num <= 100 ? num : 10; // Default to 10, max 100
-                                    }
-                                    return 10; // Default fallback
-                                };
-
-                                const requestedCount = extractNumber(context.question);
-
-                                // Sort validators by activated stake (descending)
-                                const sortedValidators = result.current
-                                    .filter((v: any) => v && typeof v.activatedStake === 'string')
-                                    .sort((a: any, b: any) => parseInt(b.activatedStake) - parseInt(a.activatedStake))
-                                    .slice(0, requestedCount);
-
-                                if (sortedValidators.length > 0) {
-                                    fallback += `\nTop ${sortedValidators.length} Validators by Stake:\n`;
-                                    sortedValidators.forEach((validator: any, index: number) => {
-                                        const stakeSOL = (parseInt(validator.activatedStake) / 1e9).toFixed(0);
-                                        const commission = validator.commission || 0;
-                                        const identity = validator.nodePubkey || 'Unknown';
-                                        const shortIdentity = identity.substring(0, 8) + '...' + identity.substring(identity.length - 4);
-                                        fallback += `${index + 1}. ${shortIdentity} - ${parseInt(stakeSOL).toLocaleString()} SOL (${commission}% commission)\n`;
-                                    });
-                                }
-                            }
+    for (const [method, result] of Object.entries(results)) {
+        if (result && !result.error) {
+            switch (method) {
+                case 'getSlot':
+                    narrative += `⏰ **Current Slot**: ${result}\n`;
+                    narrative += `   The blockchain ticks forward, slot by slot...\n\n`;
+                    break;
+                
+                case 'getEpochInfo':
+                    const progress = result.slotIndex && result.slotsInEpoch ? 
+                        ((result.slotIndex / result.slotsInEpoch) * 100).toFixed(2) : '0';
+                    narrative += `🌅 **Epoch ${result.epoch || 'Unknown'}**:\n`;
+                    narrative += `   Slot ${result.slotIndex}/${result.slotsInEpoch} (${progress}% complete)\n`;
+                    narrative += `   *We journey through the ${result.epoch}th cycle of consensus...*\n\n`;
+                    break;
+                
+                case 'getVoteAccounts':
+                    const active = result.current?.length || 0;
+                    const delinquent = result.delinquent?.length || 0;
+                    narrative += `⚔️ **The Validator Legion**:\n`;
+                    narrative += `   ${active + delinquent} total warriors of consensus\n`;
+                    narrative += `   ${active} standing strong, ${delinquent} fallen behind\n\n`;
+                    
+                    if (result.current && result.current.length > 0) {
+                        const sorted = result.current
+                            .filter((v: any) => v && v.activatedStake)
+                            .sort((a: any, b: any) => parseInt(b.activatedStake) - parseInt(a.activatedStake))
+                            .slice(0, requestedCount);
+                        
+                        narrative += `   **Top ${Math.min(requestedCount, sorted.length)} Validators by Power:**\n`;
+                        sorted.forEach((v: any, i: number) => {
+                            const solAmount = (parseInt(v.activatedStake) / 1e9).toFixed(2);
+                            narrative += `   ${i + 1}. ${solAmount} SOL | ${v.votePubkey}\n`;
+                        });
+                        narrative += '\n';
+                    }
+                    break;
+                
+                case 'getRecentPerformanceSamples':
+                    if (Array.isArray(result) && result.length > 0) {
+                        const valid = result.filter(s => s && typeof s.numTransactions === "number" && s.samplePeriodSecs > 0);
+                        if (valid.length > 0) {
+                            const avgTps = Math.round(
+                                valid.reduce((acc, s) => acc + (s.numTransactions / s.samplePeriodSecs), 0) / valid.length
+                            );
+                            narrative += `⚡ **Network Performance**:\n`;
+                            narrative += `   ~${avgTps} TPS average across ${valid.length} samples\n`;
+                            narrative += `   *The network pulses with ${avgTps} transactions per second!*\n\n`;
                         }
-                        break;
-                    case 'getRecentPerformanceSamples':
-                        if (Array.isArray(result) && result.length > 0) {
-                            const valid = result.filter(s => s && typeof s.numTransactions === "number" && s.samplePeriodSecs > 0);
-                            if (valid.length > 0) {
-                                const avgTps = Math.round(
-                                    valid.reduce((acc, s) => acc + (s.numTransactions / s.samplePeriodSecs), 0) / valid.length
-                                );
-                                fallback += `Network performance: ~${avgTps} TPS average\n`;
-                            }
+                    }
+                    break;
+                
+                case 'getAccountInfo':
+                    if (result && result.value) {
+                        const account = result.value;
+                        const solBalance = (account.lamports / 1e9).toFixed(4);
+                        narrative += `🔍 **Account Analysis**:\n`;
+                        narrative += `   Balance: ${solBalance} SOL\n`;
+                        narrative += `   Owner: ${account.owner}\n`;
+                        narrative += `   Executable: ${account.executable ? 'Yes (Program)' : 'No (Wallet)'}\n\n`;
+                    }
+                    break;
+                
+                case 'getBalance':
+                    if (typeof result === 'number') {
+                        const solBalance = (result / 1e9).toFixed(4);
+                        narrative += `💰 **Pure SOL Balance**: ${solBalance} SOL\n\n`;
+                    } else if (result && result.value !== undefined) {
+                        const solBalance = (result.value / 1e9).toFixed(4);
+                        narrative += `💰 **Pure SOL Balance**: ${solBalance} SOL\n\n`;
+                    }
+                    break;
+                
+                case 'getSignaturesForAddress':
+                    if (Array.isArray(result)) {
+                        narrative += `📜 **Transaction History**:\n`;
+                        narrative += `   ${result.length} transactions found\n`;
+                        if (result.length > 0) {
+                            narrative += `   Latest: ${result[0].signature}\n`;
                         }
-                        break;
-                    case 'getLeaderSchedule':
-                        if (result && typeof result === 'object') {
-                            const scheduleEntries = Object.entries(result);
-                            const sampleSize = Math.min(5, scheduleEntries.length);
-                            const sample = scheduleEntries.slice(0, sampleSize);
-                            fallback += `Leader schedule: ${scheduleEntries.length} slots assigned\n`;
-                            fallback += `Sample assignments:\n`;
-                            sample.forEach(([slot, pubkey]) => {
-                                fallback += `  Slot ${slot}: ${pubkey}\n`;
-                            });
-                            if (scheduleEntries.length > sampleSize) {
-                                fallback += `  ... and ${scheduleEntries.length - sampleSize} more\n`;
-                            }
-                        }
-                        break;
-                    case 'getAccountInfo':
-                        if (result && result.value) {
-                            const account = result.value;
-                            fallback += `Account Info: ${(account.lamports / 1e9).toFixed(4)} SOL, Owner: ${account.owner}\n`;
-                        } else {
-                            fallback += `Account: Not found or empty\n`;
-                        }
-                        break;
-                    case 'getBalance':
-                        if (typeof result === 'number') {
-                            fallback += `Balance: ${(result / 1e9).toFixed(4)} SOL\n`;
-                        }
-                        break;
-                    case 'getConfirmedSignaturesForAddress2':
-                        if (Array.isArray(result)) {
-                            const successful = result.filter(tx => !tx.err).length;
-                            const failed = result.length - successful;
-                            fallback += `Transaction History: ${result.length} transactions (${successful} successful, ${failed} failed)\n`;
-                        }
-                        break;
-                    case 'getTransaction':
-                        if (result) {
-                            const success = !result.meta?.err;
-                            const fee = result.meta?.fee || 0;
-                            fallback += `Transaction: ${success ? 'Success' : 'Failed'}, Fee: ${fee} lamports\n`;
-                        }
-                        break;
-                    default:
-                        fallback += `${method}: Data retrieved successfully\n`;
-                }
-            } else {
-                fallback += `${method}: ${result?.error || 'Failed'}\n`;
+                        narrative += '\n';
+                    }
+                    break;
+                
+                case 'getTokenAccountsByOwner':
+                case 'getParsedTokenAccountsByOwner':
+                    if (result && result.value) {
+                        narrative += `💎 **Token Holdings**:\n`;
+                        narrative += `   ${result.value.length} different tokens discovered\n\n`;
+                    }
+                    break;
+                
+                default:
+                    if (method.startsWith('getMoralis')) {
+                        narrative += `🌟 **${method.replace('getMoralis', '')} (via Moralis)**:\n`;
+                        narrative += `   Data retrieved successfully\n\n`;
+                    } else if (method.startsWith('analyze')) {
+                        narrative += `🔬 **${method} Analysis**:\n`;
+                        narrative += `   Advanced analysis completed\n\n`;
+                    } else {
+                        narrative += `📊 **${method}**: Data retrieved\n\n`;
+                    }
             }
+        } else {
+            narrative += `❌ **${method}**: ${result?.error || 'Failed'}\n\n`;
         }
-
-        return fallback.trim() || 'No data could be retrieved';
     }
+
+    narrative += `\n🔮 *End of Chronicle*\n`;
+    narrative += `\n**Follow-up Questions:**\n`;
+    narrative += `1. Would you like more details about any specific aspect?\n`;
+    narrative += `2. Should I analyze patterns in the data?\n`;
+    narrative += `3. Want to explore related accounts or transactions?\n`;
+
+    return narrative;
 }
