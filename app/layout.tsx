@@ -7,6 +7,7 @@ import "../styles/rtl.css";
 import { NavbarInteractive } from "@/components/NavbarInteractive";
 import { Providers } from "./providers";
 import { AIChatSidebarWrapper } from "@/components/ai/AIChatSidebarWrapper";
+import OpenSearchPrompt from "@/components/OpenSearchPrompt";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -432,6 +433,7 @@ try {
             {children}
           </NavbarInteractive>
           <AIChatSidebarWrapper />
+          <OpenSearchPrompt />
         </Providers>
       </body>
     </html>
