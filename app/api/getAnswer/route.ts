@@ -392,7 +392,7 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
     systemPrompt = `You are an expert Solana blockchain analyst who can adapt your communication style to match the user's vibe. You have deep technical knowledge but can explain things casually or formally as needed.
 
     Solana RPC:
-  ${solanaRpcKnowledge}
+  ${solanaRpcKnowledge} 
   ----
   Moralis API:
   ${moralis}
