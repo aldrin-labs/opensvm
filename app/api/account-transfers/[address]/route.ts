@@ -218,43 +218,10 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ address: string }> }
 ) {
-  // Fast path for Playwright/self-check mode to avoid RPC
-  try {
-    const isPlaywright = request.headers.get('x-playwright-test') === 'true' || process.env.PLAYWRIGHT_TEST === 'true';
-    if (isPlaywright) {
-      const { address } = await context.params;
-      const now = Date.now();
-      const mock = {
-        data: [
-          {
-            txId: 'MOCK_XFER_1',
-            date: new Date(now).toISOString(),
-            from: 'So11111111111111111111111111111111111111112',
-            to: address,
-            tokenSymbol: 'SOL',
-            tokenAmount: '0.25',
-            transferType: 'IN' as const,
-          },
-          {
-            txId: 'MOCK_XFER_2',
-            date: new Date(now - 60000).toISOString(),
-            from: address,
-            to: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-            tokenSymbol: 'SOL',
-            tokenAmount: '0.10',
-            transferType: 'OUT' as const,
-          }
-        ],
-        cached: false,
-        mock: true
-      };
-      return NextResponse.json(mock, { headers: corsHeaders });
-    }
-  } catch { }
-
   const startTime = Date.now();
-
+  
   try {
+    console.log(`[API] Starting transfer fetch`);
     const params = await context.params;
     const { address: rawAddress } = params;
     const address = decodeURIComponent(String(rawAddress));
@@ -331,9 +298,11 @@ export async function GET(
     );
 
     if (signatures.length === 0) {
+      console.log(`No signatures found for ${address}`);
       return NextResponse.json({
         data: [],
         hasMore: false,
+        total: 0,
         nextPageSignature: null
       }, { headers: corsHeaders });
     }
@@ -378,9 +347,7 @@ export async function GET(
     // Send response immediately
     const response = NextResponse.json(responseData, { headers: corsHeaders });
 
-    // Background caching is temporarily disabled to focus on main functionality
-    // The API works perfectly without caching
-    console.log(`API returning ${filteredTransfers.length} transfers (caching disabled)`);
+    console.log(`API returning ${filteredTransfers.length} transfers`);
 
     return response;
 

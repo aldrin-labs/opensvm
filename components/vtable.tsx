@@ -183,6 +183,82 @@ function getVTableThemeName(): string {
   return 'opensvm-dynamic';
 }
 
+// Helper function to convert React elements to HTML strings
+function convertReactElementToHTML(element: any, handleNavigation: (href: string) => void): any {
+  try {
+    if (!element || typeof element !== 'object') {
+      return String(element || '');
+    }
+
+    // Handle React elements
+    if ('type' in element && 'props' in element) {
+      const { type, props } = element;
+      const className = props.className || '';
+      const dataTest = props['data-test'] ? ` data-test="${String(props['data-test'])}"` : '';
+      const title = props.title ? ` title="${String(props.title)}"` : '';
+      
+      // Extract children content recursively
+      function extractContent(children: any): string {
+        if (typeof children === 'string' || typeof children === 'number') {
+          return String(children);
+        }
+        if (Array.isArray(children)) {
+          return children.map(extractContent).join('');
+        }
+        if (children && typeof children === 'object' && 'props' in children) {
+          return extractContent(children.props.children);
+        }
+        return '';
+      }
+
+      const content = extractContent(props.children);
+
+      // Handle Link components (Next.js Link or regular anchor)
+      if (type === 'a' || (type && type.displayName === 'Link')) {
+        const href = props.href || '#';
+        const dataAddress = props['data-address'] ? ` data-address="${String(props['data-address'])}"` : '';
+        const dataSignature = props['data-signature'] ? ` data-signature="${String(props['data-signature'])}"` : '';
+        
+        return {
+          html: `<a href="javascript:void(0)" data-href="${href}" class="text-blue-500 hover:text-blue-600 hover:underline ${className}"${dataTest}${dataAddress}${dataSignature}${title}>${content}</a>`,
+          action: () => handleNavigation(href)
+        };
+      }
+
+      // Handle div elements
+      if (type === 'div') {
+        return {
+          html: `<div class="${className}"${dataTest}${title}>${content}</div>`
+        };
+      }
+
+      // Handle span elements
+      if (type === 'span') {
+        return {
+          html: `<span class="${className}"${dataTest}${title}>${content}</span>`
+        };
+      }
+
+      // Handle time elements
+      if (type === 'time') {
+        const dateTime = props.dateTime ? ` datetime="${props.dateTime}"` : '';
+        return {
+          html: `<time${dateTime} class="${className}"${dataTest}${title}>${content}</time>`
+        };
+      }
+
+      // Default case - return content
+      return content;
+    }
+
+    // Not a React element, return as string
+    return String(element);
+  } catch (err) {
+    console.error('Error converting React element to HTML:', err);
+    return String(element || '');
+  }
+}
+
 interface Column {
   field: string;
   title: string;
@@ -272,7 +348,20 @@ export function VTableWrapper({
   }, []);
 
   useEffect(() => {
-    if (!mounted || !containerRef.current || !data.length) { return; }
+    console.log(`[VTableWrapper] Effect triggered: mounted=${mounted}, hasContainer=${!!containerRef.current}, dataLength=${data.length}, data sample:`, data.slice(0, 2));
+    
+    if (!mounted || !containerRef.current) { 
+      console.log(`[VTableWrapper] Skipping: not mounted or no container`);
+      return; 
+    }
+    
+    if (!data.length) { 
+      console.log(`[VTableWrapper] No data to render, showing no data message`);
+      containerRef.current.innerHTML = '<div class="vtable-no-data p-4 text-center text-muted-foreground">No data available</div>';
+      return; 
+    }
+
+    console.log(`[VTableWrapper] Initializing table with ${data.length} rows, columns:`, columns.map(c => c.field));
 
     let intervalId: NodeJS.Timeout | null = null;
 
@@ -310,8 +399,27 @@ export function VTableWrapper({
             };
           });
 
-          // Calculate dynamic column width to fill container responsively
-          const containerWidth = containerRef.current.clientWidth;
+          // Calculate dynamic container size with height fallback
+          const containerWidth =
+            containerRef.current.clientWidth || containerRef.current.offsetWidth || 0;
+          let containerHeight =
+            containerRef.current.clientHeight || containerRef.current.offsetHeight || 0;
+
+          // If height is not measurable (common when parent doesn't have explicit height),
+          // set a reasonable fallback so VTable can render
+          if (!containerHeight || containerHeight < 120) {
+            try {
+              containerRef.current.style.minHeight = '480px';
+              containerRef.current.style.height = '480px';
+              containerHeight = 480;
+            } catch (_e) {
+              containerHeight = 480;
+            }
+          }
+
+          console.log(
+            `[VTableWrapper] container size: ${containerWidth}x${containerHeight}, data rows=${data.length}`
+          );
 
           // Separate columns with fixed widths from flexible ones
           const fixedColumns = columns.filter(col => col.width);
@@ -345,8 +453,9 @@ export function VTableWrapper({
             // Force background color in the table configuration
             bgColor: getCSSVariableAsHex('--background'),
             backgroundColor: getCSSVariableAsHex('--background'),
-            // Set width to container width for responsive behavior
+            // Set explicit size; width from container and height with fallback
             width: containerWidth,
+            height: containerHeight,
             // Auto-resize on container changes
             autoWidth: true,
             autoHeight: false,
@@ -378,109 +487,36 @@ export function VTableWrapper({
               ...(col.align && { textAlign: col.align }),
               render: (args: any) => {
                 try {
-                  // Ensure the value is properly extracted from the row data
-                  const cellValue = args.row[col.field];
+                  // Safely extract row data and cell value from VTable render args
+                  const rowData =
+                    (args && (args.rowData ?? args.record ?? args.data ?? args.row)) ?? null;
+                  const cellValue =
+                    (args && (args.value ?? (rowData ? rowData[col.field] : undefined)));
 
-                  // Skip for internal fields used for selection/state
+                  // Skip internal helper fields
                   if (col.field.startsWith('__')) {
-                    return '';
+                    return { text: '' };
                   }
 
-                  // Add row styling based on selection/pinned status
-                  if (col.field === columns[0].field) {
-                    const isSelected = args.row.__isSelected;
-                    const isPinned = args.row.__isPinned;
-                    let bgClass = '';
+                  // Call the provided column render with (row, value) if available
+                  const rendered = col.render ? col.render(rowData, cellValue) : cellValue;
 
-                    if (isPinned) {
-                      bgClass = 'bg-yellow-50 dark:bg-yellow-900/20';
-                    } else if (isSelected) {
-                      bgClass = 'bg-blue-50 dark:bg-blue-900/20';
-                    }
-
-                    if (bgClass) {
-                      return {
-                        html: `<div class="${bgClass}" style="position:absolute;left:0;top:0;width:100%;height:100%;z-index:-1;"></div>${col.render ? '' : (cellValue ?? '')
-                          }`,
-                      };
-                    }
-                  }
-
-                  // Extract value with proper fallback to ensure something is always displayed
-                  const rendered = col.render?.(cellValue ?? null, args.row) ?? cellValue;
-
-                  // Handle React elements
+                  // If a React element is returned, convert it to VTable-compatible output
                   if (rendered && typeof rendered === 'object' && 'type' in rendered) {
-                    // Handle Next.js Link components
-                    if (rendered.type?.displayName === 'Link' || rendered.type === 'a') {
-                      const { href, children: content } = rendered.props;
-                      const dataTest = rendered.props?.['data-test']
-                        ? ` data-test="${String(rendered.props['data-test'])}"`
-                        : '';
-
-                      // Extract the text to display in the cell
-                      const text = typeof content === 'string' ? content :
-                        (content && typeof content === 'object' && 'props' in content) ? content.props.children : cellValue ?? '';
-
-                      return {
-                        html: `<a href="javascript:void(0)" data-href="${href || '#'}" class="text-blue-500 hover:text-blue-600 hover:underline"${dataTest}>${text}</a>`,
-                        action: () => handleNavigation(href)
-                      };
-                    }
-
-                    // Handle divs with content (commonly used for cell formatting)
-                    if (rendered.type === 'div') {
-                      const className = rendered.props.className || '';
-                      const dataTest = rendered.props?.['data-test']
-                        ? ` data-test="${String(rendered.props['data-test'])}"`
-                        : '';
-                      let divContent = rendered.props.children;
-
-                      // Handle different types of children content
-                      let textContent = '';
-
-                      if (typeof divContent === 'string') {
-                        textContent = divContent;
-                      } else if (Array.isArray(divContent)) {
-                        // Join array content with spaces
-                        textContent = divContent.map(item =>
-                          typeof item === 'string' ? item :
-                            (item && typeof item === 'object' && 'props' in item) ? item.props.children || '' : ''
-                        ).join(' ');
-                      } else if (divContent && typeof divContent === 'object') {
-                        // Extract from React element if possible
-                        textContent = 'props' in divContent ? (divContent.props?.children || '') :
-                          (JSON.stringify(divContent) !== '{}' ? JSON.stringify(divContent) : '');
-                      } else {
-                        // Fallback to cell value
-                        textContent = cellValue ?? '';
-                      }
-
-                      return {
-                        html: `<div class="${className}"${dataTest}>${textContent}</div>`
-                      };
-                    }
-
-                    // Handle span elements
-                    if (rendered.type === 'span') {
-                      const className = rendered.props.className || '';
-                      const dataTest = rendered.props?.['data-test']
-                        ? ` data-test="${String(rendered.props['data-test'])}"`
-                        : '';
-                      return {
-                        html: `<span class="${className}"${dataTest}>${rendered.props.children}</span>`
-                      };
-                    }
-
-                    // Default to children content
-                    return rendered.props?.children ?? cellValue ?? '';
+                    const converted = convertReactElementToHTML(rendered, handleNavigation);
+                    return typeof converted === 'object' ? converted : { text: String(converted ?? '') };
                   }
 
-                  // Handle plain values
-                  return rendered ?? (cellValue ?? '');
+                  // If an object already containing html/text is returned, pass it through
+                  if (rendered && typeof rendered === 'object' && ('html' in rendered || 'text' in rendered)) {
+                    return rendered as any;
+                  }
+
+                  // Default to plain text rendering
+                  return { text: String(rendered ?? '') };
                 } catch (err) {
                   console.error('Cell render error:', err);
-                  return '';
+                  return { text: String((args && (args.value ?? '')) ?? '') };
                 }
               }
             })),

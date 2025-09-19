@@ -95,7 +95,10 @@ export function useTransfers(address: string): UseTransfersResult {
   const [totalCount, setTotalCount] = useState<number>();
 
   const fetchTransfers = async () => {
-    if (loading || !hasMore) return;
+    if (loading || !hasMore) {
+      console.log(`[useTransfers] Skipping fetch: loading=${loading}, hasMore=${hasMore}`);
+      return;
+    }
 
     const controller = new AbortController();
 
@@ -118,7 +121,14 @@ export function useTransfers(address: string): UseTransfersResult {
 
       const result: TransferResponse & { nextPageSignature?: string } = await response.json();
 
-      console.log(`[useTransfers] API response:`, { ok: response.ok, status: response.status, dataLength: result.data?.length });
+      console.log(`[useTransfers] API response:`, { 
+        ok: response.ok, 
+        status: response.status, 
+        dataLength: result.data?.length,
+        hasMore: result.hasMore,
+        total: result.total,
+        nextPageSignature: result.nextPageSignature 
+      });
 
       if (!response.ok) {
         throw new Error(result.error || 'Failed to fetch transfers');
@@ -128,12 +138,7 @@ export function useTransfers(address: string): UseTransfersResult {
         throw new Error('Invalid response format');
       }
 
-      if (result.data.length === 0) {
-        setHasMore(false);
-        saveToCache(address, transfers, false, cursor);
-        return;
-      }
-
+      // Even if result.data is empty, still process the response properly
       const mapped = result.data.map(item => ({
         signature: item.txId,
         timestamp: item.date,
@@ -145,16 +150,22 @@ export function useTransfers(address: string): UseTransfersResult {
         to: item.to,
       }));
 
+      console.log(`[useTransfers] Mapped ${mapped.length} transfers:`, mapped.slice(0, 3));
+
       const newTransfers = [...transfers, ...mapped];
       setTransfers(newTransfers);
       setCursor(result.nextPageSignature || null);
       setHasMore(result.hasMore);
       if (result.total) setTotalCount(result.total);
-      saveToCache(address, newTransfers, result.hasMore, result.nextPageSignature || null);
+      
+      // Don't save empty results to cache to avoid stale empty state
+      if (mapped.length > 0) {
+        saveToCache(address, newTransfers, result.hasMore, result.nextPageSignature || null);
+      }
 
     } catch (err) {
       if ((err as any)?.name === 'AbortError') return;
-      console.error(err);
+      console.error('[useTransfers] Error:', err);
       setError((err as Error).message || 'Failed to fetch transfers');
     } finally {
       setLoading(false);
