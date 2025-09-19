@@ -245,9 +245,25 @@ export async function GET(
       );
     }
 
-    // Temporarily disable cache lookup to focus on main functionality
+    // Check cache for existing transfers
+    console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
+    
     let cachedTransfers: TransferEntry[] = [];
-    console.log(`Skipping cache lookup, proceeding with live fetch for ${address}`);    // If we have sufficient cached data and it's recent (within 5 minutes), return it
+    try {
+      const cacheResult = await getCachedTransfers(address, {
+        limit: limit * 2, // Get more from cache to account for filtering
+        offset,
+        solanaOnly,
+        transferType: transferType === 'SOL' ? 'SOL' : transferType === 'TOKEN' ? 'TOKEN' : 'ALL'
+      });
+      cachedTransfers = cacheResult.transfers;
+      console.log(`Found ${cachedTransfers.length} cached transfers for ${address}`);
+    } catch (error) {
+      console.warn('Cache lookup failed, proceeding with live fetch:', error);
+      cachedTransfers = [];
+    }
+
+    // If we have sufficient cached data and it's recent (within 5 minutes), return it
     const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
     const recentCachedTransfers = cachedTransfers.filter(t => t.lastUpdated && t.lastUpdated > fiveMinutesAgo);
 
@@ -346,6 +362,12 @@ export async function GET(
 
     // Send response immediately
     const response = NextResponse.json(responseData, { headers: corsHeaders });
+
+    // Cache the transfers in the background (don't await to avoid blocking response)
+    if (filteredTransfers.length > 0) {
+      cacheTransfersAsync(address, filteredTransfers, signatures.map(s => s.signature))
+        .catch(error => console.error('Background caching failed:', error));
+    }
 
     console.log(`API returning ${filteredTransfers.length} transfers`);
 

@@ -196,7 +196,7 @@ function convertReactElementToHTML(element: any, handleNavigation: (href: string
       const className = props.className || '';
       const dataTest = props['data-test'] ? ` data-test="${String(props['data-test'])}"` : '';
       const title = props.title ? ` title="${String(props.title)}"` : '';
-      
+
       // Extract children content recursively
       function extractContent(children: any): string {
         if (typeof children === 'string' || typeof children === 'number') {
@@ -218,7 +218,7 @@ function convertReactElementToHTML(element: any, handleNavigation: (href: string
         const href = props.href || '#';
         const dataAddress = props['data-address'] ? ` data-address="${String(props['data-address'])}"` : '';
         const dataSignature = props['data-signature'] ? ` data-signature="${String(props['data-signature'])}"` : '';
-        
+
         return {
           html: `<a href="javascript:void(0)" data-href="${href}" class="text-blue-500 hover:text-blue-600 hover:underline ${className}"${dataTest}${dataAddress}${dataSignature}${title}>${content}</a>`,
           action: () => handleNavigation(href)
@@ -349,16 +349,16 @@ export function VTableWrapper({
 
   useEffect(() => {
     console.log(`[VTableWrapper] Effect triggered: mounted=${mounted}, hasContainer=${!!containerRef.current}, dataLength=${data.length}, data sample:`, data.slice(0, 2));
-    
-    if (!mounted || !containerRef.current) { 
+
+    if (!mounted || !containerRef.current) {
       console.log(`[VTableWrapper] Skipping: not mounted or no container`);
-      return; 
+      return;
     }
-    
-    if (!data.length) { 
+
+    if (!data.length) {
       console.log(`[VTableWrapper] No data to render, showing no data message`);
       containerRef.current.innerHTML = '<div class="vtable-no-data p-4 text-center text-muted-foreground">No data available</div>';
-      return; 
+      return;
     }
 
     console.log(`[VTableWrapper] Initializing table with ${data.length} rows, columns:`, columns.map(c => c.field));
@@ -788,14 +788,14 @@ export function VTableWrapper({
                 }
 
                 // Recalculate column widths for responsive behavior
-                const fixedColumns = columns.filter(col => col.width);
-                const flexibleColumns = columns.filter(col => !col.width);
-                const fixedWidth = fixedColumns.reduce((sum, col) => sum + (col.width || 0), 0);
-                const availableWidth = Math.max(width - fixedWidth, 0);
-                const flexColumnWidth = flexibleColumns.length > 0
-                  ? Math.floor(availableWidth / flexibleColumns.length)
-                  : 0;
-                const finalFlexWidth = Math.max(flexColumnWidth, minColumnWidth);
+                // const fixedColumns = columns.filter(col => col.width);
+                // const flexibleColumns = columns.filter(col => !col.width);
+                // const fixedWidth = fixedColumns.reduce((sum, col) => sum + (col.width || 0), 0);
+                // const availableWidth = Math.max(width - fixedWidth, 0);
+                // const flexColumnWidth = flexibleColumns.length > 0
+                //   ? Math.floor(availableWidth / flexibleColumns.length)
+                //   : 0;
+                // const finalFlexWidth = Math.max(flexColumnWidth, minColumnWidth);
 
                 // Rebuild table to apply recalculated widths (avoids relying on non-existent APIs)
                 console.log('Rebuilding VTable to apply responsive widths');
