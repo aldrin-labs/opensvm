@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<OpenSearchDescription xmlns="http://a9.com/-/spec/opensearch/1.1/">
+  <ShortName>OpenSVM</ShortName>
+  <Description>AI Explorer for SVM networks - Search Solana accounts, transactions, tokens, and programs</Description>
+  <Tags>solana blockchain svm crypto search explorer</Tags>
+  <Contact>contact@osvm.ai</Contact>
+  <Url type="text/html" template="https://osvm.ai/search?q={searchTerms}"/>
+  <Url type="application/x-suggestions+json" template="https://osvm.ai/api/search-suggestions?q={searchTerms}"/>
+  <Image height="64" width="64" type="image/png">https://osvm.ai/favicon.png</Image>
+  <Image height="16" width="16" type="image/x-icon">https://osvm.ai/favicon.ico</Image>
+  <Developer>OpenSVM Team</Developer>
+  <Attribution>Powered by OpenSVM AI</Attribution>
+  <SyndicationRight>open</SyndicationRight>
+  <AdultContent>false</AdultContent>
+  <Language>en-us</Language>
+  <OutputEncoding>UTF-8</OutputEncoding>
+  <InputEncoding>UTF-8</InputEncoding>
+</OpenSearchDescription>

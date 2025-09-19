@@ -1,0 +1,65 @@
+id: fix_suggestion_general
+name: General Fix Suggestion Generator
+description: Generates specific code fixes for identified vulnerabilities
+category: fix_suggestion
+analysis_vector: general
+template: |-
+  You are an expert Rust and Solana developer tasked with fixing security vulnerabilities.
+
+  PROBLEMATIC CODE:
+  ```rust
+  {problematic_code}
+  ```
+
+  ISSUE DESCRIPTION:
+  {issue_description}
+
+  VULNERABILITY TYPE: {vulnerability_type}
+
+  Please provide:
+
+  1. **Root Cause Analysis**: Why is this code vulnerable?
+  2. **Specific Fix**: Provide the exact corrected code
+  3. **Explanation**: Explain why your fix resolves the issue
+  4. **Additional Considerations**: Any other security improvements
+
+  Requirements:
+  - Maintain existing functionality
+  - Follow Solana/Anchor best practices
+  - Include proper error handling
+  - Add necessary imports if required
+
+  Provide your response in this format:
+
+  ## Root Cause
+  [explanation]
+
+  ## Fixed Code
+  ```rust
+  [corrected code]
+  ```
+
+  ## Explanation
+  [why this fix works]
+
+  ## Additional Considerations
+  [other improvements or warnings]
+variables:
+- name: problematic_code
+  description: The code that contains the vulnerability
+  required: true
+  default_value: null
+  variable_type: code
+- name: issue_description
+  description: Description of the security issue
+  required: true
+  default_value: null
+  variable_type: string
+- name: vulnerability_type
+  description: Type/category of the vulnerability
+  required: false
+  default_value: General Security Issue
+  variable_type: string
+version: 1.0.0
+enabled: true
+metadata: {}

@@ -97,6 +97,7 @@ export default function RootLayout({
         <link rel="manifest" href="/manifest.json" />
         <link rel="apple-touch-icon" href="/favicon.svg" />
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+        <link rel="search" type="application/opensearchdescription+xml" title="OpenSVM" href="/opensearch.xml" />
         <script src="/register-sw.js" defer></script>
         <script
           dangerouslySetInnerHTML={{
