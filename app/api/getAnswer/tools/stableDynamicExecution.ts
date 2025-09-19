@@ -70,8 +70,9 @@ export const stableDynamicExecutionTool: Tool = {
     canHandle: (context: ToolContext): boolean => {
         const { qLower, question } = context;
 
-        // Skip if circuit breaker is open
-        if (!circuitBreaker.canExecute()) {
+        // Address queries should be handled even if the circuit breaker is open
+        const containsAddressEarly = /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(question);
+        if (!containsAddressEarly && !circuitBreaker.canExecute()) {
             console.log('🔴 Circuit breaker OPEN - skipping dynamic execution');
             return false;
         }
@@ -100,11 +101,11 @@ export const stableDynamicExecutionTool: Tool = {
             qLower.includes("signatures") || qLower.includes("confirmed")
         );
 
-        // Check for potential Solana addresses
-        const base58Pattern = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/;
-        const isPotentialAddress = base58Pattern.test(question.trim());
+        // Check for potential Solana addresses (anywhere in the string)
+        const base58Anywhere = /[1-9A-HJ-NP-Za-km-z]{32,44}/;
+        const containsAddress = base58Anywhere.test(question);
 
-        return hasAnalyticalKeywords || hasRPCMethods || isPotentialAddress;
+        return hasAnalyticalKeywords || hasRPCMethods || containsAddress;
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -158,8 +159,8 @@ async function executeStablePlan(context: ToolContext, metrics: ExecutionMetrics
 
     console.log('🎯 Starting stable execution plan...');
 
-    // Generate simplified execution plan
-    const plan = generateSimplePlan(question);
+    // Generate execution plan via AI (with fallback)
+    const plan = await generatePlanWithAI(question);
     console.log(`📋 Plan generated: ${plan.length} steps`);
 
     // Execute plan with proper error handling
@@ -205,14 +206,13 @@ function generateSimplePlan(question: string): ExecutionStep[] {
             }
         );
 
-        if (qLower.includes("transaction") || qLower.includes("history")) {
-            plan.push({
-                tool: 'getSignaturesForAddress',
-                reason: 'Get transaction history',
-                input: address,
-                timeout: 8000
-            });
-        }
+        // Always include recent transaction history for address analytics
+        plan.push({
+            tool: 'getSignaturesForAddress',
+            reason: 'Get transaction history',
+            input: address,
+            timeout: 8000
+        });
 
         if (process.env.MORALIS_API_KEY && (qLower.includes("token") || qLower.includes("portfolio"))) {
             plan.push({
@@ -272,6 +272,229 @@ function generateSimplePlan(question: string): ExecutionStep[] {
     }
 
     return plan;
+}
+
+async function generatePlanWithAI(question: string): Promise<ExecutionStep[]> {
+    // Allowed tools for this stable executor (must match handlers in this file)
+    const ALLOWED_TOOLS = new Set<string>([
+        'getAccountInfo',
+        'getBalance',
+        'getSignaturesForAddress',
+        'getVoteAccounts',
+        'getRecentPerformanceSamples',
+        'getEpochInfo',
+        'getSlot',
+        'getLeaderSchedule',
+        'getMoralisPortfolio',
+        'getMoralisTokenBalances',
+    ]);
+
+    const DEFAULT_TIMEOUTS: Record<string, number> = {
+        getAccountInfo: 5000,
+        getBalance: 5000,
+        getSignaturesForAddress: 8000,
+        getVoteAccounts: 10000,
+        getRecentPerformanceSamples: 5000,
+        getEpochInfo: 5000,
+        getSlot: 5000,
+        getLeaderSchedule: 8000,
+        getMoralisPortfolio: 6000,
+        getMoralisTokenBalances: 6000,
+    };
+
+    // Detect a Solana address if present
+    const addressMatch = question.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
+    const detectedAddress = addressMatch ? addressMatch[0] : null;
+
+    // If no Together AI key, fallback immediately
+    if (!process.env.TOGETHER_API_KEY) {
+        console.warn('⚠️ TOGETHER_API_KEY not configured - using simple plan fallback');
+        return generateSimplePlan(question);
+    }
+
+    try {
+        const systemPrompt = `You are a Solana analysis planner. Create a minimal, executable plan of RPC/API calls to answer the user's question.
+Return ONLY a JSON array (no markdown, no prose). Each item must be:
+{ "tool": string, "reason": string, "input"?: string, "timeout"?: number }
+
+Rules:
+- Tools must be from this exact allowed set: ["getAccountInfo","getBalance","getSignaturesForAddress","getVoteAccounts","getRecentPerformanceSamples","getEpochInfo","getSlot","getLeaderSchedule","getMoralisPortfolio","getMoralisTokenBalances"]
+- If the user provides a Solana address, include getAccountInfo and getBalance first with that address as input. Add getSignaturesForAddress for history.
+- Only include Moralis tools if portfolio/token analysis is implied. If no address provided, don't include Moralis tools.
+- Keep the plan short (2-6 steps) and ordered logically.
+- Provide timeouts in milliseconds when appropriate (use typical values: 5-10s).
+- Do NOT invent tools outside the allowed list.`;
+
+        const userPrompt = `User question: ${question}
+Detected address: ${detectedAddress || 'none'}
+Moralis available: ${!!process.env.MORALIS_API_KEY}
+
+Return ONLY JSON array of steps.`;
+
+        const Together = (await import("together-ai")).default;
+        const together = new Together({
+            apiKey: process.env.TOGETHER_API_KEY!,
+        });
+
+        const llmTimeout = new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error('AI planning timeout')), 8000)
+        );
+
+        const llmCall = together.chat.completions.create({
+            model: "openai/gpt-oss-120b",
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: userPrompt }
+            ],
+            stream: false,
+            max_tokens: 800,
+            temperature: 0.1,
+        });
+
+        const answer = await Promise.race([llmCall, llmTimeout]) as any;
+        const content: string = answer?.choices?.[0]?.message?.content || '';
+
+        // Extract JSON array from response (handle code fences or extra text)
+        const jsonText = extractJsonArray(content);
+        if (!jsonText) {
+            console.warn('⚠️ AI planning returned no valid JSON - using fallback');
+            return generateSimplePlan(question);
+        }
+
+        let rawPlan: any;
+        try {
+            rawPlan = JSON.parse(jsonText);
+        } catch (e) {
+            console.warn('⚠️ Failed to parse AI plan JSON - using fallback');
+            return generateSimplePlan(question);
+        }
+
+        const sanitized = sanitizeAIPlan(rawPlan, {
+            allowed: ALLOWED_TOOLS,
+            defaultTimeouts: DEFAULT_TIMEOUTS,
+            address: detectedAddress,
+            moralisAvailable: !!process.env.MORALIS_API_KEY,
+        });
+
+        if (sanitized.length === 0) {
+            console.warn('⚠️ AI plan empty after sanitization - using fallback');
+            return generateSimplePlan(question);
+        }
+
+        return sanitized.slice(0, 8); // hard cap just in case
+
+    } catch (error) {
+        console.error('❌ AI planning failed:', error);
+        return generateSimplePlan(question);
+    }
+}
+
+function extractJsonArray(text: string): string | null {
+    // Look for the first JSON array in the text
+    const fenceMatch = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    const candidate = fenceMatch ? fenceMatch[1] : text;
+
+    // Try to find a JSON array substring
+    const start = candidate.indexOf('[');
+    const end = candidate.lastIndexOf(']');
+    if (start !== -1 && end !== -1 && end > start) {
+        return candidate.slice(start, end + 1).trim();
+    }
+    return null;
+}
+
+function sanitizeAIPlan(raw: any, opts: {
+    allowed: Set<string>;
+    defaultTimeouts: Record<string, number>;
+    address: string | null;
+    moralisAvailable: boolean;
+}): ExecutionStep[] {
+    if (!Array.isArray(raw)) return [];
+
+    const seen = new Set<string>();
+    const steps: ExecutionStep[] = [];
+
+    const ensureTimeout = (tool: string, timeout?: number) =>
+        Math.min(Math.max(timeout ?? opts.defaultTimeouts[tool] ?? 5000, 1500), 20000);
+
+    for (const item of raw) {
+        if (!item || typeof item !== 'object') continue;
+        const tool = String(item.tool || '').trim();
+
+        if (!opts.allowed.has(tool)) {
+            // skip unknown tools in stable executor
+            continue;
+        }
+
+        // Skip Moralis tools if no API key
+        if (!opts.moralisAvailable && tool.startsWith('getMoralis')) continue;
+
+        // Deduplicate by tool+input to keep plan tight
+        const key = `${tool}:${item.input ?? ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+
+        // If tool requires address input ensure it's present
+        let input = item.input;
+        if (['getAccountInfo', 'getBalance', 'getSignaturesForAddress', 'getMoralisPortfolio', 'getMoralisTokenBalances'].includes(tool)) {
+            input = (typeof input === 'string' && input.trim()) ? input.trim() : (opts.address || '');
+            if (!input) {
+                // cannot run these without an address
+                continue;
+            }
+        }
+
+        const reason = String(item.reason || '').trim() || defaultReason(tool);
+        const timeout = ensureTimeout(tool, typeof item.timeout === 'number' ? item.timeout : undefined);
+
+        steps.push({ tool, reason, input, timeout });
+    }
+
+    // Safety: if AI didn't add anything useful, craft minimal sensible defaults
+    if (steps.length === 0) {
+        return [];
+    }
+
+    // Heuristic: if address present, ensure we at least fetch basic info + balance first
+    if (opts.address) {
+        const hasAccount = steps.some(s => s.tool === 'getAccountInfo');
+        const hasBalance = steps.some(s => s.tool === 'getBalance');
+        if (!hasAccount) {
+            steps.unshift({
+                tool: 'getAccountInfo',
+                reason: 'Get basic account information',
+                input: opts.address,
+                timeout: opts.defaultTimeouts.getAccountInfo
+            });
+        }
+        if (!hasBalance) {
+            steps.splice(1, 0, {
+                tool: 'getBalance',
+                reason: 'Get SOL balance',
+                input: opts.address,
+                timeout: opts.defaultTimeouts.getBalance
+            });
+        }
+    }
+
+    // Limit to 6 steps for stability
+    return steps.slice(0, 6);
+}
+
+function defaultReason(tool: string): string {
+    switch (tool) {
+        case 'getAccountInfo': return 'Get basic account information';
+        case 'getBalance': return 'Get SOL balance';
+        case 'getSignaturesForAddress': return 'Get transaction history';
+        case 'getVoteAccounts': return 'Get validator information';
+        case 'getRecentPerformanceSamples': return 'Get network performance metrics';
+        case 'getEpochInfo': return 'Get current epoch information';
+        case 'getSlot': return 'Get current slot';
+        case 'getLeaderSchedule': return 'Get leader schedule';
+        case 'getMoralisPortfolio': return 'Get portfolio data';
+        case 'getMoralisTokenBalances': return 'Get token balances';
+        default: return 'Execute relevant query';
+    }
 }
 
 async function executePlanSteps(
@@ -381,6 +604,7 @@ async function handleMoralisCall(method: string, input: string): Promise<any> {
 
 async function synthesizeWithAI(question: string, results: Record<string, any>, metrics: ExecutionMetrics): Promise<string> {
     const totalTime = Date.now() - metrics.startTime;
+
 
     // If we don't have TOGETHER_API_KEY, fall back to basic synthesis
     if (!process.env.TOGETHER_API_KEY) {

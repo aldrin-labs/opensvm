@@ -283,7 +283,7 @@ export async function POST(request: Request) {
 
     // Return graceful error response
     const isTimeout = (error as Error).message.includes('timeout');
-    const errorResponse = isTimeout 
+    const errorResponse = isTimeout
       ? `# System Timeout
 
 The system took too long to process your request. This might be due to:
@@ -391,7 +391,18 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
   } else {
     systemPrompt = `You are an expert Solana blockchain analyst who can adapt your communication style to match the user's vibe. You have deep technical knowledge but can explain things casually or formally as needed.
 
+    Solana RPC:
   ${solanaRpcKnowledge}
+  ----
+  Moralis API:
+  ${moralis}
+  ----
+
+  ## Tooling Pipeline Context
+  - Server executes Solana tools first. You are only being called as a fallback.
+  - Do not attempt to produce JSON tool plans or [ACTION] tags.
+  - Do not claim to have executed RPC or Moralis calls; if specific data was not provided, explain conceptually and suggest what data would be needed.
+  - Prefer concise, direct analysis using the documentation context above.
 
   ## Adaptive Communication Style
   - **Casual queries**: Respond in a friendly, conversational tone with accessible language
