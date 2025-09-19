@@ -4,32 +4,62 @@ import { transactionAnalysisTool } from "./transactionAnalysis";
 import { networkAnalysisTool } from "./networkAnalysis";
 import { accountAnalysisTool } from "./accountAnalysis";
 import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
+import { stableDynamicExecutionTool } from "./stableDynamicExecution";
 
 export class ToolRegistry {
     private tools: Tool[] = [
         // Order matters - more specific tools should come first
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
-        dynamicPlanExecutionTool, // Dynamic tool handles most analytical queries with narrative
+        stableDynamicExecutionTool, // NEW: Stable version with proper error handling and timeouts
+        dynamicPlanExecutionTool, // FALLBACK: Original narrative tool (if stable version fails)
         accountAnalysisTool, // Fallback for simpler account queries
-        // networkAnalysisTool, // Disabled - dynamicPlanExecutionTool handles all network queries better
+        networkAnalysisTool, // Re-enabled as safety net
     ];
 
     async executeTools(context: ToolContext): Promise<ToolResult> {
+        const toolExecutionStart = Date.now();
+        let lastError: Error | null = null;
+
         for (const tool of this.tools) {
             if (tool.canHandle(context)) {
-                console.log(`Executing tool: ${tool.name}`);
+                console.log(`🔧 Executing tool: ${tool.name}`);
+                const toolStart = Date.now();
+                
                 try {
-                    const result = await tool.execute(context);
+                    // Add per-tool timeout protection
+                    const toolTimeout = new Promise<never>((_, reject) => {
+                        setTimeout(() => {
+                            reject(new Error(`Tool ${tool.name} execution timeout`));
+                        }, 30000); // 30 second per-tool timeout
+                    });
+
+                    const toolPromise = tool.execute(context);
+                    const result = await Promise.race([toolPromise, toolTimeout]);
+                    
+                    const toolTime = Date.now() - toolStart;
+                    console.log(`✅ Tool ${tool.name} completed in ${toolTime}ms`);
+                    
                     if (result.handled) {
+                        console.log(`🎯 Total tool selection time: ${Date.now() - toolExecutionStart}ms`);
                         return result;
                     }
                 } catch (error) {
-                    console.error(`Error in tool ${tool.name}:`, error);
-                    // Continue to next tool if this one fails
+                    const toolTime = Date.now() - toolStart;
+                    console.error(`❌ Tool ${tool.name} failed after ${toolTime}ms:`, error);
+                    lastError = error as Error;
+                    
+                    // For stability issues, continue to next tool
+                    // This ensures fallback chain works properly
                     continue;
                 }
             }
+        }
+
+        // If we get here, no tool could handle the request
+        console.warn(`⚠️ No tool could handle request: "${context.question}"`);
+        if (lastError) {
+            console.error(`Last error encountered:`, lastError);
         }
 
         return { handled: false };

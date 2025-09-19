@@ -151,8 +151,65 @@ ${moralis}
 
 export const maxDuration = 45;
 
+// Stability monitoring
+class StabilityMonitor {
+  private static requests: number = 0;
+  private static failures: number = 0;
+  private static timeouts: number = 0;
+  private static lastReset: number = Date.now();
+
+  static recordRequest() {
+    this.requests++;
+    this.checkReset();
+  }
+
+  static recordFailure() {
+    this.failures++;
+    this.checkReset();
+  }
+
+  static recordTimeout() {
+    this.timeouts++;
+    this.checkReset();
+  }
+
+  private static checkReset() {
+    // Reset metrics every 10 minutes
+    if (Date.now() - this.lastReset > 600000) {
+      this.requests = 0;
+      this.failures = 0;
+      this.timeouts = 0;
+      this.lastReset = Date.now();
+    }
+  }
+
+  static getMetrics() {
+    this.checkReset();
+    const successRate = this.requests > 0 ? ((this.requests - this.failures) / this.requests * 100).toFixed(1) : '100.0';
+    return {
+      requests: this.requests,
+      failures: this.failures,
+      timeouts: this.timeouts,
+      successRate: `${successRate}%`,
+      period: '10min'
+    };
+  }
+
+  static isHealthy(): boolean {
+    this.checkReset();
+    if (this.requests < 5) return true; // Not enough data
+    const failureRate = this.failures / this.requests;
+    const timeoutRate = this.timeouts / this.requests;
+    return failureRate < 0.3 && timeoutRate < 0.2; // < 30% failure rate, < 20% timeout rate
+  }
+}
+
 export async function POST(request: Request) {
+  const requestStart = Date.now();
+  StabilityMonitor.recordRequest();
+
   if (!process.env.TOGETHER_API_KEY) {
+    StabilityMonitor.recordFailure();
     return new Response(
       JSON.stringify({ error: "TOGETHER_API_KEY environment variable is not set" }),
       {
@@ -162,30 +219,110 @@ export async function POST(request: Request) {
     );
   }
 
-  const conn = getConnection();
-  let body = await request.json();
-  let question = body.question || body.message || "";
+  // Overall request timeout of 40 seconds (leave 5 seconds buffer for cleanup)
+  const requestTimeout = new Promise<never>((_, reject) => {
+    setTimeout(() => {
+      StabilityMonitor.recordTimeout();
+      reject(new Error('Request timeout after 40 seconds'));
+    }, 40000);
+  });
 
-  // Create tool context for modular tool execution
-  const toolContext: ToolContext = {
-    conn: conn,
-    question: String(question || ""),
-    qLower: String(question || "").toLowerCase()
-  };
+  try {
+    const mainProcessingPromise = async () => {
+      const conn = getConnection();
+      let body = await request.json();
+      let question = body.question || body.message || "";
 
-  // Try to execute relevant tools first
-  const toolRegistry = new ToolRegistry();
-  const toolResult = await toolRegistry.executeTools(toolContext);
+      console.log(`📝 Processing query: "${question?.substring(0, 100)}${question?.length > 100 ? '...' : ''}"`);
+      console.log(`🏥 System health: ${StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'}`);
 
-  if (toolResult.handled && toolResult.response) {
-    return new Response(toolResult.response.body, {
-      status: 200,
+      // Create tool context for modular tool execution
+      const toolContext: ToolContext = {
+        conn: conn,
+        question: String(question || ""),
+        qLower: String(question || "").toLowerCase()
+      };
+
+      // Try to execute relevant tools first
+      const toolRegistry = new ToolRegistry();
+      const toolResult = await toolRegistry.executeTools(toolContext);
+
+      if (toolResult.handled && toolResult.response) {
+        const processingTime = Date.now() - requestStart;
+        console.log(`✅ Tool handling successful in ${processingTime}ms`);
+        return new Response(toolResult.response.body, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/plain",
+            "Cache-Control": "no-cache",
+            "X-Processing-Time": `${processingTime}ms`,
+            "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
+          },
+        });
+      }
+
+      // If no tool handled it, proceed with LLM fallback (existing code continues...)
+      return await handleLLMFallback(question, requestStart);
+    };
+
+    const result = await Promise.race([mainProcessingPromise(), requestTimeout]);
+    return result;
+
+  } catch (error) {
+    const processingTime = Date.now() - requestStart;
+    console.error(`🔥 Request failed after ${processingTime}ms:`, error);
+
+    if ((error as Error).message.includes('timeout')) {
+      StabilityMonitor.recordTimeout();
+    } else {
+      StabilityMonitor.recordFailure();
+    }
+
+    const metrics = StabilityMonitor.getMetrics();
+    console.log(`📊 System metrics:`, metrics);
+
+    // Return graceful error response
+    const isTimeout = (error as Error).message.includes('timeout');
+    const errorResponse = isTimeout 
+      ? `# System Timeout
+
+The system took too long to process your request. This might be due to:
+
+- Network connectivity issues
+- High system load
+- Complex query requiring more time
+
+**System Status**: ${metrics.successRate} success rate over ${metrics.period}
+
+Please try:
+1. A simpler, more specific query
+2. Waiting a moment and retrying
+3. Breaking complex requests into smaller parts
+
+*Request processing time: ${processingTime}ms*`
+      : `# System Error
+
+An error occurred while processing your request.
+
+**System Status**: ${metrics.successRate} success rate over ${metrics.period}
+
+Please try your request again, or simplify your query if the issue persists.
+
+*Error: ${(error as Error).message}*`;
+
+    return new Response(errorResponse, {
+      status: isTimeout ? 408 : 500,
       headers: {
         "Content-Type": "text/plain",
         "Cache-Control": "no-cache",
-      },
+        "X-Processing-Time": `${processingTime}ms`,
+        "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
+      }
     });
   }
+}
+
+async function handleLLMFallback(question: string, requestStart: number): Promise<Response> {
 
   // Fallback: use LLM (Together) to craft an answer if no tool handled it
   const together = new Together({
@@ -194,7 +331,7 @@ export async function POST(request: Request) {
 
   const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
-  console.log("[getAnswer] No tool handled query, using LLM fallback");
+  console.log("🤖 No tool handled query, using LLM fallback");
 
   // Detect user's vibe and adjust response style accordingly
   function detectUserVibe(query: string) {
@@ -282,7 +419,12 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
     // Adjust max tokens based on query type and fix the token overload issue
     const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 4000;
 
-    let answer = await together.chat.completions.create({
+    // Add timeout for LLM call
+    const llmTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('LLM call timeout')), 20000); // 20 second LLM timeout
+    });
+
+    const llmPromise = together.chat.completions.create({
       model: "openai/gpt-oss-120b",
       messages: [
         {
@@ -295,39 +437,50 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
       max_tokens: maxTokens,
     });
 
+    let answer = await Promise.race([llmPromise, llmTimeout]);
     let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
 
     // Post-process the response to handle plan objects and improve formatting
     const generativeCapability = new GenerativeCapability();
     parsedAnswer = generativeCapability.postProcessResponse(parsedAnswer);
 
+    const processingTime = Date.now() - requestStart;
+    console.log(`✅ LLM fallback completed in ${processingTime}ms`);
+
     return new Response(parsedAnswer, {
       status: 200,
       headers: {
         "Content-Type": "text/plain",
         "Cache-Control": "no-cache",
+        "X-Processing-Time": `${processingTime}ms`,
+        "X-Fallback": "LLM"
       },
     });
   } catch (e) {
-    console.error("Error with LLM processing:", e);
+    const processingTime = Date.now() - requestStart;
+    console.error(`❌ LLM processing failed after ${processingTime}ms:`, e);
     console.error("Query that failed:", question);
     console.error("User vibe detected:", userVibe);
-    console.error("Error details:", {
-      name: e instanceof Error ? e.name : 'Unknown',
-      message: e instanceof Error ? e.message : String(e),
-      stack: e instanceof Error ? e.stack : 'No stack trace'
-    });
+
+    StabilityMonitor.recordFailure();
 
     // Return a more helpful error response that still matches potential user vibe
-    const errorResponse = userVibe?.isCasual
-      ? "Oops! Something went wrong on my end 😅 Could you try asking again?"
-      : "I encountered an error while processing your query. Please try again.";
+    const isTimeout = (e as Error).message.includes('timeout');
+    const errorResponse = isTimeout
+      ? (userVibe?.isCasual
+        ? "Sorry! That took too long to process 😅 Could you try a simpler question?"
+        : "Request timed out. Please try a simpler query or retry in a moment.")
+      : (userVibe?.isCasual
+        ? "Oops! Something went wrong on my end 😅 Could you try asking again?"
+        : "I encountered an error while processing your query. Please try again.");
 
     return new Response(errorResponse, {
-      status: 500,
+      status: isTimeout ? 408 : 500,
       headers: {
         "Content-Type": "text/plain",
-        "Cache-Control": "no-cache"
+        "Cache-Control": "no-cache",
+        "X-Processing-Time": `${processingTime}ms`,
+        "X-Fallback": "LLM-ERROR"
       }
     });
   }
