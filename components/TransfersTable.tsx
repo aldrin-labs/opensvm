@@ -182,7 +182,9 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     // Now we primarily use rawTransfers since API handles caching automatically
     const sourceData = rawTransfers;
 
-    return sourceData.map(item => {
+    console.log(`[TransfersTable] Processing ${sourceData.length} raw transfers:`, sourceData.slice(0, 2));
+
+    const mapped = sourceData.map(item => {
       // Handle raw transfer from API (the primary case now)
       const rawItem = item as any;
       return {
@@ -202,6 +204,9 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
         ...(rawItem as any)
       };
     });
+
+    console.log(`[TransfersTable] Mapped ${mapped.length} transfers:`, mapped.slice(0, 2));
+    return mapped;
   }, [rawTransfers]);
 
   // Handle row selection

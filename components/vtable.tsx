@@ -797,17 +797,9 @@ export function VTableWrapper({
                   : 0;
                 const finalFlexWidth = Math.max(flexColumnWidth, minColumnWidth);
 
-                // Update column widths
-                columns.forEach((col, index) => {
-                  const newWidth = col.width ?? finalFlexWidth;
-
-                  // Log column width update for debugging
-                  console.log(`Updating column ${index} (${col.field}) width to: ${newWidth}px`);
-
-                  if (tableRef.current) {
-                    tableRef.current.setColumnWidth(col.field, newWidth);
-                  }
-                });
+                // Rebuild table to apply recalculated widths (avoids relying on non-existent APIs)
+                console.log('Rebuilding VTable to apply responsive widths');
+                initTable();
               }
             }, 150); // 150ms debounce
           }

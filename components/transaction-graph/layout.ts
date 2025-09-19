@@ -148,16 +148,21 @@ export const createGraphStyle = (): any[] => [
       'label': 'data(label)',
       'text-valign': 'center',
       'text-halign': 'center',
-      'font-size': '11px',
-      'min-zoomed-font-size': 8,
+      'font-size': '12px',
+      'min-zoomed-font-size': 10,
       'font-family': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
       'color': 'hsl(var(--foreground))',
-      'text-outline-width': 2,
-      'text-outline-color': 'hsl(var(--background) / 0.9)',
+      'text-outline-width': 0,
+      'text-outline-color': 'transparent',
+      'text-wrap': 'wrap',
+      'text-max-width': 140,
+      'text-margin-y': 6,
       'background-color': 'hsl(var(--card))',
+      'background-opacity': 0.95,
       'border-width': 1,
-      'border-color': 'hsl(var(--border))',
-      'border-opacity': 1
+      'border-color': 'rgba(255,255,255,0.18)',
+      'border-opacity': 1,
+      'overlay-opacity': 0
     }
   },
   {
@@ -179,8 +184,9 @@ export const createGraphStyle = (): any[] => [
       'border-style': 'dotted',
       'border-color': 'hsl(var(--primary))',
       'background-color': 'hsl(var(--primary) / 0.15)',
-      'color': 'hsl(var(--primary-foreground))',
-      'text-outline-color': 'hsl(var(--background) / 0.8)'
+      'color': 'hsl(var(--foreground))',
+      'text-outline-color': 'hsl(var(--background) / 0.6)',
+      'text-outline-width': 1
     }
   },
   {
@@ -193,8 +199,9 @@ export const createGraphStyle = (): any[] => [
       'width': '120px',
       'height': '32px',
       'font-size': '11px',
-      'color': 'hsl(var(--card-foreground))',
-      'text-outline-color': 'hsl(var(--background) / 0.8)'
+      'color': 'hsl(var(--foreground))',
+      'text-outline-color': 'transparent',
+      'text-outline-width': 0
     }
   },
   {
@@ -206,7 +213,10 @@ export const createGraphStyle = (): any[] => [
       'border-width': 2,
       'width': '48px',
       'height': '48px',
-      'font-size': '11px'
+      'font-size': '11px',
+      'color': 'hsl(var(--foreground))',
+      'text-outline-color': 'transparent',
+      'text-outline-width': 0
     }
   },
   // Transaction type coloring
@@ -260,7 +270,8 @@ export const createGraphStyle = (): any[] => [
     css: {
       'background-color': 'hsl(var(--primary))',
       'border-width': 3,
-      'border-color': 'hsl(var(--primary))'
+      'border-color': 'hsl(var(--primary))',
+      'color': 'hsl(var(--foreground))'
     }
   },
   {
@@ -288,6 +299,7 @@ export const createGraphStyle = (): any[] => [
       'border-width': 4,
       'border-color': 'hsl(var(--primary))',
       'background-color': 'hsl(var(--primary))',
+      'color': 'hsl(var(--foreground))',
       'text-outline-color': 'hsl(var(--background) / 0.8)',
       'text-outline-width': 2,
       'z-index': 999
@@ -296,13 +308,13 @@ export const createGraphStyle = (): any[] => [
   {
     selector: 'edge',
     css: {
-      'width': 2,
-      'line-color': 'hsl(var(--muted-foreground))',
-      'target-arrow-color': 'hsl(var(--muted-foreground))',
+      'width': 2.5,
+      'line-color': 'rgba(255,255,255,0.32)',
+      'target-arrow-color': 'rgba(255,255,255,0.32)',
       'target-arrow-shape': 'triangle',
-      'curve-style': 'straight',
-      'opacity': 0.7,
-      'arrow-scale': 1.1,
+      'curve-style': 'bezier',
+      'opacity': 0.9,
+      'arrow-scale': 1.3,
       'line-cap': 'round'
     }
   },
@@ -356,21 +368,24 @@ export const createGraphStyle = (): any[] => [
     }
   },
   {
-    selector: 'edge[type="transfer"]',
+    selector: 'edge[type="account_transfer"]',
     css: {
       'width': 3.5,
       'line-color': 'hsl(var(--success))',
       'target-arrow-color': 'hsl(var(--success))',
       'label': 'data(label)',
-      'font-size': '11px',
-      'font-family': 'Inter, sans-serif',
-      'color': 'hsl(var(--success-foreground, var(--foreground)))',
+      'font-size': '12px',
+      'min-zoomed-font-size': 10,
+      'font-family': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
+      'color': 'hsl(var(--foreground))',
       'text-background-color': 'hsl(var(--background))',
       'text-background-opacity': 0.95,
-      'text-background-padding': '4px',
+      'text-background-padding': 4,
       'text-border-width': 1,
       'text-border-color': 'hsl(var(--success))',
-      'text-border-opacity': 0.3,
+      'text-border-opacity': 0.35,
+      'text-rotation': 'autorotate',
+      'text-margin-y': 6,
       'line-cap': 'round',
       'curve-style': 'bezier'
     }
@@ -403,34 +418,57 @@ export const createGraphStyle = (): any[] => [
     selector: 'edge[amount]',
     css: {
       'label': 'data(label)',
-      'font-size': '9px',
-      'min-zoomed-font-size': 6,
+      'font-size': '11px',
+      'min-zoomed-font-size': 9,
       'font-family': 'Inter, ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, sans-serif',
-      'color': 'hsl(var(--muted-foreground))',
-      'text-background-color': 'hsl(var(--card))',
+      'color': 'hsl(var(--foreground))',
+      'text-background-color': 'hsl(var(--background))',
       'text-background-opacity': 0.95,
-      'text-background-padding': 2,
+      'text-background-padding': 3,
       'text-border-width': 1,
       'text-border-color': 'hsl(var(--border))',
       'text-border-opacity': 0.5,
       'text-rotation': 'autorotate',
       'text-margin-y': 6,
       'text-wrap': 'wrap',
-      'text-max-width': 120
+      'text-max-width': 160
     }
   },
   // Edge thickness based on transaction amount
   {
-    selector: 'edge[amount >= 1000]',
-    css: { 'width': 4.5 }
+    selector: 'edge.highlighted',
+    css: {
+      'width': 5,
+      'line-color': 'hsl(var(--warning))',
+      'target-arrow-color': 'hsl(var(--warning))',
+      'z-index': 999,
+      'arrow-scale': 1.8,
+      'opacity': 1,
+      'line-cap': 'round'
+    }
   },
   {
-    selector: 'edge[amount >= 100]',
-    css: { 'width': 3.5 }
+    selector: 'node:selected',
+    css: {
+      'border-width': 4,
+      'border-color': 'hsl(var(--primary))',
+      'background-color': 'hsl(var(--primary))',
+      'color': 'hsl(var(--primary-foreground))',
+      'text-outline-color': 'rgba(0,0,0,0.45)',
+      'text-outline-width': 2,
+      'z-index': 1000
+    }
   },
   {
-    selector: 'edge[amount >= 10]',
-    css: { 'width': 3 }
+    selector: 'edge:selected',
+    css: {
+      'width': 4.5,
+      'line-color': 'hsl(var(--primary))',
+      'target-arrow-color': 'hsl(var(--primary))',
+      'opacity': 1,
+      'arrow-scale': 1.6,
+      'z-index': 1000
+    }
   },
   {
     selector: 'edge[amount >= 1]',
@@ -489,6 +527,59 @@ export const createGraphStyle = (): any[] => [
 ];
 
 /**
+ * Resolve CSS variables like hsl(var(--token)) in Cytoscape style objects to concrete values.
+ * Cytoscape does not evaluate CSS variables, so we compute them from document styles.
+ */
+const resolveStyle = (styleArr: any[]) => {
+  const getToken = (name: string): string | undefined => {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(`--${name}`).trim();
+      if (!v) return undefined;
+      // Convert CSS Color 4 "h s% l%" to Canvas-friendly "h, s%, l%"
+      const parts = v.split(/\s+/);
+      if (parts.length >= 3) {
+        const [h, s, l] = parts;
+        return `hsl(${h.replace(',', '')}, ${s.replace(',', '')}, ${l.replace(',', '')})`;
+      }
+      // If already an hsl(...) string, pass through
+      if (/^hsl(a)?\(/i.test(v)) return v;
+      // Fallback
+      return `hsl(${v})`;
+    } catch {
+      return undefined;
+    }
+  };
+
+  const withAlpha = (baseHsl: string, alpha: string) => {
+    // Convert "hsl(h, s%, l%)" to "hsla(h, s%, l%, a)" for Canvas compatibility
+    const m = baseHsl.match(/hsl\(\s*([^,]+)\s*,\s*([^,]+)\s*,\s*([^)]+)\)/i);
+    if (!m) return baseHsl;
+    const [, h, s, l] = m;
+    return `hsla(${h.trim()}, ${s.trim()}, ${l.trim()}, ${alpha.trim()})`;
+  };
+
+  return styleArr.map((entry: any) => {
+    const css: Record<string, any> = { ...(entry.css || {}) };
+    for (const key of Object.keys(css)) {
+      const val = css[key];
+      if (typeof val === 'string') {
+        // Handle hsl(var(--token) / alpha)
+        css[key] = val.replace(/hsl\(var\(--([^)]+)\)\s*\/\s*([^)]+)\)/g, (_m, token: string, alpha: string) => {
+          const base = getToken(token);
+          return base ? withAlpha(base, alpha) : _m;
+        })
+        // Handle hsl(var(--token))
+        .replace(/hsl\(var\(--([^)]+)\)\)/g, (_m, token: string) => {
+          const base = getToken(token);
+          return base || _m;
+        });
+      }
+    }
+    return { ...entry, css };
+  });
+};
+
+/**
  * Initialize a Cytoscape instance with GPU acceleration
  * @param container HTML element to contain the graph
  * @returns Cytoscape instance
@@ -530,7 +621,7 @@ export const initializeCytoscape = (container: HTMLElement): cytoscape.Core => {
   try {
     const cy = cytoscape({
       container: container,
-      style: createGraphStyle(),
+      style: resolveStyle(createGraphStyle()),
       layout: layoutConfig,
       minZoom: 0.2,
       maxZoom: 3,

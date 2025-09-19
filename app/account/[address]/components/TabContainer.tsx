@@ -1,7 +1,6 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import TokensTab from './TokensTab';
 import TransfersTab from './TransfersTab';
 import PlaceholderTab from './PlaceholderTab';
@@ -27,7 +26,6 @@ interface Props {
 }
 
 function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }: Props) {
-  const router = useRouter();
   const scrollPositions = useRef<Record<string, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
   // Local state to ensure tab switches render immediately in client/e2e mode
@@ -58,10 +56,11 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
     }
   }, [selectedTab]);
 
-  // Restore scroll position for new tab
+  // Restore scroll position for new tab (only if we have a saved value)
   const restoreScrollPosition = useCallback(() => {
-    const savedPosition = scrollPositions.current[selectedTab] || 0;
-    if (typeof window !== 'undefined') {
+    const map = scrollPositions.current;
+    if (typeof window !== 'undefined' && Object.prototype.hasOwnProperty.call(map, selectedTab)) {
+      const savedPosition = map[selectedTab] ?? 0;
       window.scrollTo({
         top: savedPosition,
         behavior: 'instant' // Prevent smooth scrolling during tab switch
@@ -80,11 +79,42 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
     return () => clearTimeout(timer);
   }, [selectedTab, restoreScrollPosition]);
 
+  // Sync tab with browser back/forward navigation without full reload
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const onPopState = () => {
+      try {
+        // Save current tab's scroll before switching
+        saveScrollPosition();
+
+        const url = new URL(window.location.href);
+        const tabParam = url.searchParams.get('tab') || 'account-transfers';
+        const validIds = tabs.map(t => t.id);
+        const nextTab = validIds.includes(tabParam) ? tabParam : 'account-transfers';
+
+        setSelectedTab(nextTab);
+      } catch {
+        // noop
+      }
+    };
+
+    window.addEventListener('popstate', onPopState);
+    return () => window.removeEventListener('popstate', onPopState);
+  }, [saveScrollPosition]);
+
   const handleTabChange = useCallback((tabId: string) => {
     saveScrollPosition(); // Save current position before switching
     setSelectedTab(tabId);
-    router.push(`/account/${address}?tab=${tabId}`, { scroll: false }); // Prevent automatic scroll to top
-  }, [address, router, saveScrollPosition]);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabId);
+      // Push a history entry without triggering Next.js navigation or scroll reset
+      window.history.pushState(window.history.state, '', url.toString());
+    }
+    // Do NOT use router.push here to avoid route-level re-render/scroll reset
+  }, [saveScrollPosition]);
 
   const renderTabs = () => (
     <div className="flex space-x-4 mb-4 border-b border-border" data-test="account-tabs">

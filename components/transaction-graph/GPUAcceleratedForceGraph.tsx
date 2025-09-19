@@ -62,22 +62,41 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
   const containerRef = useRef<HTMLDivElement>(null);
   const animationFrameRef = useRef<number | null>(null);
 
-  // GPU-optimized node colors
-  const nodeColors = useMemo(() => ({
-    account: 'hsl(var(--primary))',
-    transaction: 'hsl(var(--muted-foreground))',
-    'transaction.success': 'hsl(var(--success))',
-    'transaction.error': 'hsl(var(--destructive))',
-    tracked: 'hsl(var(--primary))',
-    default: 'hsl(var(--muted-foreground))'
-  }), []);
+  // Resolved theme colors from CSS variables for high-contrast rendering
+  const getCssHsl = useCallback((varName: string, fallback: string) => {
+    try {
+      const v = getComputedStyle(document.documentElement).getPropertyValue(varName).trim();
+      return v ? `hsl(${v})` : fallback;
+    } catch {
+      return fallback;
+    }
+  }, []);
 
-  // GPU-optimized link colors
+  const theme = useMemo(() => ({
+    primary: getCssHsl('--primary', '#7c3aed'),
+    primaryFg: getCssHsl('--primary-foreground', '#ffffff'),
+    mutedFg: getCssHsl('--muted-foreground', '#a3a3a3'),
+    success: getCssHsl('--success', '#22c55e'),
+    destructive: getCssHsl('--destructive', '#ef4444'),
+    foreground: getCssHsl('--foreground', '#e5e7eb'),
+  }), [getCssHsl]);
+
+  // High-contrast node colors
+  const nodeColors = useMemo(() => ({
+    account: theme.primary,
+    transaction: theme.mutedFg,
+    'transaction.success': theme.success,
+    'transaction.error': theme.destructive,
+    tracked: theme.primary,
+    default: theme.mutedFg
+  }), [theme]);
+
+  // High-contrast link colors
   const linkColors = useMemo(() => ({
-    transfer: 'hsl(var(--success))',
-    interaction: 'hsl(var(--muted-foreground))',
-    default: 'hsl(var(--muted-foreground))'
-  }), []);
+    transfer: theme.success,
+    interaction: 'rgba(255,255,255,0.28)',
+    default: 'rgba(255,255,255,0.22)'
+  }), [theme]);
 
   // Optimized node size calculation
   const getNodeSize = useCallback((node: Node): number => {
@@ -115,7 +134,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     if (node.tracked) {
       const glowGeometry = new THREE.SphereGeometry(getNodeSize(node) * 1.5, 16, 16);
       const glowMaterial = new THREE.MeshBasicMaterial({
-        color: new THREE.Color('hsl(var(--primary))'),
+        color: new THREE.Color(theme.primary),
         transparent: true,
         opacity: 0.3
       });
@@ -234,7 +253,8 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     width,
     height,
     backgroundColor: 'rgba(0, 0, 0, 0)',
-    nodeLabel: (node: Node) => node.label,
+    // Disable built-in labels to prevent unreadable overdraw; we render custom labels via nodeCanvasObject
+    nodeLabel: undefined,
     nodeColor: getNodeColor,
     nodeVal: getNodeSize,
     nodeCanvasObject: !use3D ? (node: Node, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -247,13 +267,17 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
       ctx.arc(node.x || 0, node.y || 0, size, 0, 2 * Math.PI, false);
       ctx.fill();
 
+      // High-contrast edge ring to separate nodes from background
+      ctx.lineWidth = Math.max(1, size * 0.15);
+      ctx.strokeStyle = 'rgba(255,255,255,0.18)';
+      ctx.stroke();
+
       // Add glow effect for tracked nodes using theme token color
       if (node.tracked) {
         ctx.save();
         ctx.globalAlpha = 0.3;
         try {
-          const primary = getComputedStyle(document.documentElement).getPropertyValue('--primary');
-          ctx.fillStyle = primary ? `hsl(${primary.trim()})` : color;
+          ctx.fillStyle = theme.primary || color;
         } catch {
           ctx.fillStyle = color;
         }
@@ -263,37 +287,60 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
         ctx.restore();
       }
 
-      // Draw label (subtle; main labels handled by tooltips/DOM)
-      if (globalScale > 0.5) {
-        try {
-          const fg = getComputedStyle(document.documentElement).getPropertyValue('--muted-foreground');
-          ctx.fillStyle = fg ? `hsl(${fg.trim()})` : '#999999';
-        } catch {
-          ctx.fillStyle = '#999999';
-        }
-        ctx.font = `${Math.max(8, size / 2)}px Inter, ui-sans-serif`;
+      // Draw label with outline for readability on dark backgrounds
+      if (globalScale > 0.35) {
+        const rawText = node.type === 'account' ? (node.id || node.label) : (node.label || node.id);
+        const text = (node.type === 'account' && rawText && rawText.length > 12)
+          ? `${rawText.slice(0, 5)}...${rawText.slice(-5)}`
+          : rawText;
+
+        const fontSize = Math.max(12, Math.min(18, size * 1.2));
+        ctx.font = `${fontSize}px Inter, ui-sans-serif`;
         ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(node.label, node.x || 0, (node.y || 0) + size + 8);
+        ctx.textBaseline = 'top';
+
+        const x = node.x || 0;
+        const y = (node.y || 0) + size + 6;
+
+        // Fill using theme primary text color for strong contrast on colored nodes
+        ctx.fillStyle = '#ffffff';
+        ctx.fillText(text, x, y);
       }
     } : undefined,
     nodeThreeObject: use3D ? nodeThreeObject : undefined,
     linkColor: getLinkColor,
     linkWidth: (link: Link) => link.type === 'transfer' ? 3 : 2,
     linkCanvasObject: !use3D ? (link: Link, ctx: CanvasRenderingContext2D, globalScale: number) => {
-      const width = (link.type === 'transfer' ? 3 : 2) * globalScale;
+      const baseWidth = link.type === 'transfer' ? 3 : 2;
+      const width = Math.max(1, baseWidth * globalScale);
       const color = getLinkColor(link);
-
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.beginPath();
 
       const sourceNode = link.source as Node;
       const targetNode = link.target as Node;
 
-      ctx.moveTo(sourceNode.x || 0, sourceNode.y || 0);
-      ctx.lineTo(targetNode.x || 0, targetNode.y || 0);
+      const sx = sourceNode.x || 0;
+      const sy = sourceNode.y || 0;
+      const tx = targetNode.x || 0;
+      const ty = targetNode.y || 0;
+
+      // main line
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.lineTo(tx, ty);
       ctx.stroke();
+
+      // arrow head for direction
+      const angle = Math.atan2(ty - sy, tx - sx);
+      const headLen = Math.max(6, 6 * globalScale) + (link.type === 'transfer' ? 2 : 0);
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(tx - headLen * Math.cos(angle - Math.PI / 6), ty - headLen * Math.sin(angle - Math.PI / 6));
+      ctx.lineTo(tx - headLen * Math.cos(angle + Math.PI / 6), ty - headLen * Math.sin(angle + Math.PI / 6));
+      ctx.closePath();
+      ctx.fillStyle = color;
+      ctx.fill();
     } : undefined,
     onNodeClick,
     onNodeHover: throttledHoverHandler,

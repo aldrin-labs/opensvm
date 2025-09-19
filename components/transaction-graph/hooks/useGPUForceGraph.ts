@@ -4,7 +4,7 @@ import { useState, useCallback, useEffect } from 'react';
 import { debugLog } from '../utils';
 
 export function useGPUForceGraph() {
-  const [useGPUGraph, setUseGPUGraph] = useState<boolean>(false); // Default to regular cytoscape for compatibility
+  const [useGPUGraph, setUseGPUGraph] = useState<boolean>(false); // Disable GPU force-graph for now; use Cytoscape only
   const [gpuGraphData, setGpuGraphData] = useState<{ nodes: any[]; links: any[] }>({ nodes: [], links: [] });
 
   // Store callbacks for GPU handlers
@@ -25,9 +25,17 @@ export function useGPUForceGraph() {
         const nodeData = node.data();
         const position = node.position();
 
+        // Ensure labels follow 5...5 truncation for long ids
+        const rawLabel = (nodeData.label || nodeData.id) as string;
+        const shouldTruncate = typeof rawLabel === 'string' && rawLabel.length > 12;
+        const truncated =
+          (nodeData.type === 'account' || nodeData.type === 'transaction') && shouldTruncate
+            ? `${rawLabel.slice(0, 5)}...${rawLabel.slice(-5)}`
+            : rawLabel;
+
         return {
           id: nodeData.id,
-          label: nodeData.label || nodeData.id,
+          label: truncated,
           type: nodeData.type || 'transaction',
           group: nodeData.group || 'default',
           x: position.x,

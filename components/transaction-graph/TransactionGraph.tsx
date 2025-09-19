@@ -4,7 +4,6 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { debounce } from '@/lib/utils';
 import { TrackingStatsPanel } from './TrackingStatsPanel';
 import TransactionGraphClouds from './TransactionGraphClouds';
-import { GPUAcceleratedForceGraph } from './GPUAcceleratedForceGraph';
 import { GraphStateCache } from '@/lib/graph-state-cache';
 
 
@@ -591,7 +590,7 @@ const CytoscapeContainer = React.memo(() => {
       nodes.push({
         data: {
           id: accountPubkey,
-          label: `${accountPubkey.substring(0, 8)}...`,
+          label: `${accountPubkey.slice(0, 5)}...${accountPubkey.slice(-5)}`,
           type: 'account',
           pubkey: accountPubkey,
           isSigner: account.isSigner || account.signer || false,
@@ -1050,7 +1049,7 @@ const CytoscapeContainer = React.memo(() => {
     nodes.push({
       data: {
         id: account,
-        label: `${account.substring(0, 8)}...`,
+        label: `${account.slice(0, 5)}...${account.slice(-5)}`,
         type: 'account',
         pubkey: account,
         size: 25,
@@ -1068,7 +1067,7 @@ const CytoscapeContainer = React.memo(() => {
       nodes.push({
         data: {
           id: txSignature,
-          label: `${txSignature.substring(0, 8)}...`,
+          label: `${txSignature.slice(0, 5)}...${txSignature.slice(-5)}`,
           type: 'transaction',
           signature: txSignature,
           success: !tx.err,
@@ -1119,7 +1118,7 @@ const CytoscapeContainer = React.memo(() => {
         const accountNode = {
           data: {
             id: account,
-            label: `${account.substring(0, 8)}...`,
+            label: `${account.slice(0, 5)}...${account.slice(-5)}`,
             type: 'account',
             pubkey: account,
             size: 25,
@@ -1253,7 +1252,7 @@ const CytoscapeContainer = React.memo(() => {
    * - Enhanced error recovery and state management
    */
   useEffect(() => {
-    if (isInitialized || useGPUGraph || isCloudView) return;
+    if (isInitialized || isCloudView) return;
 
     let isMounted = true;
     let initPromise: Promise<any> | null = null;
@@ -1655,8 +1654,8 @@ const CytoscapeContainer = React.memo(() => {
           isLoading={edgeTooltipLoading}
         />
       ) : null}
-      {/* Show initialization overlay when graph is not ready */}
-      {!isInitialized && typeof window !== 'undefined' && (
+      {/* Show initialization overlay only for Cytoscape mode (GPU mode does not need this) */}
+      {!useGPUGraph && !isInitialized && typeof window !== 'undefined' && (
         <div className="absolute inset-0 flex items-center justify-center z-30">
           <div className="text-center">
             <div className="w-8 h-8 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4 mx-auto"></div>
@@ -1666,7 +1665,7 @@ const CytoscapeContainer = React.memo(() => {
       )}
 
       {/* Enhanced Loading overlay with better animations */}
-      {isLoading ? (
+      {isLoading && !useGPUGraph ? (
         <div
           key="loading-overlay"
           className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/80 backdrop-blur-sm z-20 flex items-center justify-center"
@@ -1790,21 +1789,6 @@ const CytoscapeContainer = React.memo(() => {
             </svg>
           </button>
 
-          <button
-            onClick={() => setUseGPUGraph(!useGPUGraph)}
-            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
-            title="Toggle GPU Acceleration"
-            aria-label="Toggle GPU Acceleration"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {useGPUGraph ? (
-                <rect x="2" y="3" width="20" height="14" rx="2" ry="2" />
-              ) : (
-                <path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z" />
-              )}
-              <polyline points="6,12 10,16 18,8" />
-            </svg>
-          </button>
         </div>
       </div>
 
@@ -1826,19 +1810,7 @@ const CytoscapeContainer = React.memo(() => {
         </div>
       ) : (
         <div key="graph-view" className="w-full h-full">
-          {useGPUGraph ? (
-            <GPUAcceleratedForceGraph
-              key="gpu-graph"
-              graphData={gpuGraphData}
-              onNodeClick={handleGPUNodeClickWithHistory}
-              onLinkClick={handleGPULinkClickWithHistory}
-              onNodeHover={handleGPUNodeHover}
-              width={gpuGraphDimensions.width}
-              height={gpuGraphDimensions.height}
-            />
-          ) : (
-            <CytoscapeContainer key="cytoscape-wrapper" />
-          )}
+          <CytoscapeContainer key="cytoscape-wrapper" />
         </div>
       )}
 
@@ -1894,4 +1866,4 @@ const CytoscapeContainer = React.memo(() => {
   );
 });
 
-export default TransactionGraph;  
+export default TransactionGraph;
