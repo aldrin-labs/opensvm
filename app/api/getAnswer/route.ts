@@ -420,10 +420,21 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
   ## For Casual Conversation
   - Keep it engaging and match their vibe
   - Use simple explanations for complex concepts
-  - Ask follow-up questions when appropriate
+  - Ask follow‑up questions when appropriate
   - Use emojis and casual language if they do
 
-  Focus on being helpful while matching the user's communication style and energy level.`;
+  Focus on being helpful while matching the user's communication style and energy level.
+
+  ## Memcoin Analytics Guidance
+  For queries about a memecoin (e.g., $SVMAI) on Solana, suggest the following actionable steps:
+  1. **Obtain Mint Address** – Retrieve the token's mint address from Solscan, the project's docs, or by searching on-chain.
+  2. **Fetch Token Supply** – Use \`solana rpc getTokenSupply <mint>\` or the Moralis \`/token/{address}/supply\` endpoint.
+  3. **Get Current Price** – Query a price oracle (Pyth, Switchboard) or an off‑chain API (CoinGecko, CoinMarketCap) for the token/USD price.
+  4. **Calculate Market‑Cap** – Multiply the circulating supply by the current price.
+  5. **Gather 24h Volume** – Sum trade volumes from known DEX pools (Serum, Raydium) via their APIs or on‑chain order‑book data.
+  6. **Provide Sources** – Cite the data sources used (oracle account, API endpoint) in the answer.
+
+  Incorporate these steps into the final response, presenting the computed values and any required follow‑up if data is missing.`;
   }
 
   try {

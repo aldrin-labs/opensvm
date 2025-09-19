@@ -5,14 +5,16 @@ import { networkAnalysisTool } from "./networkAnalysis";
 import { accountAnalysisTool } from "./accountAnalysis";
 import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
 import { stableDynamicExecutionTool } from "./stableDynamicExecution";
+import { aiPlanExecutionTool } from "./aiPlanExecution";
 
 export class ToolRegistry {
     private tools: Tool[] = [
         // Order matters - more specific tools should come first
+        aiPlanExecutionTool, // PRIMARY: AI-powered tool selection and execution
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
-        stableDynamicExecutionTool, // NEW: Stable version with proper error handling and timeouts
-        dynamicPlanExecutionTool, // FALLBACK: Original narrative tool (if stable version fails)
+        dynamicPlanExecutionTool, // FALLBACK: Hardcoded planning logic
+        stableDynamicExecutionTool, // FALLBACK: Stable version with hardcoded fallbacks if dynamic fails
         accountAnalysisTool, // Fallback for simpler account queries
         networkAnalysisTool, // Re-enabled as safety net
     ];

@@ -287,6 +287,8 @@ async function generatePlanWithAI(question: string): Promise<ExecutionStep[]> {
         'getLeaderSchedule',
         'getMoralisPortfolio',
         'getMoralisTokenBalances',
+        'getTokenSupply',
+        'getTokenLargestAccounts',
     ]);
 
     const DEFAULT_TIMEOUTS: Record<string, number> = {
@@ -300,6 +302,8 @@ async function generatePlanWithAI(question: string): Promise<ExecutionStep[]> {
         getLeaderSchedule: 8000,
         getMoralisPortfolio: 6000,
         getMoralisTokenBalances: 6000,
+        getTokenSupply: 5000,
+        getTokenLargestAccounts: 8000,
     };
 
     // Detect a Solana address if present
@@ -898,7 +902,7 @@ function analyzeValidatorData(question: string, results: Record<string, any>, to
             response += `The network has detailed validator stake information that can be analyzed for decentralization metrics.\n\n`;
         }
     }
-    
+
     // Tailor analysis to the user's question focus
     const qLower = question.toLowerCase();
     const focus: string[] = [];

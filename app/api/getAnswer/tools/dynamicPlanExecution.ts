@@ -320,6 +320,72 @@ function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
                 input: address
             });
 
+            // Token analysis for potential token mints
+            // Prioritize a compact, token-focused plan to avoid timeouts for deep AI synthesis.
+            if (qLower.includes("token") || qLower.includes("supply") || qLower.includes("mint") ||
+                qLower.includes("svmai") || qLower.includes("memecoin") || qLower.includes("analyze")) {
+                
+                // Build a minimal, high-value plan for token analysis and short-circuit.
+                plan.push({
+                    tool: 'getAccountInfo',
+                    reason: 'Confirm account type and owner (is this a token mint/account?)',
+                    narrative: '🔍 *Confirming the account type...* Is this truly a token mint or just a wallet?',
+                    trigger: 'Validate account as mint or token account',
+                    discovery: 'Account owner, executable flag, and raw data',
+                    input: address
+                });
+                
+                plan.push({
+                    tool: 'getBalance',
+                    reason: 'Get SOL balance for contextual info (rent-exempt status, funding)',
+                    narrative: '💰 *Checking SOL balance...* Ensuring the account is funded/rent-exempt',
+                    trigger: 'SOL balance context',
+                    discovery: 'Lamports and rent status',
+                    input: address
+                });
+
+                // Core token metrics — keep these first and minimal
+                plan.push({
+                    tool: 'getTokenSupply',
+                    reason: 'Get total token supply and decimals for mint analysis',
+                    narrative: '🪙 *Querying the token mint supply...* How many tokens exist and what are the decimals?',
+                    trigger: 'Supply and decimals required for valuation',
+                    discovery: 'Total supply, amount, decimals',
+                    input: address
+                });
+
+                plan.push({
+                    tool: 'getTokenLargestAccounts',
+                    reason: 'Get holder distribution (top holders) to assess concentration risk',
+                    narrative: '👑 *Inspecting the largest token holders...* Who controls most of the supply?',
+                    trigger: 'Holder concentration analysis',
+                    discovery: 'Top holder balances and counts',
+                    input: address
+                });
+
+                // Quick RPC verification of token accounts to detect any circulating balances
+                plan.push({
+                    tool: 'getParsedTokenAccountsByOwner',
+                    reason: 'Verify token accounts by owner to enumerate holdings (fast RPC check)',
+                    narrative: '🔎 *Cross-checking token accounts...* Verifying actual token holdings on-chain',
+                    trigger: 'Enumerate token accounts for circulation and holder list',
+                    discovery: 'Raw parsed token accounts for this mint/owner context',
+                    input: address
+                });
+
+                // Add epoch context but do not add heavy Moralis analysis by default
+                plan.push({
+                    tool: 'getEpochInfo',
+                    reason: 'Get epoch context for timing and rent considerations',
+                    narrative: '⏱️ *Fetching epoch context...* Timing matters for on-chain events',
+                    trigger: 'Temporal context for token activity',
+                    discovery: 'Epoch and slot context',
+                });
+
+                // Short-circuit: return only the high-value token steps to avoid overly large plans
+                return plan;
+            }
+
             if (wantsEverything || qLower.includes("transaction") || qLower.includes("activity")) {
                 plan.push({
                     tool: 'getSignaturesForAddress',
@@ -636,7 +702,7 @@ function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
 async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
     const startTime = Date.now();
-    const MAX_EXECUTION_TIME = 30000; // 30 seconds for comprehensive queries
+    const MAX_EXECUTION_TIME = 60000; // 60 seconds for comprehensive queries (token flows may need extra time)
 
     console.log('🎬 Beginning epic execution saga...');
 
@@ -772,10 +838,20 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                     if (step.tool === 'getRecentPerformanceSamples') {
                         return await conn[step.tool](50); // Get more samples
                     } else if (step.input) {
-                        if (step.tool === 'getAccountInfo' || step.tool === 'getBalance') {
+                        if (step.tool === 'getAccountInfo' || step.tool === 'getBalance' || 
+                            step.tool === 'getTokenSupply' || step.tool === 'getTokenLargestAccounts') {
                             const { PublicKey } = await import('@solana/web3.js');
                             try {
                                 const pubkey = new PublicKey(step.input);
+                                if (step.tool === 'getTokenSupply') {
+                                    const result = await conn[step.tool](pubkey);
+                                    console.log(`   🪙 Token supply: ${result?.value?.amount || 'N/A'} (${result?.value?.decimals || 0} decimals)`);
+                                    return result;
+                                } else if (step.tool === 'getTokenLargestAccounts') {
+                                    const result = await conn[step.tool](pubkey);
+                                    console.log(`   👑 Found ${result?.value?.length || 0} largest token holders!`);
+                                    return result;
+                                }
                                 return await conn[step.tool](pubkey);
                             } catch (error) {
                                 return { error: `Invalid address: ${(error as Error).message}` };
@@ -1497,7 +1573,7 @@ Provide actionable insights based on the data:`;
         console.log(`🤖 Calling LLM with ${finalSynthesisPrompt.length} character prompt...`);
         
         const llmTimeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('LLM synthesis timeout after 30s')), 30000);
+            setTimeout(() => reject(new Error('LLM synthesis timeout after 60s')), 60000);
         });
 
         const llmCallPromise = together.chat.completions.create({

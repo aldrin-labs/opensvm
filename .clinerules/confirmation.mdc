@@ -1,0 +1,18 @@
+# Confirmation Rule
+
+Before marking any task as complete, Cline must verify the implementation works by:
+
+1. Sending a test request to the local API:
+   ```
+   curl -s -X POST http://localhost:3000/api/getAnswer \
+        --header "Content-Type: application/json" \
+        --data '{"question":"What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"}'
+   ```
+
+2. Analyzing the API response.
+
+3. Performing curl -s "https://api.coingecko.com/api/v3/coins/opensvm-com?localization=false&tickers=false&market_data=true&community_data=false&developer_data=false"to confirm the data.
+
+4. Compare responses, does local API responses with same data or wrong? why? fix code for getAnswer/route.ts or any other that doesnt create proper plan with proper tools to get actual data
+
+The task should only be considered finished after these steps succeed and local API analysis is matching info we found from coingecko.

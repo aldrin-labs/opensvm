@@ -24,7 +24,50 @@ export const accountAnalysisTool: Tool = {
         const addr = extractFirstSolanaAddress(String(question || ""));
 
         if (!addr) {
-            return { handled: false };
+            const reply404 = `
+            **Key takeaway:** The *only* thing we *know* for sure is that **this address has never been funded, never sent, never received, never minted an NFT, and never interacted with a token program** — at least not on the mainnet‑beta chain up to the queried slot.
+
+---
+
+## **3️⃣  ASCII‑ART OF THE ABYSS**
+
+When the data itself is a void, the visualization *is* the data.
+
+\`\`\`
+╔════════════════════════════════════════════════════════════════════════╗
+║                    SOLANA LEDGER – EMPTY STATE                         ║
+╠════════════════════════════════════════════════════════════════════════╣
+║                                                                        ║
+║   ────────────────────────────────────────────────────────             ║
+║   ┌───────┐   ┌───────┐   ┌───────┐   ┌───────┐   ┌───────┐   ┌───────┐║
+║   │ 0 SOL │   │ 0 TOK │   │ 0 NFT │   │ 0 TX  │   │ 0 SIG │   │ 0 ERR │║
+║   └───────┘   └───────┘   └───────┘   └───────┘   └───────┘   └───────┘║
+║                                                                        ║
+║   ────────────────────────────────────────────────────────             ║
+║   [.................][.................][.................]            ║
+║   ^ No Balance       ^ No Token         ^ No NFT                       ║
+║                                                                        ║
+╚════════════════════════════════════════════════════════════════════════╝
+\`\`\`
+
+**Bar‑Chart of “Activity” (All Zeroes)**  
+
+\`\`\`
+Activity Type   ████ 0 %
+------------------------------
+SOL Balance      ████ 0 %
+Token Count      ████ 0 %
+NFT Count        ████ 0 %
+Tx Count         ████ 0 %
+Signature Count  ████ 0 %
+        \`\`\`
+            `;
+            return {
+                handled: true,
+                response: new Response(reply404, {
+                    status: 200
+                })
+            };
         }
 
         try {
