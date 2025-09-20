@@ -1,4 +1,4 @@
-import { Tool, ToolContext, ToolResult } from "./types.ts";
+import { Tool, ToolContext, ToolResult } from "./types";
 
 export const networkAnalysisTool: Tool = {
     name: "networkAnalysis",
@@ -95,8 +95,52 @@ export const networkAnalysisTool: Tool = {
                 };
             }
 
-            // 4) Validator count
-            if (qLower.includes("validator count") || qLower.includes("validators") || qLower.includes("how many validators")) {
+            // 4) Top validators list
+            if (qLower.includes("top") && qLower.includes("validator")) {
+                const voteAccounts = await conn.getVoteAccounts();
+                
+                // Sort validators by activated stake (descending)
+                const sortedValidators = voteAccounts.current
+                    .sort((a, b) => Number(b.activatedStake) - Number(a.activatedStake))
+                    .slice(0, 10); // Get top 10
+
+                let reply = `**Top 10 Validators by Stake:**\n\n`;
+                
+                sortedValidators.forEach((validator, index) => {
+                    const stakeInSol = (Number(validator.activatedStake) / 1_000_000_000).toFixed(0);
+                    const commission = validator.commission;
+                    
+                    reply += `**${index + 1}.** ${validator.nodePubkey}\n`;
+                    reply += `   - Stake: ${Number(stakeInSol).toLocaleString()} SOL\n`;
+                    reply += `   - Commission: ${commission}%\n`;
+                    reply += `   - Vote Account: ${validator.votePubkey}\n`;
+                    if (validator.epochCredits && validator.epochCredits.length > 0) {
+                        const latestCredits = validator.epochCredits[validator.epochCredits.length - 1];
+                        reply += `   - Latest Epoch Credits: ${latestCredits[1]}\n`;
+                    }
+                    reply += `\n`;
+                });
+
+                const totalActiveStake = voteAccounts.current.reduce((sum, v) => sum + Number(v.activatedStake), 0);
+                const topTenStake = sortedValidators.reduce((sum, v) => sum + Number(v.activatedStake), 0);
+                const topTenPercentage = ((topTenStake / totalActiveStake) * 100).toFixed(2);
+
+                reply += `**Summary:**\n`;
+                reply += `- Total active validators: ${voteAccounts.current.length}\n`;
+                reply += `- Top 10 control ${topTenPercentage}% of total stake\n`;
+                reply += `- Total network stake: ${(totalActiveStake / 1_000_000_000).toFixed(0).toLocaleString()} SOL`;
+
+                return {
+                    handled: true,
+                    response: new Response(reply, {
+                        status: 200,
+                        headers: { "Content-Type": "text/plain" }
+                    })
+                };
+            }
+
+            // 5) Validator count
+            if (qLower.includes("validator count") || qLower.includes("how many validators")) {
                 const voteAccounts = await conn.getVoteAccounts();
                 const activeValidators = voteAccounts.current.length;
                 const delinquentValidators = voteAccounts.delinquent.length;

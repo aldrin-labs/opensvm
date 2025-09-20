@@ -23,9 +23,10 @@ interface Props {
   activeTab: string;
   solBalance: number;
   tokenBalances: { mint: string; balance: number; }[];
+  tokenAccounts?: any[]; // Add tokenAccounts prop
 }
 
-function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }: Props) {
+function TabContainerComponent({ address, activeTab, solBalance, tokenBalances, tokenAccounts }: Props) {
   const scrollPositions = useRef<Record<string, number>>({});
   const contentRef = useRef<HTMLDivElement>(null);
   // Local state to ensure tab switches render immediately in client/e2e mode
@@ -137,7 +138,7 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances }
   const renderContent = () => {
     switch (selectedTab) {
       case 'tokens':
-        return <TokensTab solBalance={solBalance} tokenBalances={tokenBalances} />;
+        return <TokensTab solBalance={solBalance} tokenBalances={tokenBalances} tokenAccounts={tokenAccounts} walletAddress={address} />;
       case 'account-transfers':
         return (
           <div className="w-full">

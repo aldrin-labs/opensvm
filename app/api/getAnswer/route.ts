@@ -149,7 +149,7 @@ ${moralis}
   }
 }
 
-export const maxDuration = 45;
+export const maxDuration = 135;
 
 // Stability monitoring
 class StabilityMonitor {
@@ -219,12 +219,12 @@ export async function POST(request: Request) {
     );
   }
 
-  // Overall request timeout of 40 seconds (leave 5 seconds buffer for cleanup)
+  // Overall request timeout of 120 seconds (3x increase, leave 15 seconds buffer for cleanup)
   const requestTimeout = new Promise<never>((_, reject) => {
     setTimeout(() => {
       StabilityMonitor.recordTimeout();
-      reject(new Error('Request timeout after 40 seconds'));
-    }, 40000);
+      reject(new Error('Request timeout after 120 seconds'));
+    }, 120000);
   });
 
   try {
@@ -441,9 +441,9 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
     // Adjust max tokens based on query type and fix the token overload issue
     const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 4000;
 
-    // Add timeout for LLM call
+    // Add timeout for LLM call (3x increase)
     const llmTimeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('LLM call timeout')), 20000); // 20 second LLM timeout
+      setTimeout(() => reject(new Error('LLM call timeout')), 60000); // 60 second LLM timeout
     });
 
     const llmPromise = together.chat.completions.create({

@@ -856,11 +856,11 @@ async function ensureTransfersCollection() {
 
   try {
     // Helper function to ensure index exists
-    const ensureIndex = async (fieldName: string) => {
+    const ensureIndex = async (fieldName: string, fieldType: 'keyword' | 'integer' | 'bool' = 'keyword') => {
       try {
         await qdrantClient.createPayloadIndex(COLLECTIONS.TRANSFERS, {
           field_name: fieldName,
-          field_schema: 'keyword'
+          field_schema: fieldType
         });
         console.log(`Created index for ${fieldName} in transfers`);
       } catch (error: any) {
@@ -882,19 +882,18 @@ async function ensureTransfersCollection() {
           distance: 'Cosine'
         }
       });
-
-      // Ensure necessary indexes exist (only on first initialization)
-      await ensureIndex('walletAddress');
-      await ensureIndex('signature');
-      await ensureIndex('token');
-      await ensureIndex('isSolanaOnly');
-      await ensureIndex('cached');
-      // Mark as initialized
-      collectionInitialized.set(cacheKey, true);
-
       console.log('Created transfers collection');
     }
 
+    // Always ensure indexes exist, even for existing collections
+    await ensureIndex('walletAddress');
+    await ensureIndex('signature');
+    await ensureIndex('token');
+    await ensureIndex('isSolanaOnly', 'bool');
+    await ensureIndex('cached', 'bool');
+
+    // Mark as initialized regardless of whether collection existed or not
+    collectionInitialized.set(cacheKey, true);
     console.log('Transfers collection and indexes initialized successfully');
 
   } catch (error) {
@@ -968,6 +967,8 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
+  let upsertData: any;
+
   try {
     await ensureTransfersCollection();
 
@@ -982,7 +983,7 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
 
     console.log(`Storing transfer entry with ID: ${entry.id}`);
 
-    const upsertData = {
+    upsertData = {
       wait: true,
       points: [{
         id: entry.id,
@@ -998,8 +999,22 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
     };
 
     await qdrantClient.upsert(COLLECTIONS.TRANSFERS, upsertData);
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error storing transfer entry:', error);
+    
+    // Log the full error details for debugging
+    if (error?.data) {
+      console.error('Qdrant error data:', JSON.stringify(error.data, null, 2));
+    }
+    if (error?.response) {
+      console.error('Qdrant response:', JSON.stringify(error.response, null, 2));
+    }
+    
+    // Log the payload that caused the error for debugging
+    if (upsertData) {
+      console.error('Failed upsert data:', JSON.stringify(upsertData, null, 2));
+    }
+    
     throw error;
   }
 }
@@ -1085,8 +1100,17 @@ export async function getCachedTransfers(
       transfers,
       total: countResult.count
     };
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error getting cached transfers:', error);
+    
+    // Log the full error details for debugging
+    if (error?.data) {
+      console.error('Qdrant search error data:', JSON.stringify(error.data, null, 2));
+    }
+    if (error?.response) {
+      console.error('Qdrant search response:', JSON.stringify(error.response, null, 2));
+    }
+    
     return { transfers: [], total: 0 };
   }
 }

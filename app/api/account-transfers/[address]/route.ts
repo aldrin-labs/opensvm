@@ -27,6 +27,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// In-memory coordination to prevent duplicate concurrent requests
+const pendingRequests = new Map<string, Promise<any>>();
+
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
@@ -151,101 +154,17 @@ async function fetchTransactionBatch(
   return transfers;
 }
 
-/**
- * Asynchronously cache transfers without blocking the response
- */
-async function cacheTransfersAsync(
-  walletAddress: string,
-  transfers: Transfer[],
-  signatures: string[]
-): Promise<void> {
-  try {
-    console.log(`Caching ${transfers.length} transfers for ${walletAddress}`);
-
-    // Convert transfers to TransferEntry format
-    const transferEntries: TransferEntry[] = transfers.map((transfer, index) => ({
-      id: `${walletAddress.slice(0, 8)}-${transfer.txId.slice(0, 8)}-${Date.now()}-${index}`,
-      walletAddress,
-      signature: transfer.txId || '',
-      timestamp: new Date(transfer.date).getTime(),
-      type: (transfer.transferType || 'transfer').toLowerCase() as 'in' | 'out' | 'transfer',
-      amount: parseFloat(transfer.tokenAmount) || 0,
-      token: transfer.tokenSymbol || 'SOL',
-      tokenSymbol: transfer.tokenSymbol || 'SOL',
-      tokenName: transfer.tokenSymbol || 'SOL',
-      from: transfer.from || '',
-      to: transfer.to || '',
-      mint: undefined,
-      usdValue: undefined,
-      isSolanaOnly: isSolanaOnlyTransaction({
-        tokenSymbol: transfer.tokenSymbol,
-        token: transfer.tokenSymbol,
-        from: transfer.from,
-        to: transfer.to
-      } as any),
-      cached: true,
-      lastUpdated: Date.now()
-    }));
-
-    // Store each transfer entry
-    for (const entry of transferEntries) {
-      try {
-        // Validate entry before storing
-        if (!entry.id || !entry.walletAddress || !entry.signature) {
-          console.warn('Skipping invalid transfer entry:', entry);
-          continue;
-        }
-        await storeTransferEntry(entry);
-      } catch (error) {
-        console.error(`Failed to store transfer entry ${entry.id}:`, error);
-        // Continue with other entries
-      }
-    }
-
-    // Mark signatures as cached
-    if (signatures.length > 0) {
-      await markTransfersCached(signatures, walletAddress);
-    }
-
-    console.log(`Successfully cached ${transferEntries.length} transfers`);
-  } catch (error) {
-    console.error('Error in background caching:', error);
-    // Don't throw - this is background work
-  }
-}
-
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ address: string }> }
+async function processTransferRequest(
+  address: string,
+  offset: number,
+  limit: number,
+  transferType: string,
+  solanaOnly: boolean,
+  startTime: number,
+  searchParams: URLSearchParams
 ) {
-  const startTime = Date.now();
-  
   try {
-    console.log(`[API] Starting transfer fetch`);
-    const params = await context.params;
-    const { address: rawAddress } = params;
-    const address = decodeURIComponent(String(rawAddress));
-    console.log(`Starting transfer fetch for ${address}`);
-
-    const searchParams = request.nextUrl.searchParams;
-    const offset = parseInt(searchParams.get('offset') || '0');
-    // Limit batch size to improve performance
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), MAX_SIGNATURES_LIMIT);
-    const transferType = searchParams.get('transferType') || 'ALL';
-    const solanaOnly = searchParams.get('solanaOnly') === 'true';
-
-    // Validate address
-    if (!isValidSolanaAddress(address)) {
-      return NextResponse.json(
-        { error: 'Invalid Solana address format' },
-        {
-          status: 400,
-          headers: corsHeaders
-        }
-      );
-    }
-
-    // Check cache for existing transfers
+    // Check cache for existing transfers (use any cached data, not just recent)
     console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
     
     let cachedTransfers: TransferEntry[] = [];
@@ -263,15 +182,12 @@ export async function GET(
       cachedTransfers = [];
     }
 
-    // If we have sufficient cached data and it's recent (within 5 minutes), return it
-    const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-    const recentCachedTransfers = cachedTransfers.filter(t => t.lastUpdated && t.lastUpdated > fiveMinutesAgo);
-
-    if (recentCachedTransfers.length >= limit && offset === 0) {
-      console.log(`Returning ${recentCachedTransfers.length} recent cached transfers`);
+    // If we have sufficient cached data, return it (regardless of age)
+    if (cachedTransfers.length >= limit && offset === 0) {
+      console.log(`Returning ${cachedTransfers.length} cached transfers (from cache)`);
 
       // Convert cached transfers to the expected format
-      const formattedTransfers = recentCachedTransfers
+      const formattedTransfers = cachedTransfers
         .slice(offset, offset + limit)
         .map(transfer => ({
           txId: transfer.signature,
@@ -285,9 +201,9 @@ export async function GET(
 
       return NextResponse.json({
         data: formattedTransfers,
-        hasMore: recentCachedTransfers.length > offset + limit,
+        hasMore: cachedTransfers.length > offset + limit,
         total: formattedTransfers.length,
-        originalTotal: recentCachedTransfers.length,
+        originalTotal: cachedTransfers.length,
         nextPageSignature: null,
         fromCache: true
       }, { headers: corsHeaders });
@@ -363,15 +279,143 @@ export async function GET(
     // Send response immediately
     const response = NextResponse.json(responseData, { headers: corsHeaders });
 
-    // Cache the transfers in the background (don't await to avoid blocking response)
+    // Cache the transfers immediately (don't wait for background)
     if (filteredTransfers.length > 0) {
-      cacheTransfersAsync(address, filteredTransfers, signatures.map(s => s.signature))
-        .catch(error => console.error('Background caching failed:', error));
+      try {
+        console.log(`Immediately caching ${filteredTransfers.length} transfers for ${address}`);
+        
+        // Convert transfers to TransferEntry format and cache immediately
+        const transferEntries: TransferEntry[] = filteredTransfers.map((transfer, index) => ({
+          id: crypto.randomUUID(),
+          walletAddress: address,
+          signature: transfer.txId || '',
+          timestamp: new Date(transfer.date).getTime(),
+          type: (transfer.transferType || 'transfer').toLowerCase() as 'in' | 'out' | 'transfer',
+          amount: parseFloat(transfer.tokenAmount) || 0,
+          token: transfer.tokenSymbol || 'SOL',
+          tokenSymbol: transfer.tokenSymbol || 'SOL',
+          tokenName: transfer.tokenSymbol || 'SOL',
+          from: transfer.from || '',
+          to: transfer.to || '',
+          mint: undefined,
+          usdValue: undefined,
+          isSolanaOnly: isSolanaOnlyTransaction({
+            tokenSymbol: transfer.tokenSymbol,
+            token: transfer.tokenSymbol,
+            from: transfer.from,
+            to: transfer.to
+          } as any),
+          cached: true,
+          lastUpdated: Date.now()
+        }));
+
+        // Store transfers immediately (parallel processing)
+        const cachePromises = transferEntries.map(async (entry) => {
+          try {
+            if (!entry.id || !entry.walletAddress || !entry.signature) {
+              console.warn('Skipping invalid transfer entry:', entry);
+              return;
+            }
+            await storeTransferEntry(entry);
+          } catch (error) {
+            console.error(`Failed to store transfer entry ${entry.id}:`, error);
+          }
+        });
+
+        // Wait for all caching to complete
+        await Promise.allSettled(cachePromises);
+        
+        // Mark signatures as cached
+        await markTransfersCached(signatures.map(s => s.signature), address);
+        
+        console.log(`Successfully cached ${transferEntries.length} transfers`);
+      } catch (error) {
+        console.error('Immediate caching failed:', error);
+        // Don't block response on cache failure
+      }
     }
 
     console.log(`API returning ${filteredTransfers.length} transfers`);
 
     return response;
+
+  } catch (error) {
+    console.error('processTransferRequest Error:', error);
+    const errorTime = Date.now() - startTime;
+    console.error(`processTransferRequest failed after ${errorTime}ms`);
+
+    return NextResponse.json(
+      { error: 'Failed to fetch transfers' },
+      {
+        status: 500,
+        headers: corsHeaders
+      }
+    );
+  }
+}
+
+export async function GET(
+  request: NextRequest,
+  context: { params: Promise<{ address: string }> }
+) {
+  const startTime = Date.now();
+  
+  try {
+    console.log(`[API] Starting transfer fetch`);
+    const params = await context.params;
+    const { address: rawAddress } = params;
+    const address = decodeURIComponent(String(rawAddress));
+    console.log(`Starting transfer fetch for ${address}`);
+
+    const searchParams = request.nextUrl.searchParams;
+    const offset = parseInt(searchParams.get('offset') || '0');
+    // Limit batch size to improve performance
+    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), MAX_SIGNATURES_LIMIT);
+    const transferType = searchParams.get('transferType') || 'ALL';
+    const solanaOnly = searchParams.get('solanaOnly') === 'true';
+
+    // Validate address
+    if (!isValidSolanaAddress(address)) {
+      return NextResponse.json(
+        { error: 'Invalid Solana address format' },
+        {
+          status: 400,
+          headers: corsHeaders
+        }
+      );
+    }
+
+    // Create request key for coordination
+    const requestKey = `${address}-${offset}-${limit}-${transferType}-${solanaOnly}`;
+    
+    // Check if there's already a pending request for this exact query
+    if (pendingRequests.has(requestKey)) {
+      console.log(`Waiting for existing request: ${requestKey}`);
+      try {
+        const result = await pendingRequests.get(requestKey);
+        console.log(`Reusing result from concurrent request`);
+        return result;
+      } catch (error) {
+        console.error('Concurrent request failed, proceeding with new request:', error);
+        pendingRequests.delete(requestKey);
+      }
+    }
+
+    // Create promise for this request
+    const requestPromise = (async () => {
+      try {
+        return await processTransferRequest(address, offset, limit, transferType, solanaOnly, startTime, searchParams);
+      } finally {
+        // Always clean up the pending request
+        pendingRequests.delete(requestKey);
+      }
+    })();
+
+    // Store the promise
+    pendingRequests.set(requestKey, requestPromise);
+
+    // Execute and return the result
+    return await requestPromise;
 
   } catch (error) {
     console.error('API Error:', error);

@@ -29,11 +29,11 @@ export class ToolRegistry {
                 const toolStart = Date.now();
                 
                 try {
-                    // Add per-tool timeout protection
+                    // Add per-tool timeout protection (3x increase)
                     const toolTimeout = new Promise<never>((_, reject) => {
                         setTimeout(() => {
                             reject(new Error(`Tool ${tool.name} execution timeout`));
-                        }, 30000); // 30 second per-tool timeout
+                        }, 90000); // 90 second per-tool timeout
                     });
 
                     const toolPromise = tool.execute(context);

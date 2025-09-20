@@ -482,6 +482,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
             activeTab={activeTab as string}
             solBalance={accountInfo.solBalance}
             tokenBalances={accountInfo.tokenBalances}
+            tokenAccounts={accountInfo.tokenAccounts}
           />
         </div>
       </div>
@@ -544,6 +545,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
               address={accountInfo.address}
               solBalance={accountInfo.solBalance}
               tokenBalances={accountInfo.tokenBalances}
+              tokenAccounts={accountInfo.tokenAccounts}
               activeTab={activeTab as string}
             />
           </PerformanceWrapper>

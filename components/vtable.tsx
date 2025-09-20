@@ -639,7 +639,9 @@ export function VTableWrapper({
 
           // Right click for context menu callback
           (table as any).on('contextmenu_cell', (args: any) => {
-            args.domEvent.preventDefault();
+            if (args.domEvent && typeof args.domEvent.preventDefault === 'function') {
+              args.domEvent.preventDefault();
+            }
             const rowId = args.cellKey?.rowKey;
             const record = data.find(r => rowKey(r) === rowId);
             const val = args.value?.text ?? args.value;
