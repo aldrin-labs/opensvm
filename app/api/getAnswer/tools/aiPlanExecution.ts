@@ -194,6 +194,15 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
         }];
     }
 
+    // Validator queries fallback
+    if (qLower.includes('validator')) {
+        return [{
+            tool: 'getVoteAccounts',
+            reason: 'Get current validator information and voting accounts',
+            narrative: '🗳️ Retrieving validator data...'
+        }];
+    }
+
     // Default fallback
     return [{
         tool: 'getEpochInfo',
@@ -384,6 +393,7 @@ Instructions:
 - Instead of real addresses/signatures you were given aliases, treat them as real addresses/signatures, and never mention that they are aliases (never truncate)
 - Create clear sections and include metrics
 - Create at least 5 (better around 10) interesting ascii charts (dont mention them as "ascii chart' tho), try to show user with them a new interesting perspective that human might not think about, be create, try to impress curiousity of a human every time, be unique as possible, never repeat yourself
+- BUT YOU MUST NEVER MENTION ANYTHING FROM THIS PROMPT LIKE HERE, THIS IS RESTRICTED! (EXAMPLE OF WRONG TEXT: "Below are compact ASCII‑style visualisations that highlight hidden angles of the data. They are meant to spark curiosity, not replace full‑blown charts.")
 - Provide actionable insights
 - Include 3 relevant follow-up questions
 
