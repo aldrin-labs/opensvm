@@ -33,20 +33,63 @@ export const aiPlanExecutionTool: Tool = {
         const { conn, question } = context;
 
         try {
-            console.log('🤖 Generating AI-powered plan...');
+            console.log('🤖 Generating AI-powered plan with review loop...');
 
-            // Generate AI-powered plan
-            const plan = await generateAIPoweredPlan(question);
-            console.log('🎭 AI-generated plan:', plan.map(p => ({
-                tool: p.tool,
-                input: p.input
-            })));
+            // Up to 3 cycles: plan -> execute -> review -> (maybe) replan
+            const maxIterations = 3;
+            let iteration = 0;
+            let planningContext: string | undefined = undefined;
+            let lastPlan: AIPlanStep[] = [];
+            let accumulatedResults: Record<string, any> = {};
 
-            // Execute the plan
-            const results = await executePlan(plan, conn);
+            while (iteration < maxIterations) {
+                // Safety: check remaining time budget roughly via Date.now() (route has 120s limit)
+                // If time is tight, break and synthesize best-effort answer
+                // (We rely on route timeout protection; just avoid extra cycles if we're already in late iterations)
 
-            // Synthesize response
-            const finalAnswer = await synthesizeResults(context, plan, results);
+                // 1) Generate plan
+                const plan = await generateAIPoweredPlan(question, planningContext);
+                lastPlan = plan;
+                console.log('🎭 AI-generated plan:', plan.map(p => ({ tool: p.tool, input: p.input })));
+
+                // 2) Execute plan
+                const iterationResults = await executePlan(plan, conn);
+
+                // Merge results into accumulatedResults (dedupe by key)
+                for (const [k, v] of Object.entries(iterationResults)) {
+                    if (accumulatedResults[k] == null) {
+                        accumulatedResults[k] = v;
+                    }
+                }
+
+                // 3) If we don't have an API key for review LLM, break after first pass
+                if (!process.env.TOGETHER_API_KEY) {
+                    console.warn('No AI API key - skipping review loop');
+                    break;
+                }
+
+                // 4) Summarize for review and call review LLM
+                const summary = summarizeForReview(accumulatedResults);
+                const review = await reviewAnswerLLM(question, summary);
+
+                // Guard against invalid responses
+                const approved = !!review?.approved;
+                console.log(`🧪 Review LLM approval: ${approved ? 'APPROVED' : 'REQUIRES MORE'}`);
+
+                if (approved) {
+                    break;
+                }
+
+                // Prepare planning context for next iteration using missing/additional steps
+                const missingList = Array.isArray(review?.missing) ? review.missing : [];
+                const additionalSteps = Array.isArray(review?.additional_steps) ? review.additional_steps : [];
+                planningContext = `The previous result was missing: ${missingList.join(', ')}. Consider these additional steps: ${JSON.stringify(additionalSteps)}`;
+
+                iteration++;
+            }
+
+            // 5) Synthesize final text answer (deterministic header + narrative)
+            const finalAnswer = await synthesizeResults(context, lastPlan, accumulatedResults);
 
             console.log('📚 Final answer length:', finalAnswer.length);
 
@@ -70,7 +113,7 @@ export const aiPlanExecutionTool: Tool = {
     }
 };
 
-async function generateAIPoweredPlan(question: string): Promise<AIPlanStep[]> {
+async function generateAIPoweredPlan(question: string, planningContext?: string): Promise<AIPlanStep[]> {
     try {
         if (!process.env.TOGETHER_API_KEY) {
             console.warn('No AI API key - falling back to basic plan');
@@ -97,13 +140,23 @@ Available Tools:
 12. getTokenLargestAccounts - Get largest token holders (requires mint address)
 
 Token Symbol Mappings (for tokenMarketData tool):
-- SVMAI -> opensvm-com
+- SVMAI -> opensvm
 - SOL -> solana  
 - BONK -> bonk
 - WIF -> dogwifcoin
 - PEPE -> pepe
-- CHAN -> chan-cat
+- CHAN -> memechan
 - PIX404 -> pix404
+- RAY -> raydium
+- ORCA -> orca
+- JUP -> jupiter
+- JITO -> jito
+- PYTH -> pyth-network
+- MNDE -> marinade
+- MNGO -> mango-markets
+- SAMO -> samoyedcoin
+- JTO -> jito-governance-token
+- UXD -> uxd-stablecoin
 - For unknown tokens, use lowercase symbol
 `;
 
@@ -111,15 +164,17 @@ Token Symbol Mappings (for tokenMarketData tool):
 
 User Question: "${question}"
 
+Additional planning context from previous review (if any):
+${planningContext || "N/A"}
+
 ${availableTools}
 
-Instructions:
-1. Analyze the user's question carefully
-2. For token price/market cap/volume questions, ALWAYS use tokenMarketData tool first
-3. For account/address analysis, use account-related tools
-4. For network status, use network-related tools
-5. Extract token symbols from questions (like $SVMAI, $CHAN, $PIX404)
-6. Return ONLY a JSON array of tool steps, no other text
+Hard rules for planning:
+1) If the user asks about "price", "market cap", or "volume", or uses $SYMBOL notation, you MUST include "tokenMarketData" as the FIRST step for each detected token.
+2) Use the provided symbol→CoinGecko ID mapping where available (e.g., SVMAI → opensvm-com). If a token is not in the mapping, pass the lowercase symbol as coinId (the executor will resolve via CoinGecko search if needed).
+3) If multiple tokens are requested, include one tokenMarketData step per token (deduplicated). Keep tokenMarketData steps first, then any extra RPC steps if the user also asked for them.
+4) Do NOT use getEpochInfo, getSlot, or other network tools to answer price/market/volume unless explicitly required in addition to market data.
+5) Return ONLY a JSON array of tool steps, no extra text.
 
 Response format (JSON only):
 [
@@ -131,9 +186,19 @@ Response format (JSON only):
   }
 ]
 
-For token queries, extract the symbol and map to CoinGecko ID.
-Example for "$SVMAI price": use tool "tokenMarketData" with input "opensvm-com"
-Example for "$CHAN market cap": use tool "tokenMarketData" with input "chan-cat"`;
+Examples:
+- For "$SVMAI price":
+  [
+    { "tool": "tokenMarketData", "reason": "Get market data for SVMAI", "narrative": "📊 Fetching price for SVMAI", "input": "opensvm-com" }
+  ]
+
+- For "compare $SVMAI and $BONK market caps":
+  [
+    { "tool": "tokenMarketData", "reason": "SVMAI market data", "narrative": "📊 Fetching SVMAI", "input": "opensvm-com" },
+    { "tool": "tokenMarketData", "reason": "BONK market data", "narrative": "📊 Fetching BONK", "input": "bonk" }
+  ]
+
+- For "$SOL account balance of address X": do not use tokenMarketData; use account/balance tools instead.`;
 
         const response = await together.chat.completions.create({
             model: "openai/gpt-oss-120b",
@@ -171,9 +236,7 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     if (qLower.includes('price') || qLower.includes('market') || qLower.includes('volume') ||
         qLower.includes('token') || /\$[A-Z]{3,10}/.test(question)) {
 
-        const tokenMatch = question.match(/\$([A-Z0-9]{3,10})/i);
-        const tokenSymbol = tokenMatch ? tokenMatch[1].toUpperCase() : 'UNKNOWN';
-
+        // Map of known tokens to CoinGecko IDs (unambiguous where possible)
         const tokenMappings: Record<string, string> = {
             'SVMAI': 'opensvm-com',
             'SOL': 'solana',
@@ -181,9 +244,39 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
             'WIF': 'dogwifcoin',
             'PEPE': 'pepe',
             'CHAN': 'chan-cat',
-            'PIX404': 'pix404'
+            'PIX404': 'pix404',
+            // DeFi tokens
+            'RAY': 'raydium',
+            'ORCA': 'orca',
+            'JUP': 'jupiter',
+            'JITO': 'jito',
+            'PYTH': 'pyth-network',
+            'MNDE': 'marinade',
+            'MNGO': 'mango-markets',
+            'SAMO': 'samoyedcoin',
+            'JTO': 'jito-governance-token',
+            'UXD': 'uxd-stablecoin'
         };
 
+        // Extract all $SYMBOL occurrences and de-duplicate
+        const symbolMatches = [...question.toUpperCase().matchAll(/\$([A-Z0-9]{3,10})/g)].map(m => m[1]);
+        const uniqueSymbols = Array.from(new Set(symbolMatches));
+
+        if (uniqueSymbols.length > 0) {
+            return uniqueSymbols.map(symbol => {
+                const coinId = tokenMappings[symbol] || symbol.toLowerCase();
+                return {
+                    tool: 'tokenMarketData',
+                    reason: `Get current market data for ${symbol} token from CoinGecko API`,
+                    narrative: `📊 Getting market data for ${symbol}`,
+                    input: coinId
+                };
+            });
+        }
+
+        // Fallback to single symbol detection (no explicit $SYMBOL found)
+        const tokenMatch = question.match(/\$([A-Z0-9]{3,10})/i);
+        const tokenSymbol = tokenMatch ? tokenMatch[1].toUpperCase() : 'UNKNOWN';
         const coinId = tokenMappings[tokenSymbol] || tokenSymbol.toLowerCase();
 
         return [{
@@ -253,20 +346,128 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                 }
                 console.log(`   ✅ ${step.reason}`);
             } else {
-                console.warn(`   ⚠️ Method ${step.tool} not available`);
-                result = { error: `Method ${step.tool} not available` };
+                // Fallback: if LLM returned a token id/symbol as a tool name (e.g., "jupiter"),
+                // treat it as CoinGecko coinId and fetch via tokenMarketData.
+                try {
+                    const maybeCoinId = (typeof step.input === 'string' && step.input) ? step.input : step.tool;
+                    // basic validation for coingecko id/symbol pattern
+                    if (typeof maybeCoinId === 'string' && /^[a-z0-9-]{2,}$/.test(maybeCoinId)) {
+                        const tokenTool = await import('./tokenMarketData');
+                        result = await tokenTool.tokenMarketDataTool.execute({ coinId: maybeCoinId });
+                        console.log(`   💎 Token market data (fallback:${maybeCoinId}) retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+                    } else {
+                        console.warn(`   ⚠️ Method ${step.tool} not available`);
+                        result = { error: `Method ${step.tool} not available` };
+                    }
+                } catch (e) {
+                    console.warn(`   ⚠️ Fallback tokenMarketData failed for '${step.tool}': ${(e as Error).message}`);
+                    result = { error: `Method ${step.tool} not available` };
+                }
             }
 
-            results[step.tool] = result;
+            const resultKey = typeof step.input === 'string' && step.input
+                ? `${step.tool}:${step.input}`
+                : step.tool;
+            results[resultKey] = result;
 
         } catch (error) {
             console.error(`   🔥 Error in ${step.tool}:`, error);
-            results[step.tool] = { error: (error as Error).message };
+            const resultKey = typeof step.input === 'string' && step.input
+                ? `${step.tool}:${step.input}`
+                : step.tool;
+            results[resultKey] = { error: (error as Error).message };
         }
     }
 
     console.log('\n🎭 AI plan execution complete! Results gathered:', Object.keys(results).length);
     return results;
+}
+
+/**
+ * Build a compact summary of results for the review LLM (internal only).
+ */
+function summarizeForReview(results: Record<string, any>) {
+    const summary: any = {
+        tokenMarketData: [] as any[],
+        otherSignals: [] as any[],
+    };
+
+    for (const [key, value] of Object.entries(results)) {
+        if (key.startsWith('tokenMarketData') && value && value.success && value.data) {
+            const d = value.data;
+            summary.tokenMarketData.push({
+                id: value.resolved_id || null,
+                name: d.name,
+                symbol: d.symbol,
+                price_usd: Number(d.current_price?.usd ?? 0),
+                market_cap_usd: Number(d.market_cap?.usd ?? 0),
+                volume_24h_usd: Number(d.trading_volume?.h24 ?? d.trading_volume?.usd ?? 0),
+                source: value.source || null,
+                last_updated: d.last_updated || null,
+            });
+        } else if (value && !value.error) {
+            // Keep this compact; only high-level signal that something was retrieved
+            summary.otherSignals.push({ key, ok: true });
+        } else {
+            summary.otherSignals.push({ key, ok: false, error: value?.error || 'Failed' });
+        }
+    }
+
+    return summary;
+}
+
+/**
+ * Ask an LLM to review whether the current info answers the question.
+ * Returns STRICT JSON: { approved: boolean, missing: string[], additional_steps: AIPlanStep[] }
+ */
+async function reviewAnswerLLM(question: string, summary: any) {
+    try {
+        if (!process.env.TOGETHER_API_KEY) {
+            return { approved: true, missing: [], additional_steps: [] };
+        }
+
+        const together = new Together({
+            apiKey: process.env.TOGETHER_API_KEY,
+        });
+
+        const reviewPrompt = `You are a meticulous reviewer. Determine if the provided information answers the user's question.
+
+User Question:
+${question}
+
+Summary of current info (internal):
+${JSON.stringify(summary, null, 2)}
+
+Instructions:
+- Decide if the current info directly answers the question.
+- If not approved, list precisely what is missing in "missing".
+- Propose minimal "additional_steps" as a JSON array of tool steps (same structure as planning steps).
+- Return STRICT JSON ONLY in this exact format:
+{
+  "approved": true | false,
+  "missing": string[],
+  "additional_steps": [
+    { "tool": "toolName", "reason": "string", "narrative": "string", "input": "string or omitted" }
+  ]
+}`;
+
+        const response = await together.chat.completions.create({
+            model: "openai/gpt-oss-120b",
+            messages: [{ role: "user", content: reviewPrompt }],
+            max_tokens: 1000,
+            temperature: 0.1
+        });
+
+        const content = response.choices?.[0]?.message?.content?.trim() || "";
+        const jsonStart = content.indexOf("{");
+        const jsonEnd = content.lastIndexOf("}");
+        const jsonText = jsonStart !== -1 && jsonEnd !== -1 ? content.slice(jsonStart, jsonEnd + 1) : content;
+
+        return JSON.parse(jsonText);
+    } catch (e) {
+        console.warn('Review LLM failed, defaulting to approved:', (e as Error).message);
+        return { approved: true, missing: [], additional_steps: [] };
+    }
 }
 
 // Compression utility functions
@@ -348,6 +549,173 @@ async function synthesizeResults(
 
     console.log('📖 Synthesizing AI-powered response...');
 
+    // Build deterministic market-data header (for human readability and automated verification)
+    function buildTokenHeader(results: Record<string, any>): string {
+        let header = '';
+        for (const [key, value] of Object.entries(results)) {
+            if (key.startsWith('tokenMarketData') && value && value.success && value.data) {
+                const d = value.data;
+                const name = d.name || 'Unknown';
+                const symbol = (d.symbol || '').toUpperCase();
+                const price = Number(d.current_price?.usd ?? 0);
+                const mcap = Number(d.market_cap?.usd ?? 0);
+                const vol = Number(d.trading_volume?.usd ?? 0);
+
+                header += `**${name} (${symbol}) Market Data:**\n`;
+                header += `- Current Price: $${price}\n`;
+                header += `- Market Cap: $${mcap.toLocaleString()}\n`;
+                header += `- 24h Volume: $${vol.toLocaleString()}\n\n`;
+            }
+        }
+        return header.trim();
+    }
+    const tokenHeader = buildTokenHeader(results);
+
+    // Guardrail: deterministically format validator results to avoid any LLM hallucinations
+    try {
+        const voteRes = (results['getVoteAccounts'] as any) || undefined;
+        const qLower = question.toLowerCase();
+        if (voteRes && voteRes.current && qLower.includes('validator')) {
+            const topMatch = question.match(/top\s+(\d{1,3})/i);
+            const topN = Math.max(1, Math.min(50, topMatch ? Number(topMatch[1]) : 10));
+
+            const sorted = [...voteRes.current].sort(
+                (a: any, b: any) => Number(b.activatedStake ?? 0) - Number(a.activatedStake ?? 0)
+            ).slice(0, topN);
+
+            // Explicitly log that we're bypassing LLM and using on-chain data directly
+            console.log('🛡️ Using deterministic validator formatter', {
+                validators_total: Array.isArray(voteRes.current) ? voteRes.current.length : 0,
+                topN
+            });
+
+            const toSol = (lamports: any) => {
+                const n = Number(lamports ?? 0);
+                return (n / 1_000_000_000).toFixed(0);
+            };
+
+            const formatNum = (n: any) => {
+                const x = Number(n ?? 0);
+                return x.toLocaleString();
+            };
+
+            let table = `## ${topN}️⃣  Top ${topN} Validators by Activated Stake\n\n`;
+            table += `| # | Vote-account (node) | Activated Stake (SOL) | Commission % | Last Vote Slot | Latest Epoch Credits |\n`;
+            table += `|---|---------------------|----------------------:|-------------:|---------------:|---------------------:|\n`;
+
+            sorted.forEach((v: any, idx: number) => {
+                const vote = String(v.votePubkey ?? '');
+                const node = String(v.nodePubkey ?? '');
+                const sol = formatNum(toSol(v.activatedStake));
+                const comm = Number(v.commission ?? 0);
+                const lastVote = formatNum(v.lastVote ?? 0);
+
+                // epochCredits is array of [epoch, credits, prev_credits?]; take last tuple's credits
+                let latestCredits = '-';
+                if (Array.isArray(v.epochCredits) && v.epochCredits.length > 0) {
+                    const lastTuple = v.epochCredits[v.epochCredits.length - 1];
+                    if (Array.isArray(lastTuple) && lastTuple.length >= 2) {
+                        latestCredits = formatNum(lastTuple[1]);
+                    }
+                }
+
+                table += `| ${idx + 1} | **${vote}** (node ${node || '—'}) | **${sol}** | ${comm} | ${lastVote} | ${latestCredits} |\n`;
+            });
+
+            // Summary line using actual data only
+            const totalActiveStake = (voteRes.current as any[]).reduce(
+                (sum: number, v: any) => sum + Number(v.activatedStake ?? 0), 0
+            );
+            const topStake = sorted.reduce(
+                (sum: number, v: any) => sum + Number(v.activatedStake ?? 0), 0
+            );
+            const pct = totalActiveStake > 0 ? ((topStake / totalActiveStake) * 100).toFixed(2) : '0.00';
+            table += `\n- Total active validators: ${voteRes.current.length}\n`;
+            table += `- Top ${topN} control ${pct}% of total stake\n`;
+            table += `- Total network stake: ${(totalActiveStake / 1_000_000_000).toFixed(0).toLocaleString()} SOL\n`;
+
+            // Append AI analysis while keeping the table deterministic and unchanged
+            let analysis = '';
+            if (process.env.TOGETHER_API_KEY) {
+                try {
+                    const together = new Together({
+                        apiKey: process.env.TOGETHER_API_KEY,
+                    });
+
+                    // Provide the exact table to the LLM and strictly forbid modifying it.
+                    // The LLM should only add commentary/insights below it, and never restate full addresses.
+                    const analysisPrompt = `You are a Solana validator analyst.
+You are given an exact, authoritative validator table produced from on-chain RPC data.
+DO NOT modify or reprint the table itself, DO NOT rewrite or "prettify" the addresses, and DO NOT invent any data.
+Only produce analysis and insights BELOW the table. Refer to validators by rank (e.g., #1, #2) or by a short 4–6 char prefix (e.g., 3N7s…D5g).
+Never include full addresses in your analysis.
+
+Table:
+${table}
+
+Facts you may rely on:
+- topN = ${topN}
+- totalActiveStakeLamports = ${totalActiveStake}
+- topNStakeLamports = ${topStake}
+- topNStakePercent = ${pct}%
+
+Tasks:
+1) Stake concentration analysis (what does ${pct}% in top ${topN} mean?)
+2) Commission distribution commentary (e.g., presence of 0% vs high commissions in top ${topN})
+3) Performance signals using "Latest Epoch Credits" and "Last Vote Slot" (reliability hints; no made-up claims)
+4) Risk/health observations (e.g., centralization risks)
+5) Actionable ideas (delegation balancing, monitoring alerts)
+Rules:
+- Do not restate the full table or reprint full addresses.
+- Do not fabricate fields; use only table numbers.
+- Keep it concise and structured with bullet points or short sections.
+Output format:
+"### Validator Analysis" followed by sections and bullets.`;
+
+                    const llm = await together.chat.completions.create({
+                        model: "openai/gpt-oss-120b",
+                        messages: [{ role: "system", content: analysisPrompt }],
+                        stream: false,
+                        max_tokens: 1200,
+                        temperature: 0.2
+                    });
+
+                    const llmText = llm.choices[0]?.message?.content?.trim() || '';
+                    if (llmText) {
+                        analysis = `\n\n${llmText}`;
+                    }
+                } catch (e) {
+                    console.warn('Validator AI analysis failed, falling back to local summary:', (e as Error).message);
+                }
+            }
+
+            // If no AI analysis available, add a concise programmatic summary
+            if (!analysis) {
+                const avgComm = sorted.length
+                    ? (sorted.reduce((s: number, v: any) => s + Number(v.commission ?? 0), 0) / sorted.length).toFixed(2)
+                    : '0.00';
+                const zeroComm = sorted.filter((v: any) => Number(v.commission ?? 0) === 0).length;
+                const highComm = sorted.filter((v: any) => Number(v.commission ?? 0) >= 10).length;
+
+                analysis = `
+
+### Validator Analysis (Programmatic)
+- Concentration: Top ${topN} hold ${pct}% of stake
+- Commission: avg ${avgComm}% • ${zeroComm} with 0% • ${highComm} with ≥10%
+- Reliability hints: Inspect "Latest Epoch Credits" and "Last Vote Slot" for consistency trends
+- Risk: Concentration among a few operators and high-commission leaders can affect decentralization and yield
+- Actions:
+  - Diversify delegation away from high-commission or low-credit validators
+  - Monitor credit accrual and voting liveness; alert on sudden drops
+  - Rebalance towards reliable, lower-commission validators to improve net yield`;
+            }
+
+            return (tokenHeader ? tokenHeader + '\n\n' : '') + table + analysis;
+        }
+    } catch (e) {
+        console.warn('Validator deterministic formatter failed, falling back to normal synthesis:', (e as Error).message);
+    }
+
     if (!process.env.TOGETHER_API_KEY) {
         return generateSimpleFallback(results, question);
     }
@@ -418,7 +786,7 @@ Answer:`;
         const decompressedResponse = decompressLLMResponse(response, aliasMap);
 
         console.log('✨ AI synthesis complete with decompression');
-        return decompressedResponse;
+        return (tokenHeader ? tokenHeader + '\n\n' : '') + decompressedResponse;
 
     } catch (error) {
         console.error('🔥 LLM synthesis error:', error);
@@ -429,10 +797,19 @@ Answer:`;
 function generateSimpleFallback(results: Record<string, any>, question: string): string {
     let response = `**Answer for: ${question}**\n\n`;
 
+    // Collect token metrics for possible comparison
+    const tokenSummaries: { name: string; symbol: string; price: number; marketCap: number }[] = [];
+
     for (const [method, result] of Object.entries(results)) {
         if (result && !result.error) {
-            if (method === 'tokenMarketData' && result.success) {
+            if (method.startsWith('tokenMarketData') && result.success) {
                 const data = result.data;
+                tokenSummaries.push({
+                    name: data.name,
+                    symbol: data.symbol,
+                    price: Number(data.current_price.usd) || 0,
+                    marketCap: Number(data.market_cap.usd) || 0
+                });
                 response += `**${data.name} (${data.symbol}) Market Data:**\n`;
                 response += `- Current Price: $${data.current_price.usd}\n`;
                 response += `- Market Cap: $${data.market_cap.usd.toLocaleString()}\n`;
@@ -489,6 +866,20 @@ function generateSimpleFallback(results: Record<string, any>, question: string):
             }
         } else {
             response += `**${method}**: ${result?.error || 'Failed'}\n\n`;
+        }
+    }
+
+    // If the user asked to compare tokens and we have at least two token summaries, add a concise comparison block
+    const qLower = question.toLowerCase();
+    if (tokenSummaries.length >= 2 && (qLower.includes('compare') || qLower.includes(' vs ') || qLower.includes('versus'))) {
+        // Take first two tokens for simple comparison
+        const [a, b] = tokenSummaries;
+        if (a && b && a.price > 0 && b.price > 0) {
+            const ratio = a.price / b.price;
+            response += `**Quick Comparison (${a.symbol} vs ${b.symbol}):**\n`;
+            response += `- ${a.symbol} Price: $${a.price}\n`;
+            response += `- ${b.symbol} Price: $${b.price}\n`;
+            response += `- Ratio (${a.symbol}/${b.symbol}): ${ratio.toFixed(4)}\n\n`;
         }
     }
 
