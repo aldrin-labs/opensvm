@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isValidTransactionSignature, isValidSolanaAddress } from '@/lib/utils';
 import { SearchInput } from './SearchInput';
@@ -9,12 +9,36 @@ import { SearchSettings } from './SearchSettings';
 import { SearchSuggestions } from './SearchSuggestions';
 import { SearchSettings as SearchSettingsType, SearchSuggestion } from './types';
 
-export default function EnhancedSearchBar() {
+interface EnhancedSearchBarProps {
+  onFocusChange?: (isFocused: boolean) => void;
+}
+
+// Move tips outside component to prevent recreation on every render
+const SEARCH_TIPS = [
+  "💡 Did you know? Solana can process over 65,000 transactions per second!",
+  "🚀 Fun fact: Solana uses Proof of History for faster consensus.",
+  "💰 Tip: You can search by transaction signature, wallet address, or token name.",
+  "🔍 Pro tip: Use specific addresses for more accurate results.",
+  "⚡ Lightning fast: Solana's block time is just 400 milliseconds!",
+  "🌟 Cool fact: Solana uses a unique clock for network synchronization.",
+  "🎯 Search hint: Try searching for popular tokens like 'SOL' or 'USDC'.",
+  "🔗 Blockchain magic: Each transaction is cryptographically linked to the previous one.",
+  "💎 Fun fact: Solana's native token SOL is used for transaction fees and staking.",
+  "🎨 Creative: Many NFT projects are built on Solana's fast network!"
+];
+
+export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarProps = {}) {
   const [query, setQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [isAISearching, setIsAISearching] = useState(false);
+  const [aiAnswer, setAiAnswer] = useState<string>('');
+  const [currentTip, setCurrentTip] = useState('');
+  const [detectedType, setDetectedType] = useState<string | null>(null);
+
   const [searchSettings, setSearchSettings] = useState<SearchSettingsType>({
     networks: ['solana'], // Default to Solana network
     dataTypes: ['transactions', 'blocks', 'programs', 'tokens'], // Default to all data types
@@ -26,17 +50,19 @@ export default function EnhancedSearchBar() {
   const settingsRef = useRef<HTMLDivElement>(null);
   const formRef = useRef<HTMLFormElement>(null);
 
+  // Memoize the outside click handler to prevent recreation
+  const handleClickOutside = useCallback((event: MouseEvent) => {
+    if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+      setShowSuggestions(false);
+    }
+    if (settingsRef.current && !settingsRef.current.contains(event.target as Node) &&
+      !(event.target as HTMLElement).closest('.settings-toggle')) {
+      setShowSettings(false);
+    }
+  }, []);
+
   useEffect(() => {
     // Close suggestions and settings on outside click
-    function handleClickOutside(event: MouseEvent) {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
-      }
-      if (settingsRef.current && !settingsRef.current.contains(event.target as Node) &&
-        !(event.target as HTMLElement).closest('.settings-toggle')) {
-        setShowSettings(false);
-      }
-    }
     if (typeof document !== 'undefined') {
       document.addEventListener('mousedown', handleClickOutside);
     }
@@ -45,115 +71,143 @@ export default function EnhancedSearchBar() {
         document.removeEventListener('mousedown', handleClickOutside);
       }
     };
-  }, []);
+  }, [handleClickOutside]);
 
-  useEffect(() => {
-    const fetchSuggestions = async () => {
-      if (searchSettings.networks.length === 0) {
-        setSuggestions([]);
-        return;
-      }
-
-      try {
-        let response;
-
-        if (query.length === 0) {
-          // Fetch empty state suggestions (recent prompts, latest items, popular searches)
-          console.log('Fetching empty state suggestions...');
-          response = await fetch(`/api/search/suggestions/empty-state?networks=${searchSettings.networks.join(',')}`);
-        } else if (query.length < 3) {
-          // For very short queries, just clear suggestions
-          setSuggestions([]);
-          return;
-        } else {
-          // Fetch suggestions based on the query and selected networks
-          response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&networks=${searchSettings.networks.join(',')}`);
-        }
-
-        if (!response.ok) {
-          throw new Error(`Failed to fetch suggestions: ${response.status} ${response.statusText}`);
-        }
-
-        const data = await response.json();
-        console.log('Suggestions fetched:', data);
-        setSuggestions(data);
-      } catch (error) {
-        console.error('Error fetching suggestions:', error);
-        setSuggestions([]);
-      }
-    };
-
-    const debounceTimeout = setTimeout(fetchSuggestions, query.length === 0 ? 0 : 300);
-    return () => clearTimeout(debounceTimeout);
-  }, [query, searchSettings.networks]);
-
-  const handleSubmitValue = async (value: string) => {
-    const trimmedQuery = value.trim();
-    if (!trimmedQuery || isLoading) {
+  // Memoize the fetch function to prevent recreation
+  const fetchSuggestions = useCallback(async () => {
+    if (searchSettings.networks.length === 0) {
+      setSuggestions([]);
       return;
     }
 
     try {
-      setIsLoading(true);
-      console.log("Processing search value:", trimmedQuery);
+      let response;
 
-      // Check if query is a block number
-      if (/^\d+$/.test(trimmedQuery)) {
-        console.log("Detected block number, navigating to block page");
-        router.push(`/block/${trimmedQuery}`);
+      if (query.length === 0) {
+        // Fetch empty state suggestions (recent prompts, latest items, popular searches)
+        console.log('Fetching empty state suggestions...');
+        response = await fetch(`/api/search/suggestions/empty-state?networks=${searchSettings.networks.join(',')}`);
+      } else if (query.length < 3) {
+        // For very short queries, just clear suggestions
+        setSuggestions([]);
         return;
-      }
-
-      // Check if query is a transaction signature
-      if (isValidTransactionSignature(trimmedQuery)) {
-        console.log("Detected transaction signature, navigating to tx page");
-        router.push(`/tx/${trimmedQuery}`);
-        return;
-      }
-
-      // Check if query is a valid Solana address
-      if (isValidSolanaAddress(trimmedQuery)) {
-        console.log("Detected Solana address, checking account type");
-        const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
-        const data = await response.json();
-        console.log("Account type response:", data);
-
-        switch (data.type) {
-          case 'token':
-            console.log("Navigating to token page");
-            router.push(`/token/${trimmedQuery}`);
-            break;
-          case 'program':
-            console.log("Navigating to program page");
-            router.push(`/program/${trimmedQuery}`);
-            break;
-          case 'account':
-            console.log("Navigating to account page");
-            router.push(`/account/${trimmedQuery}`);
-            break;
-          default:
-            console.log("Unknown account type, using search page");
-            buildAndNavigateToSearchUrl(trimmedQuery);
-        }
       } else {
-        console.log("Using general search page");
-        buildAndNavigateToSearchUrl(trimmedQuery);
+        // Fetch suggestions based on the query and selected networks
+        response = await fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}&networks=${searchSettings.networks.join(',')}`);
       }
+
+      if (!response.ok) {
+        throw new Error(`Failed to fetch suggestions: ${response.status} ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log('Suggestions fetched:', data);
+      setSuggestions(data);
     } catch (error) {
-      console.error('Error processing search:', error);
-      buildAndNavigateToSearchUrl(trimmedQuery);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching suggestions:', error);
+      setSuggestions([]);
     }
-  };
+  }, [query, searchSettings.networks]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    await handleSubmitValue(query);
-  };
+  useEffect(() => {
+    const debounceTimeout = setTimeout(fetchSuggestions, query.length === 0 ? 0 : 300);
+    return () => clearTimeout(debounceTimeout);
+  }, [fetchSuggestions]);
 
-  const buildAndNavigateToSearchUrl = (query: string) => {
-    let searchUrl = `/search?q=${encodeURIComponent(query)}`;
+  // Real-time input type detection
+  useEffect(() => {
+    const trimmedQuery = query.trim();
+    
+    if (!trimmedQuery) {
+      setDetectedType(null);
+      return;
+    }
+
+    // Check if query is a block number
+    if (/^\d+$/.test(trimmedQuery)) {
+      setDetectedType('block');
+      return;
+    }
+
+    // Check if query is a transaction signature
+    if (isValidTransactionSignature(trimmedQuery)) {
+      setDetectedType('transaction');
+      return;
+    }
+
+    // Check if query is a valid Solana address
+    if (isValidSolanaAddress(trimmedQuery)) {
+      setDetectedType('address');
+      return;
+    }
+
+    // If it's a reasonably long string but not recognized, it might be a token name
+    if (trimmedQuery.length >= 2) {
+      setDetectedType('search');
+    } else {
+      setDetectedType(null);
+    }
+  }, [query]);
+
+  // AI search when no regular suggestions found - memoized to prevent infinite loops
+  const performAISearch = useCallback(async () => {
+    setIsAISearching(true);
+    setAiAnswer('');
+    
+    // Set initial tip
+    const randomTip = SEARCH_TIPS[Math.floor(Math.random() * SEARCH_TIPS.length)];
+    setCurrentTip(randomTip);
+    
+    // Rotate tips every 2 seconds
+    const tipRotationInterval = setInterval(() => {
+      const randomTip = SEARCH_TIPS[Math.floor(Math.random() * SEARCH_TIPS.length)];
+      setCurrentTip(randomTip);
+    }, 2000);
+
+    try {
+      console.log('No suggestions found, calling AI API...');
+      const response = await fetch('/api/getAnswer', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: query }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`AI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      setAiAnswer(data.answer || 'Sorry, I couldn\'t find information about that.');
+    } catch (error) {
+      console.error('Error calling AI API:', error);
+      setAiAnswer('Sorry, I encountered an error while searching. Please try again.');
+    } finally {
+      setIsAISearching(false);
+      clearInterval(tipRotationInterval);
+    }
+  }, [query]);
+
+  useEffect(() => {
+    let aiSearchTimeout: NodeJS.Timeout;
+
+    if (query.length >= 3 && suggestions.length === 0 && !isLoading && !isAISearching && detectedType === 'search') {
+      // Start AI search after a short delay to avoid triggering too quickly
+      aiSearchTimeout = setTimeout(performAISearch, 800);
+    } else {
+      // Clear AI answer if query changes or suggestions are found
+      setAiAnswer('');
+      setIsAISearching(false);
+    }
+
+    return () => {
+      clearTimeout(aiSearchTimeout);
+    };
+  }, [query, suggestions, isLoading, isAISearching, detectedType, performAISearch]);
+
+  const buildAndNavigateToSearchUrl = useCallback((queryParam: string) => {
+    let searchUrl = `/search?q=${encodeURIComponent(queryParam)}`;
 
     // Add networks - ensure we have at least one network
     if (searchSettings.networks.length > 0) {
@@ -191,9 +245,54 @@ export default function EnhancedSearchBar() {
 
     console.log("Navigating to search URL:", searchUrl);
     router.push(searchUrl);
-  };
+  }, [router, searchSettings]);
 
-  const toggleNetwork = (networkId: string) => {
+  const handleSubmitValue = useCallback(async (value: string) => {
+    const trimmedQuery = value.trim();
+    if (!trimmedQuery || isSubmitting) {
+      return;
+    }
+
+    console.log("Processing search value:", trimmedQuery, "Detected type:", detectedType);
+
+    // Set loading state
+    setIsSubmitting(true);
+
+    try {
+      // Use router.push instead of router.replace for better navigation
+      switch (detectedType) {
+        case 'block':
+          console.log("Navigating to block page");
+          router.push(`/block/${trimmedQuery}`);
+          break;
+
+        case 'transaction':
+          console.log("Navigating to transaction page");
+          router.push(`/tx/${trimmedQuery}`);
+          break;
+
+        case 'address':
+          console.log("Detected Solana address - navigating to account page");
+          router.push(`/account/${trimmedQuery}`);
+          break;
+
+        default:
+          console.log("Using general search page");
+          buildAndNavigateToSearchUrl(trimmedQuery);
+          break;
+      }
+    } catch (error) {
+      console.error("Navigation error:", error);
+      setIsSubmitting(false);
+    }
+  }, [detectedType, router, buildAndNavigateToSearchUrl, isSubmitting]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    handleSubmitValue(query);
+  }, [query, handleSubmitValue]);
+
+  const toggleNetwork = useCallback((networkId: string) => {
     setSearchSettings(prev => {
       const networks = [...prev.networks];
       const index = networks.indexOf(networkId);
@@ -214,9 +313,9 @@ export default function EnhancedSearchBar() {
         networks
       };
     });
-  };
+  }, []);
 
-  const toggleDataType = (dataType: 'transactions' | 'blocks' | 'programs' | 'tokens') => {
+  const toggleDataType = useCallback((dataType: 'transactions' | 'blocks' | 'programs' | 'tokens') => {
     setSearchSettings(prev => {
       const dataTypes = [...prev.dataTypes];
       const index = dataTypes.indexOf(dataType);
@@ -237,12 +336,12 @@ export default function EnhancedSearchBar() {
         dataTypes
       };
     });
-  };
+  }, []);
 
-  const clearSearch = () => {
+  const clearSearch = useCallback(() => {
     setQuery('');
     setShowSuggestions(false);
-  };
+  }, []);
 
   return (
     <div className="w-full max-w-3xl mx-auto">
@@ -255,9 +354,13 @@ export default function EnhancedSearchBar() {
             setShowSettings={setShowSettings}
             setShowSuggestions={setShowSuggestions}
             clearSearch={clearSearch}
-            isSearching={isLoading}
+            isSearching={isSubmitting}
+            detectedType={detectedType}
+            onFocusChange={(focused) => {
+              onFocusChange?.(focused);
+            }}
           />
-          <SearchButton isLoading={isLoading} />
+          <SearchButton isLoading={isSubmitting} />
         </div>
 
         {/* Search Settings Panel */}
@@ -280,7 +383,11 @@ export default function EnhancedSearchBar() {
           setShowSuggestions={setShowSuggestions}
           handleSubmit={handleSubmit}
           onSubmitValue={handleSubmitValue}
-          isLoading={query.length >= 3 && suggestions.length === 0}
+          isLoading={query.length >= 3 && suggestions.length === 0 && !isAISearching && !aiAnswer}
+          isAISearching={isAISearching}
+          aiAnswer={aiAnswer}
+          currentTip={currentTip}
+          query={query}
         />
       </form>
     </div>

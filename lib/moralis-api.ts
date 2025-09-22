@@ -512,16 +512,32 @@ export async function getComprehensiveBlockchainData(query: string, network: Sol
 }
 
 /**
- * Get top tokens by market cap
+ * Get top tokens by market cap using filtered tokens endpoint
  * @param limit Number of tokens to return (default: 100)
- * @param network The Solana network (mainnet or devnet)
  * @returns Top tokens by market cap
  */
-export async function getTopTokens(limit: number = 100, network: SolanaNetwork = DEFAULT_NETWORK) {
-  return makeApiRequest(`/market-data/{network}/top-tokens`, { limit }, network);
-}
+export async function getTopTokens(limit: number = 100) {
+  // Use the discovery/tokens endpoint with filtering for top tokens
+  const baseUrl = 'https://deep-index.moralis.io/api/v2.2';
+  try {
+    const response = await fetch(`${baseUrl}/discovery/tokens?chain=solana&limit=${limit}&sort_by=market_cap&order=desc`, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': process.env.MORALIS_API_KEY || '',
+        'accept': 'application/json'
+      }
+    });
 
-/**
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching top tokens:', error);
+    throw error;
+  }
+}/**
  * Get top token gainers (24h price change)
  * @param limit Number of tokens to return (default: 50)
  * @param network The Solana network (mainnet or devnet)
@@ -546,18 +562,33 @@ export async function getNewListings(limit: number = 50, daysBack: number = 7, n
  * Get trending tokens based on trading volume and social activity
  * @param limit Number of tokens to return (default: 50)
  * @param timeframe Timeframe for trending data ('1h', '24h', '7d')
- * @param network The Solana network (mainnet or devnet)
  * @returns Trending tokens
  */
 export async function getTrendingTokens(
   limit: number = 50,
-  timeframe: '1h' | '24h' | '7d' = '24h',
-  network: SolanaNetwork = DEFAULT_NETWORK
+  timeframe: '1h' | '24h' | '7d' = '24h'
 ) {
-  return makeApiRequest(`/market-data/{network}/trending`, { limit, timeframe }, network);
-}
+  // Use the trending tokens endpoint
+  const baseUrl = 'https://deep-index.moralis.io/api/v2.2';
+  try {
+    const response = await fetch(`${baseUrl}/tokens/trending?chain=solana&limit=${limit}&timeframe=${timeframe}`, {
+      method: 'GET',
+      headers: {
+        'X-API-Key': process.env.MORALIS_API_KEY || '',
+        'accept': 'application/json'
+      }
+    });
 
-/**
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching trending tokens:', error);
+    throw error;
+  }
+}/**
  * Get comprehensive token market data with pagination
  * @param params Parameters including pagination and sorting
  * @param network The Solana network (mainnet or devnet)

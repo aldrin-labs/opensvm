@@ -116,7 +116,6 @@ export function Chat({
   onDirectResponse,
   onHistoryReload // Added onHistoryReload
 }: ChatProps) {
-  console.log('🔍 Chat component rendered, variant:', variant, 'isOpen:', isOpen);
   const [showFallback, setShowFallback] = useState(false);
   const [globalPending, setGlobalPending] = useState(false);
   // Early provisional input to satisfy fast E2E visibility checks before full ChatUI mounts
@@ -156,7 +155,7 @@ export function Chat({
     if (typeof document !== 'undefined') {
       const observer = new MutationObserver(() => {
         const real = document.querySelector('[data-ai-chat-input]:not([data-ai-early-input])');
-        if (real && earlyInputVisible) {
+        if (real) {
           setEarlyInputVisible(false);
         }
       });
@@ -168,7 +167,7 @@ export function Chat({
       });
       return () => observer.disconnect();
     }
-  }, [earlyInputVisible]);
+  }, []); // Remove earlyInputVisible dependency to prevent infinite loops
 
   useEffect(() => {
     console.log('Chat component mounted, variant:', variant, 'isOpen:', isOpen);

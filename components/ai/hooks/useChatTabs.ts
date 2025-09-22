@@ -103,30 +103,39 @@ export function useChatTabs(): UseChatTabsReturn {
         if (name && typeof name !== 'string') {
             name = undefined;
         }
-        const tabNumber = tabs.length + 1;
-        const newTab: ChatTab = {
-            id: `chat-${Date.now()}`,
-            name: name || `CHAT ${tabNumber}`,
-            mode,
-            messages: [],
-            input: '',
-            isProcessing: false,
-            notes: [],
-            agentActions: [],
-            lastActivity: Date.now(),
-            pinned: false
-        };
-
-        setTabs(prev => [...prev, newTab]);
-        setActiveTabId(newTab.id);
-        return newTab.id;
-    }, [tabs.length]);
+        let newTabId: string;
+        setTabs(prev => {
+            const tabNumber = prev.length + 1;
+            const newTab: ChatTab = {
+                id: `chat-${Date.now()}`,
+                name: name || `CHAT ${tabNumber}`,
+                mode,
+                messages: [],
+                input: '',
+                isProcessing: false,
+                notes: [],
+                agentActions: [],
+                lastActivity: Date.now(),
+                pinned: false
+            };
+            newTabId = newTab.id;
+            return [...prev, newTab];
+        });
+        setActiveTabId(newTabId!);
+        return newTabId!;
+    }, []); // No dependencies - using functional state updates
 
     // Close a tab
     const closeTab = useCallback(async (tabId: string) => {
-        // Find the tab to be closed and save it to persistence if it has meaningful content
-        const tabToClose = tabs.find(tab => tab.id === tabId);
+        let tabToClose: ChatTab | undefined;
         let saveSuccessful = false;
+
+        // Get tab data for persistence
+        setTabs(prev => {
+            tabToClose = prev.find((tab: ChatTab) => tab.id === tabId);
+            return prev; // Don't modify yet
+        });
+
         if (tabToClose && tabToClose.messages.length > 1) { // Only save if there are messages beyond initial greeting
             try {
                 await chatPersistenceService.saveChatFromTab(tabToClose);
@@ -137,27 +146,30 @@ export function useChatTabs(): UseChatTabsReturn {
             }
         }
 
+        // Update state using functional updates
         setTabs(prev => {
             // Prevent closing the last remaining tab
             if (prev.length === 1) return prev;
-            const filtered = prev.filter(tab => tab.id !== tabId);
 
-            // If we closed the active tab, switch to another one
-            if (tabId === activeTabId) {
-                if (filtered.length > 0) {
-                    const closedIndex = prev.findIndex(tab => tab.id === tabId);
-                    // Prefer nearest pinned tab if available
-                    const pinned = filtered.filter(t => t.pinned);
-                    if (pinned.length > 0) {
-                        setActiveTabId(pinned[0].id);
-                    } else {
-                        const newActiveIndex = Math.max(0, closedIndex - 1);
-                        setActiveTabId(filtered[newActiveIndex]?.id || null);
-                    }
+            const filtered = prev.filter((tab: ChatTab) => tab.id !== tabId);
+
+            // If we're closing the active tab, switch to another
+            setActiveTabId((currentActiveId: string | null) => {
+                if (tabId !== currentActiveId) return currentActiveId;
+
+                if (filtered.length === 0) return null;
+
+                const closedIndex = prev.findIndex((tab: ChatTab) => tab.id === tabId);
+                // Prefer nearest pinned tab if available
+                const pinned = filtered.filter((t: ChatTab) => t.pinned);
+                if (pinned.length > 0) {
+                    return pinned[0].id;
                 } else {
-                    setActiveTabId(null);
+                    const newActiveIndex = Math.max(0, closedIndex - 1);
+                    return filtered[newActiveIndex]?.id || null;
                 }
-            }
+            });
+
             return filtered;
         });
 
@@ -167,9 +179,7 @@ export function useChatTabs(): UseChatTabsReturn {
                 (window as any).SVMAI_HISTORY_RELOAD();
             }
         }
-    }, [activeTabId, tabs]);
-
-    // Switch to a tab
+    }, []); // No dependencies    // Switch to a tab
     const switchToTab = useCallback((tabId: string) => {
         setActiveTabId(tabId);
         // Update last activity
@@ -191,10 +201,18 @@ export function useChatTabs(): UseChatTabsReturn {
 
     // Update the mode of the active tab
     const updateActiveTabMode = useCallback((mode: ChatMode) => {
-        if (activeTabId) {
-            updateTab(activeTabId, { mode });
-        }
-    }, [activeTabId, updateTab]);
+        setActiveTabId(currentActiveTabId => {
+            if (currentActiveTabId) {
+                // Update the tab directly without depending on updateTab
+                setTabs(prev => prev.map(tab =>
+                    tab.id === currentActiveTabId
+                        ? { ...tab, mode, lastActivity: Date.now() }
+                        : tab
+                ));
+            }
+            return currentActiveTabId; // No change to activeTabId
+        });
+    }, []); // No dependencies - using functional state updates
 
     // Rename a tab
     const renameTab = useCallback((tabId: string, name: string) => {
@@ -203,50 +221,65 @@ export function useChatTabs(): UseChatTabsReturn {
 
     // Duplicate a tab
     const duplicateTab = useCallback((tabId: string): string => {
-        const originalTab = tabs.find(tab => tab.id === tabId);
-        if (!originalTab) return '';
+        let newTabId = '';
+        setTabs(prev => {
+            const originalTab = prev.find(tab => tab.id === tabId);
+            if (!originalTab) return prev;
 
-        const newTab: ChatTab = {
-            ...originalTab,
-            id: `chat-${Date.now()}`,
-            name: `${originalTab.name} Copy`,
-            lastActivity: Date.now(),
-            pinned: false
-        };
-
-        setTabs(prev => [...prev, newTab]);
-        setActiveTabId(newTab.id);
-        return newTab.id;
-    }, [tabs]);
+            const newTab: ChatTab = {
+                ...originalTab,
+                id: `chat-${Date.now()}`,
+                name: `${originalTab.name} Copy`,
+                lastActivity: Date.now(),
+                pinned: false
+            };
+            newTabId = newTab.id;
+            return [...prev, newTab];
+        });
+        if (newTabId) {
+            setActiveTabId(newTabId);
+        }
+        return newTabId;
+    }, []); // No dependencies - using functional state updates
 
     // Toggle pin state
     const togglePin = useCallback((tabId: string) => {
-        updateTab(tabId, { pinned: !tabs.find(t => t.id === tabId)?.pinned });
-    }, [tabs, updateTab]);
+        setTabs(prev => prev.map(tab =>
+            tab.id === tabId
+                ? { ...tab, pinned: !tab.pinned, lastActivity: Date.now() }
+                : tab
+        ));
+    }, []); // No dependencies - using functional state updates
 
     // Fork tab at message index (create new tab with messages up to index)
     const forkTabAtMessage = useCallback((tabId: string, messageIndex: number, nameHint?: string) => {
-        const source = tabs.find(t => t.id === tabId);
-        if (!source) return null;
-        const slice = source.messages.slice(0, messageIndex + 1);
-        if (slice.length === 0) return null;
+        let newTabId: string | null = null;
+        setTabs(prev => {
+            const source = prev.find(t => t.id === tabId);
+            if (!source) return prev;
+            const slice = source.messages.slice(0, messageIndex + 1);
+            if (slice.length === 0) return prev;
 
-        const newTab: ChatTab = {
-            id: `chat-${Date.now()}`,
-            name: nameHint ? nameHint : `${source.name.split(' ')[0]} Fork`,
-            mode: source.mode,
-            messages: slice,
-            input: '',
-            isProcessing: false,
-            notes: [...source.notes],
-            agentActions: [],
-            lastActivity: Date.now(),
-            pinned: false
-        };
-        setTabs(prev => [...prev, newTab]);
-        setActiveTabId(newTab.id);
-        return newTab.id;
-    }, [tabs]);
+            const newTab: ChatTab = {
+                id: `chat-${Date.now()}`,
+                name: nameHint ? nameHint : `${source.name.split(' ')[0]} Fork`,
+                mode: source.mode,
+                messages: slice,
+                input: '',
+                isProcessing: false,
+                notes: [...source.notes],
+                agentActions: [],
+                lastActivity: Date.now(),
+                pinned: false
+            };
+            newTabId = newTab.id;
+            return [...prev, newTab];
+        });
+        if (newTabId) {
+            setActiveTabId(newTabId);
+        }
+        return newTabId;
+    }, []); // No dependencies - using functional state updates
 
     // Persist tabs + activeTabId (ensure pinned ordering persisted as-is)
     useEffect(() => {

@@ -122,10 +122,10 @@ export const dynamicPlanExecutionTool: Tool = {
 
             // Execute plan with drama
             const results = await executePlanWithNarrative(plan, conn);
-            
+
             // Synthesize with unlimited potential
             const finalAnswer = await synthesizeEpicResults(context, plan, results);
-            
+
             console.log('📚 Final answer length:', finalAnswer.length);
 
             return {
@@ -153,9 +153,9 @@ function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
     const plan: StoryDrivenPlanStep[] = [];
 
     // Detect query intensity
-    const wantsEverything = qLower.includes("everything") || qLower.includes("full") || 
-                           qLower.includes("complete") || qLower.includes("all") ||
-                           qLower.includes("detailed") || qLower.includes("comprehensive");
+    const wantsEverything = qLower.includes("everything") || qLower.includes("full") ||
+        qLower.includes("complete") || qLower.includes("all") ||
+        qLower.includes("detailed") || qLower.includes("comprehensive");
 
     // Explicit cluster nodes queries
     if (qLower.includes('getcluster') || (qLower.includes('cluster') && qLower.includes('nodes'))) {
@@ -324,7 +324,7 @@ function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
             // Prioritize a compact, token-focused plan to avoid timeouts for deep AI synthesis.
             if (qLower.includes("token") || qLower.includes("supply") || qLower.includes("mint") ||
                 qLower.includes("svmai") || qLower.includes("memecoin") || qLower.includes("analyze")) {
-                
+
                 // Build a minimal, high-value plan for token analysis and short-circuit.
                 plan.push({
                     tool: 'getAccountInfo',
@@ -334,7 +334,7 @@ function generateStoryDrivenPlan(question: string): StoryDrivenPlanStep[] {
                     discovery: 'Account owner, executable flag, and raw data',
                     input: address
                 });
-                
+
                 plan.push({
                     tool: 'getBalance',
                     reason: 'Get SOL balance for contextual info (rent-exempt status, funding)',
@@ -747,16 +747,16 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                     const { PublicKey } = await import('@solana/web3.js');
                     const ownerPubkey = new PublicKey(step.input);
                     const tokenProgramId = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-                    
+
                     // Use timeout and try with minimal encoding to avoid size errors
                     const tokenPromise = conn.getTokenAccountsByOwner(ownerPubkey, {
                         programId: tokenProgramId
                     }, 'confirmed');
-                    
+
                     const timeoutPromise = new Promise((_, reject) => {
                         setTimeout(() => reject(new Error('Token query timeout')), 8000);
                     });
-                    
+
                     result = await Promise.race([tokenPromise, timeoutPromise]);
                     const tokenCount = result?.value?.length || 0;
                     console.log(`   💎 Discovered ${tokenCount} token accounts!`);
@@ -771,8 +771,8 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                             const unparsedResult = await conn.getTokenAccountsByOwner(ownerPubkey, {
                                 programId: tokenProgramId
                             });
-                            result = { 
-                                value: unparsedResult?.value || [], 
+                            result = {
+                                value: unparsedResult?.value || [],
                                 note: 'Unparsed due to size limits',
                                 count: unparsedResult?.value?.length || 0
                             };
@@ -792,7 +792,7 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                     const { PublicKey } = await import('@solana/web3.js');
                     const pubkey = new PublicKey(step.input);
                     const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
-                    
+
                     if (signatures && signatures.length > 0) {
                         // Get more detailed transactions for epic analysis
                         const detailedTxs = await Promise.all(
@@ -822,10 +822,10 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                 }
             }
             // Handle advanced analytics methods
-            else if (step.tool.startsWith('getMoralis') || step.tool.startsWith('get') && 
-                     ['MultiTimeframeAnalytics', 'BehavioralPatterns', 'PortfolioRiskAnalytics', 
-                      'PredictiveAnalytics', 'DefiProtocolAnalytics', 'AiPoweredInsights',
-                      'AdvancedVisualizationData', 'ParsedTokenAccountsByOwner', 'RecentTransactionsDetails'].some(suffix => step.tool.includes(suffix))) {
+            else if (step.tool.startsWith('getMoralis') || step.tool.startsWith('get') &&
+                ['MultiTimeframeAnalytics', 'BehavioralPatterns', 'PortfolioRiskAnalytics',
+                    'PredictiveAnalytics', 'DefiProtocolAnalytics', 'AiPoweredInsights',
+                    'AdvancedVisualizationData', 'ParsedTokenAccountsByOwner', 'RecentTransactionsDetails'].some(suffix => step.tool.includes(suffix))) {
                 result = await handleAdvancedAnalytics(step, conn);
             }
             // Standard RPC calls with timeout protection
@@ -838,7 +838,7 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                     if (step.tool === 'getRecentPerformanceSamples') {
                         return await conn[step.tool](50); // Get more samples
                     } else if (step.input) {
-                        if (step.tool === 'getAccountInfo' || step.tool === 'getBalance' || 
+                        if (step.tool === 'getAccountInfo' || step.tool === 'getBalance' ||
                             step.tool === 'getTokenSupply' || step.tool === 'getTokenLargestAccounts') {
                             const { PublicKey } = await import('@solana/web3.js');
                             try {
@@ -898,45 +898,45 @@ async function handleMoralisCallWithNarrative(step: StoryDrivenPlanStep, input: 
     try {
         // Use dynamic import with correct path and timeout
         const moralisApi = await import('../../../../lib/moralis-api');
-        
+
         console.log(`   🔮 Invoking Moralis ${step.tool}...`);
-        
+
         // Create timeout for all Moralis calls
         const moralisTimeout = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('Moralis API timeout')), 8000);
         });
-        
+
         let apiCall: Promise<any>;
-        
+
         switch (step.tool) {
             case 'getMoralisPortfolio':
                 apiCall = moralisApi.getPortfolio(input, true, 'mainnet');
                 break;
-            
+
             case 'getMoralisTokenBalances':
                 apiCall = moralisApi.getTokenBalances(input, 'mainnet');
                 break;
-            
+
             case 'getMoralisNFTs':
                 apiCall = moralisApi.getNFTsForAddress(input, { nftMetadata: true, limit: 50 }, 'mainnet');
                 break;
-            
+
             case 'getMoralisSwapHistory':
                 apiCall = moralisApi.getSwapsByWalletAddress(input, { limit: 50 }, 'mainnet'); // Reduced limit
                 break;
-            
+
             case 'getMoralisTransactionHistory':
                 apiCall = moralisApi.getTransactionsByAddress(input, { limit: 50 }, 'mainnet'); // Reduced limit
                 break;
-            
+
             default:
                 // Simplified fallback to prevent timeouts
                 apiCall = moralisApi.getPortfolio(input, false, 'mainnet'); // No NFT metadata for speed
                 break;
         }
-        
+
         const result = await Promise.race([apiCall, moralisTimeout]);
-        
+
         switch (step.tool) {
             case 'getMoralisPortfolio':
                 console.log(`   💰 Portfolio retrieved with ${result?.tokens?.length || 0} tokens!`);
@@ -954,13 +954,13 @@ async function handleMoralisCallWithNarrative(step: StoryDrivenPlanStep, input: 
                 console.log(`   📚 Retrieved ${result?.length || 0} transactions!`);
                 break;
         }
-        
+
         return result || { data: 'empty', note: 'No data returned from Moralis' };
-        
+
     } catch (error) {
         console.log(`   ❌ Moralis invocation failed:`, (error as Error).message);
         // Return a structured error instead of just error object
-        return { 
+        return {
             error: `Moralis API error: ${(error as Error).message}`,
             tool: step.tool,
             address: input,
@@ -973,7 +973,7 @@ async function handleMoralisCallWithNarrative(step: StoryDrivenPlanStep, input: 
 async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Promise<any> {
     try {
         const moralisApi = await import('../../../../lib/moralis-api');
-        
+
         switch (step.tool) {
             // Enhanced financial analytics with Moralis
             case 'getMoralisAdvancedAnalytics':
@@ -993,7 +993,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getMoralisPnlAnalysis':
                 if (step.input && typeof step.input === 'string') {
                     const [swaps, currentTokens] = await Promise.all([
@@ -1009,7 +1009,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getMoralisFeesAnalysis':
                 if (step.input && typeof step.input === 'string') {
                     const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
@@ -1021,7 +1021,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getMoralisInflowOutflow':
                 if (step.input && typeof step.input === 'string') {
                     const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
@@ -1033,7 +1033,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getMoralisVolumeAnalysis':
                 if (step.input && typeof step.input === 'string') {
                     const swaps = await moralisApi.getSwapsByWalletAddress(step.input, { limit: 100 }, 'mainnet');
@@ -1045,7 +1045,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             // Advanced Analytics Tools
             case 'getMultiTimeframeAnalytics':
                 const params = typeof step.input === 'object' ? step.input as any : { address: step.input };
@@ -1064,7 +1064,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getBehavioralPatterns':
                 const behaviorParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (behaviorParams.address) {
@@ -1079,7 +1079,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getPortfolioRiskAnalytics':
                 const riskParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (riskParams.address) {
@@ -1100,7 +1100,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getPredictiveAnalytics':
                 const predictParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (predictParams.address) {
@@ -1119,7 +1119,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getDefiProtocolAnalytics':
                 const defiParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (defiParams.address) {
@@ -1138,7 +1138,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getAiPoweredInsights':
                 const aiParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (aiParams.address) {
@@ -1159,7 +1159,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             case 'getAdvancedVisualizationData':
                 const vizParams = typeof step.input === 'object' ? step.input as any : { address: step.input };
                 if (vizParams.address) {
@@ -1178,7 +1178,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     };
                 }
                 break;
-                
+
             // Handle custom account analysis methods
             case 'getParsedTokenAccountsByOwner':
                 if (step.input) {
@@ -1191,7 +1191,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                     return result;
                 }
                 break;
-                
+
             case 'getRecentTransactionsDetails':
                 if (step.input) {
                     const { PublicKey } = await import('@solana/web3.js');
@@ -1217,7 +1217,7 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                 }
                 break;
         }
-        
+
         return { error: 'Unknown analytics method or missing input' };
     } catch (error) {
         console.log(`   ❌ Advanced analytics failed:`, (error as Error).message);
@@ -1264,8 +1264,8 @@ async function analyzeDeFiEcosystem(conn: any): Promise<any> {
 
             const [topGainers, topTokens, trending] = await Promise.allSettled([
                 getTopGainers(10, 'mainnet'),
-                getTopTokens(20, 'mainnet'),
-                getTrendingTokens(10, '24h', 'mainnet')
+                getTopTokens(20),
+                getTrendingTokens(10, '24h')
             ]);
 
             ecosystem.marketTrends = {
@@ -1443,14 +1443,14 @@ async function synthesizeEpicResults(
     results: Record<string, any>
 ): Promise<string> {
     const { question } = context;
-    
+
     // Detect user's request intensity
     const qLower = question.toLowerCase();
-    const wantsEverything = qLower.includes("everything") || qLower.includes("full") || 
-                           qLower.includes("detailed") || qLower.includes("comprehensive") ||
-                           qLower.includes("complete") || qLower.includes("all");
-    const wantsWallOfText = qLower.includes("wall") || qLower.includes("essay") || 
-                           qLower.includes("verbose") || qLower.includes("maximum");
+    const wantsEverything = qLower.includes("everything") || qLower.includes("full") ||
+        qLower.includes("detailed") || qLower.includes("comprehensive") ||
+        qLower.includes("complete") || qLower.includes("all");
+    const wantsWallOfText = qLower.includes("wall") || qLower.includes("essay") ||
+        qLower.includes("verbose") || qLower.includes("maximum");
 
     console.log(`📖 Synthesizing ${wantsEverything ? 'EPIC' : 'standard'} response...`);
 
@@ -1461,7 +1461,7 @@ async function synthesizeEpicResults(
     // Determine response size based on user intent
     let maxTokens = 8192; // Default generous size
     let synthesisMode = "COMPREHENSIVE";
-    
+
     if (wantsEverything || wantsWallOfText) {
         maxTokens = 32768; // MAXIMUM POWER!
         synthesisMode = "EPIC_NARRATIVE";
@@ -1486,9 +1486,9 @@ async function synthesizeEpicResults(
 
     // Create synthesis prompt based on mode
     let synthesisPrompt = "";
-    
+
     if (synthesisMode === "EPIC_NARRATIVE") {
-        synthesisPrompt = `You are an epic blockchain storyteller with unlimited creative freedom. Create a ${maxTokens/4}-word masterpiece analysis.
+        synthesisPrompt = `You are an epic blockchain storyteller with unlimited creative freedom. Create a ${maxTokens / 4}-word masterpiece analysis.
 
 Question: ${question}
 
@@ -1567,11 +1567,11 @@ Provide actionable insights based on the data:`;
             console.warn(`📊 Data context too large (${dataContext.length} chars), truncating for LLM...`);
             finalDataContext = dataContext.substring(0, 40000) + '\n\n[... additional data truncated for LLM processing ...]';
         }
-        
+
         const finalSynthesisPrompt = synthesisPrompt.replace(dataContext, finalDataContext);
-        
+
         console.log(`🤖 Calling LLM with ${finalSynthesisPrompt.length} character prompt...`);
-        
+
         const llmTimeoutPromise = new Promise((_, reject) => {
             setTimeout(() => reject(new Error('LLM synthesis timeout after 60s')), 60000);
         });
@@ -1590,19 +1590,19 @@ Provide actionable insights based on the data:`;
         });
 
         const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
-        
+
         if (!answer || !answer.choices || !answer.choices[0] || !answer.choices[0].message) {
             console.error('🚨 Invalid LLM response structure:', JSON.stringify(answer));
             throw new Error('Invalid LLM response structure');
         }
-        
+
         const response = answer.choices[0].message.content;
-        
+
         if (!response || response.trim().length === 0) {
             console.error('🚨 Empty LLM response received');
             throw new Error('Empty response from LLM');
         }
-        
+
         console.log(`✨ Epic synthesis complete: ${response.length} characters`);
         console.log(`🎯 LLM synthesis SUCCESS - using real AI response`);
         return response;
@@ -1610,7 +1610,7 @@ Provide actionable insights based on the data:`;
     } catch (error) {
         console.error('🔥 LLM synthesis error:', error);
         console.log(`🎭 Falling back to narrative template due to LLM error`);
-        
+
         // Enhanced fallback with narrative
         return generateNarrativeFallback(results, question, requestedCount);
     }
@@ -1622,7 +1622,7 @@ function prepareDataContext(
     epicMode: boolean
 ): string {
     const maxContextSize = epicMode ? 100000 : 20000; // Much larger for epic mode
-    
+
     return Object.entries(results)
         .map(([method, result]) => {
             if (result && !result.error) {
@@ -1630,7 +1630,7 @@ function prepareDataContext(
                 if (method === 'getVoteAccounts' && result && (result.current || result.delinquent)) {
                     const current = result.current || [];
                     const delinquent = result.delinquent || [];
-                    
+
                     // If we have actual validator data, process it
                     if (current.length > 0 && current[0].activatedStake !== undefined) {
                         const allValidators = [...current, ...delinquent];
@@ -1644,8 +1644,8 @@ function prepareDataContext(
                                 return stakeB - stakeA;
                             });
 
-                        const sampleSize = epicMode ? 
-                            Math.min(requestedCount * 2, sortedValidators.length) : 
+                        const sampleSize = epicMode ?
+                            Math.min(requestedCount * 2, sortedValidators.length) :
                             Math.min(requestedCount, sortedValidators.length);
 
                         const topValidators = sortedValidators.slice(0, sampleSize);
@@ -1657,7 +1657,7 @@ function prepareDataContext(
                             const commission = validator.commission || 0;
                             const votePubkey = validator.votePubkey || 'unknown';
                             const nodePubkey = validator.nodePubkey || 'unknown';
-                            
+
                             return `  ${index + 1}. ${solAmount} SOL (${stakeValue} lamports) - vote: ${votePubkey}, node: ${nodePubkey} (${commission}% commission)`;
                         }).join('\n');
 
@@ -1702,28 +1702,28 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                     narrative += `⏰ **Current Slot**: ${result}\n`;
                     narrative += `   The blockchain ticks forward, slot by slot...\n\n`;
                     break;
-                
+
                 case 'getEpochInfo':
-                    const progress = result.slotIndex && result.slotsInEpoch ? 
+                    const progress = result.slotIndex && result.slotsInEpoch ?
                         ((result.slotIndex / result.slotsInEpoch) * 100).toFixed(2) : '0';
                     narrative += `🌅 **Epoch ${result.epoch || 'Unknown'}**:\n`;
                     narrative += `   Slot ${result.slotIndex}/${result.slotsInEpoch} (${progress}% complete)\n`;
                     narrative += `   *We journey through the ${result.epoch}th cycle of consensus...*\n\n`;
                     break;
-                
+
                 case 'getVoteAccounts':
                     const active = result.current?.length || 0;
                     const delinquent = result.delinquent?.length || 0;
                     narrative += `⚔️ **The Validator Legion**:\n`;
                     narrative += `   ${active + delinquent} total warriors of consensus\n`;
                     narrative += `   ${active} standing strong, ${delinquent} fallen behind\n\n`;
-                    
+
                     if (result.current && result.current.length > 0) {
                         const sorted = result.current
                             .filter((v: any) => v && v.activatedStake)
                             .sort((a: any, b: any) => parseInt(b.activatedStake) - parseInt(a.activatedStake))
                             .slice(0, requestedCount);
-                        
+
                         narrative += `   **Top ${Math.min(requestedCount, sorted.length)} Validators by Power:**\n`;
                         sorted.forEach((v: any, i: number) => {
                             const solAmount = (parseInt(v.activatedStake) / 1e9).toFixed(2);
@@ -1732,7 +1732,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         narrative += '\n';
                     }
                     break;
-                
+
                 case 'getRecentPerformanceSamples':
                     if (Array.isArray(result) && result.length > 0) {
                         const valid = result.filter(s => s && typeof s.numTransactions === "number" && s.samplePeriodSecs > 0);
@@ -1746,7 +1746,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         }
                     }
                     break;
-                
+
                 case 'getAccountInfo':
                     if (result && result.value) {
                         const account = result.value;
@@ -1757,7 +1757,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         narrative += `   Executable: ${account.executable ? 'Yes (Program)' : 'No (Wallet)'}\n\n`;
                     }
                     break;
-                
+
                 case 'getBalance':
                     if (typeof result === 'number') {
                         const solBalance = (result / 1e9).toFixed(4);
@@ -1767,7 +1767,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         narrative += `💰 **Pure SOL Balance**: ${solBalance} SOL\n\n`;
                     }
                     break;
-                
+
                 case 'getSignaturesForAddress':
                     if (Array.isArray(result)) {
                         narrative += `📜 **Transaction History**:\n`;
@@ -1778,7 +1778,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         narrative += '\n';
                     }
                     break;
-                
+
                 case 'getTokenAccountsByOwner':
                 case 'getParsedTokenAccountsByOwner':
                     if (result && result.value) {
@@ -1786,7 +1786,7 @@ function generateNarrativeFallback(results: Record<string, any>, question: strin
                         narrative += `   ${result.value.length} different tokens discovered\n\n`;
                     }
                     break;
-                
+
                 default:
                     if (method.startsWith('getMoralis')) {
                         narrative += `🌟 **${method.replace('getMoralis', '')} (via Moralis)**:\n`;

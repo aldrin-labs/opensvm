@@ -2,12 +2,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettings } from '@/lib/settings';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { getClientConnection as getConnection } from '@/lib/solana-connection';
 import { getRPCLatency } from '@/lib/solana';
 import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
@@ -55,6 +55,7 @@ export default function HomePage() {
   const [suggestions, setSuggestions] = useState<SearchSuggestion[]>([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [homeSearchLoading, setHomeSearchLoading] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -127,8 +128,8 @@ export default function HomePage() {
     };
   }, []);
 
-  // Fetch suggestions function
-  const fetchSuggestions = async (query: string) => {
+  // Fetch suggestions function - memoized to prevent infinite re-renders
+  const fetchSuggestions = useCallback(async (query: string) => {
     if (!query.trim() || query.length < 2) {
       setSuggestions([]);
       setShowSuggestions(false);
@@ -153,23 +154,32 @@ export default function HomePage() {
     } finally {
       setSuggestionsLoading(false);
     }
-  };
+  }, []);
 
-  // Debounced version of fetchSuggestions
-  const debouncedFetchSuggestions = debounce(fetchSuggestions, 300);
+  // Debounced version of fetchSuggestions - memoized to prevent infinite re-renders
+  const debouncedFetchSuggestions = useMemo(() => debounce(fetchSuggestions, 300), [fetchSuggestions]);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!searchQuery) return;
-    setShowSuggestions(false);
-    router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    if (!searchQuery || homeSearchLoading) return;
+    
+    setHomeSearchLoading(true);
+    try {
+      setShowSuggestions(false);
+      // Give React time to render the spinner before navigation
+      await new Promise(resolve => setTimeout(resolve, 100));
+      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
+    } finally {
+      // Reset loading state after navigation
+      setTimeout(() => setHomeSearchLoading(false), 500);
+    }
   };
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setSearchQuery(value);
     debouncedFetchSuggestions(value);
-  };
+  }, [debouncedFetchSuggestions]);
 
   const handleInputFocus = () => {
     if (searchQuery.length >= 2) {
@@ -226,24 +236,46 @@ export default function HomePage() {
           </div>
 
           {/* Search Bar */}
-          <div className="max-w-2xl mx-auto mb-16">
+          <div className="max-w-4xl mx-auto mb-16">
             <form onSubmit={handleSearch} className="relative">
-              <Input
-                type="text"
-                placeholder="Search transactions, blocks, programs and tokens..."
-                value={searchQuery}
-                onChange={handleInputChange}
-                onFocus={handleInputFocus}
-                onBlur={handleInputBlur}
-                className="w-full h-12 pl-12 pr-4 bg-muted/50 border-0"
-              />
-              <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-muted-foreground" size={20} />
-              <Button
-                type="submit"
-                className="absolute right-2 top-1/2 transform -translate-y-1/2 px-6"
-              >
-                Search
-              </Button>
+              <div className="relative group">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-teal-500/20 rounded-2xl blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                <div className="relative bg-background/80 backdrop-blur-sm border border-border/50 rounded-2xl shadow-2xl shadow-black/10 dark:shadow-black/30 overflow-hidden">
+                  <div className="flex items-center">
+                    <div className="flex-1 relative">
+                      <Search className="absolute left-6 top-1/2 transform -translate-y-1/2 text-muted-foreground/60 group-hover:text-primary/80 transition-colors duration-300" size={22} />
+                      <Input
+                        type="text"
+                        placeholder="Search transactions, blocks, programs and tokens..."
+                        value={searchQuery}
+                        onChange={handleInputChange}
+                        onFocus={handleInputFocus}
+                        onBlur={handleInputBlur}
+                        className="w-full h-16 pl-16 pr-6 bg-transparent border-0 text-lg placeholder:text-muted-foreground/50 focus:ring-0 focus:outline-none"
+                      />
+                    </div>
+                    <div className="px-2">
+                      <Button
+                        type="submit"
+                        disabled={homeSearchLoading}
+                        className="h-12 px-8 bg-gradient-to-r from-purple-600 via-blue-600 to-teal-600 hover:from-purple-700 hover:via-blue-700 hover:to-teal-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 disabled:opacity-70 disabled:cursor-not-allowed disabled:transform-none"
+                      >
+                        {homeSearchLoading ? (
+                          <>
+                            <Loader2 className="mr-2 animate-spin" size={18} />
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <Search className="mr-2" size={18} />
+                            Search
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <SearchSuggestions
                 showSuggestions={showSuggestions}

@@ -133,7 +133,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       }));
     } catch (e) { /* noop */ }
     // Removed 700ms watchdog reasoning injection to simplify to single path
-  }, [activeTabId, tabs, updateTab]);
+  }, [activeTabId]); // Removed tabs and updateTab dependencies - using tabsRef.current instead
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).testNotes) {
@@ -185,25 +185,28 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       return;
     }
     const connection = getConnection();
-    const nextAgents = new Map(agents);
-    let changed = false;
-    for (const tab of tabs) {
-      if (!nextAgents.has(tab.id)) {
-        try {
-          const agent = createSolanaAgent(connection, {
-            systemPrompt: tab.mode === 'assistant'
-              ? 'You are a helpful assistant that can answer questions and help with various tasks.'
-              : undefined
-          });
-          nextAgents.set(tab.id, agent);
-          changed = true;
-        } catch (e) {
-          console.warn('Failed to create Solana agent for tab', tab.id, e);
+    setAgents(prevAgents => {
+      const nextAgents = new Map(prevAgents);
+      let changed = false;
+      for (const tab of tabs) {
+        if (!nextAgents.has(tab.id)) {
+          try {
+            const agent = createSolanaAgent(connection, {
+              systemPrompt: tab.mode === 'assistant'
+                ? 'You are a helpful assistant that can answer questions and help with various tasks.'
+                : undefined,
+              enableAnomalyDetection: false // Disable anomaly detection for chat agents - only needed on /monitoring page
+            });
+            nextAgents.set(tab.id, agent);
+            changed = true;
+          } catch (e) {
+            console.warn('Failed to create Solana agent for tab', tab.id, e);
+          }
         }
       }
-    }
-    if (changed) setAgents(nextAgents);
-  }, [tabs, agents]);
+      return changed ? nextAgents : prevAgents;
+    });
+  }, [tabs]); // Removed agents dependency - using functional state update instead
 
   const processTabMessage = useCallback(async (tabId: string, message: string) => {
     if (typeof window !== 'undefined') {
@@ -707,7 +710,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     (window as any).__SVMAI_SEED__ = seedFn;
 
     // Removed DOM fallback reasoning injection (950ms) to avoid multiple reasoning toggle creation
-  }, [tabs, activeTabId, createTab, updateTab, switchToTab, setKnowledgeActive]);
+  }, [activeTabId, createTab, updateTab, switchToTab, setKnowledgeActive]); // Removed tabs dependency - using tabsRef.current instead
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -774,6 +777,189 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     // (including programmatic window.SVMAI.prompt submissions).
   }, [activeTab?.isProcessing]);
 
+  // Stable callback functions to prevent Chat re-renders
+  const handleTabClick = useCallback((id: string) => {
+    setKnowledgeActive(false);
+    setHistoryActive(false);
+    switchToTab(id);
+  }, [switchToTab]);
+
+  const handleNewTab = useCallback(() => {
+    setKnowledgeActive(false);
+    setHistoryActive(false);
+    createTab();
+  }, [createTab]);
+
+  const handleSelectKnowledge = useCallback(() => {
+    setKnowledgeActive(true);
+    setHistoryActive(false);
+  }, []);
+
+  const handleSelectHistory = useCallback(() => {
+    setHistoryActive(true);
+    setKnowledgeActive(false);
+  }, []);
+
+  const handleInputChange = useCallback((value: string) => {
+    if (activeTabId) {
+      updateTab(activeTabId, { input: value });
+    }
+  }, [activeTabId, updateTab]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    if (activeTabId) {
+      const latest = tabs.find(t => t.id === activeTabId);
+      const value = latest?.input?.trim();
+      if (value) {
+        processTabMessage(activeTabId, value);
+        updateTab(activeTabId, { input: '' });
+      }
+    }
+  }, [activeTabId, tabs, processTabMessage, updateTab]);
+
+  const handleClearNotes = useCallback(async () => {
+    try {
+      await clearKnowledgeNotes();
+      setKnowledgeNotes([]);
+    } catch (e) { console.warn('Clear knowledge failed', e); }
+  }, [clearKnowledgeNotes]);
+
+  const handleAddNote = useCallback(async (note: any) => {
+    try {
+      await addKnowledgeNote(note);
+      setKnowledgeNotes(prev => [...prev, note]);
+    } catch (e) { console.warn('Add knowledge failed', e); }
+  }, [addKnowledgeNote]);
+
+  const handleRemoveNote = useCallback(async (noteId: string) => {
+    try {
+      await removeKnowledgeNote(noteId);
+      setKnowledgeNotes(prev => prev.filter(n => n.id !== noteId));
+    } catch (e) { console.warn('Remove knowledge failed', e); }
+  }, [removeKnowledgeNote]);
+
+  const handleRetryAction = useCallback((actionId: string) => {
+    if (activeTabId && activeTab) {
+      const actions = activeTab.agentActions || [];
+      const action = actions.find(a => a.id === actionId);
+      if (action) {
+        const updatedActions = actions.map(a =>
+          a.id === actionId ? { ...a, status: 'in_progress' as const } : a
+        );
+        updateTab(activeTabId, { agentActions: updatedActions });
+
+        const userMessages = activeTab.messages.filter(m => m.role === 'user');
+        if (userMessages.length > 0) {
+          const lastUserMessage = userMessages[userMessages.length - 1];
+          processTabMessage(activeTabId, lastUserMessage.content);
+        }
+      }
+    }
+  }, [activeTabId, activeTab, updateTab, processTabMessage]);
+
+  const handleVoiceRecord = useCallback(() => {
+    try {
+      const SpeechRecognitionImpl: any =
+        (window as any).SpeechRecognition ||
+        (window as any).webkitSpeechRecognition ||
+        (window as any).mozSpeechRecognition ||
+        (window as any).msSpeechRecognition;
+      if (!SpeechRecognitionImpl) {
+        console.warn('Speech recognition not supported in this browser');
+        setIsRecording(false);
+        return;
+      }
+      if (!recognitionRef.current) {
+        const rec = new SpeechRecognitionImpl();
+        rec.lang = 'en-US';
+        rec.continuous = false;
+        rec.interimResults = true;
+        rec.maxAlternatives = 1;
+        rec.onstart = () => {
+          setIsRecording(true);
+        };
+        rec.onerror = (e: any) => {
+          console.warn('Speech recognition error', e);
+          setIsRecording(false);
+        };
+        rec.onresult = (event: any) => {
+          let finalTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const res = event.results[i];
+            if (res.isFinal) {
+              finalTranscript += res[0].transcript;
+            }
+          }
+          if (finalTranscript && activeTabId) {
+            const existing = activeTab?.input || '';
+            updateTab(activeTabId, { input: (existing ? existing + ' ' : '') + finalTranscript.trim() });
+          }
+        };
+        rec.onend = () => {
+          setIsRecording(false);
+        };
+        recognitionRef.current = rec;
+      }
+      if (!isRecording) {
+        recognitionRef.current.start();
+      } else {
+        recognitionRef.current.stop();
+      }
+    } catch (err) {
+      console.warn('Speech recognition init failed', err);
+      setIsRecording(false);
+    }
+  }, [isRecording, activeTabId, activeTab, updateTab]);
+
+  const handleForkThread = useCallback((messageIndex: number) => {
+    if (activeTabId) {
+      const newId = forkTabAtMessage(activeTabId, messageIndex, `${activeTab?.name?.split(' ')[0] || 'CHAT'} Fork`);
+      if (newId) {
+        switchToTab(newId);
+      }
+    }
+  }, [activeTabId, activeTab, forkTabAtMessage, switchToTab]);
+
+  const handleCancel = useCallback(() => {
+    if (activeTabId && activeTab?.isProcessing) {
+      updateTab(activeTabId, {
+        isProcessing: false,
+        status: 'idle'
+      });
+      if (typeof window !== 'undefined') {
+        try {
+          (window as any).__SVMAI_PENDING__ = false;
+          window.dispatchEvent(new CustomEvent('svmai-pending-change'));
+        } catch (e) { /* noop */ }
+      }
+    }
+  }, [activeTabId, activeTab, updateTab]);
+
+  const handleDirectResponse = useCallback((assistantMessage: any) => {
+    // Handle direct RPC responses by adding both user message and assistant response to chat
+    if (activeTabId && activeTab) {
+      const userMessage = {
+        role: 'user' as const,
+        content: activeTab.input || ''
+      };
+      const updatedMessages = [...(activeTab.messages || []), userMessage, assistantMessage];
+      updateTab(activeTabId, {
+        messages: updatedMessages,
+        input: '',
+        isProcessing: false
+      });
+    }
+  }, [activeTabId, activeTab, updateTab]);
+
+  const handleSettings = useCallback(() => {
+    setTokenPanelOpen(true);
+  }, []);
+
+  const handleTokenPanelClose = useCallback(() => {
+    setTokenPanelOpen(false);
+  }, []);
+
   return (
     <>
       {shareNotice && (
@@ -796,173 +982,41 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         onResizeEnd={onResizeEnd}
         tabs={tabs}
         activeTabId={activeTabId}
-        onTabClick={(id) => { setKnowledgeActive(false); setHistoryActive(false); switchToTab(id); }}
+        onTabClick={handleTabClick}
         onTabClose={closeTab}
-        onNewTab={() => { setKnowledgeActive(false); setHistoryActive(false); createTab(); }}
+        onNewTab={handleNewTab}
         onTabRename={renameTab}
         onTabTogglePin={togglePin}
         knowledgeActive={knowledgeActive}
-        onSelectKnowledge={() => { setKnowledgeActive(true); setHistoryActive(false); }}
+        onSelectKnowledge={handleSelectKnowledge}
         historyActive={historyActive}
-        onSelectHistory={() => { setHistoryActive(true); setKnowledgeActive(false); }}
+        onSelectHistory={handleSelectHistory}
         messages={activeTab?.messages || []}
         input={activeTab?.input || ''}
         isProcessing={activeTab?.isProcessing || false}
         mode={activeTab?.mode || 'agent'}
         activeTab={activeView}
-        onInputChange={(value) => {
-          if (activeTabId) {
-            updateTab(activeTabId, { input: value });
-          }
-        }}
+        onInputChange={handleInputChange}
         onModeChange={updateActiveTabMode}
-        onSubmit={(e) => {
-          e.preventDefault();
-          if (activeTabId) {
-            const latest = tabs.find(t => t.id === activeTabId);
-            const value = latest?.input?.trim();
-            if (value) {
-              processTabMessage(activeTabId, value);
-              updateTab(activeTabId, { input: '' });
-            }
-          }
-        }}
+        onSubmit={handleSubmit}
         notes={knowledgeNotes}
-        onClearNotes={async () => {
-          try {
-            await clearKnowledgeNotes();
-            setKnowledgeNotes([]);
-          } catch (e) { console.warn('Clear knowledge failed', e); }
-        }}
-        onAddNote={async (note) => {
-          try {
-            await addKnowledgeNote(note);
-            setKnowledgeNotes(prev => [...prev, note]);
-          } catch (e) { console.warn('Add knowledge failed', e); }
-        }}
-        onRemoveNote={async (noteId) => {
-          try {
-            await removeKnowledgeNote(noteId);
-            setKnowledgeNotes(prev => prev.filter(n => n.id !== noteId));
-          } catch (e) { console.warn('Remove knowledge failed', e); }
-        }}
+        onClearNotes={handleClearNotes}
+        onAddNote={handleAddNote}
+        onRemoveNote={handleRemoveNote}
         agentActions={activeTab?.agentActions || []}
-        onRetryAction={(actionId) => {
-          if (activeTabId && activeTab) {
-            const actions = activeTab.agentActions || [];
-            const action = actions.find(a => a.id === actionId);
-            if (action) {
-              const updatedActions = actions.map(a =>
-                a.id === actionId ? { ...a, status: 'in_progress' as const } : a
-              );
-              updateTab(activeTabId, { agentActions: updatedActions });
-
-              const userMessages = activeTab.messages.filter(m => m.role === 'user');
-              if (userMessages.length > 0) {
-                const lastUserMessage = userMessages[userMessages.length - 1];
-                processTabMessage(activeTabId, lastUserMessage.content);
-              }
-            }
-          }
-        }}
-        onVoiceRecord={() => {
-          try {
-            const SpeechRecognitionImpl: any =
-              (window as any).SpeechRecognition ||
-              (window as any).webkitSpeechRecognition ||
-              (window as any).mozSpeechRecognition ||
-              (window as any).msSpeechRecognition;
-            if (!SpeechRecognitionImpl) {
-              console.warn('Speech recognition not supported in this browser');
-              setIsRecording(false);
-              return;
-            }
-            if (!recognitionRef.current) {
-              const rec = new SpeechRecognitionImpl();
-              rec.lang = 'en-US';
-              rec.continuous = false;
-              rec.interimResults = true;
-              rec.maxAlternatives = 1;
-              rec.onstart = () => {
-                setIsRecording(true);
-              };
-              rec.onerror = (e: any) => {
-                console.warn('Speech recognition error', e);
-                setIsRecording(false);
-              };
-              rec.onresult = (event: any) => {
-                let finalTranscript = '';
-                for (let i = event.resultIndex; i < event.results.length; i++) {
-                  const res = event.results[i];
-                  if (res.isFinal) {
-                    finalTranscript += res[0].transcript;
-                  }
-                }
-                if (finalTranscript && activeTabId) {
-                  const existing = activeTab?.input || '';
-                  updateTab(activeTabId, { input: (existing ? existing + ' ' : '') + finalTranscript.trim() });
-                }
-              };
-              rec.onend = () => {
-                setIsRecording(false);
-              };
-              recognitionRef.current = rec;
-            }
-            if (!isRecording) {
-              recognitionRef.current.start();
-            } else {
-              recognitionRef.current.stop();
-            }
-          } catch (err) {
-            console.warn('Speech recognition init failed', err);
-            setIsRecording(false);
-          }
-        }}
+        onRetryAction={handleRetryAction}
+        onVoiceRecord={handleVoiceRecord}
         isRecording={isRecording}
-        onForkThread={(messageIndex) => {
-          if (activeTabId) {
-            const newId = forkTabAtMessage(activeTabId, messageIndex, `${activeTab?.name?.split(' ')[0] || 'CHAT'} Fork`);
-            if (newId) {
-              switchToTab(newId);
-            }
-          }
-        }}
-        onCancel={() => {
-          if (activeTabId && activeTab?.isProcessing) {
-            updateTab(activeTabId, {
-              isProcessing: false,
-              status: 'idle'
-            });
-            if (typeof window !== 'undefined') {
-              try {
-                (window as any).__SVMAI_PENDING__ = false;
-                window.dispatchEvent(new CustomEvent('svmai-pending-change'));
-              } catch (e) { /* noop */ }
-            }
-          }
-        }}
-        onDirectResponse={(assistantMessage) => {
-          // Handle direct RPC responses by adding both user message and assistant response to chat
-          if (activeTabId && activeTab) {
-            const userMessage = {
-              role: 'user' as const,
-              content: activeTab.input || ''
-            };
-            const updatedMessages = [...(activeTab.messages || []), userMessage, assistantMessage];
-            updateTab(activeTabId, {
-              messages: updatedMessages,
-              input: '',
-              isProcessing: false
-            });
-          }
-        }}
+        onForkThread={handleForkThread}
+        onCancel={handleCancel}
+        onDirectResponse={handleDirectResponse}
         onHelp={handleHelp}
         onShare={handleShare}
         onExport={handleExport}
-        onSettings={() => setTokenPanelOpen(true)}
+        onSettings={handleSettings}
         onHistoryReload={reloadHistory}
       />
-      <TokenManagementPanel isOpen={tokenPanelOpen} onClose={() => setTokenPanelOpen(false)} />
+      <TokenManagementPanel isOpen={tokenPanelOpen} onClose={handleTokenPanelClose} />
     </>
   );
 };

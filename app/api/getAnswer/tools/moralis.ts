@@ -1,4 +1,237 @@
 export const moralis_swagger = `
+# Moralis Solana API Complete Reference
+
+## Base URLs
+- **Solana Gateway**: https://solana-gateway.moralis.io
+- **Deep Index**: https://deep-index.moralis.io/api/v2.2
+
+## Authentication
+All endpoints require API key authentication via header: \`X-API-Key: YOUR_API_KEY\`
+
+---
+
+## Token API Endpoints
+
+### Get Token Metadata
+**Method**: \`getTokenMetadata\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{address}/metadata\`
+**Description**: Get comprehensive token metadata including name, symbol, decimals, supply, etc.
+
+### Get Token Balances
+**Method**: \`getSPL\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/tokens\`
+**Description**: Get all SPL token balances for a wallet address
+
+**Method**: \`balance\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/balance\`
+**Description**: Get native SOL balance for a wallet address
+
+**Method**: \`getPortfolio\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/portfolio\`
+**Description**: Get complete portfolio overview including tokens, NFTs, and total value
+
+### Get Pump Fun Tokens
+**Method**: \`getNewTokensByExchange\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/exchange/{exchange}/new\`
+**Description**: Get newly launched tokens by exchange (e.g., Pump.fun)
+
+**Method**: \`getBondingTokensByExchange\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/exchange/{exchange}/bonding\`
+**Description**: Get tokens currently in bonding phase
+
+**Method**: \`getGraduatedTokensByExchange\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/exchange/{exchange}/graduated\`
+**Description**: Get tokens that have graduated from bonding phase
+
+**Method**: \`getTokenBondingStatus\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/{tokenAddress}/bonding-status\`
+**Description**: Check specific token's bonding phase status
+
+### Get Token Holders
+**Method**: \`getTopHolders\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/holders/{address}\`
+**Description**: Get largest token holders by balance
+
+**Method**: \`getTokenHolderStats\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/holders/{address}\`
+**Description**: Get statistical data about token holder distribution
+
+**Method**: \`getHistoricalTokenHolders\`
+**URL**: \`https://solana-gateway.moralis.io/token/mainnet/holders/{address}/historical\`
+**Description**: Get historical token holder statistics over time
+
+### Get Token Swaps
+**Method**: \`getSwapsByPairAddress\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/pairs/{pairAddress}/swaps\`
+**Description**: Get all swaps for a specific trading pair
+
+**Method**: \`getSwapsByWalletAddress\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{walletAddress}/swaps\`
+**Description**: Get all swaps performed by a specific wallet
+
+**Method**: \`getSwapsByTokenAddress\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{tokenAddress}/swaps\`
+**Description**: Get all swaps involving a specific token
+
+### Get Pairs & Liquidity
+**Method**: \`getTokenPairs\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{address}/pairs\`
+**Description**: Get all trading pairs for a token
+
+**Method**: \`getTokenPairStats\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/pairs/{pairAddress}/stats\`
+**Description**: Get statistics for a specific trading pair
+
+**Method**: \`getAggregatedTokenPairStats\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{address}/pairs/stats\`
+**Description**: Get aggregated statistics across all pairs of a token
+
+### Get Token Analytics
+**Method**: \`getTokenAnalytics\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/{address}/analytics\`
+**Description**: Get comprehensive token analytics and metrics
+
+**Method**: \`getMultipleTokenAnalytics\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/analytics\`
+**Description**: Get analytics for multiple tokens in batch
+
+**Method**: \`getTimeSeriesTokenAnalytics\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/analytics/timeseries\`
+**Description**: Get historical analytics data over time
+
+### Get Volume Stats
+**Method**: \`getVolumeStatsByChain\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/volume/chains\`
+**Description**: Get trading volume statistics by blockchain
+
+**Method**: \`getVolumeStatsByCategory\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/volume/categories?chain=solana\`
+**Description**: Get volume data categorized by token types/sectors
+
+**Method**: \`getTimeSeriesVolume\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/volume/timeseries?chain=solana&timeframe=1d\`
+**Description**: Get historical volume data with different timeframes
+
+**Method**: \`getTimeSeriesVolumeByCategory\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/volume/timeseries/{category}?chain=solana&timeframe=1d\`
+**Description**: Get historical volume data for specific categories
+
+### Get Token Prices
+**Method**: \`getTokenPrice\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{address}/price\`
+**Description**: Get current token price in USD
+
+**Method**: \`getMultipleTokenPrices\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/prices\`
+**Description**: Get prices for multiple tokens in batch
+
+**Method**: \`getCandleSticks\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/pairs/{pairAddress}/ohlcv\`
+**Description**: Get OHLCV candlestick data for trading pairs
+
+### Get Token Snipers
+**Method**: \`getSnipersByPairAddress\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/pairs/{pairAddress}/snipers\`
+**Description**: Identify sniping activity on token launches
+
+### Get Filtered Tokens
+**Method**: \`getFilteredTokens\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/discovery/tokens\`
+**Description**: Search tokens with advanced filtering options
+
+### Get Trending Tokens
+**Method**: \`getTrendingTokens\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/trending\`
+**Description**: Get currently trending tokens by volume/activity
+
+### Search Tokens
+**Method**: \`searchTokens\`
+**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/search\`
+**Description**: Search tokens by name, symbol, or address
+
+---
+
+## Wallet API Endpoints
+
+### Get Native Balance
+**Method**: \`balance\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/balance\`
+**Description**: Get SOL balance for wallet address
+
+### Get Token Balances
+**Method**: \`getSPL\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/tokens\`
+**Description**: Get all SPL token balances for wallet
+
+### Get Portfolio
+**Method**: \`getPortfolio\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/portfolio\`
+**Description**: Get complete wallet portfolio with USD values
+
+### Get Wallet Token Swaps
+**Method**: \`getSwapsByWalletAddress\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{walletAddress}/swaps\`
+**Description**: Get all token swaps performed by wallet
+
+### Get Wallet NFTs
+**Method**: \`getNFTs\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/nft\`
+**Description**: Get all NFTs owned by wallet address
+
+---
+
+## NFT API Endpoints
+
+**Method**: \`getNFTs\`
+**URL**: \`https://solana-gateway.moralis.io/account/{network}/{address}/nft\`
+**Description**: Get NFTs by wallet address
+
+**Method**: \`getNFTMetadata\`
+**URL**: \`https://solana-gateway.moralis.io/nft/{network}/{address}/metadata\`
+**Description**: Get detailed NFT metadata
+
+---
+
+## Price API Endpoints
+
+**Method**: \`getTokenPrice\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/{address}/price\`
+**Description**: Get current token price
+
+**Method**: \`getMultipleTokenPrices\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/prices\`
+**Description**: Get multiple token prices in batch
+
+**Method**: \`getCandleSticks\`
+**URL**: \`https://solana-gateway.moralis.io/token/{network}/pairs/{pairAddress}/ohlcv\`
+**Description**: Get OHLCV candlestick data
+
+---
+
+## Premium Endpoints
+
+Advanced analytics and discovery endpoints requiring premium API access:
+- \`searchTokens\` - Advanced token search
+- \`getMultipleTokenAnalytics\` - Batch analytics
+- \`getVolumeStatsByChain\` - Chain volume stats
+- \`getVolumeStatsByCategory\` - Category volume stats
+- \`getTimeSeriesVolume\` - Historical volume data
+- \`getTimeSeriesVolumeByCategory\` - Category historical volume
+- \`getFilteredTokens\` - Advanced token filtering
+
+---
+
+## Common Parameters
+- \`{network}\`: "mainnet" or "devnet"
+- \`{address}\`: Token/wallet address (base58)
+- \`{pairAddress}\`: Trading pair contract address
+- \`{exchange}\`: Exchange name (e.g., "pump-fun")
+- \`timeframe\`: "1m", "5m", "15m", "1h", "4h", "1d", "1w"
+- \`chain\`: "solana", "eth", etc.
+
+## Response Formats
+All endpoints return JSON with consistent error handling and pagination support.
+
 "swaggerDoc": {
     "openapi": "3.0.0",
     "info": {

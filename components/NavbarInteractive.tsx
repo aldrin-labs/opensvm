@@ -1,22 +1,21 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { RpcStatusBadge } from './RpcStatusBadge';
 import { Button } from '@/components/ui/button';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+  SimpleDropdown,
+  SimpleDropdownItem,
+} from '@/components/ui/simple-dropdown';
 import { SettingsMenu } from './SettingsMenu';
 import { WalletButton } from './WalletButton';
 import { ChangelogNotification } from './ChangelogNotification';
-import { X, User } from 'lucide-react';
+import { X, User, Loader2 } from 'lucide-react';
 import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { useWallet } from '@solana/wallet-adapter-react';
+import EnhancedSearchBar from './search';
 
 interface NavbarInteractiveProps {
   children: React.ReactNode;
@@ -24,12 +23,20 @@ interface NavbarInteractiveProps {
 
 export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }) => {
   const router = useRouter();
+  const pathname = usePathname();
   const [searchQuery, setSearchQuery] = useState('');
-  const { isOpen: isAIChatOpen, open: openAIChat, close: _closeAIChat, sidebarWidth, setSidebarWidth, isResizing, onResizeStart: _onResizeStart, onResizeEnd: _onResizeEnd } = useAIChatSidebar();
+  const [isMobileSearchLoading, setIsMobileSearchLoading] = useState(false);
+  const { isOpen: isAIChatOpen, open: openAIChat, sidebarWidth, setSidebarWidth, isResizing } = useAIChatSidebar();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
+
   const menuRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLDivElement>(null);
   const { connected, publicKey } = useWallet();
+
+  // Check if we should hide the search bar (on home page and search page)
+  const shouldHideSearchBar = pathname === '/' || pathname.startsWith('/search');
 
   // Update the clock every minute
   useEffect(() => {
@@ -147,22 +154,26 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
     </svg>
   );
 
-  const handleSearch = (e: React.FormEvent) => {
+
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     const query = searchQuery.trim();
-    if (query) {
-      // Check if the query looks like a Solana address (simplistic check)
-      if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(query)) {
-        router.push(`/account/${query}`);
-      } else {
-        router.push(`/search?q=${encodeURIComponent(query)}`);
+    if (query && !isMobileSearchLoading) {
+      setIsMobileSearchLoading(true);
+      try {
+        // Check if the query looks like a Solana address (simplistic check)
+        if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(query)) {
+          router.push(`/account/${query}`);
+        } else {
+          router.push(`/search?q=${encodeURIComponent(query)}`);
+        }
+      } finally {
+        // Reset loading state immediately
+        setIsMobileSearchLoading(false);
       }
     }
   };
 
-  const _handleWidthChange = (newWidth: number) => {
-    setSidebarWidth(newWidth);
-  };
 
   // Focus trap for keyboard navigation in mobile menu
   const handleTabKey = (e: React.KeyboardEvent) => {
@@ -183,7 +194,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
         role="navigation"
         aria-label="Main navigation"
       >
-        <div className="container mx-auto px-4 flex w-full items-center justify-between">
+        <div className={`container mx-auto px-4 flex w-full items-center ${
+          isSearchFocused ? 'justify-start' : 'justify-between'
+        }`}>
           {/* Logo and brand */}
           <div className="flex items-center gap-2 z-10">
             <RpcStatusBadge />
@@ -195,51 +208,36 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
             <span className="hidden md:inline-block text-xs text-muted-foreground">{currentTime}</span>
           </div>
 
-          {/* Interactive search form */}
-          <form onSubmit={handleSearch} className="hidden md:flex flex-1 max-w-md mx-4 items-center">
-            <div className="relative group flex w-full">
-              <svg
-                width="18"
-                height="18"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                className="absolute left-3 top-1/2 transform -translate-y-1/2 opacity-70 text-muted-foreground"
-                aria-hidden="true"
-              >
-                <path d="M19 19l-4.35-4.35M11 5a6 6 0 100 12 6 6 0 000-12z" />
-              </svg>
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                aria-label="Search"
-                className="w-full bg-background/80 border border-r-0 border-border/50 hover:border-foreground/20 focus:border-foreground/30 focus:ring-1 focus:ring-primary/20 pl-10 h-9 transition-all rounded-l-md text-sm"
-                placeholder="Search accounts, tokens, or programs..."
-                role="searchbox"
-                data-testid="navbar-search"
-              />
-              <button
-                type="button"
-                onClick={() => router.push('/search')}
-                className="bg-background/80 border border-l-0 border-border/50 hover:border-foreground/20 px-2 h-9 rounded-r-md"
-                aria-label="Search Settings"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-muted-foreground" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clipRule="evenodd" />
-                </svg>
-              </button>
+          {/* Search Container - Hidden on home page and search page */}
+          {!shouldHideSearchBar && (
+            <div 
+              ref={searchRef}
+              className={`hidden md:flex items-center transition-all duration-300 ease-out ${
+                isSearchFocused 
+                  ? 'flex-1 mr-4' 
+                  : 'max-w-md mx-4'
+              }`}
+            >
+              <div className="w-full">
+                <EnhancedSearchBar onFocusChange={(focused) => {
+                  setIsSearchFocused(focused);
+                }} />
+              </div>
             </div>
-          </form>
+          )}
 
-          {/* Interactive navigation */}
-          <div className="hidden md:flex items-center gap-1.5">
+          {/* Navigation Dropdowns - Hide when search is focused or on pages where search is hidden */}
+          <div className={`hidden md:flex items-center gap-1.5 transition-all duration-300 ease-out ${
+            isSearchFocused 
+              ? 'opacity-0 pointer-events-none transform scale-95 -translate-x-4' 
+              : 'opacity-100 pointer-events-auto transform scale-100 translate-x-0'
+          }`} style={{
+            display: isSearchFocused ? 'none' : 'flex'
+          }}>
             {/* Explore dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <SimpleDropdown
+              align="end"
+              trigger={
                 <Button
                   variant="ghost"
                   size="sm"
@@ -249,26 +247,26 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                   Explore
                   <DropdownIcon />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="duration-300 transition-all">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/networks'); }}>
-                  Networks
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/blocks'); }}>
-                  Blocks
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/programs'); }}>
-                  Programs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/validators'); }}>
-                  Validators
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+            >
+              <SimpleDropdownItem asChild>
+                <Link href="/networks">Networks</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/blocks">Blocks</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/programs">Programs</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/validators">Validators</Link>
+              </SimpleDropdownItem>
+            </SimpleDropdown>
 
             {/* Tokens Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <SimpleDropdown
+              align="end"
+              trigger={
                 <Button
                   variant="ghost"
                   size="sm"
@@ -278,26 +276,26 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                   Tokens
                   <DropdownIcon />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="duration-300 transition-all">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/tokens'); }}>
-                  All Tokens
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/tokens/gainers'); }}>
-                  Top Gainers
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/tokens/new'); }}>
-                  New Listings
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/scan'); }}>
-                  Scan (Memecoins)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+            >
+              <SimpleDropdownItem asChild>
+                <Link href="/tokens">All Tokens</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/tokens/gainers">Top Gainers</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/tokens/new">New Listings</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/scan">Scan (Memecoins)</Link>
+              </SimpleDropdownItem>
+            </SimpleDropdown>
 
             {/* DeFi Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <SimpleDropdown
+              align="end"
+              trigger={
                 <Button
                   variant="ghost"
                   size="sm"
@@ -307,62 +305,63 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                   DeFi
                   <DropdownIcon />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="duration-300 transition-all max-h-96 overflow-y-auto">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/overview'); }}>
-                  Overview
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/coins-screener'); }}>
-                  Coins Screener
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/memecoins-screener'); }}>
-                  Memecoins Screener
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/launchpads'); }}>
-                  Launchpads
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/amms'); }}>
-                  AMMs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/clobs'); }}>
-                  CLOBs
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/perpetuals'); }}>
-                  Perpetuals
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/options'); }}>
-                  Options
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/bots'); }}>
-                  TG Bots & Other bots
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/defai'); }}>
-                  DeFAI
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/aggregators'); }}>
-                  Aggregators
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/yield-agg'); }}>
-                  Yield Agg
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/staking'); }}>
-                  Staking
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/stablecoins'); }}>
-                  Stablecoins
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/oracles'); }}>
-                  Data providers & Oracles
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/defi/tools'); }}>
-                  Tools
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+              className="max-h-96 overflow-y-auto"
+            >
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/overview">Overview</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/coins-screener">Coins Screener</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/memecoins-screener">Memecoins Screener</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/launchpads">Launchpads</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/amms">AMMs</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/clobs">CLOBs</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/perpetuals">Perpetuals</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/options">Options</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/bots">TG Bots & Other bots</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/defai">DeFAI</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/aggregators">Aggregators</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/yield-agg">Yield Agg</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/staking">Staking</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/stablecoins">Stablecoins</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/oracles">Data providers & Oracles</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/defi/tools">Tools</Link>
+              </SimpleDropdownItem>
+            </SimpleDropdown>
 
             {/* Analytics Dropdown */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
+            <SimpleDropdown
+              align="end"
+              trigger={
                 <Button
                   variant="ghost"
                   size="sm"
@@ -372,20 +371,22 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                   Analytics
                   <DropdownIcon />
                 </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="duration-300 transition-all">
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/analytics'); }}>
-                  Dashboard
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/analytics/trends'); }}>
-                  Trends
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={(e) => { e.stopPropagation(); router.push('/monitoring'); }}>
-                  Live Monitoring
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+              }
+            >
+              <SimpleDropdownItem asChild>
+                <Link href="/analytics">Dashboard</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/analytics/trends">Trends</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/monitoring">Live Monitoring</Link>
+              </SimpleDropdownItem>
+            </SimpleDropdown>
+          </div>
 
+          {/* Action Buttons - Always visible */}
+          <div className="hidden md:flex items-center gap-1.5">
             <SettingsMenu />
             {connected && publicKey && (
               <Button
@@ -494,12 +495,20 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                   </button>
                   <Button
                     type="submit"
+                    disabled={isMobileSearchLoading}
                     className="rounded-l-none h-10 px-4 font-medium"
-                    aria-label="Search"
+                    aria-label={isMobileSearchLoading ? "Searching..." : "Search"}
                     data-testid="mobile-search-button"
                     variant="default"
                   >
-                    Search
+                    {isMobileSearchLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
                   </Button>
                 </div>
               </div>
