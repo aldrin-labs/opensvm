@@ -234,7 +234,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
   return (
     <div
       ref={suggestionsRef}
-      className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
+      className="absolute top-full left-0 right-0 mt-1 bg-gray-900 border border-gray-700 rounded-lg shadow-xl z-50 max-h-96 overflow-y-auto"
     >
       {isLoading ? (
         <div className="px-4 py-3 text-center text-gray-500 dark:text-gray-400">
@@ -331,13 +331,29 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                             )}
                           </div>
 
-                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1">
-                            {suggestion.name || suggestion.label || suggestion.value}
+                          {/* Value/Path only */}
+                          <div className="text-sm font-medium text-gray-900 dark:text-gray-100 mb-1 font-mono">
+                            {suggestion.value}
                           </div>
 
-                          {suggestion.symbol && suggestion.symbol !== suggestion.value && (
-                            <div className="text-xs text-gray-600 dark:text-gray-400 mb-1">
-                              {suggestion.symbol}
+                          {/* Usage count and last visit */}
+                          <div className="flex flex-wrap gap-3 mb-1">
+                            {suggestion.usageCount && (
+                              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                                📊 {suggestion.usageCount} visits
+                              </span>
+                            )}
+                            {suggestion.lastUpdate && (
+                              <span className="text-xs text-gray-600 dark:text-gray-400">
+                                🕐 {formatDate(suggestion.lastUpdate)}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Category */}
+                          {suggestion.metadata?.category && (
+                            <div className="text-xs text-gray-500 dark:text-gray-500 mb-1">
+                              📂 Category: {suggestion.metadata.category}
                             </div>
                           )}
 
