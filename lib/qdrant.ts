@@ -961,47 +961,90 @@ async function ensureTokenMetadataCollection(): Promise<void> {
 }
 
 /**
- * Store transfer entry in Qdrant
+ * Store transfer entry in Qdrant (single entry - use batchStoreTransferEntries for better performance)
  */
 export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
-  let upsertData: any;
+  // For single entries, use the batch function
+  await batchStoreTransferEntries([entry]);
+}
+
+/**
+ * Store multiple transfer entries in Qdrant efficiently using chunked batch operations
+ * Automatically chunks large batches to stay within Qdrant's 33MB payload limit
+ */
+export async function batchStoreTransferEntries(entries: TransferEntry[]): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  if (entries.length === 0) return;
 
   try {
     await ensureTransfersCollection();
 
-    // Validate entry data
-    if (!entry.id || !entry.walletAddress || !entry.signature) {
-      throw new Error(`Invalid transfer entry data: missing required fields`);
+    // Calculate optimal chunk size to stay under Qdrant's 33MB limit
+    // Estimate ~8KB per transfer entry (conservative estimate including vector + payload)
+    const ESTIMATED_ENTRY_SIZE = 8 * 1024; // 8KB per entry
+    const MAX_PAYLOAD_SIZE = 30 * 1024 * 1024; // 30MB (safe margin under 33MB limit)
+    const CHUNK_SIZE = Math.floor(MAX_PAYLOAD_SIZE / ESTIMATED_ENTRY_SIZE); // ~3750 entries per chunk
+
+    console.log(`Batch storing ${entries.length} transfer entries in chunks of ${CHUNK_SIZE}`);
+
+    // Process entries in chunks
+    const chunks = [];
+    for (let i = 0; i < entries.length; i += CHUNK_SIZE) {
+      chunks.push(entries.slice(i, i + CHUNK_SIZE));
     }
 
-    // Generate embedding from transfer content
-    const textContent = `${entry.walletAddress} ${entry.type} ${entry.token} ${entry.amount} ${entry.from} ${entry.to}`;
-    const vector = generateSimpleEmbedding(textContent);
+    console.log(`Split into ${chunks.length} chunks for safe processing`);
 
-    console.log(`Storing transfer entry with ID: ${entry.id}`);
+    // Process each chunk
+    for (let chunkIndex = 0; chunkIndex < chunks.length; chunkIndex++) {
+      const chunk = chunks[chunkIndex];
 
-    upsertData = {
-      wait: true,
-      points: [{
-        id: entry.id,
-        vector,
-        payload: {
-          ...entry,
-          // Ensure all fields are properly serializable
-          timestamp: Number(entry.timestamp),
-          amount: Number(entry.amount),
-          lastUpdated: Number(entry.lastUpdated)
+      console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} entries`);
+
+      // Prepare points for this chunk
+      const points = chunk.map(entry => {
+        // Validate entry data
+        if (!entry.id || !entry.walletAddress || !entry.signature) {
+          throw new Error(`Invalid transfer entry data: missing required fields for ${entry.id}`);
         }
-      }]
-    };
 
-    await qdrantClient.upsert(COLLECTIONS.TRANSFERS, upsertData);
+        // Generate embedding from transfer content
+        const textContent = `${entry.walletAddress} ${entry.type} ${entry.token} ${entry.amount} ${entry.from} ${entry.to}`;
+        const vector = generateSimpleEmbedding(textContent);
+
+        return {
+          id: entry.id,
+          vector,
+          payload: {
+            ...entry,
+            // Ensure all fields are properly serializable
+            timestamp: Number(entry.timestamp),
+            amount: Number(entry.amount),
+            lastUpdated: Number(entry.lastUpdated)
+          }
+        };
+      });
+
+      const upsertData = {
+        wait: true,
+        points
+      };
+
+      // Store this chunk
+      qdrantClient.upsert(COLLECTIONS.TRANSFERS, upsertData);
+      console.log(`Successfully stored chunk ${chunkIndex + 1}/${chunks.length} (${chunk.length} entries)`);
+    }
+
+    console.log(`Successfully batch stored all ${entries.length} transfer entries in ${chunks.length} chunks`);
+
   } catch (error: any) {
-    console.error('Error storing transfer entry:', error);
-    
+    console.error(`Error batch storing ${entries.length} transfer entries:`, error);
+
     // Log the full error details for debugging
     if (error?.data) {
       console.error('Qdrant error data:', JSON.stringify(error.data, null, 2));
@@ -1009,12 +1052,7 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
     if (error?.response) {
       console.error('Qdrant response:', JSON.stringify(error.response, null, 2));
     }
-    
-    // Log the payload that caused the error for debugging
-    if (upsertData) {
-      console.error('Failed upsert data:', JSON.stringify(upsertData, null, 2));
-    }
-    
+
     throw error;
   }
 }
@@ -1102,7 +1140,7 @@ export async function getCachedTransfers(
     };
   } catch (error: any) {
     console.error('Error getting cached transfers:', error);
-    
+
     // Log the full error details for debugging
     if (error?.data) {
       console.error('Qdrant search error data:', JSON.stringify(error.data, null, 2));
@@ -1110,7 +1148,7 @@ export async function getCachedTransfers(
     if (error?.response) {
       console.error('Qdrant search response:', JSON.stringify(error.response, null, 2));
     }
-    
+
     return { transfers: [], total: 0 };
   }
 }
@@ -1292,7 +1330,6 @@ export function isSolanaOnlyTransaction(transfer: any): boolean {
       }
 
       // Default to Solana-only if no clear indicators
-      console.log(`No program IDs found, defaulting to Solana-only for transfer`);
       return true;
     }
 

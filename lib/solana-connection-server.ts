@@ -115,23 +115,38 @@ class ProxyConnection extends Connection {
 class ConnectionPool {
     private connections: Map<string, ProxyConnection> = new Map();
     private endpoints: string[] = [];
+    private currentEndpointIndex = 0;
 
     constructor() {
         this.endpoints = getRpcEndpoints();
+        console.log(`[RPC Pool] Initialized with ${this.endpoints.length} OpenSVM endpoints`);
     }
 
     getConnection(endpoint?: string): ProxyConnection {
         // If specific endpoint is requested, use it
         if (endpoint) {
+            console.log(`[RPC Pool] Using specific endpoint: ${endpoint}`);
             if (!this.connections.has(endpoint)) {
                 this.connections.set(endpoint, new ProxyConnection(endpoint));
             }
             return this.connections.get(endpoint)!;
         }
 
-        // Round-robin load balancing
-        const salt = Date.now() * Math.floor(Math.random() * 1000);
-        const selectedEndpoint = this.endpoints[salt % this.endpoints.length];
+        // Ensure we have endpoints available
+        if (this.endpoints.length === 0) {
+            console.error('[RPC Pool] No RPC endpoints configured! Falling back to proxy');
+            const fallbackEndpoint = '/api/proxy/rpc';
+            if (!this.connections.has(fallbackEndpoint)) {
+                this.connections.set(fallbackEndpoint, new ProxyConnection(fallbackEndpoint));
+            }
+            return this.connections.get(fallbackEndpoint)!;
+        }
+
+        // Round-robin load balancing with proper rotation
+        const selectedEndpoint = this.endpoints[this.currentEndpointIndex];
+        this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
+        
+        console.log(`[RPC Pool] Selected OpenSVM endpoint ${this.currentEndpointIndex}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
 
         if (!this.connections.has(selectedEndpoint)) {
             this.connections.set(selectedEndpoint, new ProxyConnection(selectedEndpoint));

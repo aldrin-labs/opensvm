@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PublicKey, Connection } from '@solana/web3.js';
+import { PublicKey } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 import {
@@ -11,11 +11,14 @@ import {
   BATCH_DELAY_MS,
   isSpamAddress,
   isAboveDustThreshold,
-  MIN_WALLET_ADDRESS_LENGTH
+  MIN_WALLET_ADDRESS_LENGTH,
+  MAX_CONCURRENT_BATCHES,
+  EFFECTIVE_MAX_RPS
 } from '@/lib/transaction-constants';
 import {
   getCachedTransfers,
   storeTransferEntry,
+  batchStoreTransferEntries,
   markTransfersCached,
   isSolanaOnlyTransaction,
   type TransferEntry
@@ -47,10 +50,11 @@ interface Transfer {
 /**
  * Process a batch of transactions and extract transfer data
  * Using smaller batches to improve performance and reliability
+ * Gets fresh RPC connection for each call to maximize OpenSVM rotation
  */
 async function fetchTransactionBatch(
-  connection: Connection,
-  signatures: string[]
+  signatures: string[],
+  address: string
 ): Promise<Transfer[]> {
   const transfers: Transfer[] = [];
   const startTime = Date.now();
@@ -62,93 +66,174 @@ async function fetchTransactionBatch(
     batches.push(signatures.slice(i, i + TRANSACTION_BATCH_SIZE));
   }
 
-  for (const batch of batches) {
-    const batchResults = await Promise.all(
-      batch.map(async (signature: string) => {
+  // Process batches with rate limiting to respect 300 RPS OpenSVM Business Plan limit
+  // Limit concurrent batches to stay under EFFECTIVE_MAX_RPS (240 RPS)
+  console.log(`Rate limiting: Processing ${batches.length} batches with max ${MAX_CONCURRENT_BATCHES} concurrent`);
+
+  const results: Transfer[][] = [];
+
+  // Process batches in chunks to respect rate limits
+  for (let i = 0; i < batches.length; i += MAX_CONCURRENT_BATCHES) {
+    const batchChunk = batches.slice(i, i + MAX_CONCURRENT_BATCHES);
+    console.log(`Processing batch chunk ${Math.floor(i / MAX_CONCURRENT_BATCHES) + 1}/${Math.ceil(batches.length / MAX_CONCURRENT_BATCHES)} with ${batchChunk.length} batches`);
+
+    const chunkPromises = batchChunk.map((batch, batchIndex) => {
+      const globalBatchIndex = i + batchIndex;
+      return (async (): Promise<Transfer[]> => {
         let retries = MAX_RETRIES;
         let backoff = INITIAL_BACKOFF_MS;
 
         while (retries > 0) {
           try {
-            const tx = await connection.getParsedTransaction(signature, {
+            // Get fresh connection for batch RPC call to maximize OpenSVM rotation
+            const freshConnection = await getConnection();
+
+            // Use getParsedTransactions for much better performance than individual calls
+            const batchTransactions = await freshConnection.getParsedTransactions(batch, {
               maxSupportedTransactionVersion: 0,
               commitment: 'confirmed'
             });
 
-            if (!tx?.meta) {
-              return [];
+            const batchTransfers: Transfer[] = [];
+
+            // Process all transactions in this batch
+            for (let txIndex = 0; txIndex < batchTransactions.length; txIndex++) {
+              const tx = batchTransactions[txIndex];
+              const signature = batch[txIndex];
+
+              if (!tx?.meta) {
+                continue; // Skip failed/missing transactions
+              }
+
+              const { preBalances, postBalances } = tx.meta;
+              const accountKeys = tx.transaction.message.accountKeys;
+              const blockTime = tx.blockTime! * 1000;
+
+              // Safety check: ensure all arrays have the same length
+              const maxLength = Math.min(
+                accountKeys.length,
+                preBalances?.length || 0,
+                postBalances?.length || 0
+              );
+
+              if (maxLength === 0) {
+                continue; // No account data to process
+              }
+
+              // Process balance changes for this transaction
+              for (let index = 0; index < maxLength; index++) {
+                const preBalance = preBalances?.[index] || 0;
+                const postBalance = postBalances?.[index] || 0;
+                const delta = postBalance - preBalance;
+                const account = accountKeys[index]?.pubkey.toString() || '';
+                const firstAccount = accountKeys[0]?.pubkey.toString() || '';
+
+                if (delta === 0 || !account) {
+                  continue;
+                }
+
+                const amount = Math.abs(delta / 1e9);
+
+                // Skip if this is a spam address
+                if (isSpamAddress(account) || isSpamAddress(firstAccount)) {
+                  continue;
+                }
+
+                // Skip dust transactions
+                if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) {
+                  continue;
+                }
+
+                batchTransfers.push({
+                  txId: signature,
+                  date: new Date(blockTime).toISOString(),
+                  from: delta < 0 ? account : (delta > 0 ? firstAccount : ''),
+                  to: delta > 0 ? account : (delta < 0 ? firstAccount : ''),
+                  tokenSymbol: 'SOL',
+                  tokenAmount: amount.toString(),
+                  transferType: delta < 0 ? 'OUT' : 'IN',
+                });
+              }
             }
 
-            const { preBalances, postBalances } = tx.meta;
-            const accountKeys = tx.transaction.message.accountKeys;
-            const blockTime = tx.blockTime! * 1000;
+            // STREAMING CACHE UPDATE: Immediately cache this batch's results
+            if (batchTransfers.length > 0) {
+              // Cache this batch asynchronously (don't wait for it)
+              (async () => {
+                try {
+                  console.log(`Streaming cache update: Batch ${globalBatchIndex + 1} - caching ${batchTransfers.length} transfers`);
 
-            const txTransfers: Transfer[] = [];
+                  const transferEntries: TransferEntry[] = batchTransfers.map((transfer) => ({
+                    id: crypto.randomUUID(),
+                    walletAddress: address,
+                    signature: transfer.txId || '',
+                    timestamp: new Date(transfer.date).getTime(),
+                    type: (transfer.transferType || 'transfer').toLowerCase() as 'in' | 'out' | 'transfer',
+                    amount: parseFloat(transfer.tokenAmount) || 0,
+                    token: transfer.tokenSymbol || 'SOL',
+                    tokenSymbol: transfer.tokenSymbol || 'SOL',
+                    tokenName: transfer.tokenSymbol || 'SOL',
+                    from: transfer.from || '',
+                    to: transfer.to || '',
+                    mint: undefined,
+                    usdValue: undefined,
+                    isSolanaOnly: isSolanaOnlyTransaction({
+                      tokenSymbol: transfer.tokenSymbol,
+                      token: transfer.tokenSymbol,
+                      from: transfer.from,
+                      to: transfer.to
+                    } as any),
+                    cached: true,
+                    lastUpdated: Date.now()
+                  }));
 
-            // Use proper braces for loop body
-            for (let index = 0; index < preBalances.length; index++) {
-              const preBalance = preBalances[index] || 0;
-              const postBalance = postBalances[index] || 0;
-              const delta = postBalance - preBalance;
-              const account = accountKeys[index]?.pubkey.toString() || '';
-              const firstAccount = accountKeys[0]?.pubkey.toString() || '';
+                  // Store this batch immediately
+                  await batchStoreTransferEntries(transferEntries);
+                  await markTransfersCached(batch, address);
 
-              if (delta === 0 || !account) {
-                continue;
-              }
-
-              const amount = Math.abs(delta / 1e9);
-
-              // Skip if this is a spam address
-              if (isSpamAddress(account) || isSpamAddress(firstAccount)) {
-                continue;
-              }
-
-              // Skip dust transactions
-              if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) {
-                continue;
-              }
-
-              txTransfers.push({
-                txId: signature,
-                date: new Date(blockTime).toISOString(),
-                from: delta < 0 ? account : (delta > 0 ? firstAccount : ''),
-                to: delta > 0 ? account : (delta < 0 ? firstAccount : ''),
-                tokenSymbol: 'SOL',
-                tokenAmount: amount.toString(),
-                transferType: delta < 0 ? 'OUT' : 'IN',
-              });
+                  console.log(`Streaming cache complete: Batch ${globalBatchIndex + 1} cached successfully`);
+                } catch (error) {
+                  console.error(`Streaming cache failed for batch ${globalBatchIndex + 1}:`, error);
+                  // Don't throw - this is async caching, shouldn't block main flow
+                }
+              })();
             }
 
-            return txTransfers;
+            // If we got here, the batch was successful
+            return batchTransfers;
+
           } catch (err) {
-            console.error(`Transaction error (${retries} retries left):`, err);
+            console.error(`Batch ${globalBatchIndex + 1} transaction error (${retries} retries left):`, err);
             retries--;
 
             if (retries > 0) {
               // Use exponential backoff
               await new Promise(resolve => setTimeout(resolve, backoff));
-              backoff *= 2; // Double the backoff time for next retry
+              backoff *= 2;
             }
           }
         }
 
         return []; // Return empty array if all retries failed
-      })
-    );
-
-    // Flatten batch results and add to transfers
-    batchResults.forEach(result => {
-      if (Array.isArray(result)) {
-        transfers.push(...result);
-      }
+      })();
     });
 
-    // Small delay between batches to avoid rate limiting
-    if (batches.length > 1) {
-      await new Promise(resolve => setTimeout(resolve, BATCH_DELAY_MS));
+    // Execute chunk promises in parallel and collect results
+    const chunkResults = await Promise.all(chunkPromises);
+    results.push(...chunkResults);
+
+    // Add delay between chunks to respect rate limits (except for last chunk)
+    if (i + MAX_CONCURRENT_BATCHES < batches.length) {
+      const delayMs = Math.ceil(1000 / (EFFECTIVE_MAX_RPS / MAX_CONCURRENT_BATCHES)); // Ensure we don't exceed RPS
+      console.log(`Rate limiting: Waiting ${delayMs}ms before next chunk`);
+      await new Promise(resolve => setTimeout(resolve, delayMs));
     }
   }
+
+  // Flatten all results into transfers array
+  results.forEach((batchTransfers: Transfer[]) => {
+    transfers.push(...batchTransfers);
+  });
 
   console.log(`Processed ${transfers.length} transfers in ${Date.now() - startTime}ms`);
   return transfers;
@@ -166,7 +251,7 @@ async function processTransferRequest(
   try {
     // Check cache for existing transfers (use any cached data, not just recent)
     console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
-    
+
     let cachedTransfers: TransferEntry[] = [];
     try {
       const cacheResult = await getCachedTransfers(address, {
@@ -182,162 +267,127 @@ async function processTransferRequest(
       cachedTransfers = [];
     }
 
-    // If we have sufficient cached data, return it (regardless of age)
-    if (cachedTransfers.length >= limit && offset === 0) {
-      console.log(`Returning ${cachedTransfers.length} cached transfers (from cache)`);
+    // Combine cached transfers with fresh RPC data to meet user's request
+    let allTransfers: Transfer[] = [];
+    let fromCache = false;
 
-      // Convert cached transfers to the expected format
-      const formattedTransfers = cachedTransfers
-        .slice(offset, offset + limit)
-        .map(transfer => ({
-          txId: transfer.signature,
-          date: new Date(transfer.timestamp).toISOString(),
-          from: transfer.from,
-          to: transfer.to,
-          tokenSymbol: transfer.tokenSymbol || transfer.token,
-          tokenAmount: transfer.amount.toString(),
-          transferType: transfer.type === 'IN' ? 'IN' as const : 'OUT' as const,
-        }));
+    // Convert cached transfers to expected format first
+    const formattedCachedTransfers = cachedTransfers.map(transfer => ({
+      txId: transfer.signature,
+      date: new Date(transfer.timestamp).toISOString(),
+      from: transfer.from,
+      to: transfer.to,
+      tokenSymbol: transfer.tokenSymbol || transfer.token,
+      tokenAmount: transfer.amount.toString(),
+      transferType: transfer.type === 'IN' ? 'IN' as const : 'OUT' as const,
+    }));
 
-      return NextResponse.json({
-        data: formattedTransfers,
-        hasMore: cachedTransfers.length > offset + limit,
-        total: formattedTransfers.length,
-        originalTotal: cachedTransfers.length,
-        nextPageSignature: null,
-        fromCache: true
-      }, { headers: corsHeaders });
+    // Always combine cache + RPC to fulfill user's complete request
+    console.log(`User requested ${limit} transfers, have ${cachedTransfers.length} cached. Will fetch additional if needed...`);
+
+    allTransfers = [...formattedCachedTransfers];
+    let remainingNeeded = limit - cachedTransfers.length;
+
+    // Smart cursor initialization: use oldest cached signature if no beforeSignature provided
+    let beforeSignature = searchParams.get('beforeSignature');
+    if (!beforeSignature && cachedTransfers.length > 0) {
+      // Find oldest cached transaction by timestamp and use its signature
+      const oldestCached = cachedTransfers.reduce((oldest, current) =>
+        current.timestamp < oldest.timestamp ? current : oldest
+      );
+      beforeSignature = oldestCached.signature;
+      console.log(`Using oldest cached signature as cursor: ${beforeSignature.substring(0, 8)}...`);
     }
 
-    // Get connection from pool
-    const connection = await getConnection();
-    const pubkey = new PublicKey(address);
+    // Early exit if we already have enough transfers
+    if (remainingNeeded <= 0) {
+      console.log(`Cache already satisfies request: ${allTransfers.length}/${limit} transfers`);
+    } else {
+      // Get connection from pool for signature fetching
+      const connection = await getConnection();
+      const pubkey = new PublicKey(address);
 
-    // Fetch signatures with proper pagination
-    console.log(`Fetching signatures for ${address} (offset: ${offset}, limit: ${limit})`);
+      // STRATEGY: Fetch ALL signatures first, then process transactions in parallel
+      console.log(`Need ${remainingNeeded} more transfers. Fetching signatures...`);
 
-    // For proper pagination, we need to track the last signature from the previous page
-    // The offset-based pagination requires getting a beforeSignature from URL params
-    // since Solana doesn't support direct offset pagination
-    const beforeSignature = searchParams.get('beforeSignature');
+      let allSignatures: string[] = [];
+      let currentCursor = beforeSignature;
+      let signatureFetchIterations = 0;
+      const maxSignatureFetches = 200; // Prevent infinite loops
 
-    const signatures = await connection.getSignaturesForAddress(
-      pubkey,
-      {
-        limit,
-        before: beforeSignature || undefined
-      }
-    );
+      // Phase 1: Collect all signatures we need
+      while (allSignatures.length < remainingNeeded * 3 && signatureFetchIterations < maxSignatureFetches) {
+        signatureFetchIterations++;
 
-    if (signatures.length === 0) {
-      console.log(`No signatures found for ${address}`);
-      return NextResponse.json({
-        data: [],
-        hasMore: false,
-        total: 0,
-        nextPageSignature: null
-      }, { headers: corsHeaders });
-    }
+        const batchSize = Math.min(MAX_SIGNATURES_LIMIT, (remainingNeeded * 3) - allSignatures.length);
 
-    console.log(`Found ${signatures.length} signatures, processing transfers`);
+        console.log(`Signature fetch ${signatureFetchIterations}: Getting ${batchSize} signatures (before: ${currentCursor?.substring(0, 8) || 'none'})`);
 
-    // Process transactions in smaller batches
-    const transfers = await fetchTransactionBatch(
-      connection,
-      signatures.map(s => s.signature)
-    );
-
-    console.log(`Total transfers found: ${transfers.length}`);
-
-    // Apply basic filtering to remove invalid/spam transfers
-    const filteredTransfers = transfers
-      .filter(transfer => {
-        const amount = parseFloat(transfer.tokenAmount);
-        // Basic validation - only filter out clearly invalid data
-        return isAboveDustThreshold(amount, MIN_TRANSFER_SOL) &&
-          transfer.from !== transfer.to && // Prevent self-transfers
-          transfer.from.length >= MIN_WALLET_ADDRESS_LENGTH &&
-          transfer.to.length >= MIN_WALLET_ADDRESS_LENGTH; // Ensure full wallet addresses
-      })
-      .sort((a, b) => parseFloat(b.tokenAmount) - parseFloat(a.tokenAmount)); // Sort by amount descending
-
-    console.log(`Filtered ${filteredTransfers.length} valid transfers (removed spam/invalid only)`);
-
-    // Get the last signature for pagination
-    const nextPageSignature = signatures.length > 0 ? signatures[signatures.length - 1].signature : null;
-
-    // Prepare response data
-    const responseData = {
-      data: filteredTransfers,
-      hasMore: signatures.length === limit,
-      total: filteredTransfers.length,
-      originalTotal: transfers.length,
-      nextPageSignature,
-      fromCache: false
-    };
-
-    // Send response immediately
-    const response = NextResponse.json(responseData, { headers: corsHeaders });
-
-    // Cache the transfers immediately (don't wait for background)
-    if (filteredTransfers.length > 0) {
-      try {
-        console.log(`Immediately caching ${filteredTransfers.length} transfers for ${address}`);
-        
-        // Convert transfers to TransferEntry format and cache immediately
-        const transferEntries: TransferEntry[] = filteredTransfers.map((transfer, index) => ({
-          id: crypto.randomUUID(),
-          walletAddress: address,
-          signature: transfer.txId || '',
-          timestamp: new Date(transfer.date).getTime(),
-          type: (transfer.transferType || 'transfer').toLowerCase() as 'in' | 'out' | 'transfer',
-          amount: parseFloat(transfer.tokenAmount) || 0,
-          token: transfer.tokenSymbol || 'SOL',
-          tokenSymbol: transfer.tokenSymbol || 'SOL',
-          tokenName: transfer.tokenSymbol || 'SOL',
-          from: transfer.from || '',
-          to: transfer.to || '',
-          mint: undefined,
-          usdValue: undefined,
-          isSolanaOnly: isSolanaOnlyTransaction({
-            tokenSymbol: transfer.tokenSymbol,
-            token: transfer.tokenSymbol,
-            from: transfer.from,
-            to: transfer.to
-          } as any),
-          cached: true,
-          lastUpdated: Date.now()
-        }));
-
-        // Store transfers immediately (parallel processing)
-        const cachePromises = transferEntries.map(async (entry) => {
-          try {
-            if (!entry.id || !entry.walletAddress || !entry.signature) {
-              console.warn('Skipping invalid transfer entry:', entry);
-              return;
-            }
-            await storeTransferEntry(entry);
-          } catch (error) {
-            console.error(`Failed to store transfer entry ${entry.id}:`, error);
+        const signatures = await connection.getSignaturesForAddress(
+          pubkey,
+          {
+            limit: batchSize,
+            before: currentCursor || undefined
           }
-        });
+        );
 
-        // Wait for all caching to complete
-        await Promise.allSettled(cachePromises);
-        
-        // Mark signatures as cached
-        await markTransfersCached(signatures.map(s => s.signature), address);
-        
-        console.log(`Successfully cached ${transferEntries.length} transfers`);
-      } catch (error) {
-        console.error('Immediate caching failed:', error);
-        // Don't block response on cache failure
+        if (signatures.length === 0) {
+          console.log(`No more signatures available - reached end of transaction history`);
+          break;
+        }
+
+        // Add signatures to our collection
+        allSignatures.push(...signatures.map(s => s.signature));
+
+        // Update cursor to oldest signature from this batch for next iteration
+        // Note: Solana returns signatures in reverse chronological order (newest first)
+        currentCursor = signatures[signatures.length - 1].signature;
+
+        console.log(`Collected ${allSignatures.length} signatures so far, cursor: ${currentCursor.substring(0, 8)}...`);
+      }
+
+      console.log(`Phase 1 complete: Collected ${allSignatures.length} signatures in ${signatureFetchIterations} fetches`);
+
+      // Phase 2: Process all transactions in parallel for maximum performance
+      if (allSignatures.length > 0) {
+        console.log(`Phase 2: Processing ${allSignatures.length} transactions in parallel...`);
+
+        const allNewTransfers = await fetchTransactionBatch(allSignatures, address);
+
+        // Apply filtering to new transfers
+        // const filteredNewTransfers = allNewTransfers
+        //   .filter(transfer => {
+        //     const amount = parseFloat(transfer.tokenAmount);
+        //     return isAboveDustThreshold(amount, MIN_TRANSFER_SOL) &&
+        //       transfer.from !== transfer.to &&
+        //       transfer.from.length >= MIN_WALLET_ADDRESS_LENGTH &&
+        //       transfer.to.length >= MIN_WALLET_ADDRESS_LENGTH;
+        //   });
+
+        // console.log(`Processed ${allNewTransfers.length} raw transfers, ${filteredNewTransfers.length} after filtering`);
+
+        // Add to our collection
+        allTransfers.push(...allNewTransfers);
       }
     }
 
-    console.log(`API returning ${filteredTransfers.length} transfers`);
+    // Sort all transfers by amount descending and trim to requested limit
+    const finalTransfers = allTransfers
+      .sort((a, b) => parseFloat(b.tokenAmount) - parseFloat(a.tokenAmount))
+      .slice(offset, offset + limit);
 
-    return response;
+    const hasMore = allTransfers.length > offset + limit;
+
+    console.log(`API returning ${finalTransfers.length} transfers (${cachedTransfers.length} from cache + ${allTransfers.length - cachedTransfers.length} from RPC)`);
+
+    return NextResponse.json({
+      data: finalTransfers,
+      hasMore,
+      total: finalTransfers.length,
+      originalTotal: allTransfers.length,
+      nextPageSignature: beforeSignature,
+      fromCache: cachedTransfers.length === allTransfers.length
+    }, { headers: corsHeaders });
 
   } catch (error) {
     console.error('processTransferRequest Error:', error);
@@ -359,7 +409,7 @@ export async function GET(
   context: { params: Promise<{ address: string }> }
 ) {
   const startTime = Date.now();
-  
+
   try {
     console.log(`[API] Starting transfer fetch`);
     const params = await context.params;
@@ -369,8 +419,8 @@ export async function GET(
 
     const searchParams = request.nextUrl.searchParams;
     const offset = parseInt(searchParams.get('offset') || '0');
-    // Limit batch size to improve performance
-    const limit = Math.min(parseInt(searchParams.get('limit') || '50'), MAX_SIGNATURES_LIMIT);
+    // Allow large requests - we'll handle pagination internally
+    const limit = parseInt(searchParams.get('limit') || '50');
     const transferType = searchParams.get('transferType') || 'ALL';
     const solanaOnly = searchParams.get('solanaOnly') === 'true';
 
@@ -387,7 +437,7 @@ export async function GET(
 
     // Create request key for coordination
     const requestKey = `${address}-${offset}-${limit}-${transferType}-${solanaOnly}`;
-    
+
     // Check if there's already a pending request for this exact query
     if (pendingRequests.has(requestKey)) {
       console.log(`Waiting for existing request: ${requestKey}`);

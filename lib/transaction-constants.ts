@@ -1,9 +1,9 @@
 // Transaction filtering constants and utilities
 
 export const MIN_TRANSFER_SOL = 0.01;
-export const MAX_TRANSFER_COUNT = 10;
-export const AI_MODEL = 'gpt-4o-mini';
-export const AI_MAX_TOKENS = 500;
+export const MAX_TRANSFER_COUNT = 1000;
+export const AI_MODEL = 'gpt-4.1-mini';
+export const AI_MAX_TOKENS = 50000;
 export const AI_TEMPERATURE = 0.1;
 
 export const SPAM_TOKEN_KEYWORDS = [
@@ -42,9 +42,15 @@ export function isAboveDustThreshold(amount: number, threshold: number): boolean
   return amount >= threshold;
 }
 // Transaction batch and retry constants for account transfer API
-export const TRANSACTION_BATCH_SIZE = 100;
+export const TRANSACTION_BATCH_SIZE = 20; // Reduced to respect rate limits
 export const MAX_RETRIES = 5;
-export const INITIAL_BACKOFF_MS = 500;
-export const BATCH_DELAY_MS = 200;
+export const INITIAL_BACKOFF_MS = 50;
+export const BATCH_DELAY_MS = 0;
 export const MAX_SIGNATURES_LIMIT = 1000;
 export const MIN_WALLET_ADDRESS_LENGTH = 32;
+
+// Rate limiting constants - OpenSVM Business Plan: 300 RPS across all nodes
+export const MAX_RPS_LIMIT = 300; // Maximum requests per second across all endpoints
+export const MAX_CONCURRENT_BATCHES = 50; // Limit concurrent batches to stay under RPS
+export const RATE_LIMIT_BUFFER = 0.8; // Use 80% of limit for safety margin
+export const EFFECTIVE_MAX_RPS = Math.floor(MAX_RPS_LIMIT * RATE_LIMIT_BUFFER); // 240 RPS effective
