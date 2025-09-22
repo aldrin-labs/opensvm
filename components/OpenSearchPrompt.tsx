@@ -83,8 +83,14 @@ const OpenSearchPrompt: React.FC<OpenSearchPromptProps> = ({ onClose }) => {
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60000] flex items-center justify-center p-4">
-      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full border border-gray-200 dark:border-gray-700 animate-in fade-in-0 zoom-in-95 duration-200">
+    <div
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-[60000] flex items-center justify-center p-4"
+      onClick={handleRemindLater}
+    >
+      <div
+        className="bg-white dark:bg-gray-900 rounded-lg shadow-xl max-w-md w-full border border-gray-200 dark:border-gray-700 animate-in fade-in-0 zoom-in-95 duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
