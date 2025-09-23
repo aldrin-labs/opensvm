@@ -165,9 +165,16 @@ export function RpcStatusBadge() {
 
     // Manual test function to verify counting works
     const testRpcCounting = async () => {
+        // Only run in browser environment, not during SSR/build
+        if (typeof window === "undefined") {
+            console.log('Test RPC call skipped during SSR/build');
+            return;
+        }
+
         try {
-            // Make a test RPC call to our proxy
-            const response = await fetch('/api/proxy/rpc', {
+            // Make a test RPC call to our proxy with absolute URL
+            const baseUrl = window.location.origin;
+            const response = await fetch(`${baseUrl}/api/proxy/rpc`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -225,5 +232,3 @@ export function RpcStatusBadge() {
         </div>
     );
 }
-
-
