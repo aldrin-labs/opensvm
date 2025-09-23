@@ -272,8 +272,40 @@ export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarPr
           break;
 
         case 'address':
-          console.log("Detected Solana address - navigating to account page");
-          router.push(`/account/${trimmedQuery}`);
+          console.log("Detected Solana address - checking account type and search settings");
+          
+          // Check if programs are disabled in search settings
+          if (!searchSettings.dataTypes.includes('programs')) {
+            console.log("Programs disabled in search settings - routing to account page");
+            router.push(`/account/${trimmedQuery}`);
+            break;
+          }
+          
+          // Check account type using API to determine the correct route
+          try {
+            const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(trimmedQuery)}`);
+            const data = await response.json();
+
+            switch (data.type) {
+              case 'token':
+                console.log('Redirecting to token page:', trimmedQuery);
+                router.push(`/token/${trimmedQuery}`);
+                break;
+              case 'program':
+                console.log('Redirecting to program page:', trimmedQuery);
+                router.push(`/program/${trimmedQuery}`);
+                break;
+              case 'account':
+              default:
+                console.log('Redirecting to account page:', trimmedQuery);
+                router.push(`/account/${trimmedQuery}`);
+                break;
+            }
+          } catch (error) {
+            console.error('Error checking account type:', error);
+            // On error, default to account page
+            router.push(`/account/${trimmedQuery}`);
+          }
           break;
 
         default:

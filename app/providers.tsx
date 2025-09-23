@@ -87,69 +87,71 @@ class AppErrorBoundary extends React.Component<
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <EnhancedErrorBoundary>
-      <AccessibilityProvider>
-        <ErrorHandlingProvider>
-          <EnhancedThemeProvider>
-            <WalletProvider>
-              <AuthProvider>
-                <RBACProvider>
-                  <SSOProvider>
-                    <ExportProvider>
-                      <OptimisticUIProvider>
-                        <AnimationProvider>
-                          <CacheProvider>
-                            <VoiceProvider>
-                              <UserExpertiseProvider>
-                                <OnboardingProvider>
-                                  <PerformanceProvider
-                                    config={{
-                                      enabled: true,
-                                      collectInterval: 2000, // Collect metrics every 2 seconds
-                                      reportInterval: 30000,  // Report every 30 seconds
-                                      debugMode: process.env.NODE_ENV === 'development',
-                                      thresholds: {
-                                        fps: { warning: 30, critical: 15 },
-                                        memoryUsage: { warning: 0.75, critical: 0.9 },
-                                        apiResponseTime: { warning: 1000, critical: 2500 },
-                                        loadTime: { warning: 3000, critical: 5000 },
-                                        firstContentfulPaint: { warning: 2000, critical: 4000 },
-                                        largestContentfulPaint: { warning: 2500, critical: 4000 },
-                                        cumulativeLayoutShift: { warning: 0.1, critical: 0.25 },
-                                        timeToInteractive: { warning: 3500, critical: 5000 }
-                                      }
-                                    }}
-                                    autoStart={false}
-                                  >
-                                    <AIChatSidebarProvider>
-                                      <Suspense
-                                        fallback={
-                                          <div className="min-h-screen bg-background flex items-center justify-center">
-                                            <div className="text-center">
-                                              <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                              <p className="text-muted-foreground">Loading OpenSVM...</p>
-                                            </div>
-                                          </div>
+    <div className="ai-providers-wrapper"> {/* Added ai-providers-wrapper */}
+      <EnhancedErrorBoundary>
+        <AccessibilityProvider>
+          <ErrorHandlingProvider>
+            <EnhancedThemeProvider>
+              <WalletProvider>
+                <AuthProvider>
+                  <RBACProvider>
+                    <SSOProvider>
+                      <ExportProvider>
+                        <OptimisticUIProvider>
+                          <AnimationProvider>
+                            <CacheProvider>
+                              <VoiceProvider>
+                                <UserExpertiseProvider>
+                                  <OnboardingProvider>
+                                    <PerformanceProvider
+                                      config={{
+                                        enabled: true,
+                                        collectInterval: 2000, // Collect metrics every 2 seconds
+                                        reportInterval: 30000,  // Report every 30 seconds
+                                        debugMode: process.env.NODE_ENV === 'development',
+                                        thresholds: {
+                                          fps: { warning: 30, critical: 15 },
+                                          memoryUsage: { warning: 0.75, critical: 0.9 },
+                                          apiResponseTime: { warning: 1000, critical: 2500 },
+                                          loadTime: { warning: 3000, critical: 5000 },
+                                          firstContentfulPaint: { warning: 2000, critical: 4000 },
+                                          largestContentfulPaint: { warning: 2500, critical: 4000 },
+                                          cumulativeLayoutShift: { warning: 0.1, critical: 0.25 },
+                                          timeToInteractive: { warning: 3500, critical: 5000 }
                                         }
-                                      >
-                                        {children}
-                                      </Suspense>
-                                    </AIChatSidebarProvider>
-                                  </PerformanceProvider>
-                                </OnboardingProvider>
-                              </UserExpertiseProvider>
-                            </VoiceProvider>
-                          </CacheProvider>
-                        </AnimationProvider>
-                      </OptimisticUIProvider>
-                    </ExportProvider>
-                  </SSOProvider>
-                </RBACProvider>
-              </AuthProvider>
-            </WalletProvider>
-          </EnhancedThemeProvider>
-        </ErrorHandlingProvider>
-      </AccessibilityProvider>
-    </EnhancedErrorBoundary>
+                                      }}
+                                      autoStart={false}
+                                    >
+                                      <AIChatSidebarProvider>
+                                        <Suspense
+                                          fallback={
+                                            <div className="min-h-screen bg-background flex items-center justify-center">
+                                              <div className="text-center">
+                                                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                                <p className="text-muted-foreground">Loading OpenSVM...</p>
+                                              </div>
+                                            </div>
+                                          }
+                                        >
+                                          {children}
+                                        </Suspense>
+                                      </AIChatSidebarProvider>
+                                    </PerformanceProvider>
+                                  </OnboardingProvider>
+                                </UserExpertiseProvider>
+                              </VoiceProvider>
+                            </CacheProvider>
+                          </AnimationProvider>
+                        </OptimisticUIProvider>
+                      </ExportProvider>
+                    </SSOProvider>
+                  </RBACProvider>
+                </AuthProvider>
+              </WalletProvider>
+            </EnhancedThemeProvider>
+          </ErrorHandlingProvider>
+        </AccessibilityProvider>
+      </EnhancedErrorBoundary>
+    </div>
   );
 }

@@ -1,4 +1,4 @@
-"use client";
+'use client';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,7 +96,8 @@ export default function ScanPage() {
     ];
 
     return (
-        <div className="container mx-auto py-6">
+        // Added ai-scan-page-wrapper for AI navigation
+        <div className="ai-scan-page-wrapper container mx-auto py-6"> 
             <Card>
                 <CardHeader>
                     <CardTitle>Real-time Memecoin Scan</CardTitle>

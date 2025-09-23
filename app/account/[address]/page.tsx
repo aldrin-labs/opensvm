@@ -451,8 +451,8 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   // In E2E mode, render a simplified layout to ensure deterministic mounting of tabs/table
   if (isE2EMode && accountInfo) {
     return (
-      <div className="w-full px-4 py-8" data-test="account-page-e2e">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="w-12/12 px-4 py-8 ai-account-page-wrapper" data-test="account-page-e2e"> {/* Added ai-account-page-wrapper here */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 ai-account-grid"> {/* Added ai-account-grid here */}
           <div className="lg:col-span-2 space-y-6">
             <AccountInfo
               address={accountInfo.address}
@@ -490,8 +490,8 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   }
 
   return (
-    <div className="w-full px-4 py-8" data-test="account-page-e2e">
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+    <div className="w-12/12 px-4 py-8 ai-account-page-wrapper" data-test="account-page-e2e"> {/* Added ai-account-page-wrapper here */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 ai-account-grid"> {/* Added ai-account-grid here */}
         {/* Account Info - Compact Column */}
         <div className="lg:col-span-2 space-y-6">
           <AccountInfo

@@ -96,25 +96,20 @@ const categoryConfig = {
 };
 
 interface PageProps {
-  params: Promise<{ category: string }>;
+  params: { category: string }; // Corrected type for params, assuming it's not a Promise here based on typical Next.js usage for page props
 }
 
 export default function DeFiCategoryPage({ params }: PageProps) {
   const settings = useSettings();
   const router = useRouter();
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>(params.category || null); // Initialize category from params
 
+  // Effect to handle potential category changes or initial loading if params are not immediately available
   useEffect(() => {
-    async function resolveParams() {
-      try {
-        const resolvedParams = await params;
-        setCategory(resolvedParams.category);
-      } catch (error) {
-        console.error('Error resolving params:', error);
-      }
+    if (!category && params.category) {
+      setCategory(params.category);
     }
-    resolveParams();
-  }, [params]);
+  }, [params.category, category]);
 
   const config = category ? categoryConfig[category as keyof typeof categoryConfig] : null;
 
@@ -125,24 +120,21 @@ export default function DeFiCategoryPage({ params }: PageProps) {
     }
   }, [category, config, router]);
 
-  // Show loading while resolving params
-  if (!category) {
+  // Show loading while resolving params or if config is not found yet
+  if (!category || !config) {
+    // Added ai-loading-spinner for AI navigation consideration
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="ai-loading-spinner min-h-screen bg-background flex items-center justify-center">
         <LoadingSpinner />
       </div>
     );
   }
 
-  // Show null for invalid category (will redirect via useEffect)
-  if (!config) {
-    return null;
-  }
-
   const ComponentToRender = config.component;
 
   return (
-    <div className="min-h-screen bg-background">
+    // Added ai-defi-category-page-wrapper for AI navigation
+    <div className="ai-defi-category-page-wrapper min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-foreground mb-2">

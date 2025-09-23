@@ -40,4 +40,6 @@ export default function TransactionPage({ params }: Props) {
   }
 
   return null; // This component just redirects, so it doesn't render anything
+// Added ai-redirect-page class to mark this as a redirect page layout element
+<div className="ai-redirect-page"></div>
 }

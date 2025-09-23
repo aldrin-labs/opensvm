@@ -25,13 +25,15 @@ export const AIChatSidebarWrapper: React.FC = () => {
   // Don't gate isOpen by mounted since the Chat component handles visibility properly
   // The Chat > ChatLayout component will render the root element regardless of isOpen
   return (
-    <AIChatSidebar
-      isOpen={isOpen}
-      onClose={close}
-      onWidthChange={setSidebarWidth}
-      onResizeStart={onResizeStart}
-      onResizeEnd={onResizeEnd}
-      initialWidth={sidebarWidth}
-    />
+    <div className="ai-chat-sidebar-wrapper-container">
+      <AIChatSidebar
+        isOpen={isOpen}
+        onClose={close}
+        onWidthChange={setSidebarWidth}
+        onResizeStart={onResizeStart}
+        onResizeEnd={onResizeEnd}
+        initialWidth={sidebarWidth}
+      />
+    </div>
   );
 };

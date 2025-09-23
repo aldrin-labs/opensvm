@@ -10,6 +10,8 @@ import { Button } from '@/components/ui/button';
 import { getAllTokens } from '@/lib/mock-token-data';
 import type { TokenMarketData, TokenListResponse } from '@/types/token-market';
 
+type ViewMode = 'all' | 'calls' | 'transactions' | 'blocks';
+
 export default function TokensPage() {
   const settings = useSettings();
   const router = useRouter();
@@ -67,7 +69,7 @@ export default function TokensPage() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="ai-tokens-page-wrapper container mx-auto py-8 px-4"> {/* Added ai-tokens-page-wrapper */}
       <div className="mb-8">
         <h1 className="text-4xl font-bold mb-2">All Tokens</h1>
         <p className="text-muted-foreground">

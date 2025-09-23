@@ -189,7 +189,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
   return (
     <>
       <div
-        className="flex w-full h-14 items-center justify-between py-0 bg-background shadow-sm fixed top-0 left-0 z-40 border-b border-border/10"
+        className="flex w-full h-14 items-center justify-between py-0 bg-background shadow-sm fixed top-0 left-0 z-40 border-b border-border/10 ai-navbar"
         onKeyDown={handleTabKey}
         role="navigation"
         aria-label="Main navigation"

@@ -222,7 +222,7 @@ export default function HomePage() {
   };
 
   return (
-    <div className="relative">
+    <div className="relative ai-page-container">
       <div className="min-h-screen bg-background">
         <div className="container mx-auto px-4 py-12">
           {/* Hero Section */}

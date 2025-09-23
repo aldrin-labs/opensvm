@@ -122,89 +122,91 @@ export default function BlocksPageSimple() {
   };
 
   return (
-    <div className="container mx-auto py-8 px-4">
-      <div className="mb-8">
-        <h1 className="text-4xl font-bold mb-2">Recent Blocks</h1>
-        <p className="text-muted-foreground">
-          View latest blocks with real-time streaming updates.
-        </p>
-      </div>
-
-      {/* Connection Status */}
-      <div className="mb-6 p-4 border rounded-lg">
-        <div className="flex items-center gap-2">
-          <div className={`w-3 h-3 rounded-full ${isConnected
-            ? 'bg-green-500 animate-pulse'
-            : connectionStatus === 'connecting'
-              ? 'bg-yellow-500 animate-pulse'
-              : 'bg-red-500'
-            }`}></div>
-          <span className="font-medium">
-            {isConnected ? 'Live Connection Active' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
-          </span>
-          {error && (
-            <span className="text-red-500 ml-2">({error})</span>
-          )}
-        </div>
-      </div>
-
-      {error && !isConnected && (
-        <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-          <p className="text-destructive">{error}</p>
-        </div>
-      )}
-
-      {/* Blocks Table */}
-      <div className="border rounded-lg">
-        <div className="p-4 border-b">
-          <h2 className="text-lg font-semibold">Latest Blocks</h2>
+    <div className="ai-blocks-page-wrapper"> {/* Added ai-blocks-page-wrapper */}
+      <div className="container mx-auto py-8 px-4">
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold mb-2">Recent Blocks</h1>
+          <p className="text-muted-foreground">
+            View latest blocks with real-time streaming updates.
+          </p>
         </div>
 
-        {isLoading && blocks.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-            <p className="text-muted-foreground">Loading blocks...</p>
+        {/* Connection Status */}
+        <div className="mb-6 p-4 border rounded-lg">
+          <div className="flex items-center gap-2">
+            <div className={`w-3 h-3 rounded-full ${isConnected
+              ? 'bg-green-500 animate-pulse'
+              : connectionStatus === 'connecting'
+                ? 'bg-yellow-500 animate-pulse'
+                : 'bg-red-500'
+              }`}></div>
+            <span className="font-medium">
+              {isConnected ? 'Live Connection Active' : connectionStatus === 'connecting' ? 'Connecting...' : 'Offline'}
+            </span>
+            {error && (
+              <span className="text-red-500 ml-2">({error})</span>
+            )}
           </div>
-        ) : (
-          <div className="divide-y">
-            {blocks.length === 0 ? (
-              <div className="p-8 text-center">
-                <p className="text-muted-foreground">No blocks received yet. Waiting for real-time updates...</p>
-              </div>
-            ) : (
-              blocks.map((block) => (
-                <div
-                  key={block.slot}
-                  className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
-                  onClick={() => handleBlockClick(block.slot)}
-                >
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <div className="font-mono font-bold">
-                        #{formatLargeNumber(block.slot)}
+        </div>
+
+        {error && !isConnected && (
+          <div className="mb-6 p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-destructive">{error}</p>
+          </div>
+        )}
+
+        {/* Blocks Table */}
+        <div className="border rounded-lg">
+          <div className="p-4 border-b">
+            <h2 className="text-lg font-semibold">Latest Blocks</h2>
+          </div>
+
+          {isLoading && blocks.length === 0 ? (
+            <div className="p-8 text-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+              <p className="text-muted-foreground">Loading blocks...</p>
+            </div>
+          ) : (
+            <div className="divide-y">
+              {blocks.length === 0 ? (
+                <div className="p-8 text-center">
+                  <p className="text-muted-foreground">No blocks received yet. Waiting for real-time updates...</p>
+                </div>
+              ) : (
+                blocks.map((block) => (
+                  <div
+                    key={block.slot}
+                    className="p-4 hover:bg-muted/50 cursor-pointer transition-colors"
+                    onClick={() => handleBlockClick(block.slot)}
+                  >
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <div className="font-mono font-bold">
+                          #{formatLargeNumber(block.slot)}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {block.transactionCount} transactions
+                        </div>
                       </div>
-                      <div className="text-sm text-muted-foreground">
-                        {block.transactionCount} transactions
-                      </div>
-                    </div>
-                    <div className="text-right">
-                      <div className="text-sm text-muted-foreground">
-                        {new Date(block.timestamp * 1000).toLocaleTimeString()}
+                      <div className="text-right">
+                        <div className="text-sm text-muted-foreground">
+                          {new Date(block.timestamp * 1000).toLocaleTimeString()}
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
-            )}
-          </div>
-        )}
-      </div>
+                ))
+              )}
+            </div>
+          )}
+        </div>
 
-      <div className="mt-8 text-sm text-muted-foreground">
-        <p>
-          Block data is streamed in real-time from the Solana RPC via Server-Sent Events (SSE).
-          New blocks appear automatically as they are confirmed on the network.
-        </p>
+        <div className="mt-8 text-sm text-muted-foreground">
+          <p>
+            Block data is streamed in real-time from the Solana RPC via Server-Sent Events (SSE).
+            New blocks appear automatically as they are confirmed on the network.
+          </p>
+        </div>
       </div>
     </div>
   );

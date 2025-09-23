@@ -48,7 +48,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${inter.variable} ${jetbrains.variable}`}
+      className={`ai-html-root ${inter.variable} ${jetbrains.variable}`}
     >
       <head>
         <link rel="dns-prefetch" href="https://fonts.googleapis.com" />

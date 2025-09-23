@@ -220,6 +220,7 @@ export function Chat({
 
   return (
     <ChatLayout
+      className="ai-chat-layout"
       variant={variant}
       isOpen={isOpen}
       className={className}

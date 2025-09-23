@@ -13,9 +13,10 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function GET(_request, context) {
+export async function GET(_request, { params }) {
   try {
-    const address = decodeURIComponent(context.params.address);
+    const resolvedParams = await params;
+    const address = decodeURIComponent(resolvedParams.address);
     const programId = new PublicKey(address);
     const connection = await getConnection();
     const accountInfo = await connection.getAccountInfo(programId);
@@ -44,8 +45,16 @@ export async function GET(_request, context) {
       dataSize: accountInfo.data.length
     };
 
+    const serializedAccountInfo = {
+      executable: accountInfo.executable,
+      owner: accountInfo.owner.toBase58(),
+      lamports: (accountInfo.lamports || 0).toString(),
+      rentEpoch: (accountInfo.rentEpoch || 0).toString(),
+      data: Array.from(accountInfo.data).map(b => Number(b))
+    };
+
     return NextResponse.json(
-      { programData },
+      { programData, serializedAccountInfo },
       { headers: corsHeaders }
     );
 
