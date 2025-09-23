@@ -30,7 +30,10 @@ class ProxyConnection extends Connection {
             } else if (process.env.NEXT_PUBLIC_BASE_URL) {
                 finalEndpoint = process.env.NEXT_PUBLIC_BASE_URL + finalEndpoint;
             } else {
-                throw new Error(`Invalid endpoint '${endpoint}': URL must start with http:// or https://`);
+                // During build/static generation, use a placeholder URL for relative paths
+                // This will be resolved at runtime when the actual request is made
+                finalEndpoint = `https://opensvm.com${finalEndpoint}`;
+                console.warn(`[RPC] Using fallback base URL for build-time endpoint: ${finalEndpoint}`);
             }
         }
 
