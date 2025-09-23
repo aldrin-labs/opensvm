@@ -15,7 +15,10 @@ export default async function CatchAllRoute({ params }: { params: { slug?: strin
   const input = slugParts.join('/');
 
   // Don't handle Next.js internal routes or static assets - return 404
-  if (input.startsWith('_next/') || 
+  // Check for Next.js internal routes first
+  if (slugParts[0]?.startsWith('_next') || 
+      slugParts[0] === '_next' ||
+      input.startsWith('_next/') || 
       input.startsWith('api/') || 
       input.startsWith('static/') ||
       input.startsWith('favicon') ||

@@ -348,7 +348,7 @@ export function ChatUI({
       if (__AI_DEBUG__) console.log('🔍 ChatUI: Removing svmai-show-processing-ui event listener');
       window.removeEventListener('svmai-show-processing-ui', handleShowProcessingUI);
     };
-  }, []);
+  }, [optimisticProcessing, setOptimisticProcessing, setShowProcessingUI]);
 
   // Global pending fallback - coordinates with SVMAI.prompt pending state
   const pendingStartRef = useRef<number>(0);

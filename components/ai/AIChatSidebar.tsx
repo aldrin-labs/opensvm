@@ -823,21 +823,21 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       await clearKnowledgeNotes();
       setKnowledgeNotes([]);
     } catch (e) { console.warn('Clear knowledge failed', e); }
-  }, [clearKnowledgeNotes]);
+  }, []);
 
   const handleAddNote = useCallback(async (note: any) => {
     try {
       await addKnowledgeNote(note);
       setKnowledgeNotes(prev => [...prev, note]);
     } catch (e) { console.warn('Add knowledge failed', e); }
-  }, [addKnowledgeNote]);
+  }, []);
 
   const handleRemoveNote = useCallback(async (noteId: string) => {
     try {
       await removeKnowledgeNote(noteId);
       setKnowledgeNotes(prev => prev.filter(n => n.id !== noteId));
     } catch (e) { console.warn('Remove knowledge failed', e); }
-  }, [removeKnowledgeNote]);
+  }, []);
 
   const handleRetryAction = useCallback((actionId: string) => {
     if (activeTabId && activeTab) {

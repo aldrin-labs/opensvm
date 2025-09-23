@@ -1,0 +1,322 @@
+<!DOCTYPE html><html lang="en" class="__variable_f367f3 __variable_3c557b"><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover"/><meta name="viewport" content="width=device-width, initial-scale=1"/><link rel="stylesheet" href="/_next/static/css/app/layout.css?v=1758477382055" data-precedence="next_static/css/app/layout.css"/><link rel="preload" as="script" fetchPriority="low" href="/_next/static/chunks/webpack.js?v=1758477382055"/><script src="/_next/static/chunks/main-app.js?v=1758477382055" async=""></script><script src="/_next/static/chunks/app-pages-internals.js" async=""></script><script src="/_next/static/chunks/app/search/page.js" async=""></script><script src="/_next/static/chunks/app/layout.js" async=""></script><meta name="next-size-adjust" content=""/><link rel="dns-prefetch" href="https://fonts.googleapis.com"/><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous"/><link rel="preconnect" href="https://api.mainnet-beta.solana.com" crossorigin="anonymous"/><link rel="preload" href="/fonts/BerkeleyMono-Regular.woff2" as="font" type="font/woff2" crossorigin="anonymous" fetchPriority="high"/><link rel="preload" href="/fonts/BerkeleyMono-Bold.woff2" as="font" type="font/woff2" crossorigin="anonymous" fetchPriority="high"/><link rel="preload" href="/favicon.svg" as="image" type="image/svg+xml" fetchPriority="high"/><meta name="theme-color" content="#000000"/><meta name="mobile-web-app-capable" content="yes"/><meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/><link rel="manifest" href="/manifest.json"/><link rel="apple-touch-icon" href="/favicon.svg"/><link rel="icon" type="image/svg+xml" href="/favicon.svg"/><link rel="search" type="application/opensearchdescription+xml" title="OpenSVM" href="/opensearch.xml"/><title>OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)</title><meta name="description" content="Explore all SVM networks with AI assistance, or create your Solana Network Extension for free."/><link rel="shortcut icon" href="/favicon.svg"/><link rel="icon" href="/favicon.svg"/><link rel="apple-touch-icon" href="/favicon.svg"/><link rel="icon" href="/favicon.svg"/><script src="/register-sw.js" defer=""></script><script>(function(){
+try {
+  var w = window;
+  var qp = location.search;
+  // Inject early persisted width into global BEFORE any React hydration so ChatLayout/Provider initializers can read it
+  try {
+    var __sw = localStorage.getItem('aiSidebarWidth');
+    if (__sw && /^\d+$/.test(__sw)) {
+      var __vp = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1920;
+      var __min = Math.min(560, __vp);
+      var __cw = Math.min(__vp, Math.max(__min, parseInt(__sw,10)));
+      window.__SVMAI_EARLY_WIDTH__ = __cw;
+      try {
+        window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: __cw, phase: 'early-persisted', ts: Date.now() }}));
+      } catch(e){}
+    }
+  } catch(e){}
+  // Early placeholder root to eliminate race for tests selecting [data-ai-sidebar-root]
+  try {
+    var wantsAI = (/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp));
+    var persistedOpen = false;
+    try { persistedOpen = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}
+    if ((w.SVMAI && w.SVMAI.__forceOpen) || wantsAI || persistedOpen) {
+      // If an SSR-rendered root already exists, upgrade it instead of creating a placeholder
+      var existingRoot = document.querySelector('[data-ai-sidebar-root]');
+      if (existingRoot) {
+        try {
+          existingRoot.setAttribute('data-open','1');
+          existingRoot.setAttribute('data-ai-sidebar-visible','1');
+          existingRoot.setAttribute('data-ai-mode', existingRoot.getAttribute('data-ai-mode') || 'agent');
+          var __pwExist = localStorage.getItem('aiSidebarWidth');
+          if (__pwExist && /^\d+$/.test(__pwExist)) {
+            existingRoot.setAttribute('data-ai-sidebar-width', __pwExist);
+            if (existingRoot.style) existingRoot.style.width = __pwExist + 'px';
+            try {
+              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pwExist,10), phase: 'early-upgrade-existing', ts: Date.now() }}));
+            } catch(e){}
+          }
+        } catch(e){}
+      } else if (!document.getElementById('svmai-early-root')) {
+        var earlyRoot = document.createElement('div');
+        earlyRoot.id = 'svmai-early-root';
+        earlyRoot.setAttribute('data-ai-sidebar-root','');
+        earlyRoot.setAttribute('data-ai-sidebar','');
+        earlyRoot.setAttribute('data-ai-sidebar-early-root','1');
+        earlyRoot.setAttribute('data-open','1');
+        earlyRoot.setAttribute('data-ai-sidebar-visible','1');
+        // width attribute will be normalized by hydrated component; set initial conservative value
+        earlyRoot.setAttribute('data-ai-sidebar-width','560');
+        // default mode attribute so tests reading pre-hydration state see expected mode
+        earlyRoot.setAttribute('data-ai-mode','agent');
+        // Apply any persisted width immediately (pre-hydration) so first measurement reflects user setting
+        try {
+          var __pw = localStorage.getItem('aiSidebarWidth');
+          if (__pw && /^\d+$/.test(__pw)) {
+            earlyRoot.setAttribute('data-ai-sidebar-width', __pw);
+            earlyRoot.style.width = __pw + 'px';
+            try {
+              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pw,10), phase: 'early-placeholder', ts: Date.now() }}));
+            } catch(e){}
+          }
+        } catch(e){}
+        earlyRoot.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';
+        document.body.appendChild(earlyRoot);
+        try {
+          window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline' }}));
+        } catch(e){}
+      }
+    }
+  } catch(e){}
+
+  // Final early width enforcement to avoid race before hydration
+  (function(){
+    try {
+      function svmaiEnsureWidth(){
+        try {
+          var wVal = (typeof window !== 'undefined') ? (window).__SVMAI_EARLY_WIDTH__ : undefined;
+          if(!Number.isFinite(wVal)) {
+            var ls = localStorage.getItem('aiSidebarWidth');
+            if(ls && /^\d+$/.test(ls)) wVal = parseInt(ls,10);
+          }
+            if(Number.isFinite(wVal)){
+              var root = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');
+              if(root){
+                root.setAttribute('data-ai-sidebar-width', String(wVal));
+                if(root.style) root.style.width = wVal + 'px';
+                try {
+                  window.dispatchEvent(new CustomEvent('svmai-width-set', { detail:{ width: wVal, phase: 'early-final', ts: Date.now() }}));
+                } catch(e){}
+              }
+            }
+        } catch(e){}
+      }
+      svmaiEnsureWidth();
+      requestAnimationFrame(svmaiEnsureWidth);
+      setTimeout(svmaiEnsureWidth, 65);
+    } catch(e){}
+  })();
+  // Fallback: if body wasn't ready when initial attempt ran, retry until body exists (max ~2s)
+  try {
+    if (!document.getElementById('svmai-early-root')) {
+      (function ensureEarlyRoot(at){
+        if (document.getElementById('svmai-early-root')) return;
+        if (document.body) {
+          try {
+            var wantsAI2 = (/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp));
+            var persisted2 = false;
+            try { persisted2 = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}
+            if (w.SVMAI?.__forceOpen || wantsAI2 || persisted2) {
+              var earlyRoot2 = document.createElement('div');
+              earlyRoot2.id = 'svmai-early-root';
+              earlyRoot2.setAttribute('data-ai-sidebar-root','');
+              earlyRoot2.setAttribute('data-ai-sidebar','');
+              earlyRoot2.setAttribute('data-ai-sidebar-early-root','1');
+              earlyRoot2.setAttribute('data-open','1');
+              earlyRoot2.setAttribute('data-ai-sidebar-visible','1');
+              earlyRoot2.setAttribute('data-ai-sidebar-width','560');
+              earlyRoot2.setAttribute('data-ai-mode','agent');
+              try {
+                var __pw2 = localStorage.getItem('aiSidebarWidth');
+                if (__pw2 && /^d+$/.test(__pw2)) {
+                  earlyRoot2.setAttribute('data-ai-sidebar-width', __pw2);
+                  earlyRoot2.style.width = __pw2 + 'px';
+                }
+              } catch(e){}
+              earlyRoot2.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot2.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';
+              document.body.appendChild(earlyRoot2);
+              try { window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline-fallback' }})); } catch(e){}
+            }
+          } catch(e){}
+          return;
+        }
+        if (at < 120) { requestAnimationFrame(function(){ ensureEarlyRoot(at+1); }); }
+      })(0);
+    }
+  } catch(e){}
+  if (/[?&]ai=(1|true)(?:&|$)/.test(qp)) {
+    try { localStorage.setItem('aiSidebarOpen','1'); } catch(e){}
+  }
+  w.SVMAI = w.SVMAI || {};
+  if (typeof w.SVMAI.open !== 'function') { w.SVMAI.open = function(){ w.__SVMAI_EARLY_OPEN__ = Date.now(); }; }
+  if (typeof w.SVMAI.close !== 'function') { w.SVMAI.close = function(){ w.__SVMAI_EARLY_CLOSE__ = Date.now(); }; }
+  if (typeof w.SVMAI.toggle !== 'function') { w.SVMAI.toggle = function(next){ w.__SVMAI_EARLY_TOGGLE__ = { next: next, ts: Date.now() }; }; }
+  // Early width setter so tests can persist & observe width before hydration
+  if (typeof w.SVMAI.setWidth !== 'function') {
+    w.SVMAI.setWidth = function(n){
+      try {
+        n = (typeof n === 'number') ? n : parseInt(n,10);
+        if (!(n > 0)) return;
+        var viewport = (typeof window !== 'undefined' && window.innerWidth) ? window.innerWidth : 1920;
+        var minLimit = Math.min(560, viewport);
+        var clamped = Math.min(viewport, Math.max(minLimit, n));
+        try { localStorage.setItem('aiSidebarWidth', String(clamped)); } catch(e){}
+        // Stamp early width global so hydration initializers immediately pick latest user intent
+        try { window.__SVMAI_EARLY_WIDTH__ = clamped; } catch(e){}
+        // Instrumentation event log (mirrors hydrated api-setWidth events)
+        try {
+          var arr = (window.__SVMAI_WIDTH_EVENTS__ = window.__SVMAI_WIDTH_EVENTS__ || []);
+          arr.push({ ts: Date.now(), source: 'early-setWidth', width: clamped, input: n });
+        } catch(e){}
+        var r = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');
+        if (r) {
+          r.setAttribute('data-ai-sidebar-width', String(clamped));
+          try {
+            if (r && r.style) {
+              r.style.width = clamped + 'px';
+            }
+          } catch(e){}
+          // Ensure open visibility attributes so early measurement reflects clamped width
+          try {
+            r.setAttribute('data-open','1');
+            r.setAttribute('data-ai-sidebar-visible','1');
+          } catch(e){}
+        }
+        try {
+          window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: clamped, phase: 'early', ts: Date.now() }}));
+        } catch(e){}
+        return clamped;
+      } catch(e){}
+    };
+  }
+  if (typeof w.SVMAI.prompt !== 'function') {
+    w.SVMAI.prompt = function(text, submit){
+      w.__SVMAI_EARLY_PROMPT__ = { text: String(text||''), submit: !!submit, ts: Date.now() };
+      try {
+        if (submit) {
+          var prov = document.getElementById('svmai-early-processing');
+          if (!prov) {
+            prov = document.createElement('div');
+            prov.id = 'svmai-early-processing';
+            prov.setAttribute('data-ai-processing-status','1');
+            prov.setAttribute('data-ai-processing-active','1');
+            prov.style.cssText='position:fixed;top:6px;right:8px;font:11px system-ui,sans-serif;background:rgba(0,0,0,0.65);color:#fff;padding:2px 6px;border-radius:4px;z-index:40001;pointer-events:none;';
+            prov.textContent='Processing...';
+            document.body.appendChild(prov);
+          } else {
+            prov.setAttribute('data-ai-processing-active','1');
+            prov.textContent='Processing...';
+          }
+          setTimeout(function(){
+            try {
+              if (prov && !window.__SVMAI_FINALIZED__) {
+                prov.setAttribute('data-ai-processing-active','0');
+                prov.style.opacity='0';
+              }
+            } catch(e){}
+          }, 4000);
+        }
+      } catch(e){}
+    };
+  }
+  if (typeof w.SVMAI.seed !== 'function') {
+    w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];
+    w.SVMAI.seed = function(count, opts){
+      count = (typeof count === 'number' && count > 0) ? count : 20;
+      try {
+        w.SVMAI._seedQueue.push({ count: count, opts: opts });
+        window.dispatchEvent(new CustomEvent('svmai-seed-queued', { detail: { count: count, opts: opts, phase: 'layout-inline', ts: Date.now() } }));
+      } catch(e){}
+      return { queued: true, stub: true };
+    };
+  }
+  if (typeof w.__SVMAI_SEED__ !== 'function') {
+    w.__SVMAI_SEED__ = function(count, opts){
+      try {
+        if (w.SVMAI && typeof w.SVMAI.seed === 'function') {
+          return w.SVMAI.seed(count, opts);
+        }
+        w.SVMAI = w.SVMAI || {};
+        w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];
+        w.SVMAI._seedQueue.push({ count: (typeof count === 'number' && count > 0) ? count : 20, opts: opts });
+        window.dispatchEvent(new CustomEvent('svmai-seed-queued', { detail: { count: count, opts: opts, phase: 'layout-inline-alias', ts: Date.now() } }));
+      } catch(e){}
+      return { queued: true, alias: true };
+    };
+    try {
+      window.dispatchEvent(new CustomEvent('svmai-seed-alias-ready', { detail: { phase: 'layout-inline', ts: Date.now() } }));
+    } catch(e){}
+  }
+  if ((/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp)) && !document.querySelector('[data-ai-chat-input]')) {
+    try {
+      var hostInput = document.getElementById('ai-sidebar-ssr-placeholder') || document.body;
+      var earlyWrap = document.createElement('div');
+      earlyWrap.id = 'svmai-early-input-inline';
+      earlyWrap.setAttribute('data-ai-chat-early','inline');
+      earlyWrap.style.cssText='position:fixed;bottom:12px;right:12px;width:340px;max-width:48vw;z-index:40000;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);padding:6px 6px 8px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;font:12px system-ui,sans-serif;color:#fff;';
+      earlyWrap.innerHTML='<textarea data-ai-chat-input data-ai-early-inline="1" aria-label="Chat input (initializing)" rows="2" style="width:100%;resize:none;background:rgba(0,0,0,0.6);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:6px;font:12px/1.35 system-ui,sans-serif;" placeholder="Initializing chat..."></textarea><div style="margin-top:4px;font-size:10px;opacity:0.6;">Loading chat…</div>';
+      hostInput.appendChild(earlyWrap);
+      var removeEarly = function(){
+        var real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');
+        var provisional = document.getElementById('svmai-early-input-inline');
+        if (real && provisional) { provisional.remove(); return true; }
+        return false;
+      };
+      window.addEventListener('svmai-global-ready', function(ev){
+        if (ev.detail && ev.detail.phase === 'mounted') {
+          setTimeout(removeEarly, 30);
+          setTimeout(removeEarly, 250);
+          setTimeout(removeEarly, 1200);
+        }
+      });
+      setTimeout(function check(){ if(!removeEarly()) setTimeout(check,120); }, 300);
+    } catch(e){}
+  }
+  if (/[?&]ai=(1|true)(?:&|$)/.test(qp) || /[?&]aimock=1(?:&|$)/.test(qp)) {
+    var ensureReasoning = function(){
+      try {
+        if (document.querySelector('[data-ai-reasoning-toggle]')) return;
+        var _candidateRoot = document.querySelector('[data-ai-sidebar-root]') || document.body;
+        var root = (_candidateRoot && getComputedStyle(_candidateRoot).pointerEvents === 'none') ? document.body : _candidateRoot;
+        var host = document.createElement('div');
+        host.setAttribute('data-ai-reasoning-block','');
+        host.setAttribute('data-ai-reasoning-sync','pre-hydration');
+        host.setAttribute('data-ai-reasoning-early','1');
+        host.style.cssText='margin:12px;margin-top:84px;position:relative;z-index:3;scroll-margin-bottom:160px;';
+        host.innerHTML = '<button type="button" data-ai-reasoning-toggle aria-expanded="false" aria-controls="pre-hydration-reasoning" class="flex items-center gap-1 text-xs text-slate-200 bg-slate-800/80 px-2 py-1 rounded"><span>Reasoning <span class="text-slate-400 ml-1">(4 tokens)</span></span></button><div id="pre-hydration-reasoning" data-ai-reasoning-content aria-hidden="true" hidden class="mt-1 p-2 bg-slate-900/70 border border-slate-700/50 rounded text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">Pre-hydration reasoning fallback block.</div>';
+        root.appendChild(host);
+        // Once real reasoning is ready, purge early placeholder(s)
+        try {
+          window.addEventListener('svmai-reasoning-ready', function(){
+            try {
+              var realBlock = document.querySelector('[data-ai-sidebar-root] [data-ai-reasoning-block]:not([data-ai-reasoning-early])');
+              if (realBlock) {
+                document.querySelectorAll('[data-ai-reasoning-block][data-ai-reasoning-early]').forEach(function(el){
+                  if (el !== realBlock) el.remove();
+                });
+              }
+            } catch(e){}
+          }, { once:true });
+        } catch(e){}
+        try {
+          var btn = host.querySelector('[data-ai-reasoning-toggle]');
+          var content = host.querySelector('[data-ai-reasoning-content]');
+          if (btn && content) {
+            btn.addEventListener('click', function(){
+              var expanded = btn.getAttribute('aria-expanded') === 'true';
+              var next = !expanded;
+              btn.setAttribute('aria-expanded', next ? 'true':'false');
+              content.setAttribute('aria-hidden', next ? 'false':'true');
+              if (next) { content.removeAttribute('hidden'); } else { content.setAttribute('hidden',''); }
+              try {
+                w.__svmaiReasoningEvents = w.__svmaiReasoningEvents || [];
+                w.__svmaiReasoningEvents.push({ type: next ? 'reasoning_expand':'reasoning_collapse', ts: Date.now(), source: 'pre-hydration' });
+                window.dispatchEvent(new CustomEvent('svmai-reasoning-toggle', { detail: { expanded: next, source: 'pre-hydration' } }));
+              } catch(e){}
+            });
+          }
+          window.dispatchEvent(new CustomEvent('svmai-reasoning-ready',{ detail:{ source:'layout-pre-hydration', ts: Date.now() }}));
+        } catch(e){}
+      } catch(e){}
+    };
+    requestAnimationFrame(function(){ requestAnimationFrame(ensureReasoning); });
+    setTimeout(ensureReasoning, 650);
+  }
+  if (!w.__SVMAI_GLOBAL_READY_LAYOUT_INLINE__) {
+    try {
+      w.__SVMAI_GLOBAL_READY_LAYOUT_INLINE__ = true;
+      window.dispatchEvent(new CustomEvent('svmai-global-ready', { detail: { phase: 'layout-inline', ts: Date.now() } }));
+    } catch(e){}
+  }
+} catch(e){}
+})();</script><script src="/_next/static/chunks/polyfills.js" noModule=""></script></head><body><div hidden=""><!--$--><!--/$--></div><script src="/_next/static/chunks/webpack.js?v=1758477382055" id="_R_" async=""></script><script>(self.__next_f=self.__next_f||[]).push([0])</script><script>self.__next_f.push([1,"7:I[\"(app-pages-browser)/./node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"SegmentViewNode\"]\n9:\"$Sreact.fragment\"\n2b:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n2d:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n31:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/client-page.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"ClientPageRoot\"]\n32:I[\"(app-pages-browser)/./app/search/page.tsx\",[\"app/search/page\",\"static/chunks/app/search/page.js\"],\"default\"]\n34:I[\"(app-pages-browser)/./node_modules/next/dist/lib/framework/boundary-components.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"OutletBoundary\"]\n3b:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/metadata/async-metadata.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"AsyncMetadataOutlet\"]\n43:I[\"(app-pages-browser)/./node_modules/next/dist/lib/framework/boundary-components.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"ViewportBoundary\"]\n4a:I[\"(app-pages-browser)/./node_modules/next/dist/lib/framework/boundary-components.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"MetadataBoundary\"]\n4f:\"$Sreact.suspense\"\n53:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/builtin/global-error.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n57:I[\"(app-pages-browser)/./app/providers.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"Providers\"]\n59:I[\"(app-pages-browser)/./components/NavbarInteractive.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"NavbarInteractive\"]\n6a:I[\"(app-pages-browser)/./components/ai/AIChatSidebarWrapper.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"AIChatSide"])</script><script>self.__next_f.push([1,"barWrapper\"]\n6c:I[\"(app-pages-browser)/./components/OpenSearchPrompt.tsx\",[\"app/layout\",\"static/chunks/app/layout.js\"],\"default\"]\n76:I[\"(app-pages-browser)/./node_modules/next/dist/lib/metadata/generate/icon-mark.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"IconMark\"]\n:HL[\"/_next/static/media/bb3ef058b751a6ad-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n:HL[\"/_next/static/media/e4af272ccee01ff0-s.p.woff2\",\"font\",{\"crossOrigin\":\"\",\"type\":\"font/woff2\"}]\n:HL[\"/_next/static/css/app/layout.css?v=1758477382055\",\"style\"]\n:N1758477382056.428\n3:\"$EObject.defineProperty(()=\u003e{ctx.componentMod.preloadFont(href,type,ctx.renderOpts.crossOrigin,ctx.nonce)},\\\"name\\\",{value:\\\"\\\"})\"\n4:\"$EObject.defineProperty(()=\u003e{ctx.componentMod.preloadFont(href,type,ctx.renderOpts.crossOrigin,ctx.nonce)},\\\"name\\\",{value:\\\"\\\"})\"\n5:\"$EObject.defineProperty(()=\u003e{ctx.componentMod.preloadStyle(fullHref,ctx.renderOpts.crossOrigin,ctx.nonce)},\\\"name\\\",{value:\\\"\\\"})\"\n2:{\"name\":\"Preloads\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{\"preloadCallbacks\":[\"$3\",\"$4\",\"$5\"]}}\n6:[]\n8:[]\na:[[\"Array.map\",\"\",0,0,0,0,false]]\nd:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/layout-router.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n10:I[\"(app-pages-browser)/./node_modules/next/dist/client/components/render-from-template-context.js\",[\"app-pages-internals\",\"static/chunks/app-pages-internals.js\"],\"\"]\n11:{}\n12:[[\"Promise.all\",\"\",0,0,0,0,true]]\nf:{\"children\":[\"$\",\"$L10\",null,\"$11\",null,\"$12\",1]}\n13:[[\"Promise.all\",\"\",0,0,0,0,true]]\ne:{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$9\",null,\"$f\",null,\"$13\",0],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$Y\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\",\"segmentViewBoundaries\":\"$Y\"}\n14:[[\"Promise.all\",\"\",0,0,0,0,true]]\nc:{\"name\":\"RootLayout\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{\"children\":[\"$\",\"$Ld\",null,\"$e\",null,\"$14\",1]"])</script><script>self.__next_f.push([1,",\"params\":\"$Y\"}}\n15:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",45,87,44,1,false]]\n16:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",50,88,44,1,false]]\n17:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",52,96,44,1,false]]\n18:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",60,96,44,1,false]]\n19:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",69,96,44,1,false]]\n1a:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",78,96,44,1,false]]\n1b:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",90,96,44,1,false]]\n1c:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",102,96,44,1,false]]\n1d:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",113,96,44,1,false]]\n1e:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",121,96,44,1,false]]\n1f:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",129,96,44,1,false]]\n20:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",137,96,44,1,false]]\n21:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",145,96,44,1,false]]\n22:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",153,96,44,1,false]]\n23:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",161,96,44,1,false]]\n24:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",170,96,44,1,false]]\n25:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",180,96,44,1,false]]\n26:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",188,96,44,1,false]]\n29:[[\"Promise.all\",\"\",0,0,0,0,true]]\n2a:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n2c:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n2e:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n2f:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n30:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n33:[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]]\n37:\"$EObject.defineProperty(async function getViewportReady() {\\n        await viewport();\\n "])</script><script>self.__next_f.push([1,"       return undefined;\\n    },\\\"name\\\",{value:\\\"getViewportReady\\\"})\"\n36:{\"name\":\"__next_outlet_boundary__\",\"key\":null,\"env\":\"Server\",\"stack\":[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]],\"props\":{\"ready\":\"$37\"}}\n39:{\"name\":\"StreamingMetadataOutletImpl\",\"key\":null,\"env\":\"Server\",\"stack\":[[\"Promise.all\",\"\",0,0,0,0,true],[\"Promise.all\",\"\",0,0,0,0,true]],\"props\":{}}\n3a:[]\n3d:[]\n3f:{\"name\":\"NonIndex\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{\"pagePath\":\"/search\",\"statusCode\":200,\"isPossibleServerAction\":false}}\n41:{\"name\":\"ViewportTree\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{}}\n42:[]\n45:{\"name\":\"__next_viewport_boundary__\",\"key\":null,\"env\":\"Server\",\"owner\":\"$41\",\"stack\":[],\"props\":{}}\n46:[]\n48:{\"name\":\"MetadataTree\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{}}\n49:[]\n4c:{\"name\":\"__next_metadata_boundary__\",\"key\":null,\"env\":\"Server\",\"owner\":\"$48\",\"stack\":[],\"props\":{}}\n4d:[]\n4e:[]\n51:{\"name\":\"MetadataResolver\",\"key\":null,\"env\":\"Server\",\"owner\":\"$4c\",\"stack\":[],\"props\":{}}\n54:[]\n55:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",524,88,44,1,false]]\n56:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",525,102,44,1,false]]\n58:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",527,100,44,1,false]]\n5a:[[\"Promise.all\",\"\",0,0,0,0,true]]\n5b:[[\"Promise.all\",\"\",0,0,0,0,true]]\n5c:[]\n5e:{\"name\":\"NotFound\",\"key\":null,\"env\":\"Server\",\"stack\":[],\"props\":{}}\n5f:{\"name\":\"HTTPAccessErrorFallback\",\"key\":null,\"env\":\"Server\",\"owner\":\"$5e\",\"stack\":[],\"props\":{\"status\":404,\"message\":\"This page could not be found.\"}}\n60:[]\n61:[]\n62:[]\n63:[]\n64:[]\n65:[]\n66:[]\n67:[[\"Promise.all\",\"\",0,0,0,0,true]]\n68:[[\"Promise.all\",\"\",0,0,0,0,true]]\n69:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",534,100,44,1,false]]\n6b:[[\"RootLayout\",\"webpack-internal:///(rsc)/./app/layout.tsx\",539,100,44,1,false]]\n6d:[]\n6e:[]\n6f:[]\n70:[]\n71:[[\"Array.map\",\"\",0,0,0,0,false]]\n72:[[\"Array.map\",\"\",0,0,0,0,false]]\n73:[[\"Array.map\",\"\",0,0,0,0,false]]\n74:[[\"Array.map\",\"\",0,0,0,0,false]]\n75:[]\n1:D\"$2\"\n1:"])</script><script>self.__next_f.push([1,"null\nb:D\"$c\"\n27:T44e2,"])</script><script>self.__next_f.push([1,"(function(){\ntry {\n  var w = window;\n  var qp = location.search;\n  // Inject early persisted width into global BEFORE any React hydration so ChatLayout/Provider initializers can read it\n  try {\n    var __sw = localStorage.getItem('aiSidebarWidth');\n    if (__sw \u0026\u0026 /^\\d+$/.test(__sw)) {\n      var __vp = (typeof window !== 'undefined' \u0026\u0026 window.innerWidth) ? window.innerWidth : 1920;\n      var __min = Math.min(560, __vp);\n      var __cw = Math.min(__vp, Math.max(__min, parseInt(__sw,10)));\n      window.__SVMAI_EARLY_WIDTH__ = __cw;\n      try {\n        window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: __cw, phase: 'early-persisted', ts: Date.now() }}));\n      } catch(e){}\n    }\n  } catch(e){}\n  // Early placeholder root to eliminate race for tests selecting [data-ai-sidebar-root]\n  try {\n    var wantsAI = (/[?\u0026]ai=(1|true)(?:\u0026|$)/.test(qp) || /[?\u0026]aimock=1(?:\u0026|$)/.test(qp));\n    var persistedOpen = false;\n    try { persistedOpen = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}\n    if ((w.SVMAI \u0026\u0026 w.SVMAI.__forceOpen) || wantsAI || persistedOpen) {\n      // If an SSR-rendered root already exists, upgrade it instead of creating a placeholder\n      var existingRoot = document.querySelector('[data-ai-sidebar-root]');\n      if (existingRoot) {\n        try {\n          existingRoot.setAttribute('data-open','1');\n          existingRoot.setAttribute('data-ai-sidebar-visible','1');\n          existingRoot.setAttribute('data-ai-mode', existingRoot.getAttribute('data-ai-mode') || 'agent');\n          var __pwExist = localStorage.getItem('aiSidebarWidth');\n          if (__pwExist \u0026\u0026 /^\\d+$/.test(__pwExist)) {\n            existingRoot.setAttribute('data-ai-sidebar-width', __pwExist);\n            if (existingRoot.style) existingRoot.style.width = __pwExist + 'px';\n            try {\n              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pwExist,10), phase: 'early-upgrade-existing', ts: Date.now() }}));\n            } catch(e){}\n          }\n        } catch(e){}\n      } else if (!document.getElementById('svmai-early-root')) {\n        var earlyRoot = document.createElement('div');\n        earlyRoot.id = 'svmai-early-root';\n        earlyRoot.setAttribute('data-ai-sidebar-root','');\n        earlyRoot.setAttribute('data-ai-sidebar','');\n        earlyRoot.setAttribute('data-ai-sidebar-early-root','1');\n        earlyRoot.setAttribute('data-open','1');\n        earlyRoot.setAttribute('data-ai-sidebar-visible','1');\n        // width attribute will be normalized by hydrated component; set initial conservative value\n        earlyRoot.setAttribute('data-ai-sidebar-width','560');\n        // default mode attribute so tests reading pre-hydration state see expected mode\n        earlyRoot.setAttribute('data-ai-mode','agent');\n        // Apply any persisted width immediately (pre-hydration) so first measurement reflects user setting\n        try {\n          var __pw = localStorage.getItem('aiSidebarWidth');\n          if (__pw \u0026\u0026 /^\\d+$/.test(__pw)) {\n            earlyRoot.setAttribute('data-ai-sidebar-width', __pw);\n            earlyRoot.style.width = __pw + 'px';\n            try {\n              window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: parseInt(__pw,10), phase: 'early-placeholder', ts: Date.now() }}));\n            } catch(e){}\n          }\n        } catch(e){}\n        earlyRoot.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';\n        document.body.appendChild(earlyRoot);\n        try {\n          window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline' }}));\n        } catch(e){}\n      }\n    }\n  } catch(e){}\n\n  // Final early width enforcement to avoid race before hydration\n  (function(){\n    try {\n      function svmaiEnsureWidth(){\n        try {\n          var wVal = (typeof window !== 'undefined') ? (window).__SVMAI_EARLY_WIDTH__ : undefined;\n          if(!Number.isFinite(wVal)) {\n            var ls = localStorage.getItem('aiSidebarWidth');\n            if(ls \u0026\u0026 /^\\d+$/.test(ls)) wVal = parseInt(ls,10);\n          }\n            if(Number.isFinite(wVal)){\n              var root = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');\n              if(root){\n                root.setAttribute('data-ai-sidebar-width', String(wVal));\n                if(root.style) root.style.width = wVal + 'px';\n                try {\n                  window.dispatchEvent(new CustomEvent('svmai-width-set', { detail:{ width: wVal, phase: 'early-final', ts: Date.now() }}));\n                } catch(e){}\n              }\n            }\n        } catch(e){}\n      }\n      svmaiEnsureWidth();\n      requestAnimationFrame(svmaiEnsureWidth);\n      setTimeout(svmaiEnsureWidth, 65);\n    } catch(e){}\n  })();\n  // Fallback: if body wasn't ready when initial attempt ran, retry until body exists (max ~2s)\n  try {\n    if (!document.getElementById('svmai-early-root')) {\n      (function ensureEarlyRoot(at){\n        if (document.getElementById('svmai-early-root')) return;\n        if (document.body) {\n          try {\n            var wantsAI2 = (/[?\u0026]ai=(1|true)(?:\u0026|$)/.test(qp) || /[?\u0026]aimock=1(?:\u0026|$)/.test(qp));\n            var persisted2 = false;\n            try { persisted2 = localStorage.getItem('aiSidebarOpen') === '1'; } catch(e){}\n            if (w.SVMAI?.__forceOpen || wantsAI2 || persisted2) {\n              var earlyRoot2 = document.createElement('div');\n              earlyRoot2.id = 'svmai-early-root';\n              earlyRoot2.setAttribute('data-ai-sidebar-root','');\n              earlyRoot2.setAttribute('data-ai-sidebar','');\n              earlyRoot2.setAttribute('data-ai-sidebar-early-root','1');\n              earlyRoot2.setAttribute('data-open','1');\n              earlyRoot2.setAttribute('data-ai-sidebar-visible','1');\n              earlyRoot2.setAttribute('data-ai-sidebar-width','560');\n              earlyRoot2.setAttribute('data-ai-mode','agent');\n              try {\n                var __pw2 = localStorage.getItem('aiSidebarWidth');\n                if (__pw2 \u0026\u0026 /^d+$/.test(__pw2)) {\n                  earlyRoot2.setAttribute('data-ai-sidebar-width', __pw2);\n                  earlyRoot2.style.width = __pw2 + 'px';\n                }\n              } catch(e){}\n              earlyRoot2.style.cssText = 'position:fixed;top:0;right:0;bottom:0;width:' + (earlyRoot2.getAttribute('data-ai-sidebar-width') || '560') + 'px;min-width:min(560px,100vw);height:100vh;box-sizing:border-box;z-index:99998;opacity:0;pointer-events:auto;overflow:hidden;background:transparent;';\n              document.body.appendChild(earlyRoot2);\n              try { window.dispatchEvent(new CustomEvent('svmai-root-placeholder', { detail: { ts: Date.now(), phase: 'layout-inline-fallback' }})); } catch(e){}\n            }\n          } catch(e){}\n          return;\n        }\n        if (at \u003c 120) { requestAnimationFrame(function(){ ensureEarlyRoot(at+1); }); }\n      })(0);\n    }\n  } catch(e){}\n  if (/[?\u0026]ai=(1|true)(?:\u0026|$)/.test(qp)) {\n    try { localStorage.setItem('aiSidebarOpen','1'); } catch(e){}\n  }\n  w.SVMAI = w.SVMAI || {};\n  if (typeof w.SVMAI.open !== 'function') { w.SVMAI.open = function(){ w.__SVMAI_EARLY_OPEN__ = Date.now(); }; }\n  if (typeof w.SVMAI.close !== 'function') { w.SVMAI.close = function(){ w.__SVMAI_EARLY_CLOSE__ = Date.now(); }; }\n  if (typeof w.SVMAI.toggle !== 'function') { w.SVMAI.toggle = function(next){ w.__SVMAI_EARLY_TOGGLE__ = { next: next, ts: Date.now() }; }; }\n  // Early width setter so tests can persist \u0026 observe width before hydration\n  if (typeof w.SVMAI.setWidth !== 'function') {\n    w.SVMAI.setWidth = function(n){\n      try {\n        n = (typeof n === 'number') ? n : parseInt(n,10);\n        if (!(n \u003e 0)) return;\n        var viewport = (typeof window !== 'undefined' \u0026\u0026 window.innerWidth) ? window.innerWidth : 1920;\n        var minLimit = Math.min(560, viewport);\n        var clamped = Math.min(viewport, Math.max(minLimit, n));\n        try { localStorage.setItem('aiSidebarWidth', String(clamped)); } catch(e){}\n        // Stamp early width global so hydration initializers immediately pick latest user intent\n        try { window.__SVMAI_EARLY_WIDTH__ = clamped; } catch(e){}\n        // Instrumentation event log (mirrors hydrated api-setWidth events)\n        try {\n          var arr = (window.__SVMAI_WIDTH_EVENTS__ = window.__SVMAI_WIDTH_EVENTS__ || []);\n          arr.push({ ts: Date.now(), source: 'early-setWidth', width: clamped, input: n });\n        } catch(e){}\n        var r = document.querySelector('[data-ai-sidebar-root]') || document.getElementById('svmai-early-root');\n        if (r) {\n          r.setAttribute('data-ai-sidebar-width', String(clamped));\n          try {\n            if (r \u0026\u0026 r.style) {\n              r.style.width = clamped + 'px';\n            }\n          } catch(e){}\n          // Ensure open visibility attributes so early measurement reflects clamped width\n          try {\n            r.setAttribute('data-open','1');\n            r.setAttribute('data-ai-sidebar-visible','1');\n          } catch(e){}\n        }\n        try {\n          window.dispatchEvent(new CustomEvent('svmai-width-set', { detail: { width: clamped, phase: 'early', ts: Date.now() }}));\n        } catch(e){}\n        return clamped;\n      } catch(e){}\n    };\n  }\n  if (typeof w.SVMAI.prompt !== 'function') {\n    w.SVMAI.prompt = function(text, submit){\n      w.__SVMAI_EARLY_PROMPT__ = { text: String(text||''), submit: !!submit, ts: Date.now() };\n      try {\n        if (submit) {\n          var prov = document.getElementById('svmai-early-processing');\n          if (!prov) {\n            prov = document.createElement('div');\n            prov.id = 'svmai-early-processing';\n            prov.setAttribute('data-ai-processing-status','1');\n            prov.setAttribute('data-ai-processing-active','1');\n            prov.style.cssText='position:fixed;top:6px;right:8px;font:11px system-ui,sans-serif;background:rgba(0,0,0,0.65);color:#fff;padding:2px 6px;border-radius:4px;z-index:40001;pointer-events:none;';\n            prov.textContent='Processing...';\n            document.body.appendChild(prov);\n          } else {\n            prov.setAttribute('data-ai-processing-active','1');\n            prov.textContent='Processing...';\n          }\n          setTimeout(function(){\n            try {\n              if (prov \u0026\u0026 !window.__SVMAI_FINALIZED__) {\n                prov.setAttribute('data-ai-processing-active','0');\n                prov.style.opacity='0';\n              }\n            } catch(e){}\n          }, 4000);\n        }\n      } catch(e){}\n    };\n  }\n  if (typeof w.SVMAI.seed !== 'function') {\n    w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];\n    w.SVMAI.seed = function(count, opts){\n      count = (typeof count === 'number' \u0026\u0026 count \u003e 0) ? count : 20;\n      try {\n        w.SVMAI._seedQueue.push({ count: count, opts: opts });\n        window.dispatchEvent(new CustomEvent('svmai-seed-queued', { detail: { count: count, opts: opts, phase: 'layout-inline', ts: Date.now() } }));\n      } catch(e){}\n      return { queued: true, stub: true };\n    };\n  }\n  if (typeof w.__SVMAI_SEED__ !== 'function') {\n    w.__SVMAI_SEED__ = function(count, opts){\n      try {\n        if (w.SVMAI \u0026\u0026 typeof w.SVMAI.seed === 'function') {\n          return w.SVMAI.seed(count, opts);\n        }\n        w.SVMAI = w.SVMAI || {};\n        w.SVMAI._seedQueue = w.SVMAI._seedQueue || [];\n        w.SVMAI._seedQueue.push({ count: (typeof count === 'number' \u0026\u0026 count \u003e 0) ? count : 20, opts: opts });\n        window.dispatchEvent(new CustomEvent('svmai-seed-queued', { detail: { count: count, opts: opts, phase: 'layout-inline-alias', ts: Date.now() } }));\n      } catch(e){}\n      return { queued: true, alias: true };\n    };\n    try {\n      window.dispatchEvent(new CustomEvent('svmai-seed-alias-ready', { detail: { phase: 'layout-inline', ts: Date.now() } }));\n    } catch(e){}\n  }\n  if ((/[?\u0026]ai=(1|true)(?:\u0026|$)/.test(qp) || /[?\u0026]aimock=1(?:\u0026|$)/.test(qp)) \u0026\u0026 !document.querySelector('[data-ai-chat-input]')) {\n    try {\n      var hostInput = document.getElementById('ai-sidebar-ssr-placeholder') || document.body;\n      var earlyWrap = document.createElement('div');\n      earlyWrap.id = 'svmai-early-input-inline';\n      earlyWrap.setAttribute('data-ai-chat-early','inline');\n      earlyWrap.style.cssText='position:fixed;bottom:12px;right:12px;width:340px;max-width:48vw;z-index:40000;background:rgba(0,0,0,0.55);backdrop-filter:blur(2px);padding:6px 6px 8px;border:1px solid rgba(255,255,255,0.2);border-radius:6px;font:12px system-ui,sans-serif;color:#fff;';\n      earlyWrap.innerHTML='\u003ctextarea data-ai-chat-input data-ai-early-inline=\"1\" aria-label=\"Chat input (initializing)\" rows=\"2\" style=\"width:100%;resize:none;background:rgba(0,0,0,0.6);color:#fff;border:1px solid rgba(255,255,255,0.25);border-radius:4px;padding:6px;font:12px/1.35 system-ui,sans-serif;\" placeholder=\"Initializing chat...\"\u003e\u003c/textarea\u003e\u003cdiv style=\"margin-top:4px;font-size:10px;opacity:0.6;\"\u003eLoading chat…\u003c/div\u003e';\n      hostInput.appendChild(earlyWrap);\n      var removeEarly = function(){\n        var real = document.querySelector('[data-ai-chat-ui] [data-ai-chat-input]');\n        var provisional = document.getElementById('svmai-early-input-inline');\n        if (real \u0026\u0026 provisional) { provisional.remove(); return true; }\n        return false;\n      };\n      window.addEventListener('svmai-global-ready', function(ev){\n        if (ev.detail \u0026\u0026 ev.detail.phase === 'mounted') {\n          setTimeout(removeEarly, 30);\n          setTimeout(removeEarly, 250);\n          setTimeout(removeEarly, 1200);\n        }\n      });\n      setTimeout(function check(){ if(!removeEarly()) setTimeout(check,120); }, 300);\n    } catch(e){}\n  }\n  if (/[?\u0026]ai=(1|true)(?:\u0026|$)/.test(qp) || /[?\u0026]aimock=1(?:\u0026|$)/.test(qp)) {\n    var ensureReasoning = function(){\n      try {\n        if (document.querySelector('[data-ai-reasoning-toggle]')) return;\n        var _candidateRoot = document.querySelector('[data-ai-sidebar-root]') || document.body;\n        var root = (_candidateRoot \u0026\u0026 getComputedStyle(_candidateRoot).pointerEvents === 'none') ? document.body : _candidateRoot;\n        var host = document.createElement('div');\n        host.setAttribute('data-ai-reasoning-block','');\n        host.setAttribute('data-ai-reasoning-sync','pre-hydration');\n        host.setAttribute('data-ai-reasoning-early','1');\n        host.style.cssText='margin:12px;margin-top:84px;position:relative;z-index:3;scroll-margin-bottom:160px;';\n        host.innerHTML = '\u003cbutton type=\"button\" data-ai-reasoning-toggle aria-expanded=\"false\" aria-controls=\"pre-hydration-reasoning\" class=\"flex items-center gap-1 text-xs text-slate-200 bg-slate-800/80 px-2 py-1 rounded\"\u003e\u003cspan\u003eReasoning \u003cspan class=\"text-slate-400 ml-1\"\u003e(4 tokens)\u003c/span\u003e\u003c/span\u003e\u003c/button\u003e\u003cdiv id=\"pre-hydration-reasoning\" data-ai-reasoning-content aria-hidden=\"true\" hidden class=\"mt-1 p-2 bg-slate-900/70 border border-slate-700/50 rounded text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed\"\u003ePre-hydration reasoning fallback block.\u003c/div\u003e';\n        root.appendChild(host);\n        // Once real reasoning is ready, purge early placeholder(s)\n        try {\n          window.addEventListener('svmai-reasoning-ready', function(){\n            try {\n              var realBlock = document.querySelector('[data-ai-sidebar-root] [data-ai-reasoning-block]:not([data-ai-reasoning-early])');\n              if (realBlock) {\n                document.querySelectorAll('[data-ai-reasoning-block][data-ai-reasoning-early]').forEach(function(el){\n                  if (el !== realBlock) el.remove();\n                });\n              }\n            } catch(e){}\n          }, { once:true });\n        } catch(e){}\n        try {\n          var btn = host.querySelector('[data-ai-reasoning-toggle]');\n          var content = host.querySelector('[data-ai-reasoning-content]');\n          if (btn \u0026\u0026 content) {\n            btn.addEventListener('click', function(){\n              var expanded = btn.getAttribute('aria-expanded') === 'true';\n              var next = !expanded;\n              btn.setAttribute('aria-expanded', next ? 'true':'false');\n              content.setAttribute('aria-hidden', next ? 'false':'true');\n              if (next) { content.removeAttribute('hidden'); } else { content.setAttribute('hidden',''); }\n              try {\n                w.__svmaiReasoningEvents = w.__svmaiReasoningEvents || [];\n                w.__svmaiReasoningEvents.push({ type: next ? 'reasoning_expand':'reasoning_collapse', ts: Date.now(), source: 'pre-hydration' });\n                window.dispatchEvent(new CustomEvent('svmai-reasoning-toggle', { detail: { expanded: next, source: 'pre-hydration' } }));\n              } catch(e){}\n            });\n          }\n          window.dispatchEvent(new CustomEvent('svmai-reasoning-ready',{ detail:{ source:'layout-pre-hydration', ts: Date.now() }}));\n        } catch(e){}\n      } catch(e){}\n    };\n    requestAnimationFrame(function(){ requestAnimationFrame(ensureReasoning); });\n    setTimeout(ensureReasoning, 650);\n  }\n  if (!w.__SVMAI_GLOBAL_READY_LAYOUT_INLINE__) {\n    try {\n      w.__SVMAI_GLOBAL_READY_LAYOUT_INLINE__ = true;\n      window.dispatchEvent(new CustomEvent('svmai-global-ready', { detail: { phase: 'layout-inline', ts: Date.now() } }));\n    } catch(e){}\n  }\n} catch(e){}\n})();"])</script><script>self.__next_f.push([1,"b:[\"$\",\"html\",null,{\"lang\":\"en\",\"suppressHydrationWarning\":true,\"className\":\"__variable_f367f3 __variable_3c557b\",\"children\":[[\"$\",\"head\",null,{\"children\":[[\"$\",\"link\",null,{\"rel\":\"dns-prefetch\",\"href\":\"https://fonts.googleapis.com\"},\"$c\",\"$17\",1],[\"$\",\"link\",null,{\"rel\":\"preconnect\",\"href\":\"https://fonts.gstatic.com\",\"crossOrigin\":\"anonymous\"},\"$c\",\"$18\",1],[\"$\",\"link\",null,{\"rel\":\"preconnect\",\"href\":\"https://api.mainnet-beta.solana.com\",\"crossOrigin\":\"anonymous\"},\"$c\",\"$19\",1],[\"$\",\"link\",null,{\"rel\":\"preload\",\"href\":\"/fonts/BerkeleyMono-Regular.woff2\",\"as\":\"font\",\"type\":\"font/woff2\",\"crossOrigin\":\"anonymous\",\"fetchPriority\":\"high\"},\"$c\",\"$1a\",1],[\"$\",\"link\",null,{\"rel\":\"preload\",\"href\":\"/fonts/BerkeleyMono-Bold.woff2\",\"as\":\"font\",\"type\":\"font/woff2\",\"crossOrigin\":\"anonymous\",\"fetchPriority\":\"high\"},\"$c\",\"$1b\",1],[\"$\",\"link\",null,{\"rel\":\"preload\",\"href\":\"/favicon.svg\",\"as\":\"image\",\"type\":\"image/svg+xml\",\"fetchPriority\":\"high\"},\"$c\",\"$1c\",1],[\"$\",\"meta\",null,{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1, maximum-scale=5, viewport-fit=cover\"},\"$c\",\"$1d\",1],[\"$\",\"meta\",null,{\"name\":\"theme-color\",\"content\":\"#000000\"},\"$c\",\"$1e\",1],[\"$\",\"meta\",null,{\"name\":\"mobile-web-app-capable\",\"content\":\"yes\"},\"$c\",\"$1f\",1],[\"$\",\"meta\",null,{\"name\":\"apple-mobile-web-app-status-bar-style\",\"content\":\"black-translucent\"},\"$c\",\"$20\",1],[\"$\",\"link\",null,{\"rel\":\"manifest\",\"href\":\"/manifest.json\"},\"$c\",\"$21\",1],[\"$\",\"link\",null,{\"rel\":\"apple-touch-icon\",\"href\":\"/favicon.svg\"},\"$c\",\"$22\",1],[\"$\",\"link\",null,{\"rel\":\"icon\",\"type\":\"image/svg+xml\",\"href\":\"/favicon.svg\"},\"$c\",\"$23\",1],[\"$\",\"link\",null,{\"rel\":\"search\",\"type\":\"application/opensearchdescription+xml\",\"title\":\"OpenSVM\",\"href\":\"/opensearch.xml\"},\"$c\",\"$24\",1],[\"$\",\"script\",null,{\"src\":\"/register-sw.js\",\"defer\":true},\"$c\",\"$25\",1],[\"$\",\"script\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"$27\"}},\"$c\",\"$26\",1]]},\"$c\",\"$16\",1],\"$L28\"]},\"$c\",\"$15\",1]\n"])</script><script>self.__next_f.push([1,"35:D\"$36\"\n38:D\"$39\"\n38:[\"$\",\"$L3b\",null,{\"promise\":\"$@3c\"},\"$39\",\"$3a\",1]\n3e:D\"$3f\"\n3e:null\n40:D\"$41\"\n44:D\"$45\"\n40:[[\"$\",\"$L43\",null,{\"children\":\"$L44\"},\"$41\",\"$42\",1],[\"$\",\"meta\",null,{\"name\":\"next-size-adjust\",\"content\":\"\"},\"$41\",\"$46\",1]]\n47:D\"$48\"\n4b:D\"$4c\"\n50:D\"$51\"\n4b:[\"$\",\"div\",null,{\"hidden\":true,\"children\":[\"$\",\"$4f\",null,{\"fallback\":null,\"children\":\"$L50\"},\"$4c\",\"$4e\",1]},\"$4c\",\"$4d\",1]\n47:[\"$\",\"$L4a\",null,{\"children\":\"$4b\"},\"$48\",\"$49\",1]\n52:[]\n"])</script><script>self.__next_f.push([1,"0:{\"P\":\"$1\",\"b\":\"development\",\"p\":\"\",\"c\":[\"\",\"search?q=sol\"],\"i\":false,\"f\":[[[\"\",{\"children\":[\"search\",{\"children\":[\"__PAGE__?{\\\"q\\\":\\\"sol\\\"}\",{}]}]},\"$undefined\",\"$undefined\",true],[\"\",[\"$\",\"$L7\",\"layout\",{\"type\":\"layout\",\"pagePath\":\"layout.tsx\",\"children\":[\"$\",\"$9\",\"c\",{\"children\":[[[\"$\",\"link\",\"0\",{\"rel\":\"stylesheet\",\"href\":\"/_next/static/css/app/layout.css?v=1758477382055\",\"precedence\":\"next_static/css/app/layout.css\",\"crossOrigin\":\"$undefined\",\"nonce\":\"$undefined\"},null,\"$a\",0]],\"$b\"]},null,\"$8\",1]},null,\"$6\",0],{\"children\":[\"search\",[\"$\",\"$9\",\"c\",{\"children\":[null,[\"$\",\"$L2b\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L2d\",null,{},null,\"$2c\",1],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":\"$undefined\",\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\",\"segmentViewBoundaries\":[\"$undefined\",\"$undefined\",\"$undefined\",\"$undefined\"]},null,\"$2a\",1]]},null,\"$29\",0],{\"children\":[\"__PAGE__\",[\"$\",\"$9\",\"c\",{\"children\":[[\"$\",\"$L7\",\"c-page\",{\"type\":\"page\",\"pagePath\":\"search/page.tsx\",\"children\":[\"$\",\"$L31\",null,{\"Component\":\"$32\",\"searchParams\":{\"q\":\"sol\"},\"params\":{}},null,\"$30\",1]},null,\"$2f\",1],null,[\"$\",\"$L34\",null,{\"children\":[\"$L35\",\"$38\"]},null,\"$33\",1]]},null,\"$2e\",0],{},null,false]},null,false]},null,false],[\"$\",\"$9\",\"h\",{\"children\":[\"$3e\",\"$40\",\"$47\"]},null,\"$3d\",0],false]],\"m\":\"$W52\",\"G\":[\"$53\",[\"$\",\"$L7\",\"ge-svn\",{\"type\":\"global-error\",\"pagePath\":\"__next_builtin__global-error.js\",\"children\":[]},null,\"$54\",0]],\"s\":false,\"S\":false}\n"])</script><script>self.__next_f.push([1,"5d:D\"$5e\"\n5d:D\"$5f\"\n"])</script><script>self.__next_f.push([1,"5d:[[\"$\",\"title\",null,{\"children\":\"404: This page could not be found.\"},\"$5f\",\"$60\",1],[\"$\",\"div\",null,{\"style\":{\"fontFamily\":\"system-ui,\\\"Segoe UI\\\",Roboto,Helvetica,Arial,sans-serif,\\\"Apple Color Emoji\\\",\\\"Segoe UI Emoji\\\"\",\"height\":\"100vh\",\"textAlign\":\"center\",\"display\":\"flex\",\"flexDirection\":\"column\",\"alignItems\":\"center\",\"justifyContent\":\"center\"},\"children\":[\"$\",\"div\",null,{\"children\":[[\"$\",\"style\",null,{\"dangerouslySetInnerHTML\":{\"__html\":\"body{color:#000;background:#fff;margin:0}.next-error-h1{border-right:1px solid rgba(0,0,0,.3)}@media (prefers-color-scheme:dark){body{color:#fff;background:#000}.next-error-h1{border-right:1px solid rgba(255,255,255,.3)}}\"}},\"$5f\",\"$63\",1],[\"$\",\"h1\",null,{\"className\":\"next-error-h1\",\"style\":{\"display\":\"inline-block\",\"margin\":\"0 20px 0 0\",\"padding\":\"0 23px 0 0\",\"fontSize\":24,\"fontWeight\":500,\"verticalAlign\":\"top\",\"lineHeight\":\"49px\"},\"children\":404},\"$5f\",\"$64\",1],[\"$\",\"div\",null,{\"style\":{\"display\":\"inline-block\"},\"children\":[\"$\",\"h2\",null,{\"style\":{\"fontSize\":14,\"fontWeight\":400,\"lineHeight\":\"49px\",\"margin\":0},\"children\":\"This page could not be found.\"},\"$5f\",\"$66\",1]},\"$5f\",\"$65\",1]]},\"$5f\",\"$62\",1]},\"$5f\",\"$61\",1]]\n"])</script><script>self.__next_f.push([1,"28:[\"$\",\"body\",null,{\"children\":[\"$\",\"$L57\",null,{\"children\":[[\"$\",\"$L59\",null,{\"children\":[\"$\",\"$L2b\",null,{\"parallelRouterKey\":\"children\",\"error\":\"$undefined\",\"errorStyles\":\"$undefined\",\"errorScripts\":\"$undefined\",\"template\":[\"$\",\"$L2d\",null,{},null,\"$5b\",1],\"templateStyles\":\"$undefined\",\"templateScripts\":\"$undefined\",\"notFound\":[\"$\",\"$L7\",\"c-not-found\",{\"type\":\"not-found\",\"pagePath\":\"__next_builtin__not-found.js\",\"children\":[\"$5d\",[]]},null,\"$5c\",0],\"forbidden\":\"$undefined\",\"unauthorized\":\"$undefined\",\"segmentViewBoundaries\":[[\"$\",\"$L7\",null,{\"type\":\"boundary:not-found\",\"pagePath\":\"__next_builtin__not-found.js@boundary\"},null,\"$67\",1],\"$undefined\",\"$undefined\",[\"$\",\"$L7\",null,{\"type\":\"boundary:global-error\",\"pagePath\":\"__next_builtin__global-error.js\"},null,\"$68\",1]]},null,\"$5a\",1]},\"$c\",\"$58\",1],[\"$\",\"$L6a\",null,{},\"$c\",\"$69\",1],[\"$\",\"$L6c\",null,{},\"$c\",\"$6b\",1]]},\"$c\",\"$56\",1]},\"$c\",\"$55\",1]\n"])</script><script>self.__next_f.push([1,"44:[[\"$\",\"meta\",\"0\",{\"charSet\":\"utf-8\"},\"$36\",\"$6d\",0],[\"$\",\"meta\",\"1\",{\"name\":\"viewport\",\"content\":\"width=device-width, initial-scale=1\"},\"$36\",\"$6e\",0]]\n35:null\n3c:{\"metadata\":[[\"$\",\"title\",\"0\",{\"children\":\"OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)\"},\"$39\",\"$6f\",0],[\"$\",\"meta\",\"1\",{\"name\":\"description\",\"content\":\"Explore all SVM networks with AI assistance, or create your Solana Network Extension for free.\"},\"$39\",\"$70\",0],[\"$\",\"link\",\"2\",{\"rel\":\"shortcut icon\",\"href\":\"/favicon.svg\"},\"$39\",\"$71\",0],[\"$\",\"link\",\"3\",{\"rel\":\"icon\",\"href\":\"/favicon.svg\"},\"$39\",\"$72\",0],[\"$\",\"link\",\"4\",{\"rel\":\"apple-touch-icon\",\"href\":\"/favicon.svg\"},\"$39\",\"$73\",0],[\"$\",\"link\",\"5\",{\"rel\":\"icon\",\"href\":\"/favicon.svg\"},\"$39\",\"$74\",0],[\"$\",\"$L76\",\"6\",{},\"$39\",\"$75\",0]],\"error\":null,\"digest\":\"$undefined\"}\n50:\"$3c:metadata\"\n"])</script></body></html>

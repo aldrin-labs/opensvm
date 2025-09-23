@@ -106,7 +106,7 @@ function SearchResults() {
     }
 
     handleRedirect();
-  }, [query, router]);
+  }, [query, router, setIsLoading]);
 
   // Handle general search
   useEffect(() => {
@@ -204,6 +204,8 @@ function SearchResults() {
     // Set thinking state
     setIsAiThinking(true);
 
+    let isStreamingRef = false;
+
     const fetchAiResponse = async () => {
       try {
         // Call the backend API with streaming
@@ -228,6 +230,7 @@ function SearchResults() {
         // Transition from thinking to streaming
         setIsAiThinking(false);
         setIsAiStreaming(true);
+        isStreamingRef = true;
 
         // Read the stream
         const decoder = new TextDecoder();
@@ -259,6 +262,7 @@ function SearchResults() {
                   setAiSources(data.sources);
                   setIsAiStreaming(false);
                   setAiStreamComplete(true);
+                  isStreamingRef = false;
                 }
               } catch (e) {
                 console.error('Error parsing SSE data:', e);
@@ -268,9 +272,10 @@ function SearchResults() {
         }
 
         // Ensure we mark streaming as complete if it hasn't been already
-        if (isAiStreaming) {
+        if (isStreamingRef) {
           setIsAiStreaming(false);
           setAiStreamComplete(true);
+          isStreamingRef = false;
         }
 
       } catch (error) {
@@ -278,6 +283,7 @@ function SearchResults() {
         setAiError('Failed to generate AI response. Please try again later.');
         setIsAiThinking(false);
         setIsAiStreaming(false);
+        isStreamingRef = false;
       }
     };
 
@@ -289,11 +295,11 @@ function SearchResults() {
     return () => {
       clearTimeout(timer);
       // Ensure we clean up any streaming state if component unmounts
-      if (isAiStreaming) {
+      if (isStreamingRef) {
         setIsAiStreaming(false);
       }
     };
-  }, [query, searchResults, isAiStreaming]);
+  }, [query, searchResults]);
 
   const handleTabChange = (tab: string) => {
     setActiveTab(tab);

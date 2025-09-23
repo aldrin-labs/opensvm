@@ -295,7 +295,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Initialize feed data on mount and tab change
   useEffect(() => {
     fetchFeed(activeTab);
-  }, [walletAddress, activeTab]);
+  }, [walletAddress, activeTab, fetchFeed]);
 
   // Setup SSE connection separately to avoid infinite loops
   useEffect(() => {
@@ -377,7 +377,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         clearTimeout(retryTimeout);
       }
     };
-  }, [walletAddress, activeTab]); // Only depend on essential props
+  }, [walletAddress, activeTab, eventSource, retryTimeout, retryCount, filters.eventTypes, maxRetries, baseRetryDelay]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {

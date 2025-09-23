@@ -112,7 +112,7 @@ export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarPr
   useEffect(() => {
     const debounceTimeout = setTimeout(fetchSuggestions, query.length === 0 ? 0 : 300);
     return () => clearTimeout(debounceTimeout);
-  }, [fetchSuggestions]);
+  }, [fetchSuggestions, query.length]);
 
   // Real-time input type detection
   useEffect(() => {
@@ -317,7 +317,7 @@ export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarPr
       console.error("Navigation error:", error);
       setIsSubmitting(false);
     }
-  }, [detectedType, router, buildAndNavigateToSearchUrl, isSubmitting]);
+  }, [detectedType, router, buildAndNavigateToSearchUrl, isSubmitting, searchSettings.dataTypes]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();

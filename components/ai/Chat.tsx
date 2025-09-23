@@ -220,10 +220,9 @@ export function Chat({
 
   return (
     <ChatLayout
-      className="ai-chat-layout"
+      className={`ai-chat-layout ${className}`}
       variant={variant}
       isOpen={isOpen}
-      className={className}
       onWidthChange={onWidthChange}
       onResizeStart={onResizeStart}
       onResizeEnd={onResizeEnd}

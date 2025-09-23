@@ -5,6 +5,7 @@ export const dynamic = 'force-dynamic';
 import React, { useEffect, useState } from 'react';
 import { useSettings } from '@/lib/settings';
 import { useParams } from 'next/navigation';
+import { ProgramRegistryProvider } from '@/contexts/ProgramRegistryContext';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import ProgramView from './components/program-view';
 
@@ -99,11 +100,13 @@ export default function ProgramPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <ProgramView 
-        programData={programData}
-        serializedAccountInfo={serializedAccountInfo}
-      />
-    </div>
+    <ProgramRegistryProvider>
+      <div className="container mx-auto px-4 py-8">
+        <ProgramView 
+          programData={programData}
+          serializedAccountInfo={serializedAccountInfo}
+        />
+      </div>
+    </ProgramRegistryProvider>
   );
 }

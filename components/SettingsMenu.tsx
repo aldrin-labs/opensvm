@@ -93,7 +93,7 @@ function SettingsMenuClient() {
         return newSettings;
       });
     }
-  }, [config?.variant, settings?.fontFamily, settings?.fontSize, settings?.rpcEndpoint?.url, settings?.customRpcEndpoint]);
+  }, [config, settings]);
 
   // E2E aid: allow tests to programmatically open the menu without relying on UI events
   useEffect(() => {

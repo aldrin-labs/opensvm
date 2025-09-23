@@ -140,7 +140,6 @@ export function ChatLayout({
   // Synchronous pre-paint width uplift & attribute stamping to eliminate race where tests
   // read 560px before post-mount reconciliation upgrades to persisted 640px.
   // Runs before first paint (layout effect) so inline style + data attribute reflect persisted width immediately.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useLayoutEffect(() => {
     if (typeof window === 'undefined') return;
     try {
@@ -172,7 +171,7 @@ export function ChatLayout({
         } catch { /* noop */ }
       }
     } catch { /* noop */ }
-  }, []); // run once before paint
+  }, [width]); // include width dependency
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);

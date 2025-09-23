@@ -143,7 +143,7 @@ export const GPUAcceleratedForceGraph: React.FC<GPUAcceleratedForceGraphProps> =
     }
 
     return mesh;
-  }, [getNodeSize, getNodeColor]);
+  }, [getNodeSize, getNodeColor, theme.primary]);
 
   // Performance-optimized force simulation settings
   const forceSimulationConfig = useMemo(() => ({

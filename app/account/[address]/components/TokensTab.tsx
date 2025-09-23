@@ -660,7 +660,7 @@ export default function TokensTab({ solBalance, tokenBalances, tokenAccounts, wa
         </div>
       )
     }
-  ], [handleToggleWatchlist, handleCopyAddress]);
+  ], [handleToggleWatchlist, handleCopyAddress, findTokenAccounts, loadingTokenAccounts]);
 
   const getRowId = useCallback((row: TokenInfo) => row.mint, []);
 
