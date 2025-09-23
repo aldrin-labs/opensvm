@@ -1,0 +1,75 @@
+**Answer: Current price, market‑cap & recent volume for $SVMAI**
+
+The data you supplied (`getEpochInfo`) is a snapshot of Solana‑network‑wide statistics (slot numbers, epoch, total transaction count, etc.).  
+It **does not contain any information about token prices, market capitalisation, or trading volume** for $SVMAI (or any other SPL‑token).
+
+Below is a quick breakdown of what the provided payload tells us, followed by the steps you can take to obtain the missing market data.
+
+---
+
+## 1️⃣ What the supplied data *does* tell us  
+
+| Field | Value | Meaning |
+|-------|-------|---------|
+| **absoluteSlot** | 368,329,759 | Total number of slots processed on the chain since genesis. |
+| **blockHeight** | 346,501,373 | Corresponding block height (useful for correlating on‑chain events). |
+| **epoch** | 852 | Current epoch number (each epoch ≈ 2 days). |
+| **slotIndex** | 265,759 | Slot index within the current epoch. |
+| **slotsInEpoch** | 432,000 | Total slots that will be in epoch 852. |
+| **transactionCount** | 448,750,057,159 | Cumulative number of transactions the network has processed. |
+
+> **Takeaway:** The network is healthy and actively processing blocks, but none of these metrics give us price‑related data for $SVMAI.
+
+---
+
+## 2️⃣ How to retrieve $SVMAI market data  
+
+| Source | What you’ll find | How to query |
+|--------|------------------|--------------|
+| **CoinGecko / CoinMarketCap** | Current price (USD & SOL), market cap, 24‑h volume, historical charts. | Search for “SVMAI” or the token contract address. |
+| **Solscan / Solana Explorer** | On‑chain token supply, recent transfer volume, holders list. | Use the SPL‑token address (e.g., `SVMAI‑Token‑Address‑HERE`). |
+| **Serum DEX / Raydium UI** | Real‑time order‑book price, 24‑h trading volume on the primary AMM. | Look up the market pair `SVMAI/USDC` or `SVMAI/SOL`. |
+| **The Graph / custom RPC** | Programmatic access to price feeds if a price oracle is used. | Query the relevant subgraph or on‑chain oracle contract. |
+
+**Example workflow (using CoinGecko API):**
+
+```bash
+curl -s "https://api.coingecko.com/api/v3/coins/solana/contract/<SVMAI_CONTRACT>" \
+| jq '.market_data | {price_usd: .current_price.usd,
+                     price_sol: .current_price.sol,
+                     market_cap_usd: .market_cap.usd,
+                     volume_24h_usd: .total_volume.usd}'
+```
+
+Replace `<SVMAI_CONTRACT>` with the exact SPL‑token address for $SVMAI.
+
+---
+
+## 3️⃣ Quick sanity‑check once you have the numbers  
+
+| Metric | Typical sanity range for a memecoin on Solana |
+|--------|-----------------------------------------------|
+| **Price (USD)** | $0.0001 – $0.10 (highly volatile) |
+| **Market cap** | <$10 M for a niche meme token |
+| **24‑h volume** | Should be at least 5‑10 % of market cap to indicate liquidity |
+
+If the numbers fall far outside these ranges, double‑check the source (e.g., ensure you’re looking at the correct contract address and not a similarly‑named token).
+
+---
+
+## 4️⃣ Actionable next steps  
+
+1. **Locate the SPL‑token address** for $SVMAI (usually found on the project’s website or Discord).  
+2. **Query a price aggregator** (CoinGecko, CoinMarketCap) using that address.  
+3. **Cross‑verify** with on‑chain DEX data (Raydium/Serum) to confirm the quoted price and volume.  
+4. **Monitor** the token’s supply and holder distribution on Solscan to gauge decentralisation and potential price pressure.
+
+---
+
+## 5️⃣ Follow‑up questions you might consider  
+
+1. **Liquidity depth:** What is the order‑book depth for $SVMAI on Raydium/Serum (e.g., how much can be swapped without >5 % slippage)?  
+2. **Holder concentration:** What percentage of $SVMAI supply is held by the top 10 wallets?  
+3. **Historical performance:** How has $SVMAI’s price moved over the past 7 days relative to SOL’s price—does it exhibit strong correlation or independent dynamics?
+
+Feel free to share the token’s contract address or any API responses you retrieve, and I can help you interpret the numbers in more detail!

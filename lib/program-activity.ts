@@ -141,15 +141,25 @@ class ProgramActivityService {
     try {
       // Get current account count
       const accounts = await this.connection.getProgramAccounts(programId, {
-        filters: [{ dataSize: 0 }], // Just count, don't fetch data
         encoding: 'base64'
       });
 
-      // For growth calculation, we'd need historical data
-      // For now, return mock growth data
+      // Calculate growth based on recent transaction activity
+      const signatures = await this.connection.getSignaturesForAddress(programId, { limit: 100 });
+      
+      // Count unique accounts that have interacted recently (last 24 hours)
+      const oneDayAgo = Date.now() / 1000 - 86400;
+      const recentSignatures = signatures.filter(sig => 
+        sig.blockTime && sig.blockTime > oneDayAgo
+      );
+      
+      // Estimate growth based on recent activity vs historical
+      const growthRate = recentSignatures.length > 0 ? 
+        Math.min(Math.max((recentSignatures.length - 50) / 10, -50), 50) : 0;
+
       return {
         count: accounts.length,
-        growth: Math.floor(Math.random() * 20) - 10 // Mock data: -10 to +10
+        growth: Math.round(growthRate)
       };
     } catch (error) {
       console.error('Error getting program accounts:', error);
@@ -188,27 +198,123 @@ class ProgramActivityService {
   }
 
   private async getInstructionUsage(programId: PublicKey, signatures: TransactionSignature[]): Promise<InstructionUsage[]> {
-    // For a real implementation, we'd parse transactions to get instruction usage
-    // For now, return mock data based on common patterns
-    const mockInstructions = [
-      { instruction: 'Initialize', count: 15, successRate: 0.95, avgComputeUnits: 5000 },
-      { instruction: 'Transfer', count: 45, successRate: 0.98, avgComputeUnits: 3000 },
-      { instruction: 'Approve', count: 23, successRate: 0.97, avgComputeUnits: 2500 },
-      { instruction: 'Revoke', count: 8, successRate: 0.92, avgComputeUnits: 2800 }
-    ];
+    if (signatures.length === 0) return [];
 
-    return mockInstructions.sort((a, b) => b.count - a.count);
+    try {
+      const instructionStats = new Map<string, {
+        count: number;
+        successCount: number;
+        totalComputeUnits: number;
+      }>();
+
+      // Analyze recent transactions to get instruction usage
+      const recentTxs = signatures.slice(0, 10); // Analyze last 10 transactions
+      
+      for (const txSig of recentTxs) {
+        try {
+          const tx = await this.connection.getTransaction(txSig.signature, {
+            maxSupportedTransactionVersion: 0
+          });
+
+          if (tx && tx.transaction.message) {
+            const isSuccess = tx.meta?.err === null;
+            const computeUnits = tx.meta?.computeUnitsConsumed || 0;
+
+            // Handle both legacy and versioned message formats
+            const instructions = this.getInstructionsFromMessage(tx.transaction.message);
+
+            for (const instruction of instructions) {
+              const programIdStr = typeof instruction.programId === 'string' 
+                ? instruction.programId 
+                : instruction.programId?.toBase58() || 'unknown';
+
+              // Only track instructions for this specific program
+              if (programIdStr === programId.toBase58()) {
+                const instructionName = this.extractInstructionName(instruction) || 'Unknown';
+                
+                const current = instructionStats.get(instructionName) || {
+                  count: 0,
+                  successCount: 0,
+                  totalComputeUnits: 0
+                };
+
+                current.count++;
+                if (isSuccess) current.successCount++;
+                current.totalComputeUnits += computeUnits;
+
+                instructionStats.set(instructionName, current);
+              }
+            }
+          }
+        } catch (error) {
+          console.error(`Error analyzing transaction ${txSig.signature}:`, error);
+        }
+      }
+
+      // Convert to InstructionUsage array
+      const result: InstructionUsage[] = Array.from(instructionStats.entries()).map(([instruction, stats]) => ({
+        instruction,
+        count: stats.count,
+        successRate: stats.count > 0 ? stats.successCount / stats.count : 0,
+        avgComputeUnits: stats.count > 0 ? Math.round(stats.totalComputeUnits / stats.count) : 0
+      }));
+
+      return result.sort((a, b) => b.count - a.count);
+    } catch (error) {
+      console.error('Error getting instruction usage:', error);
+      return [];
+    }
   }
 
   private async getPerformanceMetrics(programId: PublicKey): Promise<PerformanceMetrics> {
     try {
-      // Get recent performance samples for context
+      // Get recent signatures to analyze performance
+      const signatures = await this.connection.getSignaturesForAddress(programId, { limit: 50 });
+      
+      if (signatures.length === 0) {
+        return {
+          avgTransactionFee: 0,
+          avgComputeUnits: 0,
+          successRate: 0,
+          peakTps: 0
+        };
+      }
+
+      let totalFee = 0;
+      let totalComputeUnits = 0;
+      let successCount = 0;
+      let validTxCount = 0;
+
+      // Analyze recent transactions for real metrics
+      const recentTxs = signatures.slice(0, 20); // Analyze last 20 transactions
+      
+      for (const txSig of recentTxs) {
+        try {
+          const tx = await this.connection.getTransaction(txSig.signature, {
+            maxSupportedTransactionVersion: 0
+          });
+
+          if (tx && tx.meta) {
+            validTxCount++;
+            totalFee += tx.meta.fee || 0;
+            totalComputeUnits += tx.meta.computeUnitsConsumed || 0;
+            
+            if (tx.meta.err === null) {
+              successCount++;
+            }
+          }
+        } catch (error) {
+          console.error(`Error analyzing transaction ${txSig.signature} for metrics:`, error);
+        }
+      }
+
+      // Get network performance samples for TPS context
       const perfSamples = await this.connection.getRecentPerformanceSamples(5);
       
       return {
-        avgTransactionFee: 5000, // 0.000005 SOL in lamports
-        avgComputeUnits: 15000,
-        successRate: 0.96,
+        avgTransactionFee: validTxCount > 0 ? Math.round(totalFee / validTxCount) : 0,
+        avgComputeUnits: validTxCount > 0 ? Math.round(totalComputeUnits / validTxCount) : 0,
+        successRate: validTxCount > 0 ? successCount / validTxCount : 0,
         peakTps: perfSamples.length > 0 ? 
           Math.max(...perfSamples.map(s => s.numTransactions / s.samplePeriodSecs)) : 0
       };
@@ -255,9 +361,21 @@ class ProgramActivityService {
     }
   }
 
+  private getInstructionsFromMessage(message: any): any[] {
+    // Handle both legacy and versioned transaction formats
+    if (message.instructions) {
+      return message.instructions;
+    }
+    // For versioned transactions, instructions are in compiledInstructions
+    if (message.compiledInstructions) {
+      return message.compiledInstructions;
+    }
+    return [];
+  }
+
   private parseInstructions(message: any): ParsedInstruction[] {
     // Handle both legacy and versioned transaction formats
-    const instructions = message.instructions || [];
+    const instructions = this.getInstructionsFromMessage(message);
     
     return instructions.map((ix: any) => ({
       programId: typeof ix.programId === 'string' ? ix.programId : ix.programId?.toBase58() || 'unknown',

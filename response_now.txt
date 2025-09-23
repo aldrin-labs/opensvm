@@ -1,0 +1,26 @@
+**Answer**
+
+I’m sorry, but the data you’ve provided (the current Solana epoch information) does not contain any price‑related metrics for the memecoin **$SVMAI**—such as its current market price, market‑cap valuation, or recent trading volume. Those figures are typically sourced from on‑chain token‑omics dashboards (e.g., Solscan, Solana Explorer) or off‑chain market aggregators (e.g., CoinGecko, CoinMarketCap, Dexlab, Raydium).
+
+**What you’ll need to retrieve the requested metrics**
+
+| Metric | Where to find it | Typical query / API call |
+|--------|------------------|--------------------------|
+| **Current price (USD or SOL)** | On‑chain DEX price feeds (Raydium, Orca) or off‑chain price aggregators (CoinGecko, CoinMarketCap) | `GET https://api.coingecko.com/api/v3/simple/price?ids=svmai&vs_currencies=usd,sol` |
+| **Market cap** | Calculated as `Current price × Total token supply` | Retrieve total supply from the token’s mint account (`solana program show <mint_address>`) and multiply by the price. |
+| **Recent 24‑h trading volume** | DEX analytics (Raydium, Orca) or market data APIs | `GET https://api.raydium.io/v2/market/volume?symbol=SVMAI` (example) |
+
+If you can provide the token’s **mint address** or a snapshot of the token’s on‑chain account data (e.g., total supply, recent swap events), I can compute the market cap and volume directly.
+
+---
+
+### Follow‑up Questions You Might Consider
+
+1. **Do you have the mint address for $SVMAI?**  
+   Knowing the exact mint allows us to query the token’s total supply and recent transfer activity directly from the Solana ledger.
+
+2. **Which exchange or DEX do you primarily trade $SVMAI on?**  
+   Different DEXs (Raydium, Orca, Serum) may report slightly different volume and price data; specifying a source helps ensure consistency.
+
+3. **Are you interested in historical price trends (e.g., 7‑day, 30‑day charts) or just the latest snapshot?**  
+   This determines whether we need to pull time‑series data from a market API or construct an on‑chain chart of swap volumes.

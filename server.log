@@ -1,0 +1,433 @@
+npm warn Unknown global config "tmp". This will stop working in the next major version of npm.
+npm warn using --force Recommended protections disabled.
+
+> opensvm@0.1.0 dev
+> next dev
+
+   ▲ Next.js 15.5.3
+   - Local:        http://localhost:3000
+   - Network:      http://192.168.0.19:3000
+   - Environments: .env.local, .env
+   - Experiments (use with caution):
+     ✓ optimizeCss
+     · optimizePackageImports
+
+ ✓ Starting...
+ ✓ Ready in 2.1s
+ ✓ Compiled /middleware in 163ms (114 modules)
+ ○ Compiling /api/getAnswer ...
+ ✓ Compiled /api/getAnswer in 1485ms (590 modules)
+📝 Processing query: "top 10 validators"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+(node:25451) [DEP0169] DeprecationWarning: `url.parse()` behavior is not standardized and prone to errors that have security implications. Use the WHATWG URL API instead. CVEs are not issued for `url.parse()` vulnerabilities.
+(Use `node --trace-deprecation ...` to show where the warning was created)
+🤖 AI generated plan: [
+  {
+    tool: 'getVoteAccounts',
+    reason: 'To retrieve the list of Solana validators and their voting statistics, enabling identification of the top 10 validators by stake or performance.',
+    narrative: 'Fetching the current validator roster to spotlight the leading validators on the Solana network.',
+    input: ''
+  }
+]
+🎭 AI-generated plan: [ { tool: 'getVoteAccounts', input: '' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the current validator roster to spotlight the leading validators on the Solana network.
+   ✅ To retrieve the list of Solana validators and their voting statistics, enabling identification of the top 10 validators by stake or performance.
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🛡️ Using deterministic validator formatter { validators_total: 960, topN: 10 }
+📚 Final answer length: 5800
+✅ Tool aiPlanExecution completed in 8053ms
+🎯 Total tool selection time: 8053ms
+✅ Tool handling successful in 8056ms
+ POST /api/getAnswer 200 in 9782ms
+📝 Processing query: "top 10 validators"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'getVoteAccounts',
+    reason: 'The user wants to see the top 10 Solana validators, which requires fetching validator voting information from the network.',
+    narrative: 'Fetching the current list of Solana validators and their voting stats to identify the top performers.',
+    input: ''
+  }
+]
+🎭 AI-generated plan: [ { tool: 'getVoteAccounts', input: '' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the current list of Solana validators and their voting stats to identify the top performers.
+   ✅ The user wants to see the top 10 Solana validators, which requires fetching validator voting information from the network.
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🛡️ Using deterministic validator formatter { validators_total: 960, topN: 10 }
+📚 Final answer length: 5682
+✅ Tool aiPlanExecution completed in 7009ms
+🎯 Total tool selection time: 7009ms
+✅ Tool handling successful in 7010ms
+ POST /api/getAnswer 200 in 7038ms
+📝 Processing query: "top 10 validators"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'getVoteAccounts',
+    reason: 'To retrieve the list of Solana validators and their voting statistics, enabling identification of the top 10 validators by stake or performance.',
+    narrative: 'Fetching the current validator roster so we can rank and present the top ten powerhouses securing the Solana network.',
+    input: ''
+  }
+]
+🎭 AI-generated plan: [ { tool: 'getVoteAccounts', input: '' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the current validator roster so we can rank and present the top ten powerhouses securing the Solana network.
+   ✅ To retrieve the list of Solana validators and their voting statistics, enabling identification of the top 10 validators by stake or performance.
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🛡️ Using deterministic validator formatter { validators_total: 958, topN: 10 }
+📚 Final answer length: 5584
+✅ Tool aiPlanExecution completed in 7220ms
+🎯 Total tool selection time: 7220ms
+✅ Tool handling successful in 7222ms
+ POST /api/getAnswer 200 in 7245ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'User requests current price, market cap, and recent trading volume for the memecoin $SVMAI',
+    narrative: 'Fetching the latest market data for SVMAI from CoinGecko',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the latest market data for SVMAI from CoinGecko
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 456 → 456 chars (0% reduction)
+❌ Tool aiPlanExecution failed after 90001ms: Error: Tool aiPlanExecution execution timeout
+    at Timeout.eval [as _onTimeout] (app/api/getAnswer/tools/registry.ts:35:36)
+  33 |                     const toolTimeout = new Promise<never>((_, reject) => {
+  34 |                         setTimeout(() => {
+> 35 |                             reject(new Error(`Tool ${tool.name} execution timeout`));
+     |                                    ^
+  36 |                         }, 90000); // 90 second per-tool timeout
+  37 |                     });
+  38 |
+🔧 Executing tool: dynamicPlanExecution
+🎭 Generated narrative plan: [
+  {
+    tool: 'getEpochInfo',
+    narrative: '🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!'
+  }
+]
+🎬 Beginning epic execution saga...
+
+🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!
+   ✅ The fundamental state of the network as analysis foundation
+
+🎭 Plan execution complete! Results gathered: 1
+📖 Synthesizing standard response...
+📊 Data context prepared: 174 characters
+🤖 Calling LLM with 1073 character prompt...
+✨ Epic synthesis complete: 2188 characters
+🎯 LLM synthesis SUCCESS - using real AI response
+📚 Final answer length: 2188
+✅ Tool dynamicPlanExecution completed in 4480ms
+🎯 Total tool selection time: 94488ms
+✅ Tool handling successful in 94489ms
+ POST /api/getAnswer 200 in 94514ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'User requests current price, market cap, and recent trading volume for $SVMAI',
+    narrative: 'Fetching the latest market data for the SVMAI memecoin from CoinGecko',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the latest market data for the SVMAI memecoin from CoinGecko
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 456 → 456 chars (0% reduction)
+✨ AI synthesis complete with decompression
+📚 Final answer length: 3675
+✅ Tool aiPlanExecution completed in 13650ms
+🎯 Total tool selection time: 13650ms
+✅ Tool handling successful in 13651ms
+ POST /api/getAnswer 200 in 13678ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'User requests current price, market cap, and recent trading volume for the memecoin $SVMAI',
+    narrative: 'Fetching the latest market data for SVMAI (opensvm-com) from CoinGecko',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+Fetching the latest market data for SVMAI (opensvm-com) from CoinGecko
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 456 → 456 chars (0% reduction)
+✨ AI synthesis complete with decompression
+📚 Final answer length: 5042
+✅ Tool aiPlanExecution completed in 71663ms
+🎯 Total tool selection time: 71663ms
+✅ Tool handling successful in 71664ms
+ POST /api/getAnswer 200 in 71719ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'The user requests the current price, market capitalization, and recent trading volume for the memecoin $SVMAI.',
+    narrative: 'Fetching up-to-date market data for SVMAI from CoinGecko to provide price, market cap, and volume details.',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+Fetching up-to-date market data for SVMAI from CoinGecko to provide price, market cap, and volume details.
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 457 → 457 chars (0% reduction)
+🔥 LLM synthesis error: Error: Request timed out.
+    at async synthesizeResults (app/api/getAnswer/tools/aiPlanExecution.ts:607:24)
+    at async Object.execute (app/api/getAnswer/tools/aiPlanExecution.ts:49:33)
+  605 |
+  606 |     try {
+> 607 |         const answer = await together.chat.completions.create({
+      |                        ^
+  608 |             model: "openai/gpt-oss-120b",
+  609 |             messages: [{ role: "system", content: synthesisPrompt }],
+  610 |             stream: false, {
+  status: undefined,
+  headers: undefined,
+  error: undefined
+}
+📚 Final answer length: 274
+❌ Tool aiPlanExecution failed after 90004ms: Error: Tool aiPlanExecution execution timeout
+    at Timeout.eval [as _onTimeout] (app/api/getAnswer/tools/registry.ts:35:36)
+  33 |                     const toolTimeout = new Promise<never>((_, reject) => {
+  34 |                         setTimeout(() => {
+> 35 |                             reject(new Error(`Tool ${tool.name} execution timeout`));
+     |                                    ^
+  36 |                         }, 90000); // 90 second per-tool timeout
+  37 |                     });
+  38 |
+🔧 Executing tool: dynamicPlanExecution
+🎭 Generated narrative plan: [
+  {
+    tool: 'getEpochInfo',
+    narrative: '🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!'
+  }
+]
+🎬 Beginning epic execution saga...
+
+🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!
+   ✅ The fundamental state of the network as analysis foundation
+
+🎭 Plan execution complete! Results gathered: 1
+📖 Synthesizing standard response...
+📊 Data context prepared: 174 characters
+🤖 Calling LLM with 1073 character prompt...
+✨ Epic synthesis complete: 4485 characters
+🎯 LLM synthesis SUCCESS - using real AI response
+📚 Final answer length: 4485
+✅ Tool dynamicPlanExecution completed in 6182ms
+🎯 Total tool selection time: 96189ms
+✅ Tool handling successful in 96191ms
+ POST /api/getAnswer 200 in 96235ms
+✨ AI synthesis complete with decompression
+📚 Final answer length: 3170
+ ✓ Compiled in 41ms
+ ○ Compiling /api/getAnswer ...
+ ✓ Compiled /api/getAnswer in 1096ms (398 modules)
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan with review loop...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'Retrieve current price, market cap, and recent trading volume for the memecoin SVMAI',
+    narrative: '📊 Fetching up-to-date market data for SVMAI',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+📊 Fetching up-to-date market data for SVMAI
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+🧪 Review LLM approval: APPROVED
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 457 → 457 chars (0% reduction)
+✨ AI synthesis complete with decompression
+📚 Final answer length: 3704
+✅ Tool aiPlanExecution completed in 13798ms
+🎯 Total tool selection time: 13798ms
+✅ Tool handling successful in 13802ms
+ POST /api/getAnswer 200 in 15132ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan with review loop...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'Retrieve current price, market cap, and recent trading volume for SVMAI',
+    narrative: '📊 Fetching market data for $SVMAI',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+📊 Fetching market data for $SVMAI
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+🧪 Review LLM approval: APPROVED
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 455 → 455 chars (0% reduction)
+❌ Tool aiPlanExecution failed after 90001ms: Error: Tool aiPlanExecution execution timeout
+    at Timeout.eval [as _onTimeout] (app/api/getAnswer/tools/registry.ts:35:36)
+  33 |                     const toolTimeout = new Promise<never>((_, reject) => {
+  34 |                         setTimeout(() => {
+> 35 |                             reject(new Error(`Tool ${tool.name} execution timeout`));
+     |                                    ^
+  36 |                         }, 90000); // 90 second per-tool timeout
+  37 |                     });
+  38 |
+🔧 Executing tool: dynamicPlanExecution
+🎭 Generated narrative plan: [
+  {
+    tool: 'getEpochInfo',
+    narrative: '🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!'
+  }
+]
+🎬 Beginning epic execution saga...
+
+🌐 *Establishing blockchain baseline...* Connecting to the Solana universe!
+   ✅ The fundamental state of the network as analysis foundation
+
+🎭 Plan execution complete! Results gathered: 1
+📖 Synthesizing standard response...
+📊 Data context prepared: 174 characters
+🤖 Calling LLM with 1073 character prompt...
+✨ Epic synthesis complete: 3718 characters
+🎯 LLM synthesis SUCCESS - using real AI response
+📚 Final answer length: 3718
+✅ Tool dynamicPlanExecution completed in 5437ms
+🎯 Total tool selection time: 95441ms
+✅ Tool handling successful in 95442ms
+ POST /api/getAnswer 200 in 95482ms
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan with review loop...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'Retrieve current price, market cap, and recent trading volume for SVMAI',
+    narrative: '📊 Fetching market data for the memecoin $SVMAI',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+📊 Fetching market data for the memecoin $SVMAI
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+🧪 Review LLM approval: APPROVED
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 457 → 457 chars (0% reduction)
+✨ AI synthesis complete with decompression
+📚 Final answer length: 3161
+✅ Tool aiPlanExecution completed in 68445ms
+🎯 Total tool selection time: 68445ms
+✅ Tool handling successful in 68445ms
+ POST /api/getAnswer 200 in 68489ms
+🔥 LLM synthesis error: Error: Request timed out.
+    at async synthesizeResults (app/api/getAnswer/tools/aiPlanExecution.ts:771:24)
+    at async Object.execute (app/api/getAnswer/tools/aiPlanExecution.ts:92:33)
+  769 |
+  770 |     try {
+> 771 |         const answer = await together.chat.completions.create({
+      |                        ^
+  772 |             model: "openai/gpt-oss-120b",
+  773 |             messages: [{ role: "system", content: synthesisPrompt }],
+  774 |             stream: false, {
+  status: undefined,
+  headers: undefined,
+  error: undefined
+}
+📚 Final answer length: 274
+📝 Processing query: "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?"
+🏥 System health: HEALTHY
+🔧 Executing tool: aiPlanExecution
+🤖 Generating AI-powered plan with review loop...
+🤖 AI generated plan: [
+  {
+    tool: 'tokenMarketData',
+    reason: 'Retrieve current price, market cap, and recent trading volume for the memecoin $SVMAI',
+    narrative: '📊 Fetching market data for SVMAI (opensvm-com)',
+    input: 'opensvm-com'
+  }
+]
+🎭 AI-generated plan: [ { tool: 'tokenMarketData', input: 'opensvm-com' } ]
+🎬 Beginning AI plan execution...
+
+📊 Fetching market data for SVMAI (opensvm-com)
+   💎 Token market data retrieved: SUCCESS
+
+🎭 AI plan execution complete! Results gathered: 1
+🧪 Review LLM approval: APPROVED
+📖 Synthesizing AI-powered response...
+🗜️ Compressed data: 457 → 457 chars (0% reduction)
+✨ AI synthesis complete with decompression
+📚 Final answer length: 5946
+✅ Tool aiPlanExecution completed in 13399ms
+🎯 Total tool selection time: 13399ms
+✅ Tool handling successful in 13400ms
+ POST /api/getAnswer 200 in 13447ms
+[?25h

@@ -1,0 +1,22 @@
+HTTP/1.1 200 OK
+content-security-policy: default-src 'self' data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: blob: https:; font-src 'self' data: https://fonts.gstatic.com; connect-src 'self' https://*.solana.com https://solana.pics https://maga.finance https://amm.buzz https://p2p.opensvm.com https://tron.codes https://*.helius-rpc.com https://*.chainstack.com https://opensvm.com https://ingesteer.services-prod.nsvcs.net http://localhost:6333 http://localhost:*; object-src 'self' data:;
+permissions-policy: camera=(), microphone=(), geolocation=()
+referrer-policy: origin-when-cross-origin
+strict-transport-security: max-age=63072000; includeSubDomains; preload
+x-content-type-options: nosniff
+x-dns-prefetch-control: on
+x-frame-options: SAMEORIGIN
+x-ratelimit-limit: 60
+x-ratelimit-remaining: 59
+x-ratelimit-reset: 1758471217142
+x-xss-protection: 1; mode=block
+vary: rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch
+cache-control: no-cache
+content-type: text/plain
+x-processing-time: 94228ms
+x-system-health: HEALTHY
+Date: Sun, 21 Sep 2025 16:14:11 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+Transfer-Encoding: chunked
+

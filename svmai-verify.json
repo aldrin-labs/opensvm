@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-09-21T16:16:43.055Z",
+  "question": "What is the current price, market cap, and recent trading volume for the memecoin $SVMAI on Solana?",
+  "local": {
+    "current_price_usd": 0.00018652,
+    "market_cap_usd": 186404,
+    "total_volume_usd_24h": 972.48
+  },
+  "coingecko": {
+    "current_price_usd": 0.00018652,
+    "market_cap_usd": 186404,
+    "total_volume_usd_24h": 972.48
+  },
+  "deltas": {
+    "current_price_usd": {
+      "a": 0.00018652,
+      "b": 0.00018652,
+      "abs": 0,
+      "pct": 0
+    },
+    "market_cap_usd": {
+      "a": 186404,
+      "b": 186404,
+      "abs": 0,
+      "pct": 0
+    },
+    "total_volume_usd_24h": {
+      "a": 972.48,
+      "b": 972.48,
+      "abs": 0,
+      "pct": 0
+    }
+  },
+  "ok": true,
+  "local_raw_length": 3161
+}

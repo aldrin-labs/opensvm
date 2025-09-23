@@ -1,0 +1,40 @@
+**Answer**
+
+I’m sorry—I don’t have any price‑related data for the $SVMAI memecoin in the information you provided. The only snapshot you shared is a Solana **epoch‑info** record (block height, slot numbers, transaction count, etc.), which does not contain market‑price, market‑cap, or trading‑volume metrics for any SPL token.
+
+---
+
+### What to do next
+
+| Goal | Where to look | Typical steps |
+|------|---------------|---------------|
+| **Current price** | On‑chain price oracles (e.g., Pyth, Switchboard) or off‑chain market aggregators (CoinGecko, CoinMarketCap, Solscan token page) | 1. Search for “$SVMAI price” on the aggregator site.<br>2. Verify the timestamp of the quote (most sites show the last update). |
+| **Market cap** | Token’s total supply × current price (often shown directly on token‑tracking sites) | 1. Find the circulating supply on the token’s Solana Explorer page.<br>2. Multiply by the price you retrieved. |
+| **Recent trading volume** | DEX analytics dashboards (Raydium, Serum, Orca) or on‑chain analytics platforms (Solscan, Solana Explorer, Step Finance) | 1. Choose a time window (e.g., 24 h).<br>2. Look for “24‑h volume” or “7‑day volume” metrics. |
+
+If you have access to an API key for a price‑oracle (e.g., Pyth) or a market‑data provider (CoinGecko), you can pull the latest numbers programmatically:
+
+```bash
+# Example using CoinGecko API (replace token-id with the correct slug)
+curl "https://api.coingecko.com/api/v3/simple/price?ids=svmai&vs_currencies=usd&include_market_cap=true&include_24hr_vol=true"
+```
+
+The response will include:
+
+```json
+{
+  "svmai": {
+    "usd": 0.000123,
+    "usd_market_cap": 1234567,
+    "usd_24h_vol": 98765
+  }
+}
+```
+
+---
+
+### Follow‑up questions you might consider
+
+1. **Liquidity depth:** What is the order‑book depth for $SVMAI on the major Solana DEXes (Raydium, Orca, Serum) and how does that affect slippage for large trades?
+2. **Supply dynamics:** Is the total supply of $SVMAI fixed, or does the token have inflationary/deflationary mechanisms (e.g., burns, staking rewards) that could impact future market cap?
+3. **Community & development activity:** What recent on‑chain activity (e.g., number of transfers, new holders) and off‑chain signals (social media mentions, GitHub commits) indicate about the health and growth trajectory of the $SVMAI project?

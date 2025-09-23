@@ -33,9 +33,6 @@ import { cookies } from 'next/headers';
 import { PublicKey } from '@solana/web3.js';
 import { getConnection as getServerConnection } from '../../../../lib/solana-connection-server';
 
-// Initialize Solana connection via server-side pool
-const connection = getServerConnection();
-
 /**
  * Fetch entity data based on type
  */
@@ -44,6 +41,9 @@ async function fetchEntityData(
   entityId: string
 ): Promise<TransactionOGData | AccountOGData | ProgramOGData | UserOGData | BlockOGData | ValidatorOGData | TokenOGData | null> {
   try {
+    // Initialize Solana connection inside function to avoid build-time issues
+    const connection = getServerConnection();
+    
     switch (entityType) {
       case 'transaction': {
         // Fetch transaction data
