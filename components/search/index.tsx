@@ -338,6 +338,27 @@ export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarPr
     });
   }, []);
 
+  // Reset submitting state when navigation completes
+  useEffect(() => {
+    const handleRouteChange = () => {
+      setIsSubmitting(false);
+    };
+
+    // Listen for route changes to reset loading state
+    if (typeof window !== 'undefined') {
+      window.addEventListener('beforeunload', handleRouteChange);
+      // Also reset after a timeout as fallback
+      const timeout = setTimeout(() => {
+        setIsSubmitting(false);
+      }, 3000);
+
+      return () => {
+        window.removeEventListener('beforeunload', handleRouteChange);
+        clearTimeout(timeout);
+      };
+    }
+  }, []);
+
   const clearSearch = useCallback(() => {
     setQuery('');
     setShowSuggestions(false);

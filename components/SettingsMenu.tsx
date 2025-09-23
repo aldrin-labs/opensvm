@@ -69,15 +69,31 @@ function SettingsMenuClient() {
   // Update tempSettings when settings change
   useEffect(() => {
     if (settings && config) {
-      setTempSettings({
-        theme: config.variant,
-        fontFamily: settings.fontFamily,
-        fontSize: settings.fontSize,
-        rpcEndpoint: settings.rpcEndpoint,
-        customRpcEndpoint: settings.customRpcEndpoint,
+      setTempSettings(prevSettings => {
+        // Only update if values actually changed
+        const newSettings = {
+          theme: config.variant,
+          fontFamily: settings.fontFamily,
+          fontSize: settings.fontSize,
+          rpcEndpoint: settings.rpcEndpoint,
+          customRpcEndpoint: settings.customRpcEndpoint,
+        };
+        
+        // Deep comparison to prevent unnecessary updates
+        if (
+          prevSettings.theme === newSettings.theme &&
+          prevSettings.fontFamily === newSettings.fontFamily &&
+          prevSettings.fontSize === newSettings.fontSize &&
+          prevSettings.rpcEndpoint?.url === newSettings.rpcEndpoint?.url &&
+          prevSettings.customRpcEndpoint === newSettings.customRpcEndpoint
+        ) {
+          return prevSettings;
+        }
+        
+        return newSettings;
       });
     }
-  }, [settings, config]);
+  }, [config?.variant, settings?.fontFamily, settings?.fontSize, settings?.rpcEndpoint?.url, settings?.customRpcEndpoint]);
 
   // E2E aid: allow tests to programmatically open the menu without relying on UI events
   useEffect(() => {
