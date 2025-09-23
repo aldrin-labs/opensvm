@@ -33,7 +33,7 @@ export const aiPlanExecutionTool: Tool = {
         const { conn, question } = context;
 
         try {
-            console.log('🤖 Generating AI-powered plan with review loop...');
+            console.log('◈ Generating AI-powered plan with review loop...');
 
             // Up to 3 cycles: plan -> execute -> review -> (maybe) replan
             const maxIterations = 3;
@@ -50,7 +50,7 @@ export const aiPlanExecutionTool: Tool = {
                 // 1) Generate plan
                 const plan = await generateAIPoweredPlan(question, planningContext);
                 lastPlan = plan;
-                console.log('🎭 AI-generated plan:', plan.map(p => ({ tool: p.tool, input: p.input })));
+                console.log('◆ AI-generated plan:', plan.map(p => ({ tool: p.tool, input: p.input })));
 
                 // 2) Execute plan
                 const iterationResults = await executePlan(plan, conn);
@@ -74,7 +74,7 @@ export const aiPlanExecutionTool: Tool = {
 
                 // Guard against invalid responses
                 const approved = !!review?.approved;
-                console.log(`🧪 Review LLM approval: ${approved ? 'APPROVED' : 'REQUIRES MORE'}`);
+                console.log(`◇ Review LLM approval: ${approved ? 'APPROVED' : 'REQUIRES MORE'}`);
 
                 if (approved) {
                     break;
@@ -91,7 +91,7 @@ export const aiPlanExecutionTool: Tool = {
             // 5) Synthesize final text answer (deterministic header + narrative)
             const finalAnswer = await synthesizeResults(context, lastPlan, accumulatedResults);
 
-            console.log('📚 Final answer length:', finalAnswer.length);
+            console.log('▪ Final answer length:', finalAnswer.length);
 
             return {
                 handled: true,
@@ -105,7 +105,7 @@ export const aiPlanExecutionTool: Tool = {
             };
 
         } catch (error) {
-            console.error('🔥 AI plan execution error:', error);
+            console.error('⚡ AI plan execution error:', error);
             return {
                 handled: false
             };
@@ -189,13 +189,13 @@ Response format (JSON only):
 Examples:
 - For "$SVMAI price":
   [
-    { "tool": "tokenMarketData", "reason": "Get market data for SVMAI", "narrative": "📊 Fetching price for SVMAI", "input": "opensvm-com" }
+    { "tool": "tokenMarketData", "reason": "Get market data for SVMAI", "narrative": "⟨ ⟩ Fetching price for SVMAI", "input": "opensvm-com" }
   ]
 
 - For "compare $SVMAI and $BONK market caps":
   [
-    { "tool": "tokenMarketData", "reason": "SVMAI market data", "narrative": "📊 Fetching SVMAI", "input": "opensvm-com" },
-    { "tool": "tokenMarketData", "reason": "BONK market data", "narrative": "📊 Fetching BONK", "input": "bonk" }
+    { "tool": "tokenMarketData", "reason": "SVMAI market data", "narrative": "⟨ ⟩ Fetching SVMAI", "input": "opensvm-com" },
+    { "tool": "tokenMarketData", "reason": "BONK market data", "narrative": "⟨ ⟩ Fetching BONK", "input": "bonk" }
   ]
 
 - For "$SOL account balance of address X": do not use tokenMarketData; use account/balance tools instead.`;
@@ -219,7 +219,7 @@ Examples:
             throw new Error('AI response is not an array');
         }
 
-        console.log('🤖 AI generated plan:', aiPlan);
+        console.log('◈ AI generated plan:', aiPlan);
 
         return aiPlan;
 
@@ -268,7 +268,7 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
                 return {
                     tool: 'tokenMarketData',
                     reason: `Get current market data for ${symbol} token from CoinGecko API`,
-                    narrative: `📊 Getting market data for ${symbol}`,
+                    narrative: `▣ Getting market data for ${symbol}`,
                     input: coinId
                 };
             });
@@ -282,7 +282,7 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
         return [{
             tool: 'tokenMarketData',
             reason: `Get current market data for ${tokenSymbol} token from CoinGecko API`,
-            narrative: `📊 Getting market data for ${tokenSymbol}`,
+            narrative: `▣ Getting market data for ${tokenSymbol}`,
             input: coinId
         }];
     }
@@ -292,7 +292,7 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
         return [{
             tool: 'getVoteAccounts',
             reason: 'Get current validator information and voting accounts',
-            narrative: '🗳️ Retrieving validator data...'
+            narrative: '◎ Retrieving validator data...'
         }];
     }
 
@@ -300,14 +300,14 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     return [{
         tool: 'getEpochInfo',
         reason: 'Get current network status as starting point for analysis',
-        narrative: '🌐 Establishing blockchain baseline...'
+        narrative: '◦ Establishing blockchain baseline...'
     }];
 }
 
 async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
 
-    console.log('🎬 Beginning AI plan execution...');
+    console.log('▶ Beginning AI plan execution...');
 
     for (const step of plan) {
         console.log(`\n${step.narrative}`);
@@ -320,10 +320,10 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                 try {
                     const tokenTool = await import('./tokenMarketData');
                     result = await tokenTool.tokenMarketDataTool.execute({ coinId: step.input });
-                    console.log(`   💎 Token market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+                    console.log(`   ◈ Token market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
                 } catch (error) {
                     result = { error: `Token market data error: ${(error as Error).message}` };
-                    console.log(`   ❌ Token market data failed`);
+                    console.log(`   ◌ Token market data failed`);
                 }
             }
             // Handle standard RPC calls
@@ -344,7 +344,7 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                 } else {
                     result = await conn[step.tool]();
                 }
-                console.log(`   ✅ ${step.reason}`);
+                console.log(`   ◉ ${step.reason}`);
             } else {
                 // Fallback: if LLM returned a token id/symbol as a tool name (e.g., "jupiter"),
                 // treat it as CoinGecko coinId and fetch via tokenMarketData.
@@ -354,13 +354,13 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                     if (typeof maybeCoinId === 'string' && /^[a-z0-9-]{2,}$/.test(maybeCoinId)) {
                         const tokenTool = await import('./tokenMarketData');
                         result = await tokenTool.tokenMarketDataTool.execute({ coinId: maybeCoinId });
-                        console.log(`   💎 Token market data (fallback:${maybeCoinId}) retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+                        console.log(`   ◈ Token market data (fallback:${maybeCoinId}) retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
                     } else {
-                        console.warn(`   ⚠️ Method ${step.tool} not available`);
+                        console.warn(`   ◭ Method ${step.tool} not available`);
                         result = { error: `Method ${step.tool} not available` };
                     }
                 } catch (e) {
-                    console.warn(`   ⚠️ Fallback tokenMarketData failed for '${step.tool}': ${(e as Error).message}`);
+                    console.warn(`   ◭ Fallback tokenMarketData failed for '${step.tool}': ${(e as Error).message}`);
                     result = { error: `Method ${step.tool} not available` };
                 }
             }
@@ -371,7 +371,7 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
             results[resultKey] = result;
 
         } catch (error) {
-            console.error(`   🔥 Error in ${step.tool}:`, error);
+            console.error(`   ⚡ Error in ${step.tool}:`, error);
             const resultKey = typeof step.input === 'string' && step.input
                 ? `${step.tool}:${step.input}`
                 : step.tool;
@@ -379,7 +379,7 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
         }
     }
 
-    console.log('\n🎭 AI plan execution complete! Results gathered:', Object.keys(results).length);
+    console.log('\n◆ AI plan execution complete! Results gathered:', Object.keys(results).length);
     return results;
 }
 
@@ -547,7 +547,7 @@ async function synthesizeResults(
 ): Promise<string> {
     const { question } = context;
 
-    console.log('📖 Synthesizing AI-powered response...');
+    console.log('◈ Synthesizing AI-powered response...');
 
     // Build deterministic market-data header (for human readability and automated verification)
     function buildTokenHeader(results: Record<string, any>): string {
@@ -584,7 +584,7 @@ async function synthesizeResults(
             ).slice(0, topN);
 
             // Explicitly log that we're bypassing LLM and using on-chain data directly
-            console.log('🛡️ Using deterministic validator formatter', {
+            console.log('◊ Using deterministic validator formatter', {
                 validators_total: Array.isArray(voteRes.current) ? voteRes.current.length : 0,
                 topN
             });
@@ -599,7 +599,7 @@ async function synthesizeResults(
                 return x.toLocaleString();
             };
 
-            let table = `## ${topN}️⃣  Top ${topN} Validators by Activated Stake\n\n`;
+            let table = `## ◈ Top ${topN} Validators by Activated Stake\n\n`;
             table += `| # | Vote-account (node) | Activated Stake (SOL) | Commission % | Last Vote Slot | Latest Epoch Credits |\n`;
             table += `|---|---------------------|----------------------:|-------------:|---------------:|---------------------:|\n`;
 
@@ -742,7 +742,7 @@ Output format:
     // Compress data before sending to LLM
     const { compressed: compressedDataContext, aliasMap } = compressDataForLLM(dataContext);
 
-    console.log(`🗜️ Compressed data: ${dataContext.length} → ${compressedDataContext.length} chars (${Math.round((1 - compressedDataContext.length / dataContext.length) * 100)}% reduction)`);
+    console.log(`◪ Compressed data: ${dataContext.length} → ${compressedDataContext.length} chars (${Math.round((1 - compressedDataContext.length / dataContext.length) * 100)}% reduction)`);
 
     const together = new Together({
         apiKey: process.env.TOGETHER_API_KEY,
@@ -785,11 +785,11 @@ Answer:`;
         // Decompress the response
         const decompressedResponse = decompressLLMResponse(response, aliasMap);
 
-        console.log('✨ AI synthesis complete with decompression');
+        console.log('◊ AI synthesis complete with decompression');
         return (tokenHeader ? tokenHeader + '\n\n' : '') + decompressedResponse;
 
     } catch (error) {
-        console.error('🔥 LLM synthesis error:', error);
+        console.error('⚡ LLM synthesis error:', error);
         return generateSimpleFallback(results, question);
     }
 }

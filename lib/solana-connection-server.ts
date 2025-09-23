@@ -138,7 +138,11 @@ class ConnectionPool {
         // Ensure we have endpoints available
         if (this.endpoints.length === 0) {
             console.error('[RPC Pool] No RPC endpoints configured! Falling back to proxy');
-            const fallbackEndpoint = '/api/proxy/rpc';
+            // Use full URL during build time, relative URL only during runtime
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const fallbackEndpoint = typeof window === 'undefined' && process.env.NODE_ENV !== 'development'
+                ? `${baseUrl}/api/proxy/rpc`
+                : '/api/proxy/rpc';
             if (!this.connections.has(fallbackEndpoint)) {
                 this.connections.set(fallbackEndpoint, new ProxyConnection(fallbackEndpoint));
             }
@@ -148,7 +152,7 @@ class ConnectionPool {
         // Round-robin load balancing with proper rotation
         const selectedEndpoint = this.endpoints[this.currentEndpointIndex];
         this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
-        
+
         console.log(`[RPC Pool] Selected OpenSVM endpoint ${this.currentEndpointIndex}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
 
         if (!this.connections.has(selectedEndpoint)) {

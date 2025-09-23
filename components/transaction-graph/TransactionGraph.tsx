@@ -751,17 +751,36 @@ const CytoscapeContainer = React.memo(() => {
 
   // Graph filter and zoom control handlers
   const handleFilterChange = useCallback((filter: string, value: boolean) => {
-    setFilters(prev => ({ ...prev, [filter]: value }));
+    setFilters(prev => {
+      const nextFilters = { ...prev, [filter]: value };
 
-    // Apply filters to cytoscape graph
-    if (cyRef.current) {
-      const cy = cyRef.current;
+      // Apply filters to cytoscape graph
+      if (cyRef.current) {
+        const cy = cyRef.current;
 
-      // Show/hide nodes based on transaction type
-      const nextFilters = { ...filters, [filter]: value } as typeof filters;
-      cy.nodes().forEach(node => {
-        if (node.data('type') === 'transaction') {
-          const txType = node.data('txType');
+        // Show/hide nodes based on transaction type
+        cy.nodes().forEach(node => {
+          if (node.data('type') === 'transaction') {
+            const txType = node.data('txType');
+            let shouldShow = true;
+
+            if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
+            else if (txType === 'spl_transfer' && !nextFilters.splTransfers) shouldShow = false;
+            else if (txType === 'defi' && !nextFilters.defi) shouldShow = false;
+            else if (txType === 'nft' && !nextFilters.nft) shouldShow = false;
+            else if (txType === 'program_call' && !nextFilters.programCalls) shouldShow = false;
+            else if (txType === 'system' && !nextFilters.system) shouldShow = false;
+
+            // Special handling for funding transactions
+            if (node.data('isFunding') && !nextFilters.funding) shouldShow = false;
+
+            node.style('display', shouldShow ? 'element' : 'none');
+          }
+        });
+
+        // Show/hide edges based on transaction type
+        cy.edges().forEach(edge => {
+          const txType = edge.data('txType');
           let shouldShow = true;
 
           if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
@@ -772,32 +791,16 @@ const CytoscapeContainer = React.memo(() => {
           else if (txType === 'system' && !nextFilters.system) shouldShow = false;
 
           // Special handling for funding transactions
-          if (node.data('isFunding') && !nextFilters.funding) shouldShow = false;
+          if (edge.data('isFunding') && !nextFilters.funding) shouldShow = false;
 
-          node.style('display', shouldShow ? 'element' : 'none');
-        }
-      });
+          edge.style('display', shouldShow ? 'element' : 'none');
+        });
+        // Do not run layout to preserve static positions
+      }
 
-      // Show/hide edges based on transaction type
-      cy.edges().forEach(edge => {
-        const txType = edge.data('txType');
-        let shouldShow = true;
-
-        if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
-        else if (txType === 'spl_transfer' && !nextFilters.splTransfers) shouldShow = false;
-        else if (txType === 'defi' && !nextFilters.defi) shouldShow = false;
-        else if (txType === 'nft' && !nextFilters.nft) shouldShow = false;
-        else if (txType === 'program_call' && !nextFilters.programCalls) shouldShow = false;
-        else if (txType === 'system' && !nextFilters.system) shouldShow = false;
-
-        // Special handling for funding transactions
-        if (edge.data('isFunding') && !nextFilters.funding) shouldShow = false;
-
-        edge.style('display', shouldShow ? 'element' : 'none');
-      });
-      // Do not run layout to preserve static positions
-    }
-  }, [filters, cyRef]);
+      return nextFilters;
+    });
+  }, []);
 
   const handleZoomIn = useCallback(() => {
     if (cyRef.current) {

@@ -4,6 +4,9 @@ agent_notes/vtable_docs
 agent_notes/vtable_study
 .cline/ 
 
+# Generated reports and logs
+reports-ai/
+
 # dependencies
 /node_modules
 /.pnp
