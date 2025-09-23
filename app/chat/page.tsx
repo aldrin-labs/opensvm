@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { createSolanaAgent } from '@/lib/ai/core/factory';
 import { useAIChat } from '@/lib/ai/hooks/useAIChat';
 import dynamic from 'next/dynamic';
@@ -16,13 +16,22 @@ const ChatUI = dynamic(() => import('@/components/ai/ChatUI').then(mod => ({ def
   </div>
 });
 
-// Initialize Solana connection using settings-aware client facade
-const connection = getConnection();
-
 export default function ChatPage() {
   const [activeTab, setActiveTab] = useState('agent');
+  const [agent, setAgent] = useState<any>(null);
 
-  const agent = createSolanaAgent(connection);
+  // Initialize Solana connection and agent only on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        const connection = getConnection();
+        const solanaAgent = createSolanaAgent(connection);
+        setAgent(solanaAgent);
+      } catch (error) {
+        console.error('Failed to initialize Solana agent:', error);
+      }
+    }
+  }, []);
 
   const {
     messages,
@@ -35,6 +44,15 @@ export default function ChatPage() {
     agent,
     initialMessage: undefined
   });
+
+  // Show loading if agent is not yet initialized
+  if (!agent) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
 
   // Adapt messages to UI type (map 'agent' -> 'assistant' role)
   const uiMessages: UIMessage[] = (messages as any[]).map(m => ({
