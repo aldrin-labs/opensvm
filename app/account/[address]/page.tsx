@@ -31,7 +31,7 @@ interface AccountData {
 async function getAccountData(address: string): Promise<AccountData> {
   // Add timeout protection for e2e tests with much faster fallback
   const timeoutPromise = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Account data fetch timeout')), 15000); // Reduced to 15s for faster tests
+    setTimeout(() => reject(new Error('Account data fetch timeout')), 45000); // Increased to 45s for better UX
   });
 
   try {
@@ -82,7 +82,7 @@ async function getAccountData(address: string): Promise<AccountData> {
       const connection = await Promise.race([
         Promise.resolve(getClientConnection()),
         new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('Connection timeout')), 15000)
+          setTimeout(() => reject(new Error('Connection timeout')), 30000)
         )
       ]) as Awaited<ReturnType<typeof getClientConnection>>;
 
@@ -93,13 +93,13 @@ async function getAccountData(address: string): Promise<AccountData> {
         Promise.race([
           getSolanaAccountInfo(address),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Account info timeout')), 15000)
+            setTimeout(() => reject(new Error('Account info timeout')), 30000)
           )
         ]) as Promise<Awaited<ReturnType<typeof getSolanaAccountInfo>>>,
         Promise.race([
           connection.getBalance(pubkey),
           new Promise((_, reject) =>
-            setTimeout(() => reject(new Error('Balance timeout')), 15000)
+            setTimeout(() => reject(new Error('Balance timeout')), 30000)
           )
         ]) as Promise<number>
       ]);

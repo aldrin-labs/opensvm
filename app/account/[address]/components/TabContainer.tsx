@@ -1,9 +1,11 @@
 "use client";
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react';
+import { CheckCircle, Loader2, AlertCircle, RefreshCw } from 'lucide-react';
 import TokensTab from './TokensTab';
 import TransfersTab from './TransfersTab';
 import PlaceholderTab from './PlaceholderTab';
+import { useTransferCounts } from '@/hooks/useTransferCounts';
 
 export const tabs = [
   { id: 'tokens', label: 'Tokens' },
@@ -31,6 +33,9 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances, 
   const contentRef = useRef<HTMLDivElement>(null);
   // Local state to ensure tab switches render immediately in client/e2e mode
   const [selectedTab, setSelectedTab] = useState<string>(activeTab);
+  
+  // Get transfer counts and status for all tabs
+  const transferCounts = useTransferCounts(address, tokenBalances);
 
   // Keep local state in sync if parent prop changes (e.g., on initial mount or external nav)
   useEffect(() => {
@@ -117,21 +122,70 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances, 
     // Do NOT use router.push here to avoid route-level re-render/scroll reset
   }, [saveScrollPosition]);
 
+  // Helper function to render status indicator
+  const renderStatusIcon = (tabId: string) => {
+    const tabStatus = transferCounts[tabId as keyof typeof transferCounts];
+    
+    if (tabStatus.error) {
+      return (
+        <div className="ml-1" title={`Error: ${tabStatus.error}`}>
+          <AlertCircle className="h-3 w-3 text-red-500" />
+        </div>
+      );
+    }
+    
+    if (tabStatus.loading) {
+      return (
+        <div className="ml-1" title="Loading...">
+          <Loader2 className="h-3 w-3 text-blue-500 animate-spin" />
+        </div>
+      );
+    }
+    
+    if (tabStatus.hasMore) {
+      return (
+        <div className="ml-1" title="More data available">
+          <RefreshCw className="h-3 w-3 text-yellow-500" />
+        </div>
+      );
+    }
+    
+    return (
+      <div className="ml-1" title="Complete">
+        <CheckCircle className="h-3 w-3 text-green-500" />
+      </div>
+    );
+  };
+
   const renderTabs = () => (
-    <div className="flex space-x-4 mb-4 border-b border-border" data-test="account-tabs">
-      {tabs.map(tab => (
-        <button
-          key={tab.id}
-          data-test={`tab-${tab.id}`}
-          onClick={() => handleTabChange(tab.id)}
-          className={`px-4 py-2 -mb-px ${selectedTab === tab.id
-            ? 'text-primary border-b-2 border-primary font-medium'
-            : 'text-muted-foreground hover:text-foreground'
-            }`}
-        >
-          {tab.label}
-        </button>
-      ))}
+    <div className="flex space-x-4 mb-4 border-b border-border overflow-x-auto" data-test="account-tabs">
+      {tabs.map(tab => {
+        const tabStatus = transferCounts[tab.id as keyof typeof transferCounts];
+        const count = tabStatus?.count ?? 0;
+        
+        return (
+          <button
+            key={tab.id}
+            data-test={`tab-${tab.id}`}
+            onClick={() => handleTabChange(tab.id)}
+            className={`flex items-center px-4 py-2 -mb-px whitespace-nowrap transition-colors ${selectedTab === tab.id
+              ? 'text-primary border-b-2 border-primary font-medium'
+              : 'text-muted-foreground hover:text-foreground'
+              }`}
+          >
+            <span>{tab.label}</span>
+            {count > 0 && (
+              <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${selectedTab === tab.id
+                ? 'bg-primary/20 text-primary'
+                : 'bg-muted text-muted-foreground'
+                }`}>
+                {count.toLocaleString()}
+              </span>
+            )}
+            {renderStatusIcon(tab.id)}
+          </button>
+        );
+      })}
     </div>
   );
 

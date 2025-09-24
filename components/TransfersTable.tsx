@@ -13,6 +13,9 @@ import Link from 'next/link';
 import {
   isSolanaOnlyTransaction
 } from '@/lib/qdrant';
+import { TransfersDashboard } from '@/components/TransfersDashboard';
+import { getViewportTracker } from '@/lib/viewport-tracker';
+import type { ViewportStats } from '@/lib/viewport-tracker';
 
 interface TransfersTableProps {
   address: string;
@@ -42,6 +45,11 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
   const [tokenFilter, setTokenFilter] = useState<string>('all');
   const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
+  
+  // Dashboard and viewport tracking state
+  const [viewportStats, setViewportStats] = useState<ViewportStats | null>(null);
+  const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
+  const [visibleTransfers, setVisibleTransfers] = useState<Transfer[]>([]);
 
   // New state for comprehensive transaction filtering with localStorage persistence
   const [filterPreferences, setFilterPreferences] = useState(() => {
@@ -244,7 +252,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     {
       field: 'timestamp',
       title: 'Time',
-      width: 180,
+      width: 120,
       sortable: true,
       render: (row: Transfer) => {
         const date = new Date(row.timestamp);
@@ -252,10 +260,58 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
           return <div className="whitespace-nowrap" data-test="timestamp">-</div>;
         }
 
+        const formatCompactTime = (date: Date): string => {
+          const now = new Date();
+          const isToday = date.toDateString() === now.toDateString();
+          const isThisWeek = (now.getTime() - date.getTime()) < (7 * 24 * 60 * 60 * 1000);
+          const isThisYear = date.getFullYear() === now.getFullYear();
+          
+          if (isToday) {
+            // Today: just show time HH:MM:SS
+            return date.toLocaleTimeString('en-US', { 
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit', 
+              second: '2-digit' 
+            });
+          }
+          
+          if (isThisWeek) {
+            // This week: show day + time
+            const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
+            const time = date.toLocaleTimeString('en-US', { 
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit'
+            });
+            return `${dayName} ${time}`;
+          }
+          
+          if (isThisYear) {
+            // This year: show month + day
+            return date.toLocaleDateString('en-US', { 
+              month: 'short', 
+              day: 'numeric' 
+            });
+          }
+          
+          // Previous years: show month + day + year
+          return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: '2-digit'
+          });
+        };
+
+        const compactTime = formatCompactTime(date);
+        const fullTime = `${date.toLocaleDateString()} ${date.toLocaleTimeString()}`;
+
         return (
-          <div className="whitespace-nowrap" data-test="timestamp">
-            <time dateTime={date.toISOString()}>{date.toLocaleDateString() || '-'} {date.toLocaleTimeString() || '-'}</time>
-          </div>
+          <Tooltip content={fullTime}>
+            <div className="whitespace-nowrap font-mono text-sm" data-test="timestamp">
+              <time dateTime={date.toISOString()}>{compactTime}</time>
+            </div>
+          </Tooltip>
         );
       }
     },
@@ -488,198 +544,256 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
     );
   }
 
-  return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-xl font-semibold" id="transfers-heading">
-          {transactionCategory === 'account-transfers' ? 'Account Transfers' :
-            transactionCategory === 'all-txs' ? 'All Transactions' :
-              transactionCategory === 'trading-txs' ? 'Trading Transactions' :
-                transactionCategory === 'defi-txs' ? 'DeFi Transactions' :
-                  transactionCategory === 'nft-txs' ? 'NFT Transactions' :
-                    transactionCategory === 'staking-txs' ? 'Staking Transactions' :
-                      transactionCategory === 'utility-txs' ? 'Utility Transactions' :
-                        transactionCategory === 'suspicious-txs' ? 'Suspicious Transactions' :
-                          transactionCategory === 'custom-program-txs' ? 'Custom Program Transactions' :
-                            'Transactions'}
-          {totalCount !== undefined && (
-            <span className="ml-2 text-sm text-muted-foreground">
-              ({sortedTransfers.length.toLocaleString()} of {totalCount.toLocaleString()})
-            </span>
-          )}
-        </h2>
-      </div>
+  // Real viewport tracking integration with VTable
+  const handleVTableVisibilityChange = useCallback((visibleStartIndex: number, visibleEndIndex: number, totalRows: number) => {
+    // Get the currently visible transfers based on VTable's virtual scrolling indices
+    const currentlyVisibleTransfers = sortedTransfers.slice(visibleStartIndex, visibleEndIndex + 1);
+    
+    // Calculate analytics from visible transfers
+    let totalVolume = 0;
+    let totalBalance = 0;
+    
+    currentlyVisibleTransfers.forEach(transfer => {
+      totalVolume += transfer.amount || 0;
+      if (transfer.tokenSymbol === 'SOL' || transfer.token === 'SOL') {
+        totalBalance += transfer.amount || 0;
+      }
+    });
 
-      {/* Search and Filters */}
-      <div className="space-y-4">
-        {/* Search Input */}
-        <div className="relative">
-          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-            <Search className="h-4 w-4 text-muted-foreground" />
-          </div>
-          <input
-            type="text"
-            placeholder="Search transfers by address, token symbol, or signature..."
-            className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-          {searchTerm && (
-            <button
-              onClick={() => setSearchTerm('')}
-              className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          )}
+    // Create mock ViewportStats that matches the interface
+    const mockViewportStats: ViewportStats = {
+      totalVisible: currentlyVisibleTransfers.length,
+      visibleItems: currentlyVisibleTransfers.map((transfer, index) => ({
+        id: transfer.signature || `transfer-${index}`,
+        element: {} as HTMLElement, // Not used in our dashboard
+        data: transfer,
+        isVisible: true
+      })),
+      scrollPercentage: totalRows > 0 ? ((visibleStartIndex + visibleEndIndex) / (2 * totalRows)) * 100 : 0,
+      totalBalance: totalBalance,
+      avgDataSize: 0, // Not applicable for transfers
+      executableCount: 0 // Not applicable for transfers
+    };
+
+    setVisibleTransfers(currentlyVisibleTransfers);
+    setViewportStats(mockViewportStats);
+    
+    console.log(`[TransfersTable] Viewport update: ${currentlyVisibleTransfers.length} visible transfers (rows ${visibleStartIndex}-${visibleEndIndex} of ${totalRows})`);
+  }, [sortedTransfers]);
+
+  // Initialize with some visible transfers on load
+  useEffect(() => {
+    if (sortedTransfers.length > 0) {
+      // Initialize with first visible transfers
+      handleVTableVisibilityChange(0, Math.min(19, sortedTransfers.length - 1), sortedTransfers.length);
+    }
+  }, [sortedTransfers, handleVTableVisibilityChange]);
+
+  return (
+    <div className="flex gap-4 h-full">
+      {/* Main Content Area */}
+      <div className={`transition-all duration-300 ${isDashboardCollapsed ? 'flex-1' : 'flex-[2]'} space-y-4`}>
+        <div className="flex justify-between items-center">
+          <h2 className="text-xl font-semibold" id="transfers-heading">
+            {transactionCategory === 'account-transfers' ? 'Account Transfers' :
+              transactionCategory === 'all-txs' ? 'All Transactions' :
+                transactionCategory === 'trading-txs' ? 'Trading Transactions' :
+                  transactionCategory === 'defi-txs' ? 'DeFi Transactions' :
+                    transactionCategory === 'nft-txs' ? 'NFT Transactions' :
+                      transactionCategory === 'staking-txs' ? 'Staking Transactions' :
+                        transactionCategory === 'utility-txs' ? 'Utility Transactions' :
+                          transactionCategory === 'suspicious-txs' ? 'Suspicious Transactions' :
+                            transactionCategory === 'custom-program-txs' ? 'Custom Program Transactions' :
+                              'Transactions'}
+            {totalCount !== undefined && (
+              <span className="ml-2 text-sm text-muted-foreground">
+                ({sortedTransfers.length.toLocaleString()} of {totalCount.toLocaleString()})
+              </span>
+            )}
+          </h2>
         </div>
 
-        {/* Secondary Filters Row */}
-        <div className="flex flex-wrap gap-4">
-          {/* Solana Only Filter - only show for Account Transfers */}
-          {transactionCategory === 'account-transfers' && (
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => updateFilterPreference('solanaOnlyFilter', !filterPreferences.solanaOnlyFilter)}
-                className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPreferences.solanaOnlyFilter
-                  ? 'bg-green-100 text-green-700 border border-green-300'
-                  : 'bg-muted text-muted-foreground hover:bg-muted/80'
-                  }`}
-              >
-                Solana Only
-              </button>
+        {/* Search and Filters */}
+        <div className="space-y-4">
+          {/* Search Input */}
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
+              <Search className="h-4 w-4 text-muted-foreground" />
             </div>
-          )}
-
-          {/* Custom Program Address Input - only show for Custom Program Txs */}
-          {transactionCategory === 'custom-program-txs' && (
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Program Address"
-                value={filterPreferences.customProgramAddress}
-                onChange={(e) => updateFilterPreference('customProgramAddress', e.target.value)}
-                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              />
-            </div>
-          )}
-
-          {/* Type Filter */}
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <select
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Filter by transaction type"
-            >
-              <option value="all">All Types</option>
-              {uniqueTypes.map(type => (
-                <option key={type} value={type}>{type}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Token Filter */}
-          <div className="flex items-center gap-2">
-            <select
-              value={tokenFilter}
-              onChange={(e) => setTokenFilter(e.target.value)}
-              className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-              aria-label="Filter by token"
-            >
-              <option value="all">All Tokens</option>
-              {uniqueTokens.map(token => (
-                <option key={token} value={token}>{token}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Amount Range Filter */}
-          <div className="flex items-center gap-2">
             <input
-              type="number"
-              placeholder="Min Amount"
-              value={amountFilter.min}
-              onChange={(e) => setAmountFilter(prev => ({ ...prev, min: e.target.value }))}
-              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              type="text"
+              placeholder="Search transfers by address, token symbol, or signature..."
+              className="w-full pl-10 pr-10 py-2 border border-border rounded-lg bg-background text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
             />
-            <span className="text-muted-foreground">-</span>
-            <input
-              type="number"
-              placeholder="Max Amount"
-              value={amountFilter.max}
-              onChange={(e) => setAmountFilter(prev => ({ ...prev, max: e.target.value }))}
-              className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
-            />
-          </div>
-
-          {/* Clear Filters */}
-          {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm ||
-            filterPreferences.solanaOnlyFilter || filterPreferences.customProgramAddress) && (
+            {searchTerm && (
               <button
-                onClick={() => {
-                  setTypeFilter('all');
-                  setTokenFilter('all');
-                  setAmountFilter({ min: '', max: '' });
-                  setSearchTerm('');
-                  setFilterPreferences((prev: typeof filterPreferences) => ({
-                    ...prev,
-                    solanaOnlyFilter: false,
-                    customProgramAddress: ''
-                  }));
-                }}
-                className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+                onClick={() => setSearchTerm('')}
+                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground"
               >
-                Clear Filters
+                <X className="h-4 w-4" />
               </button>
             )}
-        </div>
-      </div>
+          </div>
 
-      {/* Search Results Count */}
-      {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max ||
-        filterPreferences.solanaOnlyFilter || filterPreferences.customProgramAddress) && (
-          <div className="text-sm text-muted-foreground">
-            Found {sortedTransfers.length} transfers
-            {searchTerm && ` matching "${searchTerm}"`}
-            {typeFilter !== 'all' && ` of type "${typeFilter}"`}
-            {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
-            {(amountFilter.min || amountFilter.max) && ` within amount range`}
-            {filterPreferences.solanaOnlyFilter && ` (Solana only)`}
-            {filterPreferences.customProgramAddress && ` (custom program: ${filterPreferences.customProgramAddress.slice(0, 8)}...)`}
+          {/* Secondary Filters Row */}
+          <div className="flex flex-wrap gap-4">
+            {/* Solana Only Filter - only show for Account Transfers */}
+            {transactionCategory === 'account-transfers' && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => updateFilterPreference('solanaOnlyFilter', !filterPreferences.solanaOnlyFilter)}
+                  className={`px-3 py-1 text-sm rounded-lg transition-colors ${filterPreferences.solanaOnlyFilter
+                    ? 'bg-green-100 text-green-700 border border-green-300'
+                    : 'bg-muted text-muted-foreground hover:bg-muted/80'
+                    }`}
+                >
+                  Solana Only
+                </button>
+              </div>
+            )}
+
+            {/* Custom Program Address Input - only show for Custom Program Txs */}
+            {transactionCategory === 'custom-program-txs' && (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  placeholder="Program Address"
+                  value={filterPreferences.customProgramAddress}
+                  onChange={(e) => updateFilterPreference('customProgramAddress', e.target.value)}
+                  className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                />
+              </div>
+            )}
+
+            {/* Type Filter */}
+            <div className="flex items-center gap-2">
+              <Filter className="h-4 w-4 text-muted-foreground" />
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Filter by transaction type"
+              >
+                <option value="all">All Types</option>
+                {uniqueTypes.map(type => (
+                  <option key={type} value={type}>{type}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Token Filter */}
+            <div className="flex items-center gap-2">
+              <select
+                value={tokenFilter}
+                onChange={(e) => setTokenFilter(e.target.value)}
+                className="border border-border rounded-lg px-3 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="Filter by token"
+              >
+                <option value="all">All Tokens</option>
+                {uniqueTokens.map(token => (
+                  <option key={token} value={token}>{token}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Amount Range Filter */}
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                placeholder="Min Amount"
+                value={amountFilter.min}
+                onChange={(e) => setAmountFilter(prev => ({ ...prev, min: e.target.value }))}
+                className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <span className="text-muted-foreground">-</span>
+              <input
+                type="number"
+                placeholder="Max Amount"
+                value={amountFilter.max}
+                onChange={(e) => setAmountFilter(prev => ({ ...prev, max: e.target.value }))}
+                className="w-24 border border-border rounded-lg px-2 py-1 bg-background text-foreground text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+
+            {/* Clear Filters */}
+            {(typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max || searchTerm ||
+              filterPreferences.solanaOnlyFilter || filterPreferences.customProgramAddress) && (
+                <button
+                  onClick={() => {
+                    setTypeFilter('all');
+                    setTokenFilter('all');
+                    setAmountFilter({ min: '', max: '' });
+                    setSearchTerm('');
+                    setFilterPreferences((prev: typeof filterPreferences) => ({
+                      ...prev,
+                      solanaOnlyFilter: false,
+                      customProgramAddress: ''
+                    }));
+                  }}
+                  className="px-3 py-1 text-sm bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
+                >
+                  Clear Filters
+                </button>
+              )}
+          </div>
+        </div>
+
+        {/* Search Results Count */}
+        {(searchTerm || typeFilter !== 'all' || tokenFilter !== 'all' || amountFilter.min || amountFilter.max ||
+          filterPreferences.solanaOnlyFilter || filterPreferences.customProgramAddress) && (
+            <div className="text-sm text-muted-foreground">
+              Found {sortedTransfers.length} transfers
+              {searchTerm && ` matching "${searchTerm}"`}
+              {typeFilter !== 'all' && ` of type "${typeFilter}"`}
+              {tokenFilter !== 'all' && ` with token "${tokenFilter}"`}
+              {(amountFilter.min || amountFilter.max) && ` within amount range`}
+              {filterPreferences.solanaOnlyFilter && ` (Solana only)`}
+              {filterPreferences.customProgramAddress && ` (custom program: ${filterPreferences.customProgramAddress.slice(0, 8)}...)`}
+            </div>
+          )}
+
+        <div className="border border-border rounded-lg overflow-hidden flex-1 bg-card/50 min-h-0" role="region" aria-labelledby="transfers-heading" aria-live="polite" data-test="transfers-table">
+          <VTableWrapper
+            columns={columns}
+            data={sortedTransfers}
+            rowKey={getRowId}
+            loading={loading}
+            onSort={handleSort}
+            selectedRowId={selectedRowId}
+            onRowSelect={handleRowSelect}
+            renderRowAction={renderPinButton}
+            pinnedRowIds={pinnedRowIds}
+            onLoadMore={loadMore}
+            infiniteScroll={true}
+            virtualScrolling={true}
+            maxRows={1000000}
+            initialLoadSize={10000}
+            scrollThreshold={300}
+            responsive={true}
+            aria-busy={loading ? 'true' : 'false'}
+          />
+        </div>
+
+        {/* Load More button hidden when using infinite scroll in VTable */}
+
+        {!hasMore && sortedTransfers.length > 0 && (
+          <div className="text-center mt-4 text-sm text-muted-foreground">
+            All {sortedTransfers.length.toLocaleString()} transfers loaded
           </div>
         )}
-
-      <div className="border border-border rounded-lg overflow-hidden flex-1 bg-card/50 min-h-0" role="region" aria-labelledby="transfers-heading" aria-live="polite" data-test="transfers-table">
-        <VTableWrapper
-          columns={columns}
-          data={sortedTransfers}
-          rowKey={getRowId}
-          loading={loading}
-          onSort={handleSort}
-          selectedRowId={selectedRowId}
-          onRowSelect={handleRowSelect}
-          renderRowAction={renderPinButton}
-          pinnedRowIds={pinnedRowIds}
-          onLoadMore={loadMore}
-          infiniteScroll={true}
-          virtualScrolling={true}
-          maxRows={1000000}
-          initialLoadSize={10000}
-          scrollThreshold={300}
-          responsive={true}
-          aria-busy={loading ? 'true' : 'false'}
-        />
       </div>
 
-      {/* Load More button hidden when using infinite scroll in VTable */}
-
-      {!hasMore && sortedTransfers.length > 0 && (
-        <div className="text-center mt-4 text-sm text-muted-foreground">
-          All {sortedTransfers.length.toLocaleString()} transfers loaded
-        </div>
-      )}
+      {/* Dashboard Panel */}
+      <div className={`transition-all duration-300 ${isDashboardCollapsed ? 'w-16' : 'flex-1'}`}>
+        <TransfersDashboard
+          visibleTransfers={visibleTransfers}
+          currentWallet={address}
+          isCollapsed={isDashboardCollapsed}
+          onToggleCollapsed={() => setIsDashboardCollapsed(!isDashboardCollapsed)}
+        />
+      </div>
     </div>
   );
 }
