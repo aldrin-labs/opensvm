@@ -208,15 +208,9 @@ export async function POST(request: Request) {
   const requestStart = Date.now();
   StabilityMonitor.recordRequest();
 
-  if (!process.env.TOGETHER_API_KEY) {
-    StabilityMonitor.recordFailure();
-    return new Response(
-      JSON.stringify({ error: "TOGETHER_API_KEY environment variable is not set" }),
-      {
-        status: 500,
-        headers: { "Content-Type": "application/json" },
-      }
-    );
+  const HAS_TOGETHER = !!process.env.TOGETHER_API_KEY;
+  if (!HAS_TOGETHER) {
+    console.warn("TOGETHER_API_KEY not set. Proceeding without LLM; tools-only mode.");
   }
 
   // Overall request timeout of 120 seconds (3x increase, leave 15 seconds buffer for cleanup)
