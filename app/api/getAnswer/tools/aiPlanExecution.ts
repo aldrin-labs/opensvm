@@ -330,11 +330,20 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
             else if (typeof conn[step.tool] === 'function') {
                 if (step.input) {
                     if (step.tool === 'getAccountInfo' || step.tool === 'getBalance' ||
-                        step.tool === 'getTokenSupply' || step.tool === 'getTokenLargestAccounts') {
+                        step.tool === 'getTokenSupply' || step.tool === 'getTokenLargestAccounts' ||
+                        step.tool === 'getSignaturesForAddress') {
                         const { PublicKey } = await import('@solana/web3.js');
                         try {
+                            // Validate input is a string before creating PublicKey
+                            if (typeof step.input !== 'string' || !step.input.trim()) {
+                                throw new Error(`Invalid input: expected string address, got ${typeof step.input}`);
+                            }
                             const pubkey = new PublicKey(step.input);
-                            result = await conn[step.tool](pubkey);
+                            if (step.tool === 'getSignaturesForAddress') {
+                                result = await conn[step.tool](pubkey, { limit: 50 });
+                            } else {
+                                result = await conn[step.tool](pubkey);
+                            }
                         } catch (error) {
                             result = { error: `Invalid address: ${(error as Error).message}` };
                         }

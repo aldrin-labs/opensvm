@@ -31,8 +31,13 @@ export class ProgramCapability extends BaseCapability {
                 if (!programId) throw new Error('No program address found in message');
 
                 return this.executeWithConnection(async (connection) => {
-                    const sigs = await connection.getSignaturesForAddress(new PublicKey(programId), { limit: 20 });
-                    return sigs.map(s => ({ signature: s.signature, slot: s.slot, err: s.err, blockTime: s.blockTime }));
+                    try {
+                        const sigs = await connection.getSignaturesForAddress(new PublicKey(programId), { limit: 20 });
+                        return sigs.map(s => ({ signature: s.signature, slot: s.slot, err: s.err, blockTime: s.blockTime }));
+                    } catch (error) {
+                        console.error(`Error getting signatures for program ${programId}:`, error);
+                        throw new Error(`Failed to get signatures: ${(error as Error).message}`);
+                    }
                 });
             }
         )

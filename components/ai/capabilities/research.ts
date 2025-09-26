@@ -30,8 +30,13 @@ export class ResearchCapability extends BaseCapability {
                 const address = this.extractAddress(message.content);
                 if (!address) throw new Error('No address found in message');
                 return this.executeWithConnection(async (connection) => {
-                    const sigs = await connection.getSignaturesForAddress(new PublicKey(address), { limit: 20 });
-                    return sigs.map(s => ({ signature: s.signature, slot: s.slot, err: s.err, blockTime: s.blockTime }));
+                    try {
+                        const sigs = await connection.getSignaturesForAddress(new PublicKey(address), { limit: 20 });
+                        return sigs.map(s => ({ signature: s.signature, slot: s.slot, err: s.err, blockTime: s.blockTime }));
+                    } catch (error) {
+                        console.error(`Error getting signatures for address ${address}:`, error);
+                        throw new Error(`Failed to get signatures: ${(error as Error).message}`);
+                    }
                 });
             }
         )

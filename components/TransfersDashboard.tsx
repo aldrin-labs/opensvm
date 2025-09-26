@@ -112,7 +112,7 @@ export function TransfersDashboard({ visibleTransfers, currentWallet, isCollapse
     };
   }, [visibleTransfers, currentWallet]);
 
-  // Check for history connections
+  // Check for history connections - now with real data only
   useEffect(() => {
     if (!visibleTransfers || !currentWallet) return;
 
@@ -135,19 +135,30 @@ export function TransfersDashboard({ visibleTransfers, currentWallet, isCollapse
         );
 
         if (historyEntry) {
-          // Calculate mock changes for demo (in real implementation, would fetch actual data)
-          const daysSinceVisit = Math.floor((Date.now() - historyEntry.timestamp) / (1000 * 60 * 60 * 24));
-          const mockBalanceChange = Math.random() * 1000 - 500; // Random change for demo
-          const mockNewTxs = Math.floor(Math.random() * 20);
+          // Calculate real metrics based on visible transfers
+          const addressTransfers = visibleTransfers.filter(t => 
+            t.from === address || t.to === address
+          );
+          
+          const totalVolume = addressTransfers.reduce((sum, t) => sum + (t.amount || 0), 0);
+          const avgTransactionSize = addressTransfers.length > 0 ? totalVolume / addressTransfers.length : 0;
+          const uniqueTokens = new Set(addressTransfers.map(t => t.tokenSymbol || t.token || 'SOL')).size;
+          
+          // Activity score based on real metrics
+          const activityScore = Math.min(100, Math.floor(
+            (addressTransfers.length * 10) + // 10 points per transaction
+            (uniqueTokens * 5) + // 5 points per unique token
+            (avgTransactionSize > 1 ? 20 : 0) // 20 points if avg > 1 SOL
+          ));
           
           connections.push({
             address,
             lastVisit: historyEntry.timestamp,
-            balanceChange: mockBalanceChange,
-            balanceChangePercent: Math.random() * 40 - 20, // -20% to +20%
-            newTransactions: mockNewTxs,
-            relatedAccounts: [], // Would be fetched from API
-            activityScore: Math.floor(Math.random() * 100)
+            balanceChange: 0, // Real balance changes would require API calls
+            balanceChangePercent: 0,
+            newTransactions: addressTransfers.length,
+            relatedAccounts: [], // Real related accounts would require graph analysis
+            activityScore
           });
         }
       });

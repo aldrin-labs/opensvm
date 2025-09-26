@@ -1,5 +1,5 @@
-import { Tool, ToolContext, ToolResult } from "./types.ts";
-import { extractFirstSolanaAddress } from "./utils.ts";
+import { Tool, ToolContext, ToolResult } from "./types";
+import { extractFirstSolanaAddress } from "./utils";
 import { PublicKey } from "@solana/web3.js";
 
 export const accountAnalysisTool: Tool = {
@@ -83,7 +83,10 @@ Signature Count  ████ 0 %
                         programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
                     }).catch(() => ({ value: [] })), // Graceful fallback
                     conn.getSignaturesForAddress(new PublicKey(addr), { limit: 50 })
-                        .catch(() => []) // Graceful fallback
+                        .catch((error) => {
+                            console.error(`Error getting signatures for ${addr}:`, error);
+                            return [];  // Graceful fallback
+                        })
                 ]);
 
                 // Analyze detailed transactions for flows and interactions

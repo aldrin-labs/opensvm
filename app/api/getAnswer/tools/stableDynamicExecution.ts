@@ -567,7 +567,12 @@ async function handleRPCCall(conn: any, method: string, input?: any): Promise<an
         if (method === 'getAccountInfo' || method === 'getBalance' || method === 'getSignaturesForAddress') {
             const { PublicKey } = await import('@solana/web3.js');
             try {
-                const pubkey = new PublicKey(input);
+                // Ensure input is a string and not an object or other type
+                const inputStr = typeof input === 'string' ? input : String(input);
+                if (!inputStr || inputStr === 'undefined' || inputStr === 'null') {
+                    return { error: 'Invalid address: empty or null input' };
+                }
+                const pubkey = new PublicKey(inputStr);
                 if (method === 'getSignaturesForAddress') {
                     return await conn[method](pubkey, { limit: 50 });
                 }

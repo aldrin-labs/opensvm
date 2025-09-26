@@ -47,47 +47,74 @@ export function useTransferCounts(address: string, tokenBalances: { mint: string
     'custom-program-txs': defaultTabStatus,
   });
 
-  // Helper function to categorize transfers (similar to TransfersTable logic)
+  // Helper function to categorize transfers (more inclusive logic)
   const categorizeTransfer = (transfer: any) => {
-    const categories = ['all-txs'];
+    const categories = ['all-txs']; // Every transaction belongs to all-txs
 
+    const transferType = (transfer.type || '').toLowerCase();
+    
+    // Account transfers - be more inclusive for basic transfers
     if (
-      transfer.type === 'transfer' ||
-      transfer.type === 'transferChecked' ||
-      transfer.type === 'in' ||
-      transfer.type === 'out'
+      transferType === 'transfer' ||
+      transferType === 'transferchecked' ||
+      transferType === 'in' ||
+      transferType === 'out' ||
+      transferType === 'send' ||
+      transferType === 'receive' ||
+      transferType === 'mint' ||
+      transferType === 'burn' ||
+      // If no specific type but has from/to addresses, consider it an account transfer
+      (!transferType || transferType === 'unknown' || transferType === '') && 
+      (transfer.from || transfer.to)
     ) {
       categories.push('account-transfers');
     }
 
-    if (transfer.type?.includes('swap') || transfer.type?.includes('trade') || transfer.type?.includes('exchange')) {
+    // Trading transactions
+    if (transferType.includes('swap') || transferType.includes('trade') || 
+        transferType.includes('exchange') || transferType.includes('dex')) {
       categories.push('trading-txs');
     }
 
-    if (transfer.type?.includes('deposit') || transfer.type?.includes('withdraw') ||
-      transfer.type?.includes('borrow') || transfer.type?.includes('lend') ||
-      transfer.type?.includes('stake') || transfer.type?.includes('unstake') ||
-      transfer.mint?.includes('LP') || transfer.tokenSymbol?.includes('LP')) {
+    // DeFi transactions
+    if (transferType.includes('deposit') || transferType.includes('withdraw') ||
+        transferType.includes('borrow') || transferType.includes('lend') ||
+        transferType.includes('stake') || transferType.includes('unstake') ||
+        transferType.includes('yield') || transferType.includes('farm') ||
+        transfer.mint?.includes('LP') || transfer.tokenSymbol?.includes('LP')) {
       categories.push('defi-txs');
     }
 
-    if (transfer.type?.includes('nft') || transfer.type?.includes('NFT') ||
-      transfer.tokenSymbol?.includes('NFT') || transfer.amount === 1) {
+    // NFT transactions
+    if (transferType.includes('nft') || transferType.includes('collectible') ||
+        transfer.tokenSymbol?.includes('NFT') || 
+        (transfer.amount === 1 && transfer.tokenSymbol && transfer.tokenSymbol !== 'SOL')) {
       categories.push('nft-txs');
     }
 
-    if (transfer.type?.includes('stake') || transfer.type?.includes('delegate') ||
-      transfer.type?.includes('reward') || transfer.type?.includes('commission')) {
+    // Staking transactions
+    if (transferType.includes('stake') || transferType.includes('delegate') ||
+        transferType.includes('reward') || transferType.includes('commission') ||
+        transferType.includes('validator')) {
       categories.push('staking-txs');
     }
 
-    if (transfer.type?.includes('createAccount') || transfer.type?.includes('rent') ||
-      transfer.type?.includes('fee') || transfer.amount === 0) {
+    // Utility transactions
+    if (transferType.includes('createaccount') || transferType.includes('rent') ||
+        transferType.includes('fee') || transferType.includes('initialize') ||
+        transferType.includes('close') || transfer.amount === 0) {
       categories.push('utility-txs');
     }
 
-    if ((transfer.amount || 0) > 1000000 || transfer.type?.includes('unknown')) {
+    // Suspicious transactions
+    if ((transfer.amount || 0) > 1000000 || transferType.includes('unknown') ||
+        transferType.includes('suspicious') || transferType.includes('unusual')) {
       categories.push('suspicious-txs');
+    }
+
+    // If no specific category was assigned (other than all-txs), add to account-transfers as fallback
+    if (categories.length === 1) {
+      categories.push('account-transfers');
     }
 
     return categories;

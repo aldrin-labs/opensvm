@@ -45,7 +45,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
   const [tokenFilter, setTokenFilter] = useState<string>('all');
   const [amountFilter, setAmountFilter] = useState<{ min: string; max: string }>({ min: '', max: '' });
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
-  
+
   // Dashboard and viewport tracking state
   const [viewportStats, setViewportStats] = useState<ViewportStats | null>(null);
   const [isDashboardCollapsed, setIsDashboardCollapsed] = useState(false);
@@ -265,41 +265,45 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
           const isToday = date.toDateString() === now.toDateString();
           const isThisWeek = (now.getTime() - date.getTime()) < (7 * 24 * 60 * 60 * 1000);
           const isThisYear = date.getFullYear() === now.getFullYear();
-          
+
           if (isToday) {
             // Today: just show time HH:MM:SS
-            return date.toLocaleTimeString('en-US', { 
+            return date.toLocaleTimeString('en-US', {
               hour12: false,
               hour: '2-digit',
-              minute: '2-digit', 
-              second: '2-digit' 
+              minute: '2-digit',
+              second: '2-digit'
             });
           }
-          
+
           if (isThisWeek) {
             // This week: show day + time
             const dayName = date.toLocaleDateString('en-US', { weekday: 'short' });
-            const time = date.toLocaleTimeString('en-US', { 
+            const time = date.toLocaleTimeString('en-US', {
               hour12: false,
               hour: '2-digit',
               minute: '2-digit'
             });
             return `${dayName} ${time}`;
           }
-          
+
           if (isThisYear) {
-            // This year: show month + day
-            return date.toLocaleDateString('en-US', { 
-              month: 'short', 
-              day: 'numeric' 
+            // This year: show day + month + time (e.g., "30 July 19:20")
+            const day = date.getDate();
+            const month = date.toLocaleDateString('en-US', { month: 'long' });
+            const time = date.toLocaleTimeString('en-US', {
+              hour12: false,
+              hour: '2-digit',
+              minute: '2-digit'
             });
+            return `${day} ${month} ${time}`;
           }
-          
-          // Previous years: show month + day + year
-          return date.toLocaleDateString('en-US', { 
-            month: 'short', 
+
+          // Previous years: show full date with year
+          return date.toLocaleDateString('en-US', {
+            month: 'short',
             day: 'numeric',
-            year: '2-digit'
+            year: 'numeric'
           });
         };
 
@@ -536,23 +540,16 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
       </Button>
     );
   }, [pinnedRowIds, handlePinRow]);
-  if (error) {
-    return (
-      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg" role="alert" aria-live="assertive">
-        <p className="text-destructive">{error}</p>
-      </div>
-    );
-  }
 
   // Real viewport tracking integration with VTable
   const handleVTableVisibilityChange = useCallback((visibleStartIndex: number, visibleEndIndex: number, totalRows: number) => {
     // Get the currently visible transfers based on VTable's virtual scrolling indices
     const currentlyVisibleTransfers = sortedTransfers.slice(visibleStartIndex, visibleEndIndex + 1);
-    
+
     // Calculate analytics from visible transfers
     let totalVolume = 0;
     let totalBalance = 0;
-    
+
     currentlyVisibleTransfers.forEach(transfer => {
       totalVolume += transfer.amount || 0;
       if (transfer.tokenSymbol === 'SOL' || transfer.token === 'SOL') {
@@ -577,7 +574,7 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
 
     setVisibleTransfers(currentlyVisibleTransfers);
     setViewportStats(mockViewportStats);
-    
+
     console.log(`[TransfersTable] Viewport update: ${currentlyVisibleTransfers.length} visible transfers (rows ${visibleStartIndex}-${visibleEndIndex} of ${totalRows})`);
   }, [sortedTransfers]);
 
@@ -588,6 +585,14 @@ export function TransfersTable({ address, transactionCategory = 'account-transfe
       handleVTableVisibilityChange(0, Math.min(19, sortedTransfers.length - 1), sortedTransfers.length);
     }
   }, [sortedTransfers, handleVTableVisibilityChange]);
+
+  if (error) {
+    return (
+      <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg" role="alert" aria-live="assertive">
+        <p className="text-destructive">{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-4 h-full">

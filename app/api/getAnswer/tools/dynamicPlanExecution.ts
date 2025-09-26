@@ -733,13 +733,20 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
             else if (step.tool === 'getSignaturesForAddress' && step.input) {
                 try {
                     const { PublicKey } = await import('@solana/web3.js');
-                    const pubkey = new PublicKey(step.input);
-                    // Get more signatures for comprehensive analysis
-                    result = await conn.getSignaturesForAddress(pubkey, { limit: 100 });
-                    console.log(`   ✅ Found ${result?.length || 0} transaction signatures!`);
+                    // Ensure input is a string and not an object or other type
+                    const inputStr = typeof step.input === 'string' ? step.input : String(step.input);
+                    if (!inputStr || inputStr === 'undefined' || inputStr === 'null') {
+                        result = { error: 'Invalid address: empty or null input' };
+                        console.log(`   ❌ Invalid address input: ${step.input}`);
+                    } else {
+                        const pubkey = new PublicKey(inputStr);
+                        // Get more signatures for comprehensive analysis
+                        result = await conn.getSignaturesForAddress(pubkey, { limit: 100 });
+                        console.log(`   ✅ Found ${result?.length || 0} transaction signatures!`);
+                    }
                 } catch (error) {
                     result = { error: `Failed to get signatures: ${(error as Error).message}` };
-                    console.log(`   ❌ Signature retrieval failed`);
+                    console.log(`   ❌ Signature retrieval failed: ${(error as Error).message}`);
                 }
             }
             else if (step.tool === 'getTokenAccountsByOwner' && step.input) {
@@ -790,31 +797,38 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
             else if (step.tool === 'getParsedTransaction' && step.input) {
                 try {
                     const { PublicKey } = await import('@solana/web3.js');
-                    const pubkey = new PublicKey(step.input);
-                    const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
-
-                    if (signatures && signatures.length > 0) {
-                        // Get more detailed transactions for epic analysis
-                        const detailedTxs = await Promise.all(
-                            signatures.slice(0, 10).map(async (sig: any) => {
-                                try {
-                                    const tx = await conn.getParsedTransaction(sig.signature, {
-                                        maxSupportedTransactionVersion: 0
-                                    });
-                                    return { signature: sig.signature, transaction: tx, slot: sig.slot };
-                                } catch (e) {
-                                    return { signature: sig.signature, error: (e as Error).message };
-                                }
-                            })
-                        );
-                        result = {
-                            totalSignatures: signatures.length,
-                            recentTransactions: detailedTxs
-                        };
-                        console.log(`   📜 Decoded ${detailedTxs.length} transactions in detail!`);
+                    // Ensure input is a string and not an object or other type
+                    const inputStr = typeof step.input === 'string' ? step.input : String(step.input);
+                    if (!inputStr || inputStr === 'undefined' || inputStr === 'null') {
+                        result = { error: 'Invalid address: empty or null input' };
+                        console.log(`   ❌ Invalid address input for getParsedTransaction: ${step.input}`);
                     } else {
-                        result = { totalSignatures: 0, recentTransactions: [] };
-                        console.log(`   📭 No transactions found yet`);
+                        const pubkey = new PublicKey(inputStr);
+                        const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
+
+                        if (signatures && signatures.length > 0) {
+                            // Get more detailed transactions for epic analysis
+                            const detailedTxs = await Promise.all(
+                                signatures.slice(0, 10).map(async (sig: any) => {
+                                    try {
+                                        const tx = await conn.getParsedTransaction(sig.signature, {
+                                            maxSupportedTransactionVersion: 0
+                                        });
+                                        return { signature: sig.signature, transaction: tx, slot: sig.slot };
+                                    } catch (e) {
+                                        return { signature: sig.signature, error: (e as Error).message };
+                                    }
+                                })
+                            );
+                            result = {
+                                totalSignatures: signatures.length,
+                                recentTransactions: detailedTxs
+                            };
+                            console.log(`   📜 Decoded ${detailedTxs.length} transactions in detail!`);
+                        } else {
+                            result = { totalSignatures: 0, recentTransactions: [] };
+                            console.log(`   📭 No transactions found yet`);
+                        }
                     }
                 } catch (error) {
                     result = { error: `Failed to parse transactions: ${(error as Error).message}` };
@@ -1196,7 +1210,14 @@ async function handleAdvancedAnalytics(step: StoryDrivenPlanStep, conn: any): Pr
                 if (step.input) {
                     const { PublicKey } = await import('@solana/web3.js');
                     try {
-                        const signatures = await conn.getSignaturesForAddress(new PublicKey(step.input), { limit: 10 });
+                        // Ensure input is a string and not an object or other type
+                        const inputStr = typeof step.input === 'string' ? step.input : String(step.input);
+                        if (!inputStr || inputStr === 'undefined' || inputStr === 'null') {
+                            console.log(`   ❌ Invalid address input for getRecentTransactionsDetails: ${step.input}`);
+                            return { error: 'Invalid address: empty or null input' };
+                        }
+
+                        const signatures = await conn.getSignaturesForAddress(new PublicKey(inputStr), { limit: 10 });
                         const detailedTxs = await Promise.all(
                             signatures.slice(0, 5).map(async (sig: any) => {
                                 try {

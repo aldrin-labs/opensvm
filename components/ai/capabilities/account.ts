@@ -43,21 +43,26 @@ export class AccountCapability extends BaseCapability {
                     if (!address) throw new Error('No account address found in message');
 
                     return this.executeWithConnection(async (connection) => {
-                        const signatures = await connection.getSignaturesForAddress(
-                            new PublicKey(address),
-                            { limit: 20 }
-                        );
+                        try {
+                            const signatures = await connection.getSignaturesForAddress(
+                                new PublicKey(address),
+                                { limit: 20 }
+                            );
 
-                        return {
-                            recentActivity: signatures.map(sig => ({
-                                signature: sig.signature,
-                                slot: sig.slot,
-                                err: sig.err,
-                                memo: sig.memo,
-                                blockTime: sig.blockTime
-                            })),
-                            errorRate: signatures.filter(s => s.err).length / Math.max(1, signatures.length)
-                        };
+                            return {
+                                recentActivity: signatures.map(sig => ({
+                                    signature: sig.signature,
+                                    slot: sig.slot,
+                                    err: sig.err,
+                                    memo: sig.memo,
+                                    blockTime: sig.blockTime
+                                })),
+                                errorRate: signatures.filter(s => s.err).length / Math.max(1, signatures.length)
+                            };
+                        } catch (error) {
+                            console.error(`Error getting signatures for address ${address}:`, error);
+                            throw new Error(`Failed to get signatures: ${(error as Error).message}`);
+                        }
                     });
                 }
             ),
