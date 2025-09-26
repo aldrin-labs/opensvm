@@ -153,40 +153,326 @@ async function generateAIPoweredPlan(question: string, planningContext?: string)
         });
 
         const availableTools = `
-Available Tools:
-1. tokenMarketData - Get cryptocurrency token price, market cap, and volume from CoinGecko (requires coinId parameter)
-2. getEpochInfo - Get current Solana network epoch information  
-3. getVoteAccounts - Get Solana validators and voting information
-4. getAccountInfo - Get Solana account details (requires address)
-5. getBalance - Get SOL balance for an address (requires address) 
-6. getRecentPerformanceSamples - Get network performance metrics
-7. getSlot - Get current slot number
-8. getBlockHeight - Get current block height
-9. getClusterNodes - Get network cluster node information
-10. getSignaturesForAddress - Get transaction signatures for address (requires address)
-11. getTokenSupply - Get token supply information (requires mint address)
-12. getTokenLargestAccounts - Get largest token holders (requires mint address)
+Available Tools (Comprehensive)
 
-Token Symbol Mappings (for tokenMarketData tool):
-- SVMAI -> opensvm
-- SOL -> solana  
-- BONK -> bonk
-- WIF -> dogwifcoin
-- PEPE -> pepe
-- CHAN -> memechan
-- PIX404 -> pix404
-- RAY -> raydium
-- ORCA -> orca
-- JUP -> jupiter
-- JITO -> jito
-- PYTH -> pyth-network
-- MNDE -> marinade
-- MNGO -> mango-markets
-- SAMO -> samoyedcoin
-- JTO -> jito-governance-token
-- UXD -> uxd-stablecoin
-- For unknown tokens, use lowercase symbol
-`;
+Moralis API (Solana Gateway & Deep Index)
+- moralisMarketData (custom orchestrator): price, computed market cap (price * supply), 24h volume via pair stats. input: mint
+- getNFTMetadata(address)
+- getNFTsForAddress(address, { nftMetadata?, limit?, cursor? }, network?)
+- getTokenMetadata(address)
+- getTokenPrice(address)
+- getPortfolio(address, includeNftMetadata?)
+- getTokenBalances(address)
+- getNativeBalance(address)
+- getSwapsByWalletAddress(address, { limit?, cursor? })
+- getSwapsByTokenAddress(address, { limit?, cursor? })
+- getTokenHolders(address)
+- getSPLTokenTransfers(address, { limit?, fromDate?, toDate?, cursor? })
+- getSOLTransfers(address, { limit?, fromDate?, toDate?, cursor? })
+- getTransactionBySignature(signature)
+- getTransactionsByAddress(address, { limit?, fromDate?, toDate?, cursor? })
+- getDomainInfo(address)
+- resolveDomain(domain)
+- getHistoricalTokenPrice(address, days?)
+- getTokenStats(address)
+- getNFTCollectionStats(address)
+- getNFTCollectionItems(address, { limit?, nftMetadata? })
+- getComprehensiveBlockchainData(query)
+- getTopTokens(limit?)           (note: currently returns null; path deprecated upstream)
+- getTopGainers(limit?)
+- getNewListings(limit?, daysBack?) (note: currently returns null; path unsupported upstream)
+- getTrendingTokens(limit?, timeframe?)
+- getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
+- clearCache()
+
+Solana RPC (web3.js Connection methods)
+- getAccountInfo(address)
+- getMultipleAccountsInfo(addresses)
+- getBalance(address)
+- getBlock(slot, opts?)
+- getBlockHeight()
+- getBlockProduction(opts?)
+- getBlockTime(slot)
+- getClusterNodes()
+- getEpochInfo()
+- getEpochSchedule()
+- getFeeForMessage(message, commitment?)
+- getFirstAvailableBlock()
+- getGenesisHash()
+- getHealth()
+- getHighestSnapshotSlot()
+- getIdentity()
+- getInflationGovernor()
+- getInflationRate()
+- getInflationReward(addresses, epoch?, commitment?)
+- getLargestAccounts(opts?)
+- getLeaderSchedule(slot?, commitment?, identity?)
+- getLatestBlockhash(commitment?)
+- getMaxRetransmitSlot()
+- getMaxShredInsertSlot()
+- getMinimumBalanceForRentExemption(dataLen, commitment?)
+- getProgramAccounts(programId, opts?)
+- getRecentPerformanceSamples(limit?)
+- getSignaturesForAddress(address, { limit?, before?, until? })
+- getSignatureStatuses(signatures, options?)
+- getSlot(commitment?)
+- getSlotLeader(commitment?)
+- getSlotLeaders(startSlot, limit)
+- getSupply(commitment?)
+- getTokenAccountBalance(tokenAccount)
+- getTokenAccountsByDelegate(delegate, filter, commitment?)
+- getTokenAccountsByOwner(owner, filter, commitment?)
+- getTokenLargestAccounts(mint)
+- getTokenSupply(mint)
+- getTransaction(signature, opts?)
+- getTransactionCount(commitment?)
+- getVersion()
+- getVoteAccounts(commitment?)
+- isBlockhashValid(blockhash, commitment?)
+- requestAirdrop(address, lamports, commitment?)
+- sendRawTransaction(rawTx, opts?)
+- simulateTransaction(txOrMessage, opts?)
+
+Notes:
+- Prefer Moralis for token price/market data, DEX swaps, holders, portfolio, NFTs.
+- Use Solana RPC for direct chain state: account info, balances, token supply, program accounts, leader schedule, validators, etc.
+- For moralisMarketData you MUST pass the Solana mint address.
+
+Token Symbol → Mint Address (for moralisMarketData):
+- SVMAI -> Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
+- For other tokens, provide the exact Solana mint address.
+
+Method Reference (Moralis API - Solana Gateway & Deep Index)
+- moralisMarketData(mint)
+  • Description: Custom orchestrator that combines Solana RPC supply with Moralis price and optional pair stats.
+  • Output (normalized): { success, source: "moralis", data: { name, symbol, current_price: { usd }, market_cap: { usd }, trading_volume: { usd, h24 }, last_updated, extra: { mint, supply_tokens, supply_raw, decimals, pairAddress } } }
+  • When to call: Price, market cap, and 24h volume for a specific token. Always pass Solana mint.
+
+- getTokenPrice(address, network?)
+  • Description: Current token price and pair details when available.
+  • Output: { price_usd|usdPrice|usd|price, pairAddress? }
+  • When to call: Lightweight spot price without needing supply.
+
+- getTokenMetadata(address, network?)
+  • Description: Metadata for a token mint (name, symbol, logo, decimals).
+  • Output: { name, symbol, decimals, logo?, ... }
+  • When to call: Enrich UI or validate token info before analytics.
+
+- getTokenStats(address, network?)
+  • Description: Misc token stats if available for the mint.
+  • Output: { volume_24h?, market_cap?, holders?, ... }
+  • When to call: Supplemental metrics beyond price/supply.
+
+- getHistoricalTokenPrice(address, days?, network?)
+  • Description: Price history in a time-window.
+  • Output: { prices: [{ timestamp, price_usd }], ... } (shape may vary)
+  • When to call: Trendlines, momentum, and historical patterns.
+
+- getTokenHolders(address, network?)
+  • Description: Holder accounts for a token mint (top holders).
+  • Output: Array/list with holder addresses and balances.
+  • When to call: Concentration, distribution, whale analysis.
+
+- getSwapsByTokenAddress(address, { limit?, cursor? }, network?)
+  • Description: Recent DEX swaps for a token mint.
+  • Output: Array of swaps with amounts, timestamps, counterparties (shape depends on indexer).
+  • When to call: Activity, 24h volume aggregation, liquidity pulse.
+
+- getSwapsByWalletAddress(address, { limit?, cursor? }, network?)
+  • Description: Recent DEX swaps performed by a wallet.
+  • Output: Array of swaps with token pairs and amounts.
+  • When to call: Wallet trading behavior and PnL analysis.
+
+- getComprehensiveBlockchainData(query, network?)
+  • Description: Smart inspector that detects query type (signature/token/account/domain) and bundles relevant data.
+  • Output: { type: "transaction"|"token"|"nft"|"account"|"unknown", data: {...} }
+  • When to call: One-shot enrichment when input type is unknown.
+
+- getPortfolio(address, includeNftMetadata?, network?)
+  • Description: Portfolio summary incl. native SOL, tokens, NFTs (optionally with metadata).
+  • Output: { nativeBalance, tokens[], nfts[]? }
+  • When to call: Wallet overview and valuation (pair with price API for USD).
+
+- getTokenBalances(address, network?)
+  • Description: SPL token balances for a wallet.
+  • Output: Array of { mint, amount, decimals, uiAmount?, ... }
+  • When to call: Token inventory snapshot per wallet.
+
+- getNativeBalance(address, network?)
+  • Description: SOL balance for a wallet.
+  • Output: { lamports } or number value depending on gateway.
+  • When to call: Check funding/rent-exempt conditions or net worth.
+
+- getNFTsForAddress(address, { nftMetadata?, limit?, cursor? }, network?)
+  • Description: NFTs held by a wallet with optional metadata expansion.
+  • Output: Array of NFTs; when nftMetadata=true includes collection/name/image.
+  • When to call: Wallet NFT holdings and collection insights.
+
+- getNFTMetadata(address, network?)
+  • Description: Metadata for a specific NFT mint/collection.
+  • Output: { name, symbol, image, attributes, ... }
+  • When to call: NFT detail page or item enrichment.
+
+- getNFTCollectionStats(address, network?)
+  • Description: Stats for an NFT collection.
+  • Output: { floor_price?, volume_24h?, owners?, ... }
+  • When to call: Collection overview and market interest.
+
+- getNFTCollectionItems(address, { limit?, nftMetadata? }, network?)
+  • Description: Items inside a collection.
+  • Output: Array of items; with metadata if requested.
+  • When to call: Browsing collection inventory.
+
+- getSPLTokenTransfers(address, { limit?, fromDate?, toDate?, cursor? }, network?)
+  • Description: Transfer events related to SPL tokens for a wallet.
+  • Output: Array of token transfer records.
+  • When to call: Token activity timeline and inflow/outflow.
+
+- getSOLTransfers(address, { limit?, fromDate?, toDate?, cursor? }, network?)
+  • Description: SOL transfers for a wallet.
+  • Output: Array of SOL transfer records.
+  • When to call: Funding, withdrawals, and payment analysis.
+
+- getTransactionsByAddress(address, { limit?, fromDate?, toDate?, cursor? }, network?)
+  • Description: Transaction history for a wallet.
+  • Output: Array of transactions (signatures + metadata).
+  • When to call: Broad activity analysis and audit trails.
+
+- getTransactionBySignature(signature, network?)
+  • Description: Transaction detail by signature.
+  • Output: Parsed transaction or raw fields.
+  • When to call: Inspect specific on-chain event.
+
+- getDomainInfo(address, network?) / resolveDomain(domain, network?)
+  • Description: Domain records for a wallet or resolve .sol domain to address.
+  • Output: Domain list / { address }.
+  • When to call: Reverse lookups and vanity resolution.
+
+- getTrendingTokens(limit?, timeframe?)
+  • Description: Moralis Deep Index trending list for Solana.
+  • Output: { tokens: [...] } normalized list (we enforce { tokens }).
+  • When to call: Market pulse and discovery.
+
+- getTopGainers(limit?)
+  • Description: Derived via trending; best-effort list of top gainers.
+  • Output: { tokens: [...] } normalized list (best available).
+  • When to call: Momentum screens; may vary by upstream.
+
+- getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
+  • Description: Market list via Deep Index trending, sorted best-effort.
+  • Output: { tokens: [...] }
+  • When to call: Market overviews and paged lists.
+
+- getTopTokens(limit?) / getNewListings(limit?, daysBack?)
+  • Description: Not available on gateway; return null with warnings.
+  • Output: null
+  • When to call: Do not call unless testing availability; prefer trending endpoints.
+
+- clearCache()
+  • Description: Clears in-memory cache for Moralis API wrapper.
+  • Output: void
+  • When to call: After config changes or to force refreshes.
+
+Method Reference (Solana RPC via @solana/web3.js Connection)
+- getAccountInfo(address)
+  • Description: Raw account data, owner, lamports, executable.
+  • Output: { value: { lamports, owner, executable, data[...] } }
+  • When to call: Determine account type (wallet/program/mint).
+
+- getBalance(address)
+  • Description: SOL balance in lamports.
+  • Output: number or { value }
+  • When to call: Funding/rent checks and net worth context.
+
+- getTokenSupply(mint)
+  • Description: Total supply and decimals for a mint.
+  • Output: { value: { amount, decimals } }
+  • When to call: Market cap calculation with price.
+
+- getTokenLargestAccounts(mint)
+  • Description: Top holders for a mint.
+  • Output: { value: [{ address, amount }...] }
+  • When to call: Holder concentration and risk.
+
+- getTokenAccountsByOwner(owner, filter, commitment?)
+  • Description: Token accounts owned by a wallet.
+  • Output: { value: [...] }
+  • When to call: Inventory of SPL token accounts.
+
+- getParsedTokenAccountsByOwner(owner, filter, commitment?)
+  • Description: Parsed token accounts (easier to read).
+  • Output: { value: [{ account: { data: { parsed: {...} } } }] }
+  • When to call: Human-readable token holdings.
+
+- getSignaturesForAddress(address, { limit?, before?, until? })
+  • Description: Recent transaction signatures.
+  • Output: Array of { signature, slot, err?, ... }
+  • When to call: Activity timelines and pagination.
+
+- getParsedTransaction(signature, opts?) / getTransaction(signature, opts?)
+  • Description: Decode a transaction (parsed/raw).
+  • Output: Parsed structure or wire format.
+  • When to call: Instruction-level inspection.
+
+- getRecentPerformanceSamples(limit?)
+  • Description: Throughput samples for TPS.
+  • Output: Array of { numTransactions, samplePeriodSecs }
+  • When to call: Performance/TPS analysis.
+
+- getEpochInfo()
+  • Description: Epoch number, slots, progress.
+  • Output: { epoch, slotIndex, slotsInEpoch, ... }
+  • When to call: Temporal context and schedules.
+
+- getLeaderSchedule(slot?, commitment?, identity?)
+  • Description: Validator leadership schedule.
+  • Output: Map of leader slots per validator.
+  • When to call: Block production and timing.
+
+- getVoteAccounts(commitment?)
+  • Description: Validator status and stake.
+  • Output: { current[], delinquent[] }
+  • When to call: Health and top validator tables.
+
+- getClusterNodes()
+  • Description: Nodes and RPC endpoints.
+  • Output: Array of nodes with pubkeys and gossip.
+  • When to call: Topology and network map.
+
+- getBlock(slot, opts?) / getBlockHeight() / getBlockTime(slot)
+  • Description: Block data, height, timestamps.
+  • Output: Block details / height / unix time.
+  • When to call: Slot-to-time mapping and audits.
+
+- getSlot(commitment?) / getSlotLeader(commitment?) / getSlotLeaders(startSlot, limit)
+  • Description: Current slot and leaders.
+  • Output: Slot number / leader pubkey(s).
+  • When to call: Realtime positioning and leadership.
+
+- getProgramAccounts(programId, opts?)
+  • Description: Accounts under a program.
+  • Output: Array of account infos.
+  • When to call: Protocol state scanning.
+
+- getSupply(commitment?)
+  • Description: Cluster native supply info.
+  • Output: Circulating/non-circulating metrics.
+  • When to call: Macro supply trends (SOL).
+
+- requestAirdrop(address, lamports, commitment?)
+  • Description: Devnet airdrop utility.
+  • Output: Signature string.
+  • When to call: Dev/test funding.
+
+- sendRawTransaction(rawTx, opts?) / simulateTransaction(txOrMessage, opts?)
+  • Description: Broadcast or simulate a transaction.
+  • Output: Signature / simulation logs.
+  • When to call: Program interactions and dry-runs.
+
+- Other methods (fee, inflation, genesis, version, health, etc.)
+  • Description: Network meta and economics.
+  • Output: Method-specific structs.
+  • When to call: Infrastructure dashboards and system health.`;
 
         const planningPrompt = `You are an intelligent blockchain analyst. Analyze the user's question and create a JSON plan for which tools to use.
 
@@ -198,11 +484,12 @@ ${planningContext || "N/A"}
 ${availableTools}
 
 Hard rules for planning:
-1) If the user asks about "price", "market cap", or "volume", or uses $SYMBOL notation, you MUST include "tokenMarketData" as the FIRST step for each detected token.
-2) Use the provided symbol→CoinGecko ID mapping where available (e.g., SVMAI → opensvm-com). If a token is not in the mapping, pass the lowercase symbol as coinId (the executor will resolve via CoinGecko search if needed).
-3) If multiple tokens are requested, include one tokenMarketData step per token (deduplicated). Keep tokenMarketData steps first, then any extra RPC steps if the user also asked for them.
+1) If the user asks about "price", "market cap", or "volume", or uses $SYMBOL notation, you MUST include "moralisMarketData" as the FIRST step for each detected token.
+2) "moralisMarketData" REQUIRES the Solana mint address. Use the provided symbol→mint mapping (SVMAI supported). If the mint is unknown, omit the step instead of guessing.
+3) If multiple tokens are requested, include one moralisMarketData step per token (deduplicated). Keep moralisMarketData steps first, then any extra RPC steps if the user also asked for them.
 4) Do NOT use getEpochInfo, getSlot, or other network tools to answer price/market/volume unless explicitly required in addition to market data.
 5) Return ONLY a JSON array of tool steps, no extra text.
+
 
 Response format (JSON only):
 [
@@ -217,16 +504,10 @@ Response format (JSON only):
 Examples:
 - For "$SVMAI price":
   [
-    { "tool": "tokenMarketData", "reason": "Get market data for SVMAI", "narrative": "⟨ ⟩ Fetching price for SVMAI", "input": "opensvm-com" }
+    { "tool": "moralisMarketData", "reason": "Get market data for SVMAI via Moralis", "narrative": "⟨ ⟩ Fetching Moralis price/volume for SVMAI", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" }
   ]
 
-- For "compare $SVMAI and $BONK market caps":
-  [
-    { "tool": "tokenMarketData", "reason": "SVMAI market data", "narrative": "⟨ ⟩ Fetching SVMAI", "input": "opensvm-com" },
-    { "tool": "tokenMarketData", "reason": "BONK market data", "narrative": "⟨ ⟩ Fetching BONK", "input": "bonk" }
-  ]
-
-- For "$SOL account balance of address X": do not use tokenMarketData; use account/balance tools instead.`;
+- For "$SOL account balance of address X": do not use moralisMarketData; use account/balance tools instead.`;
 
         const response = await withTimeout(
             together.chat.completions.create({
@@ -264,59 +545,36 @@ Examples:
 function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     const qLower = question.toLowerCase();
 
-    // Token detection fallback
+    // Token detection fallback (Moralis-only)
     if (qLower.includes('price') || qLower.includes('market') || qLower.includes('volume') ||
         qLower.includes('token') || /\$[A-Z]{3,10}/.test(question)) {
 
-        // Map of known tokens to CoinGecko IDs (unambiguous where possible)
-        const tokenMappings: Record<string, string> = {
-            'SVMAI': 'opensvm-com',
-            'SOL': 'solana',
-            'BONK': 'bonk',
-            'WIF': 'dogwifcoin',
-            'PEPE': 'pepe',
-            'CHAN': 'chan-cat',
-            'PIX404': 'pix404',
-            // DeFi tokens
-            'RAY': 'raydium',
-            'ORCA': 'orca',
-            'JUP': 'jupiter',
-            'JITO': 'jito',
-            'PYTH': 'pyth-network',
-            'MNDE': 'marinade',
-            'MNGO': 'mango-markets',
-            'SAMO': 'samoyedcoin',
-            'JTO': 'jito-governance-token',
-            'UXD': 'uxd-stablecoin'
+        // Map of known tokens to Solana mint address (Moralis requires mint)
+        const tokenMintMappings: Record<string, string> = {
+            'SVMAI': 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump'
         };
 
         // Extract all $SYMBOL occurrences and de-duplicate
         const symbolMatches = [...question.toUpperCase().matchAll(/\$([A-Z0-9]{3,10})/g)].map(m => m[1]);
         const uniqueSymbols = Array.from(new Set(symbolMatches));
 
-        if (uniqueSymbols.length > 0) {
-            return uniqueSymbols.map(symbol => {
-                const coinId = tokenMappings[symbol] || symbol.toLowerCase();
-                return {
-                    tool: 'tokenMarketData',
-                    reason: `Get current market data for ${symbol} token from CoinGecko API`,
-                    narrative: `▣ Getting market data for ${symbol}`,
-                    input: coinId
-                };
-            });
+        // Only include tokens where we know the mint
+        const steps: AIPlanStep[] = [];
+        for (const symbol of uniqueSymbols) {
+            const mint = tokenMintMappings[symbol];
+            if (mint) {
+                steps.push({
+                    tool: 'moralisMarketData',
+                    reason: `Get current market data for ${symbol} via Moralis`,
+                    narrative: `▣ Getting Moralis market data for ${symbol}`,
+                    input: mint
+                });
+            }
         }
+        if (steps.length > 0) return steps;
 
-        // Fallback to single symbol detection (no explicit $SYMBOL found)
-        const tokenMatch = question.match(/\$([A-Z0-9]{3,10})/i);
-        const tokenSymbol = tokenMatch ? tokenMatch[1].toUpperCase() : 'UNKNOWN';
-        const coinId = tokenMappings[tokenSymbol] || tokenSymbol.toLowerCase();
-
-        return [{
-            tool: 'tokenMarketData',
-            reason: `Get current market data for ${tokenSymbol} token from CoinGecko API`,
-            narrative: `▣ Getting market data for ${tokenSymbol}`,
-            input: coinId
-        }];
+        // If we don't know the mint, return empty plan to avoid guessing external sources
+        return [];
     }
 
     // Validator queries fallback
@@ -336,6 +594,59 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     }];
 }
 
+function extractUsd24hVolumeDeep(obj: any): number {
+    let best = 0;
+    try {
+        const visit = (node: any, path: string[]) => {
+            if (!node || typeof node !== 'object') return;
+            for (const [key, val] of Object.entries(node)) {
+                const k = String(key).toLowerCase();
+                const p = [...path, k];
+                if (typeof val === 'number' && Number.isFinite(val)) {
+                    const joined = p.join('.');
+                    const hasVol = joined.includes('vol') || joined.includes('volume');
+                    const has24 = joined.includes('24h') || joined.includes('h24') || joined.includes('24');
+                    const hasUsd = joined.includes('usd') || joined.includes('quote_usd') || joined.includes('usdquote');
+                    const notLiquidity = !joined.includes('liquidity');
+                    if (hasVol && has24 && hasUsd && notLiquidity && val > best) {
+                        best = val;
+                    }
+                } else if (val && typeof val === 'object') {
+                    visit(val as any, p);
+                }
+            }
+        };
+        visit(obj, []);
+    } catch {}
+    return best;
+}
+
+function extractVolume24hAny(obj: any): number {
+    let best = 0;
+    try {
+        const visit = (node: any, path: string[]) => {
+            if (!node || typeof node !== 'object') return;
+            for (const [key, val] of Object.entries(node)) {
+                const k = String(key).toLowerCase();
+                const p = [...path, k];
+                if (typeof val === 'number' && Number.isFinite(val)) {
+                    const joined = p.join('.');
+                    const hasVol = joined.includes('vol') || joined.includes('volume');
+                    const has24 = joined.includes('24h') || joined.includes('h24') || joined.includes('24');
+                    const notLiquidity = !joined.includes('liquidity');
+                    if (hasVol && has24 && notLiquidity && val > best) {
+                        best = val;
+                    }
+                } else if (val && typeof val === 'object') {
+                    visit(val as any, p);
+                }
+            }
+        };
+        visit(obj, []);
+    } catch {}
+    return best;
+}
+
 async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string, any>> {
     const results: Record<string, any> = {};
 
@@ -347,15 +658,400 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
         try {
             let result;
 
-            // Handle tokenMarketData tool
-            if (step.tool === 'tokenMarketData') {
+            // Handle Moralis market data tool
+            if (step.tool === 'moralisMarketData') {
                 try {
-                    const tokenTool = await import('./tokenMarketData');
-                    result = await tokenTool.tokenMarketDataTool.execute({ coinId: step.input });
-                    console.log(`   ◈ Token market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+                    if (typeof step.input !== 'string' || !step.input) {
+                        throw new Error('moralisMarketData requires mint address as input');
+                    }
+                    const { PublicKey } = await import('@solana/web3.js');
+                    const moralisApi = await import('../../../../lib/moralis-api');
+
+                    const mint = step.input;
+                    const pubkey = new PublicKey(mint);
+
+                    // 1) Get token supply from RPC
+                    const supplyRes = await conn.getTokenSupply(pubkey);
+                    const amount = Number(supplyRes?.value?.amount || 0);
+                    const decimals = Number(supplyRes?.value?.decimals || 0);
+                    const supplyTokens = decimals >= 0 ? (amount / Math.pow(10, decimals)) : 0;
+
+                    // 2) Get price (Moralis)
+                    const priceRes = await moralisApi.getTokenPrice(mint, 'mainnet');
+
+                    // Robust extraction of price and pair address
+                    const priceUsd =
+                        Number(
+                            (priceRes?.price_usd ?? priceRes?.usdPrice ?? priceRes?.usd ?? priceRes?.price ?? 0)
+                        ) || 0;
+
+                    const pairAddress = (() => {
+                        const candidates: any[] = [];
+                        try {
+                            if (priceRes?.pairAddress) candidates.push(priceRes.pairAddress);
+                            if (priceRes?.pair_address) candidates.push(priceRes.pair_address);
+                            if (priceRes?.pair?.address) candidates.push(priceRes.pair.address);
+                            if (Array.isArray(priceRes?.pair) && priceRes.pair[0]?.address) candidates.push(priceRes.pair[0].address);
+                            if (Array.isArray(priceRes?.pairs) && priceRes.pairs[0]?.address) candidates.push(priceRes.pairs[0].address);
+                            if (priceRes?.result?.pairAddress) candidates.push(priceRes.result.pairAddress);
+                            if (Array.isArray(priceRes?.result?.pairs) && priceRes.result.pairs[0]?.address) candidates.push(priceRes.result.pairs[0].address);
+                            if (Array.isArray(priceRes?.result) && priceRes.result[0]?.address) candidates.push(priceRes.result[0].address);
+                        } catch {}
+                        return candidates.find(Boolean) || null;
+                    })();
+
+                    // 3) Derive 24h volume via pair stats if pair available
+                    let volume24hUsd = 0;
+                    if (pairAddress && process.env.MORALIS_API_KEY) {
+                        try {
+                            const statsUrl = `https://solana-gateway.moralis.io/token/mainnet/pairs/${pairAddress}/stats`;
+                            const resp = await fetch(statsUrl, {
+                                headers: {
+                                    'X-API-Key': process.env.MORALIS_API_KEY,
+                                    'accept': 'application/json'
+                                }
+                            });
+                            if (resp.ok) {
+const stats = await resp.json();
+// Try common keys first
+volume24hUsd = Number(
+    stats?.volume_24h_usd ?? stats?.volume24hUsd ?? stats?.volume_24h ?? 0
+) || 0;
+
+// Heuristic: scan any numeric key that looks like 24h USD volume
+if (!volume24hUsd && stats && typeof stats === 'object') {
+    try {
+        const candidates: number[] = [];
+        for (const [k, v] of Object.entries(stats)) {
+            if (typeof v === 'number') {
+                const kLower = k.toLowerCase();
+                const looksVolume = kLower.includes('vol');
+                const looks24h = kLower.includes('24') || kLower.includes('24h') || kLower.includes('h24');
+                const looksUsd = kLower.includes('usd');
+                if (looksVolume && looks24h && looksUsd) candidates.push(v);
+            }
+        }
+        if (candidates.length) {
+            volume24hUsd = Math.max(...candidates);
+        }
+    } catch {}
+}
+// Deep-scan nested structures for 24h USD volume if still zero
+if (!volume24hUsd) {
+    const deep = extractUsd24hVolumeDeep(stats);
+    if (deep > 0) volume24hUsd = deep;
+}
+// If still zero, try 24h volume without USD suffix (assumed USD by API defaults)
+if (!volume24hUsd) {
+    const any = extractVolume24hAny(stats);
+    if (any > 0) volume24hUsd = any;
+}
+                            }
+                        } catch (e) {
+                            // Non-fatal
+                        }
+                    }
+
+                    // Fallback #1b: aggregate across all pairs (sum 24h USD volumes)
+                    if (process.env.MORALIS_API_KEY) {
+                        try {
+                            const pairsUrl = `https://solana-gateway.moralis.io/token/mainnet/${mint}/pairs`;
+                            const resp = await fetch(pairsUrl, {
+                                headers: {
+                                    'X-API-Key': process.env.MORALIS_API_KEY,
+                                    'accept': 'application/json'
+                                }
+                            });
+                            if (resp.ok) {
+                                const json = await resp.json();
+                                let pairs: any[] = [];
+                                if (Array.isArray(json?.pairs)) {
+                                    pairs = json.pairs;
+                                } else if (Array.isArray(json?.result?.pairs)) {
+                                    pairs = json.result.pairs;
+                                } else if (Array.isArray(json?.result)) {
+                                    pairs = json.result;
+                                } else if (Array.isArray(json?.data?.pairs)) {
+                                    pairs = json.data.pairs;
+                                } else if (Array.isArray(json?.data)) {
+                                    pairs = json.data;
+                                } else if (Array.isArray(json)) {
+                                    pairs = json;
+                                } else {
+                                    pairs = [];
+                                }
+                                let sum = 0;
+                                for (const p of pairs.slice(0, 20)) { // expanded cap for better coverage while keeping latency reasonable
+                                    const pAddr = p?.pairAddress || p?.address || p?.pair_address;
+                                    if (!pAddr) continue;
+                                    try {
+                                        const statsUrl = `https://solana-gateway.moralis.io/token/mainnet/pairs/${pAddr}/stats`;
+                                        const sresp = await fetch(statsUrl, {
+                                            headers: {
+                                                'X-API-Key': process.env.MORALIS_API_KEY,
+                                                'accept': 'application/json'
+                                            }
+                                        });
+                                        if (sresp.ok) {
+const s = await sresp.json();
+let v = Number(
+    s?.volume_24h_usd ??
+    s?.volume24hUsd ??
+    s?.volume_24h ??
+    s?.volumeUsd ??
+    0
+) || 0;
+if (v <= 0) {
+    const deep = extractUsd24hVolumeDeep(s);
+    if (deep > 0) v = deep;
+}
+if (v <= 0) {
+    const any = extractVolume24hAny(s);
+    if (any > 0) v = any;
+}
+if (v > 0) sum += v;
+                                        }
+                                    } catch {}
+                                }
+                                if (sum > volume24hUsd) volume24hUsd = sum;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                                        // Fallback #1: try Moralis token stats (may aggregate across pairs)
+                    {
+                        try {
+                            const tokenStats = await moralisApi.getTokenStats(mint, 'mainnet');
+let v = Number(
+    tokenStats?.volume_24h_usd ??
+    tokenStats?.volume24hUsd ??
+    tokenStats?.volume_24h ??
+    tokenStats?.volume24h ??
+    0
+) || 0;
+// Heuristic scan for any numeric key resembling 24h USD volume
+if (!v && tokenStats && typeof tokenStats === 'object') {
+    try {
+        const candidates: number[] = [];
+        for (const [k, val] of Object.entries(tokenStats)) {
+            if (typeof val === 'number') {
+                const kLower = k.toLowerCase();
+                const looksVolume = kLower.includes('vol');
+                const looks24h = kLower.includes('24') || kLower.includes('24h') || kLower.includes('h24');
+                const looksUsd = kLower.includes('usd');
+                if (looksVolume && looks24h && looksUsd) candidates.push(val);
+            }
+        }
+        if (candidates.length) v = Math.max(...candidates);
+    } catch {}
+}
+if (!v) {
+    const deep = extractUsd24hVolumeDeep(tokenStats);
+    if (deep > 0) v = deep;
+}
+if (v > volume24hUsd) volume24hUsd = v;
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                    // Fallback #2a: try pair swaps directly (if pairAddress available)
+                    if (pairAddress && process.env.MORALIS_API_KEY) {
+                        try {
+                            const since = Date.now() - 24 * 60 * 60 * 1000;
+                            const swapsUrl = `https://solana-gateway.moralis.io/token/mainnet/pairs/${pairAddress}/swaps?limit=100`;
+                            const resp = await fetch(swapsUrl, {
+                                headers: {
+                                    'X-API-Key': process.env.MORALIS_API_KEY,
+                                    'accept': 'application/json'
+                                }
+                            });
+                            if (resp.ok) {
+                                const json = await resp.json();
+                                const rows = Array.isArray(json) ? json : Array.isArray(json?.result) ? json.result : [];
+                                const toMs = (t: any) => {
+                                    if (typeof t === 'number') return t > 1e12 ? t : t * 1000;
+                                    const parsed = Date.parse(String(t) || '');
+                                    return Number.isFinite(parsed) ? parsed : 0;
+                                };
+                                const detectUsd = (s: any) =>
+                                    Number(
+                                        s?.usd_value ??
+                                        s?.usd ??
+                                        s?.amount_usd ??
+                                        s?.value_usd ??
+                                        s?.amountUsd ??
+                                        s?.valueUsd ??
+                                        s?.volumeUsd ??
+                                        0
+                                    ) || 0;
+                                const detectAmt = (s: any) =>
+                                    Number(s?.amount_out ?? s?.amountOut ?? s?.amount_in ?? s?.amountIn ?? s?.amount ?? 0) || 0;
+
+                                let sum = 0;
+                                for (const s of rows) {
+                                    const ts = toMs(s?.timestamp ?? s?.block_timestamp ?? s?.date ?? s?.time ?? 0);
+                                    if (ts >= since) {
+                                        const usd = detectUsd(s);
+                                        if (usd > 0) {
+                                            sum += usd;
+                                        } else {
+                                            const amt = detectAmt(s);
+                                            if (amt > 0 && priceUsd > 0) {
+                                                sum += amt * priceUsd;
+                                            }
+                                        }
+                                    }
+                                }
+                                if (sum > volume24hUsd) volume24hUsd = sum;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                    // Fallback #2: aggregate recent swaps in the last 24h (best-effort USD)
+                    {
+                        try {
+                            const since = Date.now() - 24 * 60 * 60 * 1000;
+                            const swaps = await moralisApi.getSwapsByTokenAddress(mint, { limit: 100 }, 'mainnet');
+
+                            const toMs = (t: any) => {
+                                if (typeof t === 'number') return t > 1e12 ? t : t * 1000;
+                                const parsed = Date.parse(String(t) || '');
+                                return Number.isFinite(parsed) ? parsed : 0;
+                            };
+                            const detectUsd = (s: any) =>
+                                Number(
+                                    s?.usd_value ??
+                                    s?.usd ??
+                                    s?.amount_usd ??
+                                    s?.value_usd ??
+                                    s?.amountUsd ??
+                                    s?.valueUsd ??
+                                    s?.volumeUsd ??
+                                    0
+                                ) || 0;
+                            const detectAmt = (s: any) =>
+                                Number(s?.amount_out ?? s?.amountOut ?? s?.amount_in ?? s?.amountIn ?? s?.amount ?? 0) || 0;
+
+                            let sum = 0;
+
+                            const accumulate = (arr: any[]) => {
+                                for (const s of arr) {
+                                    const ts = toMs(s?.timestamp ?? s?.block_timestamp ?? s?.date ?? s?.time ?? 0);
+                                    if (ts >= since) {
+                                        const usd = detectUsd(s);
+                                        if (usd > 0) {
+                                            sum += usd;
+                                        } else {
+                                            const amt = detectAmt(s);
+                                            if (amt > 0 && priceUsd > 0) {
+                                                sum += amt * priceUsd;
+                                            }
+                                        }
+                                    }
+                                }
+                            };
+
+                            if (Array.isArray(swaps)) {
+                                accumulate(swaps);
+                            } else if (swaps?.result && Array.isArray(swaps.result)) {
+                                accumulate(swaps.result);
+                            }
+
+                            if (sum > volume24hUsd) volume24hUsd = sum;
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                    // Fallback #3: pair OHLCV aggregation (USD), 1h buckets over last 24h
+                    if (pairAddress && process.env.MORALIS_API_KEY) {
+                        try {
+                            const to = new Date();
+                            const from = new Date(to.getTime() - 24 * 60 * 60 * 1000);
+                            const ohlcvUrl = `https://solana-gateway.moralis.io/token/mainnet/pairs/${pairAddress}/ohlcv?fromDate=${encodeURIComponent(from.toISOString())}&toDate=${encodeURIComponent(to.toISOString())}&timeframe=1h&currency=usd&limit=100`;
+                            const resp = await fetch(ohlcvUrl, {
+                                headers: {
+                                    'X-API-Key': process.env.MORALIS_API_KEY,
+                                    'accept': 'application/json'
+                                }
+                            });
+                            if (resp.ok) {
+                                const json = await resp.json();
+                                const rows = Array.isArray(json?.result) ? json.result : (Array.isArray(json) ? json : []);
+                                let sum = 0;
+for (const r of rows) {
+    // Try common volume fields; otherwise scan numeric keys with 'vol' and 'usd'
+    const v = Number(
+        r?.volume_usd ??
+        r?.volumeUsd ??
+        r?.v_usd ??
+        r?.volUsd ??
+        0
+    ) || 0;
+    if (v > 0) {
+        sum += v;
+    } else if (r && typeof r === 'object') {
+        try {
+            const candidates: number[] = [];
+            for (const [k, val] of Object.entries(r)) {
+                if (typeof val === 'number') {
+                    const kLower = k.toLowerCase();
+                    const looksVolume = kLower.includes('vol') || kLower.includes('volume');
+                    const looksUsd = kLower.includes('usd');
+                    if (looksVolume && looksUsd) candidates.push(val);
+                }
+            }
+            if (candidates.length) {
+                sum += Math.max(...candidates);
+            } else {
+                // Deep-scan nested structures for per-bucket USD volume
+                const deep = extractUsd24hVolumeDeep(r);
+                if (deep > 0) {
+                    sum += deep;
+                }
+            }
+        } catch {}
+    }
+}
+                                if (sum > volume24hUsd) volume24hUsd = sum;
+                            }
+                        } catch (e) {
+                            // ignore
+                        }
+                    }
+
+                    const marketCapUsd = priceUsd * supplyTokens;
+
+                    // Normalized result (compatible with summarizers)
+                    result = {
+                        success: true,
+                        source: 'moralis',
+                        resolved_id: 'moralis',
+                        data: {
+                            name: 'opensvm.com',
+                            symbol: 'SVMAI',
+                            current_price: { usd: priceUsd },
+                            market_cap: { usd: marketCapUsd },
+                            trading_volume: { usd: volume24hUsd, h24: volume24hUsd },
+                            last_updated: new Date().toISOString(),
+                            extra: {
+                                mint,
+                                supply_tokens: supplyTokens,
+                                supply_raw: amount,
+                                decimals,
+                                pairAddress
+                            }
+                        }
+                    };
+                    console.log(`   ◈ Moralis market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
                 } catch (error) {
-                    result = { error: `Token market data error: ${(error as Error).message}` };
-                    console.log(`   ◌ Token market data failed`);
+                    result = { error: `Moralis market data error: ${(error as Error).message}` };
+                    console.log(`   ◌ Moralis market data failed`);
                 }
             }
             // Handle standard RPC calls
@@ -434,7 +1130,7 @@ function summarizeForReview(results: Record<string, any>) {
     };
 
     for (const [key, value] of Object.entries(results)) {
-        if (key.startsWith('tokenMarketData') && value && value.success && value.data) {
+        if ((key.startsWith('tokenMarketData') || key.startsWith('moralisMarketData')) && value && value.success && value.data) {
             const d = value.data;
             summary.tokenMarketData.push({
                 id: value.resolved_id || null,
@@ -598,7 +1294,7 @@ async function synthesizeResults(
     function buildTokenHeader(results: Record<string, any>): string {
         let header = '';
         for (const [key, value] of Object.entries(results)) {
-            if (key.startsWith('tokenMarketData') && value && value.success && value.data) {
+            if ((key.startsWith('tokenMarketData') || key.startsWith('moralisMarketData')) && value && value.success && value.data) {
                 const d = value.data;
                 const name = d.name || 'Unknown';
                 const symbol = (d.symbol || '').toUpperCase();
@@ -615,6 +1311,14 @@ async function synthesizeResults(
         return header.trim();
     }
     const tokenHeader = buildTokenHeader(results);
+    // Fast path: if user asked for market data and we have a deterministic header, return immediately
+    try {
+        const ql = (question || "").toLowerCase();
+        const askedMarket = ql.includes("price") || ql.includes("market") || ql.includes("volume") || /\$[A-Z0-9]{2,10}/.test(question || "");
+        if (askedMarket && tokenHeader) {
+            return tokenHeader;
+        }
+    } catch {}
 
     // Guardrail: deterministically format validator results to avoid any LLM hallucinations
     try {
@@ -813,13 +1517,17 @@ Instructions:
 Answer:`;
 
     try {
-        const answer = await together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
-            messages: [{ role: "system", content: synthesisPrompt }],
-            stream: false,
-            max_tokens: 42069,
-            temperature: 0.1337
-        });
+        const answer = await withTimeout(
+            together.chat.completions.create({
+                model: "openai/gpt-oss-120b",
+                messages: [{ role: "system", content: synthesisPrompt }],
+                stream: false,
+                max_tokens: 1800,
+                temperature: 0.2
+            }),
+            12000,
+            "LLM synthesis"
+        );
 
         const response = answer.choices[0]?.message?.content;
 
