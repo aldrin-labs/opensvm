@@ -1473,6 +1473,10 @@ async function synthesizeEpicResults(
 
     console.log(`📖 Synthesizing ${wantsEverything ? 'EPIC' : 'standard'} response...`);
 
+    // Extract validator count if requested (compute early for fallback)
+    const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
+    const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 50;
+
     if (!process.env.TOGETHER_API_KEY) {
         console.warn("TOGETHER_API_KEY not configured; using narrative fallback synthesis");
         return generateNarrativeFallback(results, question, requestedCount);
@@ -1491,9 +1495,7 @@ async function synthesizeEpicResults(
         synthesisMode = "CONCISE";
     }
 
-    // Extract validator count if requested
-    const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
-    const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 50;
+    
 
     // Prepare comprehensive data context
     const dataContext = prepareDataContext(results, requestedCount, synthesisMode === "EPIC_NARRATIVE");
