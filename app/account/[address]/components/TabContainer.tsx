@@ -157,37 +157,47 @@ function TabContainerComponent({ address, activeTab, solBalance, tokenBalances, 
     );
   };
 
-  const renderTabs = () => (
-    <div className="flex space-x-4 mb-4 border-b border-border overflow-x-auto" data-test="account-tabs">
-      {tabs.map(tab => {
-        const tabStatus = transferCounts[tab.id as keyof typeof transferCounts];
-        const count = tabStatus?.count ?? 0;
-        
-        return (
-          <button
-            key={tab.id}
-            data-test={`tab-${tab.id}`}
-            onClick={() => handleTabChange(tab.id)}
-            className={`flex items-center px-4 py-2 -mb-px whitespace-nowrap transition-colors ${selectedTab === tab.id
-              ? 'text-primary border-b-2 border-primary font-medium'
-              : 'text-muted-foreground hover:text-foreground'
-              }`}
-          >
-            <span>{tab.label}</span>
-            {count > 0 && (
-              <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${selectedTab === tab.id
-                ? 'bg-primary/20 text-primary'
-                : 'bg-muted text-muted-foreground'
-                }`}>
-                {count.toLocaleString()}
-              </span>
-            )}
-            {renderStatusIcon(tab.id)}
-          </button>
-        );
-      })}
-    </div>
-  );
+  const renderTabs = () => {
+    // Filter out tabs with zero count, but always keep 'tokens' tab
+    const visibleTabs = tabs.filter(tab => {
+      if (tab.id === 'tokens') return true; // Always show tokens tab
+      const tabStatus = transferCounts[tab.id as keyof typeof transferCounts];
+      const count = tabStatus?.count ?? 0;
+      return count > 0 || tabStatus?.loading; // Show if has transactions or still loading
+    });
+
+    return (
+      <div className="flex flex-wrap gap-x-4 gap-y-2 mb-4 border-b border-border" data-test="account-tabs">
+        {visibleTabs.map(tab => {
+          const tabStatus = transferCounts[tab.id as keyof typeof transferCounts];
+          const count = tabStatus?.count ?? 0;
+          
+          return (
+            <button
+              key={tab.id}
+              data-test={`tab-${tab.id}`}
+              onClick={() => handleTabChange(tab.id)}
+              className={`flex items-center px-4 py-2 -mb-px whitespace-nowrap transition-colors ${selectedTab === tab.id
+                ? 'text-primary border-b-2 border-primary font-medium'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
+            >
+              <span>{tab.label}</span>
+              {count > 0 && (
+                <span className={`ml-2 px-2 py-1 text-xs rounded-full font-medium ${selectedTab === tab.id
+                  ? 'bg-primary/20 text-primary'
+                  : 'bg-muted text-muted-foreground'
+                  }`}>
+                  {count.toLocaleString()}
+                </span>
+              )}
+              {renderStatusIcon(tab.id)}
+            </button>
+          );
+        })}
+      </div>
+    );
+  };
 
   const renderContent = () => {
     switch (selectedTab) {
