@@ -66,34 +66,18 @@ function SettingsMenuClient() {
     customRpcEndpoint: settings?.customRpcEndpoint || '',
   });
 
-  // Update tempSettings when settings change
+  // Update tempSettings only when settings menu is opened, not on every config change
   useEffect(() => {
-    if (settings && config) {
-      setTempSettings(prevSettings => {
-        // Only update if values actually changed
-        const newSettings = {
-          theme: config.variant,
-          fontFamily: settings.fontFamily,
-          fontSize: settings.fontSize,
-          rpcEndpoint: settings.rpcEndpoint,
-          customRpcEndpoint: settings.customRpcEndpoint,
-        };
-        
-        // Deep comparison to prevent unnecessary updates
-        if (
-          prevSettings.theme === newSettings.theme &&
-          prevSettings.fontFamily === newSettings.fontFamily &&
-          prevSettings.fontSize === newSettings.fontSize &&
-          prevSettings.rpcEndpoint?.url === newSettings.rpcEndpoint?.url &&
-          prevSettings.customRpcEndpoint === newSettings.customRpcEndpoint
-        ) {
-          return prevSettings;
-        }
-        
-        return newSettings;
+    if (settings && config && isOpen) {
+      setTempSettings({
+        theme: config.variant,
+        fontFamily: settings.fontFamily,
+        fontSize: settings.fontSize,
+        rpcEndpoint: settings.rpcEndpoint,
+        customRpcEndpoint: settings.customRpcEndpoint,
       });
     }
-  }, [config, settings]);
+  }, [isOpen]); // Only reset when menu opens, not on config changes
 
   // E2E aid: allow tests to programmatically open the menu without relying on UI events
   useEffect(() => {
@@ -151,30 +135,37 @@ function SettingsMenuClient() {
       }
     };
 
-    // Ensure theme is synchronized in both settings store and theme provider
-    try { settings.setTheme(tempSettings.theme as any); } catch { }
+    // Apply theme changes using the theme provider (primary method)
+    console.log('SettingsMenu: Updating theme to:', tempSettings.theme);
+    updateConfig({ variant: tempSettings.theme as any });
+    
+    // Also sync with settings store for compatibility
+    try { 
+      settings.setTheme(tempSettings.theme as any); 
+    } catch (e) {
+      console.warn('Failed to sync theme with settings store:', e);
+    }
+
+    // Apply other settings
+    settings.setFontFamily(tempSettings.fontFamily);
+    settings.setFontSize(tempSettings.fontSize);
+    settings.setRpcEndpoint(tempSettings.rpcEndpoint);
+
+    // Handle custom RPC endpoint
     if (showCustomRpc && tempSettings.customRpcEndpoint) {
       settings.addCustomRpcEndpoint('Custom', tempSettings.customRpcEndpoint);
       // Persist custom URL to cookie so server proxy honors it
       setClusterCookie(tempSettings.customRpcEndpoint);
-      // Keep client on proxy endpoint for safety
-      updateClientRpcEndpoint('opensvm');
     } else {
-      // Use enhanced theme provider for theme changes
-      console.log('SettingsMenu: Updating theme to:', tempSettings.theme);
-      updateConfig({ variant: tempSettings.theme as any });
-      // Use old settings for other options
-      settings.setFontFamily(tempSettings.fontFamily);
-      settings.setFontSize(tempSettings.fontSize);
-      settings.setRpcEndpoint(tempSettings.rpcEndpoint);
       // Persist selection to cookie: 'opensvm' stays pooled; URLs force specific RPC
       const selected = tempSettings.rpcEndpoint?.url === 'opensvm'
         ? 'opensvm'
         : tempSettings.rpcEndpoint?.url;
       if (selected) setClusterCookie(selected);
-      // Keep client on proxy endpoint for safety
-      updateClientRpcEndpoint('opensvm');
     }
+    
+    // Keep client on proxy endpoint for safety
+    updateClientRpcEndpoint('opensvm');
     setIsOpen(false);
   };
 
