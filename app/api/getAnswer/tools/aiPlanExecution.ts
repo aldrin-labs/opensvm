@@ -32,6 +32,10 @@ export const aiPlanExecutionTool: Tool = {
     execute: async (context: ToolContext): Promise<ToolResult> => {
         const { conn, question } = context;
 
+        // Declare variables outside try block for error handling
+        let lastPlan: AIPlanStep[] = [];
+        let accumulatedResults: Record<string, any> = {};
+
         try {
             console.log('◈ Generating AI-powered plan with review loop...');
 
@@ -39,8 +43,6 @@ export const aiPlanExecutionTool: Tool = {
             const maxIterations = 3;
             let iteration = 0;
             let planningContext: string | undefined = undefined;
-            let lastPlan: AIPlanStep[] = [];
-            let accumulatedResults: Record<string, any> = {};
 
             while (iteration < maxIterations) {
                 // Safety: check remaining time budget roughly via Date.now() (route has 120s limit)
@@ -106,12 +108,38 @@ export const aiPlanExecutionTool: Tool = {
 
         } catch (error) {
             console.error('⚡ AI plan execution error:', error);
+
+            // If we have partial results from successful steps, pass them along
+            if (typeof accumulatedResults !== 'undefined' && Object.keys(accumulatedResults).length > 0) {
+                console.log(`📦 Returning partial results from ${Object.keys(accumulatedResults).length} successful steps`);
+                const partialError = new Error(`AI plan execution failed: ${(error as Error).message}`);
+                (partialError as any).partialData = {
+                    aiPlanExecutionTool: {
+                        partialResults: accumulatedResults,
+                        lastPlan: typeof lastPlan !== 'undefined' ? lastPlan : [],
+                        executionError: (error as Error).message
+                    }
+                };
+                throw partialError;
+            }
+
             return {
                 handled: false
             };
         }
     }
 };
+
+// Helper function to add timeout to AI API calls
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => {
+            reject(new Error(`${operation} timeout after ${timeoutMs}ms`));
+        }, timeoutMs);
+    });
+
+    return Promise.race([promise, timeoutPromise]);
+}
 
 async function generateAIPoweredPlan(question: string, planningContext?: string): Promise<AIPlanStep[]> {
     try {
@@ -200,12 +228,16 @@ Examples:
 
 - For "$SOL account balance of address X": do not use tokenMarketData; use account/balance tools instead.`;
 
-        const response = await together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
-            messages: [{ role: "user", content: planningPrompt }],
-            max_tokens: 2000,
-            temperature: 0.1
-        });
+        const response = await withTimeout(
+            together.chat.completions.create({
+                model: "openai/gpt-oss-120b",
+                messages: [{ role: "user", content: planningPrompt }],
+                max_tokens: 2000,
+                temperature: 0.1
+            }),
+            30000, // 30 second timeout for plan generation
+            "AI plan generation"
+        );
 
         const aiResponse = response.choices[0]?.message?.content?.trim();
         if (!aiResponse) {
@@ -460,12 +492,16 @@ Instructions:
   ]
 }`;
 
-        const response = await together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
-            messages: [{ role: "user", content: reviewPrompt }],
-            max_tokens: 1000,
-            temperature: 0.1
-        });
+        const response = await withTimeout(
+            together.chat.completions.create({
+                model: "openai/gpt-oss-120b",
+                messages: [{ role: "user", content: reviewPrompt }],
+                max_tokens: 1000,
+                temperature: 0.1
+            }),
+            20000, // 20 second timeout for review
+            "AI review"
+        );
 
         const content = response.choices?.[0]?.message?.content?.trim() || "";
         const jsonStart = content.indexOf("{");

@@ -261,8 +261,10 @@ export async function POST(request: Request) {
         });
       }
 
-      // If no tool handled it, proceed with LLM fallback (existing code continues...)
-      return await handleLLMFallback(question, requestStart);
+      // If no tool handled it, proceed with LLM fallback
+      // Pass any partial data we collected to help with the response
+      const partialData = (toolResult as any).partialData || null;
+      return await handleLLMFallback(question, requestStart, partialData);
     };
 
     const result = await Promise.race([mainProcessingPromise(), requestTimeout]);
@@ -322,7 +324,7 @@ Please try your request again, or simplify your query if the issue persists.
   }
 }
 
-async function handleLLMFallback(question: string, requestStart: number): Promise<Response> {
+async function handleLLMFallback(question: string, requestStart: number, partialData?: any): Promise<Response> {
 
   // Fallback: use LLM (Together) to craft an answer if no tool handled it
   const together = new Together({
@@ -435,6 +437,23 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
   6. **Provide Sources** – Cite the data sources used (oracle account, API endpoint) in the answer.
 
   Incorporate these steps into the final response, presenting the computed values and any required follow‑up if data is missing.`;
+  }
+
+  // Add partial data context if available
+  if (partialData && Object.keys(partialData).length > 0) {
+    console.log(`📊 Adding partial data context to LLM: ${Object.keys(partialData).join(', ')}`);
+    systemPrompt += `\n\n## Partial Data Available\nSome tools partially executed before failing. Use this available data in your response:\n\n`;
+
+    for (const [toolName, data] of Object.entries(partialData)) {
+      systemPrompt += `**${toolName}**:\n`;
+      try {
+        systemPrompt += `${JSON.stringify(data, null, 2)}\n\n`;
+      } catch (e) {
+        systemPrompt += `${String(data)}\n\n`;
+      }
+    }
+
+    systemPrompt += `Use this partial data to provide the most comprehensive answer possible. If some data is missing, explain what additional information would be needed and suggest how to obtain it.`;
   }
 
   try {

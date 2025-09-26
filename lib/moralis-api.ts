@@ -3,11 +3,8 @@ import axios from 'axios';
 
 // Moralis API configuration
 const MORALIS_API_KEY = process.env.MORALIS_API_KEY;
-
-if (!MORALIS_API_KEY) {
-  throw new Error('MORALIS_API_KEY environment variable is required');
-}
 const MORALIS_BASE_URL = 'https://solana-gateway.moralis.io';
+const MORALIS_DEEP_INDEX = 'https://deep-index.moralis.io/api/v2.2';
 
 // Network type for Solana
 type SolanaNetwork = 'mainnet' | 'devnet';
@@ -53,6 +50,11 @@ async function makeApiRequest(
   const url = `${MORALIS_BASE_URL}${endpoint.replace('{network}', network)}`;
   const cacheKey = `${url}:${JSON.stringify(params)}`;
 
+  if (!MORALIS_API_KEY) {
+    console.warn('Moralis API key not configured - skipping request to', endpoint);
+    return null;
+  }
+
   // Check cache if not forcing refresh
   if (!forceRefresh && apiCache[cacheKey] && Date.now() - apiCache[cacheKey].timestamp < CACHE_DURATION) {
     console.log(`Using cached data for ${endpoint}`);
@@ -63,7 +65,7 @@ async function makeApiRequest(
     const response = await axios.get(url, {
       params,
       headers: {
-        'X-Api-Key': MORALIS_API_KEY
+        'X-API-Key': MORALIS_API_KEY
       }
     });
 
@@ -541,26 +543,10 @@ export async function getComprehensiveBlockchainData(query: string, network: Sol
  * @returns Top tokens by market cap
  */
 export async function getTopTokens(limit: number = 100) {
-  // Use the working discovery/tokens endpoint
   try {
-    const response = await fetch(`${MORALIS_BASE_URL}/token/mainnet/top-tokens?limit=${limit}`, {
-      method: 'GET',
-      headers: {
-        'X-Api-Key': MORALIS_API_KEY || '',
-        'accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      // Fallback to basic token search if top-tokens fails
-      console.warn(`Top tokens endpoint failed (${response.status}), using fallback`);
-      return null;
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error fetching top tokens:', error);
-    // Return null instead of throwing to allow graceful degradation
+    console.warn('Moralis top-tokens endpoint not available on gateway; returning null');
+    return null;
+  } catch {
     return null;
   }
 }
@@ -573,8 +559,8 @@ export async function getTopTokens(limit: number = 100) {
  */
 export async function getTopGainers(limit: number = 50, network: SolanaNetwork = DEFAULT_NETWORK) {
   try {
-    // Use discovery tokens endpoint which works
-    const response = await fetch(`https://deep-index.moralis.io/api/v2.2/discovery/tokens?chain=solana&limit=${limit}`, {
+    // Use Deep Index trending (working) as the best available source.
+    const response = await fetch(`${MORALIS_DEEP_INDEX}/tokens/trending?chain=solana&limit=${limit}`, {
       method: 'GET',
       headers: {
         'X-API-Key': MORALIS_API_KEY || '',
@@ -583,29 +569,23 @@ export async function getTopGainers(limit: number = 50, network: SolanaNetwork =
     });
 
     if (!response.ok) {
-      console.warn(`Top gainers endpoint failed (${response.status}), using working fallback`);
-      // Fallback to regular token search
-      return await makeApiRequest(`/token/${network}/search`, { limit }, network);
+      console.warn(`Top gainers (via trending) failed (${response.status})`);
+      return null;
     }
 
     const data = await response.json();
-    
-    // Sort by price change if available, otherwise by market cap
-    if (data && Array.isArray(data.tokens)) {
-      return {
-        ...data,
-        tokens: data.tokens
-          .filter((token: any) => token.price_24h_percent_change !== undefined)
-          .sort((a: any, b: any) => (b.price_24h_percent_change || 0) - (a.price_24h_percent_change || 0))
-          .slice(0, limit)
-      };
-    }
 
+    // Normalize to { tokens: [...] }
+    if (Array.isArray(data)) {
+      return { tokens: data.slice(0, limit) };
+    }
+    if (data && Array.isArray(data.tokens)) {
+      return { ...data, tokens: data.tokens.slice(0, limit) };
+    }
     return data;
   } catch (error) {
-    console.error('Error fetching top gainers:', error);
-    // Fallback to basic token search
-    return await makeApiRequest(`/token/${network}/search`, { limit }, network);
+    console.error('Error fetching top gainers (via trending):', error);
+    return null;
   }
 }
 
@@ -618,42 +598,10 @@ export async function getTopGainers(limit: number = 50, network: SolanaNetwork =
  */
 export async function getNewListings(limit: number = 50, daysBack: number = 7, network: SolanaNetwork = DEFAULT_NETWORK) {
   try {
-    // Use the working discovery tokens endpoint
-    const response = await fetch(`https://deep-index.moralis.io/api/v2.2/discovery/tokens?chain=solana&limit=${limit * 2}`, {
-      method: 'GET',
-      headers: {
-        'X-API-Key': MORALIS_API_KEY || '',
-        'accept': 'application/json'
-      }
-    });
-
-    if (!response.ok) {
-      console.warn(`New listings endpoint failed (${response.status}), using working fallback`);
-      return await makeApiRequest(`/token/${network}/search`, { limit }, network);
-    }
-
-    const data = await response.json();
-    
-    if (data && Array.isArray(data.tokens)) {
-      // Filter by creation date if available
-      const cutoffDate = new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000);
-      const recentTokens = data.tokens.filter((token: any) => {
-        if (token.created_at) {
-          return new Date(token.created_at) > cutoffDate;
-        }
-        return true; // Include tokens without creation date
-      });
-
-      return {
-        ...data,
-        tokens: recentTokens.slice(0, limit)
-      };
-    }
-
-    return data;
-  } catch (error) {
-    console.error('Error fetching new listings:', error);
-    return await makeApiRequest(`/token/${network}/search`, { limit }, network);
+    console.warn('Moralis new listings via gateway (pump-fun) not supported; returning null');
+    return null;
+  } catch {
+    return null;
   }
 }
 
@@ -668,8 +616,8 @@ export async function getTrendingTokens(
   timeframe: '1h' | '24h' | '7d' = '24h'
 ) {
   try {
-    // Use the working discovery tokens endpoint
-    const response = await fetch(`https://deep-index.moralis.io/api/v2.2/discovery/tokens?chain=solana&limit=${limit}`, {
+    // Use dedicated trending endpoint
+    const response = await fetch(`${MORALIS_DEEP_INDEX}/tokens/trending?chain=solana&limit=${limit}`, {
       method: 'GET',
       headers: {
         'X-API-Key': MORALIS_API_KEY || '',
@@ -678,30 +626,23 @@ export async function getTrendingTokens(
     });
 
     if (!response.ok) {
-      console.warn(`Trending tokens failed (${response.status}), using working fallback`);
-      return await makeApiRequest(`/token/mainnet/search`, { limit }, 'mainnet');
+      console.warn(`Trending tokens failed (${response.status})`);
+      return null;
     }
 
     const data = await response.json();
-    
-    if (data && Array.isArray(data.tokens)) {
-      // Sort by volume or market cap to simulate "trending"
-      const sortedTokens = data.tokens.sort((a: any, b: any) => {
-        const aVolume = a.volume_24h || a.market_cap || 0;
-        const bVolume = b.volume_24h || b.market_cap || 0;
-        return bVolume - aVolume;
-      });
 
-      return {
-        ...data,
-        tokens: sortedTokens.slice(0, limit)
-      };
+    // Normalize: ensure we return { tokens: [...] }
+    if (Array.isArray(data)) {
+      return { tokens: data.slice(0, limit) };
     }
-
+    if (data && Array.isArray(data.tokens)) {
+      return { ...data, tokens: data.tokens.slice(0, limit) };
+    }
     return data;
   } catch (error) {
     console.error('Error fetching trending tokens:', error);
-    return await makeApiRequest(`/token/mainnet/search`, { limit }, 'mainnet');
+    return null;
   }
 }
 
@@ -724,9 +665,9 @@ export async function getTokenMarketData(
 ) {
   try {
     const limit = params.limit || 100;
-    
-    // Use the working discovery tokens endpoint
-    const response = await fetch(`https://deep-index.moralis.io/api/v2.2/discovery/tokens?chain=solana&limit=${limit}`, {
+
+    // Use the working Deep Index trending endpoint as market list source
+    const response = await fetch(`${MORALIS_DEEP_INDEX}/tokens/trending?chain=solana&limit=${limit}`, {
       method: 'GET',
       headers: {
         'X-API-Key': MORALIS_API_KEY || '',
@@ -735,63 +676,45 @@ export async function getTokenMarketData(
     });
 
     if (!response.ok) {
-      console.warn(`Token market data failed (${response.status}), using working fallback`);
-      return await makeApiRequest(`/token/${network}/search`, { limit }, network);
+      console.warn(`Token market data (via trending) failed (${response.status})`);
+      return null;
     }
 
     const data = await response.json();
-    
-    if (data && Array.isArray(data.tokens)) {
-      let tokens = data.tokens;
 
-      // Apply filters
-      if (params.min_market_cap) {
-        tokens = tokens.filter((token: any) => (token.market_cap || 0) >= params.min_market_cap!);
-      }
-      
-      if (params.min_volume) {
-        tokens = tokens.filter((token: any) => (token.volume_24h || 0) >= params.min_volume!);
-      }
-
-      // Apply sorting
-      if (params.sort_by) {
-        tokens.sort((a: any, b: any) => {
-          let aValue = 0;
-          let bValue = 0;
-
-          switch (params.sort_by) {
-            case 'market_cap':
-              aValue = a.market_cap || 0;
-              bValue = b.market_cap || 0;
-              break;
-            case 'volume':
-              aValue = a.volume_24h || 0;
-              bValue = b.volume_24h || 0;
-              break;
-            case 'price_change_24h':
-              aValue = a.price_24h_percent_change || 0;
-              bValue = b.price_24h_percent_change || 0;
-              break;
-            case 'created_at':
-              aValue = a.created_at ? new Date(a.created_at).getTime() : 0;
-              bValue = b.created_at ? new Date(b.created_at).getTime() : 0;
-              break;
-          }
-
-          return params.sort_order === 'asc' ? aValue - bValue : bValue - aValue;
-        });
-      }
-
-      return {
-        ...data,
-        tokens: tokens.slice(0, limit)
-      };
+    // Normalize to a { tokens: [...] } structure
+    let tokens: any[] = [];
+    if (Array.isArray(data)) {
+      tokens = data.slice(0, limit);
+    } else if (data && Array.isArray(data.tokens)) {
+      tokens = data.tokens.slice(0, limit);
+    } else {
+      return { tokens: [] };
     }
 
-    return data;
+    // Best-effort sorting based on available fields
+    if (params.sort_by) {
+      tokens.sort((a: any, b: any) => {
+        const getVal = (t: any) => {
+          switch (params.sort_by) {
+            case 'market_cap': return t.market_cap ?? 0;
+            case 'volume': return t.volume_24h ?? t.volume ?? 0;
+            case 'price_change_24h': return t.price_24h_percent_change ?? t.price_change_24h ?? 0;
+            case 'created_at': return t.created_at ? new Date(t.created_at).getTime() : 0;
+            default: return 0;
+          }
+        };
+        const av = getVal(a);
+        const bv = getVal(b);
+        return params.sort_order === 'asc' ? av - bv : bv - av;
+      });
+    }
+
+    // Return normalized response
+    return { tokens };
   } catch (error) {
-    console.error('Error fetching token market data:', error);
-    return await makeApiRequest(`/token/${network}/search`, { limit: params.limit || 100 }, network);
+    console.error('Error fetching token market data (via trending):', error);
+    return null;
   }
 }
 
