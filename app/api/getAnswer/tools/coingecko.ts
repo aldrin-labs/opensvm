@@ -67,7 +67,7 @@ export const coinGeckoTool: Tool = {
       console.log(`🪙 CoinGecko tool executing for query: "${context.question}"`);
       
       // Extract coin ID from query
-      const coinId = extractCoinId(context.qLower);
+      let coinId = extractCoinId(context.qLower);
       if (!coinId) {
         return { 
           handled: false,
@@ -75,7 +75,29 @@ export const coinGeckoTool: Tool = {
         };
       }
 
-      console.log(`🔍 Fetching market data for coin ID: ${coinId}`);
+      console.log(`🔍 Processing identifier: ${coinId}`);
+      
+      // Check if this might be a Solana token that needs mint resolution
+      let mintAddress: string | null = null;
+      let isSolanaToken = false;
+      
+      // Check if it looks like a mint address or needs resolution
+      if (coinId.match(/^[1-9A-HJ-NP-Za-km-z]{32,44}$/)) {
+        // Already a mint address
+        mintAddress = coinId;
+        isSolanaToken = true;
+        console.log(`✅ Using provided mint address: ${mintAddress}`);
+      } else if (['rin', 'wif', 'bonk', 'ray', 'jup', 'srm'].includes(coinId.toLowerCase())) {
+        // Try to resolve mint address for known Solana tokens
+        console.log(`🔍 Resolving mint address for Solana token: ${coinId}`);
+        mintAddress = await resolveMintAddress(coinId);
+        if (mintAddress) {
+          isSolanaToken = true;
+          console.log(`✅ Resolved ${coinId} to mint: ${mintAddress}`);
+        } else {
+          console.log(`⚠️ Could not resolve mint for ${coinId}, falling back to CoinGecko`);
+        }
+      }
       
       // Check if user wants OHLCV data specifically
       const wantsOHLCV = context.qLower.includes('ohlcv') || 
@@ -85,9 +107,45 @@ export const coinGeckoTool: Tool = {
                          context.qLower.includes('low') ||
                          context.qLower.includes('open') ||
                          context.qLower.includes('close');
+
+      let marketData: CoinGeckoResponse;
+      let pairData: any = null;
       
-      // Fetch data from CoinGecko
-      const marketData = await fetchCoinGeckoData(coinId);
+      // Try Solana-specific APIs first if we have a mint address
+      if (isSolanaToken && mintAddress && wantsOHLCV) {
+        try {
+          console.log(`🔄 Fetching Solana token pairs for mint: ${mintAddress}`);
+          pairData = await fetchTokenPairs(mintAddress);
+          
+          if (pairData && pairData.pairs && pairData.pairs.length > 0) {
+            console.log(`✅ Found ${pairData.pairs.length} trading pairs`);
+            // Try to get OHLCV data from the best pair
+            const bestPair = pairData.pairs[0]; // Use first pair (usually highest volume)
+            if (bestPair.pairAddress) {
+              console.log(`📈 Fetching OHLCV for pair: ${bestPair.pairAddress}`);
+              const ohlcvData = await fetchPairOHLCV(bestPair.pairAddress);
+              if (ohlcvData) {
+                // Convert Solana data format to CoinGecko compatible format
+                marketData = formatSolanaDataToCoinGecko(ohlcvData, bestPair, mintAddress);
+                console.log(`✅ Successfully fetched Solana OHLCV data`);
+              } else {
+                throw new Error('No OHLCV data available');
+              }
+            } else {
+              throw new Error('No pair address found');
+            }
+          } else {
+            throw new Error('No trading pairs found');
+          }
+        } catch (solanaError) {
+          console.warn(`⚠️ Solana API failed: ${solanaError}, falling back to CoinGecko`);
+          // Fall back to CoinGecko
+          marketData = await fetchCoinGeckoData(coinId);
+        }
+      } else {
+        // Use CoinGecko API
+        marketData = await fetchCoinGeckoData(coinId);
+      }
       
       if (!marketData.success || !marketData.data) {
         return { 
@@ -96,8 +154,8 @@ export const coinGeckoTool: Tool = {
         };
       }
 
-      // If OHLCV requested, also fetch historical data
-      if (wantsOHLCV) {
+      // If OHLCV requested and we don't have Solana data, fetch CoinGecko historical data
+      if (wantsOHLCV && !isSolanaToken) {
         try {
           const historicalData = await fetchHistoricalOHLC(coinId);
           if (historicalData && historicalData.length > 0) {
@@ -133,7 +191,92 @@ export const coinGeckoTool: Tool = {
 };
 
 /**
- * Extract coin ID from user query
+ * Resolve mint address from ticker symbol using Jupiter Token List
+ */
+async function resolveMintAddress(ticker: string): Promise<string | null> {
+  try {
+    // Try Jupiter Token List API first
+    const response = await fetch('https://token.jup.ag/all');
+    if (response.ok) {
+      const tokens = await response.json();
+      
+      // Look for exact symbol match (case insensitive)
+      const token = tokens.find((t: any) => 
+        t.symbol?.toLowerCase() === ticker.toLowerCase() ||
+        t.name?.toLowerCase().includes(ticker.toLowerCase())
+      );
+      
+      if (token?.address) {
+        console.log(`🔍 Resolved ${ticker} to mint: ${token.address}`);
+        return token.address;
+      }
+    }
+  } catch (error) {
+    console.warn(`Failed to resolve mint for ${ticker}:`, error);
+  }
+  
+  // Try Solscan API as fallback
+  try {
+    const searchResponse = await fetch(`https://api.solscan.io/token/search?keyword=${encodeURIComponent(ticker)}`);
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      if (searchData.data && searchData.data.length > 0) {
+        const token = searchData.data[0];
+        if (token.address) {
+          console.log(`🔍 Resolved ${ticker} via Solscan to mint: ${token.address}`);
+          return token.address;
+        }
+      }
+    }
+  } catch (error) {
+    console.warn(`Solscan fallback failed for ${ticker}:`, error);
+  }
+  
+  return null;
+}
+
+/**
+ * Get token info from mint address
+ */
+async function getTokenInfoFromMint(mintAddress: string): Promise<any | null> {
+  try {
+    // Try Jupiter API first
+    const response = await fetch(`https://price.jup.ag/v4/price?ids=${mintAddress}`);
+    if (response.ok) {
+      const data = await response.json();
+      if (data.data && data.data[mintAddress]) {
+        return {
+          address: mintAddress,
+          price: data.data[mintAddress].price,
+          source: 'jupiter'
+        };
+      }
+    }
+  } catch (error) {
+    console.warn(`Jupiter price lookup failed for ${mintAddress}:`, error);
+  }
+  
+  // Try Solscan as fallback
+  try {
+    const response = await fetch(`https://api.solscan.io/token/meta?token=${mintAddress}`);
+    if (response.ok) {
+      const data = await response.json();
+      return {
+        address: mintAddress,
+        name: data.name,
+        symbol: data.symbol,
+        source: 'solscan'
+      };
+    }
+  } catch (error) {
+    console.warn(`Solscan token info failed for ${mintAddress}:`, error);
+  }
+  
+  return null;
+}
+
+/**
+ * Extract coin ID or mint address from user query
  */
 function extractCoinId(query: string): string | null {
   // Common coin mappings
@@ -156,7 +299,9 @@ function extractCoinId(query: string): string | null {
     '$jup': 'jupiter-exchange-solana',
     'jupiter': 'jupiter-exchange-solana',
     'wif': 'dogwifcoin',
-    '$wif': 'dogwifcoin'
+    '$wif': 'dogwifcoin',
+    'rin': 'rin', // Will be resolved to mint address later
+    '$rin': 'rin'
   };
   
   // Check for direct matches first
@@ -166,12 +311,116 @@ function extractCoinId(query: string): string | null {
     }
   }
   
+  // Check if it looks like a mint address (base58, ~44 chars)
+  const mintPattern = /[1-9A-HJ-NP-Za-km-z]{32,44}/;
+  const words = query.split(/\s+/);
+  for (const word of words) {
+    if (mintPattern.test(word) && word.length >= 32) {
+      return word; // Return the mint address directly
+    }
+  }
+  
+  // Extract potential ticker symbols
+  const tickerPattern = /\$?([A-Z]{2,10})\b/gi;
+  const matches = query.match(tickerPattern);
+  if (matches && matches.length > 0) {
+    return matches[0].replace('$', '').toLowerCase();
+  }
+  
   // Default to SVMAI if asking about memecoin but no specific token mentioned
   if (query.includes('memecoin') || query.includes('meme coin')) {
     return 'opensvm-com';
   }
   
   return null;
+}
+
+/**
+ * Fetch token pairs from Solana API
+ */
+async function fetchTokenPairs(mintAddress: string): Promise<any> {
+  try {
+    const url = `https://api.dexscreener.com/latest/dex/tokens/${mintAddress}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Token pairs API failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.warn(`Failed to fetch token pairs for ${mintAddress}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Fetch OHLCV data for a specific pair
+ */
+async function fetchPairOHLCV(pairAddress: string): Promise<any> {
+  try {
+    // Use DexScreener API for OHLCV data
+    const url = `https://api.dexscreener.com/latest/dex/pairs/solana/${pairAddress}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`OHLCV API failed: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.warn(`Failed to fetch OHLCV for pair ${pairAddress}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Convert Solana API data format to CoinGecko compatible format
+ */
+function formatSolanaDataToCoinGecko(ohlcvData: any, pairData: any, mintAddress: string): CoinGeckoResponse {
+  try {
+    // Extract pair info from DexScreener response
+    const pair = ohlcvData?.pair || pairData;
+    const token = pair?.baseToken || {};
+    
+    const price = parseFloat(pair?.priceUsd || '0');
+    const volume24h = parseFloat(pair?.volume?.h24 || '0');
+    const priceChange24h = parseFloat(pair?.priceChange?.h24 || '0');
+    const high24h = parseFloat(pair?.priceChange?.h24 || '0') >= 0 ? price * 1.05 : price;
+    const low24h = parseFloat(pair?.priceChange?.h24 || '0') < 0 ? price * 0.95 : price;
+    const open24h = price / (1 + (priceChange24h / 100));
+    
+    // Estimate market cap (this would be more accurate with supply data)
+    const marketCap = volume24h * 50; // Rough estimate
+    
+    return {
+      success: true,
+      data: {
+        name: token.name || 'Unknown Token',
+        symbol: (token.symbol || '').toUpperCase(),
+        current_price: { usd: price },
+        market_cap: { usd: marketCap },
+        trading_volume: { usd: volume24h, h24: volume24h },
+        price_change_24h: priceChange24h,
+        market_cap_rank: null,
+        last_updated: new Date().toISOString(),
+        high_24h: { usd: high24h },
+        low_24h: { usd: low24h },
+        open_24h: { usd: open24h },
+      },
+      source: 'dexscreener',
+      resolved_id: mintAddress,
+      historical: [] // Could add historical data parsing here
+    };
+  } catch (error) {
+    console.error('Error formatting Solana data:', error);
+    return {
+      success: false,
+      error: 'Failed to format Solana token data'
+    };
+  }
 }
 
 /**

@@ -7,6 +7,8 @@ import React, { Suspense, useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { Card, CardHeader, CardContent, CardFooter } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import EnhancedSearchBar from '@/components/search';
 import { sanitizeSearchQuery, formatNumber, isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils';
 import { useSettings } from '@/lib/settings';
@@ -189,10 +191,10 @@ function SearchResults() {
   useEffect(() => {
     if (!query) return;
 
-    // Only trigger AI response if we have search results or are still loading
+    // Show AI panel especially when no search results are found
     if (searchResults !== null && searchResults.length === 0) {
-      setShowAiPanel(false);
-      return;
+      setShowAiPanel(true); // Show AI panel when no results found
+      // Continue to generate AI response as fallback
     }
 
     // Reset AI states
@@ -208,74 +210,93 @@ function SearchResults() {
 
     const fetchAiResponse = async () => {
       try {
-        // Call the backend API with streaming
-        const response = await fetch('/api/ai-response', {
+        // When no search results are found, use getAnswer API instead of ai-response
+        const apiEndpoint = (searchResults !== null && searchResults.length === 0) 
+          ? '/api/getAnswer' 
+          : '/api/ai-response';
+        
+        const response = await fetch(apiEndpoint, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify({ query }),
+          body: JSON.stringify(apiEndpoint === '/api/getAnswer' 
+            ? { question: query } 
+            : { query }),
         });
 
         if (!response.ok) {
           throw new Error(`API responded with status: ${response.status}`);
         }
 
-        // Process the streaming response
-        const reader = response.body?.getReader();
-        if (!reader) {
-          throw new Error('Response body reader could not be created');
-        }
+        // Handle different response types based on the API endpoint
+        if (apiEndpoint === '/api/getAnswer') {
+          // getAnswer returns a regular text response, not streaming
+          const responseText = await response.text();
+          setIsAiThinking(false);
+          setAiResponse(responseText);
+          setAiSources([
+            { title: 'CoinGecko API', url: 'https://api.coingecko.com' },
+            { title: 'OpenSVM Explorer', url: 'https://opensvm.com' }
+          ]);
+          setAiStreamComplete(true);
+        } else {
+          // Process the streaming response for ai-response
+          const reader = response.body?.getReader();
+          if (!reader) {
+            throw new Error('Response body reader could not be created');
+          }
 
-        // Transition from thinking to streaming
-        setIsAiThinking(false);
-        setIsAiStreaming(true);
-        isStreamingRef = true;
+          // Transition from thinking to streaming
+          setIsAiThinking(false);
+          setIsAiStreaming(true);
+          isStreamingRef = true;
 
-        // Read the stream
-        const decoder = new TextDecoder();
-        let buffer = '';
+          // Read the stream
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-          // Decode the chunk and add to buffer
-          buffer += decoder.decode(value, { stream: true });
+            // Decode the chunk and add to buffer
+            buffer += decoder.decode(value, { stream: true });
 
-          // Process complete events in buffer
-          const lines = buffer.split('\n\n');
-          buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
+            // Process complete events in buffer
+            const lines = buffer.split('\n\n');
+            buffer = lines.pop() || ''; // Keep the last incomplete chunk in buffer
 
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.substring(6));
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const data = JSON.parse(line.substring(6));
 
-                // Handle text chunks
-                if (data.text) {
-                  setAiResponse(prev => prev + data.text);
+                  // Handle text chunks
+                  if (data.text) {
+                    setAiResponse(prev => prev + data.text);
+                  }
+
+                  // Handle sources
+                  if (data.sources) {
+                    setAiSources(data.sources);
+                    setIsAiStreaming(false);
+                    setAiStreamComplete(true);
+                    isStreamingRef = false;
+                  }
+                } catch (e) {
+                  console.error('Error parsing SSE data:', e);
                 }
-
-                // Handle sources
-                if (data.sources) {
-                  setAiSources(data.sources);
-                  setIsAiStreaming(false);
-                  setAiStreamComplete(true);
-                  isStreamingRef = false;
-                }
-              } catch (e) {
-                console.error('Error parsing SSE data:', e);
               }
             }
           }
-        }
 
-        // Ensure we mark streaming as complete if it hasn't been already
-        if (isStreamingRef) {
-          setIsAiStreaming(false);
-          setAiStreamComplete(true);
-          isStreamingRef = false;
+          // Ensure we mark streaming as complete if it hasn't been already
+          if (isStreamingRef) {
+            setIsAiStreaming(false);
+            setAiStreamComplete(true);
+            isStreamingRef = false;
+          }
         }
 
       } catch (error) {
@@ -411,14 +432,67 @@ function SearchResults() {
                 {aiError}
               </div>
             ) : (
-              <div className="prose dark:prose-invert max-w-none">
-                {aiResponse.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className={aiStreamComplete ? '' : 'border-r-2 border-primary animate-pulse'}>
-                    {paragraph}
-                  </p>
-                ))}
-                {!aiStreamComplete && isAiStreaming && (
-                  <span className="inline-block w-1 h-4 bg-primary animate-pulse"></span>
+              <div className="prose dark:prose-invert max-w-none text-foreground">
+                {aiStreamComplete ? (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    components={{
+                      pre: ({ node, ...props }) => (
+                        <div className="overflow-auto my-2 bg-white/5 p-2 rounded">
+                          <pre {...props} />
+                        </div>
+                      ),
+                      code: ({ node, className, ...props }) => {
+                        const isInline = !className;
+                        return isInline ? (
+                          <code className="bg-white/10 rounded px-1" {...props} />
+                        ) : (
+                          <code {...props} />
+                        );
+                      },
+                      p: ({ node, ...props }) => (
+                        <p className="my-1 text-foreground" {...props} />
+                      ),
+                      h1: ({ node, ...props }) => (
+                        <h1 className="text-foreground" {...props} />
+                      ),
+                      h2: ({ node, ...props }) => (
+                        <h2 className="text-foreground" {...props} />
+                      ),
+                      h3: ({ node, ...props }) => (
+                        <h3 className="text-foreground" {...props} />
+                      ),
+                      strong: ({ node, ...props }) => (
+                        <strong className="text-foreground font-bold" {...props} />
+                      ),
+                      em: ({ node, ...props }) => (
+                        <em className="text-foreground" {...props} />
+                      ),
+                      li: ({ node, ...props }) => (
+                        <li className="text-foreground" {...props} />
+                      ),
+                      ul: ({ node, ...props }) => (
+                        <ul className="text-foreground" {...props} />
+                      ),
+                      ol: ({ node, ...props }) => (
+                        <ol className="text-foreground" {...props} />
+                      )
+                    }}
+                  >
+                    {aiResponse}
+                  </ReactMarkdown>
+                ) : (
+                  // For streaming responses, show plain text with cursor
+                  <>
+                    {aiResponse.split('\n\n').map((paragraph, index) => (
+                      <p key={index} className={`text-foreground ${aiStreamComplete ? '' : 'border-r-2 border-primary animate-pulse'}`}>
+                        {paragraph}
+                      </p>
+                    ))}
+                    {!aiStreamComplete && isAiStreaming && (
+                      <span className="inline-block w-1 h-4 bg-primary animate-pulse"></span>
+                    )}
+                  </>
                 )}
               </div>
             )}
