@@ -1,4 +1,5 @@
 import { Tool, ToolContext, ToolResult } from "./types";
+import { isValidSolanaAddress } from "./utils";
 
 interface ExecutionStep {
     tool: string;
@@ -594,6 +595,16 @@ async function handleMoralisCall(method: string, input: string): Promise<any> {
     if (!process.env.MORALIS_API_KEY || !input) {
         return { error: 'Moralis not configured or no input' };
     }
+
+    // Validate Solana address before calling Moralis API to prevent 400 errors
+    if (!isValidSolanaAddress(input)) {
+        console.log(`[StableDynamic] Invalid Solana address for Moralis call: ${input}`);
+        return { 
+            error: `Invalid Solana address format: ${input}. Moralis requires a valid base58 Solana address.` 
+        };
+    }
+
+    console.log(`[StableDynamic] Making Moralis ${method} call for validated address: ${input}`);
 
     try {
         const moralisApi = await import('../../../../lib/moralis-api');

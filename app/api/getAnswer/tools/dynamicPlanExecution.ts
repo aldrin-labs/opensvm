@@ -1,4 +1,5 @@
 import { Tool, ToolContext, ToolResult } from "./types";
+import { isValidSolanaAddress } from "./utils";
 import Together from "together-ai";
 
 interface StoryDrivenPlanStep {
@@ -907,6 +908,17 @@ async function handleMoralisCallWithNarrative(step: StoryDrivenPlanStep, input: 
     if (!process.env.MORALIS_API_KEY) {
         console.log(`   ⚠️ Moralis Oracle unavailable - no API key provided`);
         return { error: 'Moralis API key not configured' };
+    }
+
+    // Validate Solana address before calling Moralis APIs
+    if (!isValidSolanaAddress(input)) {
+        console.warn(`   ❌ Invalid Solana address detected for Moralis call: "${input}"`);
+        return {
+            error: `Invalid Solana address: "${input}". Moralis APIs require valid Solana addresses.`,
+            tool: step.tool,
+            address: input,
+            validationFailed: true
+        };
     }
 
     try {

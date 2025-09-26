@@ -1,5 +1,5 @@
 import { Tool, ToolContext, ToolResult } from "./types";
-import { extractFirstSolanaAddress } from "./utils";
+import { extractFirstSolanaAddress, isValidSolanaAddress } from "./utils";
 import {
     getPortfolio,
     getTokenBalances,
@@ -46,6 +46,24 @@ export const moralisAnalysisTool: Tool = {
 
         if (!addr) {
             return { handled: false };
+        }
+
+        // Validate the address before making Moralis API calls
+        if (!isValidSolanaAddress(addr)) {
+            console.warn(`❌ Invalid Solana address detected: "${addr}"`);
+            return { 
+                handled: true,
+                response: new Response(
+                    `Invalid Solana address: "${addr}". Please provide a valid Solana address (32-44 base58 characters).`,
+                    {
+                        status: 400,
+                        headers: {
+                            "Content-Type": "text/plain; charset=utf-8",
+                            "Cache-Control": "no-cache",
+                        }
+                    }
+                )
+            };
         }
 
         const partialData: any = {

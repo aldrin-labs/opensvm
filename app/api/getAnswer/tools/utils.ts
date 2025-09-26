@@ -2,16 +2,72 @@
  * Utility functions for address and transaction signature extraction
  */
 
+import { PublicKey } from '@solana/web3.js';
+
+/**
+ * Validates if a string is a valid Solana address
+ * @param address The address string to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidSolanaAddress(address: string): boolean {
+    if (!address || typeof address !== 'string') {
+        return false;
+    }
+
+    // Check length constraints (32-44 chars for base58 encoded addresses)
+    if (address.length < 32 || address.length > 44) {
+        return false;
+    }
+
+    // Check base58 character set
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    if (!base58Regex.test(address)) {
+        return false;
+    }
+
+    // Try to decode as PublicKey to ensure it's a valid Solana address
+    try {
+        new PublicKey(address);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+/**
+ * Validates if a string is a valid Solana transaction signature
+ * @param signature The signature string to validate
+ * @returns true if valid, false otherwise
+ */
+export function isValidSolanaSignature(signature: string): boolean {
+    if (!signature || typeof signature !== 'string') {
+        return false;
+    }
+
+    // Transaction signatures are typically 87-88 characters in base58
+    if (signature.length < 85 || signature.length > 90) {
+        return false;
+    }
+
+    // Check base58 character set
+    const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+    return base58Regex.test(signature);
+}
+
 export function extractFirstSolanaAddress(text: string): string | null {
     // Check for transaction signatures first (87-88 chars, base58)
     const txSigMatch = text.match(/\b[1-9A-HJ-NP-Za-km-z]{85,90}\b/);
-    if (txSigMatch) {
+    if (txSigMatch && isValidSolanaSignature(txSigMatch[0])) {
         return txSigMatch[0];
     }
 
     // Then check for addresses (32-44 chars, base58)
     const addrMatch = text.match(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/);
-    return addrMatch ? addrMatch[0] : null;
+    if (addrMatch && isValidSolanaAddress(addrMatch[0])) {
+        return addrMatch[0];
+    }
+
+    return null;
 }
 
 export function extractAllTransactionSignatures(text: string): string[] {
