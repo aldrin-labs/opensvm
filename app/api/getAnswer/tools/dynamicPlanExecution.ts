@@ -1281,17 +1281,15 @@ async function analyzeDeFiEcosystem(conn: any): Promise<any> {
 
         // Step 2: Moralis market trends analysis
         try {
-            const { getTopGainers, getTopTokens, getTrendingTokens } = await import('../../../../lib/moralis-api');
+            const { getTopGainers, getTrendingTokens } = await import('../../../../lib/moralis-api');
 
-            const [topGainers, topTokens, trending] = await Promise.allSettled([
+            const [topGainers, trending] = await Promise.allSettled([
                 getTopGainers(10, 'mainnet'),
-                getTopTokens(20),
                 getTrendingTokens(10, '24h')
             ]);
 
             ecosystem.marketTrends = {
                 topGainers: topGainers.status === 'fulfilled' ? topGainers.value : null,
-                topTokens: topTokens.status === 'fulfilled' ? topTokens.value : null,
                 trending: trending.status === 'fulfilled' ? trending.value : null
             };
         } catch (error) {
@@ -1412,37 +1410,37 @@ async function analyzeDeFiMarketTrends(): Promise<any> {
     try {
         console.log('Analyzing DeFi market trends with Moralis API...');
         const trends = {
-            newListings: null as any,
             marketData: null as any,
             topPerformers: null as any,
+            trending: null as any,
             insights: [] as string[]
         };
 
         try {
-            const { getNewListings, getTokenMarketData, getTopGainers } = await import('../../../../lib/moralis-api');
+            const { getTrendingTokens, getTokenMarketData, getTopGainers } = await import('../../../../lib/moralis-api');
 
-            const [newListings, marketData, topGainers] = await Promise.allSettled([
-                getNewListings(20, 7, 'mainnet'),
+            const [marketData, topGainers, trending] = await Promise.allSettled([
                 getTokenMarketData({ limit: 50, sort_by: 'volume', sort_order: 'desc' }, 'mainnet'),
-                getTopGainers(15, 'mainnet')
+                getTopGainers(15, 'mainnet'),
+                getTrendingTokens(15, '24h')
             ]);
 
-            trends.newListings = newListings.status === 'fulfilled' ? newListings.value : null;
             trends.marketData = marketData.status === 'fulfilled' ? marketData.value : null;
             trends.topPerformers = topGainers.status === 'fulfilled' ? topGainers.value : null;
+            trends.trending = trending.status === 'fulfilled' ? trending.value : null;
 
-            if (trends.newListings && Array.isArray(trends.newListings)) {
-                trends.insights.push(`${trends.newListings.length} new tokens listed in the past 7 days`);
-            }
+            // Compute insights based on available Moralis data
+            const performers = Array.isArray(trends.topPerformers)
+                ? trends.topPerformers
+                : trends.topPerformers?.tokens;
 
-            if (trends.topPerformers && Array.isArray(trends.topPerformers)) {
-                const avgGain = trends.topPerformers
-                    .slice(0, 5)
-                    .reduce((acc, token) => acc + (token.priceChange24h || 0), 0) / 5;
+            if (Array.isArray(performers) && performers.length) {
+                const top5 = performers.slice(0, 5);
+                const avgGain = top5.reduce((acc, t) => acc + (t.price_24h_percent_change ?? t.priceChange24h ?? 0), 0) / top5.length;
                 trends.insights.push(`Top 5 gainers averaging ${avgGain.toFixed(2)}% 24h change`);
             }
 
-            if (trends.marketData && trends.marketData.tokens) {
+            if (trends.marketData && Array.isArray(trends.marketData.tokens)) {
                 trends.insights.push(`Market analysis includes ${trends.marketData.tokens.length} tokens by volume`);
             }
 
@@ -1476,7 +1474,8 @@ async function synthesizeEpicResults(
     console.log(`📖 Synthesizing ${wantsEverything ? 'EPIC' : 'standard'} response...`);
 
     if (!process.env.TOGETHER_API_KEY) {
-        throw new Error("TOGETHER_API_KEY not configured for synthesis");
+        console.warn("TOGETHER_API_KEY not configured; using narrative fallback synthesis");
+        return generateNarrativeFallback(results, question, requestedCount);
     }
 
     // Determine response size based on user intent

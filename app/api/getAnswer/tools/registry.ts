@@ -6,6 +6,7 @@ import { accountAnalysisTool } from "./accountAnalysis";
 import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
 import { stableDynamicExecutionTool } from "./stableDynamicExecution";
 import { aiPlanExecutionTool } from "./aiPlanExecution";
+// import { moralisAnalysisTool } from "./moralisAnalysisNew"; // TODO: Fix moralis-api module import
 
 export class ToolRegistry {
     private tools: Tool[] = [
@@ -13,6 +14,7 @@ export class ToolRegistry {
         aiPlanExecutionTool, // PRIMARY: AI-powered tool selection and execution
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
+        // moralisAnalysisTool, // FALLBACK: Moralis API-based portfolio/token analysis (TODO: Fix import)
         dynamicPlanExecutionTool, // FALLBACK: Hardcoded planning logic
         stableDynamicExecutionTool, // FALLBACK: Stable version with hardcoded fallbacks if dynamic fails
         accountAnalysisTool, // Fallback for simpler account queries
