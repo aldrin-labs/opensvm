@@ -179,9 +179,7 @@ Moralis API (Solana Gateway & Deep Index)
 - getNFTCollectionItems(address, { limit?, nftMetadata? })
 - getComprehensiveBlockchainData(query)
 - getTopTokens(limit?)           (note: currently returns null; path deprecated upstream)
-- getTopGainers(limit?)
 - getNewListings(limit?, daysBack?) (note: currently returns null; path unsupported upstream)
-- getTrendingTokens(limit?, timeframe?)
 - getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
 - clearCache()
 
@@ -348,15 +346,6 @@ Method Reference (Moralis API - Solana Gateway & Deep Index)
   • Output: Domain list / { address }.
   • When to call: Reverse lookups and vanity resolution.
 
-- getTrendingTokens(limit?, timeframe?)
-  • Description: Moralis Deep Index trending list for Solana.
-  • Output: { tokens: [...] } normalized list (we enforce { tokens }).
-  • When to call: Market pulse and discovery.
-
-- getTopGainers(limit?)
-  • Description: Derived via trending; best-effort list of top gainers.
-  • Output: { tokens: [...] } normalized list (best available).
-  • When to call: Momentum screens; may vary by upstream.
 
 - getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
   • Description: Market list via Deep Index trending, sorted best-effort.

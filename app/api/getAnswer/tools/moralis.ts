@@ -139,10 +139,6 @@ All endpoints require API key authentication via header: \`X-API-Key: YOUR_API_K
 **URL**: \`https://deep-index.moralis.io/api/v2.2/discovery/tokens\`
 **Description**: Search tokens with advanced filtering options
 
-### Get Trending Tokens
-**Method**: \`getTrendingTokens\`
-**URL**: \`https://deep-index.moralis.io/api/v2.2/tokens/trending\`
-**Description**: Get currently trending tokens by volume/activity
 
 ### Search Tokens
 **Method**: \`searchTokens\`
@@ -225,7 +221,7 @@ Advanced analytics and discovery endpoints requiring premium API access:
 - \`{network}\`: "mainnet" or "devnet"
 - \`{address}\`: Token/wallet address (base58)
 - \`{pairAddress}\`: Trading pair contract address
-- \`{exchange}\`: Exchange name (e.g., "pump-fun")
+- \`{exchange}\`: Exchange name (e.g., "pumpfun")
 - \`timeframe\`: "1m", "5m", "15m", "1h", "4h", "1d", "1w"
 - \`chain\`: "solana", "eth", etc.
 

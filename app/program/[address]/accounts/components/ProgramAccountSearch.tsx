@@ -88,15 +88,16 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
   // Initialize viewport tracker
   useEffect(() => {
     if (tableRef.current) {
-      viewportTracker.current.initialize(tableRef.current);
+      const tracker = viewportTracker.current;
+      tracker.initialize(tableRef.current);
       
-      const unsubscribe = viewportTracker.current.subscribe((stats) => {
+      const unsubscribe = tracker.subscribe((stats) => {
         setViewportStats(stats);
       });
 
       return () => {
         unsubscribe();
-        viewportTracker.current.destroy();
+        tracker.destroy();
       };
     }
   }, []);
@@ -299,7 +300,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
     if (programId && searchType === 'all') {
       searchAccounts();
     }
-  }, [programId]);
+  }, [programId, searchType, searchAccounts]);
 
   // Get current wallet from wallet context
   useEffect(() => {

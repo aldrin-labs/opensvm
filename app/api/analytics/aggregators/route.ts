@@ -29,108 +29,108 @@ async function fetchAggregatorData(): Promise<AggregatorMetrics[]> {
 
     // Comprehensive list of verified Solana aggregator protocols
     const solanaAggregators = [
-      { 
-        name: 'Jupiter', 
-        slug: 'jupiter-exchange', 
-        type: 'dex' as const, 
+      {
+        name: 'Jupiter',
+        slug: 'jupiter-exchange',
+        type: 'dex' as const,
         description: 'Key liquidity aggregator for Solana with best route finding',
         website: 'https://jup.ag'
       },
-      { 
-        name: 'Marinade Finance', 
-        slug: 'marinade-finance', 
-        type: 'multi' as const, 
+      {
+        name: 'Marinade Finance',
+        slug: 'marinade-finance',
+        type: 'multi' as const,
         description: 'Liquid staking protocol and yield aggregator',
         website: 'https://marinade.finance'
       },
-      { 
-        name: 'Mango Markets', 
-        slug: 'mango-markets', 
-        type: 'multi' as const, 
+      {
+        name: 'Mango Markets',
+        slug: 'mango-markets',
+        type: 'multi' as const,
         description: 'Decentralized trading platform with margin and perps',
         website: 'https://mango.markets'
       },
-      { 
-        name: 'Solend', 
-        slug: 'solend', 
-        type: 'lending' as const, 
+      {
+        name: 'Solend',
+        slug: 'solend',
+        type: 'lending' as const,
         description: 'Algorithmic lending and borrowing protocol',
         website: 'https://solend.fi'
       },
-      { 
-        name: 'Tulip Protocol', 
-        slug: 'tulip', 
-        type: 'yield' as const, 
+      {
+        name: 'Tulip Protocol',
+        slug: 'tulip',
+        type: 'yield' as const,
         description: 'Yield aggregation protocol for automated farming',
         website: 'https://tulip.garden'
       },
-      { 
-        name: 'Kamino Finance', 
-        slug: 'kamino-finance', 
-        type: 'yield' as const, 
+      {
+        name: 'Kamino Finance',
+        slug: 'kamino-finance',
+        type: 'yield' as const,
         description: 'Automated liquidity management and yield optimization',
         website: 'https://kamino.finance'
       },
-      { 
-        name: 'Drift Protocol', 
-        slug: 'drift-protocol', 
-        type: 'multi' as const, 
+      {
+        name: 'Drift Protocol',
+        slug: 'drift-protocol',
+        type: 'multi' as const,
         description: 'Perpetual futures exchange with advanced trading features',
         website: 'https://drift.trade'
       },
-      { 
-        name: 'Francium', 
-        slug: 'francium', 
-        type: 'yield' as const, 
+      {
+        name: 'Francium',
+        slug: 'francium',
+        type: 'yield' as const,
         description: 'DeFi platform with yield farming and leveraged trading',
         website: 'https://francium.io'
       },
-      { 
-        name: 'Friktion', 
-        slug: 'friktion', 
-        type: 'yield' as const, 
+      {
+        name: 'Friktion',
+        slug: 'friktion',
+        type: 'yield' as const,
         description: 'Structured products and yield generation platform',
         website: 'https://friktion.fi'
       },
-      { 
-        name: 'Lifinity', 
-        slug: 'lifinity', 
-        type: 'dex' as const, 
+      {
+        name: 'Lifinity',
+        slug: 'lifinity',
+        type: 'dex' as const,
         description: 'Proactive Market Maker with concentrated liquidity',
         website: 'https://lifinity.io'
       },
-      { 
-        name: 'Quarry Protocol', 
-        slug: 'quarry-protocol', 
-        type: 'yield' as const, 
+      {
+        name: 'Quarry Protocol',
+        slug: 'quarry-protocol',
+        type: 'yield' as const,
         description: 'Yield farming and liquidity mining aggregator',
         website: 'https://quarry.so'
       },
-      { 
-        name: 'Lido for Solana', 
-        slug: 'lido-staked-sol', 
-        type: 'multi' as const, 
+      {
+        name: 'Lido for Solana',
+        slug: 'lido-staked-sol',
+        type: 'multi' as const,
         description: 'Liquid staking solution for Solana',
         website: 'https://solana.lido.fi'
       },
-      { 
-        name: 'Sunny Aggregator', 
-        slug: 'sunny-aggregator', 
-        type: 'yield' as const, 
+      {
+        name: 'Sunny Aggregator',
+        slug: 'sunny-aggregator',
+        type: 'yield' as const,
         description: 'Yield farming aggregator and portfolio manager',
         website: 'https://sunny.ag'
       },
-      { 
-        name: 'Parrot Protocol', 
-        slug: 'parrot-protocol', 
-        type: 'multi' as const, 
+      {
+        name: 'Parrot Protocol',
+        slug: 'parrot-protocol',
+        type: 'multi' as const,
         description: 'Synthetic assets and lending aggregation platform',
         website: 'https://parrot.fi'
       },
-      { 
-        name: 'Hubble Protocol', 
-        slug: 'hubble-protocol', 
-        type: 'lending' as const, 
+      {
+        name: 'Hubble Protocol',
+        slug: 'hubble-protocol',
+        type: 'lending' as const,
         description: 'Borrowing protocol for stablecoin minting',
         website: 'https://hubbleprotocol.io'
       }
@@ -140,7 +140,7 @@ async function fetchAggregatorData(): Promise<AggregatorMetrics[]> {
     let defiLlamaData: any[] = [];
     try {
       const defiLlamaResponse = await fetch('https://api.llama.fi/protocols');
-      
+
       if (defiLlamaResponse.ok) {
         defiLlamaData = await defiLlamaResponse.json();
       }
@@ -150,12 +150,12 @@ async function fetchAggregatorData(): Promise<AggregatorMetrics[]> {
 
     // Process each aggregator
     for (const aggregator of solanaAggregators) {
-      const protocol = defiLlamaData.find((p: any) => 
-        p.slug === aggregator.slug || 
+      const protocol = defiLlamaData.find((p: any) =>
+        p.slug === aggregator.slug ||
         p.name.toLowerCase().includes(aggregator.name.toLowerCase()) ||
         p.slug.includes(aggregator.name.toLowerCase().replace(' ', '-'))
       );
-      
+
       let tvl = 0;
       let volume24h = 0;
       let trades24h = 0;
@@ -177,7 +177,7 @@ async function fetchAggregatorData(): Promise<AggregatorMetrics[]> {
         slippage = Math.random() * 0.3 + 0.05; // 0.05-0.35% slippage
         gasOptimization = Math.floor(Math.random() * 20) + 80; // 80-100% gas optimization
         userExperience = Math.floor(Math.random() * 20) + 75; // 75-95% user experience
-        
+
         // Calculate market share based on TVL
         const totalSolanaTVL = 5000000000; // Estimate $5B total Solana DeFi TVL
         marketShare = (tvl / totalSolanaTVL) * 100;

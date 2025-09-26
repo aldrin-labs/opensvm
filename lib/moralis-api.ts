@@ -4,8 +4,6 @@ import axios from 'axios';
 // Moralis API configuration
 const MORALIS_API_KEY = process.env.MORALIS_API_KEY;
 const MORALIS_BASE_URL = 'https://solana-gateway.moralis.io';
-const MORALIS_DEEP_INDEX = 'https://deep-index.moralis.io/api/v2.2';
-
 // Network type for Solana
 type SolanaNetwork = 'mainnet' | 'devnet';
 
@@ -551,49 +549,6 @@ export async function getTopTokens(limit: number = 100) {
   }
 }
 
-/**
- * Get top token gainers using working gateway endpoints
- * @param limit Number of tokens to return (default: 50)  
- * @param network The Solana network (mainnet or devnet)
- * @returns Top gaining tokens
- */
-export async function getTopGainers(limit: number = 50, network: SolanaNetwork = DEFAULT_NETWORK) {
-  try {
-    // Use working gateway endpoint - get new tokens by pump.fun as best proxy
-    const response = await makeApiRequest(`/token/{network}/exchange/pump-fun/new`, { limit }, network);
-    
-    if (!response || !response.result) {
-      console.warn('Top gainers endpoint not available - returning mock data');
-      return {
-        tokens: [
-          {
-            tokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-            name: 'USD Coin',
-            symbol: 'USDC',
-            priceUsd: '1.00',
-            priceChange24h: '0.1%'
-          }
-        ]
-      };
-    }
-
-    // Transform pump.fun new tokens response to gainers format
-    const tokens = response.result.slice(0, limit).map((token: any) => ({
-      tokenAddress: token.tokenAddress,
-      name: token.name || 'Unknown',
-      symbol: token.symbol || '???',
-      priceUsd: token.priceUsd || '0',
-      priceChange24h: '+5.2%', // Mock positive change for "gainers"
-      logo: token.logo,
-      decimals: token.decimals
-    }));
-
-    return { tokens };
-  } catch (error) {
-    console.error('Error fetching top gainers:', error);
-    return null;
-  }
-}
 
 /**
  * Get newly listed tokens using discovery API
@@ -604,79 +559,13 @@ export async function getTopGainers(limit: number = 50, network: SolanaNetwork =
  */
 export async function getNewListings(limit: number = 50, daysBack: number = 7, network: SolanaNetwork = DEFAULT_NETWORK) {
   try {
-    console.warn('Moralis new listings via gateway (pump-fun) not supported; returning null');
+    console.warn('Moralis new listings via gateway (pumpfun) not supported; returning null');
     return null;
   } catch {
     return null;
   }
 }
 
-/**
- * Get trending tokens using working gateway endpoints
- * @param limit Number of tokens to return (default: 50)
- * @param timeframe Timeframe for trending data ('1h', '24h', '7d')
- * @returns Trending tokens
- */
-export async function getTrendingTokens(
-  limit: number = 50,
-  timeframe: '1h' | '24h' | '7d' = '24h'
-) {
-  try {
-    // Use working gateway endpoint - combine new and graduated pump.fun tokens
-    const [newTokens, graduatedTokens] = await Promise.allSettled([
-      makeApiRequest(`/token/{network}/exchange/pump-fun/new`, { limit: Math.floor(limit/2) }, 'mainnet'),
-      makeApiRequest(`/token/{network}/exchange/pump-fun/graduated`, { limit: Math.floor(limit/2) }, 'mainnet')
-    ]);
-
-    const tokens: any[] = [];
-    
-    // Add new tokens if available
-    if (newTokens.status === 'fulfilled' && newTokens.value?.result) {
-      tokens.push(...newTokens.value.result.map((token: any) => ({
-        ...token,
-        trending_score: 95, // High score for new tokens
-        category: 'new'
-      })));
-    }
-
-    // Add graduated tokens if available  
-    if (graduatedTokens.status === 'fulfilled' && graduatedTokens.value?.result) {
-      tokens.push(...graduatedTokens.value.result.map((token: any) => ({
-        ...token,
-        trending_score: 85, // Good score for graduated tokens
-        category: 'graduated'
-      })));
-    }
-
-    // If no tokens found, return well-known tokens as fallback
-    if (tokens.length === 0) {
-      console.warn('No trending tokens available - returning well-known tokens');
-      return {
-        tokens: [
-          {
-            tokenAddress: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-            name: 'USD Coin',
-            symbol: 'USDC',
-            trending_score: 100,
-            category: 'established'
-          },
-          {
-            tokenAddress: 'So11111111111111111111111111111111111111112', 
-            name: 'Wrapped SOL',
-            symbol: 'SOL',
-            trending_score: 98,
-            category: 'native'
-          }
-        ]
-      };
-    }
-
-    return { tokens: tokens.slice(0, limit) };
-  } catch (error) {
-    console.error('Error fetching trending tokens:', error);
-    return null;
-  }
-}
 
 /**
  * Get comprehensive token market data using working gateway endpoints
@@ -700,9 +589,9 @@ export async function getTokenMarketData(
 
     // Use working gateway endpoints - get comprehensive token data from pump.fun
     const [newTokens, bondingTokens, graduatedTokens] = await Promise.allSettled([
-      makeApiRequest(`/token/{network}/exchange/pump-fun/new`, { limit: Math.floor(limit/3) }, network),
-      makeApiRequest(`/token/{network}/exchange/pump-fun/bonding`, { limit: Math.floor(limit/3) }, network), 
-      makeApiRequest(`/token/{network}/exchange/pump-fun/graduated`, { limit: Math.floor(limit/3) }, network)
+      makeApiRequest(`/token/{network}/exchange/pumpfun/new`, { limit: Math.floor(limit / 3) }, network),
+      makeApiRequest(`/token/{network}/exchange/pumpfun/bonding`, { limit: Math.floor(limit / 3) }, network),
+      makeApiRequest(`/token/{network}/exchange/pumpfun/graduated`, { limit: Math.floor(limit / 3) }, network)
     ]);
 
     let tokens: any[] = [];
@@ -718,7 +607,7 @@ export async function getTokenMarketData(
     tokens = tokens.map((token: any) => ({
       tokenAddress: token.tokenAddress,
       name: token.name || 'Unknown Token',
-      symbol: token.symbol || '???', 
+      symbol: token.symbol || '???',
       logo: token.logo,
       decimals: token.decimals,
       priceNative: token.priceNative || '0',
@@ -765,6 +654,7 @@ export async function getTokenMarketData(
   }
 }
 
+
 /**
  * Clear the API cache
  */
@@ -795,9 +685,7 @@ const MoralisAPI = {
   getNFTCollectionItems,
   getComprehensiveBlockchainData,
   getTopTokens,
-  getTopGainers,
   getNewListings,
-  getTrendingTokens,
   getTokenMarketData,
   clearCache
 };

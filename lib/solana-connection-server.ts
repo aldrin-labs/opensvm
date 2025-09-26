@@ -118,7 +118,6 @@ class ProxyConnection extends Connection {
 class ConnectionPool {
     private connections: Map<string, ProxyConnection> = new Map();
     private endpoints: string[] = [];
-    private currentEndpointIndex = 0;
 
     constructor() {
         this.endpoints = getRpcEndpoints();
@@ -134,7 +133,6 @@ class ConnectionPool {
             }
             return this.connections.get(endpoint)!;
         }
-
         // Ensure we have endpoints available
         if (this.endpoints.length === 0) {
             console.error('[RPC Pool] No RPC endpoints configured! Falling back to proxy');
@@ -149,11 +147,11 @@ class ConnectionPool {
             return this.connections.get(fallbackEndpoint)!;
         }
 
-        // Round-robin load balancing with proper rotation
-        const selectedEndpoint = this.endpoints[this.currentEndpointIndex];
-        this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
+        // Random endpoint selection for load balancing
+        const randomIndex = Math.floor(Math.random() * this.endpoints.length);
+        const selectedEndpoint = this.endpoints[randomIndex];
 
-        console.log(`[RPC Pool] Selected OpenSVM endpoint ${this.currentEndpointIndex}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
+        console.log(`[RPC Pool] Selected OpenSVM endpoint ${randomIndex + 1}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
 
         if (!this.connections.has(selectedEndpoint)) {
             this.connections.set(selectedEndpoint, new ProxyConnection(selectedEndpoint));

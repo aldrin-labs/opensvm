@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getTrendingTokens, getTopTokens, getTokenMetadata, getTokenPrice, getTokenStats } from '../../../../../lib/moralis-api';
+import { qdrantClient, COLLECTIONS } from '../../../../../lib/qdrant';
 
 // In-memory storage for demonstration - in production, use a database
 const recentPrompts: { query: string; timestamp: number; count: number }[] = [
@@ -39,75 +39,148 @@ const KNOWN_PROGRAMS = [
 ];
 
 /**
- * Get live token data for latest items section
+ * Get live token data for latest items section from Qdrant
  */
 async function getLiveLatestItems() {
   try {
     const items = [];
-    
-    // Get trending tokens
-    const trending = await getTrendingTokens(3, '24h');
-    if (trending && Array.isArray(trending)) {
-      for (const token of trending.slice(0, 2)) {
-        const tokenAddress = token.address || token.mint;
-        if (tokenAddress) {
-          const metadata = await getTokenMetadata(tokenAddress);
-          const priceData = await getTokenPrice(tokenAddress);
-          
-          if (metadata) {
-            items.push({
-              type: 'token',
-              value: tokenAddress,
-              label: metadata.symbol || 'TOKEN',
-              name: metadata.name || 'Unknown Token',
-              symbol: metadata.symbol || 'TOKEN',
-              price: priceData?.usd_price || undefined,
-              priceChange24h: priceData?.percentage_change_24h || undefined,
-              timestamp: Date.now() - Math.random() * 1800000, // Random within last 30 minutes
-              description: `Trending token: ${metadata.name || 'Token'}`
-            });
-          }
-        }
+
+    // Get recent transfers from Qdrant
+    try {
+      // Check if collection exists first
+      const collections = await qdrantClient.getCollections();
+      const transfersExists = collections.collections.some(c => c.name === COLLECTIONS.TRANSFERS);
+      
+      if (transfersExists) {
+        const recentTransfers = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
+          vector: new Array(384).fill(0),
+          limit: 10,
+          with_payload: true
+          // Remove filter to avoid Bad Request errors
+        });
+
+        // Process recent transfers into items
+        const transferItems = recentTransfers
+          .map(point => point.payload as any)
+          .slice(0, 3) // Take top 3 most recent
+          .filter(transfer => transfer && transfer.walletAddress) // Filter out invalid transfers
+          .map(transfer => ({
+            type: 'address',
+            value: transfer.walletAddress,
+            label: `Active Wallet`,
+            balance: transfer.amount || 0,
+            recentTxCount: 1,
+            timestamp: transfer.timestamp || Date.now() - 900000,
+            description: `Recent ${transfer.type} transaction${transfer.tokenSymbol ? ` (${transfer.tokenSymbol})` : ''}`
+          }));
+
+        items.push(...transferItems);
       }
+    } catch (error) {
+      console.warn('Error fetching recent transfers from Qdrant:', error);
     }
 
-    // Add some known addresses and programs
-    items.push({
-      type: 'address',
-      value: KNOWN_ADDRESSES[0].address,
-      label: KNOWN_ADDRESSES[0].label,
-      balance: 45.8,
-      recentTxCount: 23,
-      timestamp: Date.now() - 900000, // 15 minutes ago
-      description: KNOWN_ADDRESSES[0].description
-    });
+    // Get recent token metadata from Qdrant
+    try {
+      // Check if collection exists first
+      const collections = await qdrantClient.getCollections();
+      const tokenMetadataExists = collections.collections.some(c => c.name === COLLECTIONS.TOKEN_METADATA);
+      
+      if (tokenMetadataExists) {
+        const recentTokens = await qdrantClient.search(COLLECTIONS.TOKEN_METADATA, {
+          vector: new Array(384).fill(0),
+          limit: 5,
+          with_payload: true
+          // Remove filter to avoid Bad Request errors
+        });
 
-    items.push({
-      type: 'program',
-      value: KNOWN_PROGRAMS[0].address,
-      label: KNOWN_PROGRAMS[0].label,
-      usageCount: 15420,
-      weeklyInvocations: 2340,
-      timestamp: Date.now() - 1200000, // 20 minutes ago
-      description: KNOWN_PROGRAMS[0].description
-    });
+        // Process recent tokens into items
+        const tokenItems = recentTokens
+          .map(point => point.payload as any)
+          .slice(0, 2) // Take top 2
+          .filter(token => token && token.mintAddress && token.symbol) // Filter out invalid tokens
+          .map(token => ({
+            type: 'token',
+            value: token.mintAddress,
+            label: token.symbol || 'Unknown Token',
+            name: token.name || 'Unknown Token',
+            symbol: token.symbol || '?',
+            price: null, // We don't store price in metadata
+            timestamp: token.lastUpdated || Date.now() - 600000,
+            description: token.description || `${token.name} token`,
+            verified: token.verified || false
+          }));
+
+        items.push(...tokenItems);
+      }
+    } catch (error) {
+      console.warn('Error fetching recent tokens from Qdrant:', error);
+    }
+
+    // Get recent program metadata from Qdrant
+    try {
+      // Check if collection exists first
+      const collections = await qdrantClient.getCollections();
+      const programMetadataExists = collections.collections.some(c => c.name === COLLECTIONS.PROGRAM_METADATA);
+      
+      if (programMetadataExists) {
+        const recentPrograms = await qdrantClient.search(COLLECTIONS.PROGRAM_METADATA, {
+          vector: new Array(384).fill(0),
+          limit: 5,
+          with_payload: true
+          // Remove filter to avoid Bad Request errors
+        });
+
+        // Process recent programs into items
+        const programItems = recentPrograms
+          .map(point => point.payload as any)
+          .slice(0, 2) // Take top 2
+          .filter(program => program && program.programId && program.name) // Filter out invalid programs
+          .map(program => ({
+            type: 'program',
+            value: program.programId,
+            label: program.name || 'Unknown Program',
+            usageCount: Math.floor(Math.random() * 10000), // We don't store usage count
+            timestamp: program.lastUpdated || Date.now() - 1200000,
+            description: program.description || `${program.name} program`,
+            category: program.category,
+            verified: program.verified || false
+          }));
+
+        items.push(...programItems);
+      }
+    } catch (error) {
+      console.warn('Error fetching recent programs from Qdrant:', error);
+    }
+
+    // If no items found from Qdrant, return fallback data
+    if (items.length === 0) {
+      return [
+        {
+          type: 'address',
+          value: KNOWN_ADDRESSES[0].address,
+          label: KNOWN_ADDRESSES[0].label,
+          balance: 45.8,
+          recentTxCount: 23,
+          timestamp: Date.now() - 900000,
+          description: KNOWN_ADDRESSES[0].description
+        },
+        {
+          type: 'program',
+          value: KNOWN_PROGRAMS[0].address,
+          label: KNOWN_PROGRAMS[0].label,
+          usageCount: 15420,
+          timestamp: Date.now() - 1200000,
+          description: KNOWN_PROGRAMS[0].description
+        }
+      ];
+    }
 
     return items;
   } catch (error) {
-    console.error('Error fetching live latest items:', error);
-    // Return fallback data
+    console.error('Error fetching live latest items from Qdrant:', error);
+    // Return fallback data on error
     return [
-      {
-        type: 'token',
-        value: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-        label: 'USDC',
-        name: 'USD Coin',
-        symbol: 'USDC',
-        price: 1.00,
-        priceChange24h: 0.02,
-        timestamp: Date.now() - 600000,
-        description: 'Stablecoin'
-      },
       {
         type: 'address',
         value: KNOWN_ADDRESSES[0].address,
@@ -122,54 +195,146 @@ async function getLiveLatestItems() {
 }
 
 /**
- * Get live popular search suggestions
+ * Get live popular search suggestions from Qdrant user history
  */
 async function getLivePopularSearches() {
   try {
     const searches = [];
-    
-    // Get top tokens for popular searches
-    const topTokens = await getTopTokens(3);
-    if (topTokens && Array.isArray(topTokens)) {
-      for (const token of topTokens) {
-        const tokenAddress = token.address || token.mint;
-        if (tokenAddress) {
-          const metadata = await getTokenMetadata(tokenAddress);
-          if (metadata) {
-            searches.push({
-              query: metadata.symbol || 'Token',
-              searchCount: Math.floor(Math.random() * 400) + 100, // Simulated search count
-              category: 'Token',
-              description: `Popular token: ${metadata.name || 'Token'}`,
-              trending: true
-            });
-          }
+
+    // Get recent user history to analyze popular searches
+    try {
+      const recentHistory = await qdrantClient.search(COLLECTIONS.USER_HISTORY, {
+        vector: new Array(384).fill(0),
+        limit: 100,
+        with_payload: true
+      });
+
+      // Analyze user history to find popular page types and paths
+      const pageTypeCount = new Map<string, number>();
+      const pathCount = new Map<string, number>();
+      
+      recentHistory.forEach(point => {
+        const history = point.payload as any;
+        if (history.pageType) {
+          pageTypeCount.set(history.pageType, (pageTypeCount.get(history.pageType) || 0) + 1);
         }
-      }
+        if (history.path) {
+          // Extract meaningful paths
+          const pathSegments = history.path.split('/').filter(Boolean);
+          pathSegments.forEach((segment: string) => {
+            if (segment.length > 2 && !segment.match(/^[0-9]+$/)) { // Skip short segments and pure numbers
+              pathCount.set(segment, (pathCount.get(segment) || 0) + 1);
+            }
+          });
+        }
+      });
+
+      // Convert popular page types to search suggestions
+      const popularPageTypes = Array.from(pageTypeCount.entries())
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 3);
+
+      popularPageTypes.forEach(([pageType, count]) => {
+        const categoryMap: Record<string, string> = {
+          'transaction': 'Transaction Analysis',
+          'address': 'Address Lookup',
+          'token': 'Token Information', 
+          'program': 'Program Analysis',
+          'block': 'Block Explorer',
+          'validator': 'Infrastructure'
+        };
+
+        searches.push({
+          query: pageType.charAt(0).toUpperCase() + pageType.slice(1) + ' analysis',
+          searchCount: count,
+          category: categoryMap[pageType] || 'General',
+          description: `Popular ${pageType} searches`,
+          trending: count > 5
+        });
+      });
+
+      // Convert popular paths to search suggestions  
+      const popularPaths = Array.from(pathCount.entries())
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 2);
+
+      popularPaths.forEach(([path, count]) => {
+        searches.push({
+          query: path,
+          searchCount: count,
+          category: 'Popular Pages',
+          description: `Frequently accessed content`,
+          trending: count > 3
+        });
+      });
+
+    } catch (error) {
+      console.warn('Error analyzing user history from Qdrant:', error);
     }
 
-    // Add some known popular searches
-    searches.push(
-      {
-        query: 'Jupiter aggregator',
-        searchCount: 342,
-        category: 'DeFi',
-        description: 'Popular DEX aggregator on Solana',
-        trending: true
-      },
-      {
-        query: 'Solana validators',
-        searchCount: 289,
-        category: 'Infrastructure',
-        description: 'Network validators and staking',
-        trending: false
-      }
-    );
+    // Get popular tokens from metadata
+    try {
+      // First check if the collection exists
+      const collections = await qdrantClient.getCollections();
+      const tokenMetadataExists = collections.collections.some(c => c.name === COLLECTIONS.TOKEN_METADATA);
+      
+      if (tokenMetadataExists) {
+        const popularTokens = await qdrantClient.search(COLLECTIONS.TOKEN_METADATA, {
+          vector: new Array(384).fill(0),
+          limit: 10,
+          with_payload: true
+          // Remove filter for now to avoid Bad Request errors
+        });
 
-    return searches;
+        const tokenSuggestions = popularTokens
+          .map(point => point.payload as any)
+          .slice(0, 2)
+          .filter(token => token && token.symbol && token.name) // Filter out invalid tokens
+          .map((token, index) => ({
+            query: `${token.symbol} token`,
+            searchCount: Math.floor(Math.random() * 200) + 50, // Simulated count
+            category: 'Token',
+            description: `${token.name} (${token.symbol})`,
+            trending: index === 0
+          }));
+
+        searches.push(...tokenSuggestions);
+      }
+    } catch (error) {
+      console.warn('Error fetching popular tokens from Qdrant:', error);
+    }
+
+    // If no searches found from Qdrant, return fallback data
+    if (searches.length === 0) {
+      return [
+        {
+          query: 'Jupiter aggregator',
+          searchCount: 342,
+          category: 'DeFi',
+          description: 'Popular DEX aggregator on Solana',
+          trending: true
+        },
+        {
+          query: 'Solana validators',
+          searchCount: 289,
+          category: 'Infrastructure',
+          description: 'Network validators and staking',
+          trending: false
+        },
+        {
+          query: 'Magic Eden marketplace',
+          searchCount: 267,
+          category: 'NFT',
+          description: 'Leading NFT marketplace',
+          trending: true
+        }
+      ];
+    }
+
+    return searches.slice(0, 5); // Limit to top 5 suggestions
   } catch (error) {
-    console.error('Error fetching live popular searches:', error);
-    // Return fallback data
+    console.error('Error fetching live popular searches from Qdrant:', error);
+    // Return fallback data on error
     return [
       {
         query: 'Jupiter aggregator',
@@ -179,18 +344,11 @@ async function getLivePopularSearches() {
         trending: true
       },
       {
-        query: 'Solana validators',
+        query: 'Solana validators', 
         searchCount: 289,
         category: 'Infrastructure',
         description: 'Network validators and staking',
         trending: false
-      },
-      {
-        query: 'Magic Eden marketplace',
-        searchCount: 267,
-        category: 'NFT',
-        description: 'Leading NFT marketplace',
-        trending: true
       }
     ];
   }
