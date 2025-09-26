@@ -56,7 +56,7 @@ export function SimpleDropdown({
       </div>
       
       {isOpen && (
-        <div className={`absolute top-full mt-1 ${alignClass} min-w-48 bg-popover border border-border rounded-md shadow-lg z-50 ${className}`}>
+        <div className={`absolute top-full mt-1 ${alignClass} min-w-48 bg-background border border-border rounded-md shadow-lg z-50 ${className}`}>
           <div className="py-1" onClick={() => setIsOpen(false)}>
             {children}
           </div>
