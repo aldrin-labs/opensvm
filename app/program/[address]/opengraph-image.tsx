@@ -12,12 +12,21 @@ export const contentType = 'image/png';
 export default async function Image({ params }: { params: Promise<{ address: string }> }) {
   try {
     const resolvedParams = await params;
-    const program = await getAccountInfo(resolvedParams.address);
+    
+    // In edge runtime, we'll skip the account info fetch to avoid connection issues
+    // and just generate a generic program image
+    let program = null;
+    try {
+      program = await getAccountInfo(resolvedParams.address);
+    } catch (error) {
+      console.log('Failed to fetch account info in edge runtime:', error);
+      // Continue with null program - we'll show a generic image
+    }
     
     const title = 'Program Overview';
     const description = program?.executable 
       ? 'Solana Program Account'
-      : 'Account not found or not a program';
+      : 'Solana Blockchain Explorer';
 
     return new ImageResponse(
       (

@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useProgramInfo } from '@/contexts/ProgramRegistryContext';
 import DisassemblyView from '../disassembly-view';
 import InstructionBrowser from './instruction-browser';
 import { LiveActivity } from './live-activity';
 import JsonTree from '@/components/JsonTree';
-import { AlertTriangle, CheckCircle, Info, ExternalLink, Code, Activity } from 'lucide-react';
+import { AlertTriangle, CheckCircle, Info, ExternalLink, Code, Activity, Database } from 'lucide-react';
 
 interface ProgramData {
   address: string;
@@ -34,6 +35,7 @@ interface ProgramViewProps {
 export default function ProgramView({ programData, serializedAccountInfo }: ProgramViewProps) {
   const { isKnown, displayName, category, riskLevel, program } = useProgramInfo(programData.address);
   const [activeTab, setActiveTab] = useState<'overview' | 'idl' | 'live' | 'disassembly' | 'raw'>(isKnown ? 'overview' : 'disassembly');
+  const router = useRouter();
 
   const getRiskIcon = (risk: string) => {
     switch (risk) {
@@ -144,6 +146,17 @@ export default function ProgramView({ programData, serializedAccountInfo }: Prog
             )}
           </>
         )}
+      </div>
+
+      {/* Quick Actions */}
+      <div className="flex justify-end">
+        <button
+          onClick={() => router.push(`/program/${programData.address}/accounts`)}
+          className="inline-flex items-center px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+        >
+          <Database className="w-4 h-4 mr-2" />
+          View Program Accounts
+        </button>
       </div>
 
       {/* Enhanced View Selection */}

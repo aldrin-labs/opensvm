@@ -30,6 +30,7 @@ import {
 import { IntelligentDashboard } from '@/components/IntelligentDashboard';
 import { getViewportTracker, ViewportStats } from '@/lib/viewport-tracker';
 import { UserHistoryService } from '@/lib/user-history';
+import { useTheme } from '@/lib/design-system/theme-provider';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ProgramAccount {
@@ -189,8 +190,8 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
 
       const data = await response.json();
       
-      if (data.accounts) {
-        setAccounts(data.accounts);
+      if (data.data?.accounts) {
+        setAccounts(data.data.accounts);
         
         // Track user history
         if (currentWallet) {
@@ -203,7 +204,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
             timestamp: Date.now(),
             metadata: {
               programId,
-              accountCount: data.accounts.length,
+              accountCount: data.data.accounts.length,
               searchType
             }
           });
@@ -314,17 +315,17 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
       {/* Main Content - 70% width */}
       <div className="flex-1 space-y-6">
         {/* Search Controls */}
-        <div className="bg-black border border-white/20 rounded-sm p-6">
+        <div className="rounded-lg border bg-card text-card-foreground p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-semibold">Account Search</h2>
             <div className="flex items-center space-x-2">
               {selectedAccounts.size > 0 && (
-                <div className="flex items-center space-x-2 text-sm text-blue-400">
+                <div className="flex items-center space-x-2 text-sm text-primary">
                   <CheckSquare className="w-4 h-4" />
                   <span>{selectedAccounts.size} selected</span>
                   <button
                     onClick={clearSelection}
-                    className="text-gray-400 hover:text-white transition-colors"
+                    className="text-muted-foreground hover:text-card-foreground transition-colors"
                   >
                     Clear
                   </button>
@@ -332,7 +333,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               )}
               <button
                 onClick={() => setShowFilters(!showFilters)}
-                className="flex items-center space-x-2 px-3 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+                className="flex items-center space-x-2 px-3 py-2 bg-muted rounded-lg hover:bg-muted/80 transition-colors"
               >
                 <Settings className="w-4 h-4" />
                 <span>Filters</span>
@@ -347,88 +348,88 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               onClick={() => setSearchType('all')}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 searchType === 'all'
-                  ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                  : 'border-gray-600 bg-gray-700 hover:bg-gray-600'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-muted hover:bg-muted/80'
               }`}
             >
               <Database className="w-6 h-6 mx-auto mb-2" />
               <div className="font-medium">All Accounts</div>
-              <div className="text-sm text-gray-400">Search all program accounts</div>
+              <div className="text-sm text-muted-foreground">Search all program accounts</div>
             </button>
             
             <button
               onClick={() => setSearchType('filtered')}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 searchType === 'filtered'
-                  ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                  : 'border-gray-600 bg-gray-700 hover:bg-gray-600'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-muted hover:bg-muted/80'
               }`}
             >
               <Filter className="w-6 h-6 mx-auto mb-2" />
               <div className="font-medium">Filtered Search</div>
-              <div className="text-sm text-gray-400">Apply custom filters</div>
+              <div className="text-sm text-muted-foreground">Apply custom filters</div>
             </button>
             
             <button
               onClick={() => setSearchType('pda')}
               className={`p-4 rounded-lg border-2 transition-colors ${
                 searchType === 'pda'
-                  ? 'border-blue-500 bg-blue-500/10 text-blue-400'
-                  : 'border-gray-600 bg-gray-700 hover:bg-gray-600'
+                  ? 'border-primary bg-primary/10 text-primary'
+                  : 'border-border bg-muted hover:bg-muted/80'
               }`}
             >
               <Hash className="w-6 h-6 mx-auto mb-2" />
               <div className="font-medium">PDA Derivation</div>
-              <div className="text-sm text-gray-400">Derive Program Derived Addresses</div>
+              <div className="text-sm text-muted-foreground">Derive Program Derived Addresses</div>
             </button>
           </div>
 
           {/* Filters Panel */}
           {showFilters && (searchType === 'filtered' || searchType === 'all') && (
-            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+            <div className="bg-muted rounded-lg p-4 mb-4">
               <h3 className="font-medium mb-3">Search Filters</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Min Balance (SOL)</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Min Balance (SOL)</label>
                   <input
                     type="number"
                     step="0.000001"
                     value={filters.minBalance}
                     onChange={(e) => setFilters({...filters, minBalance: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:border-primary focus:outline-none"
                     placeholder="0.0"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Max Balance (SOL)</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Max Balance (SOL)</label>
                   <input
                     type="number"
                     step="0.000001"
                     value={filters.maxBalance}
                     onChange={(e) => setFilters({...filters, maxBalance: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:border-primary focus:outline-none"
                     placeholder="1000.0"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Data Size (bytes)</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Data Size (bytes)</label>
                   <input
                     type="number"
                     value={filters.dataSize}
                     onChange={(e) => setFilters({...filters, dataSize: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:border-primary focus:outline-none"
                     placeholder="Any size"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-sm text-gray-400 mb-1">Executable</label>
+                  <label className="block text-sm text-muted-foreground mb-1">Executable</label>
                   <select
                     value={filters.executable}
                     onChange={(e) => setFilters({...filters, executable: e.target.value})}
-                    className="w-full px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    className="w-full px-3 py-2 bg-background border border-border rounded-md text-foreground focus:border-primary focus:outline-none"
                   >
                     <option value="all">All</option>
                     <option value="true">Executable only</option>
@@ -441,9 +442,9 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
 
           {/* PDA Seeds Input */}
           {searchType === 'pda' && (
-            <div className="bg-gray-700 rounded-lg p-4 mb-4">
+            <div className="bg-muted rounded-lg p-4 mb-4">
               <h3 className="font-medium mb-3">PDA Seeds</h3>
-              <p className="text-sm text-gray-400 mb-4">
+              <p className="text-sm text-muted-foreground mb-4">
                 Enter the seeds used to derive Program Derived Addresses. Each seed can be text or hex (prefix with 0x).
               </p>
               
@@ -453,13 +454,13 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
                     type="text"
                     value={seed}
                     onChange={(e) => updateSeed(index, e.target.value)}
-                    className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded-md text-white focus:border-blue-500 focus:outline-none"
+                    className="flex-1 px-3 py-2 bg-background border border-border rounded-md text-foreground focus:border-primary focus:outline-none"
                     placeholder={`Seed ${index + 1} (text or 0x...)`}
                   />
                   {pdaSeeds.length > 1 && (
                     <button
                       onClick={() => removeSeed(index)}
-                      className="px-3 py-2 text-red-400 hover:text-red-300 transition-colors"
+                      className="px-3 py-2 text-destructive hover:text-destructive/80 transition-colors"
                     >
                       Remove
                     </button>
@@ -469,7 +470,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               
               <button
                 onClick={addSeed}
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                className="px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
               >
                 Add Seed
               </button>
@@ -481,7 +482,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
             <button
               onClick={searchAccounts}
               disabled={loading}
-              className="flex items-center space-x-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="flex items-center space-x-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               {loading ? (
                 <RefreshCw className="w-5 h-5 animate-spin" />
@@ -495,7 +496,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               {displayedAccounts.length > 0 && (
                 <button
                   onClick={selectAllVisible}
-                  className="flex items-center space-x-2 px-3 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="flex items-center space-x-2 px-3 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
                 >
                   <Target className="w-4 h-4" />
                   <span>Select Visible</span>
@@ -505,7 +506,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               {accounts.length > 0 && (
                 <button
                   onClick={exportAccounts}
-                  className="flex items-center space-x-2 px-4 py-2 bg-gray-700 text-white rounded-lg hover:bg-gray-600 transition-colors"
+                  className="flex items-center space-x-2 px-4 py-2 bg-muted text-muted-foreground rounded-lg hover:bg-muted/80 transition-colors"
                 >
                   <Download className="w-4 h-4" />
                   <span>Export ({selectedAccounts.size || accounts.length})</span>
@@ -528,21 +529,21 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
 
         {/* Derived PDAs */}
         {searchType === 'pda' && derivedPDAs.length > 0 && (
-          <div className="bg-gray-800 rounded-lg p-6">
+          <div className="rounded-lg border bg-card text-card-foreground p-6">
             <h3 className="text-lg font-semibold mb-4">Derived PDAs</h3>
             <div className="space-y-3">
               {derivedPDAs.map((pda, index) => (
-                <div key={index} className="bg-gray-700 rounded-lg p-4">
+                <div key={index} className="bg-muted rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      <Hash className="w-4 h-4 text-blue-400" />
+                      <Hash className="w-4 h-4 text-primary" />
                       <span className="font-mono text-sm">{pda.address}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <span className="text-sm text-gray-400">Bump: {pda.bump}</span>
+                      <span className="text-sm text-muted-foreground">Bump: {pda.bump}</span>
                       <button
                         onClick={() => copyToClipboard(pda.address)}
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-muted-foreground hover:text-card-foreground transition-colors"
                       >
                         <Copy className="w-4 h-4" />
                       </button>
@@ -550,13 +551,13 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
                         href={`https://explorer.solana.com/address/${pda.address}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-gray-400 hover:text-white transition-colors"
+                        className="text-muted-foreground hover:text-card-foreground transition-colors"
                       >
                         <ExternalLink className="w-4 h-4" />
                       </a>
                     </div>
                   </div>
-                  <div className="text-sm text-gray-400">
+                  <div className="text-sm text-muted-foreground">
                     Seeds: {pda.seeds.map(seed => `"${seed}"`).join(', ')}
                   </div>
                 </div>
@@ -567,11 +568,11 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
 
         {/* Enhanced Results Table */}
         {displayedAccounts.length > 0 && (
-          <div className="bg-gray-800 rounded-lg overflow-hidden">
-            <div className="p-6 border-b border-gray-700">
+          <div className="rounded-lg border bg-card text-card-foreground overflow-hidden">
+            <div className="p-6 border-b border-border">
               <div className="flex items-center justify-between">
                 <h3 className="text-lg font-semibold">Found Accounts ({accounts.length})</h3>
-                <div className="text-sm text-gray-400">
+                <div className="text-sm text-muted-foreground">
                   Showing {displayedAccounts.length} of {accounts.length} • 
                   Total Balance: {formatSOL(accounts.reduce((sum, acc) => sum + acc.lamports, 0))} SOL
                 </div>
@@ -579,7 +580,7 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
             </div>
 
             {/* Table Header */}
-            <div className="bg-gray-700 px-6 py-3 grid grid-cols-12 gap-4 text-sm font-medium text-gray-300 border-b border-gray-600">
+            <div className="bg-muted px-6 py-3 grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground border-b border-border">
               <div className="col-span-1 flex items-center">
                 <Square className="w-4 h-4" />
               </div>
@@ -612,8 +613,8 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
               {/* Loading More Indicator */}
               {loadingMore && (
                 <div className="px-6 py-4 text-center">
-                  <Loader className="w-5 h-5 animate-spin mx-auto text-blue-400" />
-                  <span className="text-sm text-gray-400 ml-2">Loading more accounts...</span>
+                  <Loader className="w-5 h-5 animate-spin mx-auto text-primary" />
+                  <span className="text-sm text-muted-foreground ml-2">Loading more accounts...</span>
                 </div>
               )}
 
@@ -625,9 +626,9 @@ export function ProgramAccountSearch({ programId }: ProgramAccountSearchProps) {
 
         {!loading && !error && accounts.length === 0 && searchType !== 'pda' && (
           <div className="text-center py-12">
-            <Database className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-400 mb-2">No accounts found</h3>
-            <p className="text-gray-500">
+            <Database className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-medium text-muted-foreground mb-2">No accounts found</h3>
+            <p className="text-muted-foreground/80">
               {searchType === 'all' 
                 ? 'This program has no associated accounts'
                 : 'No accounts match your search criteria'
@@ -688,8 +689,8 @@ const AccountRow = React.memo(({
   return (
     <div 
       ref={rowRef}
-      className={`border-b border-gray-700 transition-colors ${
-        isSelected ? 'bg-blue-900/20 border-blue-500/30' : 'hover:bg-gray-750'
+      className={`border-b border-border transition-colors ${
+        isSelected ? 'bg-accent text-accent-foreground' : 'hover:bg-muted/50'
       }`}
     >
       <div 
@@ -699,10 +700,10 @@ const AccountRow = React.memo(({
         <div className="col-span-1 flex items-center">
           <button
             onClick={(e) => onToggleSelected(account.address, e)}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-card-foreground transition-colors"
           >
             {isSelected ? (
-              <CheckSquare className="w-4 h-4 text-blue-400" />
+              <CheckSquare className="w-4 h-4 text-primary" />
             ) : (
               <Square className="w-4 h-4" />
             )}
@@ -710,11 +711,21 @@ const AccountRow = React.memo(({
         </div>
         
         <div className="col-span-4 flex items-center space-x-3">
-          <Wallet className="w-4 h-4 text-blue-400 flex-shrink-0" />
+          <Wallet className="w-4 h-4 text-primary flex-shrink-0" />
           <div className="min-w-0">
-            <div className="font-mono text-sm truncate">{account.address}</div>
+            <a
+              href={`/account/${account.address}`}
+              className="font-mono text-sm truncate text-primary hover:text-primary/80 hover:underline transition-colors cursor-pointer group relative"
+              onClick={(e) => e.stopPropagation()}
+              title={`View account: ${account.address}`}
+            >
+              {account.address}
+              <span className="absolute bottom-full left-0 mb-1 px-2 py-1 text-xs bg-popover text-popover-foreground rounded shadow-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                Click to view account details
+              </span>
+            </a>
             {account.executable && (
-              <span className="inline-block mt-1 px-2 py-1 bg-green-900 text-green-300 rounded text-xs">
+              <span className="inline-block mt-1 px-2 py-1 bg-green-500/20 text-green-600 dark:text-green-400 rounded text-xs">
                 Executable
               </span>
             )}
@@ -730,10 +741,10 @@ const AccountRow = React.memo(({
         </div>
         
         <div className="col-span-2 text-sm flex items-center space-x-1">
-          <Clock className="w-3 h-3 text-gray-400" />
+          <Clock className="w-3 h-3 text-muted-foreground" />
           <span 
             title={account.lastActivity ? new Date(account.lastActivity).toLocaleString() : 'Unknown'}
-            className="text-gray-400"
+            className="text-muted-foreground"
           >
             {formatCompactTime(account.lastActivity)}
           </span>
@@ -745,7 +756,7 @@ const AccountRow = React.memo(({
               e.stopPropagation();
               copyToClipboard(account.address);
             }}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-card-foreground transition-colors"
           >
             <Copy className="w-3 h-3" />
           </button>
@@ -754,7 +765,7 @@ const AccountRow = React.memo(({
             target="_blank"
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
-            className="text-gray-400 hover:text-white transition-colors"
+            className="text-muted-foreground hover:text-card-foreground transition-colors"
           >
             <ExternalLink className="w-3 h-3" />
           </a>
@@ -767,27 +778,27 @@ const AccountRow = React.memo(({
       </div>
 
       {isExpanded && (
-        <div className="px-6 pb-4 bg-gray-900">
+        <div className="px-6 pb-4 bg-muted/30">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
             <div>
-              <div className="text-xs text-gray-400">Balance</div>
+              <div className="text-xs text-muted-foreground">Balance</div>
               <div className="font-mono">{formatSOL(account.lamports)} SOL</div>
             </div>
             <div>
-              <div className="text-xs text-gray-400">Data Size</div>
+              <div className="text-xs text-muted-foreground">Data Size</div>
               <div className="font-mono">{formatDataSize(account.dataSize)}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-400">Rent Epoch</div>
+              <div className="text-xs text-muted-foreground">Rent Epoch</div>
               <div className="font-mono">{account.rentEpoch}</div>
             </div>
             <div>
-              <div className="text-xs text-gray-400">Executable</div>
+              <div className="text-xs text-muted-foreground">Executable</div>
               <div className="flex items-center space-x-1">
                 {account.executable ? (
-                  <CheckCircle className="w-4 h-4 text-green-400" />
+                  <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
                 ) : (
-                  <AlertCircle className="w-4 h-4 text-gray-400" />
+                  <AlertCircle className="w-4 h-4 text-muted-foreground" />
                 )}
                 <span>{account.executable ? 'Yes' : 'No'}</span>
               </div>
@@ -796,12 +807,12 @@ const AccountRow = React.memo(({
 
           {account.data && account.data !== '11111111111111111111111111111111' && (
             <div>
-              <div className="text-xs text-gray-400 mb-2">Account Data (Base58)</div>
-              <div className="bg-gray-800 p-3 rounded font-mono text-xs break-all">
+              <div className="text-xs text-muted-foreground mb-2">Account Data (Base58)</div>
+              <div className="bg-background border border-border p-3 rounded font-mono text-xs break-all">
                 {account.data.length > 200 ? (
                   <>
                     {account.data.substring(0, 200)}...
-                    <span className="text-gray-500 ml-2">({account.data.length} chars total)</span>
+                    <span className="text-muted-foreground ml-2">({account.data.length} chars total)</span>
                   </>
                 ) : (
                   account.data
