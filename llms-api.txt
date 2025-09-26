@@ -1,0 +1,1269 @@
+# OpenSVM API Specification v1.0
+# Comprehensive API Documentation for LLMs and Developers
+# Generated: 2025-09-26
+
+================================================================================
+## EXECUTIVE SUMMARY
+================================================================================
+
+OpenSVM provides a comprehensive REST API for interacting with the Solana blockchain.
+The API offers 85+ endpoints covering transactions, accounts, analytics, tokens, NFTs,
+and real-time data feeds. Built on Next.js 15 with App Router.
+
+Base URL: https://osvm.ai/api (production)
+          http://localhost:3000/api (development)
+
+API Version: v1
+Rate Limits: 60 requests/minute per IP (general), endpoint-specific limits apply
+Response Format: JSON (application/json)
+Timeout: 10 seconds default, 2-5 seconds for analytics
+
+================================================================================
+## AUTHENTICATION MECHANISMS
+================================================================================
+
+### 1. JWT Authentication (Bearer Token)
+Used for: Monetization endpoints, API management
+Header: Authorization: Bearer <token>
+Endpoints: /api/opensvm/*, /api/v1/models
+
+### 2. Wallet Signature Authentication
+Used for: User authentication, social features
+Process: Sign message with Solana wallet, verify on server
+Endpoints: /api/auth/verify, /api/auth/session
+
+### 3. API Key Authentication
+Used for: External API access
+Header: X-API-Key: <key>
+Management: /api/opensvm/anthropic-keys/*
+
+### 4. Session-Based Authentication
+Cookie: svmai_session
+Duration: 30 days
+Auto-generated for anonymous users
+
+================================================================================
+## COMMON RESPONSE FORMATS
+================================================================================
+
+### Success Response
+{
+  "success": true,
+  "data": <response_data>,
+  "timestamp": 1234567890000,
+  "cached": false
+}
+
+### Error Response
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human readable error message",
+    "details": {}
+  },
+  "timestamp": 1234567890000
+}
+
+### Paginated Response
+{
+  "success": true,
+  "data": [],
+  "pagination": {
+    "total": 1000,
+    "page": 1,
+    "limit": 50,
+    "hasMore": true
+  }
+}
+
+================================================================================
+## ERROR CODES
+================================================================================
+
+400 - Bad Request: Invalid parameters
+401 - Unauthorized: Missing or invalid authentication
+403 - Forbidden: Insufficient permissions
+404 - Not Found: Resource not found
+429 - Rate Limited: Too many requests
+500 - Internal Error: Server error
+502 - Bad Gateway: Upstream service error
+503 - Service Unavailable: Temporary outage
+504 - Gateway Timeout: Request timeout
+
+================================================================================
+## TRANSACTION APIs
+================================================================================
+
+### GET /api/transaction/[signature]
+Fetch detailed transaction information with enhanced parsing
+Parameters:
+  - signature: string (path) - Transaction signature (base58, 87-88 chars)
+Response:
+{
+  "signature": "4RwR2w12...",
+  "timestamp": 1234567890000,
+  "slot": 123456789,
+  "success": true,
+  "type": "token|sol|unknown",
+  "details": {
+    "instructions": [...],
+    "accounts": [...],
+    "preBalances": [],
+    "postBalances": [],
+    "preTokenBalances": [],
+    "postTokenBalances": [],
+    "logs": [],
+    "innerInstructions": [],
+    "tokenChanges": [],
+    "solChanges": []
+  }
+}
+Rate Limit: 30 req/min
+Cache: 5 minutes
+
+### POST /api/transaction/batch
+Batch fetch multiple transactions
+Body:
+{
+  "signatures": ["sig1", "sig2", ...],
+  "includeDetails": true
+}
+Response:
+{
+  "transactions": [...],
+  "errors": {}
+}
+Rate Limit: 10 req/min
+Max Batch: 20 signatures
+
+### GET /api/transaction/[signature]/analysis
+AI-powered transaction analysis
+Parameters:
+  - signature: string (path)
+  - model?: string - AI model to use
+Response:
+{
+  "analysis": {
+    "summary": "Transaction summary",
+    "type": "swap|transfer|mint|burn",
+    "risk": "low|medium|high",
+    "patterns": [],
+    "recommendations": []
+  }
+}
+Rate Limit: 10 req/min
+
+### GET /api/transaction/[signature]/explain
+Natural language transaction explanation
+Parameters:
+  - signature: string (path)
+  - language?: string - Output language
+Response:
+{
+  "explanation": "This transaction...",
+  "technical_details": {},
+  "user_friendly": "Simple explanation"
+}
+
+### GET /api/transaction/[signature]/related
+Find related transactions
+Parameters:
+  - signature: string (path)
+  - limit?: number (default: 10)
+Response:
+{
+  "related": [
+    {
+      "signature": "...",
+      "relationship": "same_program|same_account|sequential",
+      "confidence": 0.95
+    }
+  ]
+}
+
+### GET /api/transaction/[signature]/metrics
+Transaction performance metrics
+Response:
+{
+  "computeUnits": 150000,
+  "fee": 5000,
+  "efficiency": 0.85,
+  "gasOptimization": "suggestions"
+}
+
+### GET /api/transaction/[signature]/failure-analysis
+Analyze failed transactions
+Response:
+{
+  "error": "InsufficientFunds",
+  "details": "Account X had insufficient balance",
+  "suggestions": ["Ensure sufficient SOL balance", "..."]
+}
+
+### GET /api/transaction-metrics
+Global transaction metrics
+Parameters:
+  - timeframe?: string (1h|24h|7d|30d)
+Response:
+{
+  "totalTransactions": 1000000,
+  "successRate": 0.95,
+  "averageFee": 5000,
+  "topPrograms": []
+}
+
+================================================================================
+## ACCOUNT APIs
+================================================================================
+
+### GET /api/account-stats/[address]
+Get comprehensive account statistics
+Parameters:
+  - address: string (path) - Solana address
+Response:
+{
+  "totalTransactions": "3000+",
+  "tokenTransfers": 150,
+  "lastUpdated": 1234567890000,
+  "balance": 10.5,
+  "tokenAccounts": 25
+}
+Cache: 5 minutes
+
+### GET /api/account-transactions/[address]
+Get account transaction history
+Parameters:
+  - address: string (path)
+  - limit?: number (default: 50, max: 100)
+  - before?: string - Pagination cursor
+  - type?: string - Transaction type filter
+Response:
+{
+  "transactions": [...],
+  "hasMore": true,
+  "nextCursor": "..."
+}
+
+### GET /api/account-token-stats/[address]/[mint]
+Get token statistics for specific account
+Parameters:
+  - address: string (path)
+  - mint: string (path) - Token mint address
+Response:
+{
+  "balance": 1000.5,
+  "transactions": 50,
+  "averageBalance": 800,
+  "firstTransaction": 1234567890000
+}
+
+### GET /api/check-account-type
+Determine account type
+Parameters:
+  - address: string (query)
+Response:
+{
+  "type": "wallet|program|token|pda|system",
+  "details": {
+    "executable": false,
+    "owner": "...",
+    "dataSize": 165
+  }
+}
+
+================================================================================
+## BLOCK APIs
+================================================================================
+
+### GET /api/blocks/[slot]
+Get specific block information
+Parameters:
+  - slot: number (path)
+Response:
+{
+  "slot": 123456789,
+  "blockhash": "...",
+  "parentSlot": 123456788,
+  "transactions": 150,
+  "timestamp": 1234567890,
+  "rewards": []
+}
+
+### GET /api/blocks
+List recent blocks
+Parameters:
+  - limit?: number (default: 20)
+  - before?: number - Slot number for pagination
+Response:
+{
+  "blocks": [...],
+  "latestSlot": 123456789
+}
+
+### GET /api/blocks/stats
+Block statistics
+Response:
+{
+  "averageBlockTime": 400,
+  "transactionsPerBlock": 150,
+  "successRate": 0.95,
+  "timeframe": "24h"
+}
+
+### GET /api/slots
+Current slot information
+Response:
+{
+  "currentSlot": 123456789,
+  "epochInfo": {
+    "epoch": 300,
+    "slotIndex": 12345,
+    "slotsInEpoch": 432000
+  }
+}
+
+================================================================================
+## SEARCH APIs
+================================================================================
+
+### GET /api/search
+Universal search across all data types
+Parameters:
+  - q: string (query) - Search query (address, signature, token)
+  - type?: string - Filter by type (account|transaction|token|program)
+  - start?: string - Start date ISO string
+  - end?: string - End date ISO string
+  - status?: string - Transaction status (success|failed)
+  - min?: number - Minimum amount
+  - max?: number - Maximum amount
+Response:
+{
+  "results": [
+    {
+      "address": "...",
+      "signature": "...",
+      "type": "account|transaction|token|program",
+      "timestamp": "2024-01-01T00:00:00Z",
+      "status": "success",
+      "amount": 100,
+      "balance": 1000
+    }
+  ],
+  "totalResults": 100,
+  "searchTime": 150
+}
+
+### GET /api/search/accounts
+Account-specific search
+Parameters:
+  - q: string - Search query
+  - tokenMint?: string - Filter by token
+  - minBalance?: number
+  - maxBalance?: number
+Response:
+{
+  "accounts": [...],
+  "total": 50
+}
+
+### GET /api/search/filtered
+Advanced filtered search
+Parameters:
+  - filters: JSON string - Complex filter object
+Response:
+{
+  "results": [...],
+  "appliedFilters": {},
+  "suggestions": []
+}
+
+================================================================================
+## ANALYTICS APIs
+================================================================================
+
+### GET /api/analytics/overview
+Comprehensive DeFi ecosystem overview
+Response:
+{
+  "totalTvl": 2850000000,
+  "totalVolume24h": 185000000,
+  "activeDexes": 15,
+  "totalTransactions": 125000,
+  "topProtocols": [
+    {
+      "name": "jupiter",
+      "tvl": 950000000,
+      "volume24h": 45000000,
+      "category": "Aggregator"
+    }
+  ],
+  "marketshareData": [...],
+  "healthStatus": {
+    "isHealthy": true,
+    "lastUpdate": 1234567890000
+  },
+  "sectorBreakdown": {
+    "dex": { "tvl": 1420000000, "volume24h": 95000000, "protocols": 8 },
+    "lending": {...},
+    "derivatives": {...}
+  }
+}
+Cache: 2 minutes
+
+### GET /api/analytics/dex
+DEX-specific analytics with real-time prices
+Parameters:
+  - dex?: string - Specific DEX name
+  - timeframe?: string (1h|24h|7d)
+Response:
+{
+  "dexData": [...],
+  "totalVolume": 95000000,
+  "topPairs": [],
+  "priceFeeds": {}
+}
+
+### GET /api/analytics/defi-health
+DeFi ecosystem health metrics
+Response:
+{
+  "health": "excellent|good|warning|critical",
+  "metrics": {
+    "tvlGrowth": 0.05,
+    "volumeGrowth": 0.10,
+    "userActivity": "high",
+    "protocolDiversity": 0.75
+  },
+  "risks": [],
+  "recommendations": []
+}
+
+### GET /api/analytics/validators
+Validator network analytics
+Response:
+{
+  "totalValidators": 1500,
+  "activeValidators": 1450,
+  "averageAPY": 0.07,
+  "topValidators": [...],
+  "networkHealth": "excellent"
+}
+
+### GET /api/analytics/trending-validators
+Trending validators by various metrics
+Parameters:
+  - metric?: string (stake|performance|new)
+Response:
+{
+  "trending": [
+    {
+      "address": "...",
+      "name": "Validator Name",
+      "stake": 1000000,
+      "trend": "up",
+      "change24h": 0.15
+    }
+  ]
+}
+
+### GET /api/analytics/cross-chain
+Cross-chain bridge analytics
+Response:
+{
+  "totalVolume": 500000000,
+  "bridges": [
+    {
+      "name": "Wormhole",
+      "volume24h": 50000000,
+      "transactions": 1000
+    }
+  ],
+  "topAssets": []
+}
+
+### GET /api/analytics/bots
+Bot activity analytics
+Response:
+{
+  "totalBots": 500,
+  "activeBots": 350,
+  "volume24h": 25000000,
+  "topStrategies": ["arbitrage", "sniper", "market-making"]
+}
+
+### Additional Analytics Endpoints:
+- GET /api/analytics/defai - DeFi AI protocols
+- GET /api/analytics/infofi - Information finance
+- GET /api/analytics/launchpads - Token launchpad metrics
+- GET /api/analytics/marketplaces - NFT marketplace data
+- GET /api/analytics/socialfi - Social finance metrics
+- GET /api/analytics/user-interactions - User behavior analytics
+
+================================================================================
+## TOKEN & NFT APIs
+================================================================================
+
+### GET /api/token/[address]
+Token details and metadata
+Parameters:
+  - address: string (path) - Token mint address
+Response:
+{
+  "mint": "...",
+  "supply": 1000000000,
+  "decimals": 9,
+  "metadata": {
+    "name": "Token Name",
+    "symbol": "TKN",
+    "image": "https://..."
+  },
+  "price": 1.50,
+  "marketCap": 1500000000,
+  "holders": 10000
+}
+
+### GET /api/token-stats/[account]/[mint]
+Token statistics for specific account
+Parameters:
+  - account: string (path)
+  - mint: string (path)
+Response:
+{
+  "balance": 1000,
+  "value": 1500,
+  "transactions": 50,
+  "firstHeld": 1234567890000
+}
+
+### GET /api/token-metadata
+Batch token metadata lookup
+Parameters:
+  - mints: string - Comma-separated mint addresses
+Response:
+{
+  "tokens": {
+    "mint1": { "name": "...", "symbol": "..." },
+    "mint2": { "name": "...", "symbol": "..." }
+  }
+}
+
+### GET /api/check-token
+Validate if address is a token
+Parameters:
+  - address: string (query)
+Response:
+{
+  "isToken": true,
+  "type": "spl-token|token-2022",
+  "details": {}
+}
+
+### GET /api/nft-collections
+List NFT collections
+Parameters:
+  - limit?: number
+  - sort?: string (volume|floor|items)
+Response:
+{
+  "collections": [
+    {
+      "name": "Collection Name",
+      "symbol": "COLL",
+      "floorPrice": 10,
+      "volume24h": 1000,
+      "items": 10000
+    }
+  ]
+}
+
+### GET /api/nft-collections/trending
+Trending NFT collections
+Response:
+{
+  "trending": [...],
+  "timeframe": "24h"
+}
+
+### GET /api/nft-collections/new
+Newly launched NFT collections
+Response:
+{
+  "new": [...],
+  "launchedSince": 1234567890000
+}
+
+================================================================================
+## USER MANAGEMENT & SOCIAL APIs
+================================================================================
+
+### POST /api/auth/verify
+Verify wallet signature for authentication
+Body:
+{
+  "message": "Sign this message...",
+  "signature": "...",
+  "publicKey": "..."
+}
+Response:
+{
+  "success": true,
+  "token": "jwt_token",
+  "user": {
+    "address": "...",
+    "verified": true
+  }
+}
+
+### GET /api/auth/session
+Get current session information
+Response:
+{
+  "authenticated": true,
+  "user": {
+    "address": "...",
+    "balance": 100
+  },
+  "session": {
+    "id": "...",
+    "expiresAt": 1234567890000
+  }
+}
+
+### POST /api/auth/logout
+Terminate user session
+Response:
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+
+### GET /api/user-history/[walletAddress]
+Get user transaction history
+Parameters:
+  - walletAddress: string (path)
+  - limit?: number
+Response:
+{
+  "history": [...],
+  "stats": {
+    "totalTransactions": 100,
+    "totalVolume": 10000
+  }
+}
+
+### POST /api/user-social/follow/[targetAddress]
+Follow another user
+Parameters:
+  - targetAddress: string (path)
+Response:
+{
+  "success": true,
+  "following": true,
+  "followersCount": 150
+}
+
+### POST /api/user-social/like/[targetAddress]
+Like/interact with user content
+Parameters:
+  - targetAddress: string (path)
+Response:
+{
+  "success": true,
+  "liked": true,
+  "totalLikes": 50
+}
+
+### GET /api/user-tab-preference/[walletAddress]
+Get user UI preferences
+Parameters:
+  - walletAddress: string (path)
+Response:
+{
+  "preferences": {
+    "defaultTab": "transactions",
+    "theme": "dark",
+    "layout": "compact"
+  }
+}
+
+================================================================================
+## MONETIZATION & BILLING APIs
+================================================================================
+
+### GET /api/opensvm/balance
+Get user SVMAI token balance (JWT required)
+Headers:
+  - Authorization: Bearer <jwt_token>
+Response:
+{
+  "balance": 1000,
+  "pending": 50,
+  "locked": 0
+}
+
+### GET /api/opensvm/usage
+Track API usage and metrics
+Response:
+{
+  "usage": {
+    "requests": 5000,
+    "credits": 950,
+    "period": "2024-01"
+  },
+  "limits": {
+    "requestsPerDay": 10000,
+    "creditsPerMonth": 1000
+  }
+}
+
+### GET /api/opensvm/anthropic-keys
+List API keys (JWT required)
+Response:
+{
+  "keys": [
+    {
+      "id": "key_123",
+      "name": "Production Key",
+      "created": 1234567890000,
+      "lastUsed": 1234567890000,
+      "usage": 5000
+    }
+  ]
+}
+
+### POST /api/opensvm/anthropic-keys
+Create new API key
+Body:
+{
+  "name": "My API Key",
+  "permissions": ["read", "write"]
+}
+Response:
+{
+  "key": "sk_live_...",
+  "id": "key_456"
+}
+
+### DELETE /api/opensvm/anthropic-keys/[keyId]
+Delete API key
+Parameters:
+  - keyId: string (path)
+Response:
+{
+  "success": true,
+  "deleted": "key_456"
+}
+
+### GET /api/opensvm/anthropic-keys/stats
+API key usage statistics
+Response:
+{
+  "stats": {
+    "totalRequests": 50000,
+    "uniqueKeys": 10,
+    "topKeys": []
+  }
+}
+
+### GET /api/monetization/balance
+Session-based balance tracking
+Response:
+{
+  "balance": 100,
+  "currency": "credits"
+}
+
+### POST /api/monetization/consume
+Consume credits/tokens
+Body:
+{
+  "amount": 10,
+  "action": "api_call|analysis|export"
+}
+Response:
+{
+  "success": true,
+  "newBalance": 90,
+  "transaction": "txn_123"
+}
+
+### POST /api/monetization/earn
+Earn credits/tokens
+Body:
+{
+  "action": "referral|contribution|staking",
+  "metadata": {}
+}
+Response:
+{
+  "success": true,
+  "earned": 50,
+  "newBalance": 150
+}
+
+================================================================================
+## INFRASTRUCTURE & MONITORING APIs
+================================================================================
+
+### GET /api/monitoring/api
+API performance metrics
+Response:
+{
+  "metrics": {
+    "uptime": 0.999,
+    "responseTime": {
+      "p50": 150,
+      "p95": 500,
+      "p99": 1000
+    },
+    "requestsPerSecond": 100,
+    "errorRate": 0.001
+  },
+  "endpoints": [
+    {
+      "path": "/api/transaction/*",
+      "calls": 10000,
+      "avgTime": 200
+    }
+  ]
+}
+
+### GET /api/monitoring/requests
+Request monitoring data
+Parameters:
+  - timeframe?: string (1h|24h|7d)
+Response:
+{
+  "requests": {
+    "total": 100000,
+    "successful": 99500,
+    "failed": 500
+  },
+  "byEndpoint": {},
+  "byStatus": {}
+}
+
+### POST /api/error-tracking
+Report client-side errors
+Body:
+{
+  "error": {
+    "message": "Error message",
+    "stack": "...",
+    "url": "https://...",
+    "userAgent": "..."
+  }
+}
+Response:
+{
+  "tracked": true,
+  "id": "error_123"
+}
+
+### POST /api/crash-reporting
+Report application crashes
+Body:
+{
+  "crash": {
+    "type": "unhandled_exception",
+    "details": {},
+    "timestamp": 1234567890000
+  }
+}
+Response:
+{
+  "reported": true,
+  "id": "crash_456"
+}
+
+### POST /api/logging
+Application logging endpoint
+Body:
+{
+  "level": "info|warn|error",
+  "message": "Log message",
+  "metadata": {}
+}
+Response:
+{
+  "logged": true
+}
+
+================================================================================
+## REAL-TIME & STREAMING APIs
+================================================================================
+
+### GET /api/sse-feed
+Server-Sent Events feed for real-time updates
+Headers:
+  - Accept: text/event-stream
+Response: (SSE stream)
+data: {"type": "transaction", "signature": "...", "timestamp": 1234567890000}
+data: {"type": "block", "slot": 123456789}
+data: {"type": "price", "token": "...", "price": 1.50}
+
+### GET /api/sse-alerts
+Real-time alerts stream
+Parameters:
+  - types?: string - Alert types to subscribe
+Response: (SSE stream)
+data: {"alert": "large_transfer", "details": {...}}
+
+### GET /api/stream
+Generic data streaming endpoint
+Parameters:
+  - type: string - Stream type
+  - filter?: string - Optional filters
+Response: (SSE stream)
+
+================================================================================
+## PROGRAM & REGISTRY APIs
+================================================================================
+
+### GET /api/program-registry
+List registered programs
+Parameters:
+  - category?: string
+  - verified?: boolean
+Response:
+{
+  "programs": [
+    {
+      "address": "...",
+      "name": "Program Name",
+      "category": "defi",
+      "verified": true
+    }
+  ]
+}
+
+### GET /api/program-registry/[programId]
+Get specific program details
+Parameters:
+  - programId: string (path)
+Response:
+{
+  "address": "...",
+  "name": "Program Name",
+  "description": "...",
+  "category": "defi",
+  "instructions": [],
+  "usage": {
+    "transactions": 100000,
+    "accounts": 5000
+  }
+}
+
+### GET /api/program-metadata
+Get program metadata
+Parameters:
+  - address: string (query)
+Response:
+{
+  "metadata": {
+    "name": "...",
+    "version": "1.0.0",
+    "source": "https://github.com/..."
+  }
+}
+
+### GET /api/program-discovery
+Discover new programs
+Response:
+{
+  "discovered": [
+    {
+      "address": "...",
+      "firstSeen": 1234567890000,
+      "transactions": 100
+    }
+  ]
+}
+
+### GET /api/instruction-lookup
+Parse and identify instructions
+Parameters:
+  - data: string - Instruction data
+  - programId: string
+Response:
+{
+  "instruction": {
+    "name": "transfer",
+    "params": {},
+    "accounts": []
+  }
+}
+
+================================================================================
+## UTILITY & HELPER APIs
+================================================================================
+
+### GET /api/solana-rpc
+Direct Solana RPC interface
+Body: (JSON-RPC 2.0)
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "getBalance",
+  "params": ["..."]
+}
+Response: (JSON-RPC 2.0)
+
+### GET /api/solana-proxy
+Proxied Solana RPC requests
+Parameters: Pass-through to Solana RPC
+
+### GET /api/proxy/rpc/[id]
+RPC proxy with routing
+Parameters:
+  - id: string (path) - RPC endpoint ID
+
+### GET /api/docs/openapi
+OpenAPI specification
+Parameters:
+  - format?: string (json|yaml)
+Response: OpenAPI 3.0 specification
+
+### GET /api/v1/models
+List available AI models
+Headers:
+  - Authorization: Bearer <token>
+Response:
+{
+  "models": [
+    {
+      "id": "gpt-4",
+      "name": "GPT-4",
+      "available": true
+    }
+  ]
+}
+
+### GET /api/favicon
+Get favicon for addresses/tokens
+Parameters:
+  - address: string
+Response: Image file or redirect
+
+### POST /api/qdrant/init
+Initialize vector database
+Response:
+{
+  "initialized": true,
+  "collections": []
+}
+
+================================================================================
+## SHARE & REFERRAL APIs
+================================================================================
+
+### GET /api/share/[shareCode]
+Resolve share link
+Parameters:
+  - shareCode: string (path)
+Response:
+{
+  "type": "transaction|account|token",
+  "target": "...",
+  "metadata": {}
+}
+
+### POST /api/share/conversion
+Track share conversion
+Body:
+{
+  "shareCode": "...",
+  "action": "view|click|signup"
+}
+
+### POST /api/share/click/[shareCode]
+Track share click
+Parameters:
+  - shareCode: string (path)
+
+### GET /api/share/stats/[walletAddress]
+Get sharing statistics
+Parameters:
+  - walletAddress: string (path)
+Response:
+{
+  "shares": 50,
+  "clicks": 500,
+  "conversions": 25
+}
+
+### GET /api/referrals/balance
+Get referral balance
+Response:
+{
+  "balance": 100,
+  "pending": 25,
+  "claimed": 75
+}
+
+### POST /api/referrals/claim
+Claim referral rewards
+Body:
+{
+  "amount": 50
+}
+Response:
+{
+  "success": true,
+  "claimed": 50,
+  "newBalance": 50
+}
+
+================================================================================
+## TESTING & DEVELOPMENT APIs
+================================================================================
+
+### GET /api/test-transaction
+Get test transaction data
+Response: Mock transaction object
+
+### GET /api/test-token-balance
+Test token balance endpoint
+Parameters:
+  - address: string
+  - mint: string
+Response: Mock balance data
+
+### GET /api/transaction/mock/[signature]
+Mock transaction for testing
+Parameters:
+  - signature: string (path)
+Response: Generated mock transaction
+
+================================================================================
+## RATE LIMITING
+================================================================================
+
+Default: 60 requests/minute per IP
+Analytics: 30 requests/minute
+AI Analysis: 10 requests/minute
+Batch Operations: 10 requests/minute
+Real-time Feeds: 1 connection per IP
+
+Headers returned:
+- X-RateLimit-Limit: Maximum requests
+- X-RateLimit-Remaining: Requests remaining
+- X-RateLimit-Reset: Reset timestamp
+
+================================================================================
+## CACHING
+================================================================================
+
+Default cache times:
+- Transaction data: 5 minutes
+- Account stats: 5 minutes
+- Analytics: 2 minutes
+- Token metadata: 30 minutes
+- Block data: Permanent
+- Search results: 1 minute
+
+Cache headers:
+- Cache-Control: public, max-age=300
+- ETag: For conditional requests
+- Last-Modified: Resource modification time
+
+================================================================================
+## WEBSOCKET ALTERNATIVES
+================================================================================
+
+OpenSVM uses Server-Sent Events (SSE) instead of WebSockets for real-time data.
+Benefits:
+- Works through proxies/firewalls
+- Auto-reconnection
+- Simpler implementation
+- HTTP/2 compatible
+
+Connection: GET request with Accept: text/event-stream
+Keepalive: Every 30 seconds
+Reconnect: Automatic with exponential backoff
+
+================================================================================
+## COMMON DATA TYPES
+================================================================================
+
+### TransactionInfo
+{
+  signature: string
+  timestamp: number
+  slot: number
+  success: boolean
+  type: "token" | "sol" | "unknown"
+  details: TransactionDetails
+}
+
+### AccountInfo
+{
+  address: string
+  balance: number
+  type: "wallet" | "program" | "token" | "pda"
+  owner: string
+  executable: boolean
+}
+
+### TokenInfo
+{
+  mint: string
+  supply: number
+  decimals: number
+  metadata: TokenMetadata
+}
+
+### BlockInfo
+{
+  slot: number
+  blockhash: string
+  parentSlot: number
+  timestamp: number
+  transactions: number
+}
+
+================================================================================
+## SDK RECOMMENDATIONS
+================================================================================
+
+JavaScript/TypeScript:
+```javascript
+const client = new OpenSVMClient({
+  apiKey: 'your_api_key',
+  baseUrl: 'https://osvm.ai/api'
+});
+
+const tx = await client.getTransaction('signature');
+```
+
+Python:
+```python
+from opensvm import Client
+
+client = Client(api_key='your_api_key')
+tx = client.get_transaction('signature')
+```
+
+================================================================================
+## MIGRATION NOTES
+================================================================================
+
+v0 → v1 Migration:
+- /api/tx/* endpoints moved to /api/transaction/*
+- Authentication now uses JWT instead of API keys for user endpoints
+- Response format standardized with success/error structure
+- Rate limits reduced for AI endpoints
+
+================================================================================
+## SUPPORT & DOCUMENTATION
+================================================================================
+
+Documentation: https://osvm.ai/docs/api
+Status Page: https://status.osvm.ai
+Support: support@osvm.ai
+GitHub: https://github.com/opensvm/api-docs
+
+================================================================================
+END OF SPECIFICATION
+================================================================================
