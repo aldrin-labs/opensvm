@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { API_DOCUMENTATION, API_CATEGORIES, generateCurlCommand } from '@/lib/api/api-documentation';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   // Generate HTML documentation page
   const html = `
 <!DOCTYPE html>

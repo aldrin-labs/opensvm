@@ -556,12 +556,12 @@ function generateDemoTransaction(signature: string): ParsedTransactionWithMeta {
         recentBlockhash: 'demoBlockhash1111111111111111111111111111111',
         accountKeys: [
           {
-            pubkey: new PublicKey('11111111111111111111111111111111'),
+            pubkey: new PublicKey('11111111111111111111111111111112'),
             signer: true,
             writable: true
           },
           {
-            pubkey: new PublicKey('222222222222222222222222222222222'),
+            pubkey: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'),
             signer: false,
             writable: true
           }

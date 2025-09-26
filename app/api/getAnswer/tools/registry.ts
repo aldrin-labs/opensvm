@@ -6,11 +6,13 @@ import { accountAnalysisTool } from "./accountAnalysis";
 import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
 import { stableDynamicExecutionTool } from "./stableDynamicExecution";
 import { aiPlanExecutionTool } from "./aiPlanExecution";
+import { coinGeckoTool } from "./coingecko";
 // import { moralisAnalysisTool } from "./moralisAnalysisNew"; // TODO: Fix moralis-api module import
 
 export class ToolRegistry {
     private tools: Tool[] = [
         // Order matters - more specific tools should come first
+        coinGeckoTool, // PRIMARY: CoinGecko API for cryptocurrency market data
         aiPlanExecutionTool, // PRIMARY: AI-powered tool selection and execution
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
@@ -28,6 +30,7 @@ export class ToolRegistry {
 
         // Separate primary tools from fallback tools
         const primaryTools = this.tools.filter(tool =>
+            tool.name === 'coingecko' ||
             tool.name === 'aiPlanExecution' ||
             tool.name === 'transactionInstructionAnalysis' ||
             tool.name === 'transactionAnalysis'
