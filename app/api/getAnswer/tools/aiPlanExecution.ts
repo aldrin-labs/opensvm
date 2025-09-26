@@ -469,10 +469,85 @@ Method Reference (Solana RPC via @solana/web3.js Connection)
   • Output: Signature / simulation logs.
   • When to call: Program interactions and dry-runs.
 
-- Other methods (fee, inflation, genesis, version, health, etc.)
-  • Description: Network meta and economics.
-  • Output: Method-specific structs.
-  • When to call: Infrastructure dashboards and system health.`;
+- getBlocks(startSlot, endSlot)
+  • Description: Returns a list of confirmed blocks between two slots (inclusive).
+  • Output: number[] of slot numbers.
+  • When to call: Time‑range scans, analytics windows, backfills.
+
+- getBlocksWithLimit(startSlot, limit)
+  • Description: Returns up to limit blocks starting at startSlot.
+  • Output: number[] of slot numbers.
+  • When to call: Paginated historical scans and cursors.
+
+- getBlockCommitment(slot)
+  • Description: Returns commitment for a block at a given slot.
+  • Output: { commitment: number[]; totalStake: number } (shape may vary by RPC).
+  • When to call: Assess finality and network stake commitment for a slot.
+
+- getBlockSignatures(slot)
+  • Description: Returns transaction signatures for a block (if supported by node).
+  • Output: { signatures: string[] } or array, depending on node version.
+  • When to call: Signature enumeration without fetching full block details.
+
+- getRecentPrioritizationFees(addresses?)
+  • Description: Returns recent prioritization fees suggested by the network for provided addresses (or global if omitted).
+  • Output: Array of { slot, prioritizationFee } samples.
+  • When to call: Estimate Jito/priority fee strategy, cost forecasting.
+
+- getStakeActivation(stakeAccount, epoch?)
+  • Description: Returns activation state of a stake account at an epoch.
+  • Output: { state: "active"|"inactive"|"activating"|"deactivating", active: lamports, inactive: lamports }.
+  • When to call: Stake position analytics and warm‑up/cool‑down tracking.
+
+- getStakeMinimumDelegation()
+  • Description: Returns the minimum delegation amount for staking.
+  • Output: number (lamports).
+  • When to call: UX validation and auto‑suggested min stake amounts.
+
+- minimumLedgerSlot()
+  • Description: Returns the lowest slot that the node has information about in its ledger.
+  • Output: number (slot).
+  • When to call: Backfill bounds, avoid querying pruned history.
+
+- getAddressLookupTable(address)
+  • Description: Fetches an Address Lookup Table account for v0 transactions.
+  • Output: { value: { addresses: string[], ... } }.
+  • When to call: Decoding/constructing v0 transactions or audit of LUT usage.
+
+- getFeeRateGovernor() [deprecated]
+  • Description: Old fee governor info (largely deprecated with prioritized fees evolution).
+  • Output: { feeRateGovernor: ... }.
+  • When to call: Legacy analytics only; prefer prioritization fees.
+
+- getFees() [deprecated]
+  • Description: Old fee info endpoint (deprecated).
+  • Output: { blockhash, feeCalculator }.
+  • When to call: Legacy tools only; prefer getFeeForMessage and getRecentPrioritizationFees.
+
+- getParsedTransaction(signature, opts?)
+  • Description: Returns parsed transaction (layout‑decoded).
+  • Output: Parsed structure with instructions and token balances.
+  • When to call: Human‑readable transaction analysis and UIs.
+
+- getParsedTransactions(signatures[], opts?)
+  • Description: Batch form of parsed transaction retrieval (if supported).
+  • Output: Array of parsed txs in same order.
+  • When to call: Efficient batched inspection across signatures.
+
+- getMultipleAccounts(addresses, opts?)
+  • Description: Raw multiple account fetch (different from getMultipleAccountsInfo in some versions).
+  • Output: { value: AccountInfo[] }.
+  • When to call: Bulk state fetches, scanners, and indexers.
+
+- getHighestLedgerSlot() [if supported by node]
+  • Description: Returns the highest slot fully stored in ledger (may differ from snapshot slot).
+  • Output: number (slot).
+  • When to call: Ledger coverage checks and synchronization analytics.
+
+Notes:
+- Some endpoints vary by node version. Prefer getBlock over legacy confirmed endpoints.
+- Prefer getFeeForMessage + getRecentPrioritizationFees over deprecated fee endpoints.
+`;
 
         const planningPrompt = `You are an intelligent blockchain analyst. Analyze the user's question and create a JSON plan for which tools to use.
 
