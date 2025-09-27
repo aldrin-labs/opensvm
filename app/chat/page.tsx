@@ -39,11 +39,27 @@ export default function ChatPage() {
     isProcessing,
     setInput,
     handleSubmit,
-    resetChat
+    resetChat,
+    addDirectResponse
   } = useAIChat({
     agent,
     initialMessage: undefined
   });
+
+  // Handle direct responses from API calls
+  const handleDirectResponse = (message: UIMessage) => {
+    // Convert UIMessage to Message format for the hook, ensuring compatibility
+    const convertedMessage = {
+      role: message.role,
+      content: message.content,
+      metadata: message.metadata ? {
+        type: message.metadata.type as any, // Cast to handle type difference between components and lib types
+        data: message.metadata.data
+      } : undefined
+    } as any; // Cast the entire message to handle type incompatibility
+    addDirectResponse(convertedMessage);
+    console.log('Direct response added to chat:', convertedMessage);
+  };
 
   // Show loading if agent is not yet initialized
   if (!agent) {
@@ -131,6 +147,7 @@ export default function ChatPage() {
           onInputChange={setInput}
           onSubmit={handleSubmit}
           onNewChat={handleNewChat}
+          onDirectResponse={handleDirectResponse}
           className="h-full"
           activeTab={activeTab}
           variant="inline"

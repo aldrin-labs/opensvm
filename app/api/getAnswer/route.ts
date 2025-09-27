@@ -227,8 +227,18 @@ export async function POST(request: Request) {
       let body = await request.json();
       let question = body.question || body.message || "";
 
+      // New: Check for ownPlan mode
+      const ownPlan = body.ownPlan || null;
+      const customSystemPrompt = body.systemPrompt || null;
+
       console.log(`📝 Processing query: "${question?.substring(0, 100)}${question?.length > 100 ? '...' : ''}"`);
       console.log(`🏥 System health: ${StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'}`);
+
+      // If ownPlan mode is enabled, skip tool execution and go directly to planning
+      if (ownPlan && customSystemPrompt) {
+        console.log(`📋 OwnPlan mode activated - generating plan without execution`);
+        return await handleOwnPlanMode(question, customSystemPrompt, requestStart);
+      }
 
       // Create tool context for modular tool execution
       const toolContext: ToolContext = {
@@ -313,6 +323,186 @@ Please try your request again, or simplify your query if the issue persists.
         "Cache-Control": "no-cache",
         "X-Processing-Time": `${processingTime}ms`,
         "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
+      }
+    });
+  }
+}
+
+async function handleOwnPlanMode(question: string, customSystemPrompt: string, requestStart: number): Promise<Response> {
+  // Generate a plan using custom system prompt without executing it
+  const together = new Together({
+    apiKey: process.env.TOGETHER_API_KEY,
+  });
+
+  console.log("🎯 Generating plan with custom system prompt");
+
+  // Enhanced planning-focused prompt with structured output format
+  const planningSystemPrompt = `${customSystemPrompt}
+
+## Available Tools for OpenSVM
+You have access to the following specialized tools. You MUST use these tools in your plan:
+
+### PRIMARY TOOLS (Use these first):
+1. **coingecko** - Cryptocurrency market data, prices, and trends
+   - Get current prices, market caps, volume, price changes
+   - Historical price data and charts
+   - Trending tokens and market overview
+
+2. **aiPlanExecution** - AI-powered intelligent tool selection and execution
+   - Analyzes complex queries and selects appropriate tools
+   - Coordinates multiple tool executions
+   - Handles sophisticated multi-step operations
+
+3. **transactionAnalysis** - Solana transaction analysis
+   - Decode and analyze transaction signatures
+   - Extract transfer details, programs used, and fees
+   - Identify transaction patterns and types
+
+4. **transactionInstructionAnalysis** - Deep instruction-level analysis
+   - Decode individual transaction instructions
+   - Parse program interactions and data
+   - Analyze complex DeFi operations
+
+### SECONDARY TOOLS:
+5. **accountAnalysis** - Solana account and wallet analysis
+   - Get account balances (SOL and tokens)
+   - Analyze account history and activity
+   - Token holdings and NFT collections
+
+6. **dynamicPlanExecution** - Multi-step operation planning
+   - Creates execution plans for complex queries
+   - Coordinates data from multiple sources
+   - Handles portfolio analysis and tracking
+
+7. **networkAnalysis** - Solana network statistics
+   - Current slot, epoch information
+   - Network performance metrics
+   - Validator information and stake distribution
+
+8. **moralisAnalysis** - Enhanced blockchain data via Moralis API
+   - Token metadata and pricing
+   - Wallet portfolio analysis
+   - Historical data and trends
+
+### RPC METHODS (Direct Solana blockchain access):
+- getAccountInfo - Get account data
+- getBalance - Get SOL balance
+- getTokenAccountsByOwner - Get token accounts
+- getTransaction - Get transaction details
+- getSignaturesForAddress - Get transaction history
+- getBlockTime - Get block timestamp
+- getSlot - Get current slot
+- getEpochInfo - Get epoch information
+
+## Planning Mode Instructions
+You are in PLANNING MODE. Your task is to analyze the request and create a structured execution plan using the available tools listed above.
+
+## OUTPUT FORMAT REQUIREMENTS
+You MUST format your response using the following XML structure:
+
+<osvm_plan>
+  <overview>Brief description of what the plan will accomplish</overview>
+
+  <tools>
+    <tool name="tool_name" priority="high|medium|low">
+      <description>What this tool does</description>
+      <endpoint>API endpoint or RPC method</endpoint>
+      <parameters>
+        <param name="param_name" type="string|number|object" required="true|false">Description</param>
+      </parameters>
+      <expected_output>What data this will return</expected_output>
+    </tool>
+    <!-- Add more tools as needed -->
+  </tools>
+
+  <steps>
+    <step number="1">
+      <action>What action to take</action>
+      <tool_ref>tool_name from the available tools list</tool_ref>
+      <dependencies>None or step numbers this depends on</dependencies>
+      <data_flow>How data flows from/to this step</data_flow>
+    </step>
+    <!-- Add more steps as needed -->
+  </steps>
+
+  <error_handling>
+    <scenario>Potential error scenario</scenario>
+    <mitigation>How to handle this error</mitigation>
+  </error_handling>
+
+  <validation>
+    <check>What to validate after execution</check>
+  </validation>
+
+  <estimated_time>Estimated total execution time</estimated_time>
+</osvm_plan>
+
+IMPORTANT:
+- Use ONLY the tools listed in the "Available Tools for OpenSVM" section
+- Return ONLY the XML structure. No additional text before or after the XML
+- Ensure tool_ref in steps matches exactly the tool names provided above
+- Be specific about API endpoints and parameters
+- Do NOT execute anything, only plan`;
+
+  try {
+    const llmTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Planning timeout')), 30000); // 30 second timeout for planning
+    });
+
+    const llmPromise = together.chat.completions.create({
+      model: "openai/gpt-oss-120b",
+      messages: [
+        {
+          role: "system",
+          content: planningSystemPrompt
+        },
+        { role: "user", content: question }
+      ],
+      stream: false,
+      max_tokens: 2000, // Reasonable limit for a plan
+    });
+
+    const answer = await Promise.race([llmPromise, llmTimeout]);
+    let plan = answer.choices?.[0]?.message?.content || "Failed to generate plan";
+
+    // Clean up the response to ensure it's valid XML
+    // Remove any text before <osvm_plan> or after </osvm_plan>
+    const planMatch = plan.match(/<osvm_plan>[\s\S]*<\/osvm_plan>/);
+    if (planMatch) {
+      plan = planMatch[0];
+    } else {
+      // If the LLM didn't follow the format, wrap it in a basic structure
+      plan = `<osvm_plan>
+  <overview>Plan generation did not follow the structured format</overview>
+  <raw_plan>${plan}</raw_plan>
+</osvm_plan>`;
+    }
+
+    const processingTime = Date.now() - requestStart;
+    console.log(`✅ Plan generated in ${processingTime}ms`);
+
+    // Return the plan with special headers to indicate it's a plan-only response
+    return new Response(plan, {
+      status: 200,
+      headers: {
+        "Content-Type": "application/xml",
+        "Cache-Control": "no-cache",
+        "X-Processing-Time": `${processingTime}ms`,
+        "X-Response-Type": "plan-only",
+        "X-Custom-Prompt": "true"
+      },
+    });
+  } catch (error) {
+    const processingTime = Date.now() - requestStart;
+    console.error(`❌ Plan generation failed after ${processingTime}ms:`, error);
+
+    return new Response(`Failed to generate plan: ${(error as Error).message}`, {
+      status: 500,
+      headers: {
+        "Content-Type": "text/plain",
+        "Cache-Control": "no-cache",
+        "X-Processing-Time": `${processingTime}ms`,
+        "X-Response-Type": "plan-error"
       }
     });
   }

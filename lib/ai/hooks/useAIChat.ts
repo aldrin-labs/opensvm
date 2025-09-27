@@ -59,6 +59,10 @@ export function useAIChat({ agent, initialMessage }: UseAIChatProps) {
     }
   };
 
+  const addDirectResponse = useCallback((message: Message) => {
+    setMessages(prev => [...prev, message]);
+  }, []);
+
   const resetChat = (newInitialMessage?: string) => {
     agent.clearContext();
     setMessages([{
@@ -75,6 +79,7 @@ export function useAIChat({ agent, initialMessage }: UseAIChatProps) {
     setInput,
     handleSubmit,
     resetChat,
+    addDirectResponse,
     toggleRecording // Use toggleRecording for voice input functionality
   };
-} 
+}
