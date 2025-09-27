@@ -21,7 +21,8 @@ export const COLLECTIONS = {
   SHARE_CLICKS: 'share_clicks',
   TRANSFERS: 'transfers',
   TOKEN_METADATA: 'token_metadata',
-  PROGRAM_METADATA: 'program_metadata'
+  PROGRAM_METADATA: 'program_metadata',
+  GLOBAL_CHAT: 'global_chat'
 } as const;
 
 // Export qdrant client for direct access
@@ -1680,5 +1681,304 @@ export async function batchGetCachedProgramMetadata(
   } catch (error) {
     console.error('Error batch getting cached program metadata:', error);
     return new Map();
+  }
+}
+
+/**
+ * Global Chat Message Storage Functions
+ */
+
+// Global chat message interface for Qdrant storage
+export interface GlobalChatMessage {
+  id: string;
+  username: string;
+  walletAddress?: string;
+  message: string;
+  timestamp: number;
+  isGuest: boolean;
+  userColor: string;
+}
+
+/**
+ * Ensure global chat collection exists with proper indexes
+ */
+async function ensureGlobalChatCollection(): Promise<void> {
+  const cacheKey = 'global_chat_initialized';
+
+  // Check if already initialized in this session
+  if (collectionInitialized.get(cacheKey)) {
+    return;
+  }
+
+  try {
+    const exists = await qdrantClient.getCollection(COLLECTIONS.GLOBAL_CHAT).catch(() => null);
+
+    // Helper function to ensure index exists
+    const ensureIndex = async (fieldName: string, fieldType: 'keyword' | 'integer' | 'bool' = 'keyword') => {
+      try {
+        await qdrantClient.createPayloadIndex(COLLECTIONS.GLOBAL_CHAT, {
+          field_name: fieldName,
+          field_schema: fieldType
+        });
+        console.log(`Created index for ${fieldName} in global_chat`);
+      } catch (error: any) {
+        if (error?.data?.status?.error?.includes('already exists') ||
+          error?.message?.includes('already exists')) {
+          // Index already exists, this is expected and not an error
+        } else {
+          console.warn(`Failed to create index for ${fieldName}:`, error?.data?.status?.error || error?.message);
+        }
+      }
+    };
+
+    if (!exists) {
+      await qdrantClient.createCollection(COLLECTIONS.GLOBAL_CHAT, {
+        vectors: {
+          size: 384,
+          distance: 'Cosine'
+        }
+      });
+      console.log('Created global_chat collection');
+    }
+
+    // Always ensure indexes exist, even for existing collections
+    await ensureIndex('username');
+    await ensureIndex('walletAddress');
+    await ensureIndex('timestamp', 'integer');
+    await ensureIndex('isGuest', 'bool');
+
+    // Mark as initialized
+    collectionInitialized.set(cacheKey, true);
+    console.log('Global chat collection and indexes initialized successfully');
+
+  } catch (error) {
+    console.error('Error ensuring global chat collection:', error);
+    throw error;
+  }
+}
+
+/**
+ * Store global chat message in Qdrant with vector embedding for semantic search
+ */
+export async function storeGlobalChatMessage(message: GlobalChatMessage): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  try {
+    await ensureGlobalChatCollection();
+
+    // Validate message data
+    if (!message.id || !message.username || !message.message) {
+      throw new Error(`Invalid chat message: missing required fields`);
+    }
+
+    // Generate embedding from message content for semantic search capabilities
+    const textContent = `${message.username} ${message.message}`;
+    const vector = generateSimpleEmbedding(textContent);
+
+    console.log(`Storing global chat message from: ${message.username} (${message.isGuest ? 'guest' : 'user'})`);
+
+    const upsertData = {
+      wait: true,
+      points: [{
+        id: message.id,
+        vector,
+        payload: {
+          ...message,
+          // Ensure timestamp is properly stored as integer for indexing
+          timestamp: Number(message.timestamp)
+        }
+      }]
+    };
+
+    await qdrantClient.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData);
+  } catch (error) {
+    console.error('Error storing global chat message:', error);
+    throw error;
+  }
+}
+
+/**
+ * Get global chat messages from Qdrant with pagination and filtering
+ */
+export async function getGlobalChatMessages(
+  options: {
+    limit?: number;
+    offset?: number;
+    username?: string;
+    walletAddress?: string;
+    guestsOnly?: boolean;
+    usersOnly?: boolean;
+    since?: number; // timestamp
+  } = {}
+): Promise<{ messages: GlobalChatMessage[]; total: number }> {
+  // Skip in browser - return empty result
+  if (typeof window !== 'undefined') {
+    return { messages: [], total: 0 };
+  }
+
+  try {
+    await ensureGlobalChatCollection();
+
+    const { limit = 100, offset = 0, username, walletAddress, guestsOnly, usersOnly, since } = options;
+
+    // Build filter
+    const filter: any = {
+      must: []
+    };
+
+    // Filter by username if provided
+    if (username) {
+      filter.must.push({
+        key: 'username',
+        match: { value: username }
+      });
+    }
+
+    // Filter by wallet address if provided
+    if (walletAddress) {
+      filter.must.push({
+        key: 'walletAddress',
+        match: { value: walletAddress }
+      });
+    }
+
+    // Filter by user type
+    if (guestsOnly) {
+      filter.must.push({
+        key: 'isGuest',
+        match: { value: true }
+      });
+    } else if (usersOnly) {
+      filter.must.push({
+        key: 'isGuest',
+        match: { value: false }
+      });
+    }
+
+    // Filter by timestamp if provided (messages since a certain time)
+    if (since) {
+      filter.must.push({
+        key: 'timestamp',
+        range: { gte: since }
+      });
+    }
+
+    // Use search with dummy vector for filtered retrieval
+    const searchParams: any = {
+      vector: new Array(384).fill(0), // Dummy vector for filtered search
+      limit,
+      offset,
+      with_payload: true
+    };
+
+    if (filter.must.length > 0) {
+      searchParams.filter = filter;
+    }
+
+    // Search for messages
+    const result = await qdrantClient.search(COLLECTIONS.GLOBAL_CHAT, searchParams);
+
+    // Get total count
+    const countParams: any = {};
+    if (filter.must.length > 0) {
+      countParams.filter = filter;
+    }
+    const countResult = await qdrantClient.count(COLLECTIONS.GLOBAL_CHAT, countParams);
+
+    // Extract messages from search results
+    const messages = result.map(point => point.payload as unknown as GlobalChatMessage);
+
+    // Sort by timestamp (newest first) since we can't rely on Qdrant ordering
+    messages.sort((a, b) => b.timestamp - a.timestamp);
+
+    // Debug logging for development
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`Retrieved ${messages.length} global chat messages out of ${countResult.count} total`);
+      if (messages.length > 0) {
+        const recentMessage = messages[0];
+        const hoursAgo = Math.round((Date.now() - recentMessage.timestamp) / (1000 * 60 * 60));
+        console.log(`Most recent message: ${recentMessage.username} - ${hoursAgo}h ago`);
+      }
+    }
+
+    return {
+      messages,
+      total: countResult.count
+    };
+  } catch (error) {
+    console.error('Error getting global chat messages:', error);
+    return { messages: [], total: 0 };
+  }
+}
+
+/**
+ * Delete global chat messages (for moderation or cleanup)
+ */
+export async function deleteGlobalChatMessage(messageId: string): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  try {
+    await ensureGlobalChatCollection();
+
+    await qdrantClient.delete(COLLECTIONS.GLOBAL_CHAT, {
+      wait: true,
+      points: [messageId]
+    });
+
+    console.log(`Deleted global chat message: ${messageId}`);
+  } catch (error) {
+    console.error('Error deleting global chat message:', error);
+    throw error;
+  }
+}
+
+/**
+ * Batch store multiple global chat messages efficiently
+ */
+export async function batchStoreGlobalChatMessages(messages: GlobalChatMessage[]): Promise<void> {
+  // Skip in browser
+  if (typeof window !== 'undefined') return;
+
+  if (messages.length === 0) return;
+
+  try {
+    await ensureGlobalChatCollection();
+
+    console.log(`Batch storing ${messages.length} global chat messages`);
+
+    // Prepare points for batch operation
+    const points = messages.map(message => {
+      // Validate message data
+      if (!message.id || !message.username || !message.message) {
+        throw new Error(`Invalid chat message data: missing required fields for ${message.id}`);
+      }
+
+      // Generate embedding from message content
+      const textContent = `${message.username} ${message.message}`;
+      const vector = generateSimpleEmbedding(textContent);
+
+      return {
+        id: message.id,
+        vector,
+        payload: {
+          ...message,
+          timestamp: Number(message.timestamp)
+        }
+      };
+    });
+
+    const upsertData = {
+      wait: true,
+      points
+    };
+
+    await qdrantClient.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData);
+    console.log(`Successfully batch stored ${messages.length} global chat messages`);
+
+  } catch (error) {
+    console.error(`Error batch storing ${messages.length} global chat messages:`, error);
+    throw error;
   }
 }

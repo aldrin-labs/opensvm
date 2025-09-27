@@ -28,18 +28,18 @@ export async function getSessionFromCookie(): Promise<SessionData | null> {
   try {
     const cookieStore = await cookies();
     const sessionCookie = cookieStore.get('opensvm_session');
-    
+
     if (!sessionCookie?.value) {
       return null;
     }
-    
+
     const sessionData = JSON.parse(sessionCookie.value) as SessionData;
-    
+
     // Check if session is expired
     if (Date.now() > sessionData.expiresAt) {
       return null;
     }
-    
+
     return sessionData;
   } catch (error) {
     console.error('Error getting session from cookie:', error);

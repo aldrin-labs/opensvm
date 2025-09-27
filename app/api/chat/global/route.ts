@@ -1,5 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PublicKey } from '@solana/web3.js';
+import { 
+  storeGlobalChatMessage, 
+  getGlobalChatMessages, 
+  GlobalChatMessage 
+} from '@/lib/qdrant';
+// Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
+
+// Fallback in-memory storage when Qdrant is not available
+let fallbackMessages: GlobalChatMessage[] = [];
 
 interface GlobalMessage {
   id: string;
@@ -14,13 +22,79 @@ interface RateLimitEntry {
   messageCount: number;
 }
 
-// In-memory storage (in production, use Redis or database)
-let globalMessages: GlobalMessage[] = [];
+// In-memory rate limiting (could be moved to Qdrant later if needed)
 let rateLimitMap = new Map<string, RateLimitEntry>();
+
+// Clean up old rate limit entries every hour
+const RATE_LIMIT_CLEANUP_INTERVAL = 60 * 60 * 1000; // 1 hour
+let lastRateLimitCleanup = Date.now();
+
+function cleanupRateLimits() {
+  const now = Date.now();
+  if (now - lastRateLimitCleanup < RATE_LIMIT_CLEANUP_INTERVAL) return;
+
+  const maxAge = Math.max(GUEST_RATE_LIMIT, USER_RATE_LIMIT) * 2; // Keep entries for 2x the longest rate limit
+  const cutoff = now - maxAge;
+
+  for (const [key, entry] of rateLimitMap.entries()) {
+    if (entry.lastMessage < cutoff) {
+      rateLimitMap.delete(key);
+    }
+  }
+
+  lastRateLimitCleanup = now;
+}
 
 const MAX_MESSAGES = 1000;
 const GUEST_RATE_LIMIT = 5 * 60 * 1000; // 5 minutes
 const USER_RATE_LIMIT = 30 * 1000; // 30 seconds
+
+// Generate a consistent user color based on username/wallet
+function generateUserColor(identifier: string): string {
+  const colors = [
+    '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7',
+    '#DDA0DD', '#98D8C8', '#F06292', '#AED581', '#FFB74D',
+    '#64B5F6', '#81C784', '#FFD54F', '#FF8A65', '#BA68C8'
+  ];
+  
+  let hash = 0;
+  for (let i = 0; i < identifier.length; i++) {
+    hash = identifier.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  
+  return colors[Math.abs(hash) % colors.length];
+}
+
+// Convert GlobalChatMessage to legacy GlobalMessage format for API compatibility
+function convertToLegacyFormat(qdrantMessage: GlobalChatMessage): GlobalMessage {
+  return {
+    id: qdrantMessage.id,
+    content: qdrantMessage.message,
+    sender: qdrantMessage.walletAddress || qdrantMessage.username,
+    timestamp: qdrantMessage.timestamp,
+    type: 'user' as const
+  };
+}
+
+// Convert legacy format to GlobalChatMessage for Qdrant storage
+function convertToQdrantFormat(legacyMessage: {
+  content: string;
+  sender: string;
+  timestamp: number;
+  id: string;
+}): GlobalChatMessage {
+  const isWallet = isValidWalletAddress(legacyMessage.sender);
+  
+  return {
+    id: legacyMessage.id,
+    username: isWallet ? `${legacyMessage.sender.slice(0, 4)}...${legacyMessage.sender.slice(-4)}` : legacyMessage.sender,
+    walletAddress: isWallet ? legacyMessage.sender : undefined,
+    message: legacyMessage.content,
+    timestamp: legacyMessage.timestamp,
+    isGuest: !isWallet,
+    userColor: generateUserColor(legacyMessage.sender)
+  };
+}
 
 function getClientIdentifier(request: NextRequest): string {
   const forwarded = request.headers.get('x-forwarded-for');
@@ -29,12 +103,12 @@ function getClientIdentifier(request: NextRequest): string {
 }
 
 function isValidWalletAddress(address: string): boolean {
-  try {
-    new PublicKey(address);
-    return true;
-  } catch {
-    return false;
-  }
+  if (typeof address !== 'string') return false;
+  // Basic Base58 and length checks to avoid heavy @solana/web3.js dependency
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  if (!base58Regex.test(address)) return false;
+  // Solana pubkeys are 32 bytes; Base58 encoded length typically 32-44 chars
+  return address.length >= 32 && address.length <= 44;
 }
 
 function enforceRateLimit(identifier: string, isUser: boolean): { allowed: boolean; timeLeft?: number } {
@@ -60,19 +134,44 @@ function enforceRateLimit(identifier: string, isUser: boolean): { allowed: boole
 }
 
 export async function GET() {
+  // Clean up old rate limit entries periodically
+  cleanupRateLimits();
+
   try {
-    return NextResponse.json({
-      messages: globalMessages,
-      totalMessages: globalMessages.length,
-      maxMessages: MAX_MESSAGES
+    // Try to fetch messages from Qdrant
+    const result = await getGlobalChatMessages({
+      limit: MAX_MESSAGES,
+      offset: 0
     });
-  } catch (error) {
-    console.error('Error fetching global messages:', error);
-    return NextResponse.json({ error: 'Failed to fetch messages' }, { status: 500 });
+    
+    // Convert to legacy format for API compatibility
+    const legacyMessages = result.messages.map(convertToLegacyFormat);
+    
+    return NextResponse.json({
+      messages: legacyMessages,
+      totalMessages: result.total,
+      maxMessages: MAX_MESSAGES,
+      storage: 'qdrant'
+    });
+  } catch (error: any) {
+    console.warn('Qdrant not available, using fallback storage:', error?.message || 'Unknown error');
+    
+    // Fallback to in-memory storage
+    const legacyMessages = fallbackMessages.map(convertToLegacyFormat);
+    
+    return NextResponse.json({
+      messages: legacyMessages,
+      totalMessages: fallbackMessages.length,
+      maxMessages: MAX_MESSAGES,
+      storage: 'fallback'
+    });
   }
 }
 
 export async function POST(request: NextRequest) {
+  // Clean up old rate limit entries periodically
+  cleanupRateLimits();
+
   try {
     const body = await request.json();
     const { content, wallet } = body;
@@ -109,27 +208,54 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    // Create new message
-    const newMessage: GlobalMessage = {
+    // Create new message in legacy format first
+    const legacyMessage = {
       id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
       content: content.trim(),
       sender,
-      timestamp: Date.now(),
-      type: 'user'
+      timestamp: Date.now()
     };
 
-    // Add message and enforce limit
-    globalMessages.push(newMessage);
-    
-    // Keep only the latest MAX_MESSAGES
-    if (globalMessages.length > MAX_MESSAGES) {
-      globalMessages = globalMessages.slice(-MAX_MESSAGES);
+    // Convert to Qdrant format
+    const qdrantMessage = convertToQdrantFormat(legacyMessage);
+
+    let storageType = 'fallback';
+    let totalMessages = 0;
+
+    try {
+      // Try to store in Qdrant first
+      await storeGlobalChatMessage(qdrantMessage);
+      
+      // Get total count from Qdrant
+      const { total } = await getGlobalChatMessages({ limit: 1 });
+      totalMessages = total;
+      storageType = 'qdrant';
+      
+      console.log(`[GlobalChat] Message stored in Qdrant from ${sender}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`);
+    } catch (qdrantError: any) {
+      console.warn('Qdrant not available, using fallback storage:', qdrantError?.message || 'Unknown error');
+      
+      // Fallback to in-memory storage
+      fallbackMessages.push(qdrantMessage);
+      
+      // Keep only the latest MAX_MESSAGES
+      if (fallbackMessages.length > MAX_MESSAGES) {
+        fallbackMessages = fallbackMessages.slice(-MAX_MESSAGES);
+      }
+      
+      totalMessages = fallbackMessages.length;
+      
+      console.log(`[GlobalChat] Message stored in fallback from ${sender}: ${content.slice(0, 50)}${content.length > 50 ? '...' : ''}`);
     }
+
+    // Convert back to legacy format for response
+    const responseMessage = convertToLegacyFormat(qdrantMessage);
 
     return NextResponse.json({
       success: true,
-      message: newMessage,
-      totalMessages: globalMessages.length
+      message: responseMessage,
+      totalMessages,
+      storage: storageType
     });
 
   } catch (error) {
@@ -140,13 +266,23 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE() {
   try {
-    // Clear all messages (admin function)
-    globalMessages = [];
+    // Clear fallback messages
+    fallbackMessages = [];
+
+    // Clear rate limiting
     rateLimitMap.clear();
-    
+
+    console.log('[GlobalChat] Cleared fallback messages and rate limits');
+
+    // Note: Qdrant messages are not cleared as bulk deletion would require
+    // fetching all IDs and deleting individually which is expensive.
+    // This endpoint now clears the fallback storage and rate limits only.
+
     return NextResponse.json({
       success: true,
-      message: 'All messages cleared'
+      message: 'Fallback messages and rate limits cleared. Note: Qdrant messages persist.',
+      clearedFallback: true,
+      clearedQdrant: false
     });
   } catch (error) {
     console.error('Error clearing messages:', error);
