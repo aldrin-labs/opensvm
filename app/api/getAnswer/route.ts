@@ -554,11 +554,13 @@ async function handleLLMFallback(question: string, requestStart: number, partial
   if (userVibe.isCasual && !userVibe.isTechnical) {
     systemPrompt = `You are a friendly, knowledgeable assistant with expertise in Solana blockchain. You match the user's energy and communication style while being helpful and informative.
 
+**IMPORTANT: NO EMOJIS, only neat ascii**
+
 **Vibe Matching Guidelines:**
 - If the user is casual/playful, be casual and playful back
 - Use similar expressions and tone as the user
 - Keep responses engaging and conversational
-- Use emojis if the user uses them
+- NO EMOJIS - use neat ascii art or text expressions instead
 - Be concise for simple questions
 - Still provide accurate information when needed
 
@@ -573,9 +575,11 @@ async function handleLLMFallback(question: string, requestStart: number, partial
 - Match their vibe while being genuine
 - Ask follow-up questions if appropriate
 
-Remember: Match their energy, be genuine, and have fun with it! 🚀`;
+Remember: Match their energy, be genuine, and have fun with it!`;
   } else {
     systemPrompt = `You are an expert Solana blockchain analyst who can adapt your communication style to match the user's vibe. You have deep technical knowledge but can explain things casually or formally as needed.
+
+**IMPORTANT: NO EMOJIS, only neat ascii**
 
     Solana RPC:
   ${solanaRpcKnowledge} 
@@ -693,10 +697,10 @@ Remember: Match their energy, be genuine, and have fun with it! 🚀`;
     const isTimeout = (e as Error).message.includes('timeout');
     const errorResponse = isTimeout
       ? (userVibe?.isCasual
-        ? "Sorry! That took too long to process 😅 Could you try a simpler question?"
+        ? "Sorry! That took too long to process. Could you try a simpler question?"
         : "Request timed out. Please try a simpler query or retry in a moment.")
       : (userVibe?.isCasual
-        ? "Oops! Something went wrong on my end 😅 Could you try asking again?"
+        ? "Oops! Something went wrong on my end. Could you try asking again?"
         : "I encountered an error while processing your query. Please try again.");
 
     return new Response(errorResponse, {
