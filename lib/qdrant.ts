@@ -5,11 +5,20 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { UserHistoryEntry, UserProfile, UserFollowEntry } from '@/types/user-history';
 
-// Initialize Qdrant client
+// Initialize Qdrant client with timeout
 const qdrantClient = new QdrantClient({
   url: process.env.QDRANT_SERVER || 'http://localhost:6333',
   apiKey: process.env.QDRANT || undefined,
 });
+
+// Helper function to add timeout to Qdrant operations
+async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> {
+  const timeoutPromise = new Promise<T>((_, reject) => {
+    setTimeout(() => reject(new Error('Qdrant operation timed out')), timeoutMs);
+  });
+  
+  return Promise.race([promise, timeoutPromise]);
+}
 
 // Collection names
 export const COLLECTIONS = {
@@ -1711,15 +1720,15 @@ async function ensureGlobalChatCollection(): Promise<void> {
   }
 
   try {
-    const exists = await qdrantClient.getCollection(COLLECTIONS.GLOBAL_CHAT).catch(() => null);
+    const exists = await withTimeout(qdrantClient.getCollection(COLLECTIONS.GLOBAL_CHAT)).catch(() => null);
 
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string, fieldType: 'keyword' | 'integer' | 'bool' = 'keyword') => {
       try {
-        await qdrantClient.createPayloadIndex(COLLECTIONS.GLOBAL_CHAT, {
+        await withTimeout(qdrantClient.createPayloadIndex(COLLECTIONS.GLOBAL_CHAT, {
           field_name: fieldName,
           field_schema: fieldType
-        });
+        }));
         console.log(`Created index for ${fieldName} in global_chat`);
       } catch (error: any) {
         if (error?.data?.status?.error?.includes('already exists') ||
@@ -1732,12 +1741,12 @@ async function ensureGlobalChatCollection(): Promise<void> {
     };
 
     if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.GLOBAL_CHAT, {
+      await withTimeout(qdrantClient.createCollection(COLLECTIONS.GLOBAL_CHAT, {
         vectors: {
           size: 384,
           distance: 'Cosine'
         }
-      });
+      }));
       console.log('Created global_chat collection');
     }
 
@@ -1765,7 +1774,7 @@ export async function storeGlobalChatMessage(message: GlobalChatMessage): Promis
   if (typeof window !== 'undefined') return;
 
   try {
-    await ensureGlobalChatCollection();
+    await withTimeout(ensureGlobalChatCollection());
 
     // Validate message data
     if (!message.id || !message.username || !message.message) {
@@ -1778,20 +1787,31 @@ export async function storeGlobalChatMessage(message: GlobalChatMessage): Promis
 
     console.log(`Storing global chat message from: ${message.username} (${message.isGuest ? 'guest' : 'user'})`);
 
+    // Clean payload - remove undefined values that Qdrant doesn't accept
+    const cleanPayload = {
+      id: message.id,
+      username: message.username,
+      message: message.message,
+      timestamp: Number(message.timestamp),
+      isGuest: Boolean(message.isGuest),
+      userColor: message.userColor
+    };
+    
+    // Only add walletAddress if it's actually defined
+    if (message.walletAddress && message.walletAddress.trim() !== '') {
+      (cleanPayload as any).walletAddress = message.walletAddress;
+    }
+
     const upsertData = {
       wait: true,
       points: [{
         id: message.id,
         vector,
-        payload: {
-          ...message,
-          // Ensure timestamp is properly stored as integer for indexing
-          timestamp: Number(message.timestamp)
-        }
+        payload: cleanPayload
       }]
     };
 
-    await qdrantClient.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData);
+    await withTimeout(qdrantClient.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData));
   } catch (error) {
     console.error('Error storing global chat message:', error);
     throw error;
@@ -1818,7 +1838,7 @@ export async function getGlobalChatMessages(
   }
 
   try {
-    await ensureGlobalChatCollection();
+    await withTimeout(ensureGlobalChatCollection());
 
     const { limit = 100, offset = 0, username, walletAddress, guestsOnly, usersOnly, since } = options;
 
@@ -1877,14 +1897,14 @@ export async function getGlobalChatMessages(
     }
 
     // Search for messages
-    const result = await qdrantClient.search(COLLECTIONS.GLOBAL_CHAT, searchParams);
+    const result = await withTimeout(qdrantClient.search(COLLECTIONS.GLOBAL_CHAT, searchParams));
 
     // Get total count
     const countParams: any = {};
     if (filter.must.length > 0) {
       countParams.filter = filter;
     }
-    const countResult = await qdrantClient.count(COLLECTIONS.GLOBAL_CHAT, countParams);
+    const countResult = await withTimeout(qdrantClient.count(COLLECTIONS.GLOBAL_CHAT, countParams));
 
     // Extract messages from search results
     const messages = result.map(point => point.payload as unknown as GlobalChatMessage);
@@ -1908,7 +1928,8 @@ export async function getGlobalChatMessages(
     };
   } catch (error) {
     console.error('Error getting global chat messages:', error);
-    return { messages: [], total: 0 };
+    // Re-throw the error so API routes can catch it and use fallback
+    throw error;
   }
 }
 

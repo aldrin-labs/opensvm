@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { 
   storeGlobalChatMessage, 
   getGlobalChatMessages, 
+  deleteGlobalChatMessage,
   GlobalChatMessage 
 } from '@/lib/qdrant';
 // Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
@@ -144,15 +145,36 @@ export async function GET() {
       offset: 0
     });
     
-    // Convert to legacy format for API compatibility
-    const legacyMessages = result.messages.map(convertToLegacyFormat);
-    
-    return NextResponse.json({
-      messages: legacyMessages,
-      totalMessages: result.total,
-      maxMessages: MAX_MESSAGES,
-      storage: 'qdrant'
-    });
+    // Test if Qdrant storage is working by attempting a small test
+    // This ensures consistency with POST endpoint storage behavior
+    try {
+      const testMessage = {
+        id: `test-${Date.now()}`,
+        username: 'test',
+        message: 'test',
+        timestamp: Date.now(),
+        isGuest: true,
+        userColor: '#FF6B6B'
+      };
+      
+      // Try storing and immediately delete the test message
+      await storeGlobalChatMessage(testMessage);
+      await deleteGlobalChatMessage(testMessage.id);
+      
+      // If we get here, Qdrant is working properly
+      const legacyMessages = result.messages.map(convertToLegacyFormat);
+      
+      return NextResponse.json({
+        messages: legacyMessages,
+        totalMessages: result.total,
+        maxMessages: MAX_MESSAGES,
+        storage: 'qdrant'
+      });
+    } catch (storageTestError: any) {
+      // Qdrant storage is having issues (same as POST), use fallback
+      console.warn('Qdrant storage test failed, using fallback storage for consistency:', storageTestError?.message || 'Unknown error');
+      throw storageTestError; // Let the outer catch handle fallback
+    }
   } catch (error: any) {
     console.warn('Qdrant not available, using fallback storage:', error?.message || 'Unknown error');
     
