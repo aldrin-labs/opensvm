@@ -149,7 +149,7 @@ export async function GET() {
     // This ensures consistency with POST endpoint storage behavior
     try {
       const testMessage = {
-        id: `test-${Date.now()}`,
+        id: crypto.randomUUID(), // Use proper UUID for Qdrant compatibility
         username: 'test',
         message: 'test',
         timestamp: Date.now(),
@@ -230,9 +230,9 @@ export async function POST(request: NextRequest) {
       }, { status: 429 });
     }
 
-    // Create new message in legacy format first
+    // Create new message in legacy format first - use UUID for Qdrant compatibility
     const legacyMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`,
+      id: crypto.randomUUID(), // Use proper UUID for Qdrant compatibility
       content: content.trim(),
       sender,
       timestamp: Date.now()

@@ -1781,31 +1781,60 @@ export async function storeGlobalChatMessage(message: GlobalChatMessage): Promis
       throw new Error(`Invalid chat message: missing required fields`);
     }
 
+    // Validate and sanitize all fields to prevent Qdrant Bad Request errors
+    if (!message.id || typeof message.id !== 'string' || message.id.trim() === '') {
+      throw new Error('Invalid message ID');
+    }
+    
+    if (!message.username || typeof message.username !== 'string' || message.username.trim() === '') {
+      throw new Error('Invalid username');
+    }
+    
+    if (!message.message || typeof message.message !== 'string' || message.message.trim() === '') {
+      throw new Error('Invalid message content');
+    }
+    
+    if (!Number.isInteger(message.timestamp) || message.timestamp <= 0) {
+      throw new Error('Invalid timestamp');
+    }
+    
+    if (typeof message.isGuest !== 'boolean') {
+      throw new Error('Invalid isGuest field');
+    }
+    
+    if (!message.userColor || typeof message.userColor !== 'string' || !/^#[0-9A-Fa-f]{6}$/.test(message.userColor)) {
+      throw new Error('Invalid userColor field');
+    }
+
     // Generate embedding from message content for semantic search capabilities
-    const textContent = `${message.username} ${message.message}`;
+    const textContent = `${message.username.trim()} ${message.message.trim()}`;
     const vector = generateSimpleEmbedding(textContent);
 
     console.log(`Storing global chat message from: ${message.username} (${message.isGuest ? 'guest' : 'user'})`);
 
-    // Clean payload - remove undefined values that Qdrant doesn't accept
-    const cleanPayload = {
-      id: message.id,
-      username: message.username,
-      message: message.message,
+    // Build clean payload with proper validation
+    const cleanPayload: any = {
+      id: message.id.trim(),
+      username: message.username.trim(),
+      message: message.message.trim(),
       timestamp: Number(message.timestamp),
       isGuest: Boolean(message.isGuest),
-      userColor: message.userColor
+      userColor: message.userColor.trim()
     };
     
-    // Only add walletAddress if it's actually defined
-    if (message.walletAddress && message.walletAddress.trim() !== '') {
-      (cleanPayload as any).walletAddress = message.walletAddress;
+    // Only add walletAddress if it's properly defined and valid
+    if (message.walletAddress && 
+        typeof message.walletAddress === 'string' && 
+        message.walletAddress.trim() !== '' &&
+        message.walletAddress.trim() !== 'undefined' &&
+        message.walletAddress.trim() !== 'null') {
+      cleanPayload.walletAddress = message.walletAddress.trim();
     }
 
     const upsertData = {
       wait: true,
       points: [{
-        id: message.id,
+        id: message.id.trim(),
         vector,
         payload: cleanPayload
       }]

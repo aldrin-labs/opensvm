@@ -14,14 +14,22 @@ export default async function CatchAllRoute({ params }: { params: { slug?: strin
 
   const input = slugParts.join('/');
 
-  // Don't handle Next.js internal routes or static assets - return 404
-  // Check for Next.js internal routes first
+  // Don't handle Next.js internal routes, dedicated app routes, or static assets - return 404
+  // Check for Next.js internal routes and dedicated app routes first
   if (slugParts[0]?.startsWith('_next') || 
       slugParts[0] === '_next' ||
       input.startsWith('_next/') || 
       input.startsWith('api/') || 
       input.startsWith('static/') ||
       input.startsWith('favicon') ||
+      // Exclude dedicated app routes that have their own page.tsx files
+      slugParts[0] === 'chat' ||
+      slugParts[0] === 'search' ||
+      slugParts[0] === 'account' ||
+      slugParts[0] === 'tx' ||
+      slugParts[0] === 'block' ||
+      slugParts[0] === 'token' ||
+      slugParts[0] === 'program' ||
       input.includes('.js') ||
       input.includes('.jsx') ||
       input.includes('.ts') ||

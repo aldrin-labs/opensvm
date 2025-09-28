@@ -936,12 +936,14 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     }
   }, [activeTabId, activeTab, updateTab]);
 
-  const handleDirectResponse = useCallback((assistantMessage: any) => {
+  const handleDirectResponse = useCallback((assistantMessage: any, originalInput?: string) => {
     // Handle direct RPC responses by adding both user message and assistant response to chat
     if (activeTabId && activeTab) {
+      // Use provided originalInput first, fallback to activeTab.input, then empty string
+      const userContent = originalInput || activeTab.input || '';
       const userMessage = {
         role: 'user' as const,
-        content: activeTab.input || ''
+        content: userContent
       };
       const updatedMessages = [...(activeTab.messages || []), userMessage, assistantMessage];
       updateTab(activeTabId, {

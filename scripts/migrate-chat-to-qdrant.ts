@@ -4,6 +4,9 @@
  * Migration script to transfer chat messages from file-based storage to Qdrant
  */
 
+// Load environment variables from .env file
+import 'dotenv/config';
+
 import { readFile, existsSync } from 'fs';
 import { promisify } from 'util';
 import path from 'path';

@@ -59,7 +59,7 @@ interface ChatUIProps {
   variant?: 'inline' | 'sidebar' | 'dialog';
   enableVirtualization?: boolean;
   onCancel?: () => void;
-  onDirectResponse?: (message: Message) => void; // Direct RPC / fast path response handler
+  onDirectResponse?: (message: Message, originalInput?: string) => void; // Direct RPC / fast path response handler
   // History panel props
   tabs?: any[]; // Using any[] to avoid circular dependency with ChatTab
   onTabClick?: (tabId: string) => void;
@@ -352,13 +352,16 @@ export function ChatUI({
 
   // Global pending fallback - coordinates with SVMAI.prompt pending state
   const pendingStartRef = useRef<number>(0);
+  const optimisticProcessingRef = useRef(optimisticProcessing);
+  optimisticProcessingRef.current = optimisticProcessing;
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const handler = (event?: any) => {
       const pending = !!(window as any).__SVMAI_PENDING__;
 
-      // Use a ref to get current optimisticProcessing state to avoid dependency cycle
-      const currentOptimisticProcessing = optimisticProcessing;
+      // Use ref to avoid dependency cycle
+      const currentOptimisticProcessing = optimisticProcessingRef.current;
       if (__AI_DEBUG__) {
         console.log('🔍 Pending change event:', { pending, optimisticProcessing: currentOptimisticProcessing, phase: event?.detail?.phase });
       }
@@ -406,7 +409,7 @@ export function ChatUI({
     window.addEventListener('svmai-pending-change', handler);
     handler(); // Check initial state
     return () => window.removeEventListener('svmai-pending-change', handler);
-  }, [optimisticProcessing, setOptimisticProcessing, setShowProcessingUI]);
+  }, []); // Remove problematic dependencies
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -1238,12 +1241,16 @@ export function ChatUI({
                 // If the input is a direct query that should trigger a server-side RPC, bypass the agent
                 // Only trigger for specific Solana/blockchain data queries, not general conversation
                 if (
-                  ['tps', 'transactions per second', 'network load', 'block height', 'epoch', 'balance', 'account info',
-                    'current tps', 'current epoch', 'block height', 'network status', 'validator count',
-                    'what is the current tps', 'what is current epoch', 'solana tps', 'network performance',
+                  ['current tps', 'solana tps', 'network performance', 'transactions per second',
+                    'current epoch', 'block height', 'network status', 'validator count',
+                    'what is the current tps', 'what is current epoch', 'current network load',
                     'getrecentblockhash', 'getblocks', 'getblock', 'gettransaction', 'getaccountinfo', 'getbalance',
                     'getslot', 'getversion', 'getepochinfo', 'gethealth', 'getidentity', 'getfirstavailableblock']
-                    .some(key => trimmed.toLowerCase().includes(key))
+                    .some(key => trimmed.toLowerCase().includes(key)) ||
+                  // More specific patterns to avoid false matches
+                  /^(tps|current tps|what.{0,10}tps|solana tps)$/i.test(trimmed) ||
+                  /^(epoch|current epoch|what.{0,10}epoch)$/i.test(trimmed) ||
+                  /^(balance of|get balance|account balance|check balance)/i.test(trimmed)
                 ) {
                   try {
                     // Show quick processing state for direct query
@@ -1260,16 +1267,13 @@ export function ChatUI({
                       throw new Error(`Request failed (${response.status})`);
                     }
 
-                    // Try JSON first, fallback to text
+                    // Always use text response since getAnswer returns text/plain or application/xml
                     let dataText: string;
-                    const ct = response.headers.get('content-type') || '';
-                    if (ct.includes('application/json')) {
-                      const json = await response.json();
-                      dataText = typeof json === 'string'
-                        ? json
-                        : (json.answer || json.result || JSON.stringify(json));
-                    } else {
+                    try {
                       dataText = await response.text();
+                    } catch (parseError) {
+                      console.error('Failed to parse response as text:', parseError);
+                      dataText = 'Failed to parse response';
                     }
 
                     const assistantMessage: Message = {
@@ -1278,7 +1282,7 @@ export function ChatUI({
                     };
 
                     if (onDirectResponse) {
-                      onDirectResponse(assistantMessage);
+                      onDirectResponse(assistantMessage, trimmed);
                     } else {
                       // Fallback logging if parent did not supply handler
                       console.log('Direct RPC response (no onDirectResponse handler):', assistantMessage);
