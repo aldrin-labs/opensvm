@@ -11,6 +11,16 @@ import { getClientConnection as getConnection } from '@/lib/solana-connection';
 import type { Message, Note } from './types';
 import { loadKnowledgeNotes, addKnowledgeNote, removeKnowledgeNote, clearKnowledgeNotes } from './utils/knowledgeManager';
 import { mergeKnowledgeNotes } from './utils/mergeKnowledgeNotes'; // type:merge
+import { classifyQuery, shouldBypassPlanning } from '@/lib/ai/query-classifier';
+import { 
+  monitorExecution, 
+  markPlanGenerated, 
+  markPlanExecuting, 
+  markPlanCompleted, 
+  recordToolAttempt, 
+  isExecutionStuck,
+  executionMonitor 
+} from '@/lib/ai/execution-monitor';
 
 interface AIChatSidebarProps {
   isOpen: boolean;
@@ -209,6 +219,23 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   }, [tabs]); // Removed agents dependency - using functional state update instead
 
   const processTabMessage = useCallback(async (tabId: string, message: string) => {
+    // Generate unique plan ID for execution tracking
+    const planId = `${tabId}-${Date.now()}`;
+    
+    // Classify query to determine if it should bypass planning
+    const classification = classifyQuery(message);
+    const shouldBypass = shouldBypassPlanning(message);
+    
+    console.log(`[AIChatSidebar] Query classification:`, { 
+      type: classification.type, 
+      confidence: classification.confidence,
+      shouldBypass,
+      planId 
+    });
+
+    // Start execution monitoring
+    const executionState = monitorExecution(planId, 30000);
+
     if (typeof window !== 'undefined') {
       try {
         const w: any = window;
@@ -216,42 +243,25 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
           w.__SVMAI_PENDING__ = true;
           w.__SVMAI_PENDING_START__ = performance.now();
           w.__SVMAI_LAST_PENDING_VALUE__ = true;
-          window.dispatchEvent(new CustomEvent('svmai-pending-change', { detail: { phase: 'pending-set-process', tabId } }));
+          window.dispatchEvent(new CustomEvent('svmai-pending-change', { detail: { phase: 'pending-set-process', tabId, planId } }));
         }
       } catch (e) { /* noop */ }
-      try {
-        const watchdogStart = Date.now();
-        const MIN_PROCESSING_MS = 400;
-        setTimeout(() => {
-          try {
-            const w: any = window;
-            if (w.__SVMAI_PENDING__ && !w.__SVMAI_FINALIZED__) {
-              w.__SVMAI_PENDING__ = false;
-              w.__SVMAI_FINALIZED__ = true;
-              window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-                detail: { phase: 'early-fallback', since: Date.now() - watchdogStart }
-              }));
-            }
-          } catch (e) { /* noop */ }
-        }, MIN_PROCESSING_MS + 80);
-        setTimeout(() => {
-          try {
-            const w: any = window;
-            if (w.__SVMAI_PENDING__) {
-              w.__SVMAI_PENDING__ = false;
-              w.__SVMAI_FINALIZED__ = true;
-              window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-                detail: {
-                  forced: true,
-                  reason: 'watchdog',
-                  since: Date.now() - watchdogStart
-                }
-              }));
-            }
-          } catch (e) { /* noop */ }
-        }, MIN_PROCESSING_MS + 600);
-      } catch (e) { /* noop */ }
+      
+      // Set up execution deadlock detection
+      const watchdogStart = Date.now();
+      const MIN_PROCESSING_MS = 400;
+      
+      setTimeout(() => {
+        if (isExecutionStuck(planId)) {
+          console.log(`[AIChatSidebar] Execution deadlock detected for plan ${planId}, triggering force completion`);
+          executionMonitor.forceCompletionWithPartialData(planId, { 
+            reason: 'execution_deadlock',
+            partialResponse: 'Query processing was interrupted due to execution timeout.'
+          });
+        }
+      }, MIN_PROCESSING_MS + 5000); // Check after 5.4 seconds
     }
+
     const userMessage: Message = {
       role: 'user',
       content: message.trim()
@@ -272,6 +282,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         if (readyAgent) {
           processTabMessage(tabId, message);
         } else {
+          markPlanCompleted(planId, { error: 'Agent not available' });
           if (typeof window !== 'undefined') {
             try {
               (window as any).__SVMAI_PENDING__ = false;
@@ -294,6 +305,21 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       if (now - lastProgressTime < 500) return;
       lastProgressTime = now;
 
+      // Record tool attempts for monitoring
+      if (event.toolName) {
+        recordToolAttempt(planId, event.toolName);
+      }
+
+      // Check for plan generation phase
+      if (event.type === 'plan_generated' || event.message?.toLowerCase().includes('plan')) {
+        markPlanGenerated(planId);
+      }
+      
+      // Check for execution phase
+      if (event.type === 'step_start' || event.message?.toLowerCase().includes('executing')) {
+        markPlanExecuting(planId);
+      }
+
       const progressMessage: Message = {
         role: 'assistant',
         content: `🔄 ${event.message || ''}`,
@@ -304,7 +330,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             stepIndex: event.stepIndex,
             totalSteps: event.totalSteps,
             toolName: event.toolName,
-            eventType: event.type
+            eventType: event.type,
+            planId
           }
         }
       };
@@ -327,10 +354,41 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       try {
         (window as any).__SVMAI_PROCESSING_STARTED__ = Date.now();
         window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-          detail: { phase: 'processing-started', tabId }
+          detail: { phase: 'processing-started', tabId, planId }
         }));
       } catch (e) { /* noop */ }
     }
+
+    // Set up execution monitoring event handlers
+    executionMonitor.once('forceExecution', (state) => {
+      if (state.planId === planId) {
+        console.log(`[AIChatSidebar] Force executing stuck plan: ${planId}`);
+        markPlanExecuting(planId);
+      }
+    });
+
+    executionMonitor.once('executionTimeout', (state) => {
+      if (state.planId === planId) {
+        console.log(`[AIChatSidebar] Execution timeout for plan: ${planId}`);
+        const timeoutMessage: Message = {
+          role: 'assistant',
+          content: 'The request took longer than expected. Here\'s what I was able to gather:\n\n' + 
+                   (state.partialData ? JSON.stringify(state.partialData, null, 2) : 'No partial data available.')
+        };
+        
+        const currentTab = tabs.find(t => t.id === tabId);
+        const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+          !m.metadata?.data?.progress
+        );
+
+        updateTab(tabId, {
+          messages: [...finalMessages, timeoutMessage],
+          isProcessing: false,
+          status: 'idle',
+          lastActivity: Date.now()
+        });
+      }
+    });
 
     const startTime = Date.now();
     const MIN_PROCESSING_MS = 400;
@@ -342,6 +400,9 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         content: rawResponse.content,
         metadata: rawResponse.metadata
       };
+
+      // Mark execution as completed
+      markPlanCompleted(planId, { response: normalized, executionTime: Date.now() - startTime });
 
       const currentTab = tabs.find(t => t.id === tabId);
       const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
@@ -355,7 +416,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             (window as any).__SVMAI_PENDING__ = false;
             (window as any).__SVMAI_FINALIZED__ = true;
             window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-              detail: { phase: 'processing-finalize', tabId }
+              detail: { phase: 'processing-finalize', tabId, planId }
             }));
           } catch (e) { /* noop */ }
         }
@@ -373,6 +434,10 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       }
     } catch (error) {
       console.error('Error processing message for tab:', tabId, error);
+      
+      // Record error in execution monitor
+      executionMonitor.recordError(planId, String(error));
+      
       const errorMessage: Message = {
         role: 'assistant',
         content: 'I encountered an error while processing your request. Please try again.'
@@ -385,12 +450,14 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
 
       const elapsedErr = Date.now() - startTime;
       const finalizeError = () => {
+        markPlanCompleted(planId, { error: String(error), executionTime: elapsedErr });
+        
         if (typeof window !== 'undefined') {
           try {
             (window as any).__SVMAI_PENDING__ = false;
             (window as any).__SVMAI_FINALIZED__ = true;
             window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-              detail: { phase: 'processing-finalize-error', tabId }
+              detail: { phase: 'processing-finalize-error', tabId, planId }
             }));
           } catch (e) { /* noop */ }
         }

@@ -7,7 +7,26 @@ import { dynamicPlanExecutionTool } from "./dynamicPlanExecution";
 import { stableDynamicExecutionTool } from "./stableDynamicExecution";
 import { aiPlanExecutionTool } from "./aiPlanExecution";
 import { coinGeckoTool } from "./coingecko";
+import { recordToolAttempt } from "@/lib/ai/execution-monitor";
+import { validateAccountAnalysisParams, validateTransactionAnalysisParams, logParameterValidation } from "@/lib/ai/parameter-validator";
 // import { moralisAnalysisTool } from "./moralisAnalysisNew"; // TODO: Fix moralis-api module import
+
+// Progressive timeout configuration
+const TIMEOUT_STAGES = {
+  FAST: 15000,    // 15 seconds - quick operations
+  MEDIUM: 30000,  // 30 seconds - standard operations  
+  SLOW: 60000     // 60 seconds - complex operations
+};
+
+interface ToolExecutionResult {
+  tool: string;
+  result?: ToolResult;
+  error?: Error;
+  success: boolean;
+  time: number;
+  partialData?: any;
+  timeoutStage: keyof typeof TIMEOUT_STAGES;
+}
 
 export class ToolRegistry {
     private tools: Tool[] = [
@@ -22,6 +41,80 @@ export class ToolRegistry {
         accountAnalysisTool, // Fallback for simpler account queries
         networkAnalysisTool, // Re-enabled as safety net
     ];
+
+    /**
+     * Executes a tool with progressive timeout strategy
+     */
+    private async executeToolWithProgressiveTimeout(
+        tool: Tool,
+        context: ToolContext,
+        planId?: string
+    ): Promise<ToolExecutionResult> {
+        const toolStart = Date.now();
+        const toolName = tool.name;
+        
+        // Record tool attempt for monitoring
+        if (planId) {
+            recordToolAttempt(planId, toolName);
+        }
+
+        // Determine timeout stage based on tool type
+        let timeoutStage: keyof typeof TIMEOUT_STAGES = 'MEDIUM';
+        if (toolName === 'coingecko' || toolName === 'networkAnalysis') {
+            timeoutStage = 'FAST'; // API calls should be quick
+        } else if (toolName === 'aiPlanExecution' || toolName === 'accountAnalysis') {
+            timeoutStage = 'SLOW'; // Complex analysis needs more time
+        }
+
+        const timeout = TIMEOUT_STAGES[timeoutStage];
+        
+        console.log(`🔧 Executing ${toolName} with ${timeoutStage} timeout (${timeout}ms)`);
+
+        try {
+            const toolTimeout = new Promise<never>((_, reject) => {
+                setTimeout(() => {
+                    reject(new Error(`Tool ${toolName} execution timeout after ${timeout}ms`));
+                }, timeout);
+            });
+
+            const toolPromise = tool.execute(context);
+            const result = await Promise.race([toolPromise, toolTimeout]);
+
+            const toolTime = Date.now() - toolStart;
+            console.log(`✅ Tool ${toolName} completed in ${toolTime}ms`);
+
+            return {
+                tool: toolName,
+                result,
+                success: true,
+                time: toolTime,
+                timeoutStage
+            };
+        } catch (error) {
+            const toolTime = Date.now() - toolStart;
+            console.error(`❌ Tool ${toolName} failed after ${toolTime}ms:`, error);
+
+            // Try to extract partial data
+            let partialData = null;
+            try {
+                if ((error as any).partialData) {
+                    partialData = (error as any).partialData;
+                    console.log(`📦 Extracted partial data from ${toolName}`);
+                }
+            } catch (extractError) {
+                // Ignore errors when extracting partial data
+            }
+
+            return {
+                tool: toolName,
+                error: error as Error,
+                success: false,
+                time: toolTime,
+                partialData,
+                timeoutStage
+            };
+        }
+    }
 
     async executeTools(context: ToolContext): Promise<ToolResult & { partialData?: any }> {
         const toolExecutionStart = Date.now();
@@ -42,45 +135,26 @@ export class ToolRegistry {
 
         console.log(`🔧 Attempting ${primaryTools.length} primary tools first, then ${fallbackTools.length} fallback tools in parallel`);
 
-        // Phase 1: Try primary tools sequentially (they're more specific/powerful)
+        // Phase 1: Try primary tools sequentially with progressive timeouts
         for (const tool of primaryTools) {
             if (tool.canHandle(context)) {
                 console.log(`🎯 Executing primary tool: ${tool.name}`);
-                const toolStart = Date.now();
+                
+                const toolResult = await this.executeToolWithProgressiveTimeout(
+                    tool, 
+                    context, 
+                    (context as any).planId
+                );
 
-                try {
-                    const toolTimeout = new Promise<never>((_, reject) => {
-                        setTimeout(() => {
-                            reject(new Error(`Tool ${tool.name} execution timeout`));
-                        }, 90000); // 90 second per-tool timeout
-                    });
+                if (toolResult.success && toolResult.result && toolResult.result.handled) {
+                    console.log(`🎯 Total tool selection time: ${Date.now() - toolExecutionStart}ms`);
+                    return toolResult.result;
+                }
 
-                    const toolPromise = tool.execute(context);
-                    const result = await Promise.race([toolPromise, toolTimeout]);
-
-                    const toolTime = Date.now() - toolStart;
-                    console.log(`✅ Primary tool ${tool.name} completed in ${toolTime}ms`);
-
-                    if (result.handled) {
-                        console.log(`🎯 Total tool selection time: ${Date.now() - toolExecutionStart}ms`);
-                        return result;
-                    }
-                } catch (error) {
-                    const toolTime = Date.now() - toolStart;
-                    console.error(`❌ Primary tool ${tool.name} failed after ${toolTime}ms:`, error);
-
-                    // Try to extract any partial data from the error or tool
-                    try {
-                        if ((error as any).partialData) {
-                            partialData[tool.name] = (error as any).partialData;
-                            hasPartialData = true;
-                            console.log(`📦 Collected partial data from ${tool.name}`);
-                        }
-                    } catch (extractError) {
-                        // Ignore errors when extracting partial data
-                    }
-
-                    continue; // Try next primary tool
+                // Collect partial data
+                if (toolResult.partialData) {
+                    partialData[tool.name] = toolResult.partialData;
+                    hasPartialData = true;
                 }
             }
         }
@@ -97,41 +171,25 @@ export class ToolRegistry {
 
         console.log(`🚀 Running ${applicableTools.length} fallback tools in parallel: ${applicableTools.map(t => t.name).join(', ')}`);
 
-        // Execute all applicable tools in parallel
+        // Execute all applicable tools in parallel with progressive timeouts
         const toolPromises = applicableTools.map(async (tool) => {
-            const toolStart = Date.now();
             console.log(`🔧 Starting parallel execution: ${tool.name}`);
+            
+            const toolResult = await this.executeToolWithProgressiveTimeout(
+                tool,
+                context,
+                (context as any).planId
+            );
 
-            try {
-                const toolTimeout = new Promise<never>((_, reject) => {
-                    setTimeout(() => {
-                        reject(new Error(`Tool ${tool.name} execution timeout`));
-                    }, 60000); // Reduced timeout for parallel execution
-                });
-
-                const toolPromise = tool.execute(context);
-                const result = await Promise.race([toolPromise, toolTimeout]);
-
-                const toolTime = Date.now() - toolStart;
-                console.log(`✅ Parallel tool ${tool.name} completed in ${toolTime}ms`);
-
-                return { tool: tool.name, result, success: true, time: toolTime };
-            } catch (error) {
-                const toolTime = Date.now() - toolStart;
-                console.error(`❌ Parallel tool ${tool.name} failed after ${toolTime}ms:`, error);
-
-                // Try to extract partial data
-                let extractedData = null;
-                try {
-                    if ((error as any).partialData) {
-                        extractedData = (error as any).partialData;
-                    }
-                } catch (extractError) {
-                    // Ignore errors when extracting partial data
-                }
-
-                return { tool: tool.name, error: error as Error, success: false, time: toolTime, partialData: extractedData };
-            }
+            // Convert to expected format for compatibility
+            return {
+                tool: tool.name,
+                result: toolResult.result,
+                success: toolResult.success,
+                time: toolResult.time,
+                error: toolResult.error,
+                partialData: toolResult.partialData
+            };
         });
 
         // Wait for all tools to complete (or timeout)

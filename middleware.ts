@@ -26,9 +26,80 @@ const securityHeaders = {
 
 // Legacy path redirects
 const REDIRECTS: Record<string, string> = {
+  // Explorer redirects
   '/tx-explorer': '/tx',
   '/block-explorer': '/blocks',
   '/token-explorer': '/tokens',
+
+  // Common mistypes and variations
+  '/transaction': '/tx',
+  '/transactions': '/tx',
+  '/txn': '/tx',
+  '/txns': '/tx',
+  '/hash': '/tx',
+
+  // Account variations
+  '/address': '/account',
+  '/addresses': '/account',
+  '/wallet': '/account',
+  '/wallets': '/account',
+  '/pubkey': '/account',
+
+  // Block variations
+  '/slot': '/blocks',
+  '/slots': '/blocks',
+  '/height': '/blocks',
+
+  // Token variations
+  '/gg': '/token',
+  '/ezgg': '/token',
+  '/to': '/token',
+  '/yolo': '/token',
+  '/getin': '/token',
+  '/ape': '/token',
+  '/sendit': '/token',
+  '/dyor': '/token',
+  '/pf': '/token',
+  '/mem': '/token',
+  '/meme': '/token',
+  '/pumpfun': '/token',
+  '/fun': '/token',
+  '/ca': '/token',
+  '/mint': '/token',
+  '/mints': '/tokens',
+  '/spl': '/tokens',
+  '/spl-tokens': '/tokens',
+
+  // Program variations
+  '/programs': '/program',
+  '/smart-contract': '/program',
+  '/smart-contracts': '/program',
+  '/contract': '/program',
+  '/contracts': '/program',
+  '/dapp': '/program',
+  '/dapps': '/program',
+
+  // NFT variations
+  '/nft-collection': '/nfts',
+  '/nft-collections': '/nfts',
+  '/collectibles': '/nfts',
+  '/collection': '/nfts',
+  '/collections': '/nfts',
+
+  // Common explorer terms
+  '/explore': '/',
+  '/explorer': '/',
+  '/lookup': '/',
+  '/query': '/',
+  '/find': '/',
+
+  // Dashboard/stats variations
+  '/metrics': '/stats',
+
+  // Network variations
+  '/mainnet': '/?cluster=mainnet',
+  '/devnet': '/?cluster=devnet',
+  '/testnet': '/?cluster=testnet',
 };
 
 // Helper functions
@@ -46,14 +117,42 @@ const getQueryParam = (params: URLSearchParams, ...keys: string[]): string => {
   return value || '';
 };
 
+// ...existing code...
 // Regex patterns for paths that should be handled by middleware
 const STATIC_ASSET_REGEX = /\.(jpe?g|png|svg|gif|ico|webp|mp4|webm|woff2?|ttf|eot)$/i;
 
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const url = request.nextUrl.clone();
+  const userAgent = request.headers.get('user-agent') || '';
 
-  // Skip middleware for excluded paths
+  // CLI installer script handling
+  if (pathname === '/') {
+    const isCurl = userAgent.toLowerCase().includes('curl');
+    const isPowershell = userAgent.toLowerCase().includes('powershell');
+
+    if (isCurl || isPowershell) {
+      let scriptContent = '';
+      if (isPowershell) {
+        // Windows PowerShell command
+        scriptContent = `powershell -Command "Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/opensvm/osvm-cli/main/install.ps1' -OutFile 'install.ps1'; .\\install.ps1"`;
+        return new Response(scriptContent, {
+          status: 200,
+          headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+        });
+      } else {
+        // Linux, macOS, etc.
+        scriptContent = `curl -sSf https://raw.githubusercontent.com/opensvm/osvm-cli/main/install.sh | sh`;
+        return new Response(scriptContent, {
+          status: 200,
+          headers: { 'Content-Type': 'text/x-shellscript; charset=utf-8' },
+        });
+      }
+    }
+  }
+
+  // Skip middleware for static assets (performance optimization)
+  // This prevents unnecessary processing of security headers, rate limiting, etc. for static files
   if (STATIC_ASSET_REGEX.test(pathname)) {
     return NextResponse.next();
   }

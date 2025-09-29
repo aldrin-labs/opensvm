@@ -9,19 +9,29 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Build production**: `npm run build` or `bun run build`
 - **Start production**: `npm run start` or `bun run start`
 - **Build optimized**: `npm run build:optimized` (with optimizations)
+- **Build fast**: `npm run build:fast` (skip optimizations for quick builds)
 - **Build analysis**: `npm run build:analyze` (with bundle analysis)
 
 ### Testing & Quality
-- **Run tests**: `npm test` (Jest unit tests with --max_old_space_size=4096)
+- **Run all tests**: `npm test` (Jest unit tests with --max_old_space_size=4096)
+- **Run single test**: `npm test -- path/to/test.spec.ts` (specific test file)
 - **E2E tests**: `npm run test:e2e` or `npm run e2e:run` (Playwright)
-- **E2E UI**: `npm run test:e2e:ui` (Playwright UI mode)
+- **E2E UI mode**: `npm run test:e2e:ui` (Playwright interactive UI)
 - **Lint**: `npm run lint` (Next.js ESLint)
-- **Type check**: Build process includes TypeScript validation
+- **Type check**: Build process validates TypeScript (no separate command)
 
-### Installation
+### Installation & Troubleshooting
 - **Install deps**: `npm install` or `bun install`
 - **Force install**: `npm run install:force` (for dependency conflicts)
 - **Fix Qdrant**: `npm run fix-qdrant` (fix Qdrant cache issues)
+- **Post-install**: Automatically patches bigint-buffer compatibility
+
+### Deployment (Netlify)
+- **Build command**: `node scripts/build-rpc-config.js && next build`
+- **Node version**: 22 (configured in netlify.toml)
+- **Build flags**: `--legacy-peer-deps` with 4GB memory allocation
+- **RPC config**: Generated at build time from environment variables
+- **Functions**: Include config files and Solana docs for serverless functions
 
 ## Architecture Overview
 
@@ -91,6 +101,15 @@ Most APIs return JSON with error handling middleware.
 - Use TypeScript strictly - no `any` types
 - Prefer composition over inheritance
 
+**Modular Hook Architecture:**
+- Transaction graph uses separated hooks for specific concerns:
+  - `useAccountFetching` - Data fetching logic
+  - `useAddressTracking` - Address tracking state
+  - `useGPUForceGraph` - GPU rendering logic
+  - `useLayoutManager` - Layout algorithms
+- Follow this pattern for new complex components
+- Keep hooks focused on single responsibilities
+
 ### Environment Variables
 
 Required in `.env.local`:
@@ -106,3 +125,27 @@ See `.example.env` for template.
 - Follow existing code style - check neighboring files
 - Update architecture docs in `/docs/architecture/` for major changes
 - Comprehensive test coverage expected for new features
+
+### Development Best Practices
+
+**TypeScript Conventions:**
+- Strict mode enabled - no `any` types allowed
+- When encountering unused variables, implement proper functionality rather than prefixing with underscore
+- Path mapping configured: use `@/*` imports instead of relative paths
+
+**AI Integration:**
+- Token-gated features use $SVMAI tokenomics (1-200 tokens per prompt)
+- Together AI for LLM, Anthropic SDK available as fallback
+- Qdrant vector database for user chat storage and similarity search
+
+**Performance Considerations:**
+- WebGL renderer for transaction graphs - GPU acceleration critical
+- Code splitting configured for Three.js, charts, Solana, utils
+- Virtual scrolling (VTable) for large datasets
+- React.lazy for component-level splitting
+
+**Testing Approach:**
+- Jest for unit tests with SWC compiler for speed
+- Playwright for E2E tests
+- Memory optimization: --max_old_space_size=4096 for Jest
+- Test files follow `*.test.ts` or `*.spec.ts` pattern

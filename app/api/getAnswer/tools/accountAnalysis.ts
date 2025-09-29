@@ -1,6 +1,12 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import { extractFirstSolanaAddress } from "./utils";
 import { PublicKey } from "@solana/web3.js";
+import { 
+    validateAccountAddress, 
+    logParameterValidation, 
+    correctCommonParameterIssues,
+    extractSolanaData 
+} from "@/lib/ai/parameter-validator";
 
 export const accountAnalysisTool: Tool = {
     name: "accountAnalysis",
@@ -21,9 +27,48 @@ export const accountAnalysisTool: Tool = {
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
         const { conn, question, qLower } = context;
-        const addr = extractFirstSolanaAddress(String(question || ""));
+        
+        // Extract and validate parameters with enhanced validation
+        const rawAddr = extractFirstSolanaAddress(String(question || ""));
+        
+        // Enhanced address extraction and validation
+        let validatedAddr: string | null = null;
+        const solanaData = extractSolanaData(String(question || ""));
+        
+        if (rawAddr) {
+            // Validate the extracted address
+            const validation = validateAccountAddress(rawAddr);
+            logParameterValidation('accountAnalysis', { rawAddr }, validation);
+            
+            if (validation.valid) {
+                validatedAddr = validation.normalized;
+                
+                // Log warnings for well-known programs
+                if (validation.isWellKnownProgram && validation.programName) {
+                    console.log(`[accountAnalysis] Analyzing well-known program: ${validation.programName} (${validatedAddr})`);
+                }
+            } else {
+                console.error(`[accountAnalysis] Invalid address: ${validation.errors.join(', ')}`);
+                
+                // Return validation error
+                return {
+                    handled: true,
+                    response: new Response(
+                        `Invalid Solana address: ${validation.errors.join(', ')}\n\nPlease provide a valid Solana address (32-44 base58 characters).`,
+                        { status: 400, headers: { "Content-Type": "text/plain" } }
+                    )
+                };
+            }
+        } else if (solanaData.addresses.length > 0) {
+            // Use the first valid address from extracted data
+            const firstValidAddr = solanaData.addresses[0];
+            if (firstValidAddr.valid) {
+                validatedAddr = firstValidAddr.normalized;
+                console.log(`[accountAnalysis] Using extracted address: ${validatedAddr}`);
+            }
+        }
 
-        if (!addr) {
+        if (!validatedAddr) {
             const reply404 = `
             **Key takeaway:** The *only* thing we *know* for sure is that **this address has never been funded, never sent, never received, never minted an NFT, and never interacted with a token program** — at least not on the mainnet‑beta chain up to the queried slot.
 
@@ -73,18 +118,18 @@ Signature Count  ████ 0 %
         try {
             // Comprehensive wallet analysis for /wallet command
             if (qLower.includes("/wallet") || qLower.startsWith("wallet ")) {
-                console.log(`[accountAnalysis] Executing comprehensive wallet analysis for: ${addr}`);
+                console.log(`[accountAnalysis] Executing comprehensive wallet analysis for: ${validatedAddr}`);
 
                 // Execute comprehensive plan with detailed transaction analysis
                 const [accountInfo, balance, tokenAccounts, signatures] = await Promise.all([
-                    conn.getAccountInfo(new PublicKey(addr)),
-                    conn.getBalance(new PublicKey(addr)),
-                    conn.getParsedTokenAccountsByOwner(new PublicKey(addr), {
+                    conn.getAccountInfo(new PublicKey(validatedAddr)),
+                    conn.getBalance(new PublicKey(validatedAddr)),
+                    conn.getParsedTokenAccountsByOwner(new PublicKey(validatedAddr), {
                         programId: new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA')
                     }).catch(() => ({ value: [] })), // Graceful fallback
-                    conn.getSignaturesForAddress(new PublicKey(addr), { limit: 50 })
+                    conn.getSignaturesForAddress(new PublicKey(validatedAddr), { limit: 50 })
                         .catch((error) => {
-                            console.error(`Error getting signatures for ${addr}:`, error);
+                            console.error(`Error getting signatures for ${validatedAddr}:`, error);
                             return [];  // Graceful fallback
                         })
                 ]);
@@ -119,7 +164,7 @@ Signature Count  ████ 0 %
                     const accountKeys = transaction.transaction.message.accountKeys;
 
                     // Analyze SOL flows
-                    const walletIndex = accountKeys.findIndex(key => key.pubkey.toString() === addr);
+                    const walletIndex = accountKeys.findIndex(key => key.pubkey.toString() === validatedAddr);
                     if (walletIndex !== -1 && preBalances[walletIndex] !== undefined && postBalances[walletIndex] !== undefined) {
                         const balanceChange = postBalances[walletIndex] - preBalances[walletIndex];
                         if (balanceChange > 0) {
@@ -162,7 +207,7 @@ Signature Count  ████ 0 %
 
                         // Find token changes for our wallet
                         preTokenBalances.forEach(preBalance => {
-                            if (preBalance.owner === addr) {
+                            if (preBalance.owner === validatedAddr) {
                                 const postBalance = postTokenBalances.find(post =>
                                     post.accountIndex === preBalance.accountIndex
                                 );
@@ -175,7 +220,7 @@ Signature Count  ████ 0 %
                                         if (change > 0) {
                                             // Token inflow - find sender
                                             const senderBalance = preTokenBalances.find(pb =>
-                                                pb.mint === preBalance.mint && pb.owner !== addr &&
+                                                pb.mint === preBalance.mint && pb.owner !== validatedAddr &&
                                                 parseFloat(pb.uiTokenAmount.uiAmountString || '0') > change
                                             );
                                             if (senderBalance) {
@@ -189,7 +234,7 @@ Signature Count  ████ 0 %
                                         } else {
                                             // Token outflow - find receiver
                                             const receiverBalance = postTokenBalances.find(pb =>
-                                                pb.mint === preBalance.mint && pb.owner !== addr
+                                                pb.mint === preBalance.mint && pb.owner !== validatedAddr
                                             );
                                             if (receiverBalance) {
                                                 flows.outflow.push({
@@ -242,7 +287,7 @@ Signature Count  ████ 0 %
                 }
 
                 const sol = balance / 1_000_000_000;
-                let reply = `🔍 **Comprehensive Wallet Analysis for ${addr}**
+                let reply = `🔍 **Comprehensive Wallet Analysis for ${validatedAddr}**
 
 📊 **Account Information:**
 - **Balance:** ${sol} SOL (${balance} lamports)
@@ -339,7 +384,7 @@ Signature Count  ████ 0 %
                             const accountKeys = detailedTx.transaction.transaction.message.accountKeys;
 
                             // Find wallet index and calculate SOL balance change
-                            const walletIndex = accountKeys.findIndex(key => key.pubkey.toString() === addr);
+                            const walletIndex = accountKeys.findIndex(key => key.pubkey.toString() === validatedAddr);
                             if (walletIndex !== -1 && preBalances[walletIndex] !== undefined && postBalances[walletIndex] !== undefined) {
                                 const balanceChange = postBalances[walletIndex] - preBalances[walletIndex];
                                 const balanceChangeSOL = balanceChange / 1_000_000_000;
@@ -380,7 +425,7 @@ Signature Count  ████ 0 %
 
                                 // Find token changes for our wallet in this specific transaction
                                 preTokenBalances.forEach(preBalance => {
-                                    if (preBalance.owner === addr) {
+                                    if (preBalance.owner === validatedAddr) {
                                         const postBalance = postTokenBalances.find(post =>
                                             post.accountIndex === preBalance.accountIndex
                                         );
@@ -397,7 +442,7 @@ Signature Count  ████ 0 %
 
                                                     // Find token sender
                                                     const senderBalance = preTokenBalances.find(pb =>
-                                                        pb.mint === preBalance.mint && pb.owner !== addr
+                                                        pb.mint === preBalance.mint && pb.owner !== validatedAddr
                                                     );
                                                     if (senderBalance) {
                                                         reply += `     **Token From:** ${senderBalance.owner}\n`;
@@ -408,7 +453,7 @@ Signature Count  ████ 0 %
 
                                                     // Find token receiver
                                                     const receiverBalance = postTokenBalances.find(pb =>
-                                                        pb.mint === preBalance.mint && pb.owner !== addr
+                                                        pb.mint === preBalance.mint && pb.owner !== validatedAddr
                                                     );
                                                     if (receiverBalance) {
                                                         reply += `     **Token To:** ${receiverBalance.owner}\n`;
@@ -441,7 +486,7 @@ Signature Count  ████ 0 %
                 if (accountInfo?.executable) {
                     reply += `\n🔧 **Program Information:**
 - This is an executable program account
-- Program ID: ${addr}
+- Program ID: ${validatedAddr}
 - Can be invoked by other programs and transactions`;
                 }
 
@@ -456,9 +501,9 @@ Signature Count  ████ 0 %
 
             // Balance query (simple)
             if (qLower.includes("balance") || qLower.includes("wallet balance") || qLower.includes("balance of")) {
-                const bal = await conn.getBalance(new PublicKey(addr));
+                const bal = await conn.getBalance(new PublicKey(validatedAddr));
                 const sol = bal / 1_000_000_000;
-                const reply = `Balance for ${addr}:\n- Lamports: ${bal}\n- SOL: ${sol}`;
+                const reply = `Balance for ${validatedAddr}:\n- Lamports: ${bal}\n- SOL: ${sol}`;
 
                 return {
                     handled: true,
@@ -474,7 +519,7 @@ Signature Count  ████ 0 %
                 qLower.includes("info") || qLower.includes("details")) {
 
                 // Return unhandled to allow dynamic execution with comprehensive data gathering
-                console.log(`[accountAnalysis] Redirecting to dynamic execution for comprehensive account analysis: ${addr}`);
+                console.log(`[accountAnalysis] Redirecting to dynamic execution for comprehensive account analysis: ${validatedAddr}`);
                 return { handled: false };
             }
 
@@ -485,7 +530,7 @@ Signature Count  ████ 0 %
             return {
                 handled: true,
                 response: new Response(
-                    `Failed to analyze account ${addr}: ${(error as Error).message}`,
+                    `Failed to analyze account ${validatedAddr}: ${(error as Error).message}`,
                     { status: 500, headers: { "Content-Type": "text/plain" } }
                 )
             };

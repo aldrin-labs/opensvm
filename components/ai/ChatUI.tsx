@@ -33,6 +33,7 @@ import { useUIPreferences } from './hooks/useUIPreferences';
 import { useAutosizeTextarea } from '../../hooks/useAutosizeTextarea';
 import { useChatState } from './hooks/useChatState';
 import { VirtualizedMessageList, usePerformanceMonitoring, setupGlobalPerfSnapshot } from './components/VirtualizedMessageList';
+import { classifyQuery, shouldBypassPlanning, QueryType } from '@/lib/ai/query-classifier';
 
 interface ChatUIProps {
   messages: Message[];
@@ -1238,20 +1239,18 @@ export function ChatUI({
                 setSlashIndex(0);
                 setShowSlashHelp(false);
 
-                // If the input is a direct query that should trigger a server-side RPC, bypass the agent
-                // Only trigger for specific Solana/blockchain data queries, not general conversation
-                if (
-                  ['current tps', 'solana tps', 'network performance', 'transactions per second',
-                    'current epoch', 'block height', 'network status', 'validator count',
-                    'what is the current tps', 'what is current epoch', 'current network load',
-                    'getrecentblockhash', 'getblocks', 'getblock', 'gettransaction', 'getaccountinfo', 'getbalance',
-                    'getslot', 'getversion', 'getepochinfo', 'gethealth', 'getidentity', 'getfirstavailableblock']
-                    .some(key => trimmed.toLowerCase().includes(key)) ||
-                  // More specific patterns to avoid false matches
-                  /^(tps|current tps|what.{0,10}tps|solana tps)$/i.test(trimmed) ||
-                  /^(epoch|current epoch|what.{0,10}epoch)$/i.test(trimmed) ||
-                  /^(balance of|get balance|account balance|check balance)/i.test(trimmed)
-                ) {
+                // Use intelligent query classification to determine if this should bypass planning
+                const classification = classifyQuery(trimmed);
+                const shouldBypass = shouldBypassPlanning(trimmed);
+                
+                console.log(`[ChatUI] Query classification:`, { 
+                  type: classification.type, 
+                  confidence: classification.confidence,
+                  shouldBypass,
+                  originalQuery: trimmed
+                });
+
+                if (shouldBypass) {
                   try {
                     // Show quick processing state for direct query
                     setShowProcessingUI(true);
