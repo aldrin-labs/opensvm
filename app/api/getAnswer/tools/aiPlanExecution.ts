@@ -1140,7 +1140,11 @@ for (const r of rows) {
                             result = { error: `Invalid address: ${(error as Error).message}` };
                         }
                     } else {
-                        result = await conn[step.tool](step.input);
+                        // Convert string numbers to actual numbers for RPC methods that need them
+                        const processedInput = (typeof step.input === 'string' && /^\d+$/.test(step.input))
+                            ? parseInt(step.input, 10)
+                            : step.input;
+                        result = await conn[step.tool](processedInput);
                     }
                 } else {
                     result = await conn[step.tool]();

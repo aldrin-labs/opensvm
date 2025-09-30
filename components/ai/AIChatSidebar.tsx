@@ -262,21 +262,18 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       }, MIN_PROCESSING_MS + 5000); // Check after 5.4 seconds
     }
 
+    // Get existing messages (user message already added by handleSubmit)
+    const existing = tabs.find(t => t.id === tabId)?.messages || [];
+    
+    // Create user message object for agent processing
     const userMessage: Message = {
       role: 'user',
       content: message.trim()
     };
-    const existing = tabs.find(t => t.id === tabId)?.messages || [];
-    const baseMessages = [...existing, userMessage];
 
     const agent = agents.get(tabId);
     if (!agent) {
-      updateTab(tabId, {
-        messages: baseMessages,
-        isProcessing: true,
-        status: 'processing',
-        lastActivity: Date.now()
-      });
+      // Agent not ready yet - keep existing state and retry
       setTimeout(() => {
         const readyAgent = agents.get(tabId);
         if (readyAgent) {
@@ -337,27 +334,11 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       };
 
       const currentTab = tabs.find(t => t.id === tabId);
-      const currentMessages = currentTab?.messages || baseMessages;
+      const currentMessages = currentTab?.messages || existing;
       updateTab(tabId, {
         messages: [...currentMessages, progressMessage]
       });
     });
-
-    updateTab(tabId, {
-      messages: baseMessages,
-      isProcessing: true,
-      status: 'processing',
-      lastActivity: Date.now()
-    });
-
-    if (typeof window !== 'undefined') {
-      try {
-        (window as any).__SVMAI_PROCESSING_STARTED__ = Date.now();
-        window.dispatchEvent(new CustomEvent('svmai-pending-change', {
-          detail: { phase: 'processing-started', tabId, planId }
-        }));
-      } catch (e) { /* noop */ }
-    }
 
     // Set up execution monitoring event handlers
     executionMonitor.once('forceExecution', (state) => {
@@ -377,7 +358,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         };
         
         const currentTab = tabs.find(t => t.id === tabId);
-        const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+        const finalMessages = (currentTab?.messages || existing).filter(m =>
           !m.metadata?.data?.progress
         );
 
@@ -405,7 +386,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       markPlanCompleted(planId, { response: normalized, executionTime: Date.now() - startTime });
 
       const currentTab = tabs.find(t => t.id === tabId);
-      const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+      const finalMessages = (currentTab?.messages || existing).filter(m =>
         !m.metadata?.data?.progress
       );
 
@@ -444,7 +425,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       };
 
       const currentTab = tabs.find(t => t.id === tabId);
-      const finalMessages = (currentTab?.messages || baseMessages).filter(m =>
+      const finalMessages = (currentTab?.messages || existing).filter(m =>
         !m.metadata?.data?.progress
       );
 
@@ -878,9 +859,37 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     if (activeTabId) {
       const latest = tabs.find(t => t.id === activeTabId);
       const value = latest?.input?.trim();
+      
       if (value) {
+        // IMMEDIATE optimistic update - add user message to UI
+        const userMessage: Message = {
+          role: 'user',
+          content: value
+        };
+        
+        const currentMessages = latest?.messages || [];
+        updateTab(activeTabId, { 
+          messages: [...currentMessages, userMessage],
+          input: '', // Clear input immediately
+          isProcessing: true, // Show spinner immediately
+          status: 'processing'
+        });
+        
+        // Save to history (localStorage) immediately
+        try {
+          const historyKey = `chat-history-${activeTabId}`;
+          const history = {
+            tabId: activeTabId,
+            messages: [...currentMessages, userMessage],
+            timestamp: Date.now()
+          };
+          localStorage.setItem(historyKey, JSON.stringify(history));
+        } catch (e) {
+          console.warn('Failed to save to history:', e);
+        }
+        
+        // Then process message (will add assistant response when ready)
         processTabMessage(activeTabId, value);
-        updateTab(activeTabId, { input: '' });
       }
     }
   }, [activeTabId, tabs, processTabMessage, updateTab]);

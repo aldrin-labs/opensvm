@@ -200,8 +200,6 @@ export function ChatUI({
   // Consolidated chat state management
   const [chatState, chatActions] = useChatState();
   const {
-    optimisticProcessing,
-    showProcessingUI,
     newMessageCount,
     isScrolledUp,
     shouldAutoScroll,
@@ -217,8 +215,6 @@ export function ChatUI({
   } = chatState;
 
   const {
-    setOptimisticProcessing,
-    setShowProcessingUI,
     setNewMessageCount,
     setIsScrolledUp,
     setShouldAutoScroll,
@@ -232,6 +228,9 @@ export function ChatUI({
     setShowReferenceAutocomplete,
     setReferenceIndex,
   } = chatActions;
+
+  // Simple processing state - use isProcessing from parent as single source of truth
+  // No complex optimistic/showProcessingUI flags needed
 
   // Track if we're in a mock/test environment where isProcessing might not change
   const isMockMode = typeof window !== 'undefined' && (window.location.search.includes('aimock=1') || window.location.search.includes('ai=1'));
@@ -294,8 +293,6 @@ export function ChatUI({
     focusInput: () => inputRef.current?.focus(),
     submit: () => {
       try {
-        setShowProcessingUI(true);
-        setOptimisticProcessing(true);
         const form = inputRef.current?.closest('form');
         if (form) {
           const event = new Event('submit', { bubbles: true, cancelable: true });
@@ -307,110 +304,11 @@ export function ChatUI({
         console.error('Programmatic submit failed:', err);
       }
     }
-  }), [onInputChange, onSubmit, setShowProcessingUI, setOptimisticProcessing]);
+  }), [onInputChange, onSubmit]);
 
   useEffect(() => {
     registerInputController(inputController);
   }, [registerInputController, inputController]);
-
-  // Clear optimistic flag & processing display gating
-  useEffect(() => {
-    if (isProcessing) {
-      setOptimisticProcessing(true);
-      setShowProcessingUI(true); // Ensure UI shows when processing starts
-    } else if (optimisticProcessing) {
-      const t = setTimeout(() => setOptimisticProcessing(false), 25000);
-      return () => clearTimeout(t);
-    }
-    if (!isProcessing && !optimisticProcessing && showProcessingUI) {
-      // Reset display flag after cycle completes so subsequent slash
-      // completions (without new submit) don't show stale bar.
-      setShowProcessingUI(false);
-    }
-  }, [isProcessing, optimisticProcessing, showProcessingUI, setOptimisticProcessing, setShowProcessingUI]);
-
-  // Auto-enable processing UI when processing starts via programmatic prompts (window.SVMAI.prompt)
-  // which bypass the local form submit path that normally sets showProcessingUI.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    console.log('🔍 ChatUI: Setting up svmai-show-processing-ui event listener');
-    const handleShowProcessingUI = (event: any) => {
-      if (__AI_DEBUG__) console.log('🔍 ChatUI: Received svmai-show-processing-ui event', event?.detail);
-      if (event?.detail?.source === 'mock-prompt') {
-        if (!optimisticProcessing) {
-          if (__AI_DEBUG__) console.log('🔍 ChatUI: Setting processing UI for mock mode');
-          setShowProcessingUI(true);
-          setOptimisticProcessing(true);
-        }
-      }
-    };
-    window.addEventListener('svmai-show-processing-ui', handleShowProcessingUI, { once: true });
-    return () => {
-      if (__AI_DEBUG__) console.log('🔍 ChatUI: Removing svmai-show-processing-ui event listener');
-      window.removeEventListener('svmai-show-processing-ui', handleShowProcessingUI);
-    };
-  }, [optimisticProcessing, setOptimisticProcessing, setShowProcessingUI]);
-
-  // Global pending fallback - coordinates with SVMAI.prompt pending state
-  const pendingStartRef = useRef<number>(0);
-  const optimisticProcessingRef = useRef(optimisticProcessing);
-  optimisticProcessingRef.current = optimisticProcessing;
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const handler = (event?: any) => {
-      const pending = !!(window as any).__SVMAI_PENDING__;
-
-      // Use ref to avoid dependency cycle
-      const currentOptimisticProcessing = optimisticProcessingRef.current;
-      if (__AI_DEBUG__) {
-        console.log('🔍 Pending change event:', { pending, optimisticProcessing: currentOptimisticProcessing, phase: event?.detail?.phase });
-      }
-
-      if (pending) {
-        if (!currentOptimisticProcessing) {
-          pendingStartRef.current = performance.now();
-          setOptimisticProcessing(true);
-          setShowProcessingUI(true);
-          if (__AI_DEBUG__) {
-            console.log('🔍 Pending started, showing processing UI');
-          }
-        }
-      } else if (currentOptimisticProcessing) {
-        // When pending clears, check minimum visibility time
-        const elapsed = performance.now() - pendingStartRef.current;
-        const MIN_VISIBLE = 400;
-        if (__AI_DEBUG__) {
-          console.log('🔍 Pending cleared, elapsed:', elapsed, 'ms');
-        }
-
-        if (pendingStartRef.current === 0 || elapsed >= MIN_VISIBLE) {
-          // Sufficient time has passed, clear immediately
-          setOptimisticProcessing(false);
-          setShowProcessingUI(false);
-          if (__AI_DEBUG__) {
-            console.log('🔍 Clearing processing UI immediately');
-          }
-        } else {
-          // Wait for remaining time to meet minimum
-          const remaining = MIN_VISIBLE - elapsed;
-          if (__AI_DEBUG__) {
-            console.log('🔍 Waiting', remaining, 'ms before clearing processing UI');
-          }
-          setTimeout(() => {
-            setOptimisticProcessing(false);
-            setShowProcessingUI(false);
-            if (__AI_DEBUG__) {
-              console.log('🔍 Cleared processing UI after minimum time');
-            }
-          }, remaining);
-        }
-      }
-    };
-    window.addEventListener('svmai-pending-change', handler);
-    handler(); // Check initial state
-    return () => window.removeEventListener('svmai-pending-change', handler);
-  }, []); // Remove problematic dependencies
 
   const scrollToBottom = useCallback(() => {
     requestAnimationFrame(() => {
@@ -899,9 +797,6 @@ export function ChatUI({
       e.preventDefault();
       if (!isProcessing) {
         try {
-          // Immediate optimistic processing to ensure status bar appears before async submit resolves
-          setShowProcessingUI(true);
-          setOptimisticProcessing(true);
           const form = inputRef.current?.closest('form');
           if (form) {
             const event = new Event('submit', { bubbles: true, cancelable: true });
@@ -1185,29 +1080,16 @@ export function ChatUI({
             </div>
           )}
 
-          {(showProcessingUI || (isMockMode && optimisticProcessing)) && (isProcessing || optimisticProcessing) && (
+          {isProcessing && (
             <div
               role="status"
               aria-live="polite"
-              className="px-4 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10"
+              className="px-4 py-1 text-[11px] text-white/70 bg-black/60 border-t border-white/10 flex items-center gap-2"
               data-ai-processing-status
               data-ai-processing-active="1"
-              ref={(el) => {
-                if (el && isMockMode) {
-                  console.log('🔍 Processing status element rendered in mock mode');
-                }
-              }}
             >
+              <div className="animate-spin h-3 w-3 border-2 border-white/30 border-t-white rounded-full" />
               Processing…
-            </div>
-          )}
-          {/* Debug info for mock mode */}
-          {isMockMode && (
-            <div
-              className="px-4 py-1 text-[9px] text-yellow-300 bg-yellow-900/20 border-t border-yellow-500/20"
-              data-ai-debug-info
-            >
-              Debug: showProcessingUI={String(showProcessingUI)}, optimisticProcessing={String(optimisticProcessing)}, isProcessing={String(isProcessing)}, isMockMode={String(isMockMode)}, url={typeof window !== 'undefined' ? window.location.search : 'no-window'}
             </div>
           )}
 
@@ -1250,69 +1132,13 @@ export function ChatUI({
                   originalQuery: trimmed
                 });
 
-                if (shouldBypass) {
-                  try {
-                    // Show quick processing state for direct query
-                    setShowProcessingUI(true);
-                    setOptimisticProcessing(true);
-
-                    const response = await fetch('/api/getAnswer', {
-                      method: 'POST',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ question: trimmed, sources: [] })
-                    });
-
-                    if (!response.ok) {
-                      throw new Error(`Request failed (${response.status})`);
-                    }
-
-                    // Always use text response since getAnswer returns text/plain or application/xml
-                    let dataText: string;
-                    try {
-                      dataText = await response.text();
-                    } catch (parseError) {
-                      console.error('Failed to parse response as text:', parseError);
-                      dataText = 'Failed to parse response';
-                    }
-
-                    const assistantMessage: Message = {
-                      role: 'assistant',
-                      content: dataText || 'No data returned.'
-                    };
-
-                    if (onDirectResponse) {
-                      onDirectResponse(assistantMessage, trimmed);
-                    } else {
-                      // Fallback logging if parent did not supply handler
-                      console.log('Direct RPC response (no onDirectResponse handler):', assistantMessage);
-                    }
-                  } catch (error) {
-                    console.error('Error submitting direct RPC query:', error);
-                    if (onDirectResponse) {
-                      onDirectResponse({
-                        role: 'assistant',
-                        content: '⚠️ Failed to retrieve direct answer. Please try again or rephrase.'
-                      });
-                    }
-                  } finally {
-                    // Clear optimistic state for direct path to avoid lingering "Processing…" bar
-                    setOptimisticProcessing(false);
-                    setShowProcessingUI(false);
-                  }
-                  return; // Prevent further processing by the agent
-                }
+                // Don't bypass - let agent handle all queries with tools
+                // This ensures tools are executed properly
               } catch (error) {
                 console.error('Error in form submission:', error);
               }
 
-              // Always set processing state immediately when form is submitted
-              setShowProcessingUI(true);
-              setOptimisticProcessing(true);
-
-              if (isMockMode) {
-                console.log('🔍 Mock mode: Processing UI started, will be controlled by pending state');
-              }
-
+              // Call parent onSubmit which will trigger processing through agent
               onSubmit(e);
             }}
             className={`chat-input-area mt-auto p-4 border-t border-white/20 flex-shrink-0 relative z-50 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'}`}
