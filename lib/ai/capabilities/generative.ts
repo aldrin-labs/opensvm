@@ -28,20 +28,13 @@ export class GenerativeCapability extends BaseCapability {
                             body: JSON.stringify({ question: trimmed, sources: [] })
                         });
 
-                        // The getAnswer route now returns JSON responses
-                        const json = await res.json();
-                        // Ensure 'text' is always a string, especially if 'error' is an object
-                        let text: string;
-                        if (typeof json.message === 'string') {
-                            text = json.message;
-                        } else if (typeof json.error === 'string') {
-                            text = json.error;
-                        } else if (typeof json.error === 'object' && json.error !== null) {
-                            // Stringify error objects to prevent "[object Object]" display
-                            text = `Error details: ${JSON.stringify(json.error)}`;
-                        } else {
-                            text = 'No content generated.';
+                        // The getAnswer route returns text/plain, not JSON
+                        const text = await res.text();
+                        
+                        if (!res.ok) {
+                            return { role: 'assistant', content: `Error: ${text || 'Request failed'}` };
                         }
+                        
                         const processed = this.postProcessResponse(text.trim());
 
                         if (typeof processed === 'object' && 'plan' in processed) {

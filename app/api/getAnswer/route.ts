@@ -235,7 +235,7 @@ export async function POST(request: Request) {
       console.log(`🏥 System health: ${StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'}`);
 
       // If ownPlan mode is enabled, skip tool execution and go directly to planning
-      if (ownPlan && customSystemPrompt) {
+      if (ownPlan) {
         console.log(`📋 OwnPlan mode activated - generating plan without execution`);
         return await handleOwnPlanMode(question, customSystemPrompt, requestStart);
       }
@@ -328,19 +328,28 @@ Please try your request again, or simplify your query if the issue persists.
   }
 }
 
-async function handleOwnPlanMode(question: string, customSystemPrompt: string, requestStart: number): Promise<Response> {
+async function handleOwnPlanMode(question: string, customSystemPrompt: string | null, requestStart: number): Promise<Response> {
   // Generate a plan using custom system prompt without executing it
   const together = new Together({
     apiKey: process.env.TOGETHER_API_KEY,
   });
 
-  console.log("🎯 Generating plan with custom system prompt");
+  // Determine which system prompt to use
+  const useCustomPrompt = customSystemPrompt !== null && customSystemPrompt !== undefined;
+  
+  console.log(`🎯 Generating plan with ${useCustomPrompt ? 'custom' : 'OpenSVM'} system prompt`);
 
-  // Enhanced planning-focused prompt with structured output format
-  const planningSystemPrompt = `${customSystemPrompt}
+  // Build the base system prompt
+  let baseSystemPrompt = '';
+  
+  if (useCustomPrompt) {
+    // Use the custom system prompt provided by the caller
+    baseSystemPrompt = customSystemPrompt;
+  } else {
+    // Use OpenSVM's default tool definitions
+    baseSystemPrompt = `You are a blockchain analyst with access to the following specialized tools:
 
 ## Available Tools for OpenSVM
-You have access to the following specialized tools. You MUST use these tools in your plan:
 
 ### PRIMARY TOOLS (Use these first):
 1. **coingecko** - Cryptocurrency market data, prices, and trends
@@ -395,7 +404,11 @@ You have access to the following specialized tools. You MUST use these tools in 
 - getEpochInfo - Get epoch information
 
 ## Planning Mode Instructions
-You are in PLANNING MODE. Your task is to analyze the request and create a structured execution plan using the available tools listed above.
+You are in PLANNING MODE. Your task is to analyze the request and create a structured execution plan using the available tools listed above.`;
+  }
+
+  // Add the common XML output format requirements
+  const planningSystemPrompt = `${baseSystemPrompt}
 
 ## OUTPUT FORMAT REQUIREMENTS
 You MUST format your response using the following XML structure:
@@ -438,10 +451,10 @@ You MUST format your response using the following XML structure:
 </osvm_plan>
 
 IMPORTANT:
-- Use ONLY the tools listed in the "Available Tools for OpenSVM" section
+- Use ONLY the tools defined in the system prompt above
 - Return ONLY the XML structure. No additional text before or after the XML
-- Ensure tool_ref in steps matches exactly the tool names provided above
-- Be specific about API endpoints and parameters
+- Ensure tool_ref in steps matches the available tools from the system prompt
+- Be specific about endpoints and parameters
 - Do NOT execute anything, only plan`;
 
   try {
