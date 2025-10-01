@@ -385,15 +385,15 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       // Mark execution as completed
       markPlanCompleted(planId, { response: normalized, executionTime: Date.now() - startTime });
 
-      const currentTab = tabs.find(t => t.id === tabId);
       // Keep ALL non-progress messages including the user message
-      const finalMessages = (currentTab?.messages || existing).filter(m =>
+      // IMPORTANT: Use the 'existing' array passed from handleSubmit, not tabs state (which may be stale)
+      const finalMessages = existing.filter(m =>
         !m.metadata?.data?.progress
       );
 
       console.log(`🔍 [AIChatSidebar] Before finalize:`, {
         tabId,
-        currentTabMessages: currentTab?.messages?.length,
+        existingMessagesCount: existing.length,
         finalMessagesCount: finalMessages.length,
         finalMessages: finalMessages.map(m => ({ role: m.role, content: m.content.substring(0, 30) }))
       });
@@ -438,8 +438,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         content: 'I encountered an error while processing your request. Please try again.'
       };
 
-      const currentTab = tabs.find(t => t.id === tabId);
-      const finalMessages = (currentTab?.messages || existing).filter(m =>
+      // Use the 'existing' array passed from handleSubmit, not tabs state (which may be stale)
+      const finalMessages = existing.filter(m =>
         !m.metadata?.data?.progress
       );
 
@@ -870,9 +870,13 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
+    console.log('🔍 [AIChatSidebar] handleSubmit called!', { activeTabId, event: e.type });
+    
     if (activeTabId) {
       const latest = tabs.find(t => t.id === activeTabId);
       const value = latest?.input?.trim();
+      
+      console.log('🔍 [AIChatSidebar] Input value:', { value, inputLength: value?.length, latestInput: latest?.input });
       
       if (value) {
         // IMMEDIATE optimistic update - add user message to UI

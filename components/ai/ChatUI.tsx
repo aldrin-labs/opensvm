@@ -805,18 +805,9 @@ export function ChatUI({
         }
       }
       e.preventDefault();
-      if (!isProcessing) {
-        try {
-          const form = inputRef.current?.closest('form');
-          if (form) {
-            const event = new Event('submit', { bubbles: true, cancelable: true });
-            form.dispatchEvent(event);
-          } else {
-            onSubmit({ preventDefault: () => { } } as unknown as React.FormEvent);
-          }
-        } catch (error) {
-          console.error('Error in Enter key submission:', error);
-        }
+      if (!isProcessing && input.trim()) {
+        // Directly call onSubmit instead of dispatching DOM event
+        onSubmit(e as unknown as React.FormEvent);
       }
     }
 
@@ -1118,9 +1109,13 @@ export function ChatUI({
           <form
             onSubmit={async (e) => {
               e.preventDefault();
+              console.log('🔍 [ChatUI] Form onSubmit called!', { input, inputLength: input.length });
+              
               try {
                 const current = inputRef.current?.value ?? input;
                 const trimmed = (current || '').trim();
+                
+                console.log('🔍 [ChatUI] Trimmed input:', trimmed);
 
                 if (trimmed) {
                   setInputHistory(prev => (prev.length > 0 && prev[prev.length - 1] === trimmed) ? prev : [...prev, trimmed]);
@@ -1149,6 +1144,7 @@ export function ChatUI({
               }
 
               // Call parent onSubmit which will trigger processing through agent
+              console.log('🔍 [ChatUI] Calling parent onSubmit');
               onSubmit(e);
             }}
             className={`chat-input-area mt-auto p-4 border-t border-white/20 flex-shrink-0 relative z-50 ${variant === 'sidebar' ? 'bg-black' : 'bg-black/50 backdrop-blur-sm'}`}
