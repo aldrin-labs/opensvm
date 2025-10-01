@@ -150,7 +150,12 @@ export function ChatUI({
   onHistoryReload,
 }: ChatUIProps) {
   if (__AI_DEBUG__) {
-    console.log('🔍 ChatUI component called', { variant, activeTab, messagesCount: messages.length });
+    console.log('🔍 ChatUI component called', { 
+      variant, 
+      activeTab, 
+      messagesCount: messages.length,
+      messages: messages.map(m => ({ role: m.role, content: m.content.substring(0, 30) + '...' }))
+    });
   }
   if (typeof window !== 'undefined') {
     (window as any).__SVMAI_CHATUI_CALLED__ = true;
@@ -531,6 +536,11 @@ export function ChatUI({
 
   // Message renderer
   const renderMessage = useCallback((message: Message, index: number) => {
+    // Debug logging to track what messages are being rendered
+    if (__AI_DEBUG__) {
+      console.log(`🔍 Rendering message ${index}:`, { role: message.role, contentLength: message.content?.length, content: message.content?.substring(0, 50) });
+    }
+    
     // Avoid rendering empty placeholder responses
     if (message.role === 'assistant' && (!message.content || message.content.trim() === '')) {
       return (

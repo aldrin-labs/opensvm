@@ -218,7 +218,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     });
   }, [tabs]); // Removed agents dependency - using functional state update instead
 
-  const processTabMessage = useCallback(async (tabId: string, message: string) => {
+  const processTabMessage = useCallback(async (tabId: string, message: string, existingMessages?: Message[]) => {
     // Generate unique plan ID for execution tracking
     const planId = `${tabId}-${Date.now()}`;
     
@@ -262,8 +262,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       }, MIN_PROCESSING_MS + 5000); // Check after 5.4 seconds
     }
 
-    // Get existing messages (user message already added by handleSubmit)
-    const existing = tabs.find(t => t.id === tabId)?.messages || [];
+    // Use passed messages array if provided (from handleSubmit), otherwise get from state
+    const existing = existingMessages || tabs.find(t => t.id === tabId)?.messages || [];
     
     // Create user message object for agent processing
     const userMessage: Message = {
@@ -386,9 +386,17 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
       markPlanCompleted(planId, { response: normalized, executionTime: Date.now() - startTime });
 
       const currentTab = tabs.find(t => t.id === tabId);
+      // Keep ALL non-progress messages including the user message
       const finalMessages = (currentTab?.messages || existing).filter(m =>
         !m.metadata?.data?.progress
       );
+
+      console.log(`🔍 [AIChatSidebar] Before finalize:`, {
+        tabId,
+        currentTabMessages: currentTab?.messages?.length,
+        finalMessagesCount: finalMessages.length,
+        finalMessages: finalMessages.map(m => ({ role: m.role, content: m.content.substring(0, 30) }))
+      });
 
       const elapsed = Date.now() - startTime;
       const finalize = () => {
@@ -401,8 +409,14 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
             }));
           } catch (e) { /* noop */ }
         }
+        const updatedMessages = [...finalMessages, normalized];
+        console.log(`🔍 [AIChatSidebar] Setting final messages:`, {
+          tabId,
+          count: updatedMessages.length,
+          messages: updatedMessages.map(m => ({ role: m.role, content: m.content.substring(0, 30) }))
+        });
         updateTab(tabId, {
-          messages: [...finalMessages, normalized],
+          messages: updatedMessages,
           isProcessing: false,
           status: 'idle',
           lastActivity: Date.now()
@@ -868,8 +882,10 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         };
         
         const currentMessages = latest?.messages || [];
+        const messagesWithUser = [...currentMessages, userMessage];
+        
         updateTab(activeTabId, { 
-          messages: [...currentMessages, userMessage],
+          messages: messagesWithUser,
           input: '', // Clear input immediately
           isProcessing: true, // Show spinner immediately
           status: 'processing'
@@ -880,7 +896,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
           const historyKey = `chat-history-${activeTabId}`;
           const history = {
             tabId: activeTabId,
-            messages: [...currentMessages, userMessage],
+            messages: messagesWithUser,
             timestamp: Date.now()
           };
           localStorage.setItem(historyKey, JSON.stringify(history));
@@ -888,8 +904,8 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
           console.warn('Failed to save to history:', e);
         }
         
-        // Then process message (will add assistant response when ready)
-        processTabMessage(activeTabId, value);
+        // Pass the updated messages array directly to avoid state race condition
+        processTabMessage(activeTabId, value, messagesWithUser);
       }
     }
   }, [activeTabId, tabs, processTabMessage, updateTab]);
@@ -1037,6 +1053,19 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   const handleTokenPanelClose = useCallback(() => {
     setTokenPanelOpen(false);
   }, []);
+
+  // Debug logging for messages being passed to Chat
+  useEffect(() => {
+    const isDebug = typeof window !== 'undefined' && (window.location.search.includes('ai=1') || window.location.search.includes('aimock=1'));
+    if (isDebug && activeTab) {
+      console.log('🔍 AIChatSidebar passing messages to Chat:', {
+        tabId: activeTab.id,
+        tabName: activeTab.name,
+        messageCount: activeTab.messages?.length || 0,
+        messages: activeTab.messages?.map(m => ({ role: m.role, content: m.content.substring(0, 30) })) || []
+      });
+    }
+  }, [activeTab?.messages, activeTab?.id]);
 
   return (
     <>
