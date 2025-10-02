@@ -1,4 +1,7 @@
 import { AnthropicRequest, AnthropicResponse, AnthropicAPIError } from '../types/AnthropicTypes';
+import { TimeoutConfig, HealthCheckResult } from '../types/ConfigTypes';
+import { getValidatedTimeoutConfig } from '../config/TimeoutConfig';
+import { HealthChecker } from '../health/HealthChecker';
 
 interface KeyUsageStats {
   totalKeys: number;
@@ -20,12 +23,33 @@ export class AnthropicClient {
   private currentKeyIndex: number = 0;
   private keyStats: Record<string, { requests: number; keyPreview: string; lastUsed?: Date; failedAt?: Date }> = {};
   private failedKeys: Set<string> = new Set();
+  private timeoutConfig: TimeoutConfig;
+  private healthChecker: HealthChecker;
 
   constructor(apiKey?: string, baseURL?: string, openRouterKeys: string[] = []) {
     this.apiKey = apiKey || '';
     if (baseURL) {
       this.baseURL = baseURL;
     }
+    
+    // Load timeout configuration from environment
+    try {
+      this.timeoutConfig = getValidatedTimeoutConfig();
+    } catch (error) {
+      // Fall back to defaults if validation fails
+      console.warn('Using default timeout configuration:', error);
+      this.timeoutConfig = {
+        requestTimeout: 30000,
+        streamingTimeout: 120000,
+        connectionTimeout: 10000,
+        retryAttempts: 3,
+        retryDelay: 1000,
+      };
+    }
+    
+    // Initialize health checker
+    const healthCheckInterval = parseInt(process.env.HEALTH_CHECK_INTERVAL || '60000', 10);
+    this.healthChecker = new HealthChecker(healthCheckInterval);
     
     // Initialize keys from environment or parameters
     this.openRouterKeys = this.initializeKeys(openRouterKeys);
@@ -106,6 +130,97 @@ export class AnthropicClient {
     }
   }
 
+  /**
+   * Retry a function with exponential backoff
+   * @param fn Function to retry
+   * @param attempts Number of retry attempts
+   * @param delay Initial delay in milliseconds
+   */
+  private async retryWithBackoff<T>(
+    fn: () => Promise<T>,
+    attempts: number = this.timeoutConfig.retryAttempts,
+    delay: number = this.timeoutConfig.retryDelay
+  ): Promise<T> {
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < attempts; attempt++) {
+      try {
+        return await fn();
+      } catch (error) {
+        lastError = error as Error;
+        
+        // Don't retry on certain errors
+        if (error instanceof AnthropicAPIError) {
+          // Don't retry on client errors (4xx except 429)
+          if (error.status >= 400 && error.status < 500 && error.status !== 429) {
+            throw error;
+          }
+        }
+        
+        // Last attempt, throw the error
+        if (attempt === attempts - 1) {
+          throw error;
+        }
+        
+        // Exponential backoff: delay * 2^attempt
+        const backoffDelay = delay * Math.pow(2, attempt);
+        await new Promise(resolve => setTimeout(resolve, backoffDelay));
+      }
+    }
+    
+    throw lastError || new Error('Retry failed');
+  }
+
+  /**
+   * Wrap a fetch call with timeout
+   * @param promise The promise to wrap
+   * @param timeoutMs Timeout in milliseconds
+   */
+  private async fetchWithTimeout<T>(
+    promise: Promise<T>,
+    timeoutMs: number
+  ): Promise<T> {
+    return Promise.race([
+      promise,
+      new Promise<T>((_, reject) =>
+        setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
+      )
+    ]);
+  }
+
+  /**
+   * Send message with timeout and retry logic
+   * @param request Anthropic request
+   * @param timeoutMs Optional timeout override
+   */
+  async sendMessageWithTimeout(
+    request: AnthropicRequest,
+    timeoutMs?: number
+  ): Promise<AnthropicResponse & { latency?: number }> {
+    const timeout = timeoutMs || this.timeoutConfig.requestTimeout;
+    const startTime = Date.now();
+    
+    try {
+      const response = await this.retryWithBackoff(async () => {
+        return await this.fetchWithTimeout(
+          this.sendMessage(request),
+          timeout
+        );
+      });
+      
+      const latency = Date.now() - startTime;
+      return { ...response, latency };
+    } catch (error) {
+      const latency = Date.now() - startTime;
+      
+      if (error instanceof Error && error.message.includes('timeout')) {
+        throw new Error(`Request timeout after ${timeout}ms (actual: ${latency}ms)`);
+      }
+      
+      throw error;
+    }
+  }
+
   getMaskedApiKey(): string {
     if (this.apiKey.length <= 6) {
       return this.apiKey;
@@ -143,46 +258,65 @@ export class AnthropicClient {
           }
         };
 
-        const response = await fetch(`${this.baseURL}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentKey}`,
-            'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM Anthropic Proxy'
-          },
-          body: JSON.stringify(openRouterRequest)
-        });
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeout = setTimeout(() => {
+          controller.abort();
+        }, this.timeoutConfig.connectionTimeout);
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
+        try {
+          const response = await fetch(`${this.baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentKey}`,
+              'HTTP-Referer': 'https://opensvm.com',
+              'X-Title': 'OpenSVM Anthropic Proxy'
+            },
+            body: JSON.stringify(openRouterRequest),
+            signal: controller.signal
+          });
           
-          // Handle rate limit errors
-          if (response.status === 429) {
-            this.markKeyAsFailed(currentKey);
-            lastError = AnthropicAPIError.fromResponse(response, error);
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
             
-            // If this was the last available key, throw "All keys exhausted"
-            const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
-            if (remainingKeys.length === 0) {
-              throw new Error('All keys exhausted');
+            // Handle rate limit errors
+            if (response.status === 429) {
+              this.markKeyAsFailed(currentKey);
+              lastError = AnthropicAPIError.fromResponse(response, error);
+              
+              // If this was the last available key, throw "All keys exhausted"
+              const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
+              if (remainingKeys.length === 0) {
+                throw new Error('All keys exhausted');
+              }
+              
+              continue; // Try next key
             }
             
-            continue; // Try next key
+            throw AnthropicAPIError.fromResponse(response, error);
+          }
+
+          const result = await response.json();
+          
+          // If this is a mock response (test environment), return it directly
+          if (result.id && result.content && result.usage) {
+            return result;
           }
           
-          throw AnthropicAPIError.fromResponse(response, error);
+          // Convert OpenRouter response back to Anthropic format
+          return this.convertFromOpenRouterResponse(result, request.model);
+        } catch (fetchError) {
+          clearTimeout(timeout);
+          
+          // Handle abort/timeout
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            throw new Error(`Connection timeout after ${this.timeoutConfig.connectionTimeout}ms`);
+          }
+          throw fetchError;
         }
-
-        const result = await response.json();
-        
-        // If this is a mock response (test environment), return it directly
-        if (result.id && result.content && result.usage) {
-          return result;
-        }
-        
-        // Convert OpenRouter response back to Anthropic format
-        return this.convertFromOpenRouterResponse(result, request.model);
       } catch (error) {
         if (error instanceof AnthropicAPIError && error.status === 429) {
           lastError = error;
@@ -258,39 +392,58 @@ export class AnthropicClient {
           stream: true
         };
 
-        const response = await fetch(`${this.baseURL}/chat/completions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${currentKey}`,
-            'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM Anthropic Proxy'
-          },
-          body: JSON.stringify(openRouterRequest)
-        });
+        // Create AbortController for timeout handling
+        const controller = new AbortController();
+        const timeout = setTimeout(() => {
+          controller.abort();
+        }, this.timeoutConfig.streamingTimeout);
 
-        if (!response.ok) {
-          const error = await response.json().catch(() => ({}));
-          
-          // Handle rate limit errors
-          if (response.status === 429) {
-            this.markKeyAsFailed(currentKey);
-            lastError = AnthropicAPIError.fromResponse(response, error);
+        try {
+          const response = await fetch(`${this.baseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${currentKey}`,
+              'HTTP-Referer': 'https://opensvm.com',
+              'X-Title': 'OpenSVM Anthropic Proxy'
+            },
+            body: JSON.stringify(openRouterRequest),
+            signal: controller.signal
+          });
+
+          clearTimeout(timeout);
+
+          if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
             
-            // If this was the last available key, throw "All keys exhausted"
-            const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
-            if (remainingKeys.length === 0) {
-              throw new Error('All keys exhausted');
+            // Handle rate limit errors
+            if (response.status === 429) {
+              this.markKeyAsFailed(currentKey);
+              lastError = AnthropicAPIError.fromResponse(response, error);
+              
+              // If this was the last available key, throw "All keys exhausted"
+              const remainingKeys = this.openRouterKeys.filter(key => !this.failedKeys.has(key));
+              if (remainingKeys.length === 0) {
+                throw new Error('All keys exhausted');
+              }
+              
+              continue; // Try next key
             }
             
-            continue; // Try next key
+            throw AnthropicAPIError.fromResponse(response, error);
           }
-          
-          throw AnthropicAPIError.fromResponse(response, error);
-        }
 
-        // Transform the stream to convert OpenRouter format to Anthropic format
-        return this.transformStreamResponse(response.body!);
+          // Transform the stream to convert OpenRouter format to Anthropic format
+          return this.transformStreamResponse(response.body!);
+        } catch (fetchError) {
+          clearTimeout(timeout);
+          
+          // Handle abort/timeout
+          if (fetchError instanceof Error && fetchError.name === 'AbortError') {
+            throw new Error(`Streaming timeout after ${this.timeoutConfig.streamingTimeout}ms`);
+          }
+          throw fetchError;
+        }
       } catch (error) {
         if (error instanceof AnthropicAPIError && error.status === 429) {
           lastError = error;
@@ -481,6 +634,22 @@ export class AnthropicClient {
       failedKeys: this.failedKeys.size,
       usage: this.keyStats
     };
+  }
+
+  /**
+   * Check backend health
+   * @returns Health check result for OpenRouter backend
+   */
+  async checkBackendHealth(): Promise<HealthCheckResult> {
+    return await this.healthChecker.checkOpenRouterHealth();
+  }
+
+  /**
+   * Get all backend health status
+   * @returns Array of health check results for all backends
+   */
+  async getAllBackendHealth(): Promise<HealthCheckResult[]> {
+    return await this.healthChecker.getAllHealthStatus();
   }
 }
 

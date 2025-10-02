@@ -5,6 +5,9 @@ export interface ProxyRequest {
   userId?: string;
   apiKeyId?: string;
   estimatedCost?: number;
+  timeoutMs?: number;
+  retryCount?: number;
+  startTime?: number;
 }
 
 export interface ProxyResponse {
@@ -27,6 +30,9 @@ export interface ProxyResponse {
     input_tokens?: number;
     output_tokens?: number;
   };
+  latency?: number;
+  timedOut?: boolean;
+  retriedCount?: number;
 }
 
 export interface UserBalance {

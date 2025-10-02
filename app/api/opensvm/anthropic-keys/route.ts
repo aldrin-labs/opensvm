@@ -135,7 +135,7 @@ export async function GET(request: NextRequest) {
         }
 
         // List user's API keys
-        const keys = await apiKeyManager.listUserKeys(authResult.userId!);
+        const keys = await apiKeyManager.getUserKeys(authResult.userId!);
 
         // Handle case where keys might be undefined/null
         const keyList = keys || [];
@@ -146,7 +146,7 @@ export async function GET(request: NextRequest) {
                 name: key.name,
                 keyPreview: `${key.keyPrefix}...`,
                 createdAt: key.createdAt.toISOString(),
-                lastUsedAt: key.lastUsedAt?.toISOString() || null,
+                lastUsedAt: key.usageStats.lastRequestAt?.toISOString() || null,
                 isActive: key.isActive,
                 usageStats: key.usageStats
             })),
@@ -228,4 +228,4 @@ export async function OPTIONS(_request: NextRequest) {
             'Access-Control-Max-Age': '86400'
         }
     });
-} 
+}
