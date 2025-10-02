@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
 
         try {
             if (anthropicRequest.stream) {
-                // Handle streaming request
+                // Handle streaming request with timeout protection
                 const stream = await anthropicClient.sendStreamingMessage(anthropicRequest);
 
                 // Convert ReadableStream to Response
@@ -215,8 +215,8 @@ export async function POST(request: NextRequest) {
                     }
                 });
             } else {
-                // Handle non-streaming request
-                const response = await anthropicClient.sendMessage(anthropicRequest);
+                // Handle non-streaming request with timeout and retry logic
+                const response = await anthropicClient.sendMessageWithTimeout(anthropicRequest);
 
                 // Process successful response for billing
                 const actualCost = calculateActualCost(response, anthropicRequest.model);
@@ -356,6 +356,32 @@ export async function POST(request: NextRequest) {
                             }
                         },
                         { status: 400 }
+                    );
+                }
+
+                // Timeout errors
+                if (errorMessage.includes('timeout')) {
+                    return NextResponse.json(
+                        {
+                            error: {
+                                type: 'timeout_error',
+                                message: error.message
+                            }
+                        },
+                        { status: 504 }
+                    );
+                }
+
+                // All keys exhausted
+                if (errorMessage.includes('all keys exhausted')) {
+                    return NextResponse.json(
+                        {
+                            error: {
+                                type: 'service_unavailable',
+                                message: 'All API keys are currently exhausted or rate limited. Please try again later.'
+                            }
+                        },
+                        { status: 503 }
                     );
                 }
             }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { HealthChecker } from '@/lib/anthropic-proxy/health/HealthChecker';
+import { HealthChecker } from '../../../../lib/anthropic-proxy/health/HealthChecker';
 
 // Create a singleton health checker instance
 const healthChecker = new HealthChecker(60000); // Check every 60 seconds

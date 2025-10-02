@@ -19,30 +19,41 @@ export class HealthChecker {
     const backend = 'openrouter';
 
     try {
-      // Try to fetch the models list as a health check
-      const response = await fetch(`${this.openRouterApiUrl}/models`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
+      // Create AbortController with 5 second timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
-      const latency = Date.now() - startTime;
-      const isHealthy = response.ok;
+      try {
+        // Try to fetch the models list as a health check
+        const response = await fetch(`${this.openRouterApiUrl}/models`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          signal: controller.signal,
+        });
 
-      const result: HealthCheckResult = {
-        isHealthy,
-        backend,
-        latency,
-        timestamp: new Date(),
-      };
+        clearTimeout(timeout);
+        const latency = Date.now() - startTime;
+        const isHealthy = response.ok;
 
-      if (!isHealthy) {
-        result.error = `HTTP ${response.status}: ${response.statusText}`;
+        const result: HealthCheckResult = {
+          isHealthy,
+          backend,
+          latency,
+          timestamp: new Date(),
+        };
+
+        if (!isHealthy) {
+          result.error = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        this.lastCheck.set(backend, result);
+        return result;
+      } catch (fetchError) {
+        clearTimeout(timeout);
+        throw fetchError;
       }
-
-      this.lastCheck.set(backend, result);
-      return result;
     } catch (error) {
       const latency = Date.now() - startTime;
       const result: HealthCheckResult = {
@@ -50,7 +61,9 @@ export class HealthChecker {
         backend,
         latency,
         timestamp: new Date(),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error && error.name === 'AbortError'
+          ? 'Connection timeout after 5000ms'
+          : error instanceof Error ? error.message : 'Unknown error',
       };
 
       this.lastCheck.set(backend, result);
@@ -67,33 +80,44 @@ export class HealthChecker {
     const backend = 'anthropic';
 
     try {
-      // Try to fetch the Anthropic API health endpoint
-      const response = await fetch('https://api.anthropic.com/v1/models', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'anthropic-version': '2023-06-01',
-        },
-      });
+      // Create AbortController with 5 second timeout
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 5000);
 
-      const latency = Date.now() - startTime;
-      
-      // Anthropic API might return 401 without auth, which still indicates it's up
-      const isHealthy = response.ok || response.status === 401;
+      try {
+        // Try to fetch the Anthropic API health endpoint
+        const response = await fetch('https://api.anthropic.com/v1/models', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'anthropic-version': '2023-06-01',
+          },
+          signal: controller.signal,
+        });
 
-      const result: HealthCheckResult = {
-        isHealthy,
-        backend,
-        latency,
-        timestamp: new Date(),
-      };
+        clearTimeout(timeout);
+        const latency = Date.now() - startTime;
+        
+        // Anthropic API might return 401 without auth, which still indicates it's up
+        const isHealthy = response.ok || response.status === 401;
 
-      if (!isHealthy) {
-        result.error = `HTTP ${response.status}: ${response.statusText}`;
+        const result: HealthCheckResult = {
+          isHealthy,
+          backend,
+          latency,
+          timestamp: new Date(),
+        };
+
+        if (!isHealthy) {
+          result.error = `HTTP ${response.status}: ${response.statusText}`;
+        }
+
+        this.lastCheck.set(backend, result);
+        return result;
+      } catch (fetchError) {
+        clearTimeout(timeout);
+        throw fetchError;
       }
-
-      this.lastCheck.set(backend, result);
-      return result;
     } catch (error) {
       const latency = Date.now() - startTime;
       const result: HealthCheckResult = {
@@ -101,7 +125,9 @@ export class HealthChecker {
         backend,
         latency,
         timestamp: new Date(),
-        error: error instanceof Error ? error.message : 'Unknown error',
+        error: error instanceof Error && error.name === 'AbortError'
+          ? 'Connection timeout after 5000ms'
+          : error instanceof Error ? error.message : 'Unknown error',
       };
 
       this.lastCheck.set(backend, result);
