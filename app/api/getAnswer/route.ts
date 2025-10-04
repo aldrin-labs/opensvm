@@ -330,9 +330,7 @@ Please try your request again, or simplify your query if the issue persists.
 
 async function handleOwnPlanMode(question: string, customSystemPrompt: string | null, requestStart: number): Promise<Response> {
   // Generate a plan using custom system prompt without executing it
-  const together = new Together({
-    apiKey: process.env.TOGETHER_API_KEY,
-  });
+  console.log(`🎯 Starting handleOwnPlanMode`);
 
   // Determine which system prompt to use
   const useCustomPrompt = customSystemPrompt !== null && customSystemPrompt !== undefined;
@@ -458,11 +456,16 @@ IMPORTANT:
 - Do NOT execute anything, only plan`;
 
   try {
-    const llmTimeout = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Planning timeout')), 30000); // 30 second timeout for planning
-    });
+    console.log(`📡 Calling Together AI API directly with fetch`);
+    console.log(`⏱️  Starting LLM request at ${new Date().toISOString()}`);
+    
+    // Use direct fetch instead of Together SDK to avoid event loop blocking
+    const apiKey = process.env.TOGETHER_API_KEY;
+    if (!apiKey) {
+      throw new Error('TOGETHER_API_KEY not configured');
+    }
 
-    const llmPromise = together.chat.completions.create({
+    const requestBody = {
       model: "openai/gpt-oss-120b",
       messages: [
         {
@@ -472,10 +475,35 @@ IMPORTANT:
         { role: "user", content: question }
       ],
       stream: false,
-      max_tokens: 2000, // Reasonable limit for a plan
+      max_tokens: 2000
+    };
+
+    console.log(`📤 Sending request to Together AI...`);
+    
+    const llmTimeout = new Promise<never>((_, reject) => {
+      setTimeout(() => reject(new Error('Planning timeout after 60 seconds')), 60000);
     });
 
-    const answer = await Promise.race([llmPromise, llmTimeout]);
+    const llmPromise = fetch('https://api.together.xyz/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(requestBody)
+    });
+
+    console.log(`⏳ Waiting for LLM response...`);
+    const response = await Promise.race([llmPromise, llmTimeout]);
+    console.log(`✅ Got response, status: ${response.status}`);
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Together AI API error: ${response.status} - ${errorText}`);
+    }
+
+    const answer = await response.json();
+    console.log(`✅ LLM response parsed at ${new Date().toISOString()}`);
     let plan = answer.choices?.[0]?.message?.content || "Failed to generate plan";
 
     // Clean up the response to ensure it's valid XML
