@@ -51,6 +51,23 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
+# Proxy requests that were redirected from api.opensvm.com
+# The condition checks if the request came from api.opensvm.com domain
+[[redirects]]
+  from = "/*"
+  to = "/api/proxy/rpc/:splat"
+  status = 200
+  force = true
+  conditions = {Referer = ["https://api.opensvm.com/*", "http://api.opensvm.com/*"]}
+
+# Alternative: Check for a specific header that indicates redirection from api.opensvm.com
+[[redirects]]
+  from = "/*"
+  to = "/api/proxy/rpc/:splat"
+  status = 200
+  force = true
+  headers = {X-Original-Host = "api.opensvm.com"}
+
 # Redirect attempts to access config files to 404
 [[redirects]]
   from = "/lib/rpc-config.json"
