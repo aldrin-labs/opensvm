@@ -1,5 +1,5 @@
 import Link from 'next/link';
-<parameter name="Newspaper, ExternalLink, Clock, TrendingUp } from 'lucide-react';
+import { Newspaper, ExternalLink, Clock, TrendingUp } from 'lucide-react';
 
 export const metadata = {
   title: 'OpenSVM News - Solana Ecosystem Updates',
