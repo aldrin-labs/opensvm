@@ -100,6 +100,106 @@ const blogPosts: BlogPost[] = [
   },
   {
     id: '9',
+    title: 'Memecoins on Solana: The Cultural Phenomenon Driving Innovation',
+    excerpt: 'Exploring the memecoin revolution on Solana - from $BONK to $WIF and beyond. How community-driven tokens are pushing the boundaries of DeFi, creating new use cases, and onboarding millions to crypto.',
+    author: 'Community Team',
+    date: '2025-01-18',
+    category: 'Culture',
+    tags: ['memecoins', 'Solana', 'community', '$BONK', '$WIF'],
+    readTime: '8 min read'
+  },
+  {
+    id: '10',
+    title: 'AI x Crypto: The Convergence of Artificial Intelligence and Blockchain',
+    excerpt: 'A comprehensive overview of how AI and crypto are merging to create new paradigms. From AI-powered trading bots to decentralized AI compute networks, explore the intersection reshaping both industries.',
+    author: 'Research Team',
+    date: '2025-01-20',
+    category: 'AI & Crypto',
+    tags: ['AI', 'crypto', 'machine learning', 'blockchain'],
+    readTime: '14 min read'
+  },
+  {
+    id: '11',
+    title: 'On-Chain AI Agents: Autonomous Programs on Solana',
+    excerpt: 'Deep dive into autonomous AI agents operating on-chain. Learn how intelligent programs can execute trades, manage portfolios, and interact with DeFi protocols without human intervention.',
+    author: 'AI Research Team',
+    date: '2025-01-22',
+    category: 'AI & Crypto',
+    tags: ['AI agents', 'autonomous', 'on-chain', 'Solana', 'DeFi'],
+    readTime: '16 min read'
+  },
+  {
+    id: '12',
+    title: 'Building Your First On-Chain AI Agent: A Developer\'s Guide',
+    excerpt: 'Step-by-step tutorial for building autonomous AI agents on Solana. From setting up your development environment to deploying intelligent programs that interact with DeFi protocols.',
+    author: 'Developer Relations',
+    date: '2025-01-25',
+    category: 'Tutorial',
+    tags: ['AI agents', 'tutorial', 'development', 'Solana', 'coding'],
+    readTime: '20 min read'
+  },
+  {
+    id: '13',
+    title: 'Training Your Own AI Model for Crypto: A Practical Guide',
+    excerpt: 'Learn how to develop custom AI models for cryptocurrency analysis. Covers data collection, preprocessing, model architecture selection, and training pipelines for market prediction and sentiment analysis.',
+    author: 'ML Engineering Team',
+    date: '2025-01-28',
+    category: 'AI & Tutorial',
+    tags: ['AI', 'machine learning', 'training', 'models', 'crypto'],
+    readTime: '18 min read'
+  },
+  {
+    id: '14',
+    title: 'Fine-Tuning LLMs for Blockchain Applications',
+    excerpt: 'Comprehensive guide to fine-tuning large language models for crypto-specific tasks. Learn about dataset creation, PEFT techniques, LoRA, and deploying fine-tuned models for on-chain analysis.',
+    author: 'AI Research Team',
+    date: '2025-01-30',
+    category: 'AI & Tutorial',
+    tags: ['LLM', 'fine-tuning', 'AI', 'blockchain', 'tutorial'],
+    readTime: '22 min read'
+  },
+  {
+    id: '15',
+    title: 'Decentralized AI Compute on Solana: The Future of Model Training',
+    excerpt: 'Explore how Solana\'s high throughput enables decentralized AI compute networks. Learn about distributed training, tokenized GPU resources, and the economic models powering this revolution.',
+    author: 'Infrastructure Team',
+    date: '2025-02-01',
+    category: 'AI & Crypto',
+    tags: ['AI compute', 'decentralized', 'Solana', 'GPU', 'infrastructure'],
+    readTime: '12 min read'
+  },
+  {
+    id: '16',
+    title: 'AI Trading Bots: From Simple Scripts to Advanced Strategies',
+    excerpt: 'Complete guide to building AI-powered trading bots on Solana. Covers market making, arbitrage, sentiment analysis integration, risk management, and backtesting strategies.',
+    author: 'Quantitative Team',
+    date: '2025-02-03',
+    category: 'Tutorial',
+    tags: ['trading bots', 'AI', 'DeFi', 'strategies', 'automation'],
+    readTime: '25 min read'
+  },
+  {
+    id: '17',
+    title: 'The Memecoin Playbook: Launch, Marketing, and Community Building',
+    excerpt: 'Insider\'s guide to launching successful memecoins on Solana. Learn about tokenomics, fair launches, building engaged communities, and creating lasting value beyond the hype.',
+    author: 'Community & Marketing',
+    date: '2025-02-05',
+    category: 'Culture',
+    tags: ['memecoins', 'launch', 'marketing', 'community', 'tokenomics'],
+    readTime: '11 min read'
+  },
+  {
+    id: '18',
+    title: 'Multi-Agent Systems: Coordinating AI Agents for Complex DeFi Strategies',
+    excerpt: 'Advanced exploration of multi-agent AI systems on Solana. Learn how multiple autonomous agents can coordinate, compete, and collaborate to execute sophisticated DeFi strategies.',
+    author: 'AI Research Team',
+    date: '2025-02-08',
+    category: 'AI & Crypto',
+    tags: ['multi-agent', 'AI', 'coordination', 'DeFi', 'advanced'],
+    readTime: '19 min read'
+  },
+  {
+    id: '9',
     title: 'Building Real-Time Analytics with OpenSVM',
     excerpt: 'How we process and visualize millions of Solana transactions in real-time using advanced data streaming and WebGL-powered graphics.',
     author: 'Engineering Team',
