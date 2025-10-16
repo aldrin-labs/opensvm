@@ -1,44 +1,81 @@
-import { promises as fs } from 'fs';
-import path from 'path';
-import { notFound } from 'next/navigation';
-import type { Metadata } from 'next';
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useParams } from 'next/navigation';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import Link from 'next/link';
 import { ArrowLeft, FileText } from 'lucide-react';
+import mermaid from 'mermaid';
 
-interface Props {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}
+// Mermaid component for rendering diagrams
+const Mermaid = ({ chart }: { chart: string }) => {
+  useEffect(() => {
+    mermaid.initialize({
+      startOnLoad: true,
+      theme: 'dark',
+      securityLevel: 'loose',
+    });
+    mermaid.contentLoaded();
+  }, [chart]);
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const resolvedParams = await params;
-  const title = resolvedParams.slug.replace(/-/g, ' ').replace(/_/g, ' ');
-  return {
-    title: `${title} - OpenSVM Documentation`,
-    description: `Documentation for ${title} in OpenSVM blockchain explorer`,
-  };
-}
+  return (
+    <div className="mermaid my-8 flex justify-center">
+      {chart}
+    </div>
+  );
+};
 
-export default async function DocPage({ params }: Props) {
-  const resolvedParams = await params;
-  const { slug } = resolvedParams;
-  
-  // Use path.join with process.cwd() to get the correct path in both dev and prod
-  const docsDir = path.join(process.cwd(), 'docs');
-  const filePath = path.join(docsDir, `${slug}.md`);
+export default function DocPage() {
+  const params = useParams();
+  const slug = params?.slug as string;
+  const [content, setContent] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(false);
 
-  try {
-    // Verify directory exists
-    try {
-      await fs.access(docsDir);
-    } catch (error) {
-      console.error(`Docs directory not found: ${docsDir}`);
-      notFound();
+  useEffect(() => {
+    const fetchDoc = async () => {
+      try {
+        const response = await fetch(`/docs/${slug}.md`);
+        if (!response.ok) {
+          setError(true);
+          return;
+        }
+        const text = await response.text();
+        setContent(text);
+      } catch (err) {
+        console.error('Error fetching doc:', err);
+        setError(true);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (slug) {
+      fetchDoc();
     }
+  }, [slug]);
 
-    const content = await fs.readFile(filePath, 'utf8');
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-muted-foreground">Loading documentation...</div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4">Documentation Not Found</h1>
+          <Link href="/docs" className="text-primary hover:underline">
+            Back to Documentation
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
     return (
       <div className="min-h-screen bg-background">
@@ -84,7 +121,35 @@ export default async function DocPage({ params }: Props) {
               prose-th:p-3 prose-th:border prose-th:font-semibold
               prose-td:p-3 prose-td:border
             ">
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+              <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  code({ node, inline, className, children, ...props }) {
+                    const match = /language-(\w+)/.exec(className || '');
+                    const language = match ? match[1] : '';
+                    const content = String(children).replace(/\n$/, '');
+                    
+                    // Render Mermaid diagrams
+                    if (language === 'mermaid') {
+                      return <Mermaid chart={content} />;
+                    }
+                    
+                    // Regular code blocks
+                    if (!inline && match) {
+                      return (
+                        <pre className={className}>
+                          <code {...props} className={className}>
+                            {children}
+                          </code>
+                        </pre>
+                      );
+                    }
+                    
+                    // Inline code
+                    return <code {...props} className={className}>{children}</code>;
+                  }
+                }}
+              >
                 {content}
               </ReactMarkdown>
             </article>
@@ -103,8 +168,5 @@ export default async function DocPage({ params }: Props) {
         </div>
       </div>
     );
-  } catch (error) {
-    console.error(`Error reading doc file: ${filePath}`, error);
-    notFound();
   }
 }

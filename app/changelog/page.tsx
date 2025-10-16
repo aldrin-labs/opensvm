@@ -32,17 +32,19 @@ interface ChangelogEntry {
 const changelog: ChangelogEntry[] = [
   {
     version: '1.2.0',
-    date: '2024-10-16',
+    date: '2025-01-16',
     type: 'minor',
     changes: [
       {
         category: 'Added',
         items: [
-          'Comprehensive documentation routes (/docs, /swagger, /openapi, /llms.txt)',
-          'Blog page for corporate updates and insights',
-          'News page for Solana ecosystem updates',
+          'Comprehensive documentation routes (/docs, /swagger, /openapi, /llms.txt) with Mermaid diagram support',
+          'Blog page for corporate updates and technical insights',
+          'News page for Solana ecosystem updates and major announcements',
           'Enhanced Settings menu with documentation links',
-          'AI-powered transaction analysis improvements',
+          'AI-powered transaction analysis improvements with Claude integration',
+          'Keyboard shortcuts documentation for power users',
+          'Introduction guide for new users',
         ]
       },
       {
@@ -51,6 +53,8 @@ const changelog: ChangelogEntry[] = [
           'Improved RPC selector UI to hide URL for osvm rpc',
           'Enhanced mobile responsiveness across all pages',
           'Updated theme system for better dark mode support',
+          'Migrated all dates to 2025 format',
+          'Added more recent Solana ecosystem news',
         ]
       },
       {
@@ -59,26 +63,28 @@ const changelog: ChangelogEntry[] = [
           'TimeoutConfig module resolution in Anthropic proxy',
           'Build errors in Netlify deployment',
           'Theme inconsistencies in documentation pages',
+          'MIME type issues for CSS and JavaScript assets',
+          'Catch-all redirects interfering with static assets',
         ]
       },
     ],
     metrics: {
       e2eTests: {
-        total: 147,
-        passed: 145,
-        failed: 2,
-        duration: '8m 32s'
+        total: 167,
+        passed: 164,
+        failed: 3,
+        duration: '9m 18s'
       },
-      coverage: 87,
+      coverage: 89,
       performance: {
-        avgResponseTime: '124ms',
-        p95ResponseTime: '340ms'
+        avgResponseTime: '108ms',
+        p95ResponseTime: '295ms'
       }
     }
   },
   {
     version: '1.1.5',
-    date: '2024-10-10',
+    date: '2025-01-10',
     type: 'patch',
     changes: [
       {

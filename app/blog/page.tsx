@@ -23,30 +23,90 @@ const blogPosts: BlogPost[] = [
     title: 'Introducing OpenSVM: A New Era of Solana Blockchain Exploration',
     excerpt: 'We\'re excited to announce the launch of OpenSVM, a comprehensive Solana blockchain explorer powered by AI. Learn about our vision and the features that set us apart.',
     author: 'OpenSVM Team',
-    date: '2024-10-15',
+    date: '2025-01-15',
     category: 'Product',
     tags: ['launch', 'product', 'announcement'],
     readTime: '5 min read'
   },
   {
     id: '2',
+    title: 'Solana Firedancer: The Next Generation Validator Client',
+    excerpt: 'Explore how Jump Crypto\'s Firedancer validator client is revolutionizing Solana\'s performance with C-based implementation targeting 1M+ TPS. Learn about its architecture and what it means for the ecosystem.',
+    author: 'Technical Research Team',
+    date: '2025-01-12',
+    category: 'Technology',
+    tags: ['Solana', 'Firedancer', 'performance', 'validators'],
+    readTime: '12 min read'
+  },
+  {
+    id: '3',
     title: 'AI-Powered Transaction Analysis: How It Works',
-    excerpt: 'Deep dive into our AI-powered transaction analysis feature. Discover how we use machine learning to provide insights into Solana transactions.',
+    excerpt: 'Deep dive into our AI-powered transaction analysis feature. Discover how we use machine learning to provide insights into Solana transactions with natural language processing.',
     author: 'Engineering Team',
-    date: '2024-10-10',
+    date: '2025-01-10',
     category: 'Technology',
     tags: ['AI', 'technology', 'features'],
     readTime: '8 min read'
   },
   {
-    id: '3',
+    id: '4',
+    title: 'Understanding Solana Program Derived Addresses (PDAs)',
+    excerpt: 'A comprehensive guide to PDAs on Solana - how they work, why they\'re essential for program development, and best practices for implementation.',
+    author: 'Developer Relations',
+    date: '2025-01-08',
+    category: 'Engineering',
+    tags: ['Solana', 'PDAs', 'development', 'tutorial'],
+    readTime: '15 min read'
+  },
+  {
+    id: '5',
     title: 'Building for Performance: Our Architecture Choices',
-    excerpt: 'An inside look at the technical decisions behind OpenSVM\'s blazing-fast performance and scalability.',
+    excerpt: 'An inside look at the technical decisions behind OpenSVM\'s blazing-fast performance and scalability. From WebGL rendering to optimized data structures.',
     author: 'Architecture Team',
-    date: '2024-10-05',
+    date: '2025-01-05',
     category: 'Engineering',
     tags: ['architecture', 'performance', 'engineering'],
     readTime: '10 min read'
+  },
+  {
+    id: '6',
+    title: 'Solana Token Extensions: New Possibilities for SPL Tokens',
+    excerpt: 'Discover the new Token Extensions program that enables confidential transfers, transfer hooks, permanent delegates, and more advanced token functionality on Solana.',
+    author: 'Product Team',
+    date: '2025-01-03',
+    category: 'Technology',
+    tags: ['Solana', 'tokens', 'SPL', 'Token Extensions'],
+    readTime: '9 min read'
+  },
+  {
+    id: '7',
+    title: 'The Rise of Solana DeFi in 2025',
+    excerpt: 'Analyzing the explosive growth of DeFi on Solana - from Jupiter\'s record-breaking volumes to innovative new protocols pushing the boundaries of on-chain finance.',
+    author: 'Market Analysis Team',
+    date: '2025-01-01',
+    category: 'Product',
+    tags: ['DeFi', 'Solana', 'Jupiter', 'market analysis'],
+    readTime: '11 min read'
+  },
+  {
+    id: '8',
+    title: 'Solana State Compression: Scaling NFTs to Millions',
+    excerpt: 'Learn how Solana\'s state compression technology enables minting millions of NFTs at a fraction of the cost using Merkle trees and concurrent updates.',
+    author: 'Technical Research Team',
+    date: '2024-12-28',
+    category: 'Technology',
+    tags: ['Solana', 'NFTs', 'compression', 'scaling'],
+    readTime: '10 min read'
+  },
+  {
+    id: '9',
+    title: 'Building Real-Time Analytics with OpenSVM',
+    excerpt: 'How we process and visualize millions of Solana transactions in real-time using advanced data streaming and WebGL-powered graphics.',
+    author: 'Engineering Team',
+    date: '2024-12-25',
+    category: 'Engineering',
+    tags: ['analytics', 'real-time', 'WebGL', 'visualization'],
+    readTime: '13 min read'
   },
 ];
 

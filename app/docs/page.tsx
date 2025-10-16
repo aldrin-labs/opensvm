@@ -21,7 +21,8 @@ const docCategories: DocCategory[] = [
     description: 'Learn the basics of OpenSVM',
     icon: <Zap className="w-6 h-6" />,
     docs: [
-      { slug: 'README', title: 'Introduction', description: 'Overview of OpenSVM features and capabilities' },
+      { slug: 'introduction', title: 'Introduction', description: 'Overview of OpenSVM features and capabilities' },
+      { slug: 'README', title: 'Quick Start', description: 'Get started with OpenSVM quickly' },
       { slug: 'FEATURES', title: 'Features', description: 'Complete list of OpenSVM features' },
       { slug: 'DEVELOPMENT', title: 'Development', description: 'Setup and development guide' },
     ]
@@ -56,6 +57,15 @@ const docCategories: DocCategory[] = [
       { slug: 'TOKEN_GATING_TESTING', title: 'Token Gating', description: 'Token gating and access control' },
     ]
   },
+  {
+    title: 'Additional Resources',
+    description: 'Shortcuts and help resources',
+    icon: <Keyboard className="w-6 h-6" />,
+    docs: [
+      { slug: 'keyboard-shortcuts', title: 'Keyboard Shortcuts', description: 'Power user shortcuts for efficient navigation' },
+      { slug: 'FAQ', title: 'FAQ', description: 'Frequently asked questions' },
+    ]
+  },
 ];
 
 export default async function DocsPage() {
@@ -83,9 +93,9 @@ export default async function DocsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen">
       {/* Header */}
-      <div className="border-b bg-card/50 backdrop-blur-sm">
+      <div className="border-b backdrop-blur-sm bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto text-center">
             <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
@@ -115,12 +125,12 @@ export default async function DocsPage() {
       </div>
 
       {/* Quick Links */}
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-8 bg-background">
         <div className="max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
             <Link 
               href="/swagger"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group"
+              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
             >
               <FileText className="w-8 h-8 mb-3 text-primary" />
               <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">Interactive API</h3>
@@ -128,7 +138,7 @@ export default async function DocsPage() {
             </Link>
             <Link 
               href="/openapi"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group"
+              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
             >
               <FileText className="w-8 h-8 mb-3 text-primary" />
               <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">OpenAPI Spec</h3>
@@ -136,7 +146,7 @@ export default async function DocsPage() {
             </Link>
             <Link 
               href="/llms.txt"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group"
+              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
             >
               <HelpCircle className="w-8 h-8 mb-3 text-primary" />
               <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">LLM Documentation</h3>
@@ -160,7 +170,7 @@ export default async function DocsPage() {
                     <Link
                       key={doc.slug}
                       href={`/docs/${doc.slug}`}
-                      className="group p-6 border rounded-lg hover:border-primary hover:shadow-md transition-all"
+                      className="group p-6 border rounded-lg hover:border-primary hover:shadow-md transition-all bg-card"
                     >
                       <h3 className="font-semibold mb-2 group-hover:text-primary">{doc.title}</h3>
                       <p className="text-sm text-muted-foreground">{doc.description}</p>
