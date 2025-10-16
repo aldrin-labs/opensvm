@@ -488,6 +488,21 @@ function SettingsMenuClient() {
 
         <DropdownMenuSeparator />
 
+        {/* Documentation Links */}
+        <DropdownMenuLabel>Documentation</DropdownMenuLabel>
+        <DropdownMenuItem asChild>
+          <a href="/docs" target="_blank" rel="noopener noreferrer">
+            User Documentation
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href="/swagger" target="_blank" rel="noopener noreferrer">
+            API Reference
+          </a>
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+
         {/* Action Buttons */}
         <div className="flex justify-end gap-2 p-2">
           <Button
