@@ -36,7 +36,8 @@ export default function DocPage() {
   useEffect(() => {
     const fetchDoc = async () => {
       try {
-        const response = await fetch(`/docs/${slug}.md`);
+        // Fetch from public folder
+        const response = await fetch(`/${slug}.md`);
         if (!response.ok) {
           setError(true);
           return;

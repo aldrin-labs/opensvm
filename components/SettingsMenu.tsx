@@ -498,6 +498,21 @@ function SettingsMenuClient() {
             API Reference
           </a>
         </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href="/blog" target="_blank" rel="noopener noreferrer">
+            Blog
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href="/news" target="_blank" rel="noopener noreferrer">
+            News
+          </a>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <a href="/changelog" target="_blank" rel="noopener noreferrer">
+            Changelog
+          </a>
+        </DropdownMenuItem>
 
         <DropdownMenuSeparator />
 
