@@ -285,7 +285,7 @@ function SettingsMenuClient() {
               <div className="flex flex-col items-start">
                 <div>RPC: {tempSettings.rpcEndpoint.name}</div>
                 <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                  {tempSettings.rpcEndpoint.url === 'opensvm' ? 'opensvm' : tempSettings.rpcEndpoint.url}
+                  {tempSettings.rpcEndpoint.url}
                 </div>
               </div>
             )}
@@ -304,7 +304,6 @@ function SettingsMenuClient() {
                   <div className="flex flex-col w-full bg-[#8B5CF6]/10 -mx-2 px-2 py-1">
                     <div className="font-medium">{endpoint.name}</div>
                     <div className="text-sm text-[#8B5CF6]">15 endpoints (Round-Robin)</div>
-                    <div className="text-xs text-muted-foreground">opensvm</div>
                   </div>
                 ) : (
                   <div className="flex flex-col">
@@ -433,7 +432,7 @@ function SettingsMenuClient() {
               <div className="flex flex-col items-start">
                 <div>RPC: {tempSettings.rpcEndpoint.name}</div>
                 <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                  {tempSettings.rpcEndpoint.url === 'opensvm' ? 'opensvm' : tempSettings.rpcEndpoint.url}
+                  {tempSettings.rpcEndpoint.url}
                 </div>
               </div>
             )}
@@ -453,7 +452,6 @@ function SettingsMenuClient() {
                     <div className="flex flex-col w-full bg-[#8B5CF6]/10 -mx-2 px-2 py-1">
                       <div className="font-medium">{endpoint.name}</div>
                       <div className="text-sm text-[#8B5CF6]">15 endpoints (Round-Robin)</div>
-                      <div className="text-xs text-muted-foreground">opensvm</div>
                     </div>
                   ) : (
                     <div className="flex flex-col">
