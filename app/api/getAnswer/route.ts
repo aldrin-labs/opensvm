@@ -23,8 +23,7 @@ import Together from "together-ai";
       const possiblePaths = [
         'public/solana-rpc-llms.md',  // Standard Next.js public directory
         './public/solana-rpc-llms.md',  // Relative path
-        '/var/task/public/solana-rpc-llms.md'  // Netlify function absolute
-    path
+        '/var/task/public/solana-rpc-llms.md'  // Netlify function absolute path
       ];
 
       let content = '';
@@ -48,7 +47,7 @@ import Together from "together-ai";
             continue;
           }
         }
-        if (!loadedSuccessfully) throw new new Error('Documentation file not found in any expected location');
+        if (!loadedSuccessfully) throw new Error('Documentation file not found in any expected location');
       } catch (error) {
         console.error('❌ Failed to load Solana RPC documentation:', error);
         console.log('🔄 Using fallback abbreviated documentation');
