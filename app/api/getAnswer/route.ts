@@ -41,20 +41,14 @@ import Together from "together-ai";
             content = await fs.readFile(docPath, 'utf-8');
             loadedSuccessfully = true;
             console.log(`✅ Successfully loaded Solana RPC documentation
-    from:
-    ${docPath}`);
+    from: ${docPath}`);
             break;
           } catch (pathError) {
             // Continue to next path
             continue;
           }
         }
-
-        if (!loadedSuccessfully) {
-          throw new Error('Documentation file not found in any expected
-    location');
-        }
-
+        if (!loadedSuccessfully) throw new new Error('Documentation file not found in any expected location');
       } catch (error) {
         console.error('❌ Failed to load Solana RPC documentation:', error);
         console.log('🔄 Using fallback abbreviated documentation');
