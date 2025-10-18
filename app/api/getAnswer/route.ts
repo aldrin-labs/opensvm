@@ -435,27 +435,21 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           let body = await request.json();
 
           // ✅ PHASE 1: Input Type Validation
-          // Validate question field - must be a string
+          // Convert question to string (accept any value and stringify it)
           let question = body.question || body.message;
-          if (question !== undefined && typeof question !== 'string') {
-            console.warn(`[ERROR] Invalid question type: ${typeof question}, expected string`);
-            return new Response('Invalid input: question must be a string', {
-              status: 400,
-              headers: { 'Content-Type': 'text/plain' }
-            });
+          if (question === undefined || question === null) {
+            question = "";
+          } else if (typeof question !== 'string') {
+            // Convert to string for non-string types (numbers, objects, etc.)
+            try {
+              question = JSON.stringify(question);
+            } catch {
+              question = String(question);
+            }
           }
-          question = question || "";
 
-          // Validate ownPlan field - must be boolean or undefined
-          const ownPlanRaw = body.ownPlan;
-          if (ownPlanRaw !== undefined && typeof ownPlanRaw !== 'boolean') {
-            console.warn(`[ERROR] Invalid ownPlan type: ${typeof ownPlanRaw}, expected boolean`);
-            return new Response('Invalid input: ownPlan must be a boolean', {
-              status: 400,
-              headers: { 'Content-Type': 'text/plain' }
-            });
-          }
-          const ownPlan = ownPlanRaw === true;
+          // Convert ownPlan to boolean (accept any truthy/falsy value)
+          const ownPlan = !!body.ownPlan;
 
           // Validate systemPrompt field - must be string or undefined
           const customSystemPrompt = body.systemPrompt;
