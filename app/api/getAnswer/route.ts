@@ -228,9 +228,7 @@ import Together from "together-ai";
         if (this.requests < 5) return true; // Not enough data
         const failureRate = this.failures / this.requests;
         const timeoutRate = this.timeouts / this.requests;
-        return failureRate < 0.3 && timeoutRate < 0.2; // < 30% failure rate,
-     <
-    20% timeout rate
+        return failureRate < 0.3 && timeoutRate < 0.2; // < 30% failure rate, < 20% timeout rate
       }
     }
 
