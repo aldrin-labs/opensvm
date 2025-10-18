@@ -240,7 +240,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           let question = body.question || body.message || "";
 
           // New: Check for ownPlan mode
-          const ownPlan = body.ownPlan || null;
+          const ownPlan = body.ownPlan === true;
           const customSystemPrompt = body.systemPrompt || null;
 
           console.log(`📝 Processing query: "${question?.substring(0, 100)}${question?.length > 100 ? '...' : ''}"`);
@@ -422,7 +422,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         });
       } catch (error) {
         const processingTime = Date.now() - requestStart;
-        console.error(`❌ Plan generation failed after ${processingTime}ms:`,
+        console.error(`[ERROR] Plan generation failed after ${processingTime}ms:`,
     error);
 
         return new Response(`Failed to generate plan: ${(error as
@@ -508,9 +508,14 @@ async function getSolanaRpcKnowledge(): Promise<string> {
     async function handleLLMFallback(question: string, requestStart: number, partialData?: any): Promise<Response> {
 
       // Fallback: use LLM (Together) to craft an answer if no tool handled it
-      const together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-      });
+      const apiKey = process.env.TOGETHER_API_KEY;
+      if (!apiKey) {
+        return new Response('LLM service not configured. Please configure TOGETHER_API_KEY.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
+        });
+      }
+      const together = new Together({ apiKey });
 
       const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
@@ -523,7 +528,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         // Check for casual/fun expressions
         const casualPatterns = [
           /uwu|owo|xd|lol|lmao|bruh|yo|hey|sup|wassup/,
-          /😂|😎|🚀|🔥|💯|😭|😍|🤔|👀|💀/,
+          // (emoji detection removed - contradicts NO EMOJIS requirement)
           /hows?\s*(it\s*)?(going|goin)/,
           /whats?\s*up/,
           /how\s*(are\s*)?you/
@@ -651,7 +656,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
 
       // Add partial data context if available
       if (partialData && Object.keys(partialData).length > 0) {
-        console.log(`📊 Adding partial data context to LLM: ${Object.keys(partialData).join(', ')}`);
+        console.log(`[METRICS] Adding partial data context to LLM: ${Object.keys(partialData).join(', ')}`);
         systemPrompt += `\n\n## Partial Data Available\nSome tools partially executed before failing. Use this available data in your response:\n\n`;
 
         for (const [toolName, data] of Object.entries(partialData)) {
@@ -709,7 +714,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         });
       } catch (e) {
         const processingTime = Date.now() - requestStart;
-        console.error(`❌ LLM processing failed after ${processingTime}ms:`, e);
+        console.error(`[ERROR] LLM processing failed after ${processingTime}ms:`, e);
         console.error("Query that failed:", question);
         console.error("User vibe detected:", userVibe);
 
