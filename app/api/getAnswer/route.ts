@@ -3,6 +3,7 @@ import { GenerativeCapability } from "../../../lib/ai/capabilities/generative";
 import getConnection from "../../../lib/solana-connection-server";
 import { ToolRegistry, ToolContext } from "./tools";
 import { moralis_swagger as moralis } from "./tools/moralis";
+import { createHash } from 'crypto';
 
 /**
 * This API endpoint uses a modular tool system to handle common Solana queries
@@ -13,6 +14,201 @@ import { moralis_swagger as moralis } from "./tools/moralis";
 * This ensures "tools" (RPC calls) are executed on the server prior to
 * returning the response to the user.
 */
+
+// ✅ PHASE 2: LRU Query Cache Implementation
+class QueryCache {
+  private cache: Map<string, { response: string; timestamp: number; status: number }> = new Map();
+  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
+  private readonly MAX_ENTRIES = 100;
+
+  private getCacheKey(question: string, ownPlan: boolean, systemPrompt: string | null): string {
+    const hash = createHash('sha256')
+      .update(`${question}|${ownPlan}|${systemPrompt || ''}`)
+      .digest('hex');
+    return hash;
+  }
+
+  set(question: string, ownPlan: boolean, systemPrompt: string | null, response: string, status: number): void {
+    const key = this.getCacheKey(question, ownPlan, systemPrompt);
+
+    // Evict oldest entry if at capacity
+    if (this.cache.size >= this.MAX_ENTRIES) {
+      const oldestKey = this.cache.keys().next().value;
+      this.cache.delete(oldestKey);
+    }
+
+    this.cache.set(key, { response, timestamp: Date.now(), status });
+    console.log(`💾 Cached response for query (cache size: ${this.cache.size}/${this.MAX_ENTRIES})`);
+  }
+
+  get(question: string, ownPlan: boolean, systemPrompt: string | null): { response: string; status: number } | null {
+    const key = this.getCacheKey(question, ownPlan, systemPrompt);
+    const cached = this.cache.get(key);
+
+    if (!cached) return null;
+
+    // Check if expired
+    if (Date.now() - cached.timestamp > this.TTL_MS) {
+      this.cache.delete(key);
+      console.log(`⏰ Cache entry expired, removed from cache`);
+      return null;
+    }
+
+    console.log(`✅ Cache hit! Returning cached response`);
+    return { response: cached.response, status: cached.status };
+  }
+
+  getStats() {
+    return {
+      size: this.cache.size,
+      maxEntries: this.MAX_ENTRIES,
+      ttlMinutes: this.TTL_MS / 60000
+    };
+  }
+}
+
+const queryCache = new QueryCache();
+
+// ✅ PHASE 3: Request Queue for limiting concurrent API calls
+class RequestQueue {
+  private queue: Array<() => Promise<any>> = [];
+  private activeRequests: number = 0;
+  private readonly MAX_CONCURRENT = 3;
+
+  async add<T>(fn: () => Promise<T>): Promise<T> {
+    return new Promise((resolve, reject) => {
+      this.queue.push(async () => {
+        try {
+          const result = await fn();
+          resolve(result);
+        } catch (error) {
+          reject(error);
+        }
+      });
+      this.process();
+    });
+  }
+
+  private process(): void {
+    while (this.activeRequests < this.MAX_CONCURRENT && this.queue.length > 0) {
+      this.activeRequests++;
+      const fn = this.queue.shift();
+      if (fn) {
+        fn().finally(() => {
+          this.activeRequests--;
+          this.process();
+        });
+      }
+    }
+  }
+
+  getStats() {
+    return {
+      queueLength: this.queue.length,
+      activeRequests: this.activeRequests,
+      maxConcurrent: this.MAX_CONCURRENT
+    };
+  }
+}
+
+const requestQueue = new RequestQueue();
+
+// ✅ PHASE 4: Query Complexity Detection and Dynamic Timeouts
+class QueryComplexityAnalyzer {
+  analyzeComplexity(question: string): { complexity: number; timeoutMs: number; description: string } {
+    let complexityScore = 0;
+
+    // Length factor
+    complexityScore += Math.floor(question.length / 100); // +1 for every 100 chars
+
+    // Pattern-based complexity
+    const complexPatterns = [
+      { pattern: /analyze|detailed|compare|correlation|relationship/i, score: 2 },
+      { pattern: /multiple|multi|several|various|different/i, score: 1.5 },
+      { pattern: /historical|trend|timeline|over time/i, score: 1.5 },
+      { pattern: /complex|suspicious|advanced|deep/i, score: 2 },
+      { pattern: /transaction|wallet|account|address/i, score: 1 },
+      { pattern: /chain|cross|bridge|multi/i, score: 1.5 },
+      { pattern: /yield|liquidity|pool|dex|swap/i, score: 1 }
+    ];
+
+    for (const { pattern, score } of complexPatterns) {
+      if (pattern.test(question)) {
+        complexityScore += score;
+      }
+    }
+
+    // Determine timeout based on complexity score
+    let timeoutMs = 60000; // Base 60 seconds
+    let description = 'simple';
+
+    if (complexityScore < 2) {
+      timeoutMs = 45000;
+      description = 'simple';
+    } else if (complexityScore < 4) {
+      timeoutMs = 60000;
+      description = 'moderate';
+    } else if (complexityScore < 7) {
+      timeoutMs = 80000;
+      description = 'complex';
+    } else {
+      timeoutMs = 100000;
+      description = 'very complex';
+    }
+
+    return {
+      complexity: Math.round(complexityScore * 10) / 10,
+      timeoutMs,
+      description
+    };
+  }
+}
+
+const complexityAnalyzer = new QueryComplexityAnalyzer();
+
+// ✅ PHASE 5: Intelligent Query Truncation for Very Long Questions
+class QueryTruncator {
+  private readonly MAX_LENGTH = 5000;
+  private readonly TARGET_LENGTH = 2000;
+
+  truncateIfNeeded(question: string): { truncated: boolean; question: string; originalLength: number } {
+    if (question.length <= this.MAX_LENGTH) {
+      return { truncated: false, question, originalLength: question.length };
+    }
+
+    console.warn(`⚠️  Query too long (${question.length} chars), truncating to ${this.TARGET_LENGTH} chars`);
+
+    // Strategy: Keep the first 40% and last 60% of meaningful content
+    const sentences = question.match(/[^.!?]+[.!?]+/g) || [question];
+    let truncated = '';
+    let charCount = 0;
+
+    // Add sentences until we reach target length
+    for (const sentence of sentences) {
+      if (charCount + sentence.length <= this.TARGET_LENGTH) {
+        truncated += sentence;
+        charCount += sentence.length;
+      } else {
+        break;
+      }
+    }
+
+    // If still too short, just slice
+    if (truncated.length < 500) {
+      truncated = question.substring(0, this.TARGET_LENGTH) + '...';
+    }
+
+    console.log(`✂️  Query truncated from ${question.length} to ${truncated.length} chars`);
+
+    return {
+      truncated: true,
+      question: truncated,
+      originalLength: question.length
+    };
+  }
+}
+
+const queryTruncator = new QueryTruncator();
 
 // Read the full Solana RPC documentation from the docs file
 async function getSolanaRpcKnowledge(): Promise<string> {
@@ -237,11 +433,62 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const mainProcessingPromise = async () => {
           const conn = getConnection();
           let body = await request.json();
-          let question = body.question || body.message || "";
 
-          // New: Check for ownPlan mode
-          const ownPlan = body.ownPlan === true;
-          const customSystemPrompt = body.systemPrompt || null;
+          // ✅ PHASE 1: Input Type Validation
+          // Validate question field - must be a string
+          let question = body.question || body.message;
+          if (question !== undefined && typeof question !== 'string') {
+            console.warn(`[ERROR] Invalid question type: ${typeof question}, expected string`);
+            return new Response('Invalid input: question must be a string', {
+              status: 400,
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          }
+          question = question || "";
+
+          // Validate ownPlan field - must be boolean or undefined
+          const ownPlanRaw = body.ownPlan;
+          if (ownPlanRaw !== undefined && typeof ownPlanRaw !== 'boolean') {
+            console.warn(`[ERROR] Invalid ownPlan type: ${typeof ownPlanRaw}, expected boolean`);
+            return new Response('Invalid input: ownPlan must be a boolean', {
+              status: 400,
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          }
+          const ownPlan = ownPlanRaw === true;
+
+          // Validate systemPrompt field - must be string or undefined
+          const customSystemPrompt = body.systemPrompt;
+          if (customSystemPrompt !== undefined && typeof customSystemPrompt !== 'string') {
+            console.warn(`[ERROR] Invalid systemPrompt type: ${typeof customSystemPrompt}, expected string`);
+            return new Response('Invalid input: systemPrompt must be a string', {
+              status: 400,
+              headers: { 'Content-Type': 'text/plain' }
+            });
+          }
+
+          // ✅ PHASE 5: Truncate very long questions
+          const truncationResult = queryTruncator.truncateIfNeeded(question);
+          question = truncationResult.question;
+          if (truncationResult.truncated) {
+            console.log(`⚠️  Query was truncated from ${truncationResult.originalLength} chars`);
+          }
+
+          // ✅ PHASE 2: Check cache for duplicate queries
+          const cachedResult = queryCache.get(question, ownPlan, customSystemPrompt || null);
+          if (cachedResult) {
+            const processingTime = Date.now() - requestStart;
+            return new Response(cachedResult.response, {
+              status: cachedResult.status,
+              headers: {
+                "Content-Type": "text/plain",
+                "Cache-Control": "no-cache",
+                "X-Processing-Time": `${processingTime}ms`,
+                "X-Cache": "HIT",
+                "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
+              },
+            });
+          }
 
           console.log(`📝 Processing query: "${question?.substring(0, 100)}${question?.length > 100 ? '...' : ''}"`);
           console.log(`🏥 System health: ${StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'}`);
@@ -266,12 +513,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           if (toolResult.handled && toolResult.response) {
             const processingTime = Date.now() - requestStart;
             console.log(`✅ Tool handling successful in ${processingTime}ms`);
+            // ✅ PHASE 2: Cache the tool response
+            queryCache.set(question, ownPlan, customSystemPrompt || null, toolResult.response.body, 200);
             return new Response(toolResult.response.body, {
               status: 200,
               headers: {
                 "Content-Type": "text/plain",
                 "Cache-Control": "no-cache",
                 "X-Processing-Time": `${processingTime}ms`,
+                "X-Cache": "MISS",
                 "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' :
     'DEGRADED'
               },
@@ -281,7 +531,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           // If no tool handled it, proceed with LLM fallback
           // Pass any partial data we collected to help with the response
           const partialData = (toolResult as any).partialData || null;
-          return await handleLLMFallback(question, requestStart, partialData);
+          return await handleLLMFallback(question, requestStart, partialData, ownPlan, customSystemPrompt || null);
         };
 
         const result = await Promise.race([mainProcessingPromise(), requestTimeout]);
@@ -505,7 +755,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
     - Do NOT execute anything, only plan`;
     }
 
-    async function handleLLMFallback(question: string, requestStart: number, partialData?: any): Promise<Response> {
+    async function handleLLMFallback(question: string, requestStart: number, partialData?: any, ownPlan?: boolean, customSystemPrompt?: string | null): Promise<Response> {
 
       // Fallback: use LLM (Together) to craft an answer if no tool handled it
       const apiKey = process.env.TOGETHER_API_KEY;
@@ -672,12 +922,16 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       }
 
       try {
-        // Adjust max tokens based on query type and fix the token overload issue
+        // ✅ PHASE 4: Use dynamic timeout based on query complexity
+        const complexity = complexityAnalyzer.analyzeComplexity(question);
+        console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
+
+        // Adjust max tokens based on query type and complexity
         const maxTokens = userVibe.isCasual && !userVibe.isTechnical ? 1000 : 4000;
 
-        // Add timeout for LLM call (3x increase)
+        // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('LLM call timeout')), 60000); // 60 second LLM timeout
+          setTimeout(() => reject(new Error('LLM call timeout')), complexity.timeoutMs);
         });
 
         const llmPromise = together.chat.completions.create({
@@ -693,7 +947,11 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           max_tokens: maxTokens,
         });
 
-        let answer = await Promise.race([llmPromise, llmTimeout]);
+        // ✅ PHASE 3: Queue the LLM request to limit concurrent API calls
+        console.log(`📊 Request queue stats:`, requestQueue.getStats());
+        let answer = await requestQueue.add(async () => {
+          return Promise.race([llmPromise, llmTimeout]);
+        });
         let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
 
         // Post-process the response to handle plan objects and improve formatting
@@ -703,13 +961,17 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const processingTime = Date.now() - requestStart;
         console.log(`✅ LLM fallback completed in ${processingTime}ms`);
 
+        // ✅ PHASE 2: Cache the LLM response
+        queryCache.set(question, ownPlan || false, customSystemPrompt || null, parsedAnswer, 200);
+
         return new Response(parsedAnswer, {
           status: 200,
           headers: {
             "Content-Type": "text/plain",
             "Cache-Control": "no-cache",
             "X-Processing-Time": `${processingTime}ms`,
-            "X-Fallback": "LLM"
+            "X-Fallback": "LLM",
+            "X-Cache": "MISS"
           },
         });
       } catch (e) {
