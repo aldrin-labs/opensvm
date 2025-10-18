@@ -451,14 +451,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           // Convert ownPlan to boolean (accept any truthy/falsy value)
           const ownPlan = !!body.ownPlan;
 
-          // Validate systemPrompt field - must be string or undefined
-          const customSystemPrompt = body.systemPrompt;
+          // Convert systemPrompt to string or leave undefined (accept any type)
+          let customSystemPrompt = body.systemPrompt;
           if (customSystemPrompt !== undefined && typeof customSystemPrompt !== 'string') {
-            console.warn(`[ERROR] Invalid systemPrompt type: ${typeof customSystemPrompt}, expected string`);
-            return new Response('Invalid input: systemPrompt must be a string', {
-              status: 400,
-              headers: { 'Content-Type': 'text/plain' }
-            });
+            // Convert to string for non-string types
+            try {
+              customSystemPrompt = JSON.stringify(customSystemPrompt);
+            } catch {
+              customSystemPrompt = String(customSystemPrompt);
+            }
           }
 
           // ✅ PHASE 5: Truncate very long questions
