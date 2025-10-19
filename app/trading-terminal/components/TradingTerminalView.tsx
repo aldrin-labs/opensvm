@@ -8,6 +8,10 @@ import TradeHistory from './TradeHistory';
 import TradingControls from './TradingControls';
 import PositionsPanel from './PositionsPanel';
 import MarketStats from './MarketStats';
+import MarketDepthWidget from './MarketDepthWidget';
+import MarketNewsWidget from './MarketNewsWidget';
+import WatchlistWidget from './WatchlistWidget';
+import PerformanceWidget from './PerformanceWidget';
 import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 
 interface TradingTerminalViewProps {
@@ -21,7 +25,7 @@ interface Section {
   isMaximized: boolean;
 }
 
-type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions';
+type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions' | 'watchlist' | 'performance' | 'depth' | 'news';
 
 export default function TradingTerminalView({ settings }: TradingTerminalViewProps) {
   const [selectedMarket, setSelectedMarket] = useState('SOL/USDC');
@@ -32,8 +36,12 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
   const [focusedTile, setFocusedTile] = useState<TileId | null>(null);
   const [sections, setSections] = useState<Section[]>([
     { id: 'chart', name: 'Chart', isExpanded: true, isMaximized: false },
+    { id: 'watchlist', name: 'Watchlist', isExpanded: true, isMaximized: false },
+    { id: 'performance', name: 'Performance', isExpanded: true, isMaximized: false },
     { id: 'orderbook', name: 'Order Book', isExpanded: true, isMaximized: false },
+    { id: 'depth', name: 'Market Depth', isExpanded: true, isMaximized: false },
     { id: 'trades', name: 'Recent Trades', isExpanded: true, isMaximized: false },
+    { id: 'news', name: 'Market News', isExpanded: true, isMaximized: false },
     { id: 'positions', name: 'Positions', isExpanded: true, isMaximized: false },
   ]);
 
@@ -167,9 +175,20 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
   }
 
   return (
-    <div className="trading-terminal h-screen flex flex-col bg-background text-foreground overflow-hidden" role="main" aria-label="Trading Terminal">
+    <div 
+      className="trading-terminal h-screen flex flex-col bg-background text-foreground overflow-hidden" 
+      role="main" 
+      aria-label="Trading Terminal"
+      data-ai-app="trading-terminal"
+      data-ai-version="1.0"
+      data-ai-features="charts,orderbook,trading,screener,widgets,keyboard-navigation"
+    >
       {/* Compact Header */}
-      <header className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border h-12 z-10">
+      <header 
+        className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border h-12 z-10"
+        data-ai-section="header"
+        data-ai-current-market={selectedMarket}
+      >
         <h1 className="text-base font-bold text-primary">Trading Terminal</h1>
         <MarketStats market={selectedMarket} />
       </header>
@@ -281,6 +300,74 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
                 </div>
               </div>
             )}
+            {maximizedTile === 'watchlist' && (
+              <div className="flex-1 flex flex-col" data-tile-id="watchlist">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">WATCHLIST</span>
+                  <button
+                    onClick={() => setMaximizedTile(null)}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <WatchlistWidget onMarketChange={setSelectedMarket} />
+                </div>
+              </div>
+            )}
+            {maximizedTile === 'performance' && (
+              <div className="flex-1 flex flex-col" data-tile-id="performance">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">PERFORMANCE</span>
+                  <button
+                    onClick={() => setMaximizedTile(null)}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <PerformanceWidget market={selectedMarket} />
+                </div>
+              </div>
+            )}
+            {maximizedTile === 'depth' && (
+              <div className="flex-1 flex flex-col" data-tile-id="depth">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">MARKET DEPTH</span>
+                  <button
+                    onClick={() => setMaximizedTile(null)}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <MarketDepthWidget market={selectedMarket} />
+                </div>
+              </div>
+            )}
+            {maximizedTile === 'news' && (
+              <div className="flex-1 flex flex-col" data-tile-id="news">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">MARKET NEWS</span>
+                  <button
+                    onClick={() => setMaximizedTile(null)}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <MarketNewsWidget market={selectedMarket} />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -291,6 +378,9 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
             <div 
               data-tile-id="screener"
               className={`transition-all duration-200 ${focusedTile === 'screener' ? 'ring-2 ring-primary ring-inset' : ''}`}
+              data-ai-widget="market-screener"
+              data-ai-expanded={screenerExpanded}
+              data-ai-current-market={selectedMarket}
             >
               <MarketScreener
                 selectedMarket={selectedMarket}
@@ -300,64 +390,133 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
               />
             </div>
 
-            {/* Center Panel - Chart and Trading Controls - Fixed to fit */}
+            {/* Center Panel - Chart and Widgets Grid */}
             <div className="chart-panel flex-1 flex flex-col border-r border-border min-w-0 overflow-hidden">
-              {/* Chart Section - Takes remaining space */}
-              <section 
-                data-tile-id="chart"
-                className={`chart-section flex flex-col ${isSectionExpanded('chart') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'chart' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                aria-label="Price Chart"
-              >
-                <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted border-b border-border"
-                  onClick={() => toggleSection('chart')}
-                  role="button"
-                  aria-expanded={isSectionExpanded('chart')}
-                  aria-controls="chart-content"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleSection('chart');
-                    }
-                  }}
+              {/* Top Row: Chart (60% height) + Watchlist + Performance */}
+              <div className="flex border-b border-border" style={{ height: '60%' }}>
+                {/* Chart Section */}
+                <section 
+                  data-tile-id="chart"
+                  className={`chart-section flex flex-col flex-1 ${isSectionExpanded('chart') ? '' : 'h-10'} transition-all duration-300 overflow-hidden border-r border-border ${focusedTile === 'chart' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                  aria-label="Price Chart"
+                  data-ai-widget="trading-chart"
+                  data-ai-market={selectedMarket}
                 >
-                  <span className="text-xs font-semibold text-primary">CHART</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMaximize('chart');
-                      }}
-                      className="p-1 hover:bg-border rounded"
-                      title="Maximize (M or Shift+1)"
-                    >
-                      <ChevronUp size={14} className="text-foreground" />
-                    </button>
-                    <button 
-                      className="p-1 hover:bg-border rounded"
-                      aria-label={isSectionExpanded('chart') ? 'Collapse chart' : 'Expand chart'}
-                    >
-                      {isSectionExpanded('chart') ? (
+                  <div 
+                    className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted border-b border-border"
+                    onClick={() => toggleSection('chart')}
+                    role="button"
+                    aria-expanded={isSectionExpanded('chart')}
+                    aria-controls="chart-content"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        toggleSection('chart');
+                      }
+                    }}
+                  >
+                    <span className="text-xs font-semibold text-primary">CHART</span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleMaximize('chart');
+                        }}
+                        className="p-1 hover:bg-border rounded"
+                        title="Maximize (M or Shift+1)"
+                      >
                         <ChevronUp size={14} className="text-foreground" />
-                      ) : (
-                        <ChevronDown size={14} className="text-foreground" />
-                      )}
-                    </button>
+                      </button>
+                      <button 
+                        className="p-1 hover:bg-border rounded"
+                        aria-label={isSectionExpanded('chart') ? 'Collapse chart' : 'Expand chart'}
+                      >
+                        {isSectionExpanded('chart') ? (
+                          <ChevronUp size={14} className="text-foreground" />
+                        ) : (
+                          <ChevronDown size={14} className="text-foreground" />
+                        )}
+                      </button>
+                    </div>
                   </div>
+                  {isSectionExpanded('chart') && (
+                    <div id="chart-content" className="flex-1 min-h-0 overflow-hidden">
+                      <TradingChart market={selectedMarket} />
+                    </div>
+                  )}
+                </section>
+
+                {/* Right side widgets column */}
+                <div className="w-64 flex flex-col">
+                  {/* Watchlist Widget */}
+                  <section 
+                    data-tile-id="watchlist"
+                    className={`watchlist-section flex flex-col ${isSectionExpanded('watchlist') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden border-b border-border ${focusedTile === 'watchlist' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                    aria-label="Watchlist"
+                    data-ai-widget="watchlist"
+                  >
+                    <div 
+                      className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                      onClick={() => toggleSection('watchlist')}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <span className="text-xs font-semibold text-primary">WATCHLIST</span>
+                      <button className="p-1 hover:bg-border rounded">
+                        {isSectionExpanded('watchlist') ? (
+                          <ChevronUp size={14} className="text-foreground" />
+                        ) : (
+                          <ChevronDown size={14} className="text-foreground" />
+                        )}
+                      </button>
+                    </div>
+                    {isSectionExpanded('watchlist') && (
+                      <div className="flex-1 min-h-0 overflow-hidden">
+                        <WatchlistWidget onMarketChange={setSelectedMarket} />
+                      </div>
+                    )}
+                  </section>
+
+                  {/* Performance Widget */}
+                  <section 
+                    data-tile-id="performance"
+                    className={`performance-section flex flex-col ${isSectionExpanded('performance') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'performance' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                    aria-label="Performance Metrics"
+                    data-ai-widget="performance-metrics"
+                    data-ai-market={selectedMarket}
+                  >
+                    <div 
+                      className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                      onClick={() => toggleSection('performance')}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <span className="text-xs font-semibold text-primary">PERFORMANCE</span>
+                      <button className="p-1 hover:bg-border rounded">
+                        {isSectionExpanded('performance') ? (
+                          <ChevronUp size={14} className="text-foreground" />
+                        ) : (
+                          <ChevronDown size={14} className="text-foreground" />
+                        )}
+                      </button>
+                    </div>
+                    {isSectionExpanded('performance') && (
+                      <div className="flex-1 min-h-0 overflow-hidden">
+                        <PerformanceWidget market={selectedMarket} />
+                      </div>
+                    )}
+                  </section>
                 </div>
-                {isSectionExpanded('chart') && (
-                  <div id="chart-content" className="flex-1 min-h-0 overflow-hidden">
-                    <TradingChart market={selectedMarket} />
-                  </div>
-                )}
-              </section>
+              </div>
 
               {/* Trading Controls - Fixed Height */}
               <div 
                 data-tile-id="controls"
-                className={`trading-controls-section bg-background border-t border-border overflow-auto ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                className={`trading-controls-section bg-background border-b border-border overflow-auto ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
                 style={{ height: '200px' }}
+                data-ai-widget="trading-controls"
+                data-ai-market={selectedMarket}
               >
                 <div className="flex items-center justify-between px-4 py-1.5 bg-card border-b border-border">
                   <span className="text-xs font-semibold text-primary">TRADING CONTROLS</span>
@@ -373,13 +532,15 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
               </div>
             </div>
 
-            {/* Right Panel - Order Book, Trades, and Positions - Fixed Width */}
-            <aside className="right-panel w-80 flex flex-col bg-background overflow-hidden" aria-label="Market Data">
+            {/* Right Panel - Order Book, Depth, Trades, News, and Positions - Fixed Width */}
+            <aside className="right-panel w-80 flex flex-col bg-background overflow-hidden" aria-label="Market Data" data-ai-section="market-data-panel">
               {/* Order Book Section */}
               <section 
                 data-tile-id="orderbook"
                 className={`orderbook-section flex flex-col border-b border-border ${isSectionExpanded('orderbook') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'orderbook' ? 'ring-2 ring-primary ring-inset' : ''}`}
                 aria-label="Order Book"
+                data-ai-widget="order-book"
+                data-ai-market={selectedMarket}
               >
                 <div 
                   className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
@@ -426,11 +587,43 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
                 )}
               </section>
 
+              {/* Market Depth Section */}
+              <section 
+                data-tile-id="depth"
+                className={`depth-section flex flex-col border-b border-border ${isSectionExpanded('depth') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'depth' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                aria-label="Market Depth"
+                data-ai-widget="market-depth"
+                data-ai-market={selectedMarket}
+              >
+                <div 
+                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                  onClick={() => toggleSection('depth')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <span className="text-xs font-semibold text-primary">MARKET DEPTH</span>
+                  <button className="p-1 hover:bg-border rounded">
+                    {isSectionExpanded('depth') ? (
+                      <ChevronUp size={14} className="text-foreground" />
+                    ) : (
+                      <ChevronDown size={14} className="text-foreground" />
+                    )}
+                  </button>
+                </div>
+                {isSectionExpanded('depth') && (
+                  <div className="flex-1 min-h-0 overflow-hidden">
+                    <MarketDepthWidget market={selectedMarket} />
+                  </div>
+                )}
+              </section>
+
               {/* Recent Trades Section */}
               <section 
                 data-tile-id="trades"
                 className={`trades-section flex flex-col border-b border-border ${isSectionExpanded('trades') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'trades' ? 'ring-2 ring-primary ring-inset' : ''}`}
                 aria-label="Recent Trades"
+                data-ai-widget="recent-trades"
+                data-ai-market={selectedMarket}
               >
                 <div 
                   className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
@@ -477,11 +670,43 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
             )}
           </section>
 
+          {/* Market News Section */}
+          <section 
+            data-tile-id="news"
+            className={`news-section flex flex-col border-b border-border ${isSectionExpanded('news') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'news' ? 'ring-2 ring-primary ring-inset' : ''}`}
+            aria-label="Market News"
+            data-ai-widget="market-news"
+            data-ai-market={selectedMarket}
+          >
+            <div 
+              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+              onClick={() => toggleSection('news')}
+              role="button"
+              tabIndex={0}
+            >
+              <span className="text-xs font-semibold text-primary">MARKET NEWS</span>
+              <button className="p-1 hover:bg-border rounded">
+                {isSectionExpanded('news') ? (
+                  <ChevronUp size={14} className="text-foreground" />
+                ) : (
+                  <ChevronDown size={14} className="text-foreground" />
+                )}
+              </button>
+            </div>
+            {isSectionExpanded('news') && (
+              <div className="flex-1 min-h-0 overflow-hidden">
+                <MarketNewsWidget market={selectedMarket} />
+              </div>
+            )}
+          </section>
+
           {/* Positions Section */}
           <section 
             data-tile-id="positions"
             className={`positions-section flex flex-col ${isSectionExpanded('positions') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'positions' ? 'ring-2 ring-primary ring-inset' : ''}`}
             aria-label="Trading Positions"
+            data-ai-widget="trading-positions"
+            data-ai-market={selectedMarket}
           >
             <div 
               className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
