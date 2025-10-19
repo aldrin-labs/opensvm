@@ -67,9 +67,9 @@ export default function TradeHistory({ market }: TradeHistoryProps) {
   };
 
   return (
-    <div className="trade-history h-full flex flex-col bg-[#1e1e1e] text-[#cccccc]">
+    <div className="trade-history h-full flex flex-col bg-background text-foreground">
       {/* Header */}
-      <div className="px-4 py-2 bg-[#252526] border-b border-[#3e3e42] grid grid-cols-3 gap-2 text-xs font-semibold text-[#858585]">
+      <div className="px-4 py-2 bg-card border-b border-border grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
         <div className="text-left">TIME</div>
         <div className="text-right">PRICE</div>
         <div className="text-right">SIZE</div>
@@ -80,22 +80,22 @@ export default function TradeHistory({ market }: TradeHistoryProps) {
         {trades.map((trade, index) => (
           <div
             key={trade.id}
-            className={`px-4 py-1 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-[#2a2d2e] cursor-pointer transition-colors ${
+            className={`px-4 py-1 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer transition-colors ${
               index === 0 ? 'animate-pulse' : ''
             }`}
           >
-            <div className="text-left text-[#858585] flex items-center gap-1">
+            <div className="text-left text-muted-foreground flex items-center gap-1">
               {trade.side === 'buy' ? (
-                <TrendingUp size={12} className="text-[#4ec9b0]" />
+                <TrendingUp size={12} className="text-primary" />
               ) : (
-                <TrendingDown size={12} className="text-[#f48771]" />
+                <TrendingDown size={12} className="text-destructive" />
               )}
               {formatTime(trade.time)}
             </div>
-            <div className={`text-right ${trade.side === 'buy' ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+            <div className={`text-right ${trade.side === 'buy' ? 'text-primary' : 'text-destructive'}`}>
               {trade.price.toFixed(2)}
             </div>
-            <div className="text-right text-[#cccccc]">
+            <div className="text-right text-foreground">
               {trade.size.toFixed(4)}
             </div>
           </div>

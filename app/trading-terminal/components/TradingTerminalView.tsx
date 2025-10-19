@@ -40,11 +40,11 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
   };
 
   return (
-    <div className="trading-terminal h-screen flex flex-col bg-[#1e1e1e] text-[#cccccc] overflow-hidden">
+    <div className="trading-terminal h-screen flex flex-col bg-background text-foreground overflow-hidden">
       {/* Header with Market Selector */}
-      <div className="trading-header flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3e3e42]">
+      <div className="trading-header flex items-center justify-between px-4 py-2 bg-card border-b border-border">
         <div className="flex items-center gap-4">
-          <h1 className="text-lg font-bold text-[#4ec9b0]">Trading Terminal</h1>
+          <h1 className="text-lg font-bold text-primary">Trading Terminal</h1>
           <MarketSelector 
             selectedMarket={selectedMarket} 
             onMarketChange={setSelectedMarket}
@@ -56,19 +56,19 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
       {/* Main Terminal Layout */}
       <div className="trading-content flex-1 flex overflow-hidden">
         {/* Left Panel - Chart and Trading Controls */}
-        <div className="chart-panel flex-1 flex flex-col border-r border-[#3e3e42] min-w-0">
+        <div className="chart-panel flex-1 flex flex-col border-r border-border min-w-0">
           {/* Chart Section */}
-          <div className={`chart-section flex flex-col border-b border-[#3e3e42] ${isSectionExpanded('chart') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
+          <div className={`chart-section flex flex-col border-b border-border ${isSectionExpanded('chart') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
             <div 
-              className="section-header flex items-center justify-between px-4 py-2 bg-[#252526] cursor-pointer hover:bg-[#2a2d2e]"
+              className="section-header flex items-center justify-between px-4 py-2 bg-card cursor-pointer hover:bg-muted"
               onClick={() => toggleSection('chart')}
             >
-              <span className="text-sm font-semibold text-[#4ec9b0]">CHART</span>
-              <button className="p-1 hover:bg-[#3e3e42] rounded">
+              <span className="text-sm font-semibold text-primary">CHART</span>
+              <button className="p-1 hover:bg-border rounded">
                 {isSectionExpanded('chart') ? (
-                  <ChevronUp size={16} className="text-[#cccccc]" />
+                  <ChevronUp size={16} className="text-foreground" />
                 ) : (
-                  <ChevronDown size={16} className="text-[#cccccc]" />
+                  <ChevronDown size={16} className="text-foreground" />
                 )}
               </button>
             </div>
@@ -80,25 +80,25 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
           </div>
 
           {/* Trading Controls */}
-          <div className="trading-controls-section bg-[#1e1e1e]">
+          <div className="trading-controls-section bg-background">
             <TradingControls market={selectedMarket} />
           </div>
         </div>
 
         {/* Right Panel - Order Book, Trades, and Positions */}
-        <div className="right-panel w-80 flex flex-col bg-[#1e1e1e] overflow-hidden">
+        <div className="right-panel w-80 flex flex-col bg-background overflow-hidden">
           {/* Order Book Section */}
-          <div className={`orderbook-section flex flex-col border-b border-[#3e3e42] ${isSectionExpanded('orderbook') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
+          <div className={`orderbook-section flex flex-col border-b border-border ${isSectionExpanded('orderbook') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
             <div 
-              className="section-header flex items-center justify-between px-4 py-2 bg-[#252526] cursor-pointer hover:bg-[#2a2d2e]"
+              className="section-header flex items-center justify-between px-4 py-2 bg-card cursor-pointer hover:bg-muted"
               onClick={() => toggleSection('orderbook')}
             >
-              <span className="text-sm font-semibold text-[#4ec9b0]">ORDER BOOK</span>
-              <button className="p-1 hover:bg-[#3e3e42] rounded">
+              <span className="text-sm font-semibold text-primary">ORDER BOOK</span>
+              <button className="p-1 hover:bg-border rounded">
                 {isSectionExpanded('orderbook') ? (
-                  <ChevronUp size={16} className="text-[#cccccc]" />
+                  <ChevronUp size={16} className="text-foreground" />
                 ) : (
-                  <ChevronDown size={16} className="text-[#cccccc]" />
+                  <ChevronDown size={16} className="text-foreground" />
                 )}
               </button>
             </div>
@@ -110,17 +110,17 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
           </div>
 
           {/* Trade History Section */}
-          <div className={`trades-section flex flex-col border-b border-[#3e3e42] ${isSectionExpanded('trades') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
+          <div className={`trades-section flex flex-col border-b border-border ${isSectionExpanded('trades') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
             <div 
-              className="section-header flex items-center justify-between px-4 py-2 bg-[#252526] cursor-pointer hover:bg-[#2a2d2e]"
+              className="section-header flex items-center justify-between px-4 py-2 bg-card cursor-pointer hover:bg-muted"
               onClick={() => toggleSection('trades')}
             >
-              <span className="text-sm font-semibold text-[#4ec9b0]">RECENT TRADES</span>
-              <button className="p-1 hover:bg-[#3e3e42] rounded">
+              <span className="text-sm font-semibold text-primary">RECENT TRADES</span>
+              <button className="p-1 hover:bg-border rounded">
                 {isSectionExpanded('trades') ? (
-                  <ChevronUp size={16} className="text-[#cccccc]" />
+                  <ChevronUp size={16} className="text-foreground" />
                 ) : (
-                  <ChevronDown size={16} className="text-[#cccccc]" />
+                  <ChevronDown size={16} className="text-foreground" />
                 )}
               </button>
             </div>
@@ -134,15 +134,15 @@ export default function TradingTerminalView({ settings }: TradingTerminalViewPro
           {/* Positions Section */}
           <div className={`positions-section flex flex-col ${isSectionExpanded('positions') ? 'flex-1' : 'h-10'} transition-all duration-300`}>
             <div 
-              className="section-header flex items-center justify-between px-4 py-2 bg-[#252526] cursor-pointer hover:bg-[#2a2d2e]"
+              className="section-header flex items-center justify-between px-4 py-2 bg-card cursor-pointer hover:bg-muted"
               onClick={() => toggleSection('positions')}
             >
-              <span className="text-sm font-semibold text-[#4ec9b0]">POSITIONS</span>
-              <button className="p-1 hover:bg-[#3e3e42] rounded">
+              <span className="text-sm font-semibold text-primary">POSITIONS</span>
+              <button className="p-1 hover:bg-border rounded">
                 {isSectionExpanded('positions') ? (
-                  <ChevronUp size={16} className="text-[#cccccc]" />
+                  <ChevronUp size={16} className="text-foreground" />
                 ) : (
-                  <ChevronDown size={16} className="text-[#cccccc]" />
+                  <ChevronDown size={16} className="text-foreground" />
                 )}
               </button>
             </div>

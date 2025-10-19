@@ -45,7 +45,7 @@ export default function TradingControls({ market }: TradingControlsProps) {
   };
 
   return (
-    <div className="trading-controls p-4 bg-[#1e1e1e] border-t border-[#3e3e42]">
+    <div className="trading-controls p-4 bg-background border-t border-border">
       <form onSubmit={handleSubmit} className="space-y-3">
         {/* Order Side Tabs */}
         <div className="grid grid-cols-2 gap-2">
@@ -54,8 +54,8 @@ export default function TradingControls({ market }: TradingControlsProps) {
             onClick={() => setOrderSide('buy')}
             className={`py-2 px-4 rounded font-semibold transition-colors ${
               orderSide === 'buy'
-                ? 'bg-[#4ec9b0] text-[#1e1e1e]'
-                : 'bg-[#252526] text-[#cccccc] hover:bg-[#2a2d2e] border border-[#3e3e42]'
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-card text-foreground hover:bg-muted border border-border'
             }`}
           >
             BUY
@@ -65,8 +65,8 @@ export default function TradingControls({ market }: TradingControlsProps) {
             onClick={() => setOrderSide('sell')}
             className={`py-2 px-4 rounded font-semibold transition-colors ${
               orderSide === 'sell'
-                ? 'bg-[#f48771] text-[#1e1e1e]'
-                : 'bg-[#252526] text-[#cccccc] hover:bg-[#2a2d2e] border border-[#3e3e42]'
+                ? 'bg-destructive text-primary-foreground'
+                : 'bg-card text-foreground hover:bg-muted border border-border'
             }`}
           >
             SELL
@@ -74,14 +74,14 @@ export default function TradingControls({ market }: TradingControlsProps) {
         </div>
 
         {/* Order Type Selector */}
-        <div className="flex items-center gap-2 bg-[#252526] rounded p-1">
+        <div className="flex items-center gap-2 bg-card rounded p-1">
           <button
             type="button"
             onClick={() => setOrderType('limit')}
             className={`flex-1 py-1.5 px-3 text-xs font-medium rounded transition-colors ${
               orderType === 'limit'
-                ? 'bg-[#1e1e1e] text-[#4ec9b0]'
-                : 'text-[#cccccc] hover:bg-[#2a2d2e]'
+                ? 'bg-background text-primary'
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             Limit
@@ -91,8 +91,8 @@ export default function TradingControls({ market }: TradingControlsProps) {
             onClick={() => setOrderType('market')}
             className={`flex-1 py-1.5 px-3 text-xs font-medium rounded transition-colors ${
               orderType === 'market'
-                ? 'bg-[#1e1e1e] text-[#4ec9b0]'
-                : 'text-[#cccccc] hover:bg-[#2a2d2e]'
+                ? 'bg-background text-primary'
+                : 'text-foreground hover:bg-muted'
             }`}
           >
             Market
@@ -102,7 +102,7 @@ export default function TradingControls({ market }: TradingControlsProps) {
         {/* Price Input (hidden for market orders) */}
         {orderType === 'limit' && (
           <div className="space-y-1">
-            <label className="text-xs text-[#858585] font-medium">PRICE</label>
+            <label className="text-xs text-muted-foreground font-medium">PRICE</label>
             <div className="relative">
               <input
                 type="number"
@@ -110,9 +110,9 @@ export default function TradingControls({ market }: TradingControlsProps) {
                 onChange={(e) => handlePriceChange(e.target.value)}
                 placeholder="0.00"
                 step="0.01"
-                className="w-full px-3 py-2 bg-[#252526] border border-[#3e3e42] rounded text-sm text-[#cccccc] placeholder-[#858585] focus:outline-none focus:border-[#4ec9b0] font-mono"
+                className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary font-mono"
               />
-              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-[#858585]">
+              <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
                 USDC
               </span>
             </div>
@@ -121,7 +121,7 @@ export default function TradingControls({ market }: TradingControlsProps) {
 
         {/* Amount Input */}
         <div className="space-y-1">
-          <label className="text-xs text-[#858585] font-medium">AMOUNT</label>
+          <label className="text-xs text-muted-foreground font-medium">AMOUNT</label>
           <div className="relative">
             <input
               type="number"
@@ -129,9 +129,9 @@ export default function TradingControls({ market }: TradingControlsProps) {
               onChange={(e) => handleAmountChange(e.target.value)}
               placeholder="0.0000"
               step="0.0001"
-              className="w-full px-3 py-2 bg-[#252526] border border-[#3e3e42] rounded text-sm text-[#cccccc] placeholder-[#858585] focus:outline-none focus:border-[#4ec9b0] font-mono"
+              className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary font-mono"
             />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-[#858585]">
+            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
               SOL
             </span>
           </div>
@@ -144,7 +144,7 @@ export default function TradingControls({ market }: TradingControlsProps) {
               key={percent}
               type="button"
               onClick={() => handleAmountChange((percent / 100 * 10).toString())}
-              className="py-1 px-2 text-xs bg-[#252526] text-[#cccccc] hover:bg-[#2a2d2e] rounded border border-[#3e3e42] transition-colors"
+              className="py-1 px-2 text-xs bg-card text-foreground hover:bg-muted rounded border border-border transition-colors"
             >
               {percent}%
             </button>
@@ -153,7 +153,7 @@ export default function TradingControls({ market }: TradingControlsProps) {
 
         {/* Total Input */}
         <div className="space-y-1">
-          <label className="text-xs text-[#858585] font-medium">TOTAL</label>
+          <label className="text-xs text-muted-foreground font-medium">TOTAL</label>
           <div className="relative">
             <input
               type="number"
@@ -161,16 +161,16 @@ export default function TradingControls({ market }: TradingControlsProps) {
               onChange={(e) => handleTotalChange(e.target.value)}
               placeholder="0.00"
               step="0.01"
-              className="w-full px-3 py-2 bg-[#252526] border border-[#3e3e42] rounded text-sm text-[#cccccc] placeholder-[#858585] focus:outline-none focus:border-[#4ec9b0] font-mono"
+              className="w-full px-3 py-2 bg-card border border-border rounded text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary font-mono"
             />
-            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-[#858585]">
+            <span className="absolute right-3 top-1/2 transform -translate-y-1/2 text-xs text-muted-foreground">
               USDC
             </span>
           </div>
         </div>
 
         {/* Balance Info */}
-        <div className="flex items-center justify-between text-xs text-[#858585] py-2">
+        <div className="flex items-center justify-between text-xs text-muted-foreground py-2">
           <div className="flex items-center gap-1">
             <Wallet size={12} />
             <span>Available:</span>
@@ -183,15 +183,15 @@ export default function TradingControls({ market }: TradingControlsProps) {
           type="submit"
           className={`w-full py-3 rounded font-semibold transition-colors ${
             orderSide === 'buy'
-              ? 'bg-[#4ec9b0] hover:bg-[#4ec9b0]/90 text-[#1e1e1e]'
-              : 'bg-[#f48771] hover:bg-[#f48771]/90 text-[#1e1e1e]'
+              ? 'bg-primary hover:bg-primary/90 text-primary-foreground'
+              : 'bg-destructive hover:bg-destructive/90 text-primary-foreground'
           }`}
         >
           {orderSide === 'buy' ? 'BUY' : 'SELL'} {market.split('/')[0]}
         </button>
 
         {/* Warning */}
-        <p className="text-xs text-[#858585] text-center">
+        <p className="text-xs text-muted-foreground text-center">
           Connect wallet to start trading
         </p>
       </form>

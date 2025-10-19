@@ -58,15 +58,15 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
   };
 
   return (
-    <div className="positions-panel h-full flex flex-col bg-[#1e1e1e] text-[#cccccc]">
+    <div className="positions-panel h-full flex flex-col bg-background text-foreground">
       {/* Tabs */}
-      <div className="flex items-center border-b border-[#3e3e42] bg-[#252526]">
+      <div className="flex items-center border-b border-border bg-card">
         <button
           onClick={() => setActiveTab('positions')}
           className={`flex-1 py-2 px-4 text-xs font-semibold transition-colors ${
             activeTab === 'positions'
-              ? 'text-[#4ec9b0] border-b-2 border-[#4ec9b0]'
-              : 'text-[#858585] hover:text-[#cccccc]'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           POSITIONS ({positions.length})
@@ -75,8 +75,8 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
           onClick={() => setActiveTab('orders')}
           className={`flex-1 py-2 px-4 text-xs font-semibold transition-colors ${
             activeTab === 'orders'
-              ? 'text-[#4ec9b0] border-b-2 border-[#4ec9b0]'
-              : 'text-[#858585] hover:text-[#cccccc]'
+              ? 'text-primary border-b-2 border-primary'
+              : 'text-muted-foreground hover:text-foreground'
           }`}
         >
           ORDERS (0)
@@ -91,47 +91,47 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
               {positions.map((position) => (
                 <div
                   key={position.id}
-                  className="bg-[#252526] border border-[#3e3e42] rounded p-3 hover:border-[#4ec9b0] transition-colors"
+                  className="bg-card border border-border rounded p-3 hover:border-primary transition-colors"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-semibold text-[#cccccc]">
+                      <span className="text-sm font-semibold text-foreground">
                         {position.market}
                       </span>
                       <span className={`text-xs px-2 py-0.5 rounded font-semibold ${
                         position.side === 'long' 
-                          ? 'bg-[#4ec9b0]/20 text-[#4ec9b0]' 
-                          : 'bg-[#f48771]/20 text-[#f48771]'
+                          ? 'bg-primary/20 text-primary' 
+                          : 'bg-destructive/20 text-destructive'
                       }`}>
                         {position.side.toUpperCase()} {position.leverage}x
                       </span>
                     </div>
                     <button
                       onClick={() => handleClosePosition(position.id)}
-                      className="p-1 hover:bg-[#3e3e42] rounded transition-colors"
+                      className="p-1 hover:bg-border rounded transition-colors"
                       title="Close position"
                     >
-                      <X size={14} className="text-[#858585]" />
+                      <X size={14} className="text-muted-foreground" />
                     </button>
                   </div>
 
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div>
-                      <div className="text-[#858585] mb-1">Size</div>
-                      <div className="font-mono text-[#cccccc]">{position.size.toFixed(4)}</div>
+                      <div className="text-muted-foreground mb-1">Size</div>
+                      <div className="font-mono text-foreground">{position.size.toFixed(4)}</div>
                     </div>
                     <div>
-                      <div className="text-[#858585] mb-1">Entry Price</div>
-                      <div className="font-mono text-[#cccccc]">${position.entryPrice.toFixed(2)}</div>
+                      <div className="text-muted-foreground mb-1">Entry Price</div>
+                      <div className="font-mono text-foreground">${position.entryPrice.toFixed(2)}</div>
                     </div>
                     <div>
-                      <div className="text-[#858585] mb-1">Current Price</div>
-                      <div className="font-mono text-[#cccccc]">${position.currentPrice.toFixed(2)}</div>
+                      <div className="text-muted-foreground mb-1">Current Price</div>
+                      <div className="font-mono text-foreground">${position.currentPrice.toFixed(2)}</div>
                     </div>
                     <div>
-                      <div className="text-[#858585] mb-1">PnL</div>
+                      <div className="text-muted-foreground mb-1">PnL</div>
                       <div className={`font-mono font-semibold flex items-center gap-1 ${
-                        position.pnl >= 0 ? 'text-[#4ec9b0]' : 'text-[#f48771]'
+                        position.pnl >= 0 ? 'text-primary' : 'text-destructive'
                       }`}>
                         {position.pnl >= 0 ? <TrendingUp size={12} /> : <TrendingDown size={12} />}
                         ${Math.abs(position.pnl).toFixed(2)} ({position.pnl >= 0 ? '+' : ''}{position.pnlPercent.toFixed(2)}%)
@@ -141,7 +141,7 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
 
                   <button
                     onClick={() => handleClosePosition(position.id)}
-                    className="w-full mt-3 py-1.5 bg-[#f48771] hover:bg-[#f48771]/90 text-[#1e1e1e] rounded text-xs font-semibold transition-colors"
+                    className="w-full mt-3 py-1.5 bg-destructive hover:bg-destructive/90 text-primary-foreground rounded text-xs font-semibold transition-colors"
                   >
                     Close Position
                   </button>
@@ -150,16 +150,16 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="text-[#858585] text-sm mb-2">No open positions</div>
-              <div className="text-[#858585] text-xs">
+              <div className="text-muted-foreground text-sm mb-2">No open positions</div>
+              <div className="text-muted-foreground text-xs">
                 Your positions will appear here
               </div>
             </div>
           )
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="text-[#858585] text-sm mb-2">No open orders</div>
-            <div className="text-[#858585] text-xs">
+            <div className="text-muted-foreground text-sm mb-2">No open orders</div>
+            <div className="text-muted-foreground text-xs">
               Your orders will appear here
             </div>
           </div>
@@ -168,13 +168,13 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
 
       {/* Summary Footer */}
       {positions.length > 0 && activeTab === 'positions' && (
-        <div className="border-t border-[#3e3e42] bg-[#252526] p-3">
+        <div className="border-t border-border bg-card p-3">
           <div className="flex items-center justify-between text-xs">
-            <span className="text-[#858585]">Total PnL:</span>
+            <span className="text-muted-foreground">Total PnL:</span>
             <span className={`font-mono font-semibold ${
               positions.reduce((sum, p) => sum + p.pnl, 0) >= 0 
-                ? 'text-[#4ec9b0]' 
-                : 'text-[#f48771]'
+                ? 'text-primary' 
+                : 'text-destructive'
             }`}>
               ${positions.reduce((sum, p) => sum + p.pnl, 0).toFixed(2)}
             </span>

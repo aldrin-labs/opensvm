@@ -65,9 +65,9 @@ export default function OrderBook({ market }: OrderBookProps) {
   const maxAskTotal = asks[asks.length - 1]?.total || 1;
 
   return (
-    <div className="order-book h-full flex flex-col bg-[#1e1e1e] text-[#cccccc]">
+    <div className="order-book h-full flex flex-col bg-background text-foreground">
       {/* Header */}
-      <div className="px-4 py-2 bg-[#252526] border-b border-[#3e3e42] grid grid-cols-3 gap-2 text-xs font-semibold text-[#858585]">
+      <div className="px-4 py-2 bg-card border-b border-border grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
         <div className="text-right">PRICE</div>
         <div className="text-right">SIZE</div>
         <div className="text-right">TOTAL</div>
@@ -82,19 +82,19 @@ export default function OrderBook({ market }: OrderBookProps) {
             return (
               <div
                 key={`ask-${index}`}
-                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-[#2a2d2e] cursor-pointer"
+                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer"
               >
                 <div
-                  className="absolute right-0 top-0 h-full bg-[#f48771] opacity-10"
+                  className="absolute right-0 top-0 h-full bg-destructive opacity-10"
                   style={{ width: `${fillPercent}%` }}
                 />
-                <div className="relative text-right text-[#f48771]">
+                <div className="relative text-right text-destructive">
                   {ask.price.toFixed(2)}
                 </div>
-                <div className="relative text-right text-[#cccccc]">
+                <div className="relative text-right text-foreground">
                   {ask.size.toFixed(4)}
                 </div>
-                <div className="relative text-right text-[#858585]">
+                <div className="relative text-right text-muted-foreground">
                   {ask.total.toFixed(4)}
                 </div>
               </div>
@@ -103,16 +103,16 @@ export default function OrderBook({ market }: OrderBookProps) {
         </div>
 
         {/* Spread */}
-        <div className="px-4 py-2 bg-[#252526] border-y border-[#3e3e42] flex items-center justify-between">
+        <div className="px-4 py-2 bg-card border-y border-border flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-xs font-semibold text-[#4ec9b0]">
+            <span className="text-xs font-semibold text-primary">
               {bids[0]?.price.toFixed(2) || '0.00'}
             </span>
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M6 2L6 10M6 10L3 7M6 10L9 7" stroke="#4ec9b0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
           </div>
-          <div className="text-xs text-[#858585]">
+          <div className="text-xs text-muted-foreground">
             Spread: {spread.toFixed(2)} ({spreadPercent.toFixed(3)}%)
           </div>
         </div>
@@ -124,19 +124,19 @@ export default function OrderBook({ market }: OrderBookProps) {
             return (
               <div
                 key={`bid-${index}`}
-                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-[#2a2d2e] cursor-pointer"
+                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer"
               >
                 <div
-                  className="absolute right-0 top-0 h-full bg-[#4ec9b0] opacity-10"
+                  className="absolute right-0 top-0 h-full bg-primary opacity-10"
                   style={{ width: `${fillPercent}%` }}
                 />
-                <div className="relative text-right text-[#4ec9b0]">
+                <div className="relative text-right text-primary">
                   {bid.price.toFixed(2)}
                 </div>
-                <div className="relative text-right text-[#cccccc]">
+                <div className="relative text-right text-foreground">
                   {bid.size.toFixed(4)}
                 </div>
-                <div className="relative text-right text-[#858585]">
+                <div className="relative text-right text-muted-foreground">
                   {bid.total.toFixed(4)}
                 </div>
               </div>

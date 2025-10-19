@@ -50,16 +50,16 @@ export default function MarketStats({ market }: MarketStatsProps) {
     <div className="market-stats flex items-center gap-6 text-xs">
       {/* Last Price */}
       <div className="flex flex-col">
-        <span className="text-[#858585] mb-0.5">Last Price</span>
-        <span className={`font-mono font-bold text-base ${isPositive ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+        <span className="text-muted-foreground mb-0.5">Last Price</span>
+        <span className={`font-mono font-bold text-base ${isPositive ? 'text-primary' : 'text-destructive'}`}>
           ${stats.lastPrice.toFixed(2)}
         </span>
       </div>
 
       {/* 24h Change */}
       <div className="flex flex-col">
-        <span className="text-[#858585] mb-0.5">24h Change</span>
-        <div className={`flex items-center gap-1 font-mono font-semibold ${isPositive ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+        <span className="text-muted-foreground mb-0.5">24h Change</span>
+        <div className={`flex items-center gap-1 font-mono font-semibold ${isPositive ? 'text-primary' : 'text-destructive'}`}>
           {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
           <span>{isPositive ? '+' : ''}{stats.change24h.toFixed(2)} ({isPositive ? '+' : ''}{stats.changePercent24h.toFixed(2)}%)</span>
         </div>
@@ -67,22 +67,22 @@ export default function MarketStats({ market }: MarketStatsProps) {
 
       {/* 24h High */}
       <div className="flex flex-col">
-        <span className="text-[#858585] mb-0.5">24h High</span>
-        <span className="font-mono text-[#cccccc]">${stats.high24h.toFixed(2)}</span>
+        <span className="text-muted-foreground mb-0.5">24h High</span>
+        <span className="font-mono text-foreground">${stats.high24h.toFixed(2)}</span>
       </div>
 
       {/* 24h Low */}
       <div className="flex flex-col">
-        <span className="text-[#858585] mb-0.5">24h Low</span>
-        <span className="font-mono text-[#cccccc]">${stats.low24h.toFixed(2)}</span>
+        <span className="text-muted-foreground mb-0.5">24h Low</span>
+        <span className="font-mono text-foreground">${stats.low24h.toFixed(2)}</span>
       </div>
 
       {/* 24h Volume */}
       <div className="flex flex-col">
-        <span className="text-[#858585] mb-0.5">24h Volume</span>
+        <span className="text-muted-foreground mb-0.5">24h Volume</span>
         <div className="flex items-center gap-1">
-          <Activity size={12} className="text-[#4ec9b0]" />
-          <span className="font-mono text-[#cccccc]">
+          <Activity size={12} className="text-primary" />
+          <span className="font-mono text-foreground">
             ${(stats.volume24h / 1000000).toFixed(2)}M
           </span>
         </div>

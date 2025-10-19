@@ -50,15 +50,15 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
     <div className="market-selector relative">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-[#1e1e1e] border border-[#3e3e42] rounded hover:border-[#4ec9b0] transition-colors"
+        className="flex items-center gap-2 px-4 py-2 bg-background border border-border rounded hover:border-primary transition-colors"
       >
         <div className="flex flex-col items-start">
-          <span className="text-sm font-bold text-[#4ec9b0]">{selectedMarket}</span>
+          <span className="text-sm font-bold text-primary">{selectedMarket}</span>
           {selectedMarketData && (
-            <span className="text-xs text-[#858585]">{selectedMarketData.protocol}</span>
+            <span className="text-xs text-muted-foreground">{selectedMarketData.protocol}</span>
           )}
         </div>
-        <ChevronDown size={16} className={`text-[#cccccc] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+        <ChevronDown size={16} className={`text-foreground transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {isOpen && (
@@ -67,17 +67,17 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
             className="fixed inset-0 z-40" 
             onClick={() => setIsOpen(false)}
           />
-          <div className="absolute top-full left-0 mt-1 w-80 bg-[#252526] border border-[#3e3e42] rounded shadow-lg z-50 max-h-96 overflow-hidden flex flex-col">
+          <div className="absolute top-full left-0 mt-1 w-80 bg-card border border-border rounded shadow-lg z-50 max-h-96 overflow-hidden flex flex-col">
             {/* Search Bar */}
-            <div className="p-3 border-b border-[#3e3e42]">
+            <div className="p-3 border-b border-border">
               <div className="relative">
-                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#858585]" />
+                <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground" />
                 <input
                   type="text"
                   placeholder="Search markets..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 bg-[#1e1e1e] border border-[#3e3e42] rounded text-sm text-[#cccccc] placeholder-[#858585] focus:outline-none focus:border-[#4ec9b0]"
+                  className="w-full pl-10 pr-4 py-2 bg-background border border-border rounded text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-primary"
                   autoFocus
                 />
               </div>
@@ -90,7 +90,7 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
                   {/* Spot Markets */}
                   {filteredMarkets.some(m => m.type === 'spot') && (
                     <div>
-                      <div className="px-4 py-2 bg-[#1e1e1e] text-xs font-semibold text-[#858585] uppercase">
+                      <div className="px-4 py-2 bg-background text-xs font-semibold text-muted-foreground uppercase">
                         Spot Markets
                       </div>
                       {filteredMarkets.filter(m => m.type === 'spot').map((market) => (
@@ -101,15 +101,15 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
                             setIsOpen(false);
                             setSearchQuery('');
                           }}
-                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-[#2a2d2e] transition-colors ${
-                            selectedMarket === market.symbol ? 'bg-[#2a2d2e]' : ''
+                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors ${
+                            selectedMarket === market.symbol ? 'bg-muted' : ''
                           }`}
                         >
                           <div className="flex flex-col items-start">
-                            <span className="text-sm font-medium text-[#cccccc]">{market.symbol}</span>
-                            <span className="text-xs text-[#858585]">{market.name}</span>
+                            <span className="text-sm font-medium text-foreground">{market.symbol}</span>
+                            <span className="text-xs text-muted-foreground">{market.name}</span>
                           </div>
-                          <span className="text-xs text-[#4ec9b0]">{market.protocol}</span>
+                          <span className="text-xs text-primary">{market.protocol}</span>
                         </button>
                       ))}
                     </div>
@@ -118,7 +118,7 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
                   {/* Perpetual Markets */}
                   {filteredMarkets.some(m => m.type === 'perpetual') && (
                     <div>
-                      <div className="px-4 py-2 bg-[#1e1e1e] text-xs font-semibold text-[#858585] uppercase">
+                      <div className="px-4 py-2 bg-background text-xs font-semibold text-muted-foreground uppercase">
                         Perpetual Futures
                       </div>
                       {filteredMarkets.filter(m => m.type === 'perpetual').map((market) => (
@@ -129,13 +129,13 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
                             setIsOpen(false);
                             setSearchQuery('');
                           }}
-                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-[#2a2d2e] transition-colors ${
-                            selectedMarket === market.symbol ? 'bg-[#2a2d2e]' : ''
+                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-muted transition-colors ${
+                            selectedMarket === market.symbol ? 'bg-muted' : ''
                           }`}
                         >
                           <div className="flex flex-col items-start">
-                            <span className="text-sm font-medium text-[#cccccc]">{market.symbol}</span>
-                            <span className="text-xs text-[#858585]">{market.name}</span>
+                            <span className="text-sm font-medium text-foreground">{market.symbol}</span>
+                            <span className="text-xs text-muted-foreground">{market.name}</span>
                           </div>
                           <span className="text-xs text-[#ce9178]">{market.protocol}</span>
                         </button>
@@ -144,7 +144,7 @@ export default function MarketSelector({ selectedMarket, onMarketChange }: Marke
                   )}
                 </>
               ) : (
-                <div className="px-4 py-8 text-center text-[#858585] text-sm">
+                <div className="px-4 py-8 text-center text-muted-foreground text-sm">
                   No markets found
                 </div>
               )}

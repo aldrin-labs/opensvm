@@ -85,8 +85,35 @@ export default function TradingChart({ market }: TradingChartProps) {
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
+    // Get theme colors from CSS variables
+    const root = document.documentElement;
+    const styles = getComputedStyle(root);
+    const bgColor = styles.getPropertyValue('--background') || '0 0% 12%';
+    const borderColor = styles.getPropertyValue('--border') || '0 0% 24%';
+    const mutedColor = styles.getPropertyValue('--muted-foreground') || '0 0% 53%';
+    const primaryColor = styles.getPropertyValue('--primary') || '142 76% 36%';
+    const destructiveColor = styles.getPropertyValue('--destructive') || '0 84% 60%';
+    
+    // Convert HSL to hex for canvas
+    const hslToHex = (hsl: string) => {
+      const [h, s, l] = hsl.trim().split(' ').map(v => parseFloat(v));
+      const a = (s / 100) * Math.min(l / 100, 1 - l / 100);
+      const f = (n: number) => {
+        const k = (n + h / 30) % 12;
+        const color = (l / 100) - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
+        return Math.round(255 * color).toString(16).padStart(2, '0');
+      };
+      return `#${f(0)}${f(8)}${f(4)}`;
+    };
+    
+    const bgHex = hslToHex(bgColor);
+    const borderHex = hslToHex(borderColor);
+    const mutedHex = hslToHex(mutedColor);
+    const primaryHex = hslToHex(primaryColor);
+    const destructiveHex = hslToHex(destructiveColor);
+
     // Clear canvas
-    ctx.fillStyle = '#1e1e1e';
+    ctx.fillStyle = bgHex;
     ctx.fillRect(0, 0, rect.width, rect.height);
 
     // Define chart areas
@@ -103,7 +130,7 @@ export default function TradingChart({ market }: TradingChartProps) {
     const padding = priceRange * 0.1;
 
     // Draw horizontal grid lines for price chart
-    ctx.strokeStyle = '#3e3e42';
+    ctx.strokeStyle = borderHex;
     ctx.lineWidth = 1;
     for (let i = 0; i <= 5; i++) {
       const y = (priceChartHeight / 5) * i;
@@ -114,7 +141,7 @@ export default function TradingChart({ market }: TradingChartProps) {
 
       // Draw price labels
       const price = maxPrice + padding - ((priceRange + padding * 2) / 5) * i;
-      ctx.fillStyle = '#858585';
+      ctx.fillStyle = mutedHex;
       ctx.font = '10px monospace';
       ctx.fillText(price.toFixed(2), rect.width - rightPadding + 5, y + 4);
     }
@@ -126,7 +153,7 @@ export default function TradingChart({ market }: TradingChartProps) {
     
     for (let i = 0; i < 6; i++) {
       const x = ((rect.width - rightPadding) / 5) * i;
-      ctx.strokeStyle = '#3e3e42';
+      ctx.strokeStyle = borderHex;
       ctx.beginPath();
       ctx.moveTo(x, 0);
       ctx.lineTo(x, priceChartHeight);
@@ -137,7 +164,7 @@ export default function TradingChart({ market }: TradingChartProps) {
       if (candleData[candleIndex]) {
         const time = new Date(candleData[candleIndex].time);
         const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
-        ctx.fillStyle = '#858585';
+        ctx.fillStyle = mutedHex;
         ctx.font = '10px monospace';
         ctx.fillText(timeStr, x - 20, rect.height - 5);
       }
@@ -160,7 +187,7 @@ export default function TradingChart({ market }: TradingChartProps) {
         const lowY = priceToY(candle.low);
 
         const isGreen = candle.close >= candle.open;
-        const color = isGreen ? '#4ec9b0' : '#f48771';
+        const color = isGreen ? primaryHex : destructiveHex;
 
         // Draw wick
         ctx.strokeStyle = color;
@@ -178,7 +205,7 @@ export default function TradingChart({ market }: TradingChartProps) {
       });
     } else {
       // Draw line/area chart
-      ctx.strokeStyle = '#4ec9b0';
+      ctx.strokeStyle = primaryHex;
       ctx.lineWidth = 2;
       ctx.beginPath();
       
@@ -197,9 +224,11 @@ export default function TradingChart({ market }: TradingChartProps) {
 
       // Fill area if area chart
       if (chartType === 'area') {
+        // Parse primary color to get HSL values
+        const [h, s, l] = primaryColor.trim().split(' ').map(v => parseFloat(v));
         const gradient = ctx.createLinearGradient(0, 0, 0, priceChartHeight);
-        gradient.addColorStop(0, 'rgba(78, 201, 176, 0.2)');
-        gradient.addColorStop(1, 'rgba(78, 201, 176, 0)');
+        gradient.addColorStop(0, `hsla(${h}, ${s}%, ${l}%, 0.2)`);
+        gradient.addColorStop(1, `hsla(${h}, ${s}%, ${l}%, 0)`);
         
         ctx.lineTo(rect.width - rightPadding, priceChartHeight);
         ctx.lineTo(0, priceChartHeight);
@@ -208,7 +237,6 @@ export default function TradingChart({ market }: TradingChartProps) {
         ctx.fill();
       }
     }
-
     // Draw volume bars in dedicated area
     const volumeStartY = priceChartHeight + 10; // 10px spacing
     const maxVolume = Math.max(...visibleData.map(d => d.volume));
@@ -217,7 +245,7 @@ export default function TradingChart({ market }: TradingChartProps) {
       const x = index * candleWidth;
       const volumeBarHeight = (candle.volume / maxVolume) * (volumeHeight - 5); // 5px padding
       const isGreen = candle.close >= candle.open;
-      const color = isGreen ? '#4ec9b0' : '#f48771';
+      const color = isGreen ? primaryHex : destructiveHex;
       
       ctx.fillStyle = color;
       ctx.globalAlpha = 0.4;
@@ -231,7 +259,7 @@ export default function TradingChart({ market }: TradingChartProps) {
     });
 
     // Draw separator line between price chart and volume
-    ctx.strokeStyle = '#3e3e42';
+    ctx.strokeStyle = borderHex;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(0, priceChartHeight + 5);
@@ -242,7 +270,7 @@ export default function TradingChart({ market }: TradingChartProps) {
     const currentPrice = candleData[candleData.length - 1]?.close;
     if (currentPrice) {
       const y = priceToY(currentPrice);
-      ctx.strokeStyle = '#4ec9b0';
+      ctx.strokeStyle = primaryHex;
       ctx.lineWidth = 1;
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
@@ -252,9 +280,9 @@ export default function TradingChart({ market }: TradingChartProps) {
       ctx.setLineDash([]);
 
       // Price label
-      ctx.fillStyle = '#4ec9b0';
+      ctx.fillStyle = primaryHex;
       ctx.fillRect(rect.width - rightPadding + 2, y - 10, rightPadding - 4, 20);
-      ctx.fillStyle = '#1e1e1e';
+      ctx.fillStyle = bgHex;
       ctx.font = 'bold 11px monospace';
       ctx.fillText(currentPrice.toFixed(2), rect.width - rightPadding + 7, y + 3);
     }
@@ -262,7 +290,7 @@ export default function TradingChart({ market }: TradingChartProps) {
     // Draw crosshair if mouse is hovering
     if (mousePos && mousePos.x < rect.width - rightPadding && mousePos.y < priceChartHeight) {
       // Vertical line
-      ctx.strokeStyle = '#4ec9b0';
+      ctx.strokeStyle = primaryHex;
       ctx.lineWidth = 1;
       ctx.setLineDash([3, 3]);
       ctx.beginPath();
@@ -281,9 +309,15 @@ export default function TradingChart({ market }: TradingChartProps) {
       const candleIndex = Math.floor(mousePos.x / candleWidth);
       if (visibleData[candleIndex]) {
         const hoverPrice = minPrice + padding + ((priceChartHeight - mousePos.y) / priceChartHeight) * (priceRange + padding * 2);
-        ctx.fillStyle = '#252526';
+        // Get card background color for label
+        const cardBgColor = styles.getPropertyValue('--card') || '0 0% 15%';
+        const cardBgHex = hslToHex(cardBgColor);
+        const foregroundColor = styles.getPropertyValue('--foreground') || '0 0% 80%';
+        const foregroundHex = hslToHex(foregroundColor);
+        
+        ctx.fillStyle = cardBgHex;
         ctx.fillRect(rect.width - rightPadding + 2, mousePos.y - 10, rightPadding - 4, 20);
-        ctx.fillStyle = '#cccccc';
+        ctx.fillStyle = foregroundHex;
         ctx.font = '10px monospace';
         ctx.fillText(hoverPrice.toFixed(2), rect.width - rightPadding + 7, mousePos.y + 3);
       }
@@ -341,20 +375,20 @@ export default function TradingChart({ market }: TradingChartProps) {
   const isPositive = priceChange >= 0;
 
   return (
-    <div className="trading-chart h-full flex flex-col bg-[#1e1e1e]">
+    <div className="trading-chart h-full flex flex-col bg-background">
       {/* Chart Controls */}
-      <div className="chart-controls flex items-center justify-between px-4 py-2 bg-[#252526] border-b border-[#3e3e42]">
+      <div className="chart-controls flex items-center justify-between px-4 py-2 bg-card border-b border-border">
         <div className="flex items-center gap-4">
           {/* Timeframe Selector */}
-          <div className="flex items-center gap-1 bg-[#1e1e1e] rounded p-1">
+          <div className="flex items-center gap-1 bg-background rounded p-1">
             {timeframes.map((tf) => (
               <button
                 key={tf}
                 onClick={() => setTimeframe(tf)}
                 className={`px-3 py-1 text-xs font-medium rounded transition-colors ${
                   timeframe === tf
-                    ? 'bg-[#4ec9b0] text-[#1e1e1e]'
-                    : 'text-[#cccccc] hover:bg-[#3e3e42]'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'text-foreground hover:bg-muted'
                 }`}
               >
                 {tf}
@@ -363,13 +397,13 @@ export default function TradingChart({ market }: TradingChartProps) {
           </div>
 
           {/* Chart Type Selector */}
-          <div className="flex items-center gap-1 bg-[#1e1e1e] rounded p-1">
+          <div className="flex items-center gap-1 bg-background rounded p-1">
             <button
               onClick={() => setChartType('candles')}
               className={`px-2 py-1 rounded transition-colors ${
                 chartType === 'candles'
-                  ? 'bg-[#4ec9b0] text-[#1e1e1e]'
-                  : 'text-[#cccccc] hover:bg-[#3e3e42]'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground hover:bg-muted'
               }`}
               title="Candlestick"
             >
@@ -379,8 +413,8 @@ export default function TradingChart({ market }: TradingChartProps) {
               onClick={() => setChartType('line')}
               className={`px-2 py-1 rounded transition-colors ${
                 chartType === 'line'
-                  ? 'bg-[#4ec9b0] text-[#1e1e1e]'
-                  : 'text-[#cccccc] hover:bg-[#3e3e42]'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground hover:bg-muted'
               }`}
               title="Line"
             >
@@ -390,8 +424,8 @@ export default function TradingChart({ market }: TradingChartProps) {
               onClick={() => setChartType('area')}
               className={`px-2 py-1 rounded transition-colors ${
                 chartType === 'area'
-                  ? 'bg-[#4ec9b0] text-[#1e1e1e]'
-                  : 'text-[#cccccc] hover:bg-[#3e3e42]'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'text-foreground hover:bg-muted'
               }`}
               title="Area"
             >
@@ -404,24 +438,24 @@ export default function TradingChart({ market }: TradingChartProps) {
         {currentCandle && (
           <div className="flex items-center gap-4 text-sm">
             <div className="flex items-center gap-2">
-              <span className="text-[#858585]">O:</span>
-              <span className="text-[#cccccc] font-mono">{currentCandle.open.toFixed(2)}</span>
+              <span className="text-muted-foreground">O:</span>
+              <span className="text-foreground font-mono">{currentCandle.open.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#858585]">H:</span>
-              <span className="text-[#4ec9b0] font-mono">{currentCandle.high.toFixed(2)}</span>
+              <span className="text-muted-foreground">H:</span>
+              <span className="text-primary font-mono">{currentCandle.high.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#858585]">L:</span>
-              <span className="text-[#f48771] font-mono">{currentCandle.low.toFixed(2)}</span>
+              <span className="text-muted-foreground">L:</span>
+              <span className="text-destructive font-mono">{currentCandle.low.toFixed(2)}</span>
             </div>
             <div className="flex items-center gap-2">
-              <span className="text-[#858585]">C:</span>
-              <span className={`font-mono ${isPositive ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+              <span className="text-muted-foreground">C:</span>
+              <span className={`font-mono ${isPositive ? 'text-primary' : 'text-destructive'}`}>
                 {currentCandle.close.toFixed(2)}
               </span>
             </div>
-            <div className={`flex items-center gap-1 ${isPositive ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+            <div className={`flex items-center gap-1 ${isPositive ? 'text-primary' : 'text-destructive'}`}>
               {isPositive ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
               <span className="font-mono text-sm">{isPositive ? '+' : ''}{priceChange.toFixed(2)}%</span>
             </div>
@@ -441,7 +475,7 @@ export default function TradingChart({ market }: TradingChartProps) {
         {/* Tooltip */}
         {hoveredCandle && mousePos && (
           <div 
-            className="absolute bg-[#252526] border border-[#4ec9b0] rounded p-2 text-xs pointer-events-none z-10"
+            className="absolute bg-card border border-primary rounded p-2 text-xs pointer-events-none z-10"
             style={{
               left: `${mousePos.x + 10}px`,
               top: `${mousePos.y + 10}px`,
@@ -449,26 +483,26 @@ export default function TradingChart({ market }: TradingChartProps) {
           >
             <div className="flex flex-col gap-1">
               <div className="flex justify-between gap-3">
-                <span className="text-[#858585]">O:</span>
-                <span className="text-[#cccccc] font-mono">{hoveredCandle.open.toFixed(2)}</span>
+                <span className="text-muted-foreground">O:</span>
+                <span className="text-foreground font-mono">{hoveredCandle.open.toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-[#858585]">H:</span>
-                <span className="text-[#4ec9b0] font-mono">{hoveredCandle.high.toFixed(2)}</span>
+                <span className="text-muted-foreground">H:</span>
+                <span className="text-primary font-mono">{hoveredCandle.high.toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-[#858585]">L:</span>
-                <span className="text-[#f48771] font-mono">{hoveredCandle.low.toFixed(2)}</span>
+                <span className="text-muted-foreground">L:</span>
+                <span className="text-destructive font-mono">{hoveredCandle.low.toFixed(2)}</span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-[#858585]">C:</span>
-                <span className={`font-mono ${hoveredCandle.close >= hoveredCandle.open ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+                <span className="text-muted-foreground">C:</span>
+                <span className={`font-mono ${hoveredCandle.close >= hoveredCandle.open ? 'text-primary' : 'text-destructive'}`}>
                   {hoveredCandle.close.toFixed(2)}
                 </span>
               </div>
               <div className="flex justify-between gap-3">
-                <span className="text-[#858585]">V:</span>
-                <span className="text-[#cccccc] font-mono">{hoveredCandle.volume.toFixed(0)}</span>
+                <span className="text-muted-foreground">V:</span>
+                <span className="text-foreground font-mono">{hoveredCandle.volume.toFixed(0)}</span>
               </div>
             </div>
           </div>
