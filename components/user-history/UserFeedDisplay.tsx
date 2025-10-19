@@ -745,7 +745,19 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           </div>
         </div>
 
-        <p className="text-sm">{event.content}</p>
+        {/* Event content with clickable link for visit events */}
+        {event.eventType === 'visit' && event.metadata?.clickableUrl ? (
+          <a 
+            href={event.metadata.clickableUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm hover:underline text-primary cursor-pointer block"
+          >
+            {event.content} →
+          </a>
+        ) : (
+          <p className="text-sm">{event.content}</p>
+        )}
 
         {/* Rich content for transaction events */}
         {event.eventType === 'transaction' && event.metadata?.amount && (

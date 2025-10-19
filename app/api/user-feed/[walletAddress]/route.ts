@@ -131,12 +131,25 @@ function convertBrowsingHistoryToFeedEvent(entry: UserHistoryEntry): UnifiedFeed
       break;
 
     default:
-      // For generic pages, try to extract meaningful info from title
-      if (entry.pageTitle && entry.pageTitle !== 'OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)') {
+      // For generic pages, skip the generic OpenSVM homepage title
+      const genericTitles = [
+        'OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)',
+        'OpenSVM',
+        'Home'
+      ];
+      
+      if (entry.pageTitle && !genericTitles.includes(entry.pageTitle)) {
         richContent = `explored ${entry.pageTitle}`;
       } else {
-        richContent = `browsed ${pageTypeLabels[entry.pageType] || 'a page'}`;
+        // Skip generic homepage visits entirely by returning null content
+        // This will be filtered out later
+        richContent = '';
       }
+  }
+
+  // Skip events with empty content (generic homepage visits)
+  if (!richContent) {
+    return null as any; // Will be filtered out
   }
 
   return {
@@ -269,8 +282,10 @@ async function getUnifiedFeed(
       }
     }
 
-    // Convert browsing history to feed events
-    const browsingEvents = browsingHistory.map(convertBrowsingHistoryToFeedEvent);
+    // Convert browsing history to feed events and filter out null/empty ones
+    const browsingEvents = browsingHistory
+      .map(convertBrowsingHistoryToFeedEvent)
+      .filter(event => event && event.content); // Remove null and empty content events
 
     // Merge and mark social events
     const socialEventsMarked: UnifiedFeedItem[] = socialEvents.map(event => ({
