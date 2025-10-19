@@ -1,22 +1,23 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import TradingChart from './TradingChart';
-import MarketScreener from './MarketScreener';
-import OrderBook from './OrderBook';
-import TradeHistory from './TradeHistory';
-import TradingControls from './TradingControls';
-import PositionsPanel from './PositionsPanel';
-import MarketStats from './MarketStats';
-import MarketDepthWidget from './MarketDepthWidget';
-import MarketNewsWidget from './MarketNewsWidget';
-import WatchlistWidget from './WatchlistWidget';
-import PerformanceWidget from './PerformanceWidget';
-import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
+import dynamic from 'next/dynamic';
 
-interface TradingTerminalViewProps {
-  settings?: any;
-}
+// Dynamically import components with no SSR to avoid hydration issues
+const TradingChart = dynamic(() => import('./TradingChart'), { ssr: false });
+const MarketScreener = dynamic(() => import('./MarketScreener'), { ssr: false });
+const OrderBook = dynamic(() => import('./OrderBook'), { ssr: false });
+const TradeHistory = dynamic(() => import('./TradeHistory'), { ssr: false });
+const TradingControls = dynamic(() => import('./TradingControls'), { ssr: false });
+const PositionsPanel = dynamic(() => import('./PositionsPanel'), { ssr: false });
+const MarketStats = dynamic(() => import('./MarketStats'), { ssr: false });
+const MarketDepthWidget = dynamic(() => import('./MarketDepthWidget'), { ssr: false });
+const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: false });
+const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
+const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
+const { ChevronDown, ChevronUp, Keyboard } = require('lucide-react');
+
+interface TradingTerminalViewProps {}
 
 interface Section {
   id: string;
@@ -27,7 +28,7 @@ interface Section {
 
 type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions' | 'watchlist' | 'performance' | 'depth' | 'news';
 
-export default function TradingTerminalView({ settings }: TradingTerminalViewProps) {
+export default function TradingTerminalView() {
   const [selectedMarket, setSelectedMarket] = useState('SOL/USDC');
   const [isLoading, setIsLoading] = useState(true);
   const [showShortcuts, setShowShortcuts] = useState(false);
