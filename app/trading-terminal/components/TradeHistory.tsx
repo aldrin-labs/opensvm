@@ -40,16 +40,17 @@ export default function TradeHistory({ market }: TradeHistoryProps) {
     generateTrades();
     const interval = setInterval(() => {
       // Add new trade at the top
-      const basePrice = trades.length > 0 ? trades[0].price : 100;
-      const newTrade: Trade = {
-        id: `trade-${Date.now()}`,
-        time: Date.now(),
-        price: basePrice + (Math.random() - 0.5) * 0.5,
-        size: 0.1 + Math.random() * 10,
-        side: Math.random() > 0.5 ? 'buy' : 'sell',
-      };
-      
-      setTrades(prev => [newTrade, ...prev.slice(0, 29)]);
+      setTrades(prev => {
+        const basePrice = prev.length > 0 ? prev[0].price : 100;
+        const newTrade: Trade = {
+          id: `trade-${Date.now()}`,
+          time: Date.now(),
+          price: basePrice + (Math.random() - 0.5) * 0.5,
+          size: 0.1 + Math.random() * 10,
+          side: Math.random() > 0.5 ? 'buy' : 'sell',
+        };
+        return [newTrade, ...prev.slice(0, 29)];
+      });
     }, 3000);
 
     return () => clearInterval(interval);

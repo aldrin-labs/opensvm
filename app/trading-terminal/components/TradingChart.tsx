@@ -23,6 +23,8 @@ export default function TradingChart({ market }: TradingChartProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [candleData, setCandleData] = useState<CandleData[]>([]);
+  const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
+  const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const timeframes: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
@@ -73,11 +75,15 @@ export default function TradingChart({ market }: TradingChartProps) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Set canvas size
+    // Get actual dimensions
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * window.devicePixelRatio;
-    canvas.height = rect.height * window.devicePixelRatio;
-    ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    if (rect.width === 0 || rect.height === 0) return;
+    
+    // Set canvas size with proper scaling
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
 
     // Clear canvas
     ctx.fillStyle = '#1e1e1e';
@@ -171,6 +177,28 @@ export default function TradingChart({ market }: TradingChartProps) {
       }
     }
 
+    // Draw volume bars at the bottom
+    const volumeHeight = rect.height * 0.15; // 15% of chart height for volume
+    const chartHeight = rect.height - volumeHeight - 5; // Main chart uses remaining space
+    const maxVolume = Math.max(...candleData.map(d => d.volume));
+    
+    candleData.forEach((candle, index) => {
+      const x = index * candleWidth;
+      const volumeBarHeight = (candle.volume / maxVolume) * volumeHeight;
+      const isGreen = candle.close >= candle.open;
+      const color = isGreen ? '#4ec9b0' : '#f48771';
+      
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.3;
+      ctx.fillRect(
+        x + candleWidth * 0.2, 
+        rect.height - volumeBarHeight, 
+        candleWidth * 0.6, 
+        volumeBarHeight
+      );
+      ctx.globalAlpha = 1.0;
+    });
+
     // Draw current price line
     const currentPrice = candleData[candleData.length - 1]?.close;
     if (currentPrice) {
@@ -192,6 +220,46 @@ export default function TradingChart({ market }: TradingChartProps) {
       ctx.fillText(currentPrice.toFixed(2), rect.width - 65, y + 3);
     }
   }, [candleData, chartType]);
+
+  // Add resize observer to redraw on window resize
+  useEffect(() => {
+    if (!canvasRef.current) return;
+
+    const resizeObserver = new ResizeObserver(() => {
+      // Trigger a redraw by updating state
+      setCandleData(prev => [...prev]);
+    });
+
+    resizeObserver.observe(canvasRef.current);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Mouse handlers for crosshair and tooltips
+  const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current || candleData.length === 0) return;
+    
+    const rect = canvasRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    setMousePos({ x, y });
+    
+    // Find the candle at mouse position
+    const candleWidth = rect.width / candleData.length;
+    const candleIndex = Math.floor(x / candleWidth);
+    
+    if (candleIndex >= 0 && candleIndex < candleData.length) {
+      setHoveredCandle(candleData[candleIndex]);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    setMousePos(null);
+    setHoveredCandle(null);
+  };
 
   const currentCandle = candleData[candleData.length - 1];
   const previousCandle = candleData[candleData.length - 2];
@@ -293,9 +361,46 @@ export default function TradingChart({ market }: TradingChartProps) {
       <div className="flex-1 relative min-h-0">
         <canvas
           ref={canvasRef}
-          className="w-full h-full"
+          className="w-full h-full cursor-crosshair"
           style={{ display: 'block' }}
+          onMouseMove={handleMouseMove}
+          onMouseLeave={handleMouseLeave}
         />
+        {/* Tooltip */}
+        {hoveredCandle && mousePos && (
+          <div 
+            className="absolute bg-[#252526] border border-[#4ec9b0] rounded p-2 text-xs pointer-events-none z-10"
+            style={{
+              left: `${mousePos.x + 10}px`,
+              top: `${mousePos.y + 10}px`,
+            }}
+          >
+            <div className="flex flex-col gap-1">
+              <div className="flex justify-between gap-3">
+                <span className="text-[#858585]">O:</span>
+                <span className="text-[#cccccc] font-mono">{hoveredCandle.open.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-[#858585]">H:</span>
+                <span className="text-[#4ec9b0] font-mono">{hoveredCandle.high.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-[#858585]">L:</span>
+                <span className="text-[#f48771] font-mono">{hoveredCandle.low.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-[#858585]">C:</span>
+                <span className={`font-mono ${hoveredCandle.close >= hoveredCandle.open ? 'text-[#4ec9b0]' : 'text-[#f48771]'}`}>
+                  {hoveredCandle.close.toFixed(2)}
+                </span>
+              </div>
+              <div className="flex justify-between gap-3">
+                <span className="text-[#858585]">V:</span>
+                <span className="text-[#cccccc] font-mono">{hoveredCandle.volume.toFixed(0)}</span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
