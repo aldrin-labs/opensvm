@@ -5,6 +5,8 @@
 import { randomBytes } from 'crypto';
 import { sign as naclSign, SignKeyPair } from 'tweetnacl';
 import bs58 from 'bs58';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { join } from 'path';
 import type {
   Sale,
   Contribution,
@@ -21,17 +23,38 @@ import {
   getReferrer,
 } from './database';
 
-// Platform keypair for signing (in production, this would be securely stored)
+// Platform keypair for signing (persisted to disk)
 let platformKeyPair: SignKeyPair | null = null;
+const KEYPAIR_PATH = join(process.cwd(), '.data', 'launchpad', 'platform-keypair.json');
 
 /**
- * Initialize or get platform keypair
+ * Initialize or get platform keypair (with persistence)
  */
 function getPlatformKeyPair(): SignKeyPair {
   if (!platformKeyPair) {
-    // In production, load from secure storage
-    // For MVP, generate a new keypair
-    platformKeyPair = naclSign.keyPair();
+    try {
+      // Try to load existing keypair from disk
+      if (existsSync(KEYPAIR_PATH)) {
+        const data = readFileSync(KEYPAIR_PATH, 'utf-8');
+        const stored = JSON.parse(data);
+        platformKeyPair = {
+          publicKey: new Uint8Array(stored.publicKey),
+          secretKey: new Uint8Array(stored.secretKey),
+        };
+      } else {
+        // Generate new keypair and save it
+        platformKeyPair = naclSign.keyPair();
+        const toStore = {
+          publicKey: Array.from(platformKeyPair.publicKey),
+          secretKey: Array.from(platformKeyPair.secretKey),
+        };
+        writeFileSync(KEYPAIR_PATH, JSON.stringify(toStore), 'utf-8');
+      }
+    } catch (error) {
+      console.error('Error loading/saving platform keypair:', error);
+      // Fallback to in-memory keypair
+      platformKeyPair = naclSign.keyPair();
+    }
   }
   return platformKeyPair;
 }

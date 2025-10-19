@@ -10,26 +10,26 @@ export default function LaunchpadPage() {
   const [filter, setFilter] = useState<'all' | 'upcoming' | 'active' | 'finalized'>('all');
 
   useEffect(() => {
-    fetchSales();
-  }, [filter]);
-
-  const fetchSales = async () => {
-    try {
-      setLoading(true);
-      const url = filter === 'all'
-        ? '/api/launchpad/sales'
-        : `/api/launchpad/sales?status=${filter}`;
-      const response = await fetch(url);
-      const data = await response.json();
-      if (data.success) {
-        setSales(data.data);
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const url = filter === 'all'
+          ? '/api/launchpad/sales'
+          : `/api/launchpad/sales?status=${filter}`;
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.success) {
+          setSales(data.data);
+        }
+      } catch (error) {
+        console.error('Error fetching sales:', error);
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Error fetching sales:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+    };
+
+    fetchData();
+  }, [filter]);
 
   const formatSOL = (lamports: number) => {
     return (lamports / 1_000_000_000).toFixed(2);

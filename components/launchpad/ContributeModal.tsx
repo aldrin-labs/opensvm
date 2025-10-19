@@ -5,17 +5,19 @@ import { Sale, ContributionReceipt } from '@/types/launchpad';
 
 interface ContributeModalProps {
   sale: Sale;
+  initialReferralCode?: string;
   onClose: () => void;
   onSuccess: (receipt: ContributionReceipt) => void;
 }
 
-export default function ContributeModal({ sale, onClose, onSuccess }: ContributeModalProps) {
+export default function ContributeModal({ sale, initialReferralCode = '', onClose, onSuccess }: ContributeModalProps) {
   const [amount, setAmount] = useState('');
-  const [referralCode, setReferralCode] = useState('');
+  const [referralCode, setReferralCode] = useState(initialReferralCode);
   const [walletAddress, setWalletAddress] = useState('');
   const [depositMode, setDepositMode] = useState<'wallet_transfer' | 'in_app_send'>('wallet_transfer');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [depositInfo, setDepositInfo] = useState<{ address: string; memo: string; qrCode: string } | null>(null);
 
   const presetAmounts = [0.5, 1, 5, 10, 50];
 
@@ -72,12 +74,35 @@ export default function ContributeModal({ sale, onClose, onSuccess }: Contribute
         setError(`Warning: ${data.data.fraud_warning.join(', ')}`);
       }
 
+      // Set deposit info for QR display
+      if (depositMode === 'wallet_transfer') {
+        setDepositInfo({
+          address: data.data.receipt.deposit_address,
+          memo: data.data.receipt.deposit_memo || '',
+          qrCode: await generateDepositQR(data.data.receipt.deposit_address, amountNum, data.data.receipt.deposit_memo),
+        });
+      }
+
       onSuccess(data.data.receipt);
     } catch (err) {
       setError('Failed to submit contribution');
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateDepositQR = async (address: string, amount: number, memo?: string): Promise<string> => {
+    // Generate Solana payment URI
+    const solanaUri = `solana:${address}?amount=${amount}${memo ? `&memo=${encodeURIComponent(memo)}` : ''}`;
+    
+    // In production, use a real QR code library like qrcode.react
+    // For now, return a data URI that can be used with QR libraries
+    try {
+      // Placeholder - in real implementation, generate actual QR code
+      return `data:image/svg+xml;base64,${btoa(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><rect width="200" height="200" fill="white"/><text x="100" y="100" text-anchor="middle" font-size="10">QR: ${address.substring(0, 8)}...</text></svg>`)}`;
+    } catch {
+      return '';
     }
   };
 
@@ -201,6 +226,41 @@ export default function ContributeModal({ sale, onClose, onSuccess }: Contribute
               </label>
             </div>
           </div>
+
+          {/* QR Code Display (after successful creation) */}
+          {depositInfo && depositMode === 'wallet_transfer' && (
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+              <h3 className="font-medium mb-3">Deposit Information</h3>
+              <div className="flex gap-4">
+                <div className="flex-shrink-0">
+                  <img 
+                    src={depositInfo.qrCode} 
+                    alt="Deposit QR Code" 
+                    className="w-32 h-32 border-2 border-white rounded"
+                  />
+                  <div className="text-xs text-center text-gray-600 dark:text-gray-400 mt-1">
+                    Scan to pay
+                  </div>
+                </div>
+                <div className="flex-1 space-y-2 text-sm">
+                  <div>
+                    <div className="text-gray-600 dark:text-gray-400 text-xs">Address:</div>
+                    <div className="font-mono text-xs break-all">{depositInfo.address}</div>
+                  </div>
+                  {depositInfo.memo && (
+                    <div>
+                      <div className="text-gray-600 dark:text-gray-400 text-xs">Memo:</div>
+                      <div className="font-mono font-bold">{depositInfo.memo}</div>
+                    </div>
+                  )}
+                  <div>
+                    <div className="text-gray-600 dark:text-gray-400 text-xs">Amount:</div>
+                    <div className="font-bold">{amount} SOL</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Error Message */}
           {error && (

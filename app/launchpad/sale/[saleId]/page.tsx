@@ -1,25 +1,31 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { Sale, ContributionReceipt } from '@/types/launchpad';
 import ContributeModal from '@/components/launchpad/ContributeModal';
 import ReceiptCard from '@/components/launchpad/ReceiptCard';
 
 export default function SaleDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const saleId = params?.saleId as string;
+  const referralCode = searchParams?.get('ref') || '';
   
   const [sale, setSale] = useState<Sale | null>(null);
   const [loading, setLoading] = useState(true);
   const [showContributeModal, setShowContributeModal] = useState(false);
   const [receipt, setReceipt] = useState<ContributionReceipt | null>(null);
+  const [referrerInfo, setReferrerInfo] = useState<{ name: string; code: string } | null>(null);
 
   useEffect(() => {
     if (saleId) {
       fetchSale();
     }
-  }, [saleId]);
+    if (referralCode) {
+      fetchReferrerInfo(referralCode);
+    }
+  }, [saleId, referralCode]);
 
   const fetchSale = async () => {
     try {
@@ -34,6 +40,24 @@ export default function SaleDetailPage() {
       console.error('Error fetching sale:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchReferrerInfo = async (code: string) => {
+    try {
+      // Fetch referrer info to display banner
+      const response = await fetch(`/api/launchpad/referral-links/${code}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success) {
+          setReferrerInfo({
+            name: data.data.referrer_name || 'KOL',
+            code: code,
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching referrer info:', error);
     }
   };
 
@@ -85,6 +109,34 @@ export default function SaleDetailPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      {/* Referrer Banner */}
+      {referrerInfo && (
+        <div className="mb-6 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center text-white font-bold">
+                {referrerInfo.name.charAt(0)}
+              </div>
+              <div>
+                <div className="font-medium">Referred by {referrerInfo.name}</div>
+                <div className="text-sm text-gray-600 dark:text-gray-400">
+                  Code: <span className="font-mono font-bold">{referrerInfo.code}</span>
+                </div>
+              </div>
+            </div>
+            <button
+              onClick={() => setReferrerInfo(null)}
+              className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+            >
+              ✗
+            </button>
+          </div>
+          <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
+            Your referrer will earn rewards from your contribution and trading activity.
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-start justify-between mb-4">
@@ -261,6 +313,7 @@ export default function SaleDetailPage() {
       {showContributeModal && (
         <ContributeModal
           sale={sale}
+          initialReferralCode={referralCode}
           onClose={() => setShowContributeModal(false)}
           onSuccess={handleContributeSuccess}
         />
