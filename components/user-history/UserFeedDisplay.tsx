@@ -152,9 +152,13 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           }));
           setEvents(convertedEvents);
           setLoading(false);
-          return;
+          
+          // Still fetch fresh data in background to update cache
+          // This ensures users see cached data immediately but get fresh data soon
+          console.log('Fetching fresh data in background to update cache...');
+        } else {
+          console.log('No valid cache found, fetching from API');
         }
-        console.log('No valid cache found, fetching from API');
       }
 
       // If cache miss or pagination, proceed with API request
@@ -317,6 +321,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     let currentEventSource: EventSource | null = null;
     let currentRetryTimeout: NodeJS.Timeout | null = null;
     let currentRetryCount = 0;
+    let setupTimeout: NodeJS.Timeout | null = null;
 
     const setupEventSource = () => {
       // Clear any existing connections
@@ -388,9 +393,15 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       };
     };
 
-    setupEventSource();
+    // Debounce SSE setup to prevent rapid reconnections when filters change
+    setupTimeout = setTimeout(() => {
+      setupEventSource();
+    }, 300);
 
     return () => {
+      if (setupTimeout) {
+        clearTimeout(setupTimeout);
+      }
       if (currentEventSource) {
         currentEventSource.close();
       }
@@ -1112,6 +1123,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter
+                  {filters.eventTypes.length > 0 && (
+                    <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                      {filters.eventTypes.length}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
@@ -1141,6 +1157,24 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     </div>
                   </DropdownMenuItem>
                 ))}
+
+                {filters.eventTypes.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setFilters(prev => ({
+                          ...prev,
+                          eventTypes: []
+                        }));
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Event Type Filters
+                    </DropdownMenuItem>
+                  </>
+                )}
 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Date Range</DropdownMenuLabel>
@@ -1245,15 +1279,22 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <p className="text-muted-foreground font-medium">
                 {searchQuery
                   ? 'No events match your search criteria.'
-                  : activeTab === 'for-you'
-                    ? systemHealthy 
-                      ? 'No events to show at the moment.'
-                      : 'Unable to load feed - service unavailable.'
-                    : 'No events from users you follow.'}
+                  : filters.eventTypes.length > 0
+                    ? 'No events match the selected filters.'
+                    : activeTab === 'for-you'
+                      ? systemHealthy 
+                        ? 'No events to show at the moment.'
+                        : 'Unable to load feed - service unavailable.'
+                      : 'No events from users you follow.'}
               </p>
-              {activeTab === 'for-you' && !searchQuery && systemHealthy && (
+              {activeTab === 'for-you' && !searchQuery && filters.eventTypes.length === 0 && systemHealthy && (
                 <p className="text-sm text-muted-foreground max-w-xs">
                   Feed events are created when users perform actions like following, liking, or making transactions. Check back later!
+                </p>
+              )}
+              {filters.eventTypes.length > 0 && (
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Try removing some filters or check back later for matching events.
                 </p>
               )}
               {activeTab === 'following' && !searchQuery && (
