@@ -261,6 +261,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               <SimpleDropdownItem asChild>
                 <Link href="/validators">Validators</Link>
               </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/launchpad">Launchpad</Link>
+              </SimpleDropdownItem>
             </SimpleDropdown>
 
             {/* Tokens Dropdown */}
@@ -291,6 +294,18 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 <Link href="/scan">Scan (Memecoins)</Link>
               </SimpleDropdownItem>
             </SimpleDropdown>
+
+            {/* Launchpad Link */}
+            <Link href="/launchpad">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="px-3 h-9 text-sm font-medium"
+                data-testid="nav-link-launchpad"
+              >
+                Launchpad
+              </Button>
+            </Link>
 
             {/* DeFi Dropdown */}
             <SimpleDropdown
