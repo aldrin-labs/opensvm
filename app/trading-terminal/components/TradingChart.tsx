@@ -89,6 +89,12 @@ export default function TradingChart({ market }: TradingChartProps) {
     ctx.fillStyle = '#1e1e1e';
     ctx.fillRect(0, 0, rect.width, rect.height);
 
+    // Define chart areas
+    const volumeHeight = 80; // Fixed height for volume bars
+    const timeAxisHeight = 20; // Height for time axis
+    const priceChartHeight = rect.height - volumeHeight - timeAxisHeight - 10; // 10px spacing
+    const rightPadding = 70; // Space for price labels
+
     // Calculate price range
     const prices = candleData.flatMap(d => [d.high, d.low]);
     const maxPrice = Math.max(...prices);
@@ -96,31 +102,57 @@ export default function TradingChart({ market }: TradingChartProps) {
     const priceRange = maxPrice - minPrice;
     const padding = priceRange * 0.1;
 
-    // Draw grid lines
+    // Draw horizontal grid lines for price chart
     ctx.strokeStyle = '#3e3e42';
     ctx.lineWidth = 1;
     for (let i = 0; i <= 5; i++) {
-      const y = (rect.height / 5) * i;
+      const y = (priceChartHeight / 5) * i;
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(rect.width, y);
+      ctx.lineTo(rect.width - rightPadding, y);
       ctx.stroke();
 
       // Draw price labels
       const price = maxPrice + padding - ((priceRange + padding * 2) / 5) * i;
       ctx.fillStyle = '#858585';
       ctx.font = '10px monospace';
-      ctx.fillText(price.toFixed(2), rect.width - 60, y + 12);
+      ctx.fillText(price.toFixed(2), rect.width - rightPadding + 5, y + 4);
     }
 
-    // Draw candles or line
-    const candleWidth = rect.width / candleData.length;
+    // Draw vertical grid lines and time labels
+    const visibleCandles = Math.min(candleData.length, 50); // Show up to 50 candles
+    const candleWidth = (rect.width - rightPadding) / visibleCandles;
+    const startIndex = Math.max(0, candleData.length - visibleCandles);
+    
+    for (let i = 0; i < 6; i++) {
+      const x = ((rect.width - rightPadding) / 5) * i;
+      ctx.strokeStyle = '#3e3e42';
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, priceChartHeight);
+      ctx.stroke();
+
+      // Time label
+      const candleIndex = startIndex + Math.floor((visibleCandles / 5) * i);
+      if (candleData[candleIndex]) {
+        const time = new Date(candleData[candleIndex].time);
+        const timeStr = time.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false });
+        ctx.fillStyle = '#858585';
+        ctx.font = '10px monospace';
+        ctx.fillText(timeStr, x - 20, rect.height - 5);
+      }
+    }
+
+    // Price to Y coordinate function
     const priceToY = (price: number) => {
-      return rect.height - ((price - (minPrice - padding)) / (priceRange + padding * 2)) * rect.height;
+      return priceChartHeight - ((price - (minPrice - padding)) / (priceRange + padding * 2)) * priceChartHeight;
     };
 
+    // Draw candles or lines (only visible portion)
+    const visibleData = candleData.slice(startIndex);
+    
     if (chartType === 'candles') {
-      candleData.forEach((candle, index) => {
+      visibleData.forEach((candle, index) => {
         const x = index * candleWidth;
         const openY = priceToY(candle.open);
         const closeY = priceToY(candle.close);
@@ -150,7 +182,7 @@ export default function TradingChart({ market }: TradingChartProps) {
       ctx.lineWidth = 2;
       ctx.beginPath();
       
-      candleData.forEach((candle, index) => {
+      visibleData.forEach((candle, index) => {
         const x = index * candleWidth + candleWidth / 2;
         const y = priceToY(candle.close);
         
@@ -165,39 +197,46 @@ export default function TradingChart({ market }: TradingChartProps) {
 
       // Fill area if area chart
       if (chartType === 'area') {
-        const gradient = ctx.createLinearGradient(0, 0, 0, rect.height);
+        const gradient = ctx.createLinearGradient(0, 0, 0, priceChartHeight);
         gradient.addColorStop(0, 'rgba(78, 201, 176, 0.2)');
         gradient.addColorStop(1, 'rgba(78, 201, 176, 0)');
         
-        ctx.lineTo(rect.width, rect.height);
-        ctx.lineTo(0, rect.height);
+        ctx.lineTo(rect.width - rightPadding, priceChartHeight);
+        ctx.lineTo(0, priceChartHeight);
         ctx.closePath();
         ctx.fillStyle = gradient;
         ctx.fill();
       }
     }
 
-    // Draw volume bars at the bottom
-    const volumeHeight = rect.height * 0.15; // 15% of chart height for volume
-    const chartHeight = rect.height - volumeHeight - 5; // Main chart uses remaining space
-    const maxVolume = Math.max(...candleData.map(d => d.volume));
+    // Draw volume bars in dedicated area
+    const volumeStartY = priceChartHeight + 10; // 10px spacing
+    const maxVolume = Math.max(...visibleData.map(d => d.volume));
     
-    candleData.forEach((candle, index) => {
+    visibleData.forEach((candle, index) => {
       const x = index * candleWidth;
-      const volumeBarHeight = (candle.volume / maxVolume) * volumeHeight;
+      const volumeBarHeight = (candle.volume / maxVolume) * (volumeHeight - 5); // 5px padding
       const isGreen = candle.close >= candle.open;
       const color = isGreen ? '#4ec9b0' : '#f48771';
       
       ctx.fillStyle = color;
-      ctx.globalAlpha = 0.3;
+      ctx.globalAlpha = 0.4;
       ctx.fillRect(
         x + candleWidth * 0.2, 
-        rect.height - volumeBarHeight, 
+        volumeStartY + (volumeHeight - 5 - volumeBarHeight), 
         candleWidth * 0.6, 
         volumeBarHeight
       );
       ctx.globalAlpha = 1.0;
     });
+
+    // Draw separator line between price chart and volume
+    ctx.strokeStyle = '#3e3e42';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, priceChartHeight + 5);
+    ctx.lineTo(rect.width - rightPadding, priceChartHeight + 5);
+    ctx.stroke();
 
     // Draw current price line
     const currentPrice = candleData[candleData.length - 1]?.close;
@@ -208,18 +247,48 @@ export default function TradingChart({ market }: TradingChartProps) {
       ctx.setLineDash([5, 5]);
       ctx.beginPath();
       ctx.moveTo(0, y);
-      ctx.lineTo(rect.width, y);
+      ctx.lineTo(rect.width - rightPadding, y);
       ctx.stroke();
       ctx.setLineDash([]);
 
       // Price label
       ctx.fillStyle = '#4ec9b0';
-      ctx.fillRect(rect.width - 70, y - 10, 65, 20);
+      ctx.fillRect(rect.width - rightPadding + 2, y - 10, rightPadding - 4, 20);
       ctx.fillStyle = '#1e1e1e';
       ctx.font = 'bold 11px monospace';
-      ctx.fillText(currentPrice.toFixed(2), rect.width - 65, y + 3);
+      ctx.fillText(currentPrice.toFixed(2), rect.width - rightPadding + 7, y + 3);
     }
-  }, [candleData, chartType]);
+
+    // Draw crosshair if mouse is hovering
+    if (mousePos && mousePos.x < rect.width - rightPadding && mousePos.y < priceChartHeight) {
+      // Vertical line
+      ctx.strokeStyle = '#4ec9b0';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([3, 3]);
+      ctx.beginPath();
+      ctx.moveTo(mousePos.x, 0);
+      ctx.lineTo(mousePos.x, priceChartHeight);
+      ctx.stroke();
+
+      // Horizontal line
+      ctx.beginPath();
+      ctx.moveTo(0, mousePos.y);
+      ctx.lineTo(rect.width - rightPadding, mousePos.y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Price label at crosshair
+      const candleIndex = Math.floor(mousePos.x / candleWidth);
+      if (visibleData[candleIndex]) {
+        const hoverPrice = minPrice + padding + ((priceChartHeight - mousePos.y) / priceChartHeight) * (priceRange + padding * 2);
+        ctx.fillStyle = '#252526';
+        ctx.fillRect(rect.width - rightPadding + 2, mousePos.y - 10, rightPadding - 4, 20);
+        ctx.fillStyle = '#cccccc';
+        ctx.font = '10px monospace';
+        ctx.fillText(hoverPrice.toFixed(2), rect.width - rightPadding + 7, mousePos.y + 3);
+      }
+    }
+  }, [candleData, chartType, mousePos]);
 
   // Add resize observer to redraw on window resize
   useEffect(() => {
@@ -248,10 +317,13 @@ export default function TradingChart({ market }: TradingChartProps) {
     setMousePos({ x, y });
     
     // Find the candle at mouse position
-    const candleWidth = rect.width / candleData.length;
-    const candleIndex = Math.floor(x / candleWidth);
+    const visibleCandles = Math.min(candleData.length, 50);
+    const startIndex = Math.max(0, candleData.length - visibleCandles);
+    const rightPadding = 70;
+    const candleWidth = (rect.width - rightPadding) / visibleCandles;
+    const candleIndex = startIndex + Math.floor(x / candleWidth);
     
-    if (candleIndex >= 0 && candleIndex < candleData.length) {
+    if (candleIndex >= startIndex && candleIndex < candleData.length) {
       setHoveredCandle(candleData[candleIndex]);
     }
   };
