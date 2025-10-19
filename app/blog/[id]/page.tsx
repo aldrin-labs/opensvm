@@ -4,6 +4,7 @@ import { notFound } from 'next/navigation';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { marked } from 'marked';
+import Script from 'next/script';
 
 interface BlogPost {
   id: string;
@@ -171,7 +172,7 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
 
       {/* Article Content */}
       <div className="container mx-auto px-4 py-12">
-        <div className="max-w-3xl mx-auto">
+        <div className="max-w-5xl mx-auto">
           {/* Meta */}
           <div className="mb-8">
             <div className="inline-block mb-4 px-3 py-1 text-xs font-medium rounded-full bg-primary/10 text-primary border border-primary/20">
@@ -222,18 +223,30 @@ export default async function BlogPostPage({ params }: { params: { id: string } 
           <div
             className="prose prose-invert max-w-none mb-12
               prose-headings:mt-8 prose-headings:mb-4
-              prose-h1:text-3xl prose-h1:font-bold
-              prose-h2:text-2xl prose-h2:font-bold
-              prose-h3:text-xl prose-h3:font-bold
-              prose-p:text-foreground prose-p:leading-relaxed
+              prose-h1:text-5xl prose-h1:font-bold
+              prose-h2:text-3xl prose-h2:font-bold
+              prose-h3:text-2xl prose-h3:font-bold
+              prose-p:text-lg prose-p:leading-relaxed prose-p:text-foreground
               prose-a:text-primary prose-a:hover:underline
-              prose-code:bg-muted prose-code:px-2 prose-code:py-1 prose-code:rounded
-              prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded prose-pre:overflow-auto
-              prose-ul:ml-4 prose-ol:ml-4
-              prose-li:text-foreground
+              prose-code:bg-muted prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-base
+              prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded prose-pre:overflow-auto prose-pre:text-base
+              prose-ul:ml-4
+              prose-ol:ml-4
+              prose-li:text-lg prose-li:text-foreground
               prose-strong:font-bold prose-strong:text-foreground
-              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic"
+              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic prose-blockquote:text-lg"
             dangerouslySetInnerHTML={{ __html: htmlContent }}
+          />
+
+          {/* Mermaid Diagram Script */}
+          <Script
+            src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"
+            strategy="afterInteractive"
+            onLoad={() => {
+              if (typeof window !== 'undefined' && (window as any).mermaid) {
+                (window as any).mermaid.contentLoaded();
+              }
+            }}
           />
 
           <hr className="my-8" />
