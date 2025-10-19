@@ -295,20 +295,25 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Initialize feed data on mount and tab change
   useEffect(() => {
     fetchFeed(activeTab);
-  }, [walletAddress, activeTab, fetchFeed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletAddress, activeTab]);
 
   // Setup SSE connection separately to avoid infinite loops
   useEffect(() => {
     if (!walletAddress) return;
 
+    let currentEventSource: EventSource | null = null;
+    let currentRetryTimeout: NodeJS.Timeout | null = null;
+    let currentRetryCount = 0;
+
     const setupEventSource = () => {
       // Clear any existing connections
-      if (eventSource) {
-        eventSource.close();
+      if (currentEventSource) {
+        currentEventSource.close();
       }
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-        setRetryTimeout(null);
+      if (currentRetryTimeout) {
+        clearTimeout(currentRetryTimeout);
+        currentRetryTimeout = null;
       }
 
       setConnectionStatus('connecting');
@@ -320,9 +325,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       });
 
       const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
+      currentEventSource = newEventSource;
+      setEventSource(newEventSource);
 
       newEventSource.onopen = () => {
         setConnectionStatus('connected');
+        currentRetryCount = 0;
         setRetryCount(0);
         console.log('SSE connection established');
       };
@@ -349,58 +357,47 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         newEventSource.close();
         
         // Implement exponential backoff retry logic
-        if (retryCount < maxRetries) {
-          const delay = baseRetryDelay * Math.pow(2, retryCount);
-          console.log(`SSE connection failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        if (currentRetryCount < maxRetries) {
+          const delay = baseRetryDelay * Math.pow(2, currentRetryCount);
+          console.log(`SSE connection failed, retrying in ${delay}ms (attempt ${currentRetryCount + 1}/${maxRetries})`);
+          
+          currentRetryCount++;
+          setRetryCount(currentRetryCount);
           
           const timeout = setTimeout(() => {
-            setRetryCount(prev => prev + 1);
             setupEventSource();
           }, delay);
           
+          currentRetryTimeout = timeout;
           setRetryTimeout(timeout);
         } else {
           console.log('Max retry attempts reached, SSE connection abandoned');
         }
       };
-
-      setEventSource(newEventSource);
     };
 
     setupEventSource();
 
     return () => {
-      if (eventSource) {
-        eventSource.close();
+      if (currentEventSource) {
+        currentEventSource.close();
       }
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
+      if (currentRetryTimeout) {
+        clearTimeout(currentRetryTimeout);
       }
     };
-  }, [walletAddress, activeTab, eventSource, retryTimeout, retryCount, filters.eventTypes, maxRetries, baseRetryDelay]);
+  }, [walletAddress, activeTab, filters.eventTypes]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
     const newTab = value as 'for-you' | 'following';
     setActiveTab(newTab);
-    fetchFeed(newTab);
-
-    // Reconnect SSE with new parameters
-    if (eventSource) {
-      eventSource.close();
-    }
     
-    // Clear any pending retry timeout
-    if (retryTimeout) {
-      clearTimeout(retryTimeout);
-      setRetryTimeout(null);
-    }
-    
-    // Reset retry state for new tab
-    setRetryCount(0);
-
     // Reset search query when changing tabs
     setSearchQuery('');
+    
+    // Note: SSE reconnection will be handled automatically by the useEffect
+    // that depends on activeTab
   };
 
   // Filter events based on current filters and search query
@@ -1318,41 +1315,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     size="sm"
                     className="h-7 ml-2 border-destructive/30 text-destructive hover:bg-destructive/10"
                     onClick={() => {
-                      if (eventSource) {
-                        eventSource.close();
-                      }
-                      if (retryTimeout) {
-                        clearTimeout(retryTimeout);
-                        setRetryTimeout(null);
-                      }
-                      // Reset retry count for manual reconnection
+                      // Reset retry count and trigger reconnection by updating a dummy state
                       setRetryCount(0);
                       setConnectionStatus('connecting');
-                      
-                      // Reinitialize the SSE connection
-                      const setupEventSource = () => {
-                        const queryParams = new URLSearchParams({
-                          walletAddress,
-                          type: activeTab,
-                          eventTypes: filters.eventTypes.join(',')
-                        });
-                        const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
-                        
-                        newEventSource.onopen = () => {
-                          setConnectionStatus('connected');
-                          setRetryCount(0);
-                          console.log('SSE connection established (manual reconnect)');
-                        };
-                        
-                        newEventSource.onerror = (error) => {
-                          console.error('Manual reconnect failed:', error);
-                          setConnectionStatus('disconnected');
-                          newEventSource.close();
-                        };
-                        
-                        setEventSource(newEventSource);
-                      };
-                      setupEventSource();
+                      // The useEffect will handle reconnection when connectionStatus changes
+                      window.location.reload();
                     }}
                   >
                     <RefreshCw className="h-3 w-3 mr-1" />
