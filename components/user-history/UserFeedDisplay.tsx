@@ -100,7 +100,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Filtering and search
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    eventTypes: ['transaction', 'visit', 'like', 'follow', 'other'],
+    eventTypes: [] as string[], // Empty array means show all event types
     dateRange: 'all' as 'today' | 'week' | 'month' | 'all',
     sortOrder: 'newest' as 'newest' | 'popular'
   });
@@ -224,8 +224,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       return false;
     }
 
-    // Check event type filter
-    if (!filters.eventTypes.includes(event.eventType)) {
+    // Check event type filter (only if filters are applied)
+    if (filters.eventTypes.length > 0 && !filters.eventTypes.includes(event.eventType)) {
       return false;
     }
 
@@ -660,12 +660,14 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     switch (eventType) {
       case 'transaction':
         return <Coins className="h-4 w-4 text-blue-500" />;
-      case 'visit':
-        return <Globe className="h-4 w-4 text-green-500" />;
+      case 'token_transfer':
+        return <Coins className="h-4 w-4 text-yellow-500" />;
       case 'like':
         return <Heart className="h-4 w-4 text-red-500" />;
       case 'follow':
         return <User className="h-4 w-4 text-purple-500" />;
+      case 'profile_update':
+        return <User className="h-4 w-4 text-green-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -1095,7 +1097,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Event Types</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {['transaction', 'visit', 'like', 'follow', 'other'].map(type => (
+                {['transaction', 'follow', 'like', 'profile_update', 'token_transfer'].map(type => (
                   <DropdownMenuItem
                     key={type}
                     onClick={() => {
@@ -1114,7 +1116,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       </div>
                       <span className="flex items-center gap-2">
                         {getEventIcon(type)}
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                        {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                       </span>
                     </div>
                   </DropdownMenuItem>
