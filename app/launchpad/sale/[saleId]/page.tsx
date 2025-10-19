@@ -17,6 +17,8 @@ export default function SaleDetailPage() {
   const [showContributeModal, setShowContributeModal] = useState(false);
   const [receipt, setReceipt] = useState<ContributionReceipt | null>(null);
   const [referrerInfo, setReferrerInfo] = useState<{ name: string; code: string } | null>(null);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const [shareUrl, setShareUrl] = useState('');
 
   useEffect(() => {
     if (saleId) {
@@ -156,12 +158,25 @@ export default function SaleDetailPage() {
             </div>
           </div>
           {sale.status === 'active' && (
-            <button
-              onClick={() => setShowContributeModal(true)}
-              className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
-            >
-              Contribute Now
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowContributeModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition-colors flex-1"
+              >
+                Contribute Now
+              </button>
+              <button
+                onClick={() => {
+                  const url = `${window.location.origin}/launchpad/sale/${saleId}${referralCode ? `?ref=${referralCode}` : ''}`;
+                  setShareUrl(url);
+                  setShowShareModal(true);
+                }}
+                className="bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-6 rounded-lg transition-colors"
+                title="Share this sale"
+              >
+                ⇈ Share
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -317,6 +332,65 @@ export default function SaleDetailPage() {
           onClose={() => setShowContributeModal(false)}
           onSuccess={handleContributeSuccess}
         />
+      )}
+
+      {/* Share Modal */}
+      {showShareModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-gray-800 rounded-lg max-w-md w-full p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold">Share Sale</h3>
+              <button
+                onClick={() => setShowShareModal(false)}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✗
+              </button>
+            </div>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2">Share URL</label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={shareUrl}
+                    readOnly
+                    className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700 text-sm"
+                  />
+                  <button
+                    onClick={() => {
+                      navigator.clipboard.writeText(shareUrl);
+                      alert('Link copied to clipboard!');
+                    }}
+                    className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors text-sm"
+                  >
+                    Copy
+                  </button>
+                </div>
+              </div>
+              
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    window.open(`https://twitter.com/intent/tweet?text=Check out this token launch on OpenSVM&url=${encodeURIComponent(shareUrl)}`, '_blank');
+                  }}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Twitter
+                </button>
+                <button
+                  onClick={() => {
+                    window.open(`https://t.me/share/url?url=${encodeURIComponent(shareUrl)}&text=Check out this token launch on OpenSVM`, '_blank');
+                  }}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg transition-colors"
+                >
+                  Telegram
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

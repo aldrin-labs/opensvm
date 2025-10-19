@@ -15,14 +15,32 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
   const handleLocalVerification = async () => {
     setVerifying(true);
     try {
-      // In a real implementation, this would verify the signature client-side
-      // For now, we'll simulate verification
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Real client-side signature verification using TweetNaCl
+      const { sign } = await import('tweetnacl');
+      const bs58 = await import('bs58');
       
-      // Simulate verification logic
-      const isValid = receipt.platform_signature && receipt.platform_pubkey;
+      // Reconstruct the message that was signed
+      const message = JSON.stringify({
+        sale_id: receipt.sale_id,
+        contrib_id: receipt.contrib_id,
+        contributor_pubkey: receipt.contributor_pubkey,
+        amount_lamports: receipt.amount_lamports,
+        timestamp: receipt.timestamp,
+        deposit_address: receipt.deposit_address,
+        referral_code: receipt.referral_code,
+        kol_id: receipt.kol_id,
+      });
+      
+      const messageBytes = new TextEncoder().encode(message);
+      const signatureBytes = bs58.default.decode(receipt.platform_signature);
+      const pubkeyBytes = bs58.default.decode(receipt.platform_pubkey);
+      
+      // Verify the signature
+      const isValid = sign.detached.verify(messageBytes, signatureBytes, pubkeyBytes);
+      
       setVerificationResult(isValid ? 'success' : 'failure');
     } catch (error) {
+      console.error('Verification error:', error);
       setVerificationResult('failure');
     } finally {
       setVerifying(false);

@@ -63,6 +63,24 @@ export default function LaunchpadPage() {
     return `${hours}h remaining`;
   };
 
+  const LoadingSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-6 animate-pulse">
+          <div className="h-4 bg-gray-300 dark:bg-gray-600 rounded w-3/4 mb-4"></div>
+          <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/2 mb-6"></div>
+          <div className="h-2 bg-gray-300 dark:bg-gray-600 rounded w-full mb-2"></div>
+          <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/4 mb-4"></div>
+          <div className="flex justify-between mb-4">
+            <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/3"></div>
+            <div className="h-3 bg-gray-300 dark:bg-gray-600 rounded w-1/4"></div>
+          </div>
+          <div className="h-10 bg-gray-300 dark:bg-gray-600 rounded w-full"></div>
+        </div>
+      ))}
+    </div>
+  );
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
@@ -91,17 +109,7 @@ export default function LaunchpadPage() {
 
       {/* Sales Grid */}
       {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-6 animate-pulse">
-              <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-2"></div>
-              <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-              <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded mb-4"></div>
-              <div className="h-10 bg-gray-200 dark:bg-gray-700 rounded"></div>
-            </div>
-          ))}
-        </div>
+        <LoadingSkeleton />
       ) : sales.length === 0 ? (
         <div className="text-center py-12 bg-gray-50 dark:bg-gray-900 rounded-lg">
           <p className="text-gray-500 dark:text-gray-400 text-lg">
