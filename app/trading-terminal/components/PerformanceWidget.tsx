@@ -41,7 +41,7 @@ export default function PerformanceWidget({ market }: PerformanceWidgetProps) {
           <div className="grid grid-cols-5 gap-1">
             {timeframes.map((tf, idx) => (
               <div
-                key={idx}
+                key={`timeframe-${tf.label}-${idx}`}
                 className="bg-card border border-border rounded p-1.5"
                 data-timeframe={tf.label}
                 data-change={tf.change}
@@ -61,15 +61,15 @@ export default function PerformanceWidget({ market }: PerformanceWidgetProps) {
           <div className="space-y-1">
             {metrics.map((metric, idx) => (
               <div
-                key={idx}
+                key={`metric-${metric.label}-${idx}`}
                 className="bg-card border border-border rounded p-2 flex items-center justify-between"
                 data-metric-name={metric.label}
                 data-metric-value={metric.value}
                 data-metric-trend={metric.trend}
               >
                 <div className="flex items-center gap-1.5">
-                  {metric.trend === 'up' && <TrendingUp size={10} className="text-primary" />}
-                  {metric.trend === 'down' && <TrendingDown size={10} className="text-destructive" />}
+                  {metric.trend === 'up' && <TrendingUp size={10} className="text-primary flex-shrink-0" />}
+                  {metric.trend === 'down' && <TrendingDown size={10} className="text-destructive flex-shrink-0" />}
                   <span className="text-[10px] text-foreground">{metric.label}</span>
                 </div>
                 <span className={`text-xs font-mono font-semibold ${

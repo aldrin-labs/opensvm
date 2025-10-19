@@ -40,16 +40,18 @@ export default function WatchlistWidget({ onMarketChange }: WatchlistWidgetProps
           <tbody>
             {watchlist.map((item, idx) => (
               <tr
-                key={idx}
+                key={`watchlist-${idx}-${item.symbol}`}
                 className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
                 onClick={() => onMarketChange?.(item.symbol)}
                 data-watchlist-symbol={item.symbol}
                 data-watchlist-price={item.price}
                 data-watchlist-change={item.change}
               >
-                <td className="px-2 py-1.5 flex items-center gap-1">
-                  {item.starred && <Star size={10} className="text-primary fill-primary" />}
-                  <span className="font-medium text-foreground">{item.symbol}</span>
+                <td className="px-2 py-1.5">
+                  <div className="flex items-center gap-1">
+                    {item.starred && <Star size={10} className="text-primary fill-primary flex-shrink-0" />}
+                    <span className="font-medium text-foreground">{item.symbol}</span>
+                  </div>
                 </td>
                 <td className="px-2 py-1.5 text-right font-mono text-foreground">
                   ${item.price < 1 ? item.price.toFixed(6) : item.price.toFixed(2)}

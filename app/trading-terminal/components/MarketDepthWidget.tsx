@@ -33,32 +33,32 @@ export default function MarketDepthWidget({ market }: MarketDepthWidgetProps) {
         <h3 className="text-xs font-semibold text-primary">MARKET DEPTH</h3>
       </div>
       <div className="flex-1 overflow-auto p-2">
-        <div className="relative h-40 bg-card rounded border border-border">
+        <div className="relative bg-card rounded border border-border p-2 space-y-0.5">
           {/* Depth visualization */}
           {depthData.map((item, idx) => {
             const bidWidth = (item.cumBid / maxCumSize) * 50;
             const askWidth = (item.cumAsk / maxCumSize) * 50;
             
             return (
-              <div key={idx} className="flex items-center h-4 relative">
+              <div key={`depth-${idx}`} className="flex items-center h-5 relative">
                 {/* Bid side (left, green) */}
                 {item.bidSize > 0 && (
                   <div 
-                    className="absolute left-0 h-full bg-primary/20"
+                    className="absolute left-0 h-full bg-primary/20 rounded-l"
                     style={{ width: `${bidWidth}%` }}
                   />
                 )}
                 {/* Ask side (right, red) */}
                 {item.askSize > 0 && (
                   <div 
-                    className="absolute right-0 h-full bg-destructive/20"
+                    className="absolute right-0 h-full bg-destructive/20 rounded-r"
                     style={{ width: `${askWidth}%` }}
                   />
                 )}
                 {/* Price label */}
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-[10px] font-mono text-foreground/80 bg-background/80 px-1 rounded">
-                    ${item.price}
+                <div className="absolute inset-0 flex items-center justify-center z-10">
+                  <span className="text-[10px] font-mono text-foreground/90 bg-background/90 px-1.5 rounded">
+                    ${item.price.toFixed(2)}
                   </span>
                 </div>
               </div>

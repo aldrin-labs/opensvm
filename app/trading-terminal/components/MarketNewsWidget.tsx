@@ -64,19 +64,19 @@ export default function MarketNewsWidget({ market }: MarketNewsWidgetProps) {
       </div>
       <div className="flex-1 overflow-auto">
         {newsItems.map((item) => {
-          const Icon = item.icon;
+          const IconComponent = item.icon;
           return (
             <div
-              key={item.id}
+              key={`news-${item.id}`}
               className="px-3 py-2 border-b border-border hover:bg-muted cursor-pointer transition-colors"
               data-news-id={item.id}
               data-news-type={item.type}
               data-news-sentiment={item.sentiment}
             >
               <div className="flex items-start gap-2">
-                <Icon 
+                <IconComponent 
                   size={14} 
-                  className={`mt-0.5 ${
+                  className={`mt-0.5 flex-shrink-0 ${
                     item.sentiment === 'bullish' ? 'text-primary' :
                     item.sentiment === 'bearish' ? 'text-destructive' :
                     'text-muted-foreground'
