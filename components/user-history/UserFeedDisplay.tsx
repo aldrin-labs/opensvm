@@ -849,7 +849,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               />
             </div>
 
-            <p className="text-sm">{primaryEvent.content}</p>
+            {/* Event content with clickable link for visit events */}
+            {primaryEvent.eventType === 'visit' && primaryEvent.metadata?.clickableUrl ? (
+              <a 
+                href={primaryEvent.metadata.clickableUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm hover:underline text-primary cursor-pointer block"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {primaryEvent.content} →
+              </a>
+            ) : (
+              <p className="text-sm">{primaryEvent.content}</p>
+            )}
 
             {/* Rich content for transaction events */}
             {primaryEvent.eventType === 'transaction' && primaryEvent.metadata?.amount && (
@@ -917,7 +930,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       </Badge>
                     </div>
 
-                    <p className="text-sm">{event.content}</p>
+                    {/* Event content with clickable link for visit events */}
+                    {event.eventType === 'visit' && event.metadata?.clickableUrl ? (
+                      <a 
+                        href={event.metadata.clickableUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm hover:underline text-primary cursor-pointer block"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {event.content} →
+                      </a>
+                    ) : (
+                      <p className="text-sm">{event.content}</p>
+                    )}
 
                     {/* Rich content for transaction events */}
                     {event.eventType === 'transaction' && event.metadata?.amount && (

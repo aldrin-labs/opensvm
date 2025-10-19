@@ -39,7 +39,7 @@ async function getAuthenticatedUser(_request: NextRequest): Promise<string | nul
   }
 }
 
-// Convert browsing history to feed event format
+// Convert browsing history to feed event format with rich context
 function convertBrowsingHistoryToFeedEvent(entry: UserHistoryEntry): UnifiedFeedItem {
   const pageTypeLabels: Record<string, string> = {
     transaction: 'viewed a transaction',
@@ -54,19 +54,100 @@ function convertBrowsingHistoryToFeedEvent(entry: UserHistoryEntry): UnifiedFeed
     other: 'viewed a page'
   };
 
+  // Extract rich context based on page type
+  let richContent = '';
+  let richMetadata: any = {
+    ...entry.metadata,
+    path: entry.path,
+    pageType: entry.pageType,
+    clickableUrl: entry.path // Make event clickable
+  };
+
+  // Generate engaging, context-rich content based on page type
+  switch (entry.pageType) {
+    case 'transaction':
+      const txId = entry.metadata?.transactionId;
+      richContent = txId 
+        ? `viewed transaction ${txId.substring(0, 8)}... • ${entry.pageTitle}`
+        : `viewed a transaction • ${entry.pageTitle}`;
+      break;
+
+    case 'token':
+      const tokenMint = entry.metadata?.tokenMint;
+      const tokenSymbol = entry.metadata?.tokenSymbol;
+      if (tokenSymbol) {
+        richContent = `checked out $${tokenSymbol} token • ${entry.pageTitle}`;
+      } else if (tokenMint) {
+        richContent = `viewed token ${tokenMint.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `explored a token • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'account':
+      const accountAddr = entry.metadata?.accountAddress;
+      const accountLabel = entry.metadata?.accountLabel;
+      if (accountLabel) {
+        richContent = `viewed ${accountLabel} account • ${entry.pageTitle}`;
+      } else if (accountAddr) {
+        richContent = `checked account ${accountAddr.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `viewed an account • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'program':
+      const programId = entry.metadata?.programId;
+      const programName = entry.metadata?.programName;
+      if (programName) {
+        richContent = `explored ${programName} program • ${entry.pageTitle}`;
+      } else if (programId) {
+        richContent = `viewed program ${programId.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `checked out a program • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'block':
+      const blockNumber = entry.metadata?.blockNumber;
+      richContent = blockNumber 
+        ? `viewed block #${blockNumber.toLocaleString()} • ${entry.pageTitle}`
+        : `viewed a block • ${entry.pageTitle}`;
+      break;
+
+    case 'analytics':
+      richContent = `explored analytics • ${entry.pageTitle}`;
+      break;
+
+    case 'search':
+      const searchQuery = entry.metadata?.searchQuery;
+      richContent = searchQuery 
+        ? `searched for "${searchQuery}" • ${entry.pageTitle}`
+        : `performed a search • ${entry.pageTitle}`;
+      break;
+
+    case 'ai-chat':
+      richContent = `used AI Assistant • ${entry.pageTitle}`;
+      break;
+
+    default:
+      // For generic pages, try to extract meaningful info from title
+      if (entry.pageTitle && entry.pageTitle !== 'OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)') {
+        richContent = `explored ${entry.pageTitle}`;
+      } else {
+        richContent = `browsed ${pageTypeLabels[entry.pageType] || 'a page'}`;
+      }
+  }
+
   return {
     id: entry.id,
     eventType: 'visit', // Special type for browsing history
     timestamp: entry.timestamp,
     userAddress: entry.walletAddress,
-    content: `${pageTypeLabels[entry.pageType] || 'viewed'}: ${entry.pageTitle}`,
+    content: richContent,
     targetAddress: entry.metadata?.accountAddress || entry.metadata?.tokenMint,
     targetId: entry.metadata?.transactionId || entry.metadata?.programId,
-    metadata: {
-      ...entry.metadata,
-      path: entry.path,
-      pageType: entry.pageType
-    },
+    metadata: richMetadata,
     likes: 0,
     hasLiked: false,
     itemType: 'browsing',
