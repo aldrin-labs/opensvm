@@ -73,7 +73,7 @@ const queryCache = new QueryCache();
 class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private activeRequests: number = 0;
-  private readonly MAX_CONCURRENT = 2;
+  private readonly MAX_CONCURRENT = 4;
 
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -921,16 +921,16 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // Adjust max tokens based on query type and complexity (ultra-aggressive optimization)
-        let maxTokens = 1200;
+        // Adjust max tokens based on query type and complexity (balanced optimization)
+        let maxTokens = 1800;
         if (userVibe.isCasual && !userVibe.isTechnical) {
-          maxTokens = 300; // Casual queries need minimal tokens
+          maxTokens = 800; // Casual queries need less tokens
         } else if (complexity.complexity < 3) {
-          maxTokens = 600; // Simple technical queries
+          maxTokens = 1200; // Simple technical queries
         } else if (complexity.complexity < 5) {
-          maxTokens = 900; // Moderate complexity
+          maxTokens = 1500; // Moderate complexity
         }
-        // Default 1200 for complex queries (reduced from 2000)
+        // Default 1800 for complex queries
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
