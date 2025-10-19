@@ -73,7 +73,7 @@ const queryCache = new QueryCache();
 class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private activeRequests: number = 0;
-  private readonly MAX_CONCURRENT = 5;
+  private readonly MAX_CONCURRENT = 2;
 
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -138,21 +138,21 @@ class QueryComplexityAnalyzer {
       }
     }
 
-    // Determine timeout based on complexity score
-    let timeoutMs = 60000; // Base 60 seconds
+    // Determine timeout based on complexity score (increased for reliability)
+    let timeoutMs = 70000; // Base 70 seconds (increased from 60)
     let description = 'simple';
 
     if (complexityScore < 2) {
-      timeoutMs = 45000;
+      timeoutMs = 55000; // 55s (increased from 45s)
       description = 'simple';
     } else if (complexityScore < 4) {
-      timeoutMs = 60000;
+      timeoutMs = 70000; // 70s (increased from 60s)
       description = 'moderate';
     } else if (complexityScore < 7) {
-      timeoutMs = 80000;
+      timeoutMs = 90000; // 90s (increased from 80s)
       description = 'complex';
     } else {
-      timeoutMs = 100000;
+      timeoutMs = 110000; // 110s (increased from 100s)
       description = 'very complex';
     }
 
@@ -921,16 +921,16 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // Adjust max tokens based on query type and complexity (aggressive optimization)
-        let maxTokens = 2000;
+        // Adjust max tokens based on query type and complexity (ultra-aggressive optimization)
+        let maxTokens = 1200;
         if (userVibe.isCasual && !userVibe.isTechnical) {
-          maxTokens = 500; // Casual queries need less tokens
+          maxTokens = 300; // Casual queries need minimal tokens
         } else if (complexity.complexity < 3) {
-          maxTokens = 1000; // Simple technical queries
+          maxTokens = 600; // Simple technical queries
         } else if (complexity.complexity < 5) {
-          maxTokens = 1500; // Moderate complexity
+          maxTokens = 900; // Moderate complexity
         }
-        // Default 2000 for complex queries
+        // Default 1200 for complex queries (reduced from 2000)
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
