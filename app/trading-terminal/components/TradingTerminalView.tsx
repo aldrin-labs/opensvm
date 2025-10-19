@@ -15,7 +15,7 @@ const MarketDepthWidget = dynamic(() => import('./MarketDepthWidget'), { ssr: fa
 const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: false });
 const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
-const { ChevronDown, ChevronUp, Keyboard } = require('lucide-react');
+import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 
 interface TradingTerminalViewProps {}
 

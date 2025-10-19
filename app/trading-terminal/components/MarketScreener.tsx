@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Search, TrendingUp, Users, Eye, Star, Whale, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Search, TrendingUp, Users, Eye, Star, Fish, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface MarketScreenerProps {
   selectedMarket: string;
@@ -48,7 +48,7 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
     { id: 'monitor' as TabType, label: 'Monitor', icon: Eye },
     { id: 'followers' as TabType, label: 'Followers', icon: Star },
     { id: 'kols' as TabType, label: 'KOLs', icon: TrendingUp },
-    { id: 'whales' as TabType, label: 'Whales', icon: Whale },
+    { id: 'whales' as TabType, label: 'Whales', icon: Fish },
   ];
 
   // Generate mock market data
