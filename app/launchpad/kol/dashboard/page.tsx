@@ -157,7 +157,7 @@ export default function KOLDashboardPage() {
                     <div className="text-sm text-gray-600 dark:text-gray-400">Code: <span className="font-mono">{link.code}</span></div>
                   </div>
                   <span className={`px-2 py-1 rounded text-xs ${
-                    link.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    link.status === 'active' ? 'bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200' : 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-200'
                   }`}>
                     {link.status}
                   </span>
