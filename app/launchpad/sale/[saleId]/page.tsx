@@ -32,11 +32,10 @@ export default function SaleDetailPage() {
   const fetchSale = async () => {
     try {
       setLoading(true);
-      const response = await fetch(`/api/launchpad/sales?status=all`);
+      const response = await fetch(`/api/launchpad/sales/${saleId}`);
       const data = await response.json();
       if (data.success) {
-        const foundSale = data.data.find((s: Sale) => s.id === saleId);
-        setSale(foundSale || null);
+        setSale(data.data);
       }
     } catch (error) {
       console.error('Error fetching sale:', error);
