@@ -324,15 +324,15 @@ export async function getFeedEvents(
       });
     }
 
-    // Get events
-    const result = await qdrantClient.search(FEED_EVENTS_COLLECTION, {
-      vector: new Array(384).fill(0),
+    // Get events using scroll (not vector search) since we're filtering by metadata
+    const result = await qdrantClient.scroll(FEED_EVENTS_COLLECTION, {
       filter,
       limit: limit + offset, // Get more to handle offset
-      with_payload: true
+      with_payload: true,
+      with_vector: false
     });
 
-    let events = result.map(point => point.payload as unknown as SocialFeedEvent);
+    let events = result.points.map(point => point.payload as unknown as SocialFeedEvent);
 
     // Sort events
     if (sortOrder === 'popular') {
@@ -364,22 +364,22 @@ export async function toggleEventLike(
   try {
     await initializeFeedEventsCollection();
 
-    // Get the event
-    const result = await qdrantClient.search(FEED_EVENTS_COLLECTION, {
-      vector: new Array(384).fill(0),
+    // Get the event using scroll (not vector search)
+    const result = await qdrantClient.scroll(FEED_EVENTS_COLLECTION, {
       filter: {
         must: [{ key: 'id', match: { value: eventId } }]
       },
       limit: 1,
-      with_payload: true
+      with_payload: true,
+      with_vector: false
     });
 
-    if (result.length === 0) {
+    if (result.points.length === 0) {
       throw new Error('Event not found');
     }
 
-    const event = result[0].payload as any;
-    const pointId = result[0].id;
+    const event = result.points[0].payload as any;
+    const pointId = result.points[0].id;
 
     // Get current likedBy array or create one
     const likedBy = event.metadata?.likedBy || [];
@@ -457,19 +457,19 @@ export async function cleanupOldFeedEvents(maxAgeDays: number = 30): Promise<num
 
     const cutoffTime = Date.now() - (maxAgeDays * 24 * 60 * 60 * 1000);
 
-    const result = await qdrantClient.search(FEED_EVENTS_COLLECTION, {
-      vector: new Array(384).fill(0),
+    const result = await qdrantClient.scroll(FEED_EVENTS_COLLECTION, {
       filter: {
         must: [
           { key: 'timestamp', range: { lt: cutoffTime } }
         ]
       },
       limit: 10000,
-      with_payload: false
+      with_payload: false,
+      with_vector: false
     });
 
-    if (result.length > 0) {
-      const pointIds = result.map(r => r.id as string);
+    if (result.points.length > 0) {
+      const pointIds = result.points.map(r => r.id as string);
       
       await qdrantClient.delete(FEED_EVENTS_COLLECTION, {
         wait: true,
