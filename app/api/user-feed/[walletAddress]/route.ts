@@ -8,12 +8,20 @@ import { getSessionFromCookie } from '@/lib/auth-server';
 import { validateWalletAddress } from '@/lib/user-history-utils';
 import {
   getUserFollowing,
+  getUserHistory,
   checkQdrantHealth
 } from '@/lib/qdrant';
 import { getFeedEvents, SocialFeedEvent } from '@/lib/feed-events';
+import { UserHistoryEntry } from '@/types/user-history';
 
 // Use SocialFeedEvent from feed-events module
 type FeedEvent = SocialFeedEvent;
+
+// Unified feed item that can be either a social event or browsing history
+type UnifiedFeedItem = FeedEvent & {
+  itemType?: 'social' | 'browsing';
+  browsingData?: UserHistoryEntry;
+};
 
 // Get authenticated user from session
 async function getAuthenticatedUser(_request: NextRequest): Promise<string | null> {
@@ -29,6 +37,41 @@ async function getAuthenticatedUser(_request: NextRequest): Promise<string | nul
     console.error('Session validation error:', error);
     return null;
   }
+}
+
+// Convert browsing history to feed event format
+function convertBrowsingHistoryToFeedEvent(entry: UserHistoryEntry): UnifiedFeedItem {
+  const pageTypeLabels: Record<string, string> = {
+    transaction: 'viewed a transaction',
+    account: 'viewed an account',
+    block: 'viewed a block',
+    program: 'viewed a program',
+    token: 'viewed a token',
+    validator: 'viewed a validator',
+    analytics: 'viewed analytics',
+    search: 'performed a search',
+    'ai-chat': 'used AI chat',
+    other: 'viewed a page'
+  };
+
+  return {
+    id: entry.id,
+    eventType: 'visit', // Special type for browsing history
+    timestamp: entry.timestamp,
+    userAddress: entry.walletAddress,
+    content: `${pageTypeLabels[entry.pageType] || 'viewed'}: ${entry.pageTitle}`,
+    targetAddress: entry.metadata?.accountAddress || entry.metadata?.tokenMint,
+    targetId: entry.metadata?.transactionId || entry.metadata?.programId,
+    metadata: {
+      ...entry.metadata,
+      path: entry.path,
+      pageType: entry.pageType
+    },
+    likes: 0,
+    hasLiked: false,
+    itemType: 'browsing',
+    browsingData: entry
+  };
 }
 
 // Get real social feed events (not browsing history)
@@ -84,6 +127,93 @@ async function getRealFeedEvents(
 
   } catch (error) {
     console.error('Error fetching social feed events:', error);
+    return [];
+  }
+}
+
+// Get unified feed with both social events and browsing history
+async function getUnifiedFeed(
+  walletAddress: string,
+  type: 'for-you' | 'following',
+  currentUserWallet: string | null,
+  options: {
+    limit?: number;
+    offset?: number;
+    dateRange?: string;
+    eventTypes?: string[];
+    sortOrder?: string;
+  } = {}
+): Promise<UnifiedFeedItem[]> {
+  const { limit = 10, offset = 0, dateRange = 'all', eventTypes = [], sortOrder = 'newest' } = options;
+
+  try {
+    // Fetch social events
+    const socialEvents = await getRealFeedEvents(walletAddress, type, currentUserWallet, {
+      limit: Math.ceil(limit * 1.5), // Fetch more to mix with browsing history
+      offset,
+      dateRange,
+      eventTypes: eventTypes.filter(t => t !== 'visit'), // Exclude 'visit' from social events
+      sortOrder
+    });
+
+    // Fetch browsing history
+    // For "for-you", get history from ALL users (excluding current user)
+    // For "following", get history from users being followed
+    let browsingHistory: UserHistoryEntry[] = [];
+    
+    if (type === 'for-you') {
+      // Get browsing history from all users
+      const historyResult = await getUserHistory('', { // Empty wallet = all users
+        limit: Math.ceil(limit * 1.5),
+        offset: 0
+      });
+      // Filter out current user's own browsing history
+      browsingHistory = historyResult.history.filter(h => h.walletAddress !== walletAddress);
+    } else if (type === 'following') {
+      // Get following addresses
+      try {
+        const following = await getUserFollowing(walletAddress);
+        const followingAddresses = following.map(f => f.targetAddress);
+        
+        if (followingAddresses.length > 0) {
+          // Fetch history for each followed user and merge
+          const historyPromises = followingAddresses.slice(0, 10).map(addr => 
+            getUserHistory(addr, { limit: 5, offset: 0 })
+          );
+          const historyResults = await Promise.all(historyPromises);
+          browsingHistory = historyResults.flatMap(r => r.history);
+        }
+      } catch (error) {
+        console.error('Error fetching following history:', error);
+      }
+    }
+
+    // Convert browsing history to feed events
+    const browsingEvents = browsingHistory.map(convertBrowsingHistoryToFeedEvent);
+
+    // Merge and mark social events
+    const socialEventsMarked: UnifiedFeedItem[] = socialEvents.map(event => ({
+      ...event,
+      itemType: 'social' as const
+    }));
+
+    // Combine both
+    const allEvents = [...socialEventsMarked, ...browsingEvents];
+
+    // Sort by timestamp
+    allEvents.sort((a, b) => {
+      if (sortOrder === 'popular') {
+        // For popular, prioritize likes then timestamp
+        if (a.likes !== b.likes) return b.likes - a.likes;
+      }
+      return b.timestamp - a.timestamp;
+    });
+
+    // Apply limit and offset
+    return allEvents.slice(0, limit);
+
+  } catch (error) {
+    console.error('Error fetching unified feed:', error);
     return [];
   }
 }
@@ -144,8 +274,8 @@ export async function GET(
     // Calculate offset
     const offset = (page - 1) * limit;
 
-    // Get feed events from real data source
-    const events = await getRealFeedEvents(
+    // Get unified feed with both social events and browsing history
+    const events = await getUnifiedFeed(
       validatedAddress,
       feedType,
       currentUserWallet,

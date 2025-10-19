@@ -31,7 +31,8 @@ import {
   Coins,
   X,
   ChevronDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -691,6 +692,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         return <User className="h-4 w-4 text-purple-500" />;
       case 'profile_update':
         return <User className="h-4 w-4 text-green-500" />;
+      case 'visit':
+        return <Eye className="h-4 w-4 text-cyan-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -1123,7 +1126,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter
-                  {filters.eventTypes.length > 0 && filters.eventTypes.length < 5 && (
+                  {filters.eventTypes.length > 0 && filters.eventTypes.length < 6 && (
                     <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
                       {filters.eventTypes.length}
                     </Badge>
@@ -1137,7 +1140,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 {/* Select All / Deselect All option */}
                 <DropdownMenuItem
                   onClick={() => {
-                    const allTypes = ['transaction', 'follow', 'like', 'profile_update', 'token_transfer'];
+                    const allTypes = ['transaction', 'follow', 'like', 'profile_update', 'token_transfer', 'visit'];
                     const isAllSelected = filters.eventTypes.length === allTypes.length;
                     setFilters(prev => ({
                       ...prev,
@@ -1148,17 +1151,17 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 >
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 border rounded flex items-center justify-center">
-                      {filters.eventTypes.length === 5 && <span>✓</span>}
+                      {filters.eventTypes.length === 6 && <span>✓</span>}
                     </div>
                     <span>
-                      {filters.eventTypes.length === 5 ? 'Deselect All' : 'Select All'}
+                      {filters.eventTypes.length === 6 ? 'Deselect All' : 'Select All'}
                     </span>
                   </div>
                 </DropdownMenuItem>
                 
                 <DropdownMenuSeparator />
                 
-                {['transaction', 'follow', 'like', 'profile_update', 'token_transfer'].map(type => (
+                {['transaction', 'follow', 'like', 'profile_update', 'token_transfer', 'visit'].map(type => (
                   <DropdownMenuItem
                     key={type}
                     onClick={() => {
@@ -1304,7 +1307,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <p className="text-muted-foreground font-medium">
                 {searchQuery
                   ? 'No events match your search criteria.'
-                  : filters.eventTypes.length > 0 && filters.eventTypes.length < 5
+                  : filters.eventTypes.length > 0 && filters.eventTypes.length < 6
                     ? 'No events match the selected filters.'
                     : activeTab === 'for-you'
                       ? systemHealthy 
@@ -1312,12 +1315,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                         : 'Unable to load feed - service unavailable.'
                       : 'No events from users you follow.'}
               </p>
-              {activeTab === 'for-you' && !searchQuery && (filters.eventTypes.length === 0 || filters.eventTypes.length === 5) && systemHealthy && (
+              {activeTab === 'for-you' && !searchQuery && (filters.eventTypes.length === 0 || filters.eventTypes.length === 6) && systemHealthy && (
                 <p className="text-sm text-muted-foreground max-w-xs">
                   Feed events are created when users perform actions like following, liking, or making transactions. Check back later!
                 </p>
               )}
-              {filters.eventTypes.length > 0 && filters.eventTypes.length < 5 && (
+              {filters.eventTypes.length > 0 && filters.eventTypes.length < 6 && (
                 <p className="text-sm text-muted-foreground max-w-xs">
                   Try removing some filters or check back later for matching events.
                 </p>
