@@ -4,7 +4,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSale, createContribution, getReferralLinkByCode, updateSale } from '@/lib/launchpad/database';
+import { createHash } from 'crypto';
+import { getSale, createContribution, getReferralLinkByCode, updateSale, updateContribution as updateContrib } from '@/lib/launchpad/database';
 import { generateId, createContributionReceipt, detectFraud, listContributions } from '@/lib/launchpad/utils';
 import type { ContributeRequest } from '@/types/launchpad';
 
@@ -106,7 +107,7 @@ export async function POST(
     const fraudCheck = detectFraud(contribution, recentContributions);
     
     if (fraudCheck.isFraudulent) {
-      await updateContribution(contribution.contrib_id, {
+      await updateContrib(contribution.contrib_id, {
         fraud_flags: fraudCheck.reasons,
       });
     }
@@ -144,10 +145,5 @@ function generateDepositMemo(saleId: string, contributorPubkey: string): string 
 
 function generateDeviceFingerprint(ip: string, userAgent: string): string {
   // Simple fingerprinting - in production, use a more sophisticated method
-  const crypto = require('crypto');
-  return crypto.createHash('sha256').update(`${ip}${userAgent}`).digest('hex').substring(0, 16);
-}
-
-function updateContribution(arg0: any, arg1: { fraud_flags: string[]; }) {
-  return require('@/lib/launchpad/database').updateContribution(arg0, arg1);
+  return createHash('sha256').update(`${ip}${userAgent}`).digest('hex').substring(0, 16);
 }
