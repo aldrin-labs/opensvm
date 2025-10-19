@@ -292,8 +292,13 @@ export async function getFeedEvents(
       ];
     }
 
-    // Filter by event types
-    if (eventTypes.length > 0) {
+    // Filter by event types (only if not all types are selected)
+    // If all 5 types are selected, treat it the same as no filter
+    const allEventTypes = ['transaction', 'follow', 'like', 'profile_update', 'token_transfer'];
+    const isAllTypesSelected = eventTypes.length === allEventTypes.length && 
+      allEventTypes.every(type => eventTypes.includes(type));
+    
+    if (eventTypes.length > 0 && !isAllTypesSelected) {
       filter.must.push({
         key: 'eventType',
         match: { any: eventTypes }
