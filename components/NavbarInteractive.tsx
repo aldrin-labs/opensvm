@@ -250,6 +250,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               }
             >
               <SimpleDropdownItem asChild>
+                <Link href="/trading-terminal">Trading Terminal</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
                 <Link href="/networks">Networks</Link>
               </SimpleDropdownItem>
               <SimpleDropdownItem asChild>
