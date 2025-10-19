@@ -120,7 +120,13 @@ export async function GET(
     const isHealthy = await checkQdrantHealth();
     if (!isHealthy) {
       console.log('Qdrant not available, returning empty feed');
-      return NextResponse.json({ events: [] });
+      return NextResponse.json({ 
+        events: [],
+        metadata: {
+          systemHealthy: false,
+          message: 'Feed service is temporarily unavailable. Please try again later.'
+        }
+      });
     }
 
 
@@ -152,7 +158,14 @@ export async function GET(
       }
     );
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ 
+      events,
+      metadata: {
+        systemHealthy: true,
+        totalReturned: events.length,
+        hasMore: events.length === limit
+      }
+    });
   } catch (error) {
     console.error('Error fetching user feed:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

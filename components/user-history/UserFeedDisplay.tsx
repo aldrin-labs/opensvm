@@ -61,6 +61,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [systemHealthy, setSystemHealthy] = useState<boolean>(true);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -174,6 +175,17 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
 
       const data = await response.json();
 
+      // Check system health from metadata
+      if (data.metadata && data.metadata.systemHealthy === false) {
+        setSystemHealthy(false);
+        setError(data.metadata.message || 'Feed service is temporarily unavailable');
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      setSystemHealthy(true);
+
       // Update state with new data
       if (reset) {
         setEvents(data.events);
@@ -196,7 +208,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       }
 
       // Check if there are more events to load
-      setHasMore(data.events.length === 10);
+      setHasMore(data.metadata?.hasMore ?? data.events.length === 10);
 
     } catch (err) {
       setError('Failed to load feed events');
@@ -973,7 +985,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-2" />
             <p className="text-destructive font-medium">{error}</p>
             <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              There was a problem loading the feed. This could be due to a network issue or server error.
+              {!systemHealthy 
+                ? 'The feed service is currently unavailable. Our team has been notified and is working on restoring service.'
+                : 'There was a problem loading the feed. This could be due to a network issue or temporary server error.'
+              }
             </p>
             <Button
               onClick={() => fetchFeed(activeTab)}
@@ -983,6 +998,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
+            {!systemHealthy && (
+              <p className="text-xs text-muted-foreground mt-4">
+                Status: Database service unavailable
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1226,9 +1246,16 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 {searchQuery
                   ? 'No events match your search criteria.'
                   : activeTab === 'for-you'
-                    ? 'No events to show at the moment.'
+                    ? systemHealthy 
+                      ? 'No events to show at the moment.'
+                      : 'Unable to load feed - service unavailable.'
                     : 'No events from users you follow.'}
               </p>
+              {activeTab === 'for-you' && !searchQuery && systemHealthy && (
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Feed events are created when users perform actions like following, liking, or making transactions. Check back later!
+                </p>
+              )}
               {activeTab === 'following' && !searchQuery && (
                 <p className="text-sm text-muted-foreground max-w-xs">
                   Follow more users to see their activity here.
