@@ -275,4 +275,4 @@ See main project LICENSE file.
 
 ---
 
-**Built with discipline in security, transparency, and user experience.** 🚀
+**Built with discipline in security, transparency, and user experience.**

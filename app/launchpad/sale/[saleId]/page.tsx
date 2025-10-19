@@ -144,27 +144,27 @@ export default function SaleDetailPage() {
             <h3 className="text-xl font-bold mb-4">Token Distribution</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">💧 Liquidity Pool</span>
+                <span className="text-gray-600 dark:text-gray-400">◉ Liquidity Pool</span>
                 <span className="font-medium">{sale.liquidity_percent}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">🏛️ DAO Lock</span>
+                <span className="text-gray-600 dark:text-gray-400">▣ DAO Lock</span>
                 <span className="font-medium">{sale.dao_lock_percent}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">⏰ Vested ({sale.vesting_duration_months} months)</span>
+                <span className="text-gray-600 dark:text-gray-400">⧖ Vested ({sale.vesting_duration_months} months)</span>
                 <span className="font-medium">{sale.vesting_percent}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">🎯 KOL Rewards</span>
+                <span className="text-gray-600 dark:text-gray-400">◈ KOL Rewards</span>
                 <span className="font-medium">{sale.kol_pool_percent}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">📊 Volume Rewards</span>
+                <span className="text-gray-600 dark:text-gray-400">▦ Volume Rewards</span>
                 <span className="font-medium">{sale.volume_rewards_percent}%</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="text-gray-600 dark:text-gray-400">🎁 Airdrop (SVMAI holders)</span>
+                <span className="text-gray-600 dark:text-gray-400">▨ Airdrop (SVMAI holders)</span>
                 <span className="font-medium">{sale.airdrop_percent}%</span>
               </div>
             </div>

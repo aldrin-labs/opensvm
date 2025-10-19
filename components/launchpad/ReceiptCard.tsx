@@ -54,7 +54,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
     switch (status) {
       case 'confirmed': return '✓';
       case 'settled': return '✓✓';
-      case 'pending': return '⏳';
+      case 'pending': return '⧗';
       case 'failed': return '✗';
       default: return '○';
     }
@@ -86,7 +86,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
               onClick={() => copyToClipboard(receipt.contrib_id, 'Contribution ID')}
               className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
             >
-              {copied ? '✓' : '📋'}
+              {copied ? '✓' : '▣'}
             </button>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
               onClick={() => copyToClipboard(receipt.deposit_address, 'Deposit Address')}
               className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-xs"
             >
-              📋
+              ▣
             </button>
           </div>
         </div>
@@ -166,13 +166,13 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
             disabled={verifying}
             className="flex-1 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
           >
-            {verifying ? 'Verifying...' : '🔍 Verify Locally'}
+            {verifying ? 'Verifying...' : '◉ Verify Locally'}
           </button>
           <button
             onClick={() => window.open(receipt.verify_url, '_blank')}
             className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors text-sm"
           >
-            🔗 Verify Online
+            ⎋ Verify Online
           </button>
         </div>
 
@@ -195,7 +195,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
         <div className="text-xs text-gray-500 dark:text-gray-400 space-y-1">
           {receipt.status === 'pending' && (
             <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 p-3 rounded">
-              ⏳ Your contribution is pending. Please transfer {(receipt.amount_lamports / 1_000_000_000).toFixed(6)} SOL 
+              ⧗ Your contribution is pending. Please transfer {(receipt.amount_lamports / 1_000_000_000).toFixed(6)} SOL 
               to the deposit address above with the memo "{receipt.deposit_memo}".
             </div>
           )}
@@ -217,7 +217,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
             onClick={() => window.print()}
             className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
           >
-            🖨️ Print Receipt
+            ⎙ Print Receipt
           </button>
           <button
             onClick={() => {
@@ -231,7 +231,7 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
             }}
             className="flex-1 bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 font-medium py-2 px-4 rounded-lg transition-colors text-sm"
           >
-            💾 Download JSON
+            ⇓ Download JSON
           </button>
         </div>
       </div>
