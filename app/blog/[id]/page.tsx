@@ -1,6 +1,9 @@
 import Link from 'next/link';
 import { ArrowLeft, Calendar, User, Share2, Clock } from 'lucide-react';
 import { notFound } from 'next/navigation';
+import { readFileSync } from 'fs';
+import { join } from 'path';
+import { marked } from 'marked';
 
 interface BlogPost {
   id: string;
@@ -133,11 +136,22 @@ export async function generateMetadata({ params }: { params: { id: string } }) {
   };
 }
 
-export default function BlogPostPage({ params }: { params: { id: string } }) {
+export default async function BlogPostPage({ params }: { params: { id: string } }) {
   const post = blogPosts[params.id];
 
   if (!post) {
     notFound();
+  }
+
+  // Load markdown content
+  let htmlContent = '';
+  try {
+    const markdownPath = join(process.cwd(), 'public/blog', `${params.id}.md`);
+    const markdownContent = readFileSync(markdownPath, 'utf-8');
+    htmlContent = await marked(markdownContent);
+  } catch (error) {
+    console.error(`Failed to load markdown for post ${params.id}:`, error);
+    htmlContent = '<p>Content not available</p>';
   }
 
   return (
@@ -204,42 +218,23 @@ export default function BlogPostPage({ params }: { params: { id: string } }) {
 
           <hr className="my-8" />
 
-          {/* Content */}
-          <div className="space-y-6 mb-12 text-foreground leading-relaxed">
-            <p className="text-lg font-semibold">{post.excerpt}</p>
-
-            <div className="mt-8 p-8 bg-gradient-to-br from-primary/5 to-blue-600/5 rounded-lg border space-y-4">
-              <h2 className="text-2xl font-bold">In-Depth Coverage</h2>
-              <p className="text-muted-foreground">
-                This comprehensive blog post explores important insights about <strong>{post.category.toLowerCase()}</strong> in the Solana ecosystem.
-              </p>
-
-              <div className="space-y-3 mt-4">
-                <p>Topics covered include:</p>
-                <ul className="list-disc list-inside space-y-2 text-muted-foreground">
-                  {post.tags.map((tag, idx) => (
-                    <li key={idx} className="capitalize">{tag} related insights and analysis</li>
-                  ))}
-                </ul>
-              </div>
-
-              <p className="text-sm italic pt-4 border-t border-border">
-                Written by {post.author} on {new Date(post.date).toLocaleDateString('en-US', {
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })} • {post.readTime}
-              </p>
-            </div>
-
-            <div className="prose max-w-none">
-              <p className="text-muted-foreground">
-                This article provides detailed analysis and practical guidance on {post.title.toLowerCase()}.
-                Whether you\'re a developer, analyst, or blockchain enthusiast, you\'ll find valuable insights
-                and actionable information within this comprehensive guide.
-              </p>
-            </div>
-          </div>
+          {/* Content - Rendered from Markdown */}
+          <div
+            className="prose prose-invert max-w-none mb-12
+              prose-headings:mt-8 prose-headings:mb-4
+              prose-h1:text-3xl prose-h1:font-bold
+              prose-h2:text-2xl prose-h2:font-bold
+              prose-h3:text-xl prose-h3:font-bold
+              prose-p:text-foreground prose-p:leading-relaxed
+              prose-a:text-primary prose-a:hover:underline
+              prose-code:bg-muted prose-code:px-2 prose-code:py-1 prose-code:rounded
+              prose-pre:bg-muted prose-pre:p-4 prose-pre:rounded prose-pre:overflow-auto
+              prose-ul:ml-4 prose-ol:ml-4
+              prose-li:text-foreground
+              prose-strong:font-bold prose-strong:text-foreground
+              prose-blockquote:border-l-4 prose-blockquote:border-primary prose-blockquote:pl-4 prose-blockquote:italic"
+            dangerouslySetInnerHTML={{ __html: htmlContent }}
+          />
 
           <hr className="my-8" />
 
