@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Settings management for the application
  * Handles theme, font, RPC endpoint, and other user preferences

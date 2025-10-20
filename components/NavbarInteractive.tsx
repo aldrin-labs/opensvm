@@ -261,6 +261,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               <SimpleDropdownItem asChild>
                 <Link href="/validators">Validators</Link>
               </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/chat">Chat</Link>
+              </SimpleDropdownItem>
             </SimpleDropdown>
 
             {/* Tokens Dropdown */}
@@ -536,6 +539,13 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 onClick={() => { setIsMobileMenuOpen(false); router.push('/programs'); }}
               >
                 Programs
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground"
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/chat'); }}
+              >
+                Chat
               </Button>
             </div>
 

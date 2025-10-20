@@ -14,6 +14,7 @@ import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { RecentBlocks } from '@/components/RecentBlocks';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import NetworkResponseChart from '@/components/NetworkResponseChart';
+import { RecentChats } from '@/components/RecentChats';
 import { SearchSuggestions } from '@/components/search/SearchSuggestions';
 import { SearchSuggestion } from '@/components/search/types';
 import { debounce } from '@/lib/utils';
@@ -359,7 +360,7 @@ export default function HomePage() {
           </div>
 
           {/* Recent Activity */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="bg-background border border-border rounded-lg p-6">
               <RecentBlocks
                 blocks={blocks}
@@ -370,6 +371,11 @@ export default function HomePage() {
             <div className="bg-background border border-border rounded-lg p-6">
               <TransactionsInBlock block={selectedBlock} />
             </div>
+          </div>
+
+          {/* Recent Messages */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <RecentChats isLoading={isLoading} />
           </div>
 
           {/* AI Assistant Button */}

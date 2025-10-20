@@ -2,7 +2,6 @@ export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
 import TokenDetails from '@/components/TokenDetails';
-import { useSettings } from '@/lib/settings';
 
 interface PageProps {
   params: Promise<{
