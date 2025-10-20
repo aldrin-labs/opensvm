@@ -35,7 +35,7 @@ export default function CreateLaunchpadPage() {
     
     // Airdrop
     airdrop_percent: '1',
-    airdrop_snapsh holders: '100',
+    airdrop_snapshot_holders: '100',
     
     // Creator Info
     creator_wallet: '',
