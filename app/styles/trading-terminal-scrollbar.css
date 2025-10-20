@@ -1,0 +1,175 @@
+/* Trading Terminal - Thin Scrollbar Styles */
+
+/* Apply to trading terminal specifically */
+.trading-terminal ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.trading-terminal ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+  border-left: 1px solid hsl(var(--border));
+}
+
+.trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 0px;
+  border: 1px solid hsl(var(--border));
+  transition: background-color 0.2s ease;
+}
+
+.trading-terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+.trading-terminal ::-webkit-scrollbar-thumb:active {
+  background: hsl(var(--muted-foreground) / 0.7);
+}
+
+.trading-terminal ::-webkit-scrollbar-corner {
+  background: hsl(var(--background));
+}
+
+/* Firefox scrollbar styling */
+.trading-terminal {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--muted-foreground) / 0.3) hsl(var(--background));
+}
+
+/* Specific scrollbar areas within trading terminal */
+.trading-terminal .overflow-y-auto::-webkit-scrollbar,
+.trading-terminal .overflow-x-auto::-webkit-scrollbar,
+.trading-terminal .overflow-auto::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.trading-terminal .overflow-y-auto::-webkit-scrollbar-track,
+.trading-terminal .overflow-x-auto::-webkit-scrollbar-track,
+.trading-terminal .overflow-auto::-webkit-scrollbar-track {
+  background: hsl(var(--card));
+  border-left: 1px solid hsl(var(--border));
+}
+
+.trading-terminal .overflow-y-auto::-webkit-scrollbar-thumb,
+.trading-terminal .overflow-x-auto::-webkit-scrollbar-thumb,
+.trading-terminal .overflow-auto::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 0px;
+  border: 1px solid hsl(var(--border));
+}
+
+.trading-terminal .overflow-y-auto::-webkit-scrollbar-thumb:hover,
+.trading-terminal .overflow-x-auto::-webkit-scrollbar-thumb:hover,
+.trading-terminal .overflow-auto::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* AI Chat Widget Scrollbar */
+.ai-chat-trading-widget ::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ai-chat-trading-widget ::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+  border-left: 1px solid hsl(var(--border));
+}
+
+.ai-chat-trading-widget ::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.3);
+  border-radius: 0px;
+  border: 1px solid hsl(var(--border));
+}
+
+.ai-chat-trading-widget ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.5);
+}
+
+/* Order Book & Trade History - Even thinner */
+.order-book ::-webkit-scrollbar,
+.trade-history ::-webkit-scrollbar,
+.positions-panel ::-webkit-scrollbar {
+  width: 6px;
+}
+
+.order-book ::-webkit-scrollbar-track,
+.trade-history ::-webkit-scrollbar-track,
+.positions-panel ::-webkit-scrollbar-track {
+  background: hsl(var(--card));
+}
+
+.order-book ::-webkit-scrollbar-thumb,
+.trade-history ::-webkit-scrollbar-thumb,
+.positions-panel ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border-radius: 0px;
+}
+
+.order-book ::-webkit-scrollbar-thumb:hover,
+.trade-history ::-webkit-scrollbar-thumb:hover,
+.positions-panel ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.4);
+}
+
+/* Theme-specific adjustments */
+.theme-high-contrast .trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.8);
+  border: 2px solid hsl(var(--primary));
+}
+
+.theme-high-contrast .trading-terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary));
+}
+
+.theme-dos .trading-terminal ::-webkit-scrollbar-thumb,
+.theme-dos-blue .trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.5);
+  border: 1px solid hsl(var(--primary));
+  border-radius: 0px;
+}
+
+.theme-cyberpunk .trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary) / 0.4);
+  border: 1px solid hsl(var(--primary));
+  box-shadow: 0 0 4px hsl(var(--primary) / 0.5);
+}
+
+.theme-cyberpunk .trading-terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
+  box-shadow: 0 0 8px hsl(var(--primary) / 0.8);
+}
+
+/* Paper theme - more subtle */
+.theme-paper .trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.2);
+  border: 1px solid hsl(var(--border));
+}
+
+.theme-paper .trading-terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.3);
+}
+
+/* Solarized theme */
+.theme-solarized .trading-terminal ::-webkit-scrollbar-thumb {
+  background: hsl(var(--accent) / 0.3);
+  border: 1px solid hsl(var(--accent) / 0.5);
+}
+
+.theme-solarized .trading-terminal ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--accent) / 0.5);
+}
+
+/* Smooth scrolling for trading terminal */
+.trading-terminal {
+  scroll-behavior: smooth;
+}
+
+/* Hide scrollbar when not hovering (optional - for cleaner look) */
+.trading-terminal .auto-hide-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  transition: width 0.3s ease;
+}
+
+.trading-terminal .auto-hide-scrollbar:hover::-webkit-scrollbar {
+  width: 8px;
+}

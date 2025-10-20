@@ -15,9 +15,8 @@ const MarketDepthWidget = dynamic(() => import('./MarketDepthWidget'), { ssr: fa
 const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: false });
 const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
+const AIChatTradingWidget = dynamic(() => import('./AIChatTradingWidget'), { ssr: false });
 import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
-
-interface TradingTerminalViewProps {}
 
 interface Section {
   id: string;
@@ -26,7 +25,7 @@ interface Section {
   isMaximized: boolean;
 }
 
-type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions' | 'watchlist' | 'performance' | 'depth' | 'news';
+type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions' | 'watchlist' | 'performance' | 'depth' | 'news' | 'aichat';
 
 export default function TradingTerminalView() {
   const [selectedMarket, setSelectedMarket] = useState('SOL/USDC');
@@ -35,6 +34,8 @@ export default function TradingTerminalView() {
   const [screenerExpanded, setScreenerExpanded] = useState(false);
   const [maximizedTile, setMaximizedTile] = useState<TileId | null>(null);
   const [focusedTile, setFocusedTile] = useState<TileId | null>(null);
+  // Mock wallet state - TODO: integrate with actual Solana wallet
+  const [walletConnected] = useState(false);
   const [sections, setSections] = useState<Section[]>([
     { id: 'chart', name: 'Chart', isExpanded: true, isMaximized: false },
     { id: 'watchlist', name: 'Watchlist', isExpanded: true, isMaximized: false },
@@ -95,6 +96,12 @@ export default function TradingTerminalView() {
       if (e.key === 's' || e.key === 'S') {
         e.preventDefault();
         setScreenerExpanded(!screenerExpanded);
+      }
+
+      // Toggle AI Chat with 'C' key
+      if (e.key === 'c' || e.key === 'C') {
+        e.preventDefault();
+        toggleMaximize('aichat');
       }
 
       // Focus navigation with arrow keys
@@ -160,13 +167,36 @@ export default function TradingTerminalView() {
     }
   };
 
+  // Handle trade execution from AI chat
+  const handleTradeExecute = (command: {
+    action: 'buy' | 'sell';
+    amount: number;
+    token: string;
+    orderType: 'market' | 'limit';
+    price?: number;
+    estimatedValue?: number;
+  }) => {
+    console.log('AI Trade Execution:', command);
+    
+    // TODO: Integrate with actual Solana wallet and DEX
+    // This is a placeholder for the actual trade execution logic
+    // Would involve:
+    // 1. Wallet signature request
+    // 2. DEX smart contract interaction
+    // 3. Transaction confirmation
+    // 4. Update positions and trade history
+    
+    // For now, just log the trade
+    alert(`Trade executed: ${command.action.toUpperCase()} ${command.amount} ${command.token} at ${command.orderType} price`);
+  };
+
   const isSectionExpanded = (sectionId: string) => {
     return sections.find(s => s.id === sectionId)?.isExpanded ?? true;
   };
 
   if (isLoading) {
     return (
-      <div className="trading-terminal h-screen flex items-center justify-center bg-background text-foreground">
+      <div className="trading-terminal h-full w-full flex items-center justify-center bg-background text-foreground">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
           <p className="mt-4 text-muted-foreground">Loading Trading Terminal...</p>
@@ -177,16 +207,16 @@ export default function TradingTerminalView() {
 
   return (
     <div 
-      className="trading-terminal h-screen flex flex-col bg-background text-foreground overflow-hidden" 
+      className="trading-terminal h-full w-full flex flex-col bg-background text-foreground overflow-hidden" 
       role="main" 
       aria-label="Trading Terminal"
       data-ai-app="trading-terminal"
       data-ai-version="1.0"
-      data-ai-features="charts,orderbook,trading,screener,widgets,keyboard-navigation"
+      data-ai-features="charts,orderbook,trading,screener,widgets,keyboard-navigation,ai-chat-assistant"
     >
       {/* Compact Header */}
       <header 
-        className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border h-12 z-10"
+        className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border flex-shrink-0 h-12 z-10"
         data-ai-section="header"
         data-ai-current-market={selectedMarket}
       >
@@ -194,11 +224,11 @@ export default function TradingTerminalView() {
         <MarketStats market={selectedMarket} />
       </header>
 
-      {/* Main Terminal Layout - Fixed Height with Maximized Tile Support */}
-      <div className="trading-content flex-1 flex overflow-hidden relative" style={{ height: 'calc(100vh - 3rem)' }}>
+      {/* Main Terminal Layout - Flexible Height with Maximized Tile Support */}
+      <div className="trading-content flex-1 flex overflow-hidden relative min-h-0">
         {/* Maximized Tile Overlay */}
         {maximizedTile && (
-          <div className="absolute inset-0 z-50 bg-background flex flex-col">
+          <div className="absolute inset-0 z-50 bg-background flex flex-col overflow-hidden">
             {maximizedTile === 'screener' && (
               <div className="flex-1 flex" data-tile-id="screener">
                 <MarketScreener
@@ -369,6 +399,27 @@ export default function TradingTerminalView() {
                 </div>
               </div>
             )}
+            {maximizedTile === 'aichat' && (
+              <div className="flex-1 flex flex-col" data-tile-id="aichat">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">AI TRADING ASSISTANT</span>
+                  <button
+                    onClick={() => setMaximizedTile(null)}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc or C)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-hidden">
+                  <AIChatTradingWidget 
+                    market={selectedMarket} 
+                    walletConnected={walletConnected}
+                    onTradeExecute={handleTradeExecute}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -394,7 +445,7 @@ export default function TradingTerminalView() {
             {/* Center Panel - Chart and Widgets Grid */}
             <div className="chart-panel flex-1 flex flex-col border-r border-border min-w-0 overflow-hidden">
               {/* Top Row: Chart (60% height) + Watchlist + Performance */}
-              <div className="flex border-b border-border" style={{ height: '60%' }}>
+              <div className="flex border-b border-border flex-1 min-h-0" style={{ flexBasis: '60%' }}>
                 {/* Chart Section */}
                 <section 
                   data-tile-id="chart"
@@ -511,11 +562,11 @@ export default function TradingTerminalView() {
                 </div>
               </div>
 
-              {/* Trading Controls - Fixed Height */}
+              {/* Trading Controls - Flexible Height */}
               <div 
                 data-tile-id="controls"
-                className={`trading-controls-section bg-background border-b border-border overflow-auto ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                style={{ height: '200px' }}
+                className={`trading-controls-section bg-background border-b border-border overflow-auto flex-shrink-0 ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                style={{ flexBasis: '200px', minHeight: '150px', maxHeight: '250px' }}
                 data-ai-widget="trading-controls"
                 data-ai-market={selectedMarket}
               >
@@ -533,8 +584,8 @@ export default function TradingTerminalView() {
               </div>
             </div>
 
-            {/* Right Panel - Order Book, Depth, Trades, News, and Positions - Fixed Width */}
-            <aside className="right-panel w-80 flex flex-col bg-background overflow-hidden" aria-label="Market Data" data-ai-section="market-data-panel">
+            {/* Right Panel - Order Book, Depth, Trades, News, and Positions - Flexible Width */}
+            <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0" style={{ width: 'clamp(280px, 20vw, 400px)' }} aria-label="Market Data" data-ai-section="market-data-panel">
               {/* Order Book Section */}
               <section 
                 data-tile-id="orderbook"
@@ -753,6 +804,20 @@ export default function TradingTerminalView() {
               </div>
             )}
           </section>
+
+          {/* AI Chat Trading Assistant - Always at bottom */}
+          <div 
+            data-tile-id="aichat"
+            className={`ai-chat-section ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''}`}
+            data-ai-widget="ai-chat-trading"
+            data-ai-market={selectedMarket}
+          >
+            <AIChatTradingWidget 
+              market={selectedMarket} 
+              walletConnected={walletConnected}
+              onTradeExecute={handleTradeExecute}
+            />
+          </div>
         </aside>
       </>
     )}
@@ -825,6 +890,10 @@ export default function TradingTerminalView() {
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Toggle Screener</span>
                 <kbd className="px-2 py-1 bg-background border border-border rounded font-mono text-primary text-xs">S</kbd>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Toggle AI Chat</span>
+                <kbd className="px-2 py-1 bg-background border border-border rounded font-mono text-primary text-xs">C</kbd>
               </div>
               
               <div className="col-span-2 text-xs font-semibold text-primary uppercase mt-3 mb-2">General</div>
