@@ -7,6 +7,9 @@ agent_notes/vtable_study
 # Generated reports and logs
 reports-ai/
 
+# Review and documentation files
+.reviews/
+
 # dependencies
 /node_modules
 /.pnp

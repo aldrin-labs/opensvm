@@ -1,1 +1,0 @@
-## Task: Use Search Functionality Through UI\n\n- [x] Launch the application at http://localhost:3000.\n- [ ] Locate and interact with the search bar.\n- [ ] Enter a sample search query (e.g., 'solana transactions').\n- [ ] Observe and analyze the search results.\n- [ ] Close the browser.
