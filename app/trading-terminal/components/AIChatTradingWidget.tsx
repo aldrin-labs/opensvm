@@ -25,12 +25,28 @@ interface AIChatTradingWidgetProps {
   market: string;
   onTradeExecute?: (command: TradeCommand) => void;
   walletConnected?: boolean;
+  marketData?: {
+    stats: {
+      price: number;
+      change24h: number;
+      volume24h: number;
+      high24h: number;
+      low24h: number;
+    };
+    orderBook?: {
+      bids: Array<{ price: number; amount: number }>;
+      asks: Array<{ price: number; amount: number }>;
+      spreadPercent?: number;
+    };
+    recentTrades?: Array<{ price: number; amount: number; side: 'buy' | 'sell'; timestamp: number }>;
+  };
 }
 
 export default function AIChatTradingWidget({ 
   market, 
   onTradeExecute,
-  walletConnected = false 
+  walletConnected = false,
+  marketData
 }: AIChatTradingWidgetProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -99,6 +115,26 @@ export default function AIChatTradingWidget({
           market,
           walletConnected,
           chatHistory: messages.slice(-5), // Send last 5 messages for context
+          marketData: marketData ? {
+            price: marketData.stats.price,
+            change24h: marketData.stats.change24h,
+            volume24h: marketData.stats.volume24h,
+            high24h: marketData.stats.high24h,
+            low24h: marketData.stats.low24h,
+            orderBook: marketData.orderBook ? {
+              topBid: marketData.orderBook.bids[0],
+              topAsk: marketData.orderBook.asks[0],
+              spread: marketData.orderBook.spreadPercent,
+              bidDepth: marketData.orderBook.bids.slice(0, 5),
+              askDepth: marketData.orderBook.asks.slice(0, 5),
+            } : undefined,
+            recentTrades: marketData.recentTrades?.slice(0, 10).map(trade => ({
+              price: trade.price,
+              amount: trade.amount,
+              side: trade.side,
+              timestamp: trade.timestamp,
+            })),
+          } : undefined,
         }),
       });
 

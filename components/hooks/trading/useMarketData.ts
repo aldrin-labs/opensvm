@@ -67,6 +67,9 @@ export interface MarketData {
   // Enhanced state management
   loadingState: LoadingState;
   errorState: ErrorState;
+  // Real data indicators
+  isRealData?: boolean;
+  dataSource?: string;
 }
 
 export interface UseMarketDataReturn extends MarketData {
@@ -74,91 +77,12 @@ export interface UseMarketDataReturn extends MarketData {
   refresh: () => void;
   retry: () => void;
 }
-
-/**
- * Mock market data generator for development.
- * TODO: Replace with actual WebSocket connection to DEX.
- */
-const generateMockMarketData = (_market: string): MarketData => {
-  const basePrice = 150 + Math.random() * 50; // $150-200 range for SOL
-  
-  // Generate order book
-  const generateOrderBook = (): OrderBook => {
-    const bids: OrderBookEntry[] = [];
-    const asks: OrderBookEntry[] = [];
-    
-    for (let i = 0; i < 10; i++) {
-      const bidPrice = basePrice - (i * 0.1);
-      const askPrice = basePrice + (i * 0.1);
-      const amount = Math.random() * 100;
-      
-      bids.push({
-        price: bidPrice,
-        amount,
-        total: bidPrice * amount,
-      });
-      
-      asks.push({
-        price: askPrice,
-        amount,
-        total: askPrice * amount,
-      });
-    }
-    
-    const spread = asks[0].price - bids[0].price;
-    const spreadPercent = (spread / bids[0].price) * 100;
-    
-    return { bids, asks, spread, spreadPercent };
-  };
-  
-  // Generate recent trades
-  const generateTrades = (): Trade[] => {
-    const trades: Trade[] = [];
-    const now = Date.now();
-    
-    for (let i = 0; i < 20; i++) {
-      trades.push({
-        id: `trade-${i}`,
-        price: basePrice + (Math.random() - 0.5) * 2,
-        amount: Math.random() * 10,
-        side: Math.random() > 0.5 ? 'buy' : 'sell',
-        timestamp: now - i * 5000,
-      });
-    }
-    
-    return trades;
-  };
-  
-  return {
-    stats: {
-      price: basePrice,
-      change24h: (Math.random() - 0.5) * 10,
-      volume24h: Math.random() * 1000000,
-      high24h: basePrice + Math.random() * 10,
-      low24h: basePrice - Math.random() * 10,
-      lastUpdate: Date.now(),
-    },
-    orderBook: generateOrderBook(),
-    recentTrades: generateTrades(),
-    isConnected: true,
-    isLoading: false,
-    error: null,
-    loadingState: {
-      isLoading: false,
-      isRefreshing: false,
-    },
-    errorState: {
-      hasError: false,
-      error: null,
-    },
-  };
-};
-
 /**
  * Hook for managing real-time market data.
+ * Now uses real API data from Jupiter/CoinGecko with fallback to mock data.
  * 
  * @param market - Market pair (e.g., 'SOL/USDC')
- * @param updateInterval - Update interval in milliseconds (default: 3000)
+ * @param updateInterval - Update interval in milliseconds (default: 10000)
  * @returns Market data and control functions
  * 
  * @example
@@ -175,7 +99,7 @@ const generateMockMarketData = (_market: string): MarketData => {
  */
 export const useMarketData = (
   market: string,
-  updateInterval: number = 3000
+  updateInterval: number = 10000 // 10 seconds for real API calls
 ): UseMarketDataReturn => {
   const { addNotification } = useNotifications();
   const [marketData, setMarketData] = useState<MarketData>({
@@ -212,17 +136,62 @@ export const useMarketData = (
   const mountedRef = useRef(true);
 
   /**
-   * Fetch and update market data
+   * Fetch and update market data from real API
    */
-  const fetchMarketData = useCallback(() => {
+  const fetchMarketData = useCallback(async () => {
     if (!mountedRef.current) return;
     
     try {
-      // TODO: Replace with actual WebSocket connection
-      const data = generateMockMarketData(market);
+      // Fetch from real market data API
+      const response = await fetch(`/api/trading/market-data?market=${encodeURIComponent(market)}`);
+      
+      if (!response.ok) {
+        throw new Error(`API returned ${response.status}`);
+      }
+      
+      const apiData = await response.json();
       
       if (mountedRef.current) {
-        setMarketData(data);
+        setMarketData({
+          stats: {
+            price: apiData.price,
+            change24h: apiData.change24h,
+            volume24h: apiData.volume24h,
+            high24h: apiData.high24h,
+            low24h: apiData.low24h,
+            lastUpdate: apiData.lastUpdate,
+          },
+          orderBook: apiData.orderBook || {
+            bids: [],
+            asks: [],
+            spread: 0,
+            spreadPercent: 0,
+          },
+          recentTrades: apiData.recentTrades || [],
+          isConnected: true,
+          isLoading: false,
+          error: null,
+          loadingState: {
+            isLoading: false,
+            isRefreshing: false,
+          },
+          errorState: {
+            hasError: false,
+            error: null,
+          },
+          isRealData: apiData.isRealData,
+          dataSource: apiData.dataSource,
+        });
+        
+        // Show notification if using mock data
+        if (!apiData.isRealData && addNotification) {
+          addNotification({
+            type: 'warning',
+            title: 'Development Mode',
+            message: 'Using mock market data. Real API unavailable.',
+            duration: 5000,
+          });
+        }
       }
     } catch (error) {
       if (mountedRef.current) {

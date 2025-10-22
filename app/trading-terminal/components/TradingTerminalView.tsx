@@ -104,7 +104,27 @@ export default function TradingTerminalView() {
         data-ai-section="header"
         data-ai-current-market={selectedMarket}
       >
-        <h1 className="text-base font-bold text-primary">Trading Terminal</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-base font-bold text-primary">Trading Terminal</h1>
+          {/* Data Source Indicator */}
+          {marketData.dataSource && (
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs border"
+                 style={{
+                   backgroundColor: marketData.isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                   borderColor: marketData.isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
+                   color: marketData.isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                 }}
+                 title={marketData.dataSource}>
+              <span className="w-1.5 h-1.5 rounded-full"
+                    style={{
+                      backgroundColor: marketData.isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                    }}></span>
+              <span className="font-medium">
+                {marketData.isRealData ? 'Live Data' : 'Demo Mode'}
+              </span>
+            </div>
+          )}
+        </div>
         <MarketStats market={selectedMarket} />
       </header>
 
@@ -300,6 +320,7 @@ export default function TradingTerminalView() {
                     market={selectedMarket} 
                     walletConnected={walletConnected}
                     onTradeExecute={handleTradeExecute}
+                    marketData={marketData}
                   />
                 </div>
               </div>
@@ -698,6 +719,7 @@ export default function TradingTerminalView() {
                   market={selectedMarket} 
                   walletConnected={walletConnected}
                   onTradeExecute={handleTradeExecute}
+                  marketData={marketData}
                 />
               </div>
             )}

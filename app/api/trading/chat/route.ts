@@ -68,7 +68,7 @@ function parseTradingCommand(text: string, market: string): TradeCommand | null 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { message, market, walletConnected, chatHistory } = body;
+    const { message, market, walletConnected, chatHistory, marketData } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -123,7 +123,7 @@ export async function POST(req: NextRequest) {
     }));
 
     // System prompt for trading assistant
-    const systemPrompt = `You are an expert AI trading assistant for a Solana DEX trading terminal. Your capabilities include:
+    let systemPrompt = `You are an expert AI trading assistant for a Solana DEX trading terminal. Your capabilities include:
 
 1. **Market Analysis**: Provide insights on price trends, volume, and market conditions
 2. **Trading Advice**: Suggest strategies, explain order types, and discuss risk management
@@ -132,11 +132,51 @@ export async function POST(req: NextRequest) {
 
 Current Market: ${market}
 Wallet Status: ${walletConnected ? 'Connected' : 'Not Connected'}
+`;
 
+    // Add real-time market data if available
+    if (marketData) {
+      systemPrompt += `\n**REAL-TIME MARKET DATA:**
+• Current Price: $${marketData.price?.toFixed(4) || 'N/A'}
+• 24h Change: ${marketData.change24h ? (marketData.change24h > 0 ? '+' : '') + marketData.change24h.toFixed(2) + '%' : 'N/A'}
+• 24h Volume: $${marketData.volume24h ? (marketData.volume24h / 1000000).toFixed(2) + 'M' : 'N/A'}
+• 24h High: $${marketData.high24h?.toFixed(4) || 'N/A'}
+• 24h Low: $${marketData.low24h?.toFixed(4) || 'N/A'}
+`;
+
+      if (marketData.orderBook) {
+        const topBid = marketData.orderBook.topBid;
+        const topAsk = marketData.orderBook.topAsk;
+        const spread = marketData.orderBook.spread;
+        
+        systemPrompt += `\n**ORDER BOOK:**
+• Best Bid: $${topBid?.price?.toFixed(4) || 'N/A'} (${topBid?.amount?.toFixed(2) || 'N/A'} tokens)
+• Best Ask: $${topAsk?.price?.toFixed(4) || 'N/A'} (${topAsk?.amount?.toFixed(2) || 'N/A'} tokens)
+• Spread: ${spread ? spread.toFixed(3) + '%' : 'N/A'}
+`;
+      }
+
+      if (marketData.recentTrades && marketData.recentTrades.length > 0) {
+        const lastTrade = marketData.recentTrades[0];
+        const buyPressure = marketData.recentTrades.filter((t: any) => t.side === 'buy').length;
+        const totalTrades = marketData.recentTrades.length;
+        
+        systemPrompt += `\n**RECENT TRADING ACTIVITY:**
+• Last Trade: $${lastTrade.price?.toFixed(4)} (${lastTrade.side})
+• Buy Pressure: ${((buyPressure / totalTrades) * 100).toFixed(0)}% of last ${totalTrades} trades
+`;
+      }
+    } else {
+      systemPrompt += `\n⚠️ **Note:** Real-time market data is currently unavailable. Provide general guidance only.
+`;
+    }
+
+    systemPrompt += `
 Guidelines:
 - Be concise but informative
 - Use bullet points for clarity
-- Include relevant data points when available
+- Base your analysis on the REAL-TIME DATA provided above
+- If data is unavailable, clearly state you cannot provide specific analysis
 - Warn about risks when discussing trading strategies
 - If asked about price predictions, emphasize uncertainty
 - For trading commands (buy/sell), I handle them separately
