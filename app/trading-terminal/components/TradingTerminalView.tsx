@@ -1,7 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import dynamic from 'next/dynamic';
+
+// Hooks
+import { useTradingTerminal } from '@/components/hooks/trading/useTradingTerminal';
+import { useKeyboardShortcuts } from '@/components/hooks/trading/useKeyboardShortcuts';
+import { useMarketData } from '@/components/hooks/trading/useMarketData';
+import { useWalletConnection } from '@/components/hooks/trading/useWalletConnection';
 
 // Dynamically import components with no SSR to avoid hydration issues
 const TradingChart = dynamic(() => import('./TradingChart'), { ssr: false });
@@ -18,181 +24,55 @@ const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: fa
 const AIChatTradingWidget = dynamic(() => import('./AIChatTradingWidget'), { ssr: false });
 import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
 
-interface Section {
-  id: string;
-  name: string;
-  isExpanded: boolean;
-  isMaximized: boolean;
-}
-
-type TileId = 'screener' | 'chart' | 'controls' | 'orderbook' | 'trades' | 'positions' | 'watchlist' | 'performance' | 'depth' | 'news' | 'aichat';
-
 export default function TradingTerminalView() {
-  const [selectedMarket, setSelectedMarket] = useState('SOL/USDC');
-  const [isLoading, setIsLoading] = useState(true);
-  const [showShortcuts, setShowShortcuts] = useState(false);
-  const [screenerExpanded, setScreenerExpanded] = useState(false);
-  const [maximizedTile, setMaximizedTile] = useState<TileId | null>(null);
-  const [focusedTile, setFocusedTile] = useState<TileId | null>(null);
-  // Mock wallet state - TODO: integrate with actual Solana wallet
-  const [walletConnected] = useState(false);
-  const [sections, setSections] = useState<Section[]>([
-    { id: 'chart', name: 'Chart', isExpanded: true, isMaximized: false },
-    { id: 'watchlist', name: 'Watchlist', isExpanded: true, isMaximized: false },
-    { id: 'performance', name: 'Performance', isExpanded: true, isMaximized: false },
-    { id: 'orderbook', name: 'Order Book', isExpanded: true, isMaximized: false },
-    { id: 'depth', name: 'Market Depth', isExpanded: true, isMaximized: false },
-    { id: 'trades', name: 'Recent Trades', isExpanded: true, isMaximized: false },
-    { id: 'news', name: 'Market News', isExpanded: true, isMaximized: false },
-    { id: 'positions', name: 'Positions', isExpanded: true, isMaximized: false },
-  ]);
+  // Use modular hooks for state management
+  const terminal = useTradingTerminal('SOL/USDC');
+  const marketData = useMarketData(terminal.selectedMarket);
+  const wallet = useWalletConnection();
 
-  // Simulate initial data loading
-  useEffect(() => {
-    const timer = setTimeout(() => setIsLoading(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
+  // Setup keyboard shortcuts
+  useKeyboardShortcuts({
+    maximizedTile: terminal.maximizedTile,
+    showShortcuts: terminal.showShortcuts,
+    screenerExpanded: terminal.screenerExpanded,
+    sections: terminal.sections,
+    setShowShortcuts: terminal.setShowShortcuts,
+    toggleSection: terminal.toggleSection,
+    toggleMaximize: terminal.toggleMaximize,
+    setScreenerExpanded: terminal.setScreenerExpanded,
+    navigateTiles: terminal.navigateTiles,
+  });
 
-  // Keyboard shortcuts for professional traders
-  useEffect(() => {
-    const handleKeyPress = (e: KeyboardEvent) => {
-      // Only handle shortcuts when not typing in an input
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) {
-        return;
-      }
+  // Destructure for easier access in JSX
+  const {
+    selectedMarket,
+    setSelectedMarket,
+    maximizedTile,
+    focusedTile,
+    screenerExpanded,
+    setScreenerExpanded,
+    showShortcuts,
+    setShowShortcuts,
+    isLoading,
+    toggleSection,
+    toggleMaximize,
+    isSectionExpanded,
+    handleTradeExecute,
+  } = terminal;
 
-      // Show keyboard shortcuts help
-      if (e.key === '?' || (e.key === '/' && e.shiftKey)) {
-        e.preventDefault();
-        setShowShortcuts(!showShortcuts);
-        return;
-      }
-
-      // Toggle sections with number keys (1-4)
-      if (e.key >= '1' && e.key <= '4') {
-        e.preventDefault();
-        const sectionIndex = parseInt(e.key) - 1;
-        if (sectionIndex < sections.length) {
-          toggleSection(sections[sectionIndex].id);
-        }
-      }
-
-      // Maximize/restore tiles with Shift+number
-      if (e.shiftKey && e.key >= '1' && e.key <= '4') {
-        e.preventDefault();
-        const sectionIndex = parseInt(e.key) - 1;
-        if (sectionIndex < sections.length) {
-          toggleMaximize(sections[sectionIndex].id as TileId);
-        }
-      }
-
-      // Maximize chart with 'M' key
-      if (e.key === 'm' || e.key === 'M') {
-        e.preventDefault();
-        toggleMaximize('chart');
-      }
-
-      // Toggle screener with 'S' key
-      if (e.key === 's' || e.key === 'S') {
-        e.preventDefault();
-        setScreenerExpanded(!screenerExpanded);
-      }
-
-      // Toggle AI Chat with 'C' key
-      if (e.key === 'c' || e.key === 'C') {
-        e.preventDefault();
-        toggleMaximize('aichat');
-      }
-
-      // Focus navigation with arrow keys
-      if (['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) {
-        e.preventDefault();
-        navigateTiles(e.key as 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown');
-      }
-
-      // Restore all with Escape
-      if (e.key === 'Escape') {
-        if (maximizedTile) {
-          setMaximizedTile(null);
-        } else if (showShortcuts) {
-          setShowShortcuts(false);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, [sections, showShortcuts, screenerExpanded, maximizedTile]);
-
-  const toggleSection = (sectionId: string) => {
-    setSections(sections.map(s => 
-      s.id === sectionId ? { ...s, isExpanded: !s.isExpanded } : s
-    ));
-  };
-
-  const toggleMaximize = (tileId: TileId) => {
-    if (maximizedTile === tileId) {
-      setMaximizedTile(null);
-    } else {
-      setMaximizedTile(tileId);
-      setFocusedTile(tileId);
+  // Helper to restore all tiles (close maximized view)
+  const restoreAllTiles = () => {
+    if (maximizedTile) {
+      toggleMaximize(maximizedTile);
     }
   };
 
-  const navigateTiles = (direction: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') => {
-    const tiles: TileId[] = ['screener', 'chart', 'orderbook', 'trades', 'positions', 'controls'];
-    const currentIndex = focusedTile ? tiles.indexOf(focusedTile) : 0;
-    
-    let newIndex = currentIndex;
-    switch (direction) {
-      case 'ArrowRight':
-        newIndex = (currentIndex + 1) % tiles.length;
-        break;
-      case 'ArrowLeft':
-        newIndex = (currentIndex - 1 + tiles.length) % tiles.length;
-        break;
-      case 'ArrowDown':
-        newIndex = Math.min(currentIndex + 2, tiles.length - 1);
-        break;
-      case 'ArrowUp':
-        newIndex = Math.max(currentIndex - 2, 0);
-        break;
-    }
-    
-    setFocusedTile(tiles[newIndex]);
-    // Highlight the focused tile
-    const element = document.querySelector(`[data-tile-id="${tiles[newIndex]}"]`);
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    }
-  };
+  // Wallet state
+  const walletConnected = wallet.isConnected;
 
-  // Handle trade execution from AI chat
-  const handleTradeExecute = (command: {
-    action: 'buy' | 'sell';
-    amount: number;
-    token: string;
-    orderType: 'market' | 'limit';
-    price?: number;
-    estimatedValue?: number;
-  }) => {
-    console.log('AI Trade Execution:', command);
-    
-    // TODO: Integrate with actual Solana wallet and DEX
-    // This is a placeholder for the actual trade execution logic
-    // Would involve:
-    // 1. Wallet signature request
-    // 2. DEX smart contract interaction
-    // 3. Transaction confirmation
-    // 4. Update positions and trade history
-    
-    // For now, just log the trade
-    alert(`Trade executed: ${command.action.toUpperCase()} ${command.amount} ${command.token} at ${command.orderType} price`);
-  };
-
-  const isSectionExpanded = (sectionId: string) => {
-    return sections.find(s => s.id === sectionId)?.isExpanded ?? true;
-  };
+  // Suppress unused variable warnings  (will be used when integrating real data)
+  void marketData;
+  void focusedTile;
 
   if (isLoading) {
     return (
@@ -238,7 +118,7 @@ export default function TradingTerminalView() {
                   onExpandChange={setScreenerExpanded}
                 />
                 <button
-                  onClick={() => setMaximizedTile(null)}
+                  onClick={restoreAllTiles}
                   className="absolute top-2 right-2 p-2 bg-card border border-border rounded hover:bg-muted"
                   title="Restore (Esc)"
                 >
@@ -251,7 +131,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">CHART</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc or Shift+1)"
                   >
