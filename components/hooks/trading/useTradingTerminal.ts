@@ -47,6 +47,7 @@ export interface UseTradingTerminalReturn {
   screenerExpanded: boolean;
   showShortcuts: boolean;
   isLoading: boolean;
+  aiChatMinimized: boolean;
   
   // Actions
   setSelectedMarket: (market: string) => void;
@@ -55,20 +56,24 @@ export interface UseTradingTerminalReturn {
   setFocusedTile: (tileId: TileId | null) => void;
   setScreenerExpanded: (expanded: boolean) => void;
   setShowShortcuts: (show: boolean) => void;
+  setAIChatMinimized: (minimized: boolean) => void;
   isSectionExpanded: (sectionId: string) => boolean;
   handleTradeExecute: (command: TradeCommand) => void;
   navigateTiles: (direction: 'ArrowLeft' | 'ArrowRight' | 'ArrowUp' | 'ArrowDown') => void;
 }
 
 const DEFAULT_SECTIONS: Section[] = [
+  // ONLY 3 Essential sections expanded - everything else one-click away
   { id: 'chart', name: 'Chart', isExpanded: true, isMaximized: false },
-  { id: 'watchlist', name: 'Watchlist', isExpanded: true, isMaximized: false },
-  { id: 'performance', name: 'Performance', isExpanded: true, isMaximized: false },
   { id: 'orderbook', name: 'Order Book', isExpanded: true, isMaximized: false },
-  { id: 'depth', name: 'Market Depth', isExpanded: true, isMaximized: false },
   { id: 'trades', name: 'Recent Trades', isExpanded: true, isMaximized: false },
-  { id: 'news', name: 'Market News', isExpanded: true, isMaximized: false },
-  { id: 'positions', name: 'Positions', isExpanded: true, isMaximized: false },
+  
+  // Everything else collapsed - expand when needed
+  { id: 'positions', name: 'Positions', isExpanded: false, isMaximized: false },
+  { id: 'depth', name: 'Market Depth', isExpanded: false, isMaximized: false },
+  { id: 'news', name: 'Market News', isExpanded: false, isMaximized: false },
+  { id: 'performance', name: 'Performance', isExpanded: false, isMaximized: false },
+  { id: 'watchlist', name: 'Watchlist', isExpanded: false, isMaximized: false },
 ];
 
 /**
@@ -94,9 +99,10 @@ export const useTradingTerminal = (
   const [sections, setSections] = useState<Section[]>(DEFAULT_SECTIONS);
   const [maximizedTile, setMaximizedTile] = useState<TileId | null>(null);
   const [focusedTile, setFocusedTile] = useState<TileId | null>(null);
-  const [screenerExpanded, setScreenerExpanded] = useState(false);
+  const [screenerExpanded, setScreenerExpanded] = useState(false); // Collapsed by default
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [aiChatMinimized, setAIChatMinimized] = useState(false); // Expanded by default
 
   // Simulate initial data loading
   useState(() => {
@@ -204,6 +210,7 @@ export const useTradingTerminal = (
     screenerExpanded,
     showShortcuts,
     isLoading,
+    aiChatMinimized,
     
     // Actions
     setSelectedMarket,
@@ -212,6 +219,7 @@ export const useTradingTerminal = (
     setFocusedTile,
     setScreenerExpanded,
     setShowShortcuts,
+    setAIChatMinimized,
     isSectionExpanded,
     handleTradeExecute,
     navigateTiles,

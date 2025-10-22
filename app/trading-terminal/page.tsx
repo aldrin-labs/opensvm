@@ -3,9 +3,9 @@
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
 
-// Dynamically import the terminal view to ensure client-side only rendering
-const TradingTerminalView = dynamic(
-  () => import('./components/TradingTerminalView'),
+// Dynamically import the responsive terminal wrapper to ensure client-side only rendering
+const ResponsiveTradingTerminal = dynamic(
+  () => import('./components/ResponsiveTradingTerminal'),
   { 
     ssr: false,
     loading: () => (
@@ -30,7 +30,7 @@ export default function TradingTerminalPage() {
           </div>
         </div>
       }>
-        <TradingTerminalView />
+        <ResponsiveTradingTerminal />
       </Suspense>
     </div>
   );
