@@ -148,7 +148,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">ORDER BOOK</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc or Shift+2)"
                   >
@@ -165,7 +165,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">RECENT TRADES</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc or Shift+3)"
                   >
@@ -182,7 +182,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">POSITIONS</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc or Shift+4)"
                   >
@@ -199,7 +199,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">TRADING CONTROLS</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc)"
                   >
@@ -216,7 +216,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">WATCHLIST</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc)"
                   >
@@ -233,7 +233,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">PERFORMANCE</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc)"
                   >
@@ -250,7 +250,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">MARKET DEPTH</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc)"
                   >
@@ -267,7 +267,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">MARKET NEWS</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc)"
                   >
@@ -284,7 +284,7 @@ export default function TradingTerminalView() {
                 <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
                   <span className="text-sm font-semibold text-primary">AI TRADING ASSISTANT</span>
                   <button
-                    onClick={() => setMaximizedTile(null)}
+                    onClick={restoreAllTiles}
                     className="p-1 hover:bg-border rounded"
                     title="Restore (Esc or C)"
                   >
