@@ -73,7 +73,7 @@
     "dotenv": "^16.4.7",
     "encoding": "^0.1.13",
     "eventsource-parser": "^3.0.0",
-    "framer-motion": "^12.4.7",
+    "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
     "jsdom": "^26.0.0",
     "jsonwebtoken": "^9.0.2",
@@ -113,7 +113,8 @@
     "whatwg-url": "^5.0.0",
     "xstate": "^5.19.2",
     "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.23.0"
+    "zod-to-json-schema": "^3.23.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",

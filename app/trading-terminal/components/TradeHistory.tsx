@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import { TrendingUp, TrendingDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TradeHistoryProps {
   market: string;
+  isLoading?: boolean;
 }
 
 interface Trade {
@@ -15,10 +17,12 @@ interface Trade {
   side: 'buy' | 'sell';
 }
 
-export default function TradeHistory({ market }: TradeHistoryProps) {
+export default function TradeHistory({ market, isLoading = false }: TradeHistoryProps) {
   const [trades, setTrades] = useState<Trade[]>([]);
 
   useEffect(() => {
+    if (isLoading) return; // Don't generate data while loading
+    
     // Generate mock trade data
     const generateTrades = () => {
       const newTrades: Trade[] = [];
@@ -54,7 +58,7 @@ export default function TradeHistory({ market }: TradeHistoryProps) {
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [market]);
+  }, [market, isLoading]);
 
   const formatTime = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -65,6 +69,31 @@ export default function TradeHistory({ market }: TradeHistoryProps) {
       hour12: false 
     });
   };
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="trade-history h-full flex flex-col bg-background text-foreground">
+        {/* Header */}
+        <div className="px-4 py-2 bg-card border-b border-border grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
+          <div className="text-left">TIME</div>
+          <div className="text-right">PRICE</div>
+          <div className="text-right">SIZE</div>
+        </div>
+
+        {/* Loading skeleton rows */}
+        <div className="flex-1 overflow-hidden p-4 space-y-2">
+          {Array.from({ length: 20 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className="grid grid-cols-3 gap-2">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="trade-history h-full flex flex-col bg-background text-foreground">

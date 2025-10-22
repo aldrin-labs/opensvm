@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface OrderBookProps {
   market: string;
+  isLoading?: boolean;
 }
 
 interface OrderBookEntry {
@@ -12,13 +14,15 @@ interface OrderBookEntry {
   total: number;
 }
 
-export default function OrderBook({ market }: OrderBookProps) {
+export default function OrderBook({ market, isLoading = false }: OrderBookProps) {
   const [bids, setBids] = useState<OrderBookEntry[]>([]);
   const [asks, setAsks] = useState<OrderBookEntry[]>([]);
   const [spread, setSpread] = useState(0);
   const [spreadPercent, setSpreadPercent] = useState(0);
 
   useEffect(() => {
+    if (isLoading) return; // Don't generate data while loading
+
     // Generate mock order book data
     const generateOrderBook = () => {
       const basePrice = 100 + Math.random() * 50;
@@ -59,10 +63,35 @@ export default function OrderBook({ market }: OrderBookProps) {
     generateOrderBook();
     const interval = setInterval(generateOrderBook, 2000);
     return () => clearInterval(interval);
-  }, [market]);
+  }, [market, isLoading]);
 
   const maxBidTotal = bids[bids.length - 1]?.total || 1;
   const maxAskTotal = asks[asks.length - 1]?.total || 1;
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="order-book h-full flex flex-col bg-background text-foreground">
+        {/* Header */}
+        <div className="px-4 py-2 bg-card border-b border-border grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
+          <div className="text-right">PRICE</div>
+          <div className="text-right">SIZE</div>
+          <div className="text-right">TOTAL</div>
+        </div>
+
+        {/* Loading skeleton rows */}
+        <div className="flex-1 overflow-hidden flex flex-col p-4 space-y-2">
+          {Array.from({ length: 15 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className="grid grid-cols-3 gap-2">
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4" />
+              <Skeleton className="h-4" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="order-book h-full flex flex-col bg-background text-foreground">

@@ -8,6 +8,10 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNotifications } from '@/components/providers/NotificationProvider';
+
+// Import shared types from useMarketData
+import type { LoadingState, ErrorState } from './useMarketData';
 
 export interface WalletInfo {
   publicKey: string | null;
@@ -15,12 +19,16 @@ export interface WalletInfo {
   isConnecting: boolean;
   balance: number | null; // SOL balance
   error: string | null;
+  // Enhanced state management
+  loadingState: LoadingState;
+  errorState: ErrorState;
 }
 
 export interface UseWalletConnectionReturn extends WalletInfo {
   connect: () => Promise<void>;
   disconnect: () => void;
   refreshBalance: () => Promise<void>;
+  retry: () => Promise<void>;
 }
 
 // Phantom wallet type for window.solana
@@ -69,9 +77,18 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
     isConnecting: false,
     balance: null,
     error: null,
+    loadingState: {
+      isLoading: false,
+      isRefreshing: false,
+    },
+    errorState: {
+      hasError: false,
+      error: null,
+    },
   });
 
   const mountedRef = useRef(true);
+  const { addNotification } = useNotifications();
 
   /**
    * Check if Phantom wallet is installed
@@ -104,14 +121,36 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
    */
   const connect = useCallback(async () => {
     if (!isPhantomInstalled()) {
+      const errorMessage = 'Phantom wallet is not installed. Please install it from phantom.app';
       setWalletInfo(prev => ({
         ...prev,
-        error: 'Phantom wallet is not installed. Please install it from phantom.app',
+        error: errorMessage,
       }));
+      
+      // Show error notification
+      addNotification({
+        type: 'error',
+        title: 'Wallet Not Installed',
+        message: errorMessage,
+        action: {
+          label: 'Install Phantom',
+          onClick: () => window.open('https://phantom.app', '_blank'),
+        },
+        duration: 0, // Manual close
+      });
+      
       return;
     }
 
     setWalletInfo(prev => ({ ...prev, isConnecting: true, error: null }));
+
+    // Show loading notification (optional - can be removed for simpler UX)
+    void addNotification({
+      type: 'loading',
+      title: 'Connecting to Phantom...',
+      dismissible: false,
+      duration: 2000, // Auto-dismiss after 2s
+    });
 
     try {
       const solana = window.solana as PhantomWallet;
@@ -120,29 +159,73 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
       const balance = await fetchBalance(publicKey);
 
       if (mountedRef.current) {
-        setWalletInfo({
+        setWalletInfo(prev => ({
+          ...prev,
           publicKey,
           isConnected: true,
           isConnecting: false,
           balance,
           error: null,
-        });
+          loadingState: {
+            isLoading: false,
+            isRefreshing: false,
+          },
+          errorState: {
+            hasError: false,
+            error: null,
+          },
+        }));
 
         // Persist connection preference
         localStorage.setItem(WALLET_STORAGE_KEY, 'true');
+        
+        // Remove loading notification and show success
+        addNotification({
+          type: 'success',
+          title: 'Wallet Connected',
+          message: `Connected to ${publicKey.substring(0, 4)}...${publicKey.substring(publicKey.length - 4)}`,
+          duration: 3000,
+        });
       }
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to connect wallet';
       if (mountedRef.current) {
-        setWalletInfo({
+        setWalletInfo(prev => ({
+          ...prev,
           publicKey: null,
           isConnected: false,
           isConnecting: false,
           balance: null,
-          error: error instanceof Error ? error.message : 'Failed to connect wallet',
+          error: errorMessage,
+          loadingState: {
+            isLoading: false,
+            isRefreshing: false,
+          },
+          errorState: {
+            hasError: true,
+            error: {
+              code: 'WALLET_CONNECTION_FAILED',
+              message: errorMessage,
+              recoverable: true,
+              retryAction: () => connect(),
+            },
+          },
+        }));
+        
+        // Show error notification
+        addNotification({
+          type: 'error',
+          title: 'Connection Failed',
+          message: errorMessage,
+          action: {
+            label: 'Retry',
+            onClick: () => connect(),
+          },
+          duration: 0, // Manual close
         });
       }
     }
-  }, [isPhantomInstalled, fetchBalance]);
+  }, [isPhantomInstalled, fetchBalance, addNotification]);
 
   /**
    * Disconnect wallet
@@ -153,17 +236,33 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
       solana.disconnect();
     }
 
-    setWalletInfo({
+    setWalletInfo(prev => ({
+      ...prev,
       publicKey: null,
       isConnected: false,
       isConnecting: false,
       balance: null,
       error: null,
-    });
+      loadingState: {
+        isLoading: false,
+        isRefreshing: false,
+      },
+      errorState: {
+        hasError: false,
+        error: null,
+      },
+    }));
 
     // Clear connection preference
     localStorage.removeItem(WALLET_STORAGE_KEY);
-  }, []);
+    
+    // Show disconnect notification
+    addNotification({
+      type: 'info',
+      title: 'Wallet Disconnected',
+      duration: 2000,
+    });
+  }, [addNotification]);
 
   /**
    * Refresh wallet balance
@@ -192,13 +291,22 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
         const publicKey = solana.publicKey.toString();
         fetchBalance(publicKey).then(balance => {
           if (mountedRef.current) {
-            setWalletInfo({
+            setWalletInfo(prev => ({
+              ...prev,
               publicKey,
               isConnected: true,
               isConnecting: false,
               balance,
               error: null,
-            });
+              loadingState: {
+                isLoading: false,
+                isRefreshing: false,
+              },
+              errorState: {
+                hasError: false,
+                error: null,
+              },
+            }));
           }
         });
       } else {
@@ -213,13 +321,22 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
         const key = (publicKey as { toString: () => string }).toString();
         fetchBalance(key).then(balance => {
           if (mountedRef.current) {
-            setWalletInfo({
+            setWalletInfo(prev => ({
+              ...prev,
               publicKey: key,
               isConnected: true,
               isConnecting: false,
               balance,
               error: null,
-            });
+              loadingState: {
+                isLoading: false,
+                isRefreshing: false,
+              },
+              errorState: {
+                hasError: false,
+                error: null,
+              },
+            }));
           }
         });
       } else if (mountedRef.current) {
@@ -240,11 +357,19 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
     };
   }, [connect, disconnect, fetchBalance, isPhantomInstalled]);
 
+  /**
+   * Retry connection after error
+   */
+  const retry = useCallback(async () => {
+    await connect();
+  }, [connect]);
+
   return {
     ...walletInfo,
     connect,
     disconnect,
     refreshBalance,
+    retry,
   };
 };
 

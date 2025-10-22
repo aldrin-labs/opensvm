@@ -2,12 +2,14 @@
 
 import React, { useState } from 'react';
 import { Star, Plus } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface WatchlistWidgetProps {
   onMarketChange?: (market: string) => void;
+  isLoading?: boolean;
 }
 
-export default function WatchlistWidget({ onMarketChange }: WatchlistWidgetProps) {
+export default function WatchlistWidget({ onMarketChange, isLoading = false }: WatchlistWidgetProps) {
   const [watchlist] = useState([
     { symbol: 'SOL/USDC', price: 145.32, change: 2.43, volume: 12.46, starred: true },
     { symbol: 'BTC/USDC', price: 67234.50, change: -0.82, volume: 145.2, starred: true },
@@ -15,6 +17,33 @@ export default function WatchlistWidget({ onMarketChange }: WatchlistWidgetProps
     { symbol: 'JTO/USDC', price: 2.87, change: 5.21, volume: 3.8, starred: true },
     { symbol: 'BONK/USDC', price: 0.000023, change: -3.45, volume: 8.9, starred: false },
   ]);
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div 
+        className="watchlist-widget h-full flex flex-col bg-background text-foreground overflow-hidden"
+        data-widget-type="watchlist"
+      >
+        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-primary">WATCHLIST</h3>
+          <Plus size={12} className="text-muted-foreground" />
+        </div>
+        <div className="flex-1 overflow-auto p-2 space-y-2">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={`skeleton-${i}`} className="flex items-center gap-2 p-2">
+              <Skeleton className="w-4 h-4 rounded-full" />
+              <div className="flex-1 space-y-1">
+                <Skeleton className="h-3 w-20" />
+                <Skeleton className="h-3 w-16" />
+              </div>
+              <Skeleton className="h-3 w-12" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

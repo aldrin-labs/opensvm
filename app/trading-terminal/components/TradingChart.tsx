@@ -2,9 +2,11 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface TradingChartProps {
   market: string;
+  isLoading?: boolean;
 }
 
 type Timeframe = '1m' | '5m' | '15m' | '1h' | '4h' | '1d' | '1w';
@@ -19,7 +21,7 @@ interface CandleData {
   volume: number;
 }
 
-export default function TradingChart({ market }: TradingChartProps) {
+export default function TradingChart({ market, isLoading = false }: TradingChartProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
   const [chartType, setChartType] = useState<ChartType>('candles');
   const [candleData, setCandleData] = useState<CandleData[]>([]);
@@ -31,6 +33,8 @@ export default function TradingChart({ market }: TradingChartProps) {
 
   // Generate mock candle data
   useEffect(() => {
+    if (isLoading) return; // Don't generate data while loading
+    
     const generateMockData = () => {
       const data: CandleData[] = [];
       let currentPrice = 100 + Math.random() * 50;
@@ -373,6 +377,37 @@ export default function TradingChart({ market }: TradingChartProps) {
     ? ((currentCandle.close - previousCandle.close) / previousCandle.close) * 100 
     : 0;
   const isPositive = priceChange >= 0;
+
+  // Loading skeleton
+  if (isLoading) {
+    return (
+      <div className="trading-chart h-full flex flex-col bg-background">
+        {/* Chart Controls Skeleton */}
+        <div className="chart-controls flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+          <div className="flex items-center gap-1">
+            {Array.from({ length: 7 }).map((_, i) => (
+              <Skeleton key={i} className="w-12 h-7" />
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="w-8 h-8" />
+            ))}
+          </div>
+        </div>
+
+        {/* Chart Area Skeleton */}
+        <div className="flex-1 p-4 flex items-center justify-center">
+          <div className="w-full h-full relative">
+            <Skeleton className="w-full h-full" />
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="text-muted-foreground text-sm">Loading chart data...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="trading-chart h-full flex flex-col bg-background">

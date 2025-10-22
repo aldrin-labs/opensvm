@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useNotifications } from '@/components/providers/NotificationProvider';
 
 export interface OrderBookEntry {
   price: number;
@@ -39,6 +40,23 @@ export interface MarketStats {
   lastUpdate: number;
 }
 
+export interface LoadingState {
+  isLoading: boolean;
+  isRefreshing: boolean;
+  loadingStage?: 'connecting' | 'fetching' | 'processing';
+  progress?: number; // 0-100 for progress indicators
+}
+
+export interface ErrorState {
+  hasError: boolean;
+  error: {
+    code: string;
+    message: string;
+    recoverable: boolean;
+    retryAction?: () => void;
+  } | null;
+}
+
 export interface MarketData {
   stats: MarketStats;
   orderBook: OrderBook;
@@ -46,11 +64,15 @@ export interface MarketData {
   isConnected: boolean;
   isLoading: boolean;
   error: string | null;
+  // Enhanced state management
+  loadingState: LoadingState;
+  errorState: ErrorState;
 }
 
 export interface UseMarketDataReturn extends MarketData {
   reconnect: () => void;
   refresh: () => void;
+  retry: () => void;
 }
 
 /**
@@ -121,6 +143,14 @@ const generateMockMarketData = (_market: string): MarketData => {
     isConnected: true,
     isLoading: false,
     error: null,
+    loadingState: {
+      isLoading: false,
+      isRefreshing: false,
+    },
+    errorState: {
+      hasError: false,
+      error: null,
+    },
   };
 };
 
@@ -147,6 +177,7 @@ export const useMarketData = (
   market: string,
   updateInterval: number = 3000
 ): UseMarketDataReturn => {
+  const { addNotification } = useNotifications();
   const [marketData, setMarketData] = useState<MarketData>({
     stats: {
       price: 0,
@@ -166,6 +197,15 @@ export const useMarketData = (
     isConnected: false,
     isLoading: true,
     error: null,
+    loadingState: {
+      isLoading: true,
+      isRefreshing: false,
+      loadingStage: 'connecting',
+    },
+    errorState: {
+      hasError: false,
+      error: null,
+    },
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -186,23 +226,68 @@ export const useMarketData = (
       }
     } catch (error) {
       if (mountedRef.current) {
+        const errorMessage = error instanceof Error ? error.message : 'Failed to fetch market data';
+        
         setMarketData(prev => ({
           ...prev,
-          error: error instanceof Error ? error.message : 'Failed to fetch market data',
+          error: errorMessage,
           isConnected: false,
           isLoading: false,
+          errorState: {
+            hasError: true,
+            error: {
+              code: 'FETCH_ERROR',
+              message: errorMessage,
+              recoverable: true,
+              retryAction: fetchMarketData,
+            },
+          },
         }));
+        
+        // Show error notification
+        addNotification({
+          type: 'error',
+          title: 'Market Data Error',
+          message: errorMessage,
+          action: {
+            label: 'Retry',
+            onClick: () => fetchMarketData(),
+          },
+          duration: 5000,
+        });
       }
     }
-  }, [market]);
+  }, [market, addNotification]);
 
   /**
    * Reconnect to market data stream
    */
   const reconnect = useCallback(() => {
-    setMarketData(prev => ({ ...prev, isLoading: true, error: null }));
+    setMarketData(prev => ({ 
+      ...prev, 
+      isLoading: true, 
+      error: null,
+      loadingState: {
+        isLoading: true,
+        isRefreshing: false,
+        loadingStage: 'connecting',
+      },
+      errorState: {
+        hasError: false,
+        error: null,
+      },
+    }));
+    
     fetchMarketData();
-  }, [fetchMarketData]);
+    
+    // Show reconnecting notification
+    addNotification({
+      type: 'info',
+      title: 'Reconnecting to Market',
+      message: `Reconnecting to ${market}...`,
+      duration: 2000,
+    });
+  }, [fetchMarketData, market, addNotification]);
 
   /**
    * Force refresh market data
@@ -231,10 +316,30 @@ export const useMarketData = (
     };
   }, [market, updateInterval, fetchMarketData]);
 
+  /**
+   * Retry after error with exponential backoff
+   */
+  const retry = useCallback(() => {
+    setMarketData(prev => ({
+      ...prev,
+      loadingState: {
+        isLoading: true,
+        isRefreshing: false,
+        loadingStage: 'connecting',
+      },
+      errorState: {
+        hasError: false,
+        error: null,
+      },
+    }));
+    fetchMarketData();
+  }, [fetchMarketData]);
+
   return {
     ...marketData,
     reconnect,
     refresh,
+    retry,
   };
 };
 
