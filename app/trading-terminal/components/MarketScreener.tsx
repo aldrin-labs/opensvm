@@ -27,6 +27,7 @@ interface Market {
 export default function MarketScreener({ selectedMarket, onMarketChange, isExpanded, onExpandChange }: MarketScreenerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('trending');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [markets, setMarkets] = useState<Market[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   
@@ -50,6 +51,15 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
     { id: 'kols' as TabType, label: 'KOLs', icon: TrendingUp },
     { id: 'whales' as TabType, label: 'Whales', icon: Fish },
   ];
+
+  // Debounce search input
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 300);
+    
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   // Generate mock market data
   useEffect(() => {
@@ -85,10 +95,11 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
     setMarkets(generateMarkets());
   }, [activeTab]);
 
-  // Filter markets based on search and filters
+  // Filter markets based on debounced search and filters
   const filteredMarkets = markets.filter(market => {
-    const matchesSearch = market.symbol.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         market.baseToken.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = market.symbol.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                         market.baseToken.toLowerCase().includes(debouncedSearch.toLowerCase()) ||
+                         market.quoteToken.toLowerCase().includes(debouncedSearch.toLowerCase());
     
     if (!matchesSearch) return false;
     
@@ -216,8 +227,13 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
       {/* Markets List */}
       <div className="markets-list flex-1 overflow-y-auto">
         {filteredMarkets.length === 0 ? (
-          <div className="flex items-center justify-center h-32 text-muted-foreground text-sm">
-            No markets found
+          <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
+            <div>No markets found</div>
+            {debouncedSearch && (
+              <div className="text-xs mt-2">
+                for "{debouncedSearch}"
+              </div>
+            )}
           </div>
         ) : (
           filteredMarkets.map((market, index) => (
@@ -253,7 +269,9 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
       {/* Footer Stats */}
       {isExpanded && (
         <div className="screener-footer px-3 py-2 border-t border-border bg-card text-xs text-muted-foreground">
-          {filteredMarkets.length} markets • {activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}
+          {filteredMarkets.length} of {markets.length} markets
+          {debouncedSearch && ` • Searching: "${debouncedSearch}"`}
+          {!debouncedSearch && ` • ${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)}`}
         </div>
       )}
     </div>

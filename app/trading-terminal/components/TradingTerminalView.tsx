@@ -23,6 +23,7 @@ const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false 
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
 const AIChatTradingWidget = dynamic(() => import('./AIChatTradingWidget'), { ssr: false });
 import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
+import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
 
 export default function TradingTerminalView() {
   // Use modular hooks for state management
@@ -98,6 +99,13 @@ export default function TradingTerminalView() {
       data-ai-version="1.0"
       data-ai-features="charts,orderbook,trading,screener,widgets,keyboard-navigation,ai-chat-assistant"
     >
+      {/* Demo Mode Banner */}
+      <DemoModeBanner 
+        isDemo={!marketData.isRealData}
+        dataSource={marketData.dataSource || 'Mock Data'}
+        onRetry={() => window.location.reload()}
+      />
+
       {/* Compact Header */}
       <header 
         className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border flex-shrink-0 h-12 z-10"
@@ -129,7 +137,7 @@ export default function TradingTerminalView() {
       </header>
 
       {/* Main Terminal Layout - Flexible Height with Maximized Tile Support */}
-      <div className="trading-content flex-1 flex overflow-hidden relative min-h-0">
+      <div className="trading-content flex-1 flex flex-row overflow-hidden relative min-h-0">
         {/* Maximized Tile Overlay */}
         {maximizedTile && (
           <div className="absolute inset-0 z-50 bg-background flex flex-col overflow-hidden">
@@ -231,7 +239,7 @@ export default function TradingTerminalView() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-auto p-4">
-                  <TradingControls market={selectedMarket} />
+                  <TradingControls market={selectedMarket} walletConnected={walletConnected} />
                 </div>
               </div>
             )}
@@ -331,20 +339,54 @@ export default function TradingTerminalView() {
         {/* Normal Layout (hidden when tile is maximized) */}
         {!maximizedTile && (
           <>
-            {/* Left Panel - Market Screener */}
-            <div 
-              data-tile-id="screener"
-              className={`transition-all duration-200 ${focusedTile === 'screener' ? 'ring-2 ring-primary ring-inset' : ''}`}
-              data-ai-widget="market-screener"
-              data-ai-expanded={screenerExpanded}
-              data-ai-current-market={selectedMarket}
-            >
-              <MarketScreener
-                selectedMarket={selectedMarket}
-                onMarketChange={setSelectedMarket}
-                isExpanded={screenerExpanded}
-                onExpandChange={setScreenerExpanded}
-              />
+            {/* Left Panel - Market Screener (70%) + Watchlist (30%) */}
+            <div className="flex flex-col border-r border-border flex-shrink-0 overflow-hidden" style={{ width: '320px' }}>
+              {/* Market Screener - 70% */}
+              <div 
+                data-tile-id="screener"
+                className={`overflow-hidden ${focusedTile === 'screener' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                style={{ height: '70%' }}
+                data-ai-widget="market-screener"
+                data-ai-expanded={screenerExpanded}
+                data-ai-current-market={selectedMarket}
+              >
+                <MarketScreener
+                  selectedMarket={selectedMarket}
+                  onMarketChange={setSelectedMarket}
+                  isExpanded={screenerExpanded}
+                  onExpandChange={setScreenerExpanded}
+                />
+              </div>
+
+              {/* Watchlist Widget - 30% */}
+              <section 
+                data-tile-id="watchlist"
+                className={`watchlist-section flex flex-col overflow-hidden border-t border-border ${focusedTile === 'watchlist' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                style={{ height: isSectionExpanded('watchlist') ? '30%' : 'auto' }}
+                aria-label="Watchlist"
+                data-ai-widget="watchlist"
+              >
+                <div 
+                  className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                  onClick={() => toggleSection('watchlist')}
+                  role="button"
+                  tabIndex={0}
+                >
+                  <span className="text-xs font-semibold text-primary">WATCHLIST</span>
+                  <button className="p-1 hover:bg-border rounded">
+                    {isSectionExpanded('watchlist') ? (
+                      <ChevronUp size={14} className="text-foreground" />
+                    ) : (
+                      <ChevronDown size={14} className="text-foreground" />
+                    )}
+                  </button>
+                </div>
+                {isSectionExpanded('watchlist') && (
+                  <div id="watchlist-content" className="flex-1 min-h-0 overflow-auto p-2">
+                    <WatchlistWidget onMarketChange={setSelectedMarket} isLoading={isLoadingMarketData} />
+                  </div>
+                )}
+              </section>
             </div>
 
             {/* Center Panel - Chart and Widgets Grid */}
@@ -397,6 +439,14 @@ export default function TradingTerminalView() {
                       </button>
                     </div>
                   </div>
+                  
+                  {/* Performance Bar - Compact metrics */}
+                  {isSectionExpanded('chart') && (
+                    <div className="performance-bar bg-card border-b border-border px-2 py-0.5 flex items-center gap-2 overflow-x-auto">
+                      <PerformanceWidget market={selectedMarket} />
+                    </div>
+                  )}
+                  
                   {isSectionExpanded('chart') && (
                     <div id="chart-content" className="flex-1 min-h-0 overflow-hidden">
                       <TradingChart market={selectedMarket} isLoading={isLoadingMarketData} />
@@ -404,63 +454,57 @@ export default function TradingTerminalView() {
                   )}
                 </section>
 
-                {/* Right side widgets column */}
-                <div className="w-64 flex flex-col">
-                  {/* Watchlist Widget */}
+                {/* Right side widgets column - Order Book */}
+                <div className="w-64 flex flex-col overflow-hidden">
+                  {/* Order Book Section */}
                   <section 
-                    data-tile-id="watchlist"
-                    className={`watchlist-section flex flex-col ${isSectionExpanded('watchlist') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden border-b border-border ${focusedTile === 'watchlist' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                    aria-label="Watchlist"
-                    data-ai-widget="watchlist"
-                  >
-                    <div 
-                      className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted"
-                      onClick={() => toggleSection('watchlist')}
-                      role="button"
-                      tabIndex={0}
-                    >
-                      <span className="text-xs font-semibold text-primary">WATCHLIST</span>
-                      <button className="p-1 hover:bg-border rounded">
-                        {isSectionExpanded('watchlist') ? (
-                          <ChevronUp size={14} className="text-foreground" />
-                        ) : (
-                          <ChevronDown size={14} className="text-foreground" />
-                        )}
-                      </button>
-                    </div>
-                    {isSectionExpanded('watchlist') && (
-                      <div id="watchlist-content" className="flex-1 min-h-0 overflow-auto p-2">
-                        <WatchlistWidget onMarketChange={setSelectedMarket} isLoading={isLoadingMarketData} />
-                      </div>
-                    )}
-                  </section>
-
-                  {/* Performance Widget */}
-                  <section 
-                    data-tile-id="performance"
-                    className={`performance-section flex flex-col ${isSectionExpanded('performance') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'performance' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                    aria-label="Performance Metrics"
-                    data-ai-widget="performance-metrics"
+                    data-tile-id="orderbook"
+                    className={`orderbook-section flex flex-col ${isSectionExpanded('orderbook') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'orderbook' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                    aria-label="Order Book"
+                    data-ai-widget="order-book"
                     data-ai-market={selectedMarket}
                   >
                     <div 
-                      className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted"
-                      onClick={() => toggleSection('performance')}
+                      className="section-header flex items-center justify-between px-3 py-1.5 bg-card cursor-pointer hover:bg-muted border-b border-border"
+                      onClick={() => toggleSection('orderbook')}
                       role="button"
+                      aria-expanded={isSectionExpanded('orderbook')}
+                      aria-controls="orderbook-content"
                       tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSection('orderbook');
+                        }
+                      }}
                     >
-                      <span className="text-xs font-semibold text-primary">PERFORMANCE</span>
-                      <button className="p-1 hover:bg-border rounded">
-                        {isSectionExpanded('performance') ? (
+                      <span className="text-xs font-semibold text-primary">ORDER BOOK</span>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleMaximize('orderbook');
+                          }}
+                          className="p-1 hover:bg-border rounded"
+                          title="Maximize (Shift+2)"
+                        >
                           <ChevronUp size={14} className="text-foreground" />
-                        ) : (
-                          <ChevronDown size={14} className="text-foreground" />
-                        )}
-                      </button>
+                        </button>
+                        <button 
+                          className="p-1 hover:bg-border rounded"
+                          aria-label={isSectionExpanded('orderbook') ? 'Collapse order book' : 'Expand order book'}
+                        >
+                          {isSectionExpanded('orderbook') ? (
+                            <ChevronUp size={14} className="text-foreground" />
+                          ) : (
+                            <ChevronDown size={14} className="text-foreground" />
+                          )}
+                        </button>
+                      </div>
                     </div>
-                    {isSectionExpanded('performance') && (
-                      <div className="flex-1 min-h-0 overflow-hidden">
-                        <PerformanceWidget market={selectedMarket} />
+                    {isSectionExpanded('orderbook') && (
+                      <div id="orderbook-content" className="flex-1 min-h-0 overflow-hidden">
+                        <OrderBook market={selectedMarket} isLoading={isLoadingMarketData} />
                       </div>
                     )}
                   </section>
@@ -468,61 +512,8 @@ export default function TradingTerminalView() {
               </div>
             </div>
 
-            {/* Right Panel - Order Book, Depth, Trades, News, and Positions - Wider for better visibility */}
+            {/* Right Panel - Market Depth, Trades, News, and Positions */}
             <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0" style={{ width: 'clamp(350px, 25vw, 480px)' }} aria-label="Market Data" data-ai-section="market-data-panel">
-              {/* Order Book Section */}
-              <section 
-                data-tile-id="orderbook"
-                className={`orderbook-section flex flex-col border-b border-border ${isSectionExpanded('orderbook') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'orderbook' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                aria-label="Order Book"
-                data-ai-widget="order-book"
-                data-ai-market={selectedMarket}
-              >
-                <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
-                  onClick={() => toggleSection('orderbook')}
-                  role="button"
-                  aria-expanded={isSectionExpanded('orderbook')}
-                  aria-controls="orderbook-content"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleSection('orderbook');
-                    }
-                  }}
-                >
-                  <span className="text-xs font-semibold text-primary">ORDER BOOK</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMaximize('orderbook');
-                      }}
-                      className="p-1 hover:bg-border rounded"
-                      title="Maximize (Shift+2)"
-                    >
-                      <ChevronUp size={14} className="text-foreground" />
-                    </button>
-                    <button 
-                      className="p-1 hover:bg-border rounded"
-                      aria-label={isSectionExpanded('orderbook') ? 'Collapse order book' : 'Expand order book'}
-                    >
-                      {isSectionExpanded('orderbook') ? (
-                        <ChevronUp size={14} className="text-foreground" />
-                      ) : (
-                        <ChevronDown size={14} className="text-foreground" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                {isSectionExpanded('orderbook') && (
-                  <div id="orderbook-content" className="flex-1 min-h-0 overflow-hidden">
-                    <OrderBook market={selectedMarket} isLoading={isLoadingMarketData} />
-                  </div>
-                )}
-              </section>
-
               {/* Market Depth Section */}
               <section 
                 data-tile-id="depth"
@@ -689,11 +680,11 @@ export default function TradingTerminalView() {
             )}
           </section>
 
-          {/* AI Chat Trading Assistant - Minimizable with fixed height */}
+          {/* AI Chat Trading Assistant - Expandable to fill available space */}
           <div 
             data-tile-id="aichat"
-            className={`ai-chat-section flex-shrink-0 border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''}`}
-            style={{ height: aiChatMinimized ? '40px' : 'clamp(250px, 30vh, 350px)' }}
+            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0' : 'flex-1'}`}
+            style={{ height: aiChatMinimized ? '40px' : undefined, minHeight: aiChatMinimized ? undefined : '250px' }}
             data-ai-widget="ai-chat-trading"
             data-ai-market={selectedMarket}
           >
@@ -729,15 +720,15 @@ export default function TradingTerminalView() {
     )}
   </div>
 
-      {/* Trading Controls - Fixed Bottom Panel */}
+      {/* Trading Controls - Bottom Panel */}
       <div 
         data-tile-id="controls"
-        className={`fixed bottom-0 left-0 right-0 bg-card border-t-2 border-border shadow-lg z-30 ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
+        className={`bg-card border-t-2 border-border flex-shrink-0 ${focusedTile === 'controls' ? 'ring-2 ring-primary ring-inset' : ''}`}
         data-ai-widget="trading-controls"
         data-ai-market={selectedMarket}
       >
         <div className="max-w-screen-2xl mx-auto px-4 py-3">
-          <TradingControls market={selectedMarket} />
+          <TradingControls market={selectedMarket} walletConnected={walletConnected} />
         </div>
       </div>
 

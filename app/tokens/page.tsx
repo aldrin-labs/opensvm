@@ -2,11 +2,12 @@
 
 export const dynamic = 'force-dynamic';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useSettings } from '@/lib/settings';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Button } from '@/components/ui/button';
+import { TableSkeleton } from '@/components/ui/skeleton';
 import { getAllTokens } from '@/lib/mock-token-data';
 import type { TokenMarketData, TokenListResponse } from '@/types/token-market';
 
@@ -20,32 +21,53 @@ export default function TokensPage() {
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [cursor, setCursor] = useState<string | undefined>();
+  const [retryCount, setRetryCount] = useState(0);
 
-  // Auto-refresh data every 30 seconds for real-time updates
-  useEffect(() => {
-    const loadTokens = async () => {
-      try {
-        setIsLoading(true);
-        setError(null);
-        const response: TokenListResponse = await getAllTokens(50);
-        setTokens(response.tokens);
-        setHasMore(response.hasMore);
-        setCursor(response.cursor);
-      } catch (err) {
-        console.error('Error loading tokens:', err);
-        setError('Failed to load token data. Please try again.');
-      } finally {
-        setIsLoading(false);
+  // Optimized: Load tokens with better error handling (Bug #8 fix)
+  const loadTokens = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setIsLoading(true);
+      setError(null);
+      
+      // Add timeout to prevent hanging
+      const timeoutPromise = new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Request timeout')), 10000)
+      );
+      
+      const response: TokenListResponse = await Promise.race([
+        getAllTokens(50),
+        timeoutPromise as Promise<TokenListResponse>
+      ]);
+      
+      setTokens(response.tokens);
+      setHasMore(response.hasMore);
+      setCursor(response.cursor);
+      setRetryCount(0); // Reset retry count on success
+    } catch (err) {
+      console.error('Error loading tokens:', err);
+      const errorMsg = err instanceof Error ? err.message : 'Failed to load token data';
+      setError(`${errorMsg}. Please try again.`);
+      
+      // Auto-retry with exponential backoff
+      if (retryCount < 3) {
+        setTimeout(() => {
+          setRetryCount(prev => prev + 1);
+          loadTokens(isRefresh);
+        }, Math.min(1000 * Math.pow(2, retryCount), 10000));
       }
-    };
+    } finally {
+      if (!isRefresh) setIsLoading(false);
+    }
+  }, [retryCount]);
 
+  useEffect(() => {
     loadTokens();
 
-    // Set up auto-refresh
-    const interval = setInterval(loadTokens, 30000); // Refresh every 30 seconds
+    // Optimized: Refresh every 60 seconds instead of 30 (reduces load)
+    const interval = setInterval(() => loadTokens(true), 60000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [loadTokens]);
 
   const handleTokenClick = (address: string) => {
     router.push(`/token/${address}`);
@@ -84,12 +106,18 @@ export default function TokensPage() {
       )}
 
       <div className="space-y-6">
-        <TokenMarketTable
-          tokens={tokens}
-          type="all"
-          onTokenClick={handleTokenClick}
-          isLoading={isLoading && tokens.length === 0}
-        />
+        {isLoading && tokens.length === 0 ? (
+          <div className="space-y-4">
+            <TableSkeleton rows={10} columns={7} />
+          </div>
+        ) : (
+          <TokenMarketTable
+            tokens={tokens}
+            type="all"
+            onTokenClick={handleTokenClick}
+            isLoading={false}
+          />
+        )}
 
         {hasMore && !isLoading && (
           <div className="flex justify-center">
@@ -109,7 +137,7 @@ export default function TokensPage() {
 
       <div className="mt-8 text-sm text-muted-foreground">
         <p>
-          Market data is updated in real-time from multiple sources. 
+          Market data is updated automatically every minute. 
           Price changes reflect the last 24 hours of trading activity.
         </p>
       </div>

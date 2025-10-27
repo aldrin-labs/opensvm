@@ -298,7 +298,11 @@ export default function HomePage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
             <div className="bg-background border border-border rounded-lg p-6">
               <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.blockHeight?.toLocaleString() ?? '...'}
+                {isLoading ? (
+                  <div className="h-9 w-32 bg-muted animate-pulse rounded"></div>
+                ) : (
+                  stats?.blockHeight?.toLocaleString() ?? '0'
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 Blocks Processed
@@ -306,7 +310,11 @@ export default function HomePage() {
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
               <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.activeValidators?.toLocaleString() ?? '...'}
+                {isLoading ? (
+                  <div className="h-9 w-24 bg-muted animate-pulse rounded"></div>
+                ) : (
+                  stats?.activeValidators?.toLocaleString() ?? '0'
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 Active Validators
@@ -314,7 +322,11 @@ export default function HomePage() {
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
               <div className="text-3xl font-mono text-foreground mb-2">
-                {stats?.tps?.toLocaleString() ?? '...'}
+                {isLoading ? (
+                  <div className="h-9 w-20 bg-muted animate-pulse rounded"></div>
+                ) : (
+                  stats?.tps?.toLocaleString() ?? '0'
+                )}
               </div>
               <div className="text-sm text-muted-foreground">
                 TPS
@@ -327,10 +339,16 @@ export default function HomePage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <div className="text-sm text-muted-foreground mb-2">Current Epoch</div>
-                <div className="text-2xl font-mono text-foreground">{stats?.epoch ?? '...'}</div>
+                <div className="text-2xl font-mono text-foreground">
+                  {isLoading ? (
+                    <div className="h-8 w-16 bg-muted animate-pulse rounded"></div>
+                  ) : (
+                    stats?.epoch ?? '0'
+                  )}
+                </div>
                 <div className="w-full bg-muted h-1 mt-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-primary h-1"
+                    className="bg-primary h-1 transition-all duration-500"
                     style={{ width: `${stats?.epochProgress ?? 0}%` }}
                   />
                 </div>
@@ -338,13 +356,22 @@ export default function HomePage() {
               <div>
                 <div className="text-sm text-muted-foreground mb-2">Network Load</div>
                 <div className="text-2xl font-mono text-foreground">
-                  {stats?.epochProgress?.toFixed(2) ?? '0'}%
+                  {isLoading ? (
+                    <div className="h-8 w-20 bg-muted animate-pulse rounded"></div>
+                  ) : (
+                    // Calculate network load based on TPS capacity (theoretical max ~65k TPS)
+                    stats?.tps ? `${Math.min(100, ((stats.tps / 65000) * 100)).toFixed(1)}%` : '0%'
+                  )}
                 </div>
               </div>
               <div>
                 <div className="text-sm text-muted-foreground mb-2">Block Height</div>
                 <div className="text-2xl font-mono text-foreground">
-                  {stats?.blockHeight?.toLocaleString() ?? '...'}
+                  {isLoading ? (
+                    <div className="h-8 w-32 bg-muted animate-pulse rounded"></div>
+                  ) : (
+                    stats?.blockHeight?.toLocaleString() ?? '0'
+                  )}
                 </div>
               </div>
             </div>
@@ -368,7 +395,7 @@ export default function HomePage() {
               />
             </div>
             <div className="bg-background border border-border rounded-lg p-6">
-              <TransactionsInBlock block={selectedBlock} />
+              <TransactionsInBlock block={selectedBlock} isLoading={isLoading && !selectedBlock} />
             </div>
           </div>
 

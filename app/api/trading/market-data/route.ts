@@ -38,45 +38,84 @@ const TOKEN_MAP: Record<string, string> = {
 };
 
 /**
- * Fetch real price data from Jupiter API
+ * Fetch real price data from Moralis API with retry logic
  */
-async function fetchJupiterPrice(token: string): Promise<{
+async function fetchMoralisPrice(token: string, retries = 2): Promise<{
   price: number;
   dataSource: string;
 } | null> {
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+  // Moralis token address mapping for Solana
+  const tokenAddresses: Record<string, string> = {
+    'SOL': 'So11111111111111111111111111111111111111112', // Wrapped SOL
+    'RAY': '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+    'ORCA': 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
+    'MNGO': 'MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac',
+    'SRM': 'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt',
+  };
 
-    const response = await fetch(`https://price.jup.ag/v6/price?ids=${token}`, {
-      signal: controller.signal,
-      headers: {
-        'Accept': 'application/json',
-        'User-Agent': 'OpenSVM/1.0'
+  const tokenAddress = tokenAddresses[token];
+  if (!tokenAddress) {
+    console.warn(`No Moralis address mapping for token: ${token}`);
+    return null;
+  }
+
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+
+      // Moralis EVM API endpoint for token price
+      // Note: Using public endpoint - for production, add X-API-Key header
+      const response = await fetch(
+        `https://deep-index.moralis.io/api/v2/erc20/${tokenAddress}/price?chain=solana`,
+        {
+          signal: controller.signal,
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+            'X-API-Key': process.env.MORALIS_API_KEY || '',
+          },
+          cache: 'no-store',
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.usdPrice) {
+          return {
+            price: parseFloat(data.usdPrice),
+            dataSource: 'Moralis API',
+          };
+        }
+      } else if (response.status === 429) {
+        // Rate limited, wait before retry
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+      } else if (response.status === 401 || response.status === 403) {
+        // API key issue, don't retry
+        console.warn(`Moralis API authentication failed for ${token}. Consider adding MORALIS_API_KEY env variable.`);
+        break;
       }
-    });
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json();
-      if (data.data?.[token]?.price) {
-        return {
-          price: data.data[token].price,
-          dataSource: 'Jupiter API',
-        };
+    } catch (error) {
+      if (attempt === retries) {
+        console.warn(`Moralis price fetch failed for ${token} after ${retries + 1} attempts:`, error instanceof Error ? error.message : 'Unknown error');
+      } else {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
       }
     }
-  } catch (error) {
-    console.warn(`Jupiter price fetch failed for ${token}:`, error);
   }
   return null;
 }
 
 /**
- * Fetch real price data from CoinGecko API
+ * Fetch real price data from CoinGecko API with retry logic
  */
-async function fetchCoinGeckoPrice(token: string): Promise<{
+async function fetchCoinGeckoPrice(token: string, retries = 2): Promise<{
   price: number;
   change24h: number;
   high24h: number;
@@ -84,50 +123,65 @@ async function fetchCoinGeckoPrice(token: string): Promise<{
   volume24h: number;
   dataSource: string;
 } | null> {
-  try {
-    const tokenIds: Record<string, string> = {
-      'SOL': 'solana',
-      'RAY': 'raydium',
-      'ORCA': 'orca',
-      'MNGO': 'mango-markets',
-      'SRM': 'serum',
-    };
+  const tokenIds: Record<string, string> = {
+    'SOL': 'solana',
+    'RAY': 'raydium',
+    'ORCA': 'orca',
+    'MNGO': 'mango-markets',
+    'SRM': 'serum',
+  };
 
-    const coinGeckoId = tokenIds[token];
-    if (!coinGeckoId) return null;
+  const coinGeckoId = tokenIds[token];
+  if (!coinGeckoId) return null;
 
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 3000);
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // Increased to 5s
 
-    const response = await fetch(
-      `https://api.coingecko.com/api/v3/simple/price?ids=${coinGeckoId}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_high_low_24h=true`,
-      {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
+      const response = await fetch(
+        `https://api.coingecko.com/api/v3/simple/price?ids=${coinGeckoId}&vs_currencies=usd&include_24hr_vol=true&include_24hr_change=true&include_high_low_24h=true`,
+        {
+          signal: controller.signal,
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json',
+          },
+          cache: 'no-store',
+        }
+      );
+
+      clearTimeout(timeoutId);
+
+      if (response.ok) {
+        const data = await response.json();
+        const tokenData = data[coinGeckoId];
+        
+        if (tokenData?.usd) {
+          return {
+            price: tokenData.usd,
+            change24h: tokenData.usd_24h_change || 0,
+            high24h: tokenData.usd_24h_high || tokenData.usd,
+            low24h: tokenData.usd_24h_low || tokenData.usd,
+            volume24h: tokenData.usd_24h_vol || 0,
+            dataSource: 'CoinGecko API',
+          };
+        }
+      } else if (response.status === 429) {
+        // Rate limited, wait before retry
+        if (attempt < retries) {
+          await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
         }
       }
-    );
-
-    clearTimeout(timeoutId);
-
-    if (response.ok) {
-      const data = await response.json();
-      const tokenData = data[coinGeckoId];
-      
-      if (tokenData?.usd) {
-        return {
-          price: tokenData.usd,
-          change24h: tokenData.usd_24h_change || 0,
-          high24h: tokenData.usd_24h_high || tokenData.usd,
-          low24h: tokenData.usd_24h_low || tokenData.usd,
-          volume24h: tokenData.usd_24h_vol || 0,
-          dataSource: 'CoinGecko API',
-        };
+    } catch (error) {
+      if (attempt === retries) {
+        console.warn(`CoinGecko price fetch failed for ${token} after ${retries + 1} attempts:`, error instanceof Error ? error.message : 'Unknown error');
+      } else {
+        // Wait before retry with exponential backoff
+        await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
       }
     }
-  } catch (error) {
-    console.warn(`CoinGecko price fetch failed for ${token}:`, error);
   }
   return null;
 }
@@ -191,13 +245,13 @@ export async function GET(req: NextRequest) {
     
     const baseToken = TOKEN_MAP[market] || 'SOL';
     
-    // Try to fetch real data from multiple sources
-    const [jupiterData, coinGeckoData] = await Promise.allSettled([
-      fetchJupiterPrice(baseToken),
+    // Try to fetch real data from multiple sources (Moralis, CoinGecko)
+    const [moralisData, coinGeckoData] = await Promise.allSettled([
+      fetchMoralisPrice(baseToken),
       fetchCoinGeckoPrice(baseToken),
     ]);
     
-    // Use CoinGecko as primary (has more complete data), Jupiter as fallback
+    // Use CoinGecko as primary (has more complete data), Moralis as fallback
     let marketData: MarketDataResponse;
     
     if (coinGeckoData.status === 'fulfilled' && coinGeckoData.value) {
@@ -215,13 +269,13 @@ export async function GET(req: NextRequest) {
         isRealData: true,
         dataSource: data.dataSource,
       };
-    } else if (jupiterData.status === 'fulfilled' && jupiterData.value) {
-      const data = jupiterData.value;
-      // Jupiter only provides price, estimate other values
+    } else if (moralisData.status === 'fulfilled' && moralisData.value) {
+      const data = moralisData.value;
+      // Moralis only provides price, estimate other values
       marketData = {
         market,
         price: data.price,
-        change24h: 0, // Not available from Jupiter alone
+        change24h: 0, // Not available from Moralis alone
         volume24h: 0, // Not available
         high24h: data.price * 1.02, // Estimate ±2%
         low24h: data.price * 0.98,

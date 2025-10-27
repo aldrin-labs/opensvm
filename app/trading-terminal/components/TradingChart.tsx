@@ -27,13 +27,23 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
   const [candleData, setCandleData] = useState<CandleData[]>([]);
   const [hoveredCandle, setHoveredCandle] = useState<CandleData | null>(null);
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [isTimeout, setIsTimeout] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const timeframes: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
 
-  // Generate mock candle data
+  // Generate mock candle data with timeout handling
   useEffect(() => {
     if (isLoading) return; // Don't generate data while loading
+    
+    // Set timeout to detect if data loading takes too long
+    const timeoutId = setTimeout(() => {
+      if (candleData.length === 0) {
+        setIsTimeout(true);
+        setLoadError('Chart data failed to load after 10 seconds');
+      }
+    }, 10000);
     
     const generateMockData = () => {
       const data: CandleData[] = [];
@@ -68,7 +78,18 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
       return data;
     };
 
-    setCandleData(generateMockData());
+    try {
+      const data = generateMockData();
+      setCandleData(data);
+      setLoadError(null);
+      setIsTimeout(false);
+    } catch (error) {
+      setLoadError(error instanceof Error ? error.message : 'Failed to generate chart data');
+    }
+    
+    return () => {
+      clearTimeout(timeoutId);
+    };
   }, [market, timeframe]);
 
   // Draw chart on canvas
@@ -378,8 +399,32 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
     : 0;
   const isPositive = priceChange >= 0;
 
+  // Error state
+  if (loadError || isTimeout) {
+    return (
+      <div className="trading-chart h-full flex flex-col bg-background">
+        <div className="flex-1 flex flex-col items-center justify-center p-8">
+          <div className="text-destructive text-lg mb-2">⚠️ Chart Error</div>
+          <p className="text-muted-foreground text-sm mb-4 text-center max-w-md">
+            {loadError || 'Chart data failed to load'}
+          </p>
+          <button
+            onClick={() => {
+              setLoadError(null);
+              setIsTimeout(false);
+              window.location.reload();
+            }}
+            className="px-4 py-2 bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Loading skeleton
-  if (isLoading) {
+  if (isLoading || candleData.length === 0) {
     return (
       <div className="trading-chart h-full flex flex-col bg-background">
         {/* Chart Controls Skeleton */}
@@ -401,7 +446,10 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
           <div className="w-full h-full relative">
             <Skeleton className="w-full h-full" />
             <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-muted-foreground text-sm">Loading chart data...</div>
+              <div className="text-muted-foreground text-sm">
+                Loading chart data...
+                <div className="text-xs mt-2">This may take up to 10 seconds</div>
+              </div>
             </div>
           </div>
         </div>

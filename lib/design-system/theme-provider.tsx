@@ -124,20 +124,23 @@ export function EnhancedThemeProvider({
   useEffect(() => {
     const root = document.documentElement;
 
-    // Remove existing theme classes
-    root.className = root.className.replace(
-      /theme-\w+|font-size-\w+/g,
-      ''
-    ).trim();
+    // Remove existing theme variant classes only (preserve other classes)
+    const themeClasses = ['theme-paper', 'theme-high-contrast', 'theme-cyberpunk', 'theme-solarized', 'theme-dos-blue'];
+    const fontClasses = ['font-size-sm', 'font-size-base', 'font-size-lg'];
+    
+    themeClasses.forEach(cls => root.classList.remove(cls));
+    fontClasses.forEach(cls => root.classList.remove(cls));
 
-    // Apply theme variant  
-    if (config.variant && config.variant !== 'default') {
-      root.classList.add(`theme-${config.variant}`);
-    }
+    // Apply theme variant (default to cyberpunk for dark theme)
+    const themeVariant = config.variant === 'default' ? 'cyberpunk' : config.variant;
+    root.classList.add(`theme-${themeVariant}`);
 
-    // Apply color scheme
-    root.setAttribute('data-theme', resolvedTheme);
-    root.style.colorScheme = resolvedTheme;
+    // Apply color scheme - force dark theme
+    root.setAttribute('data-theme', 'dark');
+    root.style.colorScheme = 'dark';
+    
+    // Ensure dark class is present
+    root.classList.add('dark');
 
     // Apply font size
     root.classList.add(`font-size-${config.fontSize}`);

@@ -34,7 +34,9 @@ class QueryCache {
     // Evict oldest entry if at capacity
     if (this.cache.size >= this.MAX_ENTRIES) {
       const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
     }
 
     this.cache.set(key, { response, timestamp: Date.now(), status });
@@ -168,10 +170,21 @@ const complexityAnalyzer = new QueryComplexityAnalyzer();
 
 // ✅ PHASE 5: Intelligent Query Truncation for Very Long Questions
 class QueryTruncator {
-  private readonly MAX_LENGTH = 5000;
-  private readonly TARGET_LENGTH = 2000;
+  private readonly MAX_LENGTH = 32000; // Increased from 5000
+  private readonly TARGET_LENGTH = 32000; // Increased from 2000
 
   truncateIfNeeded(question: string): { truncated: boolean; question: string; originalLength: number } {
+    // Skip truncation for OVSM/planning queries - they need full context
+    const isPlanningQuery = question.toLowerCase().includes('ovsm') ||
+                           question.toLowerCase().includes('execution plan') ||
+                           question.toLowerCase().includes('create an ovsm') ||
+                           question.toLowerCase().includes('previous ovsm plan');
+
+    if (isPlanningQuery) {
+      console.log(`📋 Planning query detected (${question.length} chars) - skipping truncation`);
+      return { truncated: false, question, originalLength: question.length };
+    }
+
     if (question.length <= this.MAX_LENGTH) {
       return { truncated: false, question, originalLength: question.length };
     }
@@ -509,7 +522,8 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             const processingTime = Date.now() - requestStart;
             console.log(`✅ Tool handling successful in ${processingTime}ms`);
             // ✅ PHASE 2: Cache the tool response
-            queryCache.set(question, ownPlan, customSystemPrompt || null, toolResult.response.body, 200);
+            const responseBody = toolResult.response.body || '';
+            queryCache.set(question, ownPlan, customSystemPrompt || null, String(responseBody), 200);
             return new Response(toolResult.response.body, {
               status: 200,
               headers: {

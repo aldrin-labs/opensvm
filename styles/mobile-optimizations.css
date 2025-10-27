@@ -1,0 +1,231 @@
+/**
+ * Mobile-First Responsive Optimizations
+ * Addresses mobile UX issues identified in QA
+ */
+
+/* Mobile viewport fixes */
+@media screen and (max-width: 768px) {
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Optimize sticky header for mobile */
+  .ai-navbar {
+    height: 56px;
+  }
+
+  #layout-content {
+    padding-top: 56px;
+  }
+
+  /* Trading terminal mobile optimizations */
+  .trading-terminal {
+    overflow-x: hidden;
+  }
+
+  /* Improve touch targets - minimum 44x44px for accessibility */
+  button,
+  a,
+  input[type="button"],
+  input[type="submit"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Stack cards vertically on mobile */
+  .grid-cols-1.md\:grid-cols-2,
+  .grid-cols-1.md\:grid-cols-3 {
+    grid-template-columns: 1fr;
+  }
+
+  /* Reduce padding on mobile for more content space */
+  .container {
+    padding-left: 1rem;
+    padding-right: 1rem;
+  }
+
+  /* Make tables horizontally scrollable */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Optimize font sizes for mobile readability */
+  h1 {
+    font-size: 1.875rem; /* 30px */
+    line-height: 2.25rem;
+  }
+
+  h2 {
+    font-size: 1.5rem; /* 24px */
+    line-height: 2rem;
+  }
+
+  h3 {
+    font-size: 1.25rem; /* 20px */
+    line-height: 1.75rem;
+  }
+
+  /* Improve form input spacing on mobile */
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Prevents zoom on iOS */
+  }
+
+  /* Stack navigation items vertically */
+  .md\:flex {
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Hide desktop-only elements */
+  .hidden.md\:flex,
+  .hidden.md\:block,
+  .hidden.md\:inline-block {
+    display: none !important;
+  }
+}
+
+/* Tablet optimizations (768px - 1024px) */
+@media screen and (min-width: 768px) and (max-width: 1024px) {
+  .trading-terminal {
+    font-size: 0.875rem;
+  }
+
+  /* Reduce grid gaps on tablet */
+  .gap-6 {
+    gap: 1rem;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger touch targets */
+  button {
+    padding: 0.75rem 1rem;
+  }
+
+  /* Disable hover effects that don't work on touch */
+  .hover\:bg-muted:hover {
+    background-color: transparent;
+  }
+
+  /* Add active states instead */
+  button:active,
+  a:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+  }
+
+  /* Improve dropdown touch experience */
+  [role="menu"],
+  [role="menuitem"] {
+    padding: 0.75rem 1rem;
+  }
+}
+
+/* Landscape mobile optimizations */
+@media screen and (max-width: 896px) and (orientation: landscape) {
+  /* Reduce header height in landscape */
+  .ai-navbar {
+    height: 48px;
+  }
+
+  #layout-content {
+    padding-top: 48px;
+  }
+
+  /* Hide less critical elements in landscape */
+  .landscape-hide {
+    display: none;
+  }
+}
+
+/* iOS specific fixes */
+@supports (-webkit-touch-callout: none) {
+  /* Fix iOS viewport height issues */
+  .min-h-screen {
+    min-height: -webkit-fill-available;
+  }
+
+  /* Prevent zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: max(16px, 1rem);
+  }
+
+  /* Fix safe area insets for notched devices */
+  .ai-navbar {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  #layout-content {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+/* Accessibility: Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Dark mode mobile optimizations */
+@media (prefers-color-scheme: dark) and (max-width: 768px) {
+  /* Slightly increase contrast on mobile in dark mode */
+  .text-muted-foreground {
+    opacity: 0.8;
+  }
+}
+
+/* Print optimizations */
+@media print {
+  .ai-navbar,
+  .fixed,
+  [data-ai-sidebar-root],
+  button {
+    display: none !important;
+  }
+
+  body {
+    background: white;
+    color: black;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  .text-muted-foreground {
+    opacity: 1;
+    color: inherit;
+  }
+
+  button,
+  a {
+    border: 2px solid currentColor;
+  }
+}
+
+/* Mobile keyboard adjustments */
+@media screen and (max-width: 768px) {
+  /* Prevent layout shift when mobile keyboard appears */
+  .fixed.bottom-0,
+  .fixed.bottom-4,
+  .fixed.bottom-6 {
+    position: absolute;
+  }
+
+  /* Ensure form buttons stay visible above keyboard */
+  form button[type="submit"] {
+    margin-bottom: 2rem;
+  }
+}

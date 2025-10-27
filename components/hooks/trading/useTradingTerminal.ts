@@ -138,7 +138,8 @@ export const useTradingTerminal = (
    * Check if a section is expanded
    */
   const isSectionExpanded = useCallback((sectionId: string) => {
-    return sections.find(s => s.id === sectionId)?.isExpanded ?? true;
+    const section = sections.find(s => s.id === sectionId);
+    return section?.isExpanded ?? true;
   }, [sections]);
 
   /**

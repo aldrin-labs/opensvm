@@ -1,13 +1,18 @@
 'use client';
 
 import React from 'react';
+import { useRealTimeMarketData } from '@/components/hooks/trading/useRealTimeMarketData';
+import { formatTimeAgo } from '@/lib/format-time';
 
 interface MarketDepthWidgetProps {
   market: string;
 }
 
 export default function MarketDepthWidget({ market }: MarketDepthWidgetProps) {
-  // Mock market depth data
+  // Use real-time market data hook
+  const { data, lastUpdate, error } = useRealTimeMarketData(market, { interval: 2000 });
+  
+  // Mock market depth data (will be replaced with real data from API)
   const depthData = [
     { price: 145.50, bidSize: 12500, askSize: 8200, cumBid: 12500, cumAsk: 8200 },
     { price: 145.45, bidSize: 18300, askSize: 0, cumBid: 30800, cumAsk: 8200 },
@@ -28,11 +33,20 @@ export default function MarketDepthWidget({ market }: MarketDepthWidgetProps) {
       data-widget-type="market-depth"
       data-widget-market={market}
       data-ai-context="market-depth-visualization"
+      key={`depth-${market}-${lastUpdate}`}
     >
-      <div className="px-3 py-2 border-b border-border">
+      <div className="px-3 py-2 border-b border-border flex items-center justify-between">
         <h3 className="text-xs font-semibold text-primary">MARKET DEPTH</h3>
+        <span className="text-[10px] text-muted-foreground">
+          {formatTimeAgo(lastUpdate)}
+        </span>
       </div>
       <div className="flex-1 overflow-auto p-2">
+        {error && (
+          <div className="text-xs text-destructive p-2 bg-destructive/10 rounded mb-2">
+            Error loading depth data
+          </div>
+        )}
         <div className="relative bg-card rounded border border-border p-2 space-y-0.5">
           {/* Depth visualization */}
           {depthData.map((item, idx) => {

@@ -130,6 +130,8 @@ export const useMarketData = (
       hasError: false,
       error: null,
     },
+    isRealData: false,
+    dataSource: 'Loading...', // Initial value so badge shows
   });
 
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -183,14 +185,10 @@ export const useMarketData = (
           dataSource: apiData.dataSource,
         });
         
-        // Show notification if using mock data
-        if (!apiData.isRealData && addNotification) {
-          addNotification({
-            type: 'warning',
-            title: 'Development Mode',
-            message: 'Using mock market data. Real API unavailable.',
-            duration: 5000,
-          });
+        // DISABLED: Development mode notification removed per bug fix
+        // Mock data usage is logged to console instead for debugging
+        if (!apiData.isRealData && process.env.NODE_ENV === 'development') {
+          console.info('[Market Data] Using mock data - Real API unavailable');
         }
       }
     } catch (error) {
