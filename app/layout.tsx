@@ -5,6 +5,7 @@ import "./styles/custom-scrollbar.css";
 import "./styles/scrollbar-themes.css";
 import "../styles/rtl.css";
 import "../styles/mobile-optimizations.css";
+import "../styles/keyboard-focus.css";
 import { NavbarInteractive } from "@/components/NavbarInteractive";
 import { Providers } from "./providers";
 import { AIChatSidebarWrapper } from "@/components/ai/AIChatSidebarWrapper";

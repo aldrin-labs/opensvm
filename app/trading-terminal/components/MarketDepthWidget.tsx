@@ -3,12 +3,14 @@
 import React from 'react';
 import { useRealTimeMarketData } from '@/components/hooks/trading/useRealTimeMarketData';
 import { formatTimeAgo } from '@/lib/format-time';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MarketDepthWidgetProps {
   market: string;
+  isLoading?: boolean;
 }
 
-export default function MarketDepthWidget({ market }: MarketDepthWidgetProps) {
+export default function MarketDepthWidget({ market, isLoading = false }: MarketDepthWidgetProps) {
   // Use real-time market data hook
   const { data, lastUpdate, error } = useRealTimeMarketData(market, { interval: 2000 });
   
@@ -26,6 +28,39 @@ export default function MarketDepthWidget({ market }: MarketDepthWidgetProps) {
   ];
 
   const maxCumSize = Math.max(...depthData.map(d => Math.max(d.cumBid, d.cumAsk)));
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div 
+        className="market-depth-widget h-full flex flex-col bg-background text-foreground overflow-hidden"
+        data-widget-type="market-depth"
+        data-widget-market={market}
+      >
+        <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+          <h3 className="text-xs font-semibold text-primary">MARKET DEPTH</h3>
+          <Skeleton className="h-3 w-12" />
+        </div>
+        <div className="flex-1 overflow-auto p-2">
+          <div className="relative bg-card rounded border border-border p-2 space-y-0.5">
+            {Array.from({ length: 9 }).map((_, i) => (
+              <Skeleton key={`skeleton-depth-${i}`} className="h-5" />
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <div className="bg-card border border-border rounded p-2">
+              <Skeleton className="h-3 w-16 mb-1" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+            <div className="bg-card border border-border rounded p-2">
+              <Skeleton className="h-3 w-16 mb-1" />
+              <Skeleton className="h-4 w-12" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

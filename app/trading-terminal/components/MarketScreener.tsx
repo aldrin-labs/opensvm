@@ -2,12 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp, Users, Eye, Star, Fish, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface MarketScreenerProps {
   selectedMarket: string;
   onMarketChange: (market: string) => void;
   isExpanded: boolean;
   onExpandChange: (expanded: boolean) => void;
+  isLoading?: boolean;
 }
 
 type TabType = 'trending' | 'all' | 'user' | 'monitor' | 'followers' | 'kols' | 'whales';
@@ -24,7 +26,7 @@ interface Market {
   liquidity?: number;
 }
 
-export default function MarketScreener({ selectedMarket, onMarketChange, isExpanded, onExpandChange }: MarketScreenerProps) {
+export default function MarketScreener({ selectedMarket, onMarketChange, isExpanded, onExpandChange, isLoading = false }: MarketScreenerProps) {
   const [activeTab, setActiveTab] = useState<TabType>('trending');
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -119,6 +121,48 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
     if (num >= 1000) return `$${(num / 1000).toFixed(2)}K`;
     return `$${num.toFixed(2)}`;
   };
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className={`market-screener flex flex-col bg-background border-r border-border ${isExpanded ? 'w-96' : 'w-72'} transition-all duration-300`}>
+        <div className="screener-header flex items-center justify-between px-3 py-2 bg-card border-b border-border">
+          <h2 className="text-sm font-bold text-primary">Market Screener</h2>
+          <div className="flex items-center gap-1">
+            <Skeleton className="w-6 h-6 rounded" />
+            <Skeleton className="w-6 h-6 rounded" />
+          </div>
+        </div>
+        <div className="tabs-container flex overflow-x-auto border-b border-border bg-card">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <Skeleton key={`tab-skeleton-${i}`} className="h-10 w-20 m-1" />
+          ))}
+        </div>
+        <div className="search-container p-2 border-b border-border">
+          <Skeleton className="h-8 w-full rounded" />
+        </div>
+        <div className="markets-list flex-1 overflow-y-auto p-2 space-y-2">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <div key={`market-skeleton-${i}`} className="flex items-center justify-between p-2">
+              <div className="flex flex-col gap-1 flex-1">
+                <Skeleton className="h-4 w-24" />
+                {isExpanded && <Skeleton className="h-3 w-16" />}
+              </div>
+              <div className="flex flex-col gap-1 items-end">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-3 w-12" />
+              </div>
+            </div>
+          ))}
+        </div>
+        {isExpanded && (
+          <div className="screener-footer px-3 py-2 border-t border-border bg-card">
+            <Skeleton className="h-3 w-32" />
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className={`market-screener flex flex-col bg-background border-r border-border ${isExpanded ? 'w-96' : 'w-72'} transition-all duration-300`}>
@@ -240,7 +284,7 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
             <button
               key={index}
               onClick={() => onMarketChange(market.symbol)}
-              className={`w-full px-3 py-2 flex items-center justify-between hover:bg-muted transition-colors border-b border-border/50 ${
+              className={`w-full px-3 py-2 flex items-center justify-between hover:bg-muted transition-colors duration-150 border-b border-border/50 ${
                 selectedMarket === market.symbol ? 'bg-primary/10' : ''
               }`}
             >

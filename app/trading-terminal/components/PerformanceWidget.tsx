@@ -1,13 +1,15 @@
 'use client';
 
 import React from 'react';
-import { TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown } from 'lucide-react';
+import { Skeleton } from '@/components/ui/skeleton';
 
 interface PerformanceWidgetProps {
   market: string;
+  isLoading?: boolean;
 }
 
-export default function PerformanceWidget({ market }: PerformanceWidgetProps) {
+export default function PerformanceWidget({ market, isLoading = false }: PerformanceWidgetProps) {
   const timeframes = [
     { label: '1H', change: 0.82 },
     { label: '24H', change: 2.43 },
@@ -18,6 +20,32 @@ export default function PerformanceWidget({ market }: PerformanceWidgetProps) {
     { label: 'Vol', value: '24.5%', trend: 'up' },
     { label: 'RSI', value: '68', trend: 'neutral' },
   ];
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div 
+        className="performance-widget h-full flex flex-col bg-background text-foreground overflow-hidden"
+        data-widget-type="performance"
+        data-widget-market={market}
+      >
+        <div className="px-3 py-2 border-b border-border">
+          <h3 className="text-xs font-semibold text-primary">PERFORMANCE</h3>
+        </div>
+        <div className="flex-1 overflow-auto p-3 space-y-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={`skeleton-perf-${i}`} className="bg-card border border-border rounded p-2">
+              <div className="flex items-center justify-between mb-2">
+                <Skeleton className="h-3 w-16" />
+                <Skeleton className="h-4 w-12" />
+              </div>
+              <Skeleton className="h-2 w-full rounded-full" />
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div 

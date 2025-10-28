@@ -109,7 +109,7 @@ export default function TradeHistory({ market, isLoading = false }: TradeHistory
         {trades.map((trade, index) => (
           <div
             key={trade.id}
-            className={`px-4 py-1 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer transition-colors ${
+            className={`px-4 py-1 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer transition-colors duration-150 ${
               index === 0 ? 'animate-pulse' : ''
             }`}
           >

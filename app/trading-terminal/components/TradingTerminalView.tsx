@@ -22,14 +22,24 @@ const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: fals
 const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
 const AIChatTradingWidget = dynamic(() => import('./AIChatTradingWidget'), { ssr: false });
-import { ChevronDown, ChevronUp, Keyboard } from 'lucide-react';
+import { ChevronDown, ChevronUp, Keyboard, Settings, HelpCircle } from 'lucide-react';
 import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
+import { KeyboardShortcutsSettings } from '@/components/KeyboardShortcutsSettings';
+import { TutorialTour, useTutorial } from '@/components/TutorialTour';
+import { TRADING_TERMINAL_TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY } from '@/lib/trading-terminal-tutorial';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function TradingTerminalView() {
   // Use modular hooks for state management
   const terminal = useTradingTerminal('SOL/USDC');
   const marketData = useMarketData(terminal.selectedMarket);
   const wallet = useWalletConnection();
+  
+  // Settings modal state
+  const [showSettings, setShowSettings] = React.useState(false);
+  
+  // Tutorial state
+  const { showTutorial, startTutorial, closeTutorial } = useTutorial(TUTORIAL_STORAGE_KEY);
 
   // Setup keyboard shortcuts
   useKeyboardShortcuts({
@@ -137,7 +147,7 @@ export default function TradingTerminalView() {
       </header>
 
       {/* Main Terminal Layout - Flexible Height with Maximized Tile Support */}
-      <div className="trading-content flex-1 flex flex-row overflow-hidden relative min-h-0">
+      <div className="trading-content flex-1 flex flex-col lg:flex-row overflow-hidden relative min-h-0">
         {/* Maximized Tile Overlay */}
         {maximizedTile && (
           <div className="absolute inset-0 z-50 bg-background flex flex-col overflow-hidden">
@@ -340,7 +350,7 @@ export default function TradingTerminalView() {
         {!maximizedTile && (
           <>
             {/* Left Panel - Market Screener (70%) + Watchlist (30%) */}
-            <div className="flex flex-col border-r border-border flex-shrink-0 overflow-hidden" style={{ width: '320px' }}>
+            <div className="flex flex-col border-r border-border flex-shrink-0 overflow-hidden w-full lg:w-80 hidden md:flex">
               {/* Market Screener - 70% */}
               <div 
                 data-tile-id="screener"
@@ -375,9 +385,9 @@ export default function TradingTerminalView() {
                   <span className="text-xs font-semibold text-primary">WATCHLIST</span>
                   <button className="p-1 hover:bg-border rounded">
                     {isSectionExpanded('watchlist') ? (
-                      <ChevronUp size={14} className="text-foreground" />
+                      <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                     ) : (
-                      <ChevronDown size={14} className="text-foreground" />
+                      <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                     )}
                   </button>
                 </div>
@@ -390,7 +400,7 @@ export default function TradingTerminalView() {
             </div>
 
             {/* Center Panel - Chart and Widgets Grid */}
-            <div className="chart-panel flex-1 flex flex-col border-r border-border min-w-0 overflow-hidden">
+            <div className="chart-panel flex-1 flex flex-col border-r border-border min-w-0 overflow-hidden w-full md:w-auto">
               {/* Top Row: Chart (35% height) - Balanced for quick analysis */}
               <div className="flex border-b border-border flex-1 min-h-0" style={{ flexBasis: '35%' }}>
                 {/* Chart Section */}
@@ -415,8 +425,15 @@ export default function TradingTerminalView() {
                       }
                     }}
                   >
-                    <span className="text-xs font-semibold text-primary">CHART</span>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
+                      <span className="text-xs font-semibold text-primary flex-shrink-0">CHART</span>
+                      {isSectionExpanded('chart') && (
+                        <div className="flex-1 min-w-0 overflow-hidden">
+                          <PerformanceWidget market={selectedMarket} />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -432,20 +449,13 @@ export default function TradingTerminalView() {
                         aria-label={isSectionExpanded('chart') ? 'Collapse chart' : 'Expand chart'}
                       >
                         {isSectionExpanded('chart') ? (
-                          <ChevronUp size={14} className="text-foreground" />
+                          <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                         ) : (
-                          <ChevronDown size={14} className="text-foreground" />
+                          <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                         )}
                       </button>
                     </div>
                   </div>
-                  
-                  {/* Performance Bar - Compact metrics */}
-                  {isSectionExpanded('chart') && (
-                    <div className="performance-bar bg-card border-b border-border px-2 py-0.5 flex items-center gap-2 overflow-x-auto">
-                      <PerformanceWidget market={selectedMarket} />
-                    </div>
-                  )}
                   
                   {isSectionExpanded('chart') && (
                     <div id="chart-content" className="flex-1 min-h-0 overflow-hidden">
@@ -455,7 +465,7 @@ export default function TradingTerminalView() {
                 </section>
 
                 {/* Right side widgets column - Order Book */}
-                <div className="w-64 flex flex-col overflow-hidden">
+                <div className="w-full md:w-64 flex flex-col overflow-hidden">
                   {/* Order Book Section */}
                   <section 
                     data-tile-id="orderbook"
@@ -495,9 +505,9 @@ export default function TradingTerminalView() {
                           aria-label={isSectionExpanded('orderbook') ? 'Collapse order book' : 'Expand order book'}
                         >
                           {isSectionExpanded('orderbook') ? (
-                            <ChevronUp size={14} className="text-foreground" />
+                            <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                           ) : (
-                            <ChevronDown size={14} className="text-foreground" />
+                            <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                           )}
                         </button>
                       </div>
@@ -513,17 +523,17 @@ export default function TradingTerminalView() {
             </div>
 
             {/* Right Panel - Market Depth, Trades, News, and Positions */}
-            <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0" style={{ width: 'clamp(350px, 25vw, 480px)' }} aria-label="Market Data" data-ai-section="market-data-panel">
+            <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0 w-full lg:w-96 xl:w-[480px]" aria-label="Market Data" data-ai-section="market-data-panel">
               {/* Market Depth Section */}
               <section 
                 data-tile-id="depth"
-                className={`depth-section flex flex-col border-b border-border ${isSectionExpanded('depth') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'depth' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                className={`depth-section flex flex-col border-b border-border ${isSectionExpanded('depth') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'depth' ? 'ring-2 ring-primary ring-inset' : ''}`}
                 aria-label="Market Depth"
                 data-ai-widget="market-depth"
                 data-ai-market={selectedMarket}
               >
                 <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
                   onClick={() => toggleSection('depth')}
                   role="button"
                   tabIndex={0}
@@ -531,9 +541,9 @@ export default function TradingTerminalView() {
                   <span className="text-xs font-semibold text-primary">MARKET DEPTH</span>
                   <button className="p-1 hover:bg-border rounded">
                     {isSectionExpanded('depth') ? (
-                      <ChevronUp size={14} className="text-foreground" />
+                      <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                     ) : (
-                      <ChevronDown size={14} className="text-foreground" />
+                      <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                     )}
                   </button>
                 </div>
@@ -547,13 +557,13 @@ export default function TradingTerminalView() {
               {/* Recent Trades Section */}
               <section 
                 data-tile-id="trades"
-                className={`trades-section flex flex-col border-b border-border ${isSectionExpanded('trades') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'trades' ? 'ring-2 ring-primary ring-inset' : ''}`}
+                className={`trades-section flex flex-col border-b border-border ${isSectionExpanded('trades') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'trades' ? 'ring-2 ring-primary ring-inset' : ''}`}
                 aria-label="Recent Trades"
                 data-ai-widget="recent-trades"
                 data-ai-market={selectedMarket}
               >
                 <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
                   onClick={() => toggleSection('trades')}
                   role="button"
                   aria-expanded={isSectionExpanded('trades')}
@@ -583,9 +593,9 @@ export default function TradingTerminalView() {
                       aria-label={isSectionExpanded('trades') ? 'Collapse trades' : 'Expand trades'}
                     >
                       {isSectionExpanded('trades') ? (
-                        <ChevronUp size={14} className="text-foreground" />
+                        <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                       ) : (
-                        <ChevronDown size={14} className="text-foreground" />
+                        <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                       )}
                     </button>
                   </div>
@@ -600,13 +610,13 @@ export default function TradingTerminalView() {
           {/* Market News Section */}
           <section 
             data-tile-id="news"
-            className={`news-section flex flex-col border-b border-border ${isSectionExpanded('news') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'news' ? 'ring-2 ring-primary ring-inset' : ''}`}
+            className={`news-section flex flex-col border-b border-border ${isSectionExpanded('news') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'news' ? 'ring-2 ring-primary ring-inset' : ''}`}
             aria-label="Market News"
             data-ai-widget="market-news"
             data-ai-market={selectedMarket}
           >
             <div 
-              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
               onClick={() => toggleSection('news')}
               role="button"
               tabIndex={0}
@@ -614,9 +624,9 @@ export default function TradingTerminalView() {
               <span className="text-xs font-semibold text-primary">MARKET NEWS</span>
               <button className="p-1 hover:bg-border rounded">
                 {isSectionExpanded('news') ? (
-                  <ChevronUp size={14} className="text-foreground" />
+                  <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                 ) : (
-                  <ChevronDown size={14} className="text-foreground" />
+                  <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                 )}
               </button>
             </div>
@@ -630,13 +640,13 @@ export default function TradingTerminalView() {
           {/* Positions Section */}
           <section 
             data-tile-id="positions"
-            className={`positions-section flex flex-col ${isSectionExpanded('positions') ? 'flex-1' : 'h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'positions' ? 'ring-2 ring-primary ring-inset' : ''}`}
+            className={`positions-section flex flex-col ${isSectionExpanded('positions') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'positions' ? 'ring-2 ring-primary ring-inset' : ''}`}
             aria-label="Trading Positions"
             data-ai-widget="trading-positions"
             data-ai-market={selectedMarket}
           >
             <div 
-              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted"
+              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
               onClick={() => toggleSection('positions')}
               role="button"
               aria-expanded={isSectionExpanded('positions')}
@@ -666,9 +676,9 @@ export default function TradingTerminalView() {
                   aria-label={isSectionExpanded('positions') ? 'Collapse positions' : 'Expand positions'}
                 >
                   {isSectionExpanded('positions') ? (
-                    <ChevronUp size={14} className="text-foreground" />
+                    <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                   ) : (
-                    <ChevronDown size={14} className="text-foreground" />
+                    <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                   )}
                 </button>
               </div>
@@ -683,13 +693,12 @@ export default function TradingTerminalView() {
           {/* AI Chat Trading Assistant - Expandable to fill available space */}
           <div 
             data-tile-id="aichat"
-            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0' : 'flex-1'}`}
-            style={{ height: aiChatMinimized ? '40px' : undefined, minHeight: aiChatMinimized ? undefined : '250px' }}
+            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0 h-10' : 'flex-1 min-h-0'}`}
             data-ai-widget="ai-chat-trading"
             data-ai-market={selectedMarket}
           >
             <div 
-              className="flex items-center justify-between px-3 py-2 bg-card border-b border-border cursor-pointer hover:bg-muted"
+              className="flex items-center justify-between px-3 py-2 bg-card border-b border-border cursor-pointer hover:bg-muted transition-colors duration-150"
               onClick={() => setAIChatMinimized(!aiChatMinimized)}
               role="button"
               aria-expanded={!aiChatMinimized}
@@ -698,9 +707,9 @@ export default function TradingTerminalView() {
               <span className="text-xs font-semibold text-primary">AI ASSISTANT</span>
               <button className="p-1 hover:bg-border rounded">
                 {aiChatMinimized ? (
-                  <ChevronUp size={14} className="text-foreground" />
+                  <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                 ) : (
-                  <ChevronDown size={14} className="text-foreground" />
+                  <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
                 )}
               </button>
             </div>
@@ -732,15 +741,28 @@ export default function TradingTerminalView() {
         </div>
       </div>
 
-      {/* Keyboard Shortcuts Button */}
-      <button
-        className="fixed bottom-4 right-4 p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted transition-colors z-50"
-        onClick={() => setShowShortcuts(!showShortcuts)}
-        aria-label="Show keyboard shortcuts"
-        title="Keyboard shortcuts (?)"
-      >
-        <Keyboard size={20} className="text-primary" />
-      </button>
+      {/* Help Menu */}
+      <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
+        {/* Tutorial Button */}
+        <button
+          className="p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted transition-colors duration-150"
+          onClick={startTutorial}
+          aria-label="Start tutorial"
+          title="Start tutorial"
+        >
+          <HelpCircle size={20} className="text-primary" />
+        </button>
+        
+        {/* Keyboard Shortcuts Button */}
+        <button
+          className="p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted transition-colors duration-150"
+          onClick={() => setShowShortcuts(!showShortcuts)}
+          aria-label="Show keyboard shortcuts"
+          title="Keyboard shortcuts (?)"
+        >
+          <Keyboard size={20} className="text-primary" />
+        </button>
+      </div>
 
       {/* Keyboard Shortcuts Modal */}
       {showShortcuts && (
@@ -815,12 +837,42 @@ export default function TradingTerminalView() {
                 <kbd className="px-2 py-1 bg-background border border-border rounded font-mono text-primary text-xs">Esc</kbd>
               </div>
             </div>
-            <div className="mt-4 pt-4 border-t border-border text-xs text-muted-foreground">
-              <strong>Tip:</strong> Shortcuts work when not typing in an input field. Use arrow keys to navigate between tiles with visual focus indicators.
+            <div className="mt-4 pt-4 border-t border-border flex items-center justify-between">
+              <div className="text-xs text-muted-foreground">
+                <strong>Tip:</strong> Shortcuts work when not typing in an input field.
+              </div>
+              <button
+                onClick={() => {
+                  setShowShortcuts(false);
+                  setShowSettings(true);
+                }}
+                className="flex items-center gap-2 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/90 transition-colors duration-150"
+              >
+                <Settings size={14} />
+                Customize
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Keyboard Shortcuts Settings Modal */}
+      <ErrorBoundary componentName="Keyboard Shortcuts Settings">
+        <KeyboardShortcutsSettings 
+          isOpen={showSettings}
+          onClose={() => setShowSettings(false)}
+        />
+      </ErrorBoundary>
+
+      {/* Tutorial Tour */}
+      <ErrorBoundary componentName="Tutorial Tour">
+        <TutorialTour
+          steps={TRADING_TERMINAL_TUTORIAL_STEPS}
+          isOpen={showTutorial}
+          onClose={closeTutorial}
+          storageKey={TUTORIAL_STORAGE_KEY}
+        />
+      </ErrorBoundary>
     </div>
   );
 }

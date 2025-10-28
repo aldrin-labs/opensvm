@@ -111,7 +111,7 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
             return (
               <div
                 key={`ask-${index}`}
-                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer"
+                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer transition-colors duration-150"
               >
                 <div
                   className="absolute right-0 top-0 h-full bg-destructive opacity-10"
@@ -153,7 +153,7 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
             return (
               <div
                 key={`bid-${index}`}
-                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer"
+                className="relative px-4 py-0.5 grid grid-cols-3 gap-2 text-xs font-mono hover:bg-muted cursor-pointer transition-colors duration-150"
               >
                 <div
                   className="absolute right-0 top-0 h-full bg-primary opacity-10"

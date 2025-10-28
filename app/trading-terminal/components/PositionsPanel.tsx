@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { X, TrendingUp, TrendingDown } from 'lucide-react';
+import { X, TrendingUp, TrendingDown, Inbox, FileText } from 'lucide-react';
 
 interface PositionsPanelProps {
   market: string;
@@ -150,17 +150,51 @@ export default function PositionsPanel({ market }: PositionsPanelProps) {
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center p-8">
-              <div className="text-muted-foreground text-sm mb-2">No open positions</div>
-              <div className="text-muted-foreground text-xs">
-                Your positions will appear here
+              <div className="mb-4 p-4 rounded-full bg-muted/50">
+                <Inbox className="h-8 w-8 text-muted-foreground" />
+              </div>
+              <div className="text-foreground font-semibold text-sm mb-2">No Open Positions</div>
+              <div className="text-muted-foreground text-xs mb-4 max-w-xs">
+                You don't have any active trading positions. Use the trading controls below to open a position.
+              </div>
+              <div className="flex flex-col gap-2 text-xs">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                  <span>Enter amount and price in trading controls</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                  <span>Click Buy or Sell to open a position</span>
+                </div>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                  <span>Monitor your positions here</span>
+                </div>
               </div>
             </div>
           )
         ) : (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="text-muted-foreground text-sm mb-2">No open orders</div>
-            <div className="text-muted-foreground text-xs">
-              Your orders will appear here
+            <div className="mb-4 p-4 rounded-full bg-muted/50">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <div className="text-foreground font-semibold text-sm mb-2">No Open Orders</div>
+            <div className="text-muted-foreground text-xs mb-4 max-w-xs">
+              You don't have any pending orders. Limit orders and stop orders will appear here when placed.
+            </div>
+            <div className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>Set your desired price in trading controls</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>Select "Limit" order type</span>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <div className="w-1.5 h-1.5 rounded-full bg-primary"></div>
+                <span>Track your orders here until filled</span>
+              </div>
             </div>
           </div>
         )}

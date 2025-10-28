@@ -70,7 +70,7 @@ export default function WatchlistWidget({ onMarketChange, isLoading = false }: W
             {watchlist.map((item, idx) => (
               <tr
                 key={`watchlist-${idx}-${item.symbol}`}
-                className="border-b border-border hover:bg-muted cursor-pointer transition-colors"
+                className="border-b border-border hover:bg-muted cursor-pointer transition-colors duration-150"
                 onClick={() => onMarketChange?.(item.symbol)}
                 data-watchlist-symbol={item.symbol}
                 data-watchlist-price={item.price}
