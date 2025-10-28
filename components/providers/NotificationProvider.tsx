@@ -28,7 +28,7 @@ interface NotificationContextValue {
   clearAll: () => void;
 }
 
-const NotificationContext = createContext<NotificationContextValue | null>(null);
+export const NotificationContext = createContext<NotificationContextValue | null>(null);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -111,6 +111,31 @@ export function useNotifications() {
   const context = useContext(NotificationContext);
   if (!context) {
     throw new Error('useNotifications must be used within NotificationProvider');
+  }
+  return context;
+}
+
+// Safe version that doesn't throw
+export function useNotificationsSafe() {
+  const context = useContext(NotificationContext);
+  if (!context) {
+    // Return a fallback that logs warnings instead of throwing
+    return {
+      notifications: [],
+      addNotification: (notification: Omit<Notification, 'id'>) => {
+        console.warn('[useNotificationsSafe] NotificationProvider not found, notification:', notification);
+        return 'no-op-id';
+      },
+      removeNotification: (id: string) => {
+        console.warn('[useNotificationsSafe] NotificationProvider not found, cannot remove:', id);
+      },
+      updateNotification: (id: string, updates: Partial<Omit<Notification, 'id'>>) => {
+        console.warn('[useNotificationsSafe] NotificationProvider not found, cannot update:', id, updates);
+      },
+      clearAll: () => {
+        console.warn('[useNotificationsSafe] NotificationProvider not found, cannot clear');
+      },
+    };
   }
   return context;
 }

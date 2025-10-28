@@ -35,19 +35,11 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
 
   // Generate mock candle data with timeout handling
   useEffect(() => {
-    if (isLoading) return; // Don't generate data while loading
-    
-    // Set timeout to detect if data loading takes too long
-    const timeoutId = setTimeout(() => {
-      if (candleData.length === 0) {
-        setIsTimeout(true);
-        setLoadError('Chart data failed to load after 10 seconds');
-      }
-    }, 10000);
-    
+    // Generate data immediately without waiting
     const generateMockData = () => {
       const data: CandleData[] = [];
-      let currentPrice = 100 + Math.random() * 50;
+      // Use SOL price range for more realistic data
+      let currentPrice = 140 + Math.random() * 20;
       const now = Date.now();
       const interval = timeframe === '1m' ? 60000 : 
                       timeframe === '5m' ? 300000 :
@@ -87,8 +79,25 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
       setLoadError(error instanceof Error ? error.message : 'Failed to generate chart data');
     }
     
+    // Update data periodically for live feel
+    const updateInterval = setInterval(() => {
+      if (candleData.length > 0) {
+        const lastCandle = candleData[candleData.length - 1];
+        const newPrice = lastCandle.close + (Math.random() - 0.5) * 2;
+        const updatedData = [...candleData];
+        updatedData[updatedData.length - 1] = {
+          ...lastCandle,
+          close: newPrice,
+          high: Math.max(lastCandle.high, newPrice),
+          low: Math.min(lastCandle.low, newPrice),
+          volume: lastCandle.volume + Math.random() * 100
+        };
+        setCandleData(updatedData);
+      }
+    }, 2000);
+    
     return () => {
-      clearTimeout(timeoutId);
+      clearInterval(updateInterval);
     };
   }, [market, timeframe]);
 

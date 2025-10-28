@@ -37,6 +37,9 @@ const TOKEN_MAP: Record<string, string> = {
   'SRM/USDC': 'SRM',
 };
 
+// Cache to track logged warnings (prevent spam)
+const loggedWarnings = new Set<string>();
+
 /**
  * Fetch real price data from Moralis API with retry logic
  */
@@ -96,8 +99,12 @@ async function fetchMoralisPrice(token: string, retries = 2): Promise<{
           continue;
         }
       } else if (response.status === 401 || response.status === 403) {
-        // API key issue, don't retry
-        console.warn(`Moralis API authentication failed for ${token}. Consider adding MORALIS_API_KEY env variable.`);
+        // API key issue, don't retry - log warning only once
+        const warningKey = `moralis-auth-${token}`;
+        if (!loggedWarnings.has(warningKey)) {
+          console.warn(`Moralis API authentication failed for ${token}. Consider adding MORALIS_API_KEY env variable.`);
+          loggedWarnings.add(warningKey);
+        }
         break;
       }
     } catch (error) {

@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNotifications } from '@/components/providers/NotificationProvider';
+import { useNotificationsSafe } from '@/components/providers/NotificationProvider';
 
 export interface OrderBookEntry {
   price: number;
@@ -101,7 +101,8 @@ export const useMarketData = (
   market: string,
   updateInterval: number = 10000 // 10 seconds for real API calls
 ): UseMarketDataReturn => {
-  const { addNotification } = useNotifications();
+  // Use safe notification hook that doesn't throw if provider is missing
+  const { addNotification } = useNotificationsSafe();
   const [marketData, setMarketData] = useState<MarketData>({
     stats: {
       price: 0,

@@ -21,7 +21,7 @@ const MarketDepthWidget = dynamic(() => import('./MarketDepthWidget'), { ssr: fa
 const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: false });
 const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
-const AIChatTradingWidget = dynamic(() => import('./AIChatTradingWidget'), { ssr: false });
+const EnhancedAIChatWidget = dynamic(() => import('./EnhancedAIChatWidget'), { ssr: false });
 import { ChevronDown, ChevronUp, Keyboard, Settings, HelpCircle } from 'lucide-react';
 import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
 import { KeyboardShortcutsSettings } from '@/components/KeyboardShortcutsSettings';
@@ -334,7 +334,7 @@ export default function TradingTerminalView() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <AIChatTradingWidget 
+                  <EnhancedAIChatWidget 
                     market={selectedMarket} 
                     walletConnected={walletConnected}
                     onTradeExecute={handleTradeExecute}
@@ -522,8 +522,8 @@ export default function TradingTerminalView() {
               </div>
             </div>
 
-            {/* Right Panel - Market Depth, Trades, News, and Positions */}
-            <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0 w-full lg:w-96 xl:w-[480px]" aria-label="Market Data" data-ai-section="market-data-panel">
+            {/* Right Panel - Market Depth, Trades, News, Positions, and AI Chat */}
+            <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0 w-full lg:w-96 xl:w-[480px] h-full" aria-label="Market Data" data-ai-section="market-data-panel">
               {/* Market Depth Section */}
               <section 
                 data-tile-id="depth"
@@ -693,19 +693,26 @@ export default function TradingTerminalView() {
           {/* AI Chat Trading Assistant - Expandable to fill available space */}
           <div 
             data-tile-id="aichat"
-            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0 h-10' : 'flex-1 min-h-0'}`}
+            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0' : 'flex-1 min-h-0'}`}
+            style={!aiChatMinimized ? { minHeight: '300px', maxHeight: '50vh' } : { height: '42px' }}
             data-ai-widget="ai-chat-trading"
             data-ai-market={selectedMarket}
           >
             <div 
-              className="flex items-center justify-between px-3 py-2 bg-card border-b border-border cursor-pointer hover:bg-muted transition-colors duration-150"
+              className="flex items-center justify-between px-3 py-2 bg-card border-b border-border cursor-pointer hover:bg-muted transition-colors duration-150 h-[42px] flex-shrink-0"
               onClick={() => setAIChatMinimized(!aiChatMinimized)}
               role="button"
               aria-expanded={!aiChatMinimized}
               title={aiChatMinimized ? 'Expand AI Assistant' : 'Minimize AI Assistant'}
             >
               <span className="text-xs font-semibold text-primary">AI ASSISTANT</span>
-              <button className="p-1 hover:bg-border rounded">
+              <button 
+                className="p-1 hover:bg-border rounded"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setAIChatMinimized(!aiChatMinimized);
+                }}
+              >
                 {aiChatMinimized ? (
                   <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
                 ) : (
@@ -714,8 +721,8 @@ export default function TradingTerminalView() {
               </button>
             </div>
             {!aiChatMinimized && (
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <AIChatTradingWidget 
+              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
+                <EnhancedAIChatWidget 
                   market={selectedMarket} 
                   walletConnected={walletConnected}
                   onTradeExecute={handleTradeExecute}

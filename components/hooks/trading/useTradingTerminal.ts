@@ -7,7 +7,7 @@
  * @module hooks/trading/useTradingTerminal
  */
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 
 export interface Section {
   id: string;
@@ -105,10 +105,10 @@ export const useTradingTerminal = (
   const [aiChatMinimized, setAIChatMinimized] = useState(false); // Expanded by default
 
   // Simulate initial data loading
-  useState(() => {
+  useEffect(() => {
     const timer = setTimeout(() => setIsLoading(false), 500);
     return () => clearTimeout(timer);
-  });
+  }, []); // Empty dependency array means this runs once on mount
 
   /**
    * Toggle expansion state of a section

@@ -9,6 +9,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNotifications } from '@/components/providers/NotificationProvider';
+import { mockWallet } from '@/lib/trading/mock-wallet';
 
 // Import shared types from useMarketData
 import type { LoadingState, ErrorState } from './useMarketData';
@@ -117,10 +118,13 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
   }, []);
 
   /**
-   * Connect to Phantom wallet
+   * Connect to wallet (using mock wallet for demo)
    */
   const connect = useCallback(async () => {
-    if (!isPhantomInstalled()) {
+    // Use mock wallet for demo mode
+    const useMockWallet = true; // Set to false to use Phantom
+    
+    if (!useMockWallet && !isPhantomInstalled()) {
       const errorMessage = 'Phantom wallet is not installed. Please install it from phantom.app';
       setWalletInfo(prev => ({
         ...prev,
@@ -147,16 +151,26 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
     // Show loading notification (optional - can be removed for simpler UX)
     void addNotification({
       type: 'loading',
-      title: 'Connecting to Phantom...',
+      title: 'Connecting to Demo Wallet...',
       dismissible: false,
       duration: 2000, // Auto-dismiss after 2s
     });
 
     try {
-      const solana = window.solana as PhantomWallet;
-      const response = await solana.connect();
-      const publicKey = response.publicKey.toString();
-      const balance = await fetchBalance(publicKey);
+      let publicKey: string;
+      let balance: number | null;
+      
+      // Use mock wallet for demo
+      if (useMockWallet) {
+        await mockWallet.connect();
+        publicKey = mockWallet.publicKey;
+        balance = mockWallet.getBalance();
+      } else {
+        const solana = window.solana as PhantomWallet;
+        const response = await solana.connect();
+        publicKey = response.publicKey.toString();
+        balance = await fetchBalance(publicKey);
+      }
 
       if (mountedRef.current) {
         setWalletInfo(prev => ({
@@ -231,6 +245,11 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
    * Disconnect wallet
    */
   const disconnect = useCallback(() => {
+    // Disconnect mock wallet
+    if (mockWallet.connected) {
+      mockWallet.disconnect();
+    }
+    
     const solana = window.solana as PhantomWallet | undefined;
     if (solana) {
       solana.disconnect();
@@ -269,52 +288,117 @@ export const useWalletConnection = (): UseWalletConnectionReturn => {
    */
   const refreshBalance = useCallback(async () => {
     if (walletInfo.publicKey) {
-      const balance = await fetchBalance(walletInfo.publicKey);
-      if (mountedRef.current) {
-        setWalletInfo(prev => ({ ...prev, balance }));
+      if (mockWallet.connected) {
+        // Use mock wallet balance
+        const balance = mockWallet.getBalance();
+        if (mountedRef.current) {
+          setWalletInfo(prev => ({ ...prev, balance }));
+        }
+      } else {
+        const balance = await fetchBalance(walletInfo.publicKey);
+        if (mountedRef.current) {
+          setWalletInfo(prev => ({ ...prev, balance }));
+        }
       }
     }
   }, [walletInfo.publicKey, fetchBalance]);
 
   /**
-   * Auto-connect on mount if previously connected
+   * Auto-connect on mount if previously connected (or use mock wallet)
    */
   useEffect(() => {
     mountedRef.current = true;
 
-    const shouldAutoConnect = localStorage.getItem(WALLET_STORAGE_KEY) === 'true';
-    const solana = window.solana as PhantomWallet | undefined;
+    // Auto-connect mock wallet for demo
+    const useMockWallet = true;
     
-    if (shouldAutoConnect && isPhantomInstalled()) {
-      // Check if wallet is already connected
-      if (solana?.publicKey) {
-        const publicKey = solana.publicKey.toString();
-        fetchBalance(publicKey).then(balance => {
-          if (mountedRef.current) {
-            setWalletInfo(prev => ({
-              ...prev,
-              publicKey,
-              isConnected: true,
-              isConnecting: false,
-              balance,
-              error: null,
-              loadingState: {
-                isLoading: false,
-                isRefreshing: false,
-              },
-              errorState: {
-                hasError: false,
-                error: null,
-              },
-            }));
-          }
-        });
-      } else {
-        // Auto-connect
-        connect();
+    if (useMockWallet) {
+      // Check if mock wallet is already connected
+      if (mockWallet.connected && mockWallet.publicKey) {
+        setWalletInfo(prev => ({
+          ...prev,
+          publicKey: mockWallet.publicKey,
+          isConnected: true,
+          isConnecting: false,
+          balance: mockWallet.getBalance(),
+          error: null,
+          loadingState: {
+            isLoading: false,
+            isRefreshing: false,
+          },
+          errorState: {
+            hasError: false,
+            error: null,
+          },
+        }));
       }
+      
+      // Listen for mock wallet events
+      const handleConnect = (publicKey: string) => {
+        if (mountedRef.current) {
+          setWalletInfo(prev => ({
+            ...prev,
+            publicKey,
+            isConnected: true,
+            isConnecting: false,
+            balance: mockWallet.getBalance(),
+            error: null,
+            loadingState: {
+              isLoading: false,
+              isRefreshing: false,
+            },
+            errorState: {
+              hasError: false,
+              error: null,
+            },
+          }));
+        }
+      };
+      
+      const handleDisconnect = () => {
+        if (mountedRef.current) {
+          setWalletInfo(prev => ({
+            ...prev,
+            publicKey: null,
+            isConnected: false,
+            isConnecting: false,
+            balance: null,
+            error: null,
+            loadingState: {
+              isLoading: false,
+              isRefreshing: false,
+            },
+            errorState: {
+              hasError: false,
+              error: null,
+            },
+          }));
+        }
+      };
+      
+      const handleBalanceChange = (balance: number) => {
+        if (mountedRef.current) {
+          setWalletInfo(prev => ({ ...prev, balance }));
+        }
+      };
+      
+      mockWallet.on('connect', handleConnect);
+      mockWallet.on('disconnect', handleDisconnect);
+      mockWallet.on('balanceChange', handleBalanceChange);
+      
+      // Cleanup listeners
+      return () => {
+        mountedRef.current = false;
+        mockWallet.off('connect', handleConnect);
+        mockWallet.off('disconnect', handleDisconnect);
+        mockWallet.off('balanceChange', handleBalanceChange);
+      };
     }
 
+    // The following code is for Phantom wallet, not used when mock wallet is active
+    // Keeping it for reference when switching back to real wallet
+    const solana = window.solana as PhantomWallet | undefined;
+    
     // Listen for wallet events
     const handleAccountChanged = (publicKey: unknown) => {
       if (publicKey && mountedRef.current) {

@@ -1,0 +1,244 @@
+/* AI Agent Visual Highlighting Animations */
+
+/* Pulse effect for components being analyzed */
+.agent-highlight {
+  animation: agentPulse 2s infinite;
+  box-shadow: 0 0 20px rgba(139, 92, 246, 0.6) !important;
+  border: 2px solid rgba(139, 92, 246, 0.8) !important;
+  position: relative;
+  z-index: 10;
+}
+
+@keyframes agentPulse {
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 1;
+    box-shadow: 0 0 20px rgba(139, 92, 246, 0.6);
+  }
+  50% { 
+    transform: scale(1.02); 
+    opacity: 0.9;
+    box-shadow: 0 0 30px rgba(139, 92, 246, 0.9);
+  }
+}
+
+/* Scanning effect for data analysis */
+.agent-scanning {
+  position: relative;
+  overflow: hidden;
+}
+
+.agent-scanning::before {
+  content: '';
+  position: absolute;
+  top: -100%;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(139, 92, 246, 0.3) 50%,
+    transparent 100%
+  );
+  animation: agentScan 2s linear infinite;
+}
+
+@keyframes agentScan {
+  0% { top: -100%; }
+  100% { top: 100%; }
+}
+
+/* Focus ring for active interaction */
+.agent-focus {
+  outline: 3px solid rgba(139, 92, 246, 0.8);
+  outline-offset: 2px;
+  animation: agentFocusRing 1.5s ease-in-out infinite;
+}
+
+@keyframes agentFocusRing {
+  0%, 100% { 
+    outline-color: rgba(139, 92, 246, 0.8);
+    outline-width: 3px;
+  }
+  50% { 
+    outline-color: rgba(139, 92, 246, 1);
+    outline-width: 4px;
+  }
+}
+
+/* Execution effect for actions */
+.agent-executing {
+  position: relative;
+  animation: agentExecute 0.5s ease-out;
+}
+
+.agent-executing::after {
+  content: '⚡';
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  color: #8b5cf6;
+  font-size: 20px;
+  animation: agentActionIcon 1s ease-out;
+}
+
+@keyframes agentExecute {
+  0% { 
+    transform: scale(1);
+    background-color: rgba(139, 92, 246, 0);
+  }
+  50% { 
+    transform: scale(1.05);
+    background-color: rgba(139, 92, 246, 0.1);
+  }
+  100% { 
+    transform: scale(1);
+    background-color: rgba(139, 92, 246, 0);
+  }
+}
+
+@keyframes agentActionIcon {
+  0% { 
+    opacity: 0;
+    transform: scale(0.5) rotate(0deg);
+  }
+  50% { 
+    opacity: 1;
+    transform: scale(1.2) rotate(180deg);
+  }
+  100% { 
+    opacity: 0;
+    transform: scale(1) rotate(360deg);
+  }
+}
+
+/* Success indicator */
+.agent-success {
+  animation: agentSuccess 1s ease-out;
+  border-color: #10b981 !important;
+  box-shadow: 0 0 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+@keyframes agentSuccess {
+  0% { 
+    background-color: rgba(16, 185, 129, 0);
+  }
+  50% { 
+    background-color: rgba(16, 185, 129, 0.1);
+  }
+  100% { 
+    background-color: rgba(16, 185, 129, 0);
+  }
+}
+
+/* Error indicator */
+.agent-error {
+  animation: agentError 1s ease-out;
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4) !important;
+}
+
+@keyframes agentError {
+  0%, 100% { 
+    transform: translateX(0);
+  }
+  10%, 30%, 50%, 70% { 
+    transform: translateX(-2px);
+  }
+  20%, 40%, 60%, 80% { 
+    transform: translateX(2px);
+  }
+}
+
+/* Floating label for agent thoughts */
+.agent-thought-bubble {
+  position: absolute;
+  top: -40px;
+  right: 0;
+  background: rgba(139, 92, 246, 0.95);
+  color: white;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 1000;
+  animation: agentThoughtFloat 3s ease-in-out infinite;
+  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+}
+
+.agent-thought-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -6px;
+  right: 20px;
+  width: 12px;
+  height: 12px;
+  background: rgba(139, 92, 246, 0.95);
+  transform: rotate(45deg);
+}
+
+@keyframes agentThoughtFloat {
+  0%, 100% { 
+    transform: translateY(0);
+  }
+  50% { 
+    transform: translateY(-5px);
+  }
+}
+
+/* Processing spinner overlay */
+.agent-processing-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  z-index: 100;
+}
+
+.agent-processing-spinner {
+  width: 100%;
+  height: 100%;
+  border: 3px solid rgba(139, 92, 246, 0.2);
+  border-top-color: #8b5cf6;
+  border-radius: 50%;
+  animation: agentSpin 1s linear infinite;
+}
+
+@keyframes agentSpin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Glow effect for important data */
+.agent-data-glow {
+  text-shadow: 0 0 10px rgba(139, 92, 246, 0.8);
+  color: #8b5cf6 !important;
+  font-weight: bold;
+}
+
+/* Trail effect for mouse movement simulation */
+.agent-cursor-trail {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(139, 92, 246, 0.8) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: 10000;
+  animation: agentCursorFade 1s ease-out forwards;
+}
+
+@keyframes agentCursorFade {
+  0% { 
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% { 
+    opacity: 0;
+    transform: scale(0.5);
+  }
+}
