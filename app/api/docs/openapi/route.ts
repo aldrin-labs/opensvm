@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { openApiGenerator } from '@/lib/api/openapi-generator';
+import { openApiGenerator } from '@/lib/api/openapi-generator-complete';
 import logger from '@/lib/logging/logger';
 import path from 'path';
 

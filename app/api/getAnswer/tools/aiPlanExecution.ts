@@ -1,5 +1,6 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import Together from "together-ai";
+import * as MoralisAPI from '../../../../lib/moralis-api';
 
 interface AIPlanStep {
     tool: string;
@@ -1116,6 +1117,44 @@ for (const r of rows) {
                 } catch (error) {
                     result = { error: `Moralis market data error: ${(error as Error).message}` };
                     console.log(`   ◌ Moralis market data failed`);
+                }
+            }
+            // Handle other Moralis API methods
+            else if (step.tool in MoralisAPI && typeof (MoralisAPI as any)[step.tool] === 'function') {
+                try {
+                    const moralisMethod = (MoralisAPI as any)[step.tool];
+                    
+                    // Parse input parameters based on method requirements
+                    if (step.input) {
+                        // Handle methods that take an address and optional params
+                        if (step.tool === 'getSOLTransfers' || step.tool === 'getSPLTokenTransfers' || 
+                            step.tool === 'getTransactionsByAddress') {
+                            // These methods take (address, params, network)
+                            const address = typeof step.input === 'string' ? step.input : step.input.address;
+                            const params = typeof step.input === 'object' ? step.input : {};
+                            result = await moralisMethod(address, params, 'mainnet');
+                        }
+                        // Handle methods that take just an address
+                        else if (typeof step.input === 'string') {
+                            result = await moralisMethod(step.input, 'mainnet');
+                        }
+                        // Handle methods with object parameters
+                        else if (typeof step.input === 'object') {
+                            // For methods like getTokenMarketData that take an object
+                            result = await moralisMethod(step.input);
+                        }
+                        else {
+                            result = await moralisMethod(step.input);
+                        }
+                    } else {
+                        // Methods without parameters
+                        result = await moralisMethod();
+                    }
+                    
+                    console.log(`   ◈ Moralis API: ${step.tool} - ${result ? 'SUCCESS' : 'EMPTY'}`);
+                } catch (error) {
+                    result = { error: `Moralis API error: ${(error as Error).message}` };
+                    console.log(`   ◌ Moralis API ${step.tool} failed: ${(error as Error).message}`);
                 }
             }
             // Handle standard RPC calls

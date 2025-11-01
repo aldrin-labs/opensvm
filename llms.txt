@@ -1,0 +1,602 @@
+# OpenSVM API Reference for LLMs
+
+## Overview
+OpenSVM is a comprehensive Solana blockchain explorer and analytics platform with AI-powered features. This document provides a complete reference of all available API endpoints and methods.
+
+## Base URL
+- Local Development: http://localhost:3000/api
+- Production: https://opensvm.com/api
+
+## Authentication
+Most endpoints are public. Some endpoints require JWT authentication via Bearer token in Authorization header.
+
+## API Categories
+
+### 1. BLOCKCHAIN CORE APIs
+
+#### Transactions
+- **GET /api/transaction/[signature]** - Get transaction details by signature
+  - Params: signature (string) - Transaction signature
+  - Response: Detailed transaction information with instructions, accounts, balances
+  
+- **POST /api/transaction/batch** - Batch fetch multiple transactions
+  - Body: { signatures: string[], includeDetails?: boolean }
+  - Response: Array of transaction details
+  
+- **GET /api/transaction/[signature]/analysis** - AI-powered transaction analysis
+  - Params: signature (string)
+  - Response: Detailed analysis with intent, risks, patterns
+  
+- **GET /api/transaction/[signature]/explain** - Natural language explanation
+  - Params: signature (string), language? (string)
+  - Response: Human-readable transaction explanation
+  
+- **GET /api/transaction/[signature]/related** - Find related transactions
+  - Params: signature (string), limit? (number)
+  - Response: Array of related transactions
+  
+- **GET /api/transaction/[signature]/failure-analysis** - Analyze failed transactions
+  - Params: signature (string)
+  - Response: Failure reasons and recommendations
+  
+- **GET /api/transaction/[signature]/metrics** - Transaction performance metrics
+  - Params: signature (string)
+  - Response: Compute units, fees, timing metrics
+
+#### Blocks
+- **GET /api/blocks** - List recent blocks
+  - Query: limit? (number), before? (number)
+  - Response: Array of block summaries
+  
+- **GET /api/blocks/[slot]** - Get specific block details
+  - Params: slot (number)
+  - Response: Block details with transactions, rewards, programs
+  
+- **GET /api/blocks/stats** - Block statistics and performance
+  - Query: lookbackSlots? (number, 1-1000, default: 100)
+  - Response: TPS, success rate, block times, volume metrics
+  
+- **GET /api/block** - Get block by slot number (legacy)
+  - Query: slot (number)
+  - Response: Block details
+
+#### Accounts
+- **GET /api/account-stats/[address]** - Comprehensive account statistics
+  - Params: address (string) - Solana account address
+  - Response: Balance, transaction count, token holdings, activity metrics
+  
+- **GET /api/account-transactions/[address]** - Account transaction history
+  - Params: address (string)
+  - Query: limit? (number), before? (string), type? (string), startDate? (ISO string), endDate? (ISO string)
+  - Response: Paginated transaction history with date filtering
+  
+- **GET /api/account-transfers/[address]** - SOL and token transfers
+  - Params: address (string)
+  - Query: limit? (number), type? ('sol'|'spl')
+  - Response: Transfer history
+  
+- **GET /api/account-portfolio/[address]** - Account portfolio overview
+  - Params: address (string)
+  - Response: SOL balance, tokens, NFTs, DeFi positions
+  
+- **GET /api/account-token-stats/[address]/[mint]** - Token-specific stats
+  - Params: address (string), mint (string)
+  - Response: Token balance, transfers, volume for specific token
+  
+- **GET /api/check-account-type** - Determine account type
+  - Query: address (string)
+  - Response: Type (wallet, program, token, etc.)
+
+### 2. TOKEN & NFT APIs
+
+#### Token Operations
+- **GET /api/token/[address]** - Token information
+  - Params: address (string) - Token mint address
+  - Response: Token metadata, supply, holders
+  
+- **GET /api/token-metadata** - Batch token metadata lookup
+  - Query: mints (comma-separated string)
+  - Response: Array of token metadata
+  
+- **GET /api/token-stats/[account]/[mint]** - Token statistics for account
+  - Params: account (string), mint (string)
+  - Response: Balance, transfers, volume metrics
+  
+- **GET /api/check-token** - Verify token validity
+  - Query: mint (string)
+  - Response: Token validation status
+
+#### NFT Collections
+- **GET /api/nft-collections** - List NFT collections
+  - Query: limit? (number), sort? ('volume'|'floor'|'items')
+  - Response: Collection listings with stats
+  
+- **GET /api/nft-collections/trending** - Trending NFT collections
+  - Response: Top trending collections
+  
+- **GET /api/nft-collections/new** - Newly listed collections
+  - Response: Recent NFT collection launches
+  
+- **GET /api/nfts/collections** - Alternative collections endpoint
+  - Response: Comprehensive collection data
+
+### 3. ANALYTICS APIs
+
+#### DeFi Analytics
+- **GET /api/analytics/overview** - DeFi ecosystem overview
+  - Response: TVL, volume, active users, trending protocols
+  
+- **GET /api/analytics/dex** - DEX analytics
+  - Query: dex? (string), timeframe? ('1h'|'24h'|'7d')
+  - Response: Volume, liquidity, top pairs
+  
+- **GET /api/analytics/defi-health** - DeFi health metrics
+  - Response: Risk indicators, liquidations, stability metrics
+  
+- **GET /api/dex/[name]** - Specific DEX data
+  - Params: name (string)
+  - Response: DEX-specific analytics
+
+#### Validator Analytics
+- **GET /api/analytics/validators** - Validator network overview
+  - Response: Active validators, stake distribution, performance
+  
+- **GET /api/analytics/trending-validators** - Trending validators
+  - Response: Top performing validators
+  
+- **GET /api/validator/[address]** - Specific validator info
+  - Params: address (string)
+  - Response: Validator details, performance, delegators
+
+#### Market Analytics
+- **GET /api/analytics/marketplaces** - NFT marketplace analytics
+  - Response: Volume, listings, sales data
+  
+- **GET /api/analytics/aggregators** - DeFi aggregator metrics
+  - Response: Aggregator volumes, routes, efficiency
+  
+- **GET /api/analytics/launchpads** - Token launchpad analytics
+  - Response: Recent launches, success rates, volumes
+  
+- **GET /api/analytics/bots** - Trading bot activity
+  - Response: Bot volume, strategies, impact metrics
+
+#### Social & GameFi
+- **GET /api/analytics/socialfi** - SocialFi metrics
+  - Response: User activity, engagement, rewards
+  
+- **GET /api/analytics/infofi** - Information finance metrics
+  - Response: Data monetization, oracle activity
+  
+- **GET /api/analytics/defai** - AI-powered DeFi analytics
+  - Response: AI model performance, predictions
+
+### 4. AI-POWERED APIs
+
+#### Question Answering
+- **POST /api/getAnswer** - AI-powered question answering
+  - Body: { question: string, context?: any }
+  - Response: { answer: string, sources: string[], confidence: number }
+  
+- **POST /api/getSimilarQuestions** - Find similar questions
+  - Body: { question: string, limit?: number }
+  - Response: Array of similar questions with answers
+  
+- **GET /api/getSources** - Get data sources
+  - Response: Available data sources and APIs
+
+#### Transaction Analysis
+- **POST /api/analyze-transaction** - Deep transaction analysis
+  - Body: { signature: string, options?: any }
+  - Response: Comprehensive analysis with ML insights
+  
+- **POST /api/analyze** - General blockchain data analysis
+  - Body: { data: any, type: string }
+  - Response: Analysis results
+  
+- **POST /api/filter-transactions** - Filter transactions by criteria
+  - Body: { filters: any, limit?: number }
+  - Response: Filtered transaction list
+
+#### AI Context
+- **POST /api/ai-response** - Generate AI responses
+  - Body: { prompt: string, context?: any }
+  - Response: AI-generated response
+  
+- **GET /api/ai-context** - Get AI conversation context
+  - Response: Current context and session data
+
+### 5. SEARCH & DISCOVERY
+
+#### Universal Search
+- **GET /api/search** - Universal search across all data
+  - Query: q (string), type? (string), filters? (object)
+  - Response: Search results across accounts, transactions, tokens
+  
+- **GET /api/search/accounts** - Account-specific search
+  - Query: q (string), tokenMint? (string), minBalance? (number)
+  - Response: Matching accounts
+  
+- **GET /api/search/filtered** - Advanced filtered search
+  - Query: Complex filter parameters
+  - Response: Filtered results
+  
+- **GET /api/search/suggestions** - Search suggestions
+  - Query: q (string)
+  - Response: Autocomplete suggestions
+  
+- **GET /api/search-suggestions** - Alternative suggestions endpoint
+  - Query: q (string)
+  - Response: Search suggestions
+
+#### Program Discovery
+- **GET /api/program-discovery** - Discover Solana programs
+  - Query: category? (string), verified? (boolean)
+  - Response: Program listings with metadata
+  
+- **GET /api/program-registry** - Program registry
+  - Query: category? (string)
+  - Response: Registered programs
+  
+- **GET /api/program/[address]** - Program details
+  - Params: address (string)
+  - Response: Program info, IDL, usage stats
+  
+- **GET /api/program-metadata** - Batch program metadata
+  - Query: programs (comma-separated)
+  - Response: Array of program metadata
+  
+- **GET /api/program-accounts** - Program account data
+  - Query: programId (string)
+  - Response: Associated accounts
+
+### 6. USER SERVICES
+
+#### User Profile
+- **GET /api/user-profile/[walletAddress]** - Get user profile
+  - Params: walletAddress (string)
+  - Response: Profile data, preferences, stats
+  
+- **PUT /api/user-profile/[walletAddress]** - Update profile
+  - Params: walletAddress (string)
+  - Body: Profile update data
+  
+- **POST /api/user-profile/sync** - Sync profile data
+  - Body: { walletAddress: string }
+  - Response: Sync status
+
+#### User History
+- **GET /api/user-history/[walletAddress]** - Transaction history
+  - Params: walletAddress (string)
+  - Query: limit? (number), offset? (number)
+  - Response: User's transaction history
+  
+- **POST /api/user-history/sync** - Sync history
+  - Body: { walletAddress: string }
+  - Response: Sync status
+  
+- **POST /api/user-history/repair** - Repair history data
+  - Body: { walletAddress: string }
+  - Response: Repair status
+
+#### Social Features
+- **POST /api/user-social/follow** - Follow user
+  - Body: { follower: string, following: string }
+  
+- **POST /api/user-social/unfollow** - Unfollow user
+  - Body: { follower: string, following: string }
+  
+- **POST /api/user-social/like** - Like content
+  - Body: { user: string, contentId: string }
+  
+- **POST /api/user-social/unlike** - Unlike content
+  - Body: { user: string, contentId: string }
+  
+- **POST /api/user-social/view** - Track content view
+  - Body: { user: string, contentId: string }
+
+#### User Preferences
+- **GET /api/user-tab-preference/[walletAddress]** - Get tab preferences
+  - Params: walletAddress (string)
+  - Response: User's UI preferences
+  
+- **PUT /api/user-tab-preference/[walletAddress]** - Update preferences
+  - Params: walletAddress (string)
+  - Body: Preference data
+
+### 7. REAL-TIME & STREAMING
+
+#### Server-Sent Events (SSE)
+- **GET /api/sse-feed** - Real-time transaction feed
+  - Query: filter? (object)
+  - Response: SSE stream of transactions
+  
+- **GET /api/sse-events/feed** - Event feed
+  - Query: types? (array)
+  - Response: SSE stream of blockchain events
+  
+- **GET /api/sse-alerts** - Real-time alerts
+  - Query: walletAddress? (string)
+  - Response: SSE stream of alerts
+
+#### Streaming Data
+- **GET /api/stream** - General data stream
+  - Query: type (string), filters? (object)
+  - Response: Streaming data
+  
+- **POST /api/stream** - Create stream subscription
+  - Body: { type: string, filters: object }
+  - Response: Stream ID
+
+### 8. MONITORING & HEALTH
+
+#### System Health
+- **GET /api/health/anthropic** - Anthropic API health
+  - Response: API status and latency
+  
+- **GET /api/monitoring/api** - API monitoring metrics
+  - Response: Request counts, latencies, errors
+  
+- **GET /api/monitoring/requests** - Request logs
+  - Query: limit? (number), status? (number)
+  - Response: Recent API requests
+
+#### Error Tracking
+- **POST /api/error-tracking** - Report errors
+  - Body: { error: string, context: object }
+  - Response: Error ID
+  
+- **GET /api/error-tracking** - Get error logs
+  - Query: limit? (number), severity? (string)
+  - Response: Error listings
+  
+- **POST /api/crash-reporting** - Report crashes
+  - Body: { crash: object, device: object }
+  - Response: Crash ID
+
+### 9. MONETIZATION & TOKEN GATING
+
+#### Token Gating
+- **GET /api/token-gating/check** - Check access
+  - Query: walletAddress (string), requirement (object)
+  - Response: Access status
+  
+#### Monetization
+- **GET /api/monetization/balance** - Get balance
+  - Headers: Authorization (Bearer token)
+  - Response: User balance
+  
+- **POST /api/monetization/consume** - Consume credits
+  - Body: { amount: number, operation: string }
+  - Response: New balance
+  
+- **POST /api/monetization/earn** - Earn credits
+  - Body: { action: string, metadata: object }
+  - Response: Earned amount
+
+### 10. TRADING TERMINAL
+
+#### Market Data
+- **GET /api/trading/market-data** - Real-time market data
+  - Query: symbols (array), interval? (string)
+  - Response: Price, volume, orderbook data
+
+#### Position Management
+- **GET /api/trading/positions** - Get positions
+  - Headers: Authorization (Bearer token)
+  - Response: Open positions
+  
+- **POST /api/trading/positions** - Open position
+  - Body: { symbol: string, side: string, size: number }
+  - Response: Position details
+  
+- **PATCH /api/trading/positions** - Modify position
+  - Body: { positionId: string, updates: object }
+  - Response: Updated position
+  
+- **DELETE /api/trading/positions** - Close position
+  - Query: positionId (string)
+  - Response: Closure details
+
+#### Trade Execution
+- **POST /api/trading/execute** - Execute trade
+  - Body: { order: object }
+  - Response: Execution details
+  
+- **GET /api/trading/execute** - Get execution status
+  - Query: orderId (string)
+  - Response: Order status
+
+### 11. PROXY & RPC
+
+#### Solana RPC Proxy
+- **POST /api/solana-rpc** - Direct RPC calls
+  - Body: Standard Solana RPC request
+  - Response: RPC response
+  
+- **POST /api/solana-proxy** - Proxied RPC calls
+  - Body: RPC request with caching
+  - Response: Cached or fresh RPC response
+  
+- **GET /api/solana-proxy/[transaction]** - Get transaction via proxy
+  - Params: transaction (string)
+  - Response: Transaction details
+
+#### OpenRouter Proxy
+- **POST /api/proxy/rpc** - OpenRouter RPC
+  - Body: RPC request
+  - Response: RPC response
+  
+- **POST /api/proxy/rpc/[id]** - Specific RPC endpoint
+  - Params: id (string)
+  - Body: RPC parameters
+  - Response: RPC result
+
+### 12. EXTERNAL API INTEGRATIONS
+
+#### Moralis API Methods (via lib/moralis-api.ts)
+Available through AI plan execution in /api/getAnswer:
+
+- **getNFTMetadata(address, network)** - NFT metadata
+- **getNFTsForAddress(address, params, network)** - NFTs owned by address
+- **getTokenMetadata(address, network)** - Token metadata
+- **getTokenPrice(address, network)** - Current token price
+- **getPortfolio(address, includeNftMetadata, network)** - Full portfolio
+- **getTokenBalances(address, network)** - Token balances
+- **getNativeBalance(address, network)** - SOL balance
+- **getSwapsByWalletAddress(address, params, network)** - Wallet swaps
+- **getSwapsByTokenAddress(address, params, network)** - Token swaps
+- **getTokenHolders(address, network)** - Token holder list
+- **getSPLTokenTransfers(address, params, network)** - SPL transfers
+- **getSOLTransfers(address, params, network)** - SOL transfers
+- **getTransactionBySignature(signature, network)** - Transaction details
+- **getTransactionsByAddress(address, params, network)** - Address transactions
+- **getDomainInfo(address, network)** - Domain information
+- **resolveDomain(domain, network)** - Resolve .sol domains
+- **getHistoricalTokenPrice(address, days, network)** - Price history
+- **getTokenStats(address, network)** - Token statistics
+- **getNFTCollectionStats(address, network)** - Collection stats
+- **getNFTCollectionItems(address, params, network)** - Collection items
+- **getComprehensiveBlockchainData(query, network)** - Combined data
+- **getTopTokens(limit)** - Top tokens by market cap
+- **getNewListings(limit, daysBack, network)** - New token listings
+- **getTokenMarketData(params, network)** - Market data
+
+#### Solana Core Methods (via lib/solana.ts)
+Available through direct API calls:
+
+- **validateSolanaAddress(address)** - Validate address format
+- **getAccountInfo(address)** - Account information
+- **getNetworkStats()** - Network performance stats
+- **getTokenInfo(mintAddress)** - Token mint information
+- **getBlockDetails(slot)** - Detailed block data
+- **getRPCLatency()** - Current RPC latency
+- **getTransactionDetails(signature)** - Parse transaction
+- **getRecentTransactions(address, limit)** - Recent activity
+
+### 13. UTILITY ENDPOINTS
+
+#### Share & Referral
+- **POST /api/share/generate** - Generate share link
+  - Body: { content: object, type: string }
+  - Response: Share code and URL
+  
+- **GET /api/share/[shareCode]** - Get shared content
+  - Params: shareCode (string)
+  - Response: Shared data
+  
+- **POST /api/referrals/claim** - Claim referral
+  - Body: { referralCode: string, walletAddress: string }
+  - Response: Claim status
+  
+- **GET /api/referrals/balance** - Referral balance
+  - Query: walletAddress (string)
+  - Response: Referral earnings
+
+#### Authentication
+- **POST /api/auth/verify** - Verify wallet signature
+  - Body: { message: string, signature: string, publicKey: string }
+  - Response: Verification status
+  
+- **POST /api/auth/session** - Create session
+  - Body: { walletAddress: string }
+  - Response: Session token
+  
+- **POST /api/auth/logout** - Logout
+  - Headers: Authorization (Bearer token)
+  - Response: Logout status
+
+#### Miscellaneous
+- **GET /api/slots** - Get slot information
+  - Response: Current slot, epoch info
+  
+- **GET /api/favicon** - Get favicon
+  - Response: Site favicon
+  
+- **GET /api/og** - Open Graph metadata
+  - Response: OG tags for sharing
+  
+- **POST /api/wallet-path-finding** - Find wallet connections
+  - Body: { from: string, to: string }
+  - Response: Connection path
+
+## Response Formats
+
+### Success Response
+```json
+{
+  "success": true,
+  "data": { ... },
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Error Response
+```json
+{
+  "success": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Error description",
+    "details": { ... }
+  },
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+### Paginated Response
+```json
+{
+  "success": true,
+  "data": [ ... ],
+  "pagination": {
+    "total": 1000,
+    "limit": 100,
+    "offset": 0,
+    "hasMore": true,
+    "cursor": "next_page_cursor"
+  }
+}
+```
+
+## Rate Limiting
+- Default: 100 requests per minute per IP
+- Authenticated: 1000 requests per minute per user
+- Headers returned: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
+
+## WebSocket Support
+Some endpoints support WebSocket connections for real-time data:
+- /api/scan - Real-time blockchain scanning
+- /api/stream - Data streaming
+- /api/sse-* endpoints use Server-Sent Events
+
+## Network Support
+- Mainnet (default): mainnet-beta
+- Devnet: devnet
+- Testnet: testnet
+
+Specify network via query parameter: `?network=devnet`
+
+## Error Codes
+- 400: Bad Request - Invalid parameters
+- 401: Unauthorized - Missing or invalid authentication
+- 403: Forbidden - Insufficient permissions
+- 404: Not Found - Resource not found
+- 429: Too Many Requests - Rate limit exceeded
+- 500: Internal Server Error - Server error
+- 503: Service Unavailable - Service temporarily unavailable
+
+## Best Practices
+1. Always include error handling for API calls
+2. Implement exponential backoff for retries
+3. Cache responses when appropriate
+4. Use batch endpoints for multiple queries
+5. Subscribe to SSE/WebSocket for real-time data
+6. Include proper authentication headers when required
+7. Respect rate limits to avoid throttling
+
+## Support
+For API support, documentation updates, or to report issues:
+- GitHub: https://github.com/opensvm
+- Discord: https://discord.gg/opensvm
+- Email: api@opensvm.com

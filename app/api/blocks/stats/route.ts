@@ -24,6 +24,8 @@ const BlockStatsRequestSchema = z.object({
     .min(1, 'Lookback must be at least 1')
     .max(1000, 'Lookback cannot exceed 1000')
     .default(100)
+    .optional()
+    .transform(val => val ?? 100) // Ensure we always have a number
 });
 
 export async function GET(request: NextRequest) {
@@ -38,8 +40,9 @@ export async function GET(request: NextRequest) {
 
     // Get and validate parameters
     const searchParams = request.nextUrl.searchParams;
+    const lookbackParam = searchParams.get('lookbackSlots');
     const requestParams = {
-      lookbackSlots: searchParams.get('lookbackSlots')
+      lookbackSlots: lookbackParam ? Number(lookbackParam) : 100
     };
 
     let validatedParams;
