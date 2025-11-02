@@ -85,6 +85,7 @@ class RequestQueue {
   private activeRequests: number = 0;
   private readonly MAX_CONCURRENT = 10; // 5x increase for parallel API calls - MAXIMIZED
 
+
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
       this.queue.push(async () => {
@@ -950,6 +951,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         
         // Log token allocation for monitoring
         console.log(`📝 Token allocation: ${maxTokens} tokens (ABSOLUTE MAXIMUM, no limits)`);
+
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
