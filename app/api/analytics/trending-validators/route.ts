@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
-import { memoryCache } from '@/lib/cache';
+import { cache } from '@/lib/cache';
 import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
 import { boostMutex } from '@/lib/mutex';
 import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
@@ -338,7 +338,7 @@ export async function GET(request: Request) {
     }
 
     // Check cache first
-    const cached = memoryCache.get<TrendingValidator[]>(TRENDING_CACHE_KEY);
+    const cached = await cache.get<TrendingValidator[]>(TRENDING_CACHE_KEY);
     if (cached) {
       return NextResponse.json({
         success: true,
@@ -350,7 +350,7 @@ export async function GET(request: Request) {
 
     // Fetch validator data from main endpoint with timeout
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 40000); // 10 second timeout
+    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
 
     let validatorsData;
     try {
@@ -384,7 +384,7 @@ export async function GET(request: Request) {
     }
 
     const validators = validatorsData.data.validators;
-    const activeBoosts = memoryCache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];
+    const activeBoosts = await cache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];
 
     // Calculate trending validators based on real metrics instead of mock data
     const trendingValidators: TrendingValidator[] = await Promise.all(
@@ -426,7 +426,7 @@ export async function GET(request: Request) {
       }));
 
     // Cache for 5 minutes
-    memoryCache.set(TRENDING_CACHE_KEY, rankedTrendingValidators, 300);
+    await cache.set(TRENDING_CACHE_KEY, rankedTrendingValidators, 300);
 
     return NextResponse.json({
       success: true,
@@ -591,7 +591,8 @@ export async function POST(request: Request) {
 
     try {
       // Check if this signature has already been used (inside mutex)
-      const usedSignatures = memoryCache.get<Set<string>>(USED_SIGNATURES_CACHE_KEY) || new Set();
+      const usedSignaturesCached = await cache.get<string[]>(USED_SIGNATURES_CACHE_KEY) || [];
+      const usedSignatures = new Set(usedSignaturesCached);
       if (usedSignatures.has(burnSignature)) {
         return NextResponse.json({
           success: false,
@@ -602,21 +603,18 @@ export async function POST(request: Request) {
 
       // Add signature to used set with safe TTL calculation
       usedSignatures.add(burnSignature);
-      const THIRTY_DAYS_MS = 30 * 24 * 60 * 60; // Calculate in seconds to avoid overflow
+      const THIRTY_DAYS_SECS = 30 * 24 * 60 * 60; // Calculate in seconds
 
       // 📊 PERFORMANCE: Limit cache size to prevent memory exhaustion
-      if (usedSignatures.size > 10000) {
-        // Create a new set with recent signatures (last 5000)
-        const entries = Array.from(usedSignatures);
-        const recentEntries = entries.slice(-5000); // Keep the last 5000 entries
-        const newUsedSignatures = new Set(recentEntries);
-        memoryCache.set(USED_SIGNATURES_CACHE_KEY, newUsedSignatures, THIRTY_DAYS_MS);
-      } else {
-        memoryCache.set(USED_SIGNATURES_CACHE_KEY, usedSignatures, THIRTY_DAYS_MS);
+      let signaturesToCache = Array.from(usedSignatures);
+      if (signaturesToCache.length > 10000) {
+        // Keep the last 5000 entries
+        signaturesToCache = signaturesToCache.slice(-5000);
       }
+      await cache.set(USED_SIGNATURES_CACHE_KEY, signaturesToCache, THIRTY_DAYS_SECS);
 
       // Get current boosts
-      const currentBoosts = memoryCache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];
+      const currentBoosts = await cache.get<BoostPurchase[]>(BOOSTS_CACHE_KEY) || [];
 
       // Check if there's an existing boost for this validator
       const existingBoostIndex = currentBoosts.findIndex(b => b.voteAccount === voteAccount);
@@ -675,10 +673,10 @@ export async function POST(request: Request) {
       }
 
       // Cache updated boosts for 25 hours
-      memoryCache.set(BOOSTS_CACHE_KEY, activeBoosts, 25 * 3600);
+      await cache.set(BOOSTS_CACHE_KEY, activeBoosts, 25 * 3600);
 
       // Clear trending cache to force recalculation
-      memoryCache.delete(TRENDING_CACHE_KEY);
+      await cache.del(TRENDING_CACHE_KEY);
 
       return NextResponse.json({
         success: true,

@@ -75,6 +75,7 @@
     "eventsource-parser": "^3.0.0",
     "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
+    "ioredis": "^5.8.2",
     "jsdom": "^26.0.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",

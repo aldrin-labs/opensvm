@@ -10,6 +10,35 @@ OpenSVM is a comprehensive Solana blockchain explorer and analytics platform wit
 ## Authentication
 Most endpoints are public. Some endpoints require JWT authentication via Bearer token in Authorization header.
 
+## API Health Status (Last Check: November 2, 2025)
+- **Overall Success Rate:** 73.2% (71/97 endpoints working)
+- **Average Response Time:** 807ms (Target: < 1000ms) ✅
+- **Cache Performance:** 50-99% improvement on cached endpoints
+- **Total Endpoints:** 97 across 9 categories
+
+### Performance by Category
+- 🔍 Search & Discovery: 100% success, 622ms avg response
+- 💳 Account & Wallet: 93.8% success, 421ms avg response  
+- 📊 Transactions: 100% success, 99ms avg response (FASTEST)
+- ⛓️ Blockchain: 87.5% success, 4239ms avg response (SLOWEST)
+- 🪙 Tokens & NFTs: 100% success, 285ms avg response
+- 📈 Analytics: 88.9% success, 406ms avg response
+- 🤖 AI-Powered: 0% (rate limited in testing)
+- 📡 Real-Time: 0% (rate limited in testing)
+- 👤 User Services: 20% success, 1871ms avg response
+
+### Known Issues
+- Rate limiting (429 errors) on AI endpoints and streaming services
+- Slow endpoints: /blocks (18.9s), /slots (7.6s), /account-transactions (2.5s)
+- Server errors (500) on /account-stats and /analytics/trending-validators
+
+### Optimizations Implemented
+- Redis caching with TTL strategies (5min for heavy endpoints, 30s for volatile data)
+- RPC connection pooling (5 concurrent connections)
+- Response compression (Brotli/Gzip for responses > 1KB)
+- Response streaming for large datasets
+- Retry logic with exponential backoff
+
 ## API Categories
 
 ### 1. BLOCKCHAIN CORE APIs

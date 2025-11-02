@@ -9,6 +9,17 @@ OpenSVM is a comprehensive blockchain explorer for the Solana ecosystem, providi
 
 OpenSVM offers a modern, user-friendly interface for exploring the Solana blockchain with advanced features like transaction visualization, wallet path finding, and AI-powered analysis. The project aims to make blockchain data more accessible and understandable for developers, users, and researchers.
 
+## API Health Status [![API Status](https://img.shields.io/badge/API_Health-73.2%25-yellow)](./docs/api/health-check-report.md)
+
+**Last Check:** November 2, 2025
+- **✅ 71/97 endpoints operational** (73.2% success rate)
+- **⚡ 807ms average response time** (Target: < 1000ms)
+- **🚀 50-99% cache performance improvement**
+- **📊 Best performing:** Transaction APIs (99ms avg)
+- **⚠️ Needs attention:** Block APIs (4.2s avg)
+
+[View Full Health Report](./docs/api/health-check-report.md) | [API Documentation](./docs/api/api-reference.md)
+
 ## Key Features
 
 - **Blockchain Data Browsing**: Explore blocks, transactions, accounts, programs, and tokens
@@ -75,8 +86,12 @@ For more detailed documentation, see:
   - [Component Architecture](./docs/architecture/components.md) - Component breakdown and relationships
   - [Architecture Decision Records](./docs/architecture/adr/) - Architectural decisions and rationale
   - [Contributing Guide](./docs/architecture/CONTRIBUTING.md) - How to maintain architecture docs
+- [API Documentation](./docs/api/)
+  - [API Reference](./docs/api/api-reference.md) - Complete API endpoints and usage
+  - [Health Check Report](./docs/api/health-check-report.md) - Latest API health status
+  - [API Health Summary](./docs/api/api-health-summary.md) - Performance overview
+  - [Optimization Summary](./docs/api/optimization-summary.md) - Performance optimizations
 - [Features](./docs/FEATURES.md) - Detailed feature descriptions
-- [API Reference](./docs/API.md) - API endpoints and usage
 - [Development Guide](./docs/DEVELOPMENT.md) - Development setup and guidelines
 
 ### 🏗️ Architecture Overview

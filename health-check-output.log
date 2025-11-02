@@ -1,0 +1,186 @@
+[1m╔════════════════════════════════════════════════════════╗[0m
+[1m║     OpenSVM API Comprehensive Health Check v1.0       ║[0m
+[1m╚════════════════════════════════════════════════════════╝[0m
+
+Starting health check for 97 endpoints...
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Search & Discovery (11 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+✅ GET /universal-search - 200 | 628ms | [32mCache: 78% faster[0m
+✅ GET /search-accounts - 200 | 93ms
+⚠️ GET /search/suggestions - 200 | 1314ms | [32mCache: 93% faster[0m
+✅ GET /search/suggestions/trending - 200 | 636ms | [32mCache: 73% faster[0m
+✅ GET /search/suggestions/recent - 200 | 83ms
+⚠️ GET /search/suggestions/empty-state - 200 | 1977ms | [32mCache: 64% faster[0m
+⚠️ GET /program-registry - 200 | 1149ms | [32mCache: 98% faster[0m
+✅ GET /program-info/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA - 200 | 657ms | [32mCache: 78% faster[0m
+✅ POST /solana-rpc-call - 200 | 98ms
+✅ GET /related-accounts - 200 | 102ms
+✅ GET /account/search - 200 | 100ms
+
+[1mCategory Summary:[0m
+Success Rate: 100.0%
+Average Response Time: 622ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Account & Wallet (16 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[31m❌ GET /account-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - Failed: 500[0m
+⚠️ GET /account-transactions/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 2572ms | [32mCache: 85% faster[0m
+⚠️ GET /account-token-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 2097ms | [32mCache: 68% faster[0m
+✅ GET /check-account-type/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 537ms | [32mCache: 69% faster[0m
+✅ GET /account-balance/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 83ms
+✅ GET /account-info/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 104ms
+✅ GET /account-tokens/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 88ms
+✅ GET /account-nfts/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 105ms
+✅ GET /account-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 88ms
+✅ GET /account-stakes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 93ms
+✅ GET /account-rewards/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 112ms
+✅ GET /account-votes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 81ms
+✅ GET /wallet-profile/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 87ms
+✅ GET /wallet-analytics/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 96ms
+✅ GET /portfolio/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 85ms
+✅ POST /verify-wallet-signature - 200 | 85ms
+
+[1mCategory Summary:[0m
+Success Rate: 93.8%
+Average Response Time: 421ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Transactions (8 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+✅ GET /transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43 - 200 | 98ms | [32mCache: 70% faster[0m
+✅ GET /batch-transactions - 200 | 148ms
+✅ POST /filter-transactions - 200 | 95ms
+✅ GET /analyze-transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43 - 200 | 83ms
+✅ GET /explain-transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43 - 200 | 95ms
+✅ GET /transaction-history - 200 | 86ms
+✅ GET /recent-transactions - 200 | 86ms
+✅ GET /transaction-stats - 200 | 100ms
+
+[1mCategory Summary:[0m
+Success Rate: 100.0%
+Average Response Time: 99ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Blockchain (8 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[31m❌ GET /block/200000000 - Failed: 429[0m
+⚠️ GET /blocks - 200 | 18945ms | [32mCache: 56% faster[0m
+⚠️ GET /blocks/stats - 200 | 2041ms | [32mCache: 58% faster[0m
+⚠️ GET /slots - 200 | 7655ms
+✅ GET /epoch - 200 | 728ms | [32mCache: 81% faster[0m
+✅ GET /supply - 200 | 101ms
+✅ GET /inflation - 200 | 107ms
+✅ GET /performance-samples - 200 | 95ms
+
+[1mCategory Summary:[0m
+Success Rate: 87.5%
+Average Response Time: 4239ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Tokens & NFTs (12 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+✅ GET /token-info/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 87ms
+✅ POST /token-metadata - 200 | 152ms
+⚠️ GET /nft-collections - 200 | 1546ms | [32mCache: 99% faster[0m
+✅ GET /trending-nfts - 200 | 708ms | [32mCache: 81% faster[0m
+✅ GET /token-holders/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 94ms
+✅ GET /token-price/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 91ms
+✅ GET /token-volume/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 197ms | [32mCache: 52% faster[0m
+✅ GET /token-list - 200 | 105ms
+✅ GET /new-tokens - 200 | 105ms
+✅ GET /nft-metadata/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 141ms
+✅ GET /nft-activity/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB - 200 | 103ms
+✅ GET /nft-marketplaces - 200 | 92ms
+
+[1mCategory Summary:[0m
+Success Rate: 100.0%
+Average Response Time: 285ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Analytics (18 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+✅ GET /analytics/defi-overview - 200 | 151ms
+⚠️ GET /analytics/dex - 200 | 1396ms | [32mCache: 83% faster[0m
+⚠️ GET /analytics/defi-health - 200 | 1185ms | [32mCache: 63% faster[0m
+⚠️ GET /analytics/validators - 200 | 1667ms | [32mCache: 79% faster[0m
+✅ GET /analytics/network - 200 | 453ms | [32mCache: 78% faster[0m
+✅ GET /analytics/tps - 200 | 81ms
+✅ GET /analytics/volume - 200 | 106ms
+✅ GET /analytics/fees - 200 | 87ms
+✅ GET /analytics/trending - 200 | 112ms
+✅ GET /analytics/whale-activity - 200 | 94ms
+✅ GET /analytics/tvl - 200 | 86ms
+✅ GET /analytics/protocols - 200 | 182ms | [32mCache: 51% faster[0m
+✅ GET /analytics/lending - 200 | 102ms
+✅ GET /analytics/staking - 200 | 85ms
+✅ GET /analytics/governance - 200 | 132ms
+[31m❌ GET /analytics/ecosystem - Failed: 429[0m
+✅ GET /analytics/infofi - 200 | 584ms | [32mCache: 95% faster[0m
+[31m❌ GET /analytics/trending-validators - Failed: 500[0m
+
+[1mCategory Summary:[0m
+Success Rate: 88.9%
+Average Response Time: 406ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 AI-Powered (6 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[31m❌ POST /getAnswer - Failed: 429[0m
+[31m❌ POST /chat - Failed: 429[0m
+[31m❌ POST /ai-analyze - Failed: 429[0m
+[31m❌ POST /ai-predict - Failed: 429[0m
+[31m❌ POST /ai-classify - Failed: 429[0m
+[31m❌ POST /ai-summarize - Failed: 429[0m
+
+[1mCategory Summary:[0m
+Success Rate: 0.0%
+Average Response Time: 0ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 Real-Time (8 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[31m❌ GET /stream/transactions - Failed: 429[0m
+[31m❌ GET /stream/blocks - Failed: 429[0m
+[31m❌ GET /websocket-info - Failed: 429[0m
+[31m❌ GET /feed/latest - Failed: 429[0m
+[31m❌ GET /notifications - Failed: 429[0m
+[31m❌ GET /alerts - Failed: 429[0m
+[31m❌ GET /live-stats - Failed: 429[0m
+[31m❌ GET /mempool - Failed: 429[0m
+
+[1mCategory Summary:[0m
+Success Rate: 0.0%
+Average Response Time: 0ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📁 User Services (10 endpoints)[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+⚠️ GET /user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH - 200 | 2094ms | [32mCache: 92% faster[0m
+[31m❌ GET /usage-stats - Failed: 429[0m
+[31m❌ POST /api-keys - Failed: 429[0m
+[31m❌ GET /metrics - Failed: 429[0m
+[31m❌ POST /error-report - Failed: 429[0m
+[31m❌ GET /health - Failed: 429[0m
+[31m❌ GET /status - Failed: 429[0m
+⚠️ GET /docs/openapi - 200 | 1647ms | [32mCache: 71% faster[0m
+[31m❌ GET /version - Failed: 429[0m
+[31m❌ GET /config - Failed: 429[0m
+
+[1mCategory Summary:[0m
+Success Rate: 20.0%
+Average Response Time: 1871ms
+
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+[1m📊 Final Health Check Summary[0m
+[36m━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━[0m
+❌ Overall Success Rate: 73.2%
+📈 Total Endpoints: 97
+✅ Successful: 71
+❌ Failed: 26
+⚡ Average Response Time: 807ms
+
+✅ Health check report saved to docs/api/health-check-report.md
+✅ Detailed results saved to health-check-results.json

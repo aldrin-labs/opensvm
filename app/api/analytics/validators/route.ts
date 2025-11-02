@@ -3,6 +3,7 @@ import { getConnection } from '@/lib/solana-connection-server';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
 import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/validator-registry';
+import { validatorsCache } from '@/lib/cache';
 
 interface GeolocationData {
   country: string;
@@ -78,12 +79,20 @@ function calculatePerformanceScore(
 
 export async function GET() {
   try {
+    // Check cache first
+    const cached = await validatorsCache.get();
+    if (cached) {
+      console.log('✅ Returning cached validators data');
+      return NextResponse.json(cached);
+    }
+    console.log('📊 Cache miss, fetching fresh validators data...');
+
     // Use OpenSVM RPC connection instead of direct connection
     const connection = await getConnection();
 
-    // Add timeout wrapper for the API calls
+    // Add timeout wrapper for the API calls (reduced for better performance)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Validator data fetch timeout')), 30000);
+      setTimeout(() => reject(new Error('Validator data fetch timeout')), 10000); // Reduced from 30s to 10s
     });
 
     // Fetch real validator data from Solana RPC with timeout
@@ -383,7 +392,7 @@ export async function GET() {
       totalRpcNodes: rpcNodes.length
     };
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         validators: validatorsWithGeo,
@@ -393,7 +402,13 @@ export async function GET() {
         health
       },
       timestamp: Date.now()
-    });
+    };
+
+    // Cache the successful response
+    await validatorsCache.set(response);
+    console.log('✅ Validators data cached successfully');
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error fetching real validator data:', error);

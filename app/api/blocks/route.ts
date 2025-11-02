@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecentBlocks } from '@/lib/block-data';
+import { getRecentBlocks } from '@/lib/block-data-optimized';
 import { validateBlockListRequest, createValidationError } from '@/lib/validation/block-schemas';
 import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
@@ -197,7 +197,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(response, {
       headers: {
-        'Cache-Control': 'public, max-age=30, stale-while-revalidate=60', // 30 sec cache, 1 min stale
+        'Cache-Control': 'public, max-age=60, stale-while-revalidate=120', // 60 sec cache for better performance
         'X-Processing-Time': (Date.now() - startTime).toString()
       }
     });
