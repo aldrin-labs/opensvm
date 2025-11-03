@@ -1,0 +1,220 @@
+/* Trading Terminal - Full Screen Layout */
+
+/* Ensure no scrollbars on body when in trading terminal */
+body:has(.ai-trading-terminal-page-wrapper) {
+  overflow: hidden;
+  height: 100vh;
+  width: 100vw;
+  margin: 0;
+  padding: 0;
+}
+
+/* Trading terminal root container */
+.ai-trading-terminal-page-wrapper {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  overflow: hidden;
+}
+
+/* Trading terminal main container */
+.trading-terminal {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Header - fixed height */
+.trading-header {
+  flex-shrink: 0;
+}
+
+/* Main content area - flexible */
+.trading-content {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Chart panel - takes remaining space */
+.chart-panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+
+/* Right panel - responsive width */
+.right-panel {
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  overflow: hidden;
+  min-height: 0;
+}
+
+/* Ensure sections don't overflow */
+.chart-panel > div,
+.right-panel > section {
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* Trading controls section */
+.trading-controls-section {
+  flex-shrink: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Responsive breakpoints */
+@media (max-width: 1536px) {
+  .right-panel {
+    width: clamp(260px, 18vw, 360px) !important;
+  }
+}
+
+@media (max-width: 1280px) {
+  .right-panel {
+    width: clamp(240px, 22vw, 320px) !important;
+  }
+  
+  .trading-controls-section {
+    max-height: 180px !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .right-panel {
+    width: clamp(220px, 25vw, 280px) !important;
+  }
+  
+  .trading-controls-section {
+    max-height: 160px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Stack layout for mobile */
+  .trading-content {
+    flex-direction: column;
+  }
+  
+  .right-panel {
+    width: 100% !important;
+    max-height: 40vh;
+    border-right: none;
+    border-top: 1px solid hsl(var(--border));
+  }
+  
+  .chart-panel {
+    max-height: 60vh;
+  }
+  
+  .trading-controls-section {
+    max-height: 120px !important;
+  }
+}
+
+/* Prevent text selection during resize */
+.trading-terminal.resizing * {
+  user-select: none;
+}
+
+/* Smooth transitions for responsive changes */
+.right-panel,
+.chart-panel,
+.trading-controls-section {
+  transition: width 0.3s ease, height 0.3s ease, max-height 0.3s ease;
+}
+
+/* Ensure maximized tiles fill the space */
+.trading-content > .absolute {
+  overflow: hidden;
+}
+
+/* AI Chat widget at bottom */
+.ai-chat-section {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Market screener responsive */
+[data-tile-id="screener"] {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* Collapsible sections */
+section[class*="-section"] {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+section[class*="-section"] > .section-header {
+  flex-shrink: 0;
+}
+
+section[class*="-section"] > div:not(.section-header) {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+/* Keyboard shortcuts modal - centered */
+.trading-terminal .fixed {
+  position: fixed !important;
+}
+
+/* Loading state */
+.trading-terminal .animate-spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Focus states */
+.trading-terminal [data-tile-id]:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+}
+
+/* High performance rendering */
+.trading-terminal * {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* GPU acceleration for smooth animations */
+.trading-terminal .transition-all,
+.trading-terminal [class*="transition-"] {
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+
+/* Prevent overscroll bounce on iOS */
+.trading-terminal {
+  overscroll-behavior: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Ensure widgets don't exceed container */
+.trading-terminal [data-ai-widget] {
+  max-width: 100%;
+  max-height: 100%;
+  overflow: hidden;
+}

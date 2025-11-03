@@ -1,9 +1,12 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
+import Together from 'together-ai';
+
+export const runtime = 'edge';
 
 // Rate limiting map (in production, use Redis or similar)
 const rateLimitMap = new Map<string, { count: number; lastRequest: number }>();
 const RATE_LIMIT_WINDOW = 60 * 1000; // 1 minute
-const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
+const RATE_LIMIT_MAX_REQUESTS = 30; // 30 requests per minute
 const MAX_REQUEST_SIZE = 1024 * 1024; // 1MB max request size
 const MAX_LOG_ENTRIES = 100; // Maximum number of log entries
 const MAX_LOG_LENGTH = 10000; // Maximum length per log entry
@@ -52,13 +55,221 @@ function checkRateLimit(ip: string): boolean {
   return true;
 }
 
+// GET method for MCP tool compatibility
+export async function GET(request: NextRequest) {
+  try {
+    const searchParams = request.nextUrl.searchParams;
+    const signature = searchParams.get('signature');
+
+    if (!signature) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Transaction signature is required' 
+        },
+        { status: 400 }
+      );
+    }
+
+    // Rate limiting
+    const ip = request.headers.get('x-forwarded-for') || 'unknown';
+    if (!checkRateLimit(ip)) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Rate limit exceeded. Please try again later.' 
+        },
+        { status: 429 }
+      );
+    }
+
+    // Fetch transaction from Solana RPC
+    const rpcUrl = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
+    const rpcResponse = await fetch(rpcUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'getTransaction',
+        params: [
+          signature,
+          {
+            encoding: 'json',
+            maxSupportedTransactionVersion: 0
+          }
+        ]
+      })
+    });
+
+    if (!rpcResponse.ok) {
+      throw new Error('Failed to fetch transaction from RPC');
+    }
+
+    const rpcData = await rpcResponse.json();
+    
+    if (rpcData.error || !rpcData.result) {
+      return NextResponse.json(
+        { 
+          success: false,
+          error: 'Transaction not found' 
+        },
+        { status: 404 }
+      );
+    }
+
+    const tx = rpcData.result;
+    const logs = tx.meta?.logMessages || [];
+    const err = tx.meta?.err;
+    const fee = tx.meta?.fee || 0;
+
+    // Generate analysis
+    const analysis = await analyzeTransactionData({
+      signature,
+      logs,
+      status: err ? 'failed' : 'success',
+      fee,
+      slot: tx.slot,
+      blockTime: tx.blockTime
+    });
+
+    return NextResponse.json({
+      success: true,
+      data: {
+        signature,
+        analysis,
+        metadata: {
+          slot: tx.slot,
+          blockTime: tx.blockTime,
+          fee,
+          status: err ? 'failed' : 'success'
+        }
+      }
+    });
+
+  } catch (error) {
+    serverLog('error', 'Error in GET analyze-transaction', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return NextResponse.json(
+      { 
+        success: false,
+        error: 'Failed to analyze transaction' 
+      },
+      { status: 500 }
+    );
+  }
+}
+
+async function analyzeTransactionData(data: {
+  signature?: string;
+  logs: string[];
+  type?: string;
+  status: string;
+  amount?: number;
+  from?: string;
+  to?: string;
+  fee?: number;
+  slot?: number;
+  blockTime?: number;
+}): Promise<string> {
+  const { logs, type, status, amount, from, to, fee, signature } = data;
+
+  // Sanitize logs
+  const sanitizedLogs = logs.slice(0, MAX_LOG_ENTRIES).map((log: any) => {
+    if (typeof log === 'string') {
+      if (log.length > MAX_LOG_LENGTH) {
+        return log.substring(0, MAX_LOG_LENGTH) + '... [truncated]';
+      }
+      return sanitizeString(log);
+    }
+    return '[non-string log entry]';
+  });
+
+  const sanitizedType = type ? sanitizeString(String(type)) : undefined;
+  const sanitizedStatus = sanitizeString(String(status));
+  const sanitizedFrom = from ? sanitizeString(String(from)) : undefined;
+  const sanitizedTo = to ? sanitizeString(String(to)) : undefined;
+
+  // Generate a default fallback response in case API key is missing
+  const fallbackAnalysis = `
+This ${signature ? `transaction (${signature.slice(0, 8)}...)` : 'transaction'} ${sanitizedStatus === 'success' ? 'completed successfully' : 'failed'}.
+${sanitizedType ? `Type: ${sanitizedType}` : ''}
+${amount ? `Amount: ${amount} SOL` : ''}
+${fee ? `Fee: ${fee / 1e9} SOL` : ''}
+${sanitizedFrom && sanitizedTo ? `Transfer from ${sanitizedFrom.slice(0, 8)}... to ${sanitizedTo.slice(0, 8)}...` : ''}
+
+The transaction involved ${sanitizedLogs.length} log entries. ${sanitizedStatus === 'success' ? 'All operations completed without errors.' : 'The transaction encountered an error during execution.'}
+`.trim();
+
+  // Check if API key is available
+  const apiKey = process.env.TOGETHER_API_KEY;
+  if (!apiKey) {
+    serverLog('warn', 'TOGETHER_API_KEY is not set, using fallback response');
+    return fallbackAnalysis;
+  }
+
+  try {
+    // Initialize Together AI client
+    const together = new Together({ apiKey });
+
+    // Create analysis prompt
+    const prompt = `Analyze this Solana transaction and provide a clear, concise explanation:
+
+Signature: ${signature || 'Unknown'}
+Status: ${sanitizedStatus}
+${sanitizedType ? `Type: ${sanitizedType}` : ''}
+${amount ? `Amount: ${amount} SOL` : ''}
+${fee ? `Fee: ${fee / 1e9} SOL` : ''}
+${sanitizedFrom ? `From: ${sanitizedFrom}` : ''}
+${sanitizedTo ? `To: ${sanitizedTo}` : ''}
+
+Transaction Logs (${sanitizedLogs.length} entries):
+${sanitizedLogs.slice(0, 20).join('\n')}
+
+Please explain:
+1. What operation was performed
+2. Whether it succeeded or failed and why
+3. Any notable programs or protocols involved
+4. The purpose and significance of this transaction
+
+Keep the explanation concise and accessible.`;
+
+    const completion = await together.chat.completions.create({
+      model: 'meta-llama/Llama-3.3-70B-Instruct-Turbo',
+      messages: [
+        {
+          role: 'system',
+          content: 'You are a Solana blockchain expert who explains transactions clearly and concisely. Focus on the key actions and their implications.'
+        },
+        {
+          role: 'user',
+          content: prompt
+        }
+      ],
+      max_tokens: 500,
+      temperature: 0.7,
+      top_p: 0.9,
+    });
+
+    const analysis = completion.choices[0]?.message?.content || fallbackAnalysis;
+    return analysis.trim();
+
+  } catch (error) {
+    serverLog('error', 'AI API request failed', {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    return fallbackAnalysis;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     // Check request size
     const contentLength = request.headers.get('content-length');
     if (contentLength && parseInt(contentLength) > MAX_REQUEST_SIZE) {
       return NextResponse.json(
-        { error: 'Request body too large' },
+        { success: false, error: 'Request body too large' },
         { status: 413 }
       );
     }
@@ -67,120 +278,53 @@ export async function POST(request: Request) {
     const ip = request.headers.get('x-forwarded-for') || 'unknown';
     if (!checkRateLimit(ip)) {
       return NextResponse.json(
-        { error: 'Rate limit exceeded. Please try again later.' },
+        { success: false, error: 'Rate limit exceeded. Please try again later.' },
         { status: 429 }
       );
     }
 
-    const { logs, type, status, amount, from, to } = await request.json();
+    const body = await request.json();
+    const { logs, type, status, amount, from, to, signature } = body;
 
-    // Validate and sanitize required parameters
+    // Validate required parameters
     if (!logs || !Array.isArray(logs)) {
       return NextResponse.json(
-        { error: 'Transaction logs are required and must be an array' },
+        { success: false, error: 'Transaction logs are required and must be an array' },
         { status: 400 }
       );
     }
 
-    // Validate log array size and sanitize content
+    // Validate log array size
     if (logs.length > MAX_LOG_ENTRIES) {
       return NextResponse.json(
-        { error: `Too many log entries. Maximum allowed: ${MAX_LOG_ENTRIES}` },
+        { success: false, error: `Too many log entries. Maximum allowed: ${MAX_LOG_ENTRIES}` },
         { status: 400 }
       );
     }
 
-    // Sanitize logs to prevent injection attacks
-    const sanitizedLogs = logs.map((log: any) => {
-      if (typeof log === 'string') {
-        if (log.length > MAX_LOG_LENGTH) {
-          return log.substring(0, MAX_LOG_LENGTH) + '... [truncated]';
-        }
-        return sanitizeString(log);
-      }
-      return '[non-string log entry]';
+    // Generate analysis
+    const analysis = await analyzeTransactionData({
+      signature,
+      logs,
+      type,
+      status: status || 'unknown',
+      amount,
+      from,
+      to
     });
 
-    // Sanitize other parameters
-    const sanitizedType = type ? sanitizeString(String(type)) : undefined;
-    const sanitizedStatus = status ? sanitizeString(String(status)) : undefined;
-    const sanitizedFrom = from ? sanitizeString(String(from)) : undefined;
-    const sanitizedTo = to ? sanitizeString(String(to)) : undefined;
-
-    // Generate a default fallback response in case API key is missing
-    let fallbackAnalysis = `
-This appears to be a ${sanitizedType || 'unknown'} transaction that ${sanitizedStatus || 'executed'}.
-${amount ? `The transaction involved ${amount} SOL.` : ''}
-${sanitizedFrom && sanitizedTo ? `Funds moved from ${sanitizedFrom.slice(0, 8)}... to ${sanitizedTo.slice(0, 8)}...` : ''}
-
-Without more context or API access, I cannot provide a detailed analysis of the logs.
-`;
-
-    // Check if API key is available
-    if (!process.env.TOGETHER_API_KEY) {
-      serverLog('warn', 'TOGETHER_API_KEY is not set, using fallback response');
-      return NextResponse.json({ analysis: fallbackAnalysis.trim() });
-    }
-
-    // Create analysis prompt with sanitized data
-    const prompt = `Analyze this Solana transaction:
-Type: ${sanitizedType || 'Unknown'}
-Status: ${sanitizedStatus || 'Unknown'}
-Amount: ${amount ? `${amount} SOL` : 'Unknown'}
-From: ${sanitizedFrom || 'Unknown'}
-To: ${sanitizedTo || 'Unknown'}
-
-Transaction Logs:
-${sanitizedLogs.join('\n')}
-
-Please explain in simple terms what happened in this transaction, including:
-1. What type of operation was performed
-2. Whether it was successful
-3. Any notable details from the logs
-4. Potential purpose of the transaction`;
-
-    // Make API request
-    const response = await fetch('https://api.together.xyz/inference', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${process.env.TOGETHER_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'larp/openai/gpt-oss-20b-0ca1a4fd',
-        prompt,
-        max_tokens: 500,
-        temperature: 0.7,
-        top_p: 0.7,
-        top_k: 50,
-        repetition_penalty: 1,
-        stop: ['<human>', '<assistant>'],
-      }),
+    return NextResponse.json({ 
+      success: true,
+      data: { analysis }
     });
 
-    if (!response.ok) {
-      serverLog('error', 'GPT API response not OK', {
-        status: response.status,
-        statusText: response.statusText
-      });
-      throw new Error('GPT API request failed');
-    }
-
-    const data = await response.json();
-
-    if (!data?.output?.choices?.[0]?.text) {
-      serverLog('error', 'Unexpected API response format', { responseData: data });
-      throw new Error('Invalid API response format');
-    }
-
-    return NextResponse.json({ analysis: data.output.choices[0].text.trim() });
   } catch (error) {
     serverLog('error', 'Error analyzing transaction', {
       error: error instanceof Error ? error.message : String(error),
       stack: error instanceof Error ? error.stack : undefined
     });
     return NextResponse.json(
-      { error: 'Failed to analyze transaction' },
+      { success: false, error: 'Failed to analyze transaction' },
       { status: 500 }
     );
   }

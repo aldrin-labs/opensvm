@@ -43,6 +43,8 @@ const docCategories: DocCategory[] = [
     icon: <FileText className="w-6 h-6" />,
     docs: [
       { slug: 'API', title: 'API Reference', description: 'Complete API documentation' },
+      { slug: 'api/api-health-summary', title: 'API Health Check', description: 'Latest API health status and performance metrics' },
+      { slug: 'api/health-check-report', title: 'Health Report', description: 'Detailed health check report for all 97 endpoints' },
       { slug: 'AUTHENTICATION', title: 'Authentication', description: 'Authentication and authorization guide' },
       { slug: 'anthropic-sdk-integration-guide', title: 'Anthropic SDK', description: 'AI integration guide' },
     ]

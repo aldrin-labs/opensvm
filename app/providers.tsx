@@ -17,6 +17,7 @@ import { CacheProvider } from '@/lib/caching';
 import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { NotificationProvider } from '@/components/providers/NotificationProvider';
 import logger from '@/lib/logging/logger';
 import { AIChatSidebarProvider } from '@/contexts/AIChatSidebarContext';
 
@@ -88,22 +89,23 @@ class AppErrorBoundary extends React.Component<
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <div className="ai-providers-wrapper"> {/* Added ai-providers-wrapper */}
-      <EnhancedErrorBoundary>
-        <AccessibilityProvider>
-          <ErrorHandlingProvider>
-            <EnhancedThemeProvider>
-              <WalletProvider>
-                <AuthProvider>
-                  <RBACProvider>
-                    <SSOProvider>
-                      <ExportProvider>
-                        <OptimisticUIProvider>
-                          <AnimationProvider>
-                            <CacheProvider>
-                              <VoiceProvider>
-                                <UserExpertiseProvider>
-                                  <OnboardingProvider>
-                                    <PerformanceProvider
+      <NotificationProvider>
+        <EnhancedErrorBoundary>
+          <AccessibilityProvider>
+            <ErrorHandlingProvider>
+              <EnhancedThemeProvider>
+                <WalletProvider>
+                  <AuthProvider>
+                    <RBACProvider>
+                      <SSOProvider>
+                        <ExportProvider>
+                          <OptimisticUIProvider>
+                            <AnimationProvider>
+                              <CacheProvider>
+                                <VoiceProvider>
+                                  <UserExpertiseProvider>
+                                    <OnboardingProvider>
+                                      <PerformanceProvider
                                       config={{
                                         enabled: true,
                                         collectInterval: 2000, // Collect metrics every 2 seconds
@@ -152,6 +154,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           </ErrorHandlingProvider>
         </AccessibilityProvider>
       </EnhancedErrorBoundary>
+      </NotificationProvider>
     </div>
   );
 }

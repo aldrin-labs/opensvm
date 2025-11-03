@@ -1,0 +1,1094 @@
+{
+  "timestamp": "2025-11-02T09:15:40.445Z",
+  "totalEndpoints": 97,
+  "successfulEndpoints": 71,
+  "failedEndpoints": 26,
+  "averageResponseTime": 807,
+  "categories": {
+    "Search & Discovery": {
+      "totalEndpoints": 11,
+      "successfulEndpoints": 11,
+      "failedEndpoints": 0,
+      "successRate": "100.0",
+      "averageResponseTime": 622,
+      "results": [
+        {
+          "endpoint": "/universal-search",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 628,
+          "success": true,
+          "cacheImprovement": 78,
+          "timestamp": "2025-11-02T09:15:41.211Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/search-accounts",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 93,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:41.385Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/search/suggestions",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1314,
+          "success": true,
+          "cacheImprovement": 93,
+          "timestamp": "2025-11-02T09:15:42.792Z",
+          "hasData": true,
+          "dataKeys": 0
+        },
+        {
+          "endpoint": "/search/suggestions/trending",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 636,
+          "success": true,
+          "cacheImprovement": 73,
+          "timestamp": "2025-11-02T09:15:43.599Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/search/suggestions/recent",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 83,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:43.789Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/search/suggestions/empty-state",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1977,
+          "success": true,
+          "cacheImprovement": 64,
+          "timestamp": "2025-11-02T09:15:46.478Z",
+          "hasData": true,
+          "dataKeys": 13
+        },
+        {
+          "endpoint": "/program-registry",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1149,
+          "success": true,
+          "cacheImprovement": 98,
+          "timestamp": "2025-11-02T09:15:47.649Z",
+          "hasData": true,
+          "dataKeys": 4
+        },
+        {
+          "endpoint": "/program-info/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 657,
+          "success": true,
+          "cacheImprovement": 78,
+          "timestamp": "2025-11-02T09:15:48.453Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/solana-rpc-call",
+          "method": "POST",
+          "status": 200,
+          "responseTime": 98,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:48.552Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/related-accounts",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 102,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:48.763Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account/search",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 100,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:49.002Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Account & Wallet": {
+      "totalEndpoints": 16,
+      "successfulEndpoints": 15,
+      "failedEndpoints": 1,
+      "successRate": "93.8",
+      "averageResponseTime": 421,
+      "results": [
+        {
+          "endpoint": "/account-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 500,
+          "responseTime": 1483,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:50.486Z",
+          "hasData": true,
+          "dataKeys": 1
+        },
+        {
+          "endpoint": "/account-transactions/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 2572,
+          "success": true,
+          "cacheImprovement": 85,
+          "timestamp": "2025-11-02T09:15:53.435Z",
+          "hasData": true,
+          "dataKeys": 5
+        },
+        {
+          "endpoint": "/account-token-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 2097,
+          "success": true,
+          "cacheImprovement": 68,
+          "timestamp": "2025-11-02T09:15:56.206Z",
+          "hasData": true,
+          "dataKeys": 2
+        },
+        {
+          "endpoint": "/check-account-type/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 537,
+          "success": true,
+          "cacheImprovement": 69,
+          "timestamp": "2025-11-02T09:15:56.909Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-balance/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 83,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:57.074Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-info/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 104,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:57.274Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-tokens/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 88,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:57.489Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-nfts/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 105,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:57.698Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 88,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:57.872Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-stakes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 93,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:58.105Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-rewards/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 112,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:58.324Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/account-votes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 81,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:58.494Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/wallet-profile/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 87,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:58.727Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/wallet-analytics/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 96,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:58.906Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/portfolio/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 85,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:59.085Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/verify-wallet-signature",
+          "method": "POST",
+          "status": 200,
+          "responseTime": 85,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:59.171Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Transactions": {
+      "totalEndpoints": 8,
+      "successfulEndpoints": 8,
+      "failedEndpoints": 0,
+      "successRate": "100.0",
+      "averageResponseTime": 99,
+      "results": [
+        {
+          "endpoint": "/transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 98,
+          "success": true,
+          "cacheImprovement": 70,
+          "timestamp": "2025-11-02T09:15:59.303Z",
+          "hasData": true,
+          "dataKeys": 6
+        },
+        {
+          "endpoint": "/batch-transactions",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 148,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:59.561Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/filter-transactions",
+          "method": "POST",
+          "status": 200,
+          "responseTime": 95,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:59.656Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analyze-transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 83,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:15:59.843Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/explain-transaction/4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 95,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:00.075Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/transaction-history",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 86,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:00.261Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/recent-transactions",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 86,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:00.447Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/transaction-stats",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 100,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:00.685Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Blockchain": {
+      "totalEndpoints": 8,
+      "successfulEndpoints": 7,
+      "failedEndpoints": 1,
+      "successRate": "87.5",
+      "averageResponseTime": 4239,
+      "results": [
+        {
+          "endpoint": "/block/200000000",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 133,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:00.818Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/blocks",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 18945,
+          "success": true,
+          "cacheImprovement": 56,
+          "timestamp": "2025-11-02T09:16:28.080Z",
+          "hasData": true,
+          "dataKeys": 5
+        },
+        {
+          "endpoint": "/blocks/stats",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 2041,
+          "success": true,
+          "cacheImprovement": 58,
+          "timestamp": "2025-11-02T09:16:30.989Z",
+          "hasData": true,
+          "dataKeys": 5
+        },
+        {
+          "endpoint": "/slots",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 7655,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:46.031Z",
+          "hasData": true,
+          "dataKeys": 3
+        },
+        {
+          "endpoint": "/epoch",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 728,
+          "success": true,
+          "cacheImprovement": 81,
+          "timestamp": "2025-11-02T09:16:46.895Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/supply",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 101,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:47.080Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/inflation",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 107,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:47.291Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/performance-samples",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 95,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:47.546Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Tokens & NFTs": {
+      "totalEndpoints": 12,
+      "successfulEndpoints": 12,
+      "failedEndpoints": 0,
+      "successRate": "100.0",
+      "averageResponseTime": 285,
+      "results": [
+        {
+          "endpoint": "/token-info/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 87,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:47.741Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/token-metadata",
+          "method": "POST",
+          "status": 200,
+          "responseTime": 152,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:47.894Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/nft-collections",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1546,
+          "success": true,
+          "cacheImprovement": 99,
+          "timestamp": "2025-11-02T09:16:49.469Z",
+          "hasData": true,
+          "dataKeys": 2
+        },
+        {
+          "endpoint": "/trending-nfts",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 708,
+          "success": true,
+          "cacheImprovement": 81,
+          "timestamp": "2025-11-02T09:16:50.313Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/token-holders/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 94,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:50.492Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/token-price/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 91,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:50.688Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/token-volume/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 197,
+          "success": true,
+          "cacheImprovement": 52,
+          "timestamp": "2025-11-02T09:16:50.980Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/token-list",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 105,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:51.196Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/new-tokens",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 105,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:51.403Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/nft-metadata/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 141,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:51.633Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/nft-activity/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 103,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:51.819Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/nft-marketplaces",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 92,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:51.991Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Analytics": {
+      "totalEndpoints": 18,
+      "successfulEndpoints": 16,
+      "failedEndpoints": 2,
+      "successRate": "88.9",
+      "averageResponseTime": 406,
+      "results": [
+        {
+          "endpoint": "/analytics/defi-overview",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 151,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:52.244Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/dex",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1396,
+          "success": true,
+          "cacheImprovement": 83,
+          "timestamp": "2025-11-02T09:16:53.883Z",
+          "hasData": true,
+          "dataKeys": 3
+        },
+        {
+          "endpoint": "/analytics/defi-health",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1185,
+          "success": true,
+          "cacheImprovement": 63,
+          "timestamp": "2025-11-02T09:16:55.507Z",
+          "hasData": true,
+          "dataKeys": 3
+        },
+        {
+          "endpoint": "/analytics/validators",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1667,
+          "success": true,
+          "cacheImprovement": 79,
+          "timestamp": "2025-11-02T09:16:57.528Z",
+          "hasData": true,
+          "dataKeys": 3
+        },
+        {
+          "endpoint": "/analytics/network",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 453,
+          "success": true,
+          "cacheImprovement": 78,
+          "timestamp": "2025-11-02T09:16:58.080Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/tps",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 81,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:58.306Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/volume",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 106,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:58.509Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/fees",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 87,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:58.672Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/trending",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 112,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:58.918Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/whale-activity",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 94,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:59.136Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/tvl",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 86,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:59.322Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/protocols",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 182,
+          "success": true,
+          "cacheImprovement": 51,
+          "timestamp": "2025-11-02T09:16:59.593Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/lending",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 102,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:59.782Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/staking",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 85,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:16:59.958Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/governance",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 132,
+          "success": true,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:00.185Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/ecosystem",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 95,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:00.280Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/analytics/infofi",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 584,
+          "success": true,
+          "cacheImprovement": 95,
+          "timestamp": "2025-11-02T09:17:00.898Z",
+          "hasData": true,
+          "dataKeys": 2
+        },
+        {
+          "endpoint": "/analytics/trending-validators",
+          "method": "GET",
+          "status": 500,
+          "responseTime": 2018,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:02.916Z",
+          "hasData": true,
+          "dataKeys": 3
+        }
+      ]
+    },
+    "AI-Powered": {
+      "totalEndpoints": 6,
+      "successfulEndpoints": 0,
+      "failedEndpoints": 6,
+      "successRate": "0.0",
+      "averageResponseTime": 0,
+      "results": [
+        {
+          "endpoint": "/getAnswer",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 453,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.370Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/chat",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 99,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.477Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/ai-analyze",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 77,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.560Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/ai-predict",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 162,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.727Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/ai-classify",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 96,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.829Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/ai-summarize",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 87,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:03.922Z",
+          "hasData": false
+        }
+      ]
+    },
+    "Real-Time": {
+      "totalEndpoints": 8,
+      "successfulEndpoints": 0,
+      "failedEndpoints": 8,
+      "successRate": "0.0",
+      "averageResponseTime": 0,
+      "results": [
+        {
+          "endpoint": "/stream/transactions",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 102,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.029Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/stream/blocks",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 79,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.113Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/websocket-info",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 104,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.223Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/feed/latest",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 147,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.376Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/notifications",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 93,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.475Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/alerts",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 76,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.556Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/live-stats",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 89,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.650Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/mempool",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 75,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:04.729Z",
+          "hasData": false
+        }
+      ]
+    },
+    "User Services": {
+      "totalEndpoints": 10,
+      "successfulEndpoints": 2,
+      "failedEndpoints": 8,
+      "successRate": "20.0",
+      "averageResponseTime": 1871,
+      "results": [
+        {
+          "endpoint": "/user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 2094,
+          "success": true,
+          "cacheImprovement": 92,
+          "timestamp": "2025-11-02T09:17:06.985Z",
+          "hasData": true,
+          "dataKeys": 7
+        },
+        {
+          "endpoint": "/usage-stats",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 459,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.444Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/api-keys",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 101,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.552Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/metrics",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 74,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.631Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/error-report",
+          "method": "POST",
+          "status": 429,
+          "responseTime": 128,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.764Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/health",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 89,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.858Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/status",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 74,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:07.936Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/docs/openapi",
+          "method": "GET",
+          "status": 200,
+          "responseTime": 1647,
+          "success": true,
+          "cacheImprovement": 71,
+          "timestamp": "2025-11-02T09:17:10.065Z",
+          "hasData": true,
+          "dataKeys": 6
+        },
+        {
+          "endpoint": "/version",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 438,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:10.503Z",
+          "hasData": false
+        },
+        {
+          "endpoint": "/config",
+          "method": "GET",
+          "status": 429,
+          "responseTime": 97,
+          "success": false,
+          "cacheImprovement": null,
+          "timestamp": "2025-11-02T09:17:10.606Z",
+          "hasData": false
+        }
+      ]
+    }
+  },
+  "summary": {
+    "responseTimeDistribution": {
+      "<100ms": 42,
+      "100-500ms": 32,
+      "500ms-1s": 7,
+      "1s-2s": 9,
+      ">2s": 7
+    },
+    "statusCodes": {
+      "200": 71,
+      "429": 24,
+      "500": 2
+    },
+    "cachePerformance": {}
+  },
+  "failures": []
+}

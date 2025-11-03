@@ -16,7 +16,8 @@ import {
   VersionedBlockResponse
 } from '@solana/web3.js';
 // Note: Connection, AccountMeta, ParsedMessageAccount, BlockResponse, ParsedInstruction, PartiallyDecodedInstruction removed as they're not currently used
-import { getClientConnection as getProxyConnection } from './solana-connection';
+// Import server-side connection for API routes
+import { getConnection as getProxyConnection } from './solana-connection-server';
 
 // Type definitions
 export type AccountData = {
@@ -195,7 +196,7 @@ export function validateSolanaAddress(address: string): PublicKey {
 
 export async function getAccountInfo(address: string): Promise<SolanaAccountInfo<Buffer> | null> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const pubkey = validateSolanaAddress(address);
 
     // Try each endpoint until one succeeds
@@ -221,7 +222,7 @@ export async function getAccountInfo(address: string): Promise<SolanaAccountInfo
 
 export async function getNetworkStats(): Promise<NetworkStats> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const [currentSlot, performance] = await Promise.all([
       connection.getSlot(),
       connection.getRecentPerformanceSamples(1)
@@ -260,7 +261,7 @@ export async function getNetworkStats(): Promise<NetworkStats> {
 
 export async function getTokenInfo(mintAddress: string): Promise<TokenInfo> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const pubkey = validateSolanaAddress(mintAddress);
 
     const accountInfo = await connection.getAccountInfo(pubkey);
@@ -296,7 +297,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
   console.log(`Fetching block details for slot ${slot}`);
   let connection;
   try {
-    connection = await getProxyConnection();
+    connection = getProxyConnection();
     const currentSlot = await connection.getSlot();
     console.log(`Current slot: ${currentSlot}`);
 
@@ -452,7 +453,7 @@ export async function getBlockDetails(slot: number): Promise<BlockDetails> {
 
 export async function getRPCLatency(): Promise<number> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const start = Date.now();
     await connection.getSlot();
     return Date.now() - start;
@@ -464,7 +465,7 @@ export async function getRPCLatency(): Promise<number> {
 
 export async function getTransactionDetails(signature: string): Promise<DetailedTransactionInfo> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const tx: ParsedTransactionWithMeta | null = await connection.getParsedTransaction(signature, {
       maxSupportedTransactionVersion: 0,
       commitment: 'confirmed'
@@ -512,7 +513,7 @@ export async function getRecentTransactions(address: string, limit: number = 100
   status: 'success' | 'failed';
 }[]> {
   try {
-    const connection = await getProxyConnection();
+    const connection = getProxyConnection();
     const publicKey = new PublicKey(address);
 
     // Get signatures for the address

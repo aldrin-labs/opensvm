@@ -73,8 +73,9 @@
     "dotenv": "^16.4.7",
     "encoding": "^0.1.13",
     "eventsource-parser": "^3.0.0",
-    "framer-motion": "^12.4.7",
+    "framer-motion": "^12.23.24",
     "html2canvas": "^1.4.1",
+    "ioredis": "^5.8.2",
     "jsdom": "^26.0.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
@@ -107,6 +108,7 @@
     "remark-mermaid": "^0.2.0",
     "rinlab": "0.3.0",
     "roughjs": "^4.6.6",
+    "server-only": "^0.0.1",
     "sonner": "^2.0.6",
     "swagger-ui-react": "^5.29.4",
     "tailwind-merge": "^3.0.2",
@@ -115,7 +117,8 @@
     "whatwg-url": "^5.0.0",
     "xstate": "^5.19.2",
     "zod": "^3.24.1",
-    "zod-to-json-schema": "^3.23.0"
+    "zod-to-json-schema": "^3.23.0",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.10.0",

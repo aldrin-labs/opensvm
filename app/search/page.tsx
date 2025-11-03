@@ -331,7 +331,250 @@ function SearchResults() {
   if (!query) {
     return (
       <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Please enter a search query</h1>
+        <div className="mb-8">
+          <EnhancedSearchBar />
+        </div>
+
+        <div className="max-w-5xl mx-auto">
+          {/* Hero Section */}
+          <div className="text-center mb-12">
+            <h1 className="text-4xl font-bold mb-4">Search the Solana Blockchain</h1>
+            <p className="text-lg text-muted-foreground">
+              Explore transactions, accounts, tokens, programs, and blocks on Solana
+            </p>
+          </div>
+
+          {/* Quick Search Examples */}
+          <Card className="mb-8">
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Try These Searches</h2>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Example: Transaction */}
+                <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                    </svg>
+                    Transaction Signature
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Search for transaction details by signature (88 characters)
+                  </p>
+                  <code className="text-xs bg-muted p-2 rounded block overflow-x-auto">
+                    5j7s6NiJS3JAkvgkoc18WVAsiSaci2pxB2...
+                  </code>
+                </div>
+
+                {/* Example: Account */}
+                <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Wallet Address
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Look up any Solana wallet address and its balance
+                  </p>
+                  <code className="text-xs bg-muted p-2 rounded block overflow-x-auto">
+                    9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin
+                  </code>
+                </div>
+
+                {/* Example: Token */}
+                <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Token Address
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Discover token details, holders, and statistics
+                  </p>
+                  <code className="text-xs bg-muted p-2 rounded block overflow-x-auto">
+                    EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+                  </code>
+                </div>
+
+                {/* Example: Block */}
+                <div className="border rounded-lg p-4 hover:bg-muted/50 transition-colors">
+                  <h3 className="font-medium mb-2 flex items-center gap-2">
+                    <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                    </svg>
+                    Block Number
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-3">
+                    View block information and transactions
+                  </p>
+                  <code className="text-xs bg-muted p-2 rounded block overflow-x-auto">
+                    123456789
+                  </code>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Popular Searches */}
+          <Card className="mb-8">
+            <CardHeader>
+              <h2 className="text-xl font-semibold">Popular Searches</h2>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => {
+                    const searchBar = document.querySelector('input[type="search"]') as HTMLInputElement;
+                    if (searchBar) {
+                      searchBar.value = 'USDC';
+                      searchBar.form?.requestSubmit();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-sm font-medium"
+                >
+                  USDC Token
+                </button>
+                <button
+                  onClick={() => {
+                    const searchBar = document.querySelector('input[type="search"]') as HTMLInputElement;
+                    if (searchBar) {
+                      searchBar.value = 'Jupiter';
+                      searchBar.form?.requestSubmit();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-sm font-medium"
+                >
+                  Jupiter Protocol
+                </button>
+                <button
+                  onClick={() => {
+                    const searchBar = document.querySelector('input[type="search"]') as HTMLInputElement;
+                    if (searchBar) {
+                      searchBar.value = 'Raydium';
+                      searchBar.form?.requestSubmit();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-sm font-medium"
+                >
+                  Raydium
+                </button>
+                <button
+                  onClick={() => {
+                    const searchBar = document.querySelector('input[type="search"]') as HTMLInputElement;
+                    if (searchBar) {
+                      searchBar.value = 'recent transactions';
+                      searchBar.form?.requestSubmit();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-sm font-medium"
+                >
+                  Recent Transactions
+                </button>
+                <button
+                  onClick={() => {
+                    const searchBar = document.querySelector('input[type="search"]') as HTMLInputElement;
+                    if (searchBar) {
+                      searchBar.value = 'top tokens';
+                      searchBar.form?.requestSubmit();
+                    }
+                  }}
+                  className="px-4 py-2 rounded-full bg-primary/10 hover:bg-primary/20 transition-colors text-sm font-medium"
+                >
+                  Top Tokens
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Features Grid */}
+          <div className="grid gap-6 md:grid-cols-3 mb-8">
+            <Card>
+              <CardHeader>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                  </svg>
+                  Lightning Fast
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Get instant results powered by AI and real-time blockchain data
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                  </svg>
+                  Verified Data
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  All data is sourced directly from Solana blockchain validators
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <h3 className="font-semibold flex items-center gap-2">
+                  <svg className="w-5 h-5 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                  AI-Powered
+                </h3>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground">
+                  Get intelligent insights and natural language explanations
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Help Section */}
+          <Card>
+            <CardHeader>
+              <h2 className="text-xl font-semibold">How to Search</h2>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4 text-sm">
+                <div>
+                  <h4 className="font-medium mb-1">🔍 By Address or Signature</h4>
+                  <p className="text-muted-foreground">
+                    Paste any Solana address (wallet, token, program) or transaction signature to get instant details
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">🔢 By Block Number</h4>
+                  <p className="text-muted-foreground">
+                    Enter a block number to view all transactions in that block
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">💬 By Natural Language</h4>
+                  <p className="text-muted-foreground">
+                    Ask questions like "What is the current price of SOL?" or "Show me recent Jupiter transactions"
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-medium mb-1">🏷️ By Token Name</h4>
+                  <p className="text-muted-foreground">
+                    Search for tokens by their name or symbol (e.g., "USDC", "Raydium", "Orca")
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }

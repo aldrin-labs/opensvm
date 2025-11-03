@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 
 interface SimpleDropdownProps {
   trigger: React.ReactNode;
@@ -17,8 +18,14 @@ export function SimpleDropdown({
 }: SimpleDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const pathname = usePathname();
 
-  // Simplified event handlers without useCallback to prevent dependency issues
+  // Close dropdown on route change
+  useEffect(() => {
+    setIsOpen(false);
+  }, [pathname]);
+
+  // Close on click outside, escape key
   useEffect(() => {
     if (!isOpen) return;
 
@@ -34,12 +41,24 @@ export function SimpleDropdown({
       }
     };
 
+    // Immediately close on any click inside the dropdown (for links)
+    const handleInternalClick = () => {
+      // Small delay to allow link navigation to initiate
+      setTimeout(() => setIsOpen(false), 0);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscapeKey);
+    if (dropdownRef.current) {
+      dropdownRef.current.addEventListener('click', handleInternalClick);
+    }
     
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscapeKey);
+      if (dropdownRef.current) {
+        dropdownRef.current.removeEventListener('click', handleInternalClick);
+      }
     };
   }, [isOpen]);
 
@@ -57,7 +76,7 @@ export function SimpleDropdown({
       
       {isOpen && (
         <div className={`absolute top-full mt-1 ${alignClass} min-w-48 bg-background border border-border rounded-md shadow-lg z-50 ${className}`}>
-          <div className="py-1" onClick={() => setIsOpen(false)}>
+          <div className="py-1">
             {children}
           </div>
         </div>

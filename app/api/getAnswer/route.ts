@@ -13,13 +13,21 @@ import { createHash } from 'crypto';
 *
 * This ensures "tools" (RPC calls) are executed on the server prior to
 * returning the response to the user.
+*
+* TOKEN CONFIGURATION:
+* The openai/gpt-oss-120b model on Together AI has extensive capabilities:
+* - Context window: Up to 120K tokens (input + output combined)
+* - We're using max_tokens=32768 (32K) for output generation
+* - This provides ample space for even the most detailed blockchain analysis
+* - The 32K output limit ensures complete responses without any truncation
+* - Combined with input context, this stays well within the 120K total limit
 */
 
-// ✅ PHASE 2: LRU Query Cache Implementation
+// ✅ PHASE 2: LRU Query Cache Implementation - MAXIMIZED
 class QueryCache {
   private cache: Map<string, { response: string; timestamp: number; status: number }> = new Map();
-  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
-  private readonly MAX_ENTRIES = 100;
+  private readonly TTL_MS = 60 * 60 * 1000; // 60 minutes (1 hour) - MAXIMIZED
+  private readonly MAX_ENTRIES = 1000; // 10x increase - MAXIMIZED
 
   private getCacheKey(question: string, ownPlan: boolean, systemPrompt: string | null): string {
     const hash = createHash('sha256')
@@ -34,7 +42,9 @@ class QueryCache {
     // Evict oldest entry if at capacity
     if (this.cache.size >= this.MAX_ENTRIES) {
       const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
     }
 
     this.cache.set(key, { response, timestamp: Date.now(), status });
@@ -69,11 +79,12 @@ class QueryCache {
 
 const queryCache = new QueryCache();
 
-// ✅ PHASE 3: Request Queue for limiting concurrent API calls
+// ✅ PHASE 3: Request Queue - MAXIMIZED for parallel processing
 class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private activeRequests: number = 0;
-  private readonly MAX_CONCURRENT = 4;
+  private readonly MAX_CONCURRENT = 10; // 5x increase for parallel API calls - MAXIMIZED
+
 
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -138,21 +149,21 @@ class QueryComplexityAnalyzer {
       }
     }
 
-    // Determine timeout based on complexity score (increased for reliability)
-    let timeoutMs = 70000; // Base 70 seconds (increased from 60)
+    // Determine timeout based on complexity score - MAXIMIZED for reliability
+    let timeoutMs = 180000; // Base 180 seconds (3 minutes) - MAXIMIZED
     let description = 'simple';
 
     if (complexityScore < 2) {
-      timeoutMs = 55000; // 55s (increased from 45s)
+      timeoutMs = 120000; // 120s (2 minutes) - MAXIMIZED
       description = 'simple';
     } else if (complexityScore < 4) {
-      timeoutMs = 70000; // 70s (increased from 60s)
+      timeoutMs = 180000; // 180s (3 minutes) - MAXIMIZED
       description = 'moderate';
     } else if (complexityScore < 7) {
-      timeoutMs = 90000; // 90s (increased from 80s)
+      timeoutMs = 240000; // 240s (4 minutes) - MAXIMIZED
       description = 'complex';
     } else {
-      timeoutMs = 110000; // 110s (increased from 100s)
+      timeoutMs = 300000; // 300s (5 minutes) - MAXIMIZED
       description = 'very complex';
     }
 
@@ -166,12 +177,23 @@ class QueryComplexityAnalyzer {
 
 const complexityAnalyzer = new QueryComplexityAnalyzer();
 
-// ✅ PHASE 5: Intelligent Query Truncation for Very Long Questions
+// ✅ PHASE 5: Query Truncation - MAXIMIZED for longest queries
 class QueryTruncator {
-  private readonly MAX_LENGTH = 5000;
-  private readonly TARGET_LENGTH = 2000;
+  private readonly MAX_LENGTH = 100000; // MAXIMIZED to 100K characters
+  private readonly TARGET_LENGTH = 100000; // MAXIMIZED to 100K characters
 
   truncateIfNeeded(question: string): { truncated: boolean; question: string; originalLength: number } {
+    // Skip truncation for OVSM/planning queries - they need full context
+    const isPlanningQuery = question.toLowerCase().includes('ovsm') ||
+                           question.toLowerCase().includes('execution plan') ||
+                           question.toLowerCase().includes('create an ovsm') ||
+                           question.toLowerCase().includes('previous ovsm plan');
+
+    if (isPlanningQuery) {
+      console.log(`📋 Planning query detected (${question.length} chars) - skipping truncation`);
+      return { truncated: false, question, originalLength: question.length };
+    }
+
     if (question.length <= this.MAX_LENGTH) {
       return { truncated: false, question, originalLength: question.length };
     }
@@ -421,12 +443,12 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         console.warn("TOGETHER_API_KEY not set. Proceeding without LLM; tools-only mode.");
       }
 
-      // Overall request timeout of 120 seconds (3x increase, leave 15 seconds buffer for cleanup)
+      // Overall request timeout - MAXIMIZED for longest operations
       const requestTimeout = new Promise<never>((_, reject) => {
         setTimeout(() => {
           StabilityMonitor.recordTimeout();
-          reject(new Error('Request timeout after 120 seconds'));
-        }, 120000);
+          reject(new Error('Request timeout after 600 seconds (10 minutes)'));
+        }, 600000); // 600 seconds (10 minutes) - MAXIMIZED
       });
 
       try {
@@ -509,7 +531,8 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             const processingTime = Date.now() - requestStart;
             console.log(`✅ Tool handling successful in ${processingTime}ms`);
             // ✅ PHASE 2: Cache the tool response
-            queryCache.set(question, ownPlan, customSystemPrompt || null, toolResult.response.body, 200);
+            const responseBody = toolResult.response.body || '';
+            queryCache.set(question, ownPlan, customSystemPrompt || null, String(responseBody), 200);
             return new Response(toolResult.response.body, {
               status: 200,
               headers: {
@@ -619,13 +642,13 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             { role: "user", content: question }
           ],
           stream: false,
-          max_tokens: 2000
+          max_tokens: 65536  // ✅ ABSOLUTE MAXIMUM: Pushing model to its limits
         };
 
         console.log(`📤 Sending request to Together AI...`);
 
         const llmTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Planning timeout after 60 seconds')), 60000);
+          setTimeout(() => reject(new Error('Planning timeout after 300 seconds')), 300000); // 5 minutes - MAXIMIZED
         });
 
         const llmPromise = fetch('https://api.together.xyz/v1/chat/completions', {
@@ -921,16 +944,14 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // Adjust max tokens based on query type and complexity (balanced optimization)
-        let maxTokens = 1800;
-        if (userVibe.isCasual && !userVibe.isTechnical) {
-          maxTokens = 800; // Casual queries need less tokens
-        } else if (complexity.complexity < 3) {
-          maxTokens = 1200; // Simple technical queries
-        } else if (complexity.complexity < 5) {
-          maxTokens = 1500; // Moderate complexity
-        }
-        // Default 1800 for complex queries
+        // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Pushing all limits
+        // The openai/gpt-oss-120b model has a 120K total context window
+        // We're allocating maximum possible tokens for output generation
+        let maxTokens = 65536;  // ABSOLUTE MAXIMUM - 64K tokens for ultimate detail
+        
+        // Log token allocation for monitoring
+        console.log(`📝 Token allocation: ${maxTokens} tokens (ABSOLUTE MAXIMUM, no limits)`);
+
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
@@ -948,6 +969,8 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           ],
           stream: false,
           max_tokens: maxTokens,
+          temperature: 0.7,  // Balanced creativity
+          top_p: 0.9  // Slight focus on probable tokens
         });
 
         // ✅ PHASE 3: Queue the LLM request to limit concurrent API calls

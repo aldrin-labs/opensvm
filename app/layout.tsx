@@ -4,10 +4,13 @@ import "./globals.css";
 import "./styles/custom-scrollbar.css";
 import "./styles/scrollbar-themes.css";
 import "../styles/rtl.css";
+import "../styles/mobile-optimizations.css";
+import "../styles/keyboard-focus.css";
 import { NavbarInteractive } from "@/components/NavbarInteractive";
 import { Providers } from "./providers";
 import { AIChatSidebarWrapper } from "@/components/ai/AIChatSidebarWrapper";
 import OpenSearchPrompt from "@/components/OpenSearchPrompt";
+import { ClientInitializers } from "@/components/ClientInitializers";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -76,13 +79,6 @@ export default function RootLayout({
           as="font"
           type="font/woff2"
           crossOrigin="anonymous"
-          fetchPriority="high"
-        />
-        <link
-          rel="preload"
-          href="/favicon.svg"
-          as="image"
-          type="image/svg+xml"
           fetchPriority="high"
         />
         <meta
@@ -429,6 +425,7 @@ try {
       </head>
       <body>
         <Providers>
+          <ClientInitializers />
           <NavbarInteractive>
             {children}
           </NavbarInteractive>

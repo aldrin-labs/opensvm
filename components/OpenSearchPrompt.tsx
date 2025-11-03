@@ -12,37 +12,13 @@ const OpenSearchPrompt: React.FC<OpenSearchPromptProps> = ({ onClose }) => {
   const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if user has already dismissed this prompt
+    // DISABLED: Auto-trigger removed per bug fix
+    // Modal will only show when explicitly triggered by user action
+    // (e.g., clicking a "Add Search Engine" button in settings)
+    
     const dismissed = localStorage.getItem('opensearch-prompt-dismissed');
     if (dismissed === 'true') {
       setIsDismissed(true);
-      return;
-    }
-
-    // Check if user chose "remind me later" and if 24 hours have passed
-    const remindLater = localStorage.getItem('opensearch-remind-later');
-    if (remindLater) {
-      const remindTime = new Date(remindLater);
-      if (new Date() < remindTime) {
-        setIsDismissed(true);
-        return;
-      } else {
-        // 24 hours have passed, remove the remind later flag
-        localStorage.removeItem('opensearch-remind-later');
-      }
-    }
-
-    // Check if OpenSearch is supported by the browser (more permissive check)
-    const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-    const isSupported = isChrome || 'external' in window.navigator || 'addSearchProvider' in window.external;
-    
-    // Show prompt after a delay if supported and not dismissed
-    if (isSupported) {
-      const timer = setTimeout(() => {
-        setIsVisible(true);
-      }, 2000); // Show after 2 seconds (reduced from 3)
-
-      return () => clearTimeout(timer);
     }
   }, []);
 

@@ -27,15 +27,16 @@ import {
 import Link from 'next/link';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import {
-  accountChangesAnalyzer,
+  analyzeAccountChanges,
   formatSolAmount,
   formatTokenAmount,
   getChangeDirection,
   getChangeColor,
   getRiskColor,
   type AccountChange,
-  type AccountChangesAnalysis
-} from '@/lib/account-changes-analyzer';
+  type AccountChangesAnalysis,
+  type AccountChangesResponse
+} from '@/lib/account-changes-analyzer-client';
 import AccountDataDiff from './AccountDataDiff';
 
 interface AccountChangesDisplayProps {
@@ -52,6 +53,7 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
   const [selectedChangeType, setSelectedChangeType] = useState<'all' | 'sol' | 'token'>('all');
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<AccountChangesAnalysis | null>(null);
+  const [accountChanges, setAccountChanges] = useState<AccountChange[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Accessibility hooks
@@ -68,9 +70,10 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
     const loadAnalysis = async () => {
       try {
         setIsLoading(true);
-        const result = await accountChangesAnalyzer.analyzeTransaction(transaction);
+        const result = await analyzeAccountChanges(transaction);
         if (isMounted) {
-          setAnalysis(result);
+          setAnalysis(result.analysis);
+          setAccountChanges(result.accountChanges);
         }
       } catch (error) {
         console.error('Failed to analyze transaction:', error);
@@ -88,9 +91,6 @@ const AccountChangesDisplay: React.FC<AccountChangesDisplayProps> = ({
     };
   }, [transaction]);
 
-  const accountChanges = useMemo(() => {
-    return accountChangesAnalyzer.calculateAccountChanges(transaction);
-  }, [transaction]);
 
   // Filter account changes based on user preferences
   const filteredChanges = useMemo(() => {
