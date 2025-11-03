@@ -8,6 +8,7 @@ import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
 
 // Extend global type for initialization tracking
 declare global {
+  // eslint-disable-next-line no-var
   var blockStreamInitialized: boolean | undefined;
 }
 

@@ -9,6 +9,7 @@ import { getConnection } from '@/lib/solana-connection-server';
 
 // Extend global type for initialization tracking
 declare global {
+  // eslint-disable-next-line no-var
   var transactionStreamInitialized: boolean | undefined;
 }
 
