@@ -742,3 +742,85 @@ export const apiMethodsPart3: ApiMethod[] = [
   {
     id: 'sse-alerts',
     name: 'Real-Time Alerts',
+    description: 'Stream real-time alerts',
+    category: 'Real-Time',
+    endpoint: '/api/sse-alerts',
+    method: 'GET',
+    presets: [
+      {
+        name: 'All Alerts',
+        description: 'Stream all alerts',
+        method: 'GET',
+        path: '/api/sse-alerts',
+      },
+      {
+        name: 'Critical Only',
+        description: 'Stream critical alerts only',
+        method: 'GET',
+        path: '/api/sse-alerts?level=critical',
+      },
+      {
+        name: 'Price Alerts',
+        description: 'Stream price movement alerts',
+        method: 'GET',
+        path: '/api/sse-alerts?type=price',
+      },
+      {
+        name: 'Whale Alerts',
+        description: 'Stream whale activity alerts',
+        method: 'GET',
+        path: '/api/sse-alerts?type=whale',
+      },
+      {
+        name: 'Network Alerts',
+        description: 'Stream network status alerts',
+        method: 'GET',
+        path: '/api/sse-alerts?type=network',
+      },
+    ]
+  },
+];
+
+// Combine all parts into a single export
+export const apiMethods: ApiMethod[] = [
+  ...apiMethodsPart1,
+  ...apiMethodsPart2,
+  ...apiMethodsPart3,
+];
+
+// Export categories for filtering
+export const apiCategories = [
+  'Transactions',
+  'Blockchain',
+  'Tokens & NFTs',
+  'Analytics',
+  'AI-Powered',
+  'Real-Time',
+  'Account & Wallet',
+  'Search & Discovery',
+  'User Services',
+];
+
+// Helper function to get methods by category
+export function getMethodsByCategory(category: string): ApiMethod[] {
+  return apiMethods.filter(method => method.category === category);
+}
+
+// Helper function to get preset by ID
+export function getMethodById(id: string): ApiMethod | undefined {
+  return apiMethods.find(method => method.id === id);
+}
+
+// Helper function to search methods
+export function searchMethods(query: string): ApiMethod[] {
+  const lowerQuery = query.toLowerCase();
+  return apiMethods.filter(method => 
+    method.name.toLowerCase().includes(lowerQuery) ||
+    method.description.toLowerCase().includes(lowerQuery) ||
+    method.endpoint.toLowerCase().includes(lowerQuery) ||
+    method.category.toLowerCase().includes(lowerQuery)
+  );
+}
+
+// Export total count
+export const totalApiMethods = apiMethods.length;

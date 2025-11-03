@@ -816,3 +816,81 @@ class OpenAPIGenerator {
       path: '/token-metadata',
       method: 'GET',
       summary: 'Token Metadata',
+      description: 'Batch token metadata lookup',
+      tags: ['Tokens & NFTs'],
+      parameters: [
+        { name: 'mints', in: 'query', schema: { type: 'array', items: { type: 'string' } }, description: 'Token mint addresses' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Token metadata' }
+      },
+      operationId: 'tokenMetadata'
+    });
+  }
+
+  private addEndpoint(endpoint: OpenAPIEndpoint) {
+    this.endpoints.push(endpoint);
+    // Convert endpoint to OpenAPI path format
+    const pathItem: any = {
+      [endpoint.method.toLowerCase()]: {
+        summary: endpoint.summary,
+        description: endpoint.description,
+        tags: endpoint.tags,
+        operationId: endpoint.operationId,
+        parameters: endpoint.parameters?.map(p => ({
+          name: p.name,
+          in: p.in,
+          required: p.required,
+          schema: p.schema,
+          description: p.description
+        })),
+        responses: Object.entries(endpoint.responses).reduce((acc, [status, response]) => {
+          acc[status] = {
+            description: response.description,
+            ...(response.schema && {
+              content: {
+                'application/json': {
+                  schema: response.schema
+                }
+              }
+            })
+          };
+          return acc;
+        }, {} as any)
+      }
+    };
+
+    // Add request body if present
+    if (endpoint.requestBody) {
+      pathItem[endpoint.method.toLowerCase()].requestBody = endpoint.requestBody;
+    }
+
+    // Add to spec paths
+    if (!this.spec.paths[endpoint.path]) {
+      this.spec.paths[endpoint.path] = {};
+    }
+    Object.assign(this.spec.paths[endpoint.path], pathItem);
+  }
+
+  public getSpec(): OpenAPISpec {
+    return this.spec;
+  }
+
+  public getEndpoints(): OpenAPIEndpoint[] {
+    return this.endpoints;
+  }
+
+  public generateJSON(): string {
+    return JSON.stringify(this.spec, null, 2);
+  }
+
+  public writeToFile(filePath: string) {
+    const dir = path.dirname(filePath);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    fs.writeFileSync(filePath, this.generateJSON());
+  }
+}
+
+export default OpenAPIGenerator;
