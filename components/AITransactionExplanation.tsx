@@ -20,12 +20,14 @@ import {
 } from 'lucide-react';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import {
-  aiTransactionAnalyzer,
+  analyzeTransaction,
+  getCachedExplanation,
+  cacheExplanation,
   formatConfidenceLevel,
   getActionTypeIcon,
   getRiskLevelColor,
   type TransactionExplanation
-} from '@/lib/ai-transaction-analyzer';
+} from '@/lib/ai-transaction-analyzer-client';
 
 interface AITransactionExplanationProps {
   transaction: DetailedTransactionInfo;
@@ -54,7 +56,7 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
 
     try {
       // Check for cached explanation first
-      const cached = await aiTransactionAnalyzer.getCachedExplanation(transaction.signature);
+      const cached = await getCachedExplanation(transaction.signature);
       if (cached) {
         setExplanation(cached);
         setLoading(false);
@@ -62,15 +64,15 @@ const AITransactionExplanation: React.FC<AITransactionExplanationProps> = ({
       }
 
       // Generate new explanation
-      const result = await aiTransactionAnalyzer.analyzeTransaction(transaction, {
+      const result = await analyzeTransaction(transaction, {
         detailLevel,
         focusAreas: []
       });
 
       setExplanation(result);
 
-      // Cache the result
-      await aiTransactionAnalyzer.cacheExplanation(transaction.signature, result);
+      // Cache the result (handled server-side)
+      await cacheExplanation(transaction.signature, result);
 
     } catch (err) {
       console.error('Failed to load AI explanation:', err);

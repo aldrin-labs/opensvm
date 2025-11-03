@@ -5,6 +5,7 @@
  * calculating before/after states, balance changes, and token changes.
  */
 
+import 'server-only';
 import type { DetailedTransactionInfo } from './solana';
 // Import transactionAnalysisCache dynamically in server-only code to avoid bundling on client
 

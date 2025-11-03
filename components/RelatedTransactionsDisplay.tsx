@@ -25,7 +25,7 @@ import {
 import Link from 'next/link';
 import type { DetailedTransactionInfo } from '@/lib/solana';
 import { 
-  relatedTransactionFinder,
+  findRelatedTransactions,
   formatRelationshipType,
   getRelationshipIcon,
   getStrengthColor,
@@ -35,7 +35,7 @@ import {
   type RelatedTransaction,
   type RelationshipType,
   type TransactionInsight
-} from '@/lib/related-transaction-finder';
+} from '@/lib/related-transaction-finder-client';
 
 interface RelatedTransactionsDisplayProps {
   transaction: DetailedTransactionInfo;
@@ -99,7 +99,7 @@ const RelatedTransactionsDisplay: React.FC<RelatedTransactionsDisplayProps> = ({
         includeDeFiPatterns: true
       };
 
-      const relatedResult = await relatedTransactionFinder.findRelatedTransactions(query);
+      const relatedResult = await findRelatedTransactions(query);
       setResult(relatedResult);
       
     } catch (err) {
