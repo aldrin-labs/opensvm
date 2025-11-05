@@ -1,4 +1,4 @@
-import Together from "together-ai";
+import { OpenRouter } from '@openrouter/sdk';
 import { GenerativeCapability } from "../../../lib/ai/capabilities/generative";
 import getConnection from "../../../lib/solana-connection-server";
 import { ToolRegistry, ToolContext } from "./tools";
@@ -9,18 +9,16 @@ import { createHash } from 'crypto';
 * This API endpoint uses a modular tool system to handle common Solana queries
 * (network TPS/load, current block height & epoch, wallet balance, transaction analysis)
 * by calling the appropriate tools first. If no tool handles the query,
-* it falls back to the LLM (Together) pipeline.
+* it falls back to the LLM (OpenRouter) pipeline.
 *
 * This ensures "tools" (RPC calls) are executed on the server prior to
 * returning the response to the user.
 *
 * TOKEN CONFIGURATION:
-* The openai/gpt-oss-120b model on Together AI has extensive capabilities:
-* - Context window: Up to 120K tokens (input + output combined)
-* - We're using max_tokens=32768 (32K) for output generation
-* - This provides ample space for even the most detailed blockchain analysis
-* - The 32K output limit ensures complete responses without any truncation
-* - Combined with input context, this stays well within the 120K total limit
+* OpenRouter provides access to Grok 4 Fast with massive capabilities:
+* - 2,000,000 tokens context window (input + output combined)
+* - 32,000 tokens maximum output (32K)
+* - Optimized for speed with ultra-low latency responses
 */
 
 // ✅ PHASE 2: LRU Query Cache Implementation - MAXIMIZED
@@ -438,9 +436,12 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       const requestStart = Date.now();
       StabilityMonitor.recordRequest();
 
-      const HAS_TOGETHER = !!process.env.TOGETHER_API_KEY;
-      if (!HAS_TOGETHER) {
-        console.warn("TOGETHER_API_KEY not set. Proceeding without LLM; tools-only mode.");
+      const HAS_OPENROUTER = !!process.env.OPENROUTER_API_KEY;
+      if (!HAS_OPENROUTER) {
+        return new Response('OPENROUTER_API_KEY not configured. Please configure OPENROUTER_API_KEY.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
+        });
       }
 
       // Overall request timeout - MAXIMIZED for longest operations
@@ -639,16 +640,35 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       console.log(`🎯 Using ${isCustomPrompt ? 'CUSTOM' : 'DEFAULT'} system prompt (${systemPromptToUse.length} chars)`);
 
       try {
-        console.log(`📡 Calling Together AI API`);
+        console.log(`📡 Calling OpenRouter API`);
         console.log(`⏱️  Starting LLM request at ${new Date().toISOString()}`);
 
-        const apiKey = process.env.TOGETHER_API_KEY;
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        console.log(`🔑 API Key check (ownPlan): ${apiKey ? `Present (${apiKey.substring(0, 10)}...)` : 'MISSING'}`);
         if (!apiKey) {
-          throw new Error('TOGETHER_API_KEY not configured');
+          throw new Error('OPENROUTER_API_KEY not configured');
         }
 
-        const requestBody = {
-          model: "openai/gpt-oss-120b",
+        // Initialize OpenRouter SDK
+        const openRouter = new OpenRouter({
+          apiKey: apiKey,
+          defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+          }
+        } as any);
+
+        // Choose model based on needs - using Grok 4 Fast for massive context and speed
+        const model = "x-ai/grok-4-fast"; // Supports 2M context window, 32K output
+        
+        console.log(`📤 Sending request to OpenRouter (${model})...`);
+
+        const llmTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Planning timeout after 300 seconds')), 300000); // 5 minutes - MAXIMIZED
+        });
+
+        const llmPromise = openRouter.chat.send({
+          model: model,
           messages: [
             {
               role: "system",
@@ -656,38 +676,24 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          stream: false,
-          max_tokens: 65536  // ✅ ABSOLUTE MAXIMUM: Pushing model to its limits
-        };
-
-        console.log(`📤 Sending request to Together AI...`);
-
-        const llmTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Planning timeout after 300 seconds')), 300000); // 5 minutes - MAXIMIZED
-        });
-
-        const llmPromise = fetch('https://api.together.xyz/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
+          maxTokens: 32000,  // ✅ 32K tokens for Grok 4 Fast (max output)
+          stream: false
         });
 
         console.log(`⏳ Waiting for LLM response...`);
-        const response = await Promise.race([llmPromise, llmTimeout]);
-        console.log(`✅ Got response, status: ${response.status}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Together AI API error: ${response.status} - ${errorText}`);
+        const answer = await Promise.race([llmPromise, llmTimeout]);
+        console.log(`✅ LLM response received at ${new Date().toISOString()}`);
+        
+        // Check if response was truncated
+        const finishReason = answer?.choices?.[0]?.finishReason;
+        if (finishReason === 'length') {
+          console.warn(`⚠️  Response truncated due to max_tokens limit (finish_reason: length)`);
         }
 
-        const answer = await response.json();
-        console.log(`✅ LLM response parsed at ${new Date().toISOString()}`);
-        let plan = answer.choices?.[0]?.message?.content || "Failed to generate plan";
-
+        let plan = typeof answer?.choices?.[0]?.message?.content === 'string' 
+          ? answer.choices[0].message.content 
+          : "Failed to generate plan";
+        
         const processingTime = Date.now() - requestStart;
         console.log(`✅ Plan generated in ${processingTime}ms using ${isCustomPrompt ? 'custom' : 'default'} prompt`);
 
@@ -790,15 +796,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
 
     async function handleLLMFallback(question: string, requestStart: number, partialData?: any, ownPlan?: boolean, customSystemPrompt?: string | null): Promise<Response> {
 
-      // Fallback: use LLM (Together) to craft an answer if no tool handled it
-      const apiKey = process.env.TOGETHER_API_KEY;
+      // Fallback: use LLM (OpenRouter) to craft an answer if no tool handled it
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      console.log(`🔑 API Key check: ${apiKey ? `Present (${apiKey.substring(0, 10)}...)` : 'MISSING'}`);
       if (!apiKey) {
-        return new Response('LLM service not configured. Please configure TOGETHER_API_KEY.', {
+        return new Response('LLM service not configured. Please configure OPENROUTER_API_KEY.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain' }
         });
       }
-      const together = new Together({ apiKey });
 
       const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
@@ -959,13 +965,12 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Pushing all limits
-        // The openai/gpt-oss-120b model has a 120K total context window
-        // We're allocating maximum possible tokens for output generation
-        let maxTokens = 65536;  // ABSOLUTE MAXIMUM - 64K tokens for ultimate detail
+        // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Using Grok 4 Fast limits
+        // The x-ai/grok-4-fast model supports 2M context window and up to 32K output tokens
+        let maxTokens = 32000;  // 32K tokens - maximum supported by Grok 4 Fast
         
         // Log token allocation for monitoring
-        console.log(`📝 Token allocation: ${maxTokens} tokens (ABSOLUTE MAXIMUM, no limits)`);
+        console.log(`📝 Token allocation: ${maxTokens} tokens (Grok 4 Fast maximum for reliable output)`);
 
 
         // Add dynamic timeout for LLM call
@@ -973,8 +978,17 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           setTimeout(() => reject(new Error('LLM call timeout')), complexity.timeoutMs);
         });
 
-        const llmPromise = together.chat.completions.create({
-          model: "openai/gpt-oss-120b",
+        // Initialize OpenRouter SDK
+        const openRouter = new OpenRouter({
+          apiKey: apiKey,
+          defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+          }
+        } as any);
+
+        const llmPromise = openRouter.chat.send({
+          model: "x-ai/grok-4-fast",  // ✅ Grok 4 Fast for massive 2M context window
           messages: [
             {
               role: "system",
@@ -982,10 +996,10 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          stream: false,
-          max_tokens: maxTokens,
+          maxTokens: maxTokens,
           temperature: 0.7,  // Balanced creativity
-          top_p: 0.9  // Slight focus on probable tokens
+          topP: 0.9,  // Slight focus on probable tokens
+          stream: false
         });
 
         // ✅ PHASE 3: Queue the LLM request to limit concurrent API calls
@@ -993,7 +1007,17 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         let answer = await requestQueue.add(async () => {
           return Promise.race([llmPromise, llmTimeout]);
         });
-        let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
+        
+        // Check if response was truncated
+        const finishReason = answer?.choices?.[0]?.finishReason;
+        if (finishReason === 'length') {
+          console.warn(`⚠️  Response truncated due to max_tokens limit (finish_reason: length)`);
+          console.warn(`💡 Consider: 1) Reducing prompt length, 2) Breaking query into smaller parts, or 3) Requesting continuation`);
+        }
+        
+        let parsedAnswer: any = typeof answer?.choices?.[0]?.message?.content === 'string'
+          ? answer.choices[0].message.content
+          : "Failed to get answer";
 
         // Post-process the response to handle plan objects and improve formatting
         const generativeCapability = new GenerativeCapability();
