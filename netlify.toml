@@ -1,5 +1,5 @@
 [build]
-  command = "node scripts/build-rpc-config.js && next build"
+  command = "npm run build"
 
 [build.environment]
   NODE_VERSION = "22"
