@@ -27,8 +27,10 @@ export default function ReceiptCard({ receipt }: ReceiptCardProps) {
         amount_lamports: receipt.amount_lamports,
         timestamp: receipt.timestamp,
         deposit_address: receipt.deposit_address,
+        deposit_memo: receipt.deposit_memo,
         referral_code: receipt.referral_code,
         kol_id: receipt.kol_id,
+        status: receipt.status,
       });
       
       const messageBytes = new TextEncoder().encode(message);
