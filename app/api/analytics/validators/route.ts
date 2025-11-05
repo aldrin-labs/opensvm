@@ -4,6 +4,7 @@ import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
 import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/validator-registry';
 import { validatorsCache } from '@/lib/cache';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 interface GeolocationData {
   country: string;
@@ -133,48 +134,24 @@ export async function GET() {
       }
     });
 
-    // Skip geolocation if Qdrant is not available
+    // Use fallback geolocation data (will be populated by populate-validator-geolocation.js script)
     const uniqueIps = Array.from(ipToValidatorMap.keys());
-    let geoResults = new Map<string, GeolocationData>();
-
-    // Check if we should attempt geolocation (only if Qdrant is available)
-    const shouldAttemptGeolocation = process.env.QDRANT_SERVER && process.env.QDRANT;
-
-    if (shouldAttemptGeolocation) {
-      try {
-        const geoService = await getGeolocationService();
-        geoResults = await geoService.batchGeolocation(uniqueIps);
-        console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
-      } catch (error) {
-        console.warn('Geolocation service failed, using fallback data:', error);
-        // Provide fallback geolocation data
-        geoResults = new Map();
-        uniqueIps.forEach(ip => {
-          geoResults.set(ip, {
-            country: '',
-            countryCode: '',
-            region: '',
-            city: '',
-            datacenter: '',
-            isp: ''
-          });
-        });
-      }
-    } else {
-      console.log('Skipping geolocation - Qdrant not configured');
-      // Provide fallback geolocation data for all validators
-      geoResults = new Map();
-      uniqueIps.forEach(ip => {
-        geoResults.set(ip, {
-          country: '',
-          countryCode: '',
-          region: '',
-          city: '',
-          datacenter: '',
-          isp: ''
-        });
+    const geoResults = new Map<string, GeolocationData>();
+    
+    console.log(`Using fallback geolocation for ${uniqueIps.length} IPs (run populate-validator-geolocation.js to enable geolocation)`);
+    
+    // TODO: After running scripts/populate-validator-geolocation.js, this will load from Qdrant cache
+    // For now, use empty geolocation for fast responses
+    uniqueIps.forEach(ip => {
+      geoResults.set(ip, {
+        country: '',
+        countryCode: '',
+        region: '',
+        city: '',
+        datacenter: '',
+        isp: ''
       });
-    }
+    });
 
     // Batch fetch validator names for better performance
     const voteAccountList = sortedValidators.map(v => v.votePubkey);

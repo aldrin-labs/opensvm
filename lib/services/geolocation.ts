@@ -42,9 +42,10 @@ class GeolocationService {
       this.qdrant = null;
     }
 
-    this.providers = [
+    // Build provider list, only including ones with configured API keys
+    const allProviders: GeolocationProvider[] = [
       // IPGeolocation.io - 1000 requests/day free, very reliable
-      {
+      ...(process.env.IPGEOLOCATION_API_KEY ? [{
         name: 'ipgeolocation.io',
         url: (ip: string) => `https://api.ipgeolocation.io/ipgeo?apiKey=${process.env.IPGEOLOCATION_API_KEY}&ip=${ip}`,
         rateLimit: 1000,
@@ -62,10 +63,10 @@ class GeolocationService {
           asn: data.asn,
           source: 'ipgeolocation.io'
         })
-      },
+      }] : []),
 
       // IPStack - 10,000 requests/month free, very reliable
-      {
+      ...(process.env.IPSTACK_API_KEY ? [{
         name: 'ipstack',
         url: (ip: string) => `http://api.ipstack.com/${ip}?access_key=${process.env.IPSTACK_API_KEY}`,
         rateLimit: 10000,
@@ -82,10 +83,10 @@ class GeolocationService {
           timezone: data.time_zone?.id,
           source: 'ipstack'
         })
-      },
+      }] : []),
 
       // AbstractAPI - 20,000 requests/month free
-      {
+      ...(process.env.ABSTRACT_API_KEY ? [{
         name: 'abstractapi',
         url: (ip: string) => `https://ipgeolocation.abstractapi.com/v1/?api_key=${process.env.ABSTRACT_API_KEY}&ip_address=${ip}`,
         rateLimit: 20000,
@@ -102,10 +103,10 @@ class GeolocationService {
           timezone: data.timezone?.name,
           source: 'abstractapi'
         })
-      },
+      }] : []),
 
       // MaxMind GeoLite2 (if we have a license)
-      {
+      ...(process.env.MAXMIND_USER_ID && process.env.MAXMIND_LICENSE_KEY ? [{
         name: 'maxmind',
         url: (ip: string) => `https://geoip.maxmind.com/geoip/v2.1/city/${ip}?demo=1`,
         headers: {
@@ -125,9 +126,9 @@ class GeolocationService {
           timezone: data.location?.time_zone,
           source: 'maxmind'
         })
-      },
+      }] : []),
 
-      // Fallback to free services
+      // Fallback to free services (always available)
       {
         name: 'ipapi.co',
         url: (ip: string) => `https://ipapi.co/${ip}/json/`,
@@ -169,6 +170,11 @@ class GeolocationService {
         })
       }
     ];
+
+    // Assign to instance property
+    this.providers = allProviders;
+
+    console.log(`Initialized geolocation service with ${this.providers.length} providers`);
   }
 
   async initializeCollection(): Promise<void> {

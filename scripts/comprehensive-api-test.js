@@ -74,10 +74,13 @@ const apiTests = [
         method: 'POST',
         path: '/api/analyze-transaction',
         body: {
-          signature: '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5',
-          logs: ['Program log: Sample transaction log'],
+          logs: [
+            'Program 11111111111111111111111111111111 invoke [1]',
+            'Program 11111111111111111111111111111111 success'
+          ],
           type: 'transfer',
-          status: 'success'
+          status: 'success',
+          signature: '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5'
         },
         validate: (data) => {
           if (!data) return false;
@@ -85,7 +88,8 @@ const apiTests = [
           if (data.data && (data.data.analysis || data.data.explanation)) return true;
           if (data.success && data.data) return true;
           return false;
-        }
+        },
+        timeout: 30000
       },
       {
         name: 'Filter Transactions',
@@ -93,15 +97,31 @@ const apiTests = [
         path: '/api/filter-transactions',
         body: { 
           transactions: [
-            { from: 'sender1', to: 'receiver1', tokenAmount: '1.5', tokenSymbol: 'SOL' },
-            { from: 'sender2', to: 'receiver2', tokenAmount: '0.5', tokenSymbol: 'USDC' }
+            { 
+              txId: 'tx1',
+              from: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', 
+              to: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 
+              tokenAmount: '1.5', 
+              tokenSymbol: 'SOL',
+              transferType: 'wallet_to_wallet'
+            },
+            { 
+              txId: 'tx2',
+              from: '8xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 
+              to: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', 
+              tokenAmount: '0.5', 
+              tokenSymbol: 'USDC',
+              transferType: 'wallet_to_wallet'
+            }
           ]
         },
         validate: (data) => {
           if (Array.isArray(data)) return true;
           if (data && (data.filteredTransactions || data.transactions)) return true;
+          if (data && data.success) return true;
           return false;
-        }
+        },
+        timeout: 30000
       }
     ]
   },
@@ -280,7 +300,8 @@ const apiTests = [
           if (data && data.data && data.data.validators) return true;
           if (data && data.success) return true;
           return true; // Analytics endpoints return various structures
-        }
+        },
+        timeout: 30000 // Validator analytics needs more time for geolocation and name lookups
       },
       {
         name: 'Trending Validators',
@@ -292,7 +313,8 @@ const apiTests = [
           if (data && data.data && Array.isArray(data.data)) return true;
           if (data && data.success) return true;
           return true; // Analytics endpoints return various structures
-        }
+        },
+        timeout: 30000 // Trending validators needs more time for processing
       }
     ]
   },

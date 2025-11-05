@@ -1,6 +1,6 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import { isValidSolanaAddress } from "./utils";
-import Together from "together-ai";
+import { OpenRouter } from "@openrouter/sdk";
 
 interface StoryDrivenPlanStep {
     tool: string;
@@ -1483,8 +1483,8 @@ async function synthesizeEpicResults(
     const numberMatch = question.match(/top\s+(\d+)|(\d+)\s+validators?/i);
     const requestedCount = numberMatch ? parseInt(numberMatch[1] || numberMatch[2]) : 50;
 
-    if (!process.env.TOGETHER_API_KEY) {
-        console.warn("TOGETHER_API_KEY not configured; using narrative fallback synthesis");
+    if (!process.env.OPENROUTER_API_KEY) {
+        console.warn("OPENROUTER_API_KEY not configured; using narrative fallback synthesis");
         return generateNarrativeFallback(results, question, requestedCount);
     }
 
@@ -1508,9 +1508,13 @@ async function synthesizeEpicResults(
 
     console.log(`📊 Data context prepared: ${dataContext.length} characters`);
 
-    const together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-    });
+    const openRouter = new OpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY,
+        defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+        }
+    } as any);
 
     // Create synthesis prompt based on mode
     let synthesisPrompt = "";
@@ -1604,27 +1608,24 @@ Provide actionable insights based on the data:`;
             setTimeout(() => reject(new Error('LLM synthesis timeout after 60s')), 60000);
         });
 
-        const llmCallPromise = together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
+        const llmCallPromise = openRouter.chat.send({
+            model: "x-ai/grok-4-fast",
             messages: [
                 {
                     role: "system",
                     content: finalSynthesisPrompt
                 }
             ],
-            stream: false,
-            max_tokens: maxTokens,
-            temperature: 0.3, // Add some creativity but keep it focused
+            maxTokens: maxTokens,
+            temperature: 0.3,
+            stream: false
         });
 
         const answer = await Promise.race([llmCallPromise, llmTimeoutPromise]) as any;
 
-        if (!answer || !answer.choices || !answer.choices[0] || !answer.choices[0].message) {
-            console.error('🚨 Invalid LLM response structure:', JSON.stringify(answer));
-            throw new Error('Invalid LLM response structure');
-        }
-
-        const response = answer.choices[0].message.content;
+        const response = typeof answer?.choices?.[0]?.message?.content === 'string'
+            ? answer.choices[0].message.content
+            : null;
 
         if (!response || response.trim().length === 0) {
             console.error('🚨 Empty LLM response received');

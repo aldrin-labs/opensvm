@@ -1,5 +1,5 @@
 import { Tool, ToolContext, ToolResult } from "./types";
-import Together from "together-ai";
+import { OpenRouter } from "@openrouter/sdk";
 import * as MoralisAPI from '../../../../lib/moralis-api';
 
 interface AIPlanStep {
@@ -66,7 +66,7 @@ export const aiPlanExecutionTool: Tool = {
                 }
 
                 // 3) If we don't have an API key for review LLM, break after first pass
-                if (!process.env.TOGETHER_API_KEY) {
+                if (!process.env.OPENROUTER_API_KEY) {
                     console.warn('No AI API key - skipping review loop');
                     break;
                 }
@@ -79,7 +79,11 @@ export const aiPlanExecutionTool: Tool = {
                 const approved = !!review?.approved;
                 console.log(`◇ Review LLM approval: ${approved ? 'APPROVED' : 'REQUIRES MORE'}`);
 
-                if (approved) {
+                // Always approve after first iteration to avoid hallucinated tools
+                if (approved || iteration >= 1) {
+                    if (iteration >= 1) {
+                        console.log(`◇ Auto-approving after iteration ${iteration} to prevent hallucinated tools`);
+                    }
                     break;
                 }
 
@@ -144,14 +148,18 @@ async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation:
 
 async function generateAIPoweredPlan(question: string, planningContext?: string): Promise<AIPlanStep[]> {
     try {
-        if (!process.env.TOGETHER_API_KEY) {
+        if (!process.env.OPENROUTER_API_KEY) {
             console.warn('No AI API key - falling back to basic plan');
             return generateBasicFallbackPlan(question);
         }
 
-        const together = new Together({
-            apiKey: process.env.TOGETHER_API_KEY,
-        });
+        const openRouter = new OpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY,
+            defaultHeaders: {
+                'HTTP-Referer': 'https://opensvm.com',
+                'X-Title': 'OpenSVM'
+            }
+        } as any);
 
         const availableTools = `
 Available Tools (Comprehensive)
@@ -575,17 +583,18 @@ Examples:
 - For "$SOL account balance of address X": do not use moralisMarketData; use account/balance tools instead.`;
 
         const response = await withTimeout(
-            together.chat.completions.create({
-                model: "openai/gpt-oss-120b",
+            openRouter.chat.send({
+                model: "x-ai/grok-4-fast",
                 messages: [{ role: "user", content: planningPrompt }],
-                max_tokens: 2000,
-                temperature: 0.1
+                maxTokens: 2000,
+                temperature: 0.1,
+                stream: false
             }),
             30000, // 30 second timeout for plan generation
             "AI plan generation"
         );
 
-        const aiResponse = response.choices[0]?.message?.content?.trim();
+        const aiResponse = (response as any).choices[0]?.message?.content?.trim();
         if (!aiResponse) {
             throw new Error('Empty AI response');
         }
@@ -1266,13 +1275,17 @@ function summarizeForReview(results: Record<string, any>) {
  */
 async function reviewAnswerLLM(question: string, summary: any) {
     try {
-        if (!process.env.TOGETHER_API_KEY) {
+        if (!process.env.OPENROUTER_API_KEY) {
             return { approved: true, missing: [], additional_steps: [] };
         }
 
-        const together = new Together({
-            apiKey: process.env.TOGETHER_API_KEY,
-        });
+        const openRouter = new OpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY,
+            defaultHeaders: {
+                'HTTP-Referer': 'https://opensvm.com',
+                'X-Title': 'OpenSVM'
+            }
+        } as any);
 
         const reviewPrompt = `You are a meticulous reviewer. Determine if the provided information answers the user's question.
 
@@ -1296,17 +1309,18 @@ Instructions:
 }`;
 
         const response = await withTimeout(
-            together.chat.completions.create({
-                model: "openai/gpt-oss-120b",
+            openRouter.chat.send({
+                model: "x-ai/grok-4-fast",
                 messages: [{ role: "user", content: reviewPrompt }],
-                max_tokens: 1000,
-                temperature: 0.1
+                maxTokens: 1000,
+                temperature: 0.1,
+                stream: false
             }),
             20000, // 20 second timeout for review
             "AI review"
         );
 
-        const content = response.choices?.[0]?.message?.content?.trim() || "";
+        const content = (response as any).choices?.[0]?.message?.content?.trim() || "";
         const jsonStart = content.indexOf("{");
         const jsonEnd = content.lastIndexOf("}");
         const jsonText = jsonStart !== -1 && jsonEnd !== -1 ? content.slice(jsonStart, jsonEnd + 1) : content;
@@ -1492,11 +1506,15 @@ async function synthesizeResults(
 
             // Append AI analysis while keeping the table deterministic and unchanged
             let analysis = '';
-            if (process.env.TOGETHER_API_KEY) {
+            if (process.env.OPENROUTER_API_KEY) {
                 try {
-                    const together = new Together({
-                        apiKey: process.env.TOGETHER_API_KEY,
-                    });
+                    const openRouter = new OpenRouter({
+                        apiKey: process.env.OPENROUTER_API_KEY,
+                        defaultHeaders: {
+                            'HTTP-Referer': 'https://opensvm.com',
+                            'X-Title': 'OpenSVM'
+                        }
+                    } as any);
 
                     // Provide the exact table to the LLM and strictly forbid modifying it.
                     // The LLM should only add commentary/insights below it, and never restate full addresses.
@@ -1528,15 +1546,15 @@ Rules:
 Output format:
 "### Validator Analysis" followed by sections and bullets.`;
 
-                    const llm = await together.chat.completions.create({
-                        model: "openai/gpt-oss-120b",
+                    const llm = await openRouter.chat.send({
+                        model: "x-ai/grok-4-fast",
                         messages: [{ role: "system", content: analysisPrompt }],
-                        stream: false,
-                        max_tokens: 1200,
-                        temperature: 0.2
+                        maxTokens: 1200,
+                        temperature: 0.2,
+                        stream: false
                     });
 
-                    const llmText = llm.choices[0]?.message?.content?.trim() || '';
+                    const llmText = (llm as any).choices[0]?.message?.content?.trim() || '';
                     if (llmText) {
                         analysis = `\n\n${llmText}`;
                     }
@@ -1572,23 +1590,31 @@ Output format:
         console.warn('Validator deterministic formatter failed, falling back to normal synthesis:', (e as Error).message);
     }
 
-    if (!process.env.TOGETHER_API_KEY) {
+    if (!process.env.OPENROUTER_API_KEY) {
         return generateSimpleFallback(results, question);
     }
 
     const dataContext = Object.entries(results)
         .map(([method, result]) => {
             if (result && !result.error) {
-                // Truncate large validator data before sending to LLM
-                if (method === 'getVoteAccounts' && result.current && result.current.length > 50) {
+                // Truncate large validator data MUCH more aggressively to prevent context overflow
+                if (method === 'getVoteAccounts' && result.current && result.current.length > 10) {
                     const truncatedResult = {
                         ...result,
-                        current: result.current.slice(0, 50), // Only top 50 validators
-                        delinquent: result.delinquent ? result.delinquent.slice(0, 10) : [] // Only first 10 delinquent
+                        current: result.current.slice(0, 10), // Only top 10 validators
+                        delinquent: result.delinquent ? result.delinquent.slice(0, 3) : [], // Only first 3 delinquent
+                        _note: `Showing 10 of ${result.current.length} validators to prevent context overflow`
                     };
                     return `${method}: ${JSON.stringify(truncatedResult, null, 2)}`;
                 }
-                return `${method}: ${JSON.stringify(result, null, 2)}`;
+                
+                // Truncate any result larger than 5KB
+                let jsonString = JSON.stringify(result, null, 2);
+                if (jsonString.length > 5000) {
+                    jsonString = jsonString.substring(0, 5000) + '...[truncated]';
+                }
+                
+                return `${method}: ${jsonString}`;
             } else {
                 return `${method}: ERROR - ${result?.error || 'Failed'}`;
             }
@@ -1598,18 +1624,29 @@ Output format:
     // Compress data before sending to LLM
     const { compressed: compressedDataContext, aliasMap } = compressDataForLLM(dataContext);
 
-    console.log(`◪ Compressed data: ${dataContext.length} → ${compressedDataContext.length} chars (${Math.round((1 - compressedDataContext.length / dataContext.length) * 100)}% reduction)`);
+    // Additional safety: hard limit to prevent context overflow (2M token limit = ~8M chars max input)
+    let finalCompressedContext = compressedDataContext;
+    if (finalCompressedContext.length > 500000) { // 500KB limit to stay well under 2M token budget
+        console.warn(`⚠️ Compressed data still too large (${finalCompressedContext.length} chars), applying hard truncation`);
+        finalCompressedContext = finalCompressedContext.substring(0, 500000) + '\n\n[...truncated for context length]';
+    }
 
-    const together = new Together({
-        apiKey: process.env.TOGETHER_API_KEY,
-    });
+    console.log(`◪ Compressed data: ${dataContext.length} → ${finalCompressedContext.length} chars (${Math.round((1 - finalCompressedContext.length / dataContext.length) * 100)}% reduction)`);
+
+    const openRouter = new OpenRouter({
+        apiKey: process.env.OPENROUTER_API_KEY,
+        defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+        }
+    } as any);
 
     const synthesisPrompt = `You are a knowledgeable blockchain analyst. Provide a comprehensive answer using the retrieved data.
 
 Question: ${question}
 
 Data Retrieved:
-${compressedDataContext}
+${finalCompressedContext}
 
 Instructions:
 - Use ALL provided data accurately
@@ -1625,18 +1662,18 @@ Answer:`;
 
     try {
         const answer = await withTimeout(
-            together.chat.completions.create({
-                model: "openai/gpt-oss-120b",
+            openRouter.chat.send({
+                model: "x-ai/grok-4-fast",
                 messages: [{ role: "system", content: synthesisPrompt }],
-                stream: false,
-                max_tokens: 1800,
-                temperature: 0.2
+                maxTokens: 1800,
+                temperature: 0.2,
+                stream: false
             }),
             12000,
             "LLM synthesis"
         );
 
-        const response = answer.choices[0]?.message?.content;
+        const response = (answer as any).choices[0]?.message?.content;
 
         if (!response || response.trim().length === 0) {
             throw new Error('Empty response from LLM');
