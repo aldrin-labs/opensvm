@@ -524,7 +524,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             qLower: String(question || "").toLowerCase()
           };
 
-          // Try to execute relevant tools first
+          // Try to execute relevant tools first (only when NOT in plain text mode)
           const toolRegistry = new ToolRegistry();
           const toolResult = await toolRegistry.executeTools(toolContext);
 

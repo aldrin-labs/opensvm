@@ -11,23 +11,14 @@ interface AIPlanStep {
 
 export const aiPlanExecutionTool: Tool = {
     name: "aiPlanExecution",
-    description: "AI-powered dynamic tool selection and execution",
+    description: "AI-powered dynamic tool selection and execution - DISABLED for plain text mode",
 
     canHandle: (context: ToolContext): boolean => {
-        const { qLower, question } = context;
-
-        // Skip for simple greetings
-        if (/^(hi|hello|hey|yo|gm|hi there|ok|yes|no|thanks|thank you)$/i.test(question.trim())) {
-            return false;
-        }
-
-        // Handle all analytical queries
-        return qLower.includes("price") || qLower.includes("market") || qLower.includes("volume") ||
-            qLower.includes("token") || qLower.includes("memecoin") || qLower.includes("validator") ||
-            qLower.includes("account") || qLower.includes("balance") || qLower.includes("transaction") ||
-            qLower.includes("epoch") || qLower.includes("network") || qLower.includes("analysis") ||
-            /\$[A-Z0-9]{3,10}/.test(question) || // Detect token symbols
-            /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(question); // Detect addresses
+        // ✅ FIX: Never handle queries - this tool generates OVSM plans which should
+        // only be used when explicitly requested via ownPlan=true or with a systemPrompt
+        // This tool caused hallucinated data instead of fetching real blockchain data
+        console.log('⚠️ aiPlanExecution tool is disabled to prevent OVSM generation in plain text mode');
+        return false;
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
