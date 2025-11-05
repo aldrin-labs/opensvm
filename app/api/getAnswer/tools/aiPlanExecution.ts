@@ -11,14 +11,23 @@ interface AIPlanStep {
 
 export const aiPlanExecutionTool: Tool = {
     name: "aiPlanExecution",
-    description: "AI-powered dynamic tool selection and execution - DISABLED for plain text mode",
+    description: "AI-powered dynamic tool selection and execution with rich formatting and charts",
 
     canHandle: (context: ToolContext): boolean => {
-        // ✅ FIX: Never handle queries - this tool generates OVSM plans which should
-        // only be used when explicitly requested via ownPlan=true or with a systemPrompt
-        // This tool caused hallucinated data instead of fetching real blockchain data
-        console.log('⚠️ aiPlanExecution tool is disabled to prevent OVSM generation in plain text mode');
-        return false;
+        const { qLower, question } = context;
+
+        // Skip for simple greetings
+        if (/^(hi|hello|hey|yo|gm|hi there|ok|yes|no|thanks|thank you)$/i.test(question.trim())) {
+            return false;
+        }
+
+        // Handle all analytical queries that would benefit from charts and rich formatting
+        return qLower.includes("price") || qLower.includes("market") || qLower.includes("volume") ||
+            qLower.includes("token") || qLower.includes("memecoin") || qLower.includes("validator") ||
+            qLower.includes("account") || qLower.includes("balance") || qLower.includes("transaction") ||
+            qLower.includes("epoch") || qLower.includes("network") || qLower.includes("analysis") ||
+            /\$[A-Z0-9]{3,10}/.test(question) || // Detect token symbols
+            /[1-9A-HJ-NP-Za-km-z]{32,44}/.test(question); // Detect addresses
     },
 
     execute: async (context: ToolContext): Promise<ToolResult> => {
@@ -723,8 +732,8 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
         try {
             let result;
 
-            // Handle Moralis market data tool
-            if (step.tool === 'moralisMarketData') {
+            // Handle market data - use working CoinGecko instead of broken Moralis
+            if (step.tool === 'moralisMarketData' || step.tool === 'tokenMarketData') {
                 try {
                     if (typeof step.input !== 'string' || !step.input) {
                         throw new Error('moralisMarketData requires mint address as input');
@@ -1093,27 +1102,64 @@ for (const r of rows) {
                     const marketCapUsd = priceUsd * supplyTokens;
 
                     // Normalized result (compatible with summarizers)
-                    result = {
-                        success: true,
-                        source: 'moralis',
-                        resolved_id: 'moralis',
-                        data: {
-                            name: 'opensvm.com',
-                            symbol: 'SVMAI',
-                            current_price: { usd: priceUsd },
-                            market_cap: { usd: marketCapUsd },
-                            trading_volume: { usd: volume24hUsd, h24: volume24hUsd },
-                            last_updated: new Date().toISOString(),
-                            extra: {
-                                mint,
-                                supply_tokens: supplyTokens,
-                                supply_raw: amount,
-                                decimals,
-                                pairAddress
+                    // Fall back to CoinGecko if Moralis fails (price is 0)
+                    if (priceUsd === 0) {
+                        console.log(`   ⚠️ Moralis returned $0, falling back to CoinGecko`);
+                        try {
+                            const tokenTool = await import('./tokenMarketData');
+                            const coinGeckoResult = await tokenTool.tokenMarketDataTool.execute({ coinId: 'opensvm-com' });
+                            if (coinGeckoResult.success) {
+                                result = coinGeckoResult;
+                                console.log(`   ◈ CoinGecko fallback SUCCESS`);
+                            } else {
+                                throw new Error('CoinGecko also failed');
                             }
+                        } catch (e) {
+                            console.log(`   ◌ CoinGecko fallback failed: ${(e as Error).message}`);
+                            result = {
+                                success: true,
+                                source: 'moralis',
+                                resolved_id: 'moralis',
+                                data: {
+                                    name: 'opensvm.com',
+                                    symbol: 'SVMAI',
+                                    current_price: { usd: priceUsd },
+                                    market_cap: { usd: marketCapUsd },
+                                    trading_volume: { usd: volume24hUsd, h24: volume24hUsd },
+                                    last_updated: new Date().toISOString(),
+                                    extra: {
+                                        mint,
+                                        supply_tokens: supplyTokens,
+                                        supply_raw: amount,
+                                        decimals,
+                                        pairAddress
+                                    }
+                                }
+                            };
                         }
-                    };
-                    console.log(`   ◈ Moralis market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
+                    } else {
+                        result = {
+                            success: true,
+                            source: 'moralis',
+                            resolved_id: 'moralis',
+                            data: {
+                                name: 'opensvm.com',
+                                symbol: 'SVMAI',
+                                current_price: { usd: priceUsd },
+                                market_cap: { usd: marketCapUsd },
+                                trading_volume: { usd: volume24hUsd, h24: volume24hUsd },
+                                last_updated: new Date().toISOString(),
+                                extra: {
+                                    mint,
+                                    supply_tokens: supplyTokens,
+                                    supply_raw: amount,
+                                    decimals,
+                                    pairAddress
+                                }
+                            }
+                        };
+                    }
+                    console.log(`   ◈ Market data retrieved: ${result.success ? 'SUCCESS' : 'FAILED'}`);
                 } catch (error) {
                     result = { error: `Moralis market data error: ${(error as Error).message}` };
                     console.log(`   ◌ Moralis market data failed`);
@@ -1423,14 +1469,7 @@ async function synthesizeResults(
         return header.trim();
     }
     const tokenHeader = buildTokenHeader(results);
-    // Fast path: if user asked for market data and we have a deterministic header, return immediately
-    try {
-        const ql = (question || "").toLowerCase();
-        const askedMarket = ql.includes("price") || ql.includes("market") || ql.includes("volume") || /\$[A-Z0-9]{2,10}/.test(question || "");
-        if (askedMarket && tokenHeader) {
-            return tokenHeader;
-        }
-    } catch {}
+    // Note: We always continue to LLM synthesis to generate charts, even if we have market data
 
     // Guardrail: deterministically format validator results to avoid any LLM hallucinations
     try {

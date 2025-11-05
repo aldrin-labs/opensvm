@@ -31,8 +31,8 @@ interface ToolExecutionResult {
 export class ToolRegistry {
     private tools: Tool[] = [
         // Order matters - more specific tools should come first
-        coinGeckoTool, // PRIMARY: CoinGecko API for cryptocurrency market data
-        aiPlanExecutionTool, // PRIMARY: AI-powered tool selection and execution
+        aiPlanExecutionTool, // PRIMARY: AI-powered tool selection, execution, and rich formatting with charts
+        coinGeckoTool, // FALLBACK: Simple CoinGecko API for cryptocurrency market data (no charts)
         transactionInstructionAnalysisTool,
         transactionAnalysisTool,
         // moralisAnalysisTool, // FALLBACK: Moralis API-based portfolio/token analysis (TODO: Fix import)
