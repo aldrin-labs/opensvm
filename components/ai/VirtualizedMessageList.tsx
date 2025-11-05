@@ -163,8 +163,23 @@ export function VirtualizedMessageList({
       ref={containerRef}
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden"
       onScroll={handleScroll}
+      data-ai-message-list="virtualized"
+      data-ai-message-count={messages.length}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>
+        {visibleRange.start > 0 && (
+          <div
+            data-ai-placeholder="start"
+            style={{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: visibleRange.start * ESTIMATED_MESSAGE_HEIGHT,
+            }}
+            aria-hidden="true"
+          />
+        )}
         {visibleMessages.map((item) => (
           <div
             key={item.index}
@@ -225,6 +240,19 @@ export function VirtualizedMessageList({
             </article>
           </div>
         ))}
+        {visibleRange.end < messages.length && (
+          <div
+            data-ai-placeholder="end"
+            style={{
+              position: 'absolute',
+              top: totalHeight,
+              left: 0,
+              right: 0,
+              height: (messages.length - visibleRange.end) * ESTIMATED_MESSAGE_HEIGHT,
+            }}
+            aria-hidden="true"
+          />
+        )}
         
         {/* Processing indicator */}
         {isProcessing && (

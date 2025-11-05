@@ -654,7 +654,8 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           apiKey: apiKey,
           defaultHeaders: {
             'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM'
+            'X-Title': 'OpenSVM',
+            'origin': 'https://opensvm.com'
           }
         } as any);
 
@@ -983,7 +984,8 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           apiKey: apiKey,
           defaultHeaders: {
             'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM'
+            'X-Title': 'OpenSVM',
+            'origin': 'https://opensvm.com'
           }
         } as any);
 
@@ -997,7 +999,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             { role: "user", content: question }
           ],
           maxTokens: maxTokens,
-          temperature: 0.7,  // Balanced creativity
+          temperature: 0.3,  // Balanced creativity
           topP: 0.9,  // Slight focus on probable tokens
           stream: false
         });

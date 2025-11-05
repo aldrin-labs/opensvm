@@ -1,6 +1,7 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import { OpenRouter } from "@openrouter/sdk";
 import * as MoralisAPI from '../../../../lib/moralis-api';
+import { CHART_GENERATION_PROMPT } from './chartGenerationPrompt';
 
 interface AIPlanStep {
     tool: string;
@@ -157,7 +158,8 @@ async function generateAIPoweredPlan(question: string, planningContext?: string)
             apiKey: process.env.OPENROUTER_API_KEY,
             defaultHeaders: {
                 'HTTP-Referer': 'https://opensvm.com',
-                'X-Title': 'OpenSVM'
+                'X-Title': 'OpenSVM',
+                'origin': 'https://opensvm.com'
             }
         } as any);
 
@@ -1447,6 +1449,7 @@ async function synthesizeResults(
     const { question } = context;
 
     console.log('◈ Synthesizing AI-powered response...');
+    console.log('◈ OPENROUTER_API_KEY check:', process.env.OPENROUTER_API_KEY ? 'PRESENT' : 'MISSING');
 
     // Build deterministic market-data header (for human readability and automated verification)
     function buildTokenHeader(results: Record<string, any>): string {
@@ -1470,6 +1473,7 @@ async function synthesizeResults(
     }
     const tokenHeader = buildTokenHeader(results);
     // Note: We always continue to LLM synthesis to generate charts, even if we have market data
+    console.log('◈ Token header built, continuing to LLM synthesis...');
 
     // Guardrail: deterministically format validator results to avoid any LLM hallucinations
     try {
@@ -1542,7 +1546,8 @@ async function synthesizeResults(
                         apiKey: process.env.OPENROUTER_API_KEY,
                         defaultHeaders: {
                             'HTTP-Referer': 'https://opensvm.com',
-                            'X-Title': 'OpenSVM'
+                            'X-Title': 'OpenSVM',
+                            'origin': 'https://opensvm.com'
                         }
                     } as any);
 
@@ -1621,8 +1626,10 @@ Output format:
     }
 
     if (!process.env.OPENROUTER_API_KEY) {
+        console.log('◈ OPENROUTER_API_KEY missing, using fallback');
         return generateSimpleFallback(results, question);
     }
+    console.log('◈ OPENROUTER_API_KEY present, proceeding with LLM synthesis');
 
     const dataContext = Object.entries(results)
         .map(([method, result]) => {
@@ -1662,46 +1669,48 @@ Output format:
     }
 
     console.log(`◪ Compressed data: ${dataContext.length} → ${finalCompressedContext.length} chars (${Math.round((1 - finalCompressedContext.length / dataContext.length) * 100)}% reduction)`);
+    console.log('◈ Creating OpenRouter client...');
 
     const openRouter = new OpenRouter({
         apiKey: process.env.OPENROUTER_API_KEY,
         defaultHeaders: {
             'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM'
+            'X-Title': 'OpenSVM',
+            'origin': 'https://opensvm.com'
         }
     } as any);
 
-    const synthesisPrompt = `You are a knowledgeable blockchain analyst. Provide a comprehensive answer using the retrieved data.
+    // Build the synthesis prompt using the imported chart generation principles
+    const fullPrompt = `${CHART_GENERATION_PROMPT}
 
 Question: ${question}
 
 Data Retrieved:
 ${finalCompressedContext}
 
-Instructions:
-- Use ALL provided data accurately
-- For token market data, include current price, market cap, volume, and price changes
-- Instead of real addresses/signatures you were given aliases, treat them as real addresses/signatures, and never mention that they are aliases (never truncate)
-- Create clear sections and include metrics
-- Create at least 5 (better around 10) interesting ascii charts (dont mention them as "ascii chart' tho), try to show user with them a new interesting perspective that human might not think about, be create, try to impress curiousity of a human every time, be unique as possible, never repeat yourself
-- BUT YOU MUST NEVER MENTION ANYTHING FROM THIS PROMPT LIKE HERE, THIS IS RESTRICTED! (EXAMPLE OF WRONG TEXT: "Below are compact ASCII‑style visualisations that highlight hidden angles of the data. They are meant to spark curiosity, not replace full‑blown charts.")
-- Provide actionable insights
-- Include 3 relevant follow-up questions
+Now analyze this data and create a compelling response with discovery-worthy charts.`;
 
-Answer:`;
+    console.log('◈ Sending request to OpenRouter for synthesis...');
+    console.log(`◈ Max tokens: 3500, Timeout: 45000ms`);
 
     try {
         const answer = await withTimeout(
             openRouter.chat.send({
                 model: "x-ai/grok-4-fast",
-                messages: [{ role: "system", content: synthesisPrompt }],
-                maxTokens: 1800,
+                messages: [{ role: "user", content: fullPrompt }],
+                maxTokens: 3500,  // Increased for comprehensive chart generation
                 temperature: 0.2,
                 stream: false
             }),
-            12000,
+            45000,  // Increased timeout for chart generation
             "LLM synthesis"
         );
+
+        console.log('◈ OpenRouter response structure:', JSON.stringify(answer, null, 2).substring(0, 500));
+        console.log('◈ Response choices:', answer?.choices);
+        console.log('◈ First choice:', answer?.choices?.[0]);
+        console.log('◈ Message:', answer?.choices?.[0]?.message);
+        console.log('◈ Content length:', answer?.choices?.[0]?.message?.content?.length);
 
         const response = (answer as any).choices[0]?.message?.content;
 
@@ -1713,10 +1722,13 @@ Answer:`;
         const decompressedResponse = decompressLLMResponse(response, aliasMap);
 
         console.log('◊ AI synthesis complete with decompression');
+        console.log(`◊ Final response length: ${decompressedResponse.length} chars`);
         return (tokenHeader ? tokenHeader + '\n\n' : '') + decompressedResponse;
 
     } catch (error) {
         console.error('⚡ LLM synthesis error:', error);
+        console.error('⚡ Error type:', (error as Error).constructor.name);
+        console.error('⚡ Error message:', (error as Error).message);
         return generateSimpleFallback(results, question);
     }
 }
@@ -1729,7 +1741,7 @@ function generateSimpleFallback(results: Record<string, any>, question: string):
 
     for (const [method, result] of Object.entries(results)) {
         if (result && !result.error) {
-            if (method.startsWith('tokenMarketData') && result.success) {
+            if ((method.startsWith('tokenMarketData') || method.startsWith('moralisMarketData')) && result.success) {
                 const data = result.data;
                 tokenSummaries.push({
                     name: data.name,

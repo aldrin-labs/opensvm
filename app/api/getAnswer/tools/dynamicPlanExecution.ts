@@ -1512,7 +1512,8 @@ async function synthesizeEpicResults(
         apiKey: process.env.OPENROUTER_API_KEY,
         defaultHeaders: {
             'HTTP-Referer': 'https://opensvm.com',
-            'X-Title': 'OpenSVM'
+            'X-Title': 'OpenSVM',
+            'origin': 'https://opensvm.com'
         }
     } as any);
 

@@ -236,10 +236,10 @@ class SettingsManager {
     const root = document.documentElement;
 
     // Remove all font size classes
-    root.classList.remove('text-small', 'text-medium', 'text-large');
+    root.classList.remove('font-size-small', 'font-size-medium', 'font-size-large');
 
     // Apply new font size class
-    root.classList.add(`text-${fontSize}`);
+    root.classList.add(`font-size-${fontSize}`);
   }
 
   public initializeSettings() {

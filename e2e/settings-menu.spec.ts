@@ -10,8 +10,8 @@ test.describe('Settings Menu Functionality', () => {
             (window as any).__E2E_ALWAYS_RENDER_SETTINGS = true;
             (window as any).__E2E_ALWAYS_OPEN = false;
         });
-        // Use a stable route that renders the standard layout and navbar
-        await page.goto('/account/DtdSSG8ZJRZVv5Jx7K1MeWp7Zxcu19GD5wQRGRpQ9uMF');
+        // Use home page for stable layout and navbar
+        await page.goto('/');
         await page.waitForLoadState('domcontentloaded');
         await page.waitForTimeout(1000);
     });
@@ -78,16 +78,16 @@ test.describe('Settings Menu Functionality', () => {
         const themeSubmenu = menu.locator('[data-test="settings-theme-submenu"]').first();
         await themeSubmenu.click();
         const themeList = menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkTheme = themeList.getByText('Cyberpunk').first();
-        await cyberpunkTheme.click();
+        const paperTheme = themeList.getByText('Paper').first();
+        await paperTheme.click();
 
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await expect(applyButton).toBeVisible();
         await applyButton.click();
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         const newTheme = await page.locator('html').getAttribute('class');
-        expect(newTheme).toContain('theme-cyberpunk');
+        expect(newTheme).toContain('theme-paper');
         expect(newTheme).not.toBe(initialTheme);
 
         const settingsDropdown = page
@@ -143,7 +143,7 @@ test.describe('Settings Menu Functionality', () => {
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await applyButton.click();
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         const fontFamily = await page.evaluate(() =>
             getComputedStyle(document.documentElement).getPropertyValue('--font-family')
         );
@@ -190,7 +190,7 @@ test.describe('Settings Menu Functionality', () => {
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await applyButton.click();
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         const fontSize = await page.evaluate(() =>
             getComputedStyle(document.documentElement).getPropertyValue('--base-font-size')
         );
@@ -266,22 +266,22 @@ test.describe('Settings Menu Functionality', () => {
         const themeSubmenu = menu.locator('[data-test="settings-theme-submenu"]').first();
         await themeSubmenu.click();
         const themeList = menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkTheme = themeList.getByText('Cyberpunk').first();
-        await cyberpunkTheme.click();
+        const paperTheme = themeList.getByText('Paper').first();
+        await paperTheme.click();
 
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await applyButton.click();
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
         const themeAfterChange = await page.locator('html').getAttribute('class');
-        expect(themeAfterChange).toContain('theme-cyberpunk');
+        expect(themeAfterChange).toContain('theme-paper');
 
         await page.reload();
         await page.waitForLoadState('domcontentloaded');
         await page.waitForTimeout(1200);
 
         const themeAfterReload = await page.locator('html').getAttribute('class');
-        expect(themeAfterReload).toContain('theme-cyberpunk');
+        expect(themeAfterReload).toContain('theme-paper');
     });
 
     test('should handle multiple setting changes in one session', async ({ page }) => {
@@ -317,7 +317,7 @@ test.describe('Settings Menu Functionality', () => {
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await applyButton.click();
 
-        await page.waitForTimeout(500);
+        await page.waitForTimeout(1000);
 
         const theme = await page.locator('html').getAttribute('class');
         expect(theme).toContain('theme-solarized');

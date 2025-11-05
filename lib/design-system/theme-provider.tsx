@@ -126,10 +126,8 @@ export function EnhancedThemeProvider({
 
     // Remove existing theme variant classes only (preserve other classes)
     const themeClasses = ['theme-paper', 'theme-high-contrast', 'theme-cyberpunk', 'theme-solarized', 'theme-dos-blue'];
-    const fontClasses = ['font-size-sm', 'font-size-base', 'font-size-lg'];
     
     themeClasses.forEach(cls => root.classList.remove(cls));
-    fontClasses.forEach(cls => root.classList.remove(cls));
 
     // Apply theme variant (default to cyberpunk for dark theme)
     const themeVariant = config.variant === 'default' ? 'cyberpunk' : config.variant;
@@ -141,9 +139,6 @@ export function EnhancedThemeProvider({
     
     // Ensure dark class is present
     root.classList.add('dark');
-
-    // Apply font size
-    root.classList.add(`font-size-${config.fontSize}`);
 
     // Apply accessibility preferences
     if (config.reducedMotion) {

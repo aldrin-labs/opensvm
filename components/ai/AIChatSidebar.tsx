@@ -1072,7 +1072,7 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
   }, [activeTab?.messages, activeTab?.id]);
 
   return (
-    <>
+    <aside role="complementary" aria-label="AI Chat Sidebar">
       {shareNotice && (
         <div
           role="status"
@@ -1128,6 +1128,6 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
         onHistoryReload={reloadHistory}
       />
       <TokenManagementPanel isOpen={tokenPanelOpen} onClose={handleTokenPanelClose} />
-    </>
+    </aside>
   );
 };

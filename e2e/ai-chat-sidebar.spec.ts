@@ -54,9 +54,7 @@ test.describe('AI Chat Sidebar UX', () => {
         await expect(sidebar).toBeVisible();
 
         // Close button visible (not clipped)
-        const closeBtn = page.getByRole('button', { name: /close sidebar/i });
+        const closeBtn = page.getByRole('button', { name: /Close/i });
         await expect(closeBtn).toBeVisible();
     });
 });
-
-

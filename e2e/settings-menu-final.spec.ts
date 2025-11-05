@@ -31,17 +31,17 @@ test.describe('Settings Menu E2E Test', () => {
         const themeSubmenu = menu.locator('[data-test="settings-theme-submenu"]').first();
         await themeSubmenu.click();
         const themeList = menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkTheme = themeList.getByText('Cyberpunk').first();
-        await expect(cyberpunkTheme).toBeVisible();
-        await cyberpunkTheme.click();
+        const paperTheme = themeList.getByText('Paper').first();
+        await expect(paperTheme).toBeVisible();
+        await paperTheme.click();
 
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await expect(applyButton).toBeVisible();
         await applyButton.click();
 
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(1000);
         const newTheme = await page.locator('html').getAttribute('class');
-        expect(newTheme).toContain('theme-cyberpunk');
+        expect(newTheme).toContain('theme-paper');
         expect(newTheme).not.toBe(initialTheme);
 
         await page.keyboard.press('Escape');
@@ -100,12 +100,12 @@ test.describe('Settings Menu E2E Test', () => {
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
         await applyButton.click();
 
-        await page.waitForTimeout(800);
+        await page.waitForTimeout(1000);
         const themeAfterChange = await page.locator('html').getAttribute('class');
         expect(themeAfterChange).toContain('theme-high-contrast');
 
         const savedSettings = await page.evaluate(() => {
-            return localStorage.getItem('settings');
+            return localStorage.getItem('opensvm-settings');
         });
         expect(savedSettings).toBeTruthy();
         const parsedSettings = JSON.parse(savedSettings!);

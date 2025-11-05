@@ -1,12 +1,10 @@
-"use client";
+'use client';
 
 import React, { Component, ReactNode } from 'react';
-import { AlertCircle } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
   fallback?: ReactNode;
-  componentName?: string;
 }
 
 interface State {
@@ -25,27 +23,20 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error(`Error in ${this.props.componentName || 'component'}:`, error, errorInfo);
+    console.error('ErrorBoundary caught an error:', error, errorInfo);
   }
 
   render() {
     if (this.state.hasError) {
-      if (this.props.fallback) {
-        return this.props.fallback;
-      }
-
-      return (
-        <div className="flex items-center justify-center p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
-          <div className="flex items-center gap-2 text-sm text-destructive">
-            <AlertCircle size={16} />
-            <span>Something went wrong in {this.props.componentName || 'this component'}</span>
-          </div>
-        </div>
-      );
+      return this.props.fallback || <h1>Something went wrong.</h1>;
     }
 
     return this.props.children;
   }
 }
 
+export const TableErrorBoundary = ErrorBoundary;
+export const GraphErrorBoundary = ErrorBoundary;
+
+// Add default export for compatibility
 export default ErrorBoundary;

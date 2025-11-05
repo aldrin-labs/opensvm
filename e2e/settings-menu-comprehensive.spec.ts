@@ -91,14 +91,14 @@ test.describe('Settings Menu Comprehensive Testing', () => {
 
         const { menu } = await openSettingsMenu(page);
 
-        // Select Cyberpunk theme
+        // Select Paper theme
         const themeSubmenu = menu.locator('[data-test="settings-theme-submenu"]').first();
         await themeSubmenu.click();
         await page.waitForTimeout(200);
 
         const themeList = menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkOption = themeList.getByText('Cyberpunk').first();
-        await cyberpunkOption.click();
+        const paperOption = themeList.getByText('Paper').first();
+        await paperOption.click();
 
         // Apply changes
         const applyButton = menu.locator('button:has-text("Apply")').first();
@@ -107,7 +107,7 @@ test.describe('Settings Menu Comprehensive Testing', () => {
 
         // Verify theme changed
         const newTheme = await page.locator('html').getAttribute('class');
-        expect(newTheme).toContain('theme-cyberpunk');
+        expect(newTheme).toContain('theme-paper');
         expect(newTheme).not.toBe(initialTheme);
 
         // Reload page and check persistence
@@ -116,7 +116,7 @@ test.describe('Settings Menu Comprehensive Testing', () => {
         await page.waitForTimeout(3000);
 
         const persistedTheme = await page.locator('html').getAttribute('class');
-        expect(persistedTheme).toContain('theme-cyberpunk');
+        expect(persistedTheme).toContain('theme-paper');
     });
 
     test('should display font family options', async ({ page }) => {
@@ -226,8 +226,8 @@ test.describe('Settings Menu Comprehensive Testing', () => {
         await page.waitForTimeout(200);
 
         const themeList2 = menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkOption = themeList2.getByText('Cyberpunk').first();
-        await cyberpunkOption.click();
+        const paperOption = themeList2.getByText('Paper').first();
+        await paperOption.click();
 
         // Cancel instead of apply
         const cancelButton = menu.locator('button:has-text("Cancel")').first();
@@ -294,8 +294,8 @@ test.describe('Settings Menu Comprehensive Testing', () => {
         await page.waitForTimeout(200);
 
         const themeList4 = first.menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const cyberpunkOption = themeList4.getByText('Cyberpunk').first();
-        await cyberpunkOption.click();
+        const paperOption = themeList4.getByText('Paper').first();
+        await paperOption.click();
 
         const applyButton = first.menu.locator('button:has-text("Apply")').first();
         await applyButton.click();
@@ -303,17 +303,17 @@ test.describe('Settings Menu Comprehensive Testing', () => {
 
         // Verify theme changed
         let currentTheme = await page.locator('html').getAttribute('class');
-        expect(currentTheme).toContain('theme-cyberpunk');
+        expect(currentTheme).toContain('theme-paper');
 
-        // Now change back to Paper
+        // Now change back to Cyberpunk (default)
         const second = await openSettingsMenu(page);
         const themeSubmenu2 = second.menu.locator('[data-test="settings-theme-submenu"]').first();
         await themeSubmenu2.click();
         await page.waitForTimeout(200);
 
         const themeList5 = second.menu.locator('[data-test="settings-theme-submenu"] + div').first();
-        const paperOption = themeList5.getByText('Paper').first();
-        await paperOption.click();
+        const cyberpunkOption = themeList5.getByText('Cyberpunk').first();
+        await cyberpunkOption.click();
 
         const applyButton2 = second.menu.locator('button:has-text("Apply")').first();
         await applyButton2.click();
@@ -321,7 +321,7 @@ test.describe('Settings Menu Comprehensive Testing', () => {
 
         // Verify theme changed back
         currentTheme = await page.locator('html').getAttribute('class');
-        expect(currentTheme).toContain('theme-paper');
-        expect(currentTheme).not.toContain('theme-cyberpunk');
+        expect(currentTheme).toContain('theme-cyberpunk');
+        expect(currentTheme).not.toContain('theme-paper');
     });
 });

@@ -45,7 +45,7 @@ test.describe('AI Sidebar - Comprehensive Functionality Screenshots', () => {
         await takeScreenshot(page, '06-sidebar-with-response');
 
         // 7. Test expand functionality
-        const expandButton = page.getByRole('button', { name: /Expand sidebar|Collapse sidebar/ });
+        const expandButton = page.getByRole('button', { name: /Expand|Collapse/i });
         await expandButton.click();
         await page.waitForTimeout(500);
         await takeScreenshot(page, '07-sidebar-expanded');
@@ -56,19 +56,19 @@ test.describe('AI Sidebar - Comprehensive Functionality Screenshots', () => {
         await takeScreenshot(page, '08-sidebar-collapsed');
 
         // 9. Test more menu
-        const moreButton = page.getByRole('button', { name: 'More options' });
+        const moreButton = page.getByRole('button', { name: /More/i });
         await moreButton.click();
         await page.waitForTimeout(300);
         await takeScreenshot(page, '09-sidebar-more-menu');
 
         // 10. Test help menu item
-        const helpItem = page.getByRole('menuitem', { name: /Help/ });
+        const helpItem = page.getByRole('menuitem', { name: /Help/i });
         await helpItem.click();
         await page.waitForTimeout(500);
         await takeScreenshot(page, '10-sidebar-help-clicked');
 
         // 11. Close and reopen sidebar
-        const closeButton = page.getByRole('button', { name: 'Close sidebar' });
+        const closeButton = page.getByRole('button', { name: /Close/i });
         await closeButton.click();
         await page.waitForTimeout(500);
         await takeScreenshot(page, '11-sidebar-closed');
@@ -86,7 +86,7 @@ test.describe('AI Sidebar - Comprehensive Functionality Screenshots', () => {
         await takeScreenshot(page, '13-sidebar-on-tx-page');
 
         // 14. Test quick actions on tx page
-        const quickActions = page.locator('[data-testid="ai-quick-actions"]');
+        const quickActions = page.locator('[data-ai-quick="tps"]').first();
         if (await quickActions.isVisible()) {
             await takeScreenshot(page, '14-sidebar-tx-quick-actions');
         }

@@ -58,8 +58,8 @@ test.describe('Settings Menu Basic Functionality', () => {
             (window as any).__E2E_ALWAYS_OPEN = true;
             (window as any).__E2E_ALWAYS_RENDER_SETTINGS = true;
         });
-        // Use a known route that renders the standard layout and navbar
-        await page.goto('/account/DtdSSG8ZJRZVv5Jx7K1MeWp7Zxcu19GD5wQRGRpQ9uMF');
+        // Use home page for stable layout and navbar
+        await page.goto('/');
         await page.waitForLoadState('domcontentloaded');
         await page.waitForTimeout(3000); // Wait for React hydration
         // Confirm flags
@@ -86,9 +86,9 @@ test.describe('Settings Menu Basic Functionality', () => {
         // Wait a bit for submenu
         await page.waitForTimeout(500);
 
-        // Try to click Cyberpunk theme
-        const cyberpunkOption = menu.getByText('Cyberpunk').first();
-        await cyberpunkOption.click();
+        // Try to click Paper theme
+        const paperOption = menu.getByText('Paper').first();
+        await paperOption.click();
 
         // Look for Apply button and click it
         const applyButton = menu.locator('button[data-test="settings-apply"], button:has-text("Apply")').first();
@@ -100,7 +100,7 @@ test.describe('Settings Menu Basic Functionality', () => {
         // Check theme changed
         const newTheme = await page.locator('html').getAttribute('class');
         expect(newTheme).not.toBe(initialTheme);
-        expect(newTheme).toContain('theme-cyberpunk');
+        expect(newTheme).toContain('theme-paper');
     });
 
     test('should cancel changes when Cancel is clicked', async ({ page }) => {
@@ -117,8 +117,8 @@ test.describe('Settings Menu Basic Functionality', () => {
 
         await page.waitForTimeout(500);
 
-        const cyberpunkOption = menu.getByText('Cyberpunk').first();
-        await cyberpunkOption.click();
+        const paperOption = menu.getByText('Paper').first();
+        await paperOption.click();
 
         // Click Cancel instead of Apply
         const cancelButton = menu.locator('button[data-test="settings-cancel"], button:has-text("Cancel")').first();
