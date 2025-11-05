@@ -77,3 +77,6 @@ docs/agent-tasks/interactive-account-graph-navigation.md
 docs/agent-tasks/interactive-account-graph-task-list.md
 docs/agent-tasks/backup.ignore
 screenshots/
+
+# Launchpad data directory (in-memory database persistence)
+.data/
