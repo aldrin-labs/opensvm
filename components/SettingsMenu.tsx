@@ -284,9 +284,11 @@ function SettingsMenuClient() {
             ) : (
               <div className="flex flex-col items-start">
                 <div>RPC: {tempSettings.rpcEndpoint.name}</div>
-                <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                  {tempSettings.rpcEndpoint.url}
-                </div>
+                {tempSettings.rpcEndpoint.url !== 'opensvm' && (
+                  <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {tempSettings.rpcEndpoint.url}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -308,7 +310,9 @@ function SettingsMenuClient() {
                 ) : (
                   <div className="flex flex-col">
                     <div>{endpoint.name} ({endpoint.network})</div>
-                    <div className="text-xs text-muted-foreground">{endpoint.url}</div>
+                    {endpoint.url !== 'opensvm' && (
+                      <div className="text-xs text-muted-foreground">{endpoint.url}</div>
+                    )}
                   </div>
                 )}
               </div>
@@ -431,9 +435,11 @@ function SettingsMenuClient() {
             ) : (
               <div className="flex flex-col items-start">
                 <div>RPC: {tempSettings.rpcEndpoint.name}</div>
-                <div className="text-xs text-muted-foreground truncate max-w-[200px]">
-                  {tempSettings.rpcEndpoint.url}
-                </div>
+                {tempSettings.rpcEndpoint.url !== 'opensvm' && (
+                  <div className="text-xs text-muted-foreground truncate max-w-[200px]">
+                    {tempSettings.rpcEndpoint.url}
+                  </div>
+                )}
               </div>
             )}
           </DropdownMenuSubTrigger>
@@ -456,7 +462,9 @@ function SettingsMenuClient() {
                   ) : (
                     <div className="flex flex-col">
                       <div>{endpoint.name} ({endpoint.network})</div>
-                      <div className="text-xs text-muted-foreground">{endpoint.url}</div>
+                      {endpoint.url !== 'opensvm' && (
+                        <div className="text-xs text-muted-foreground">{endpoint.url}</div>
+                      )}
                     </div>
                   )}
                 </DropdownMenuItem>
