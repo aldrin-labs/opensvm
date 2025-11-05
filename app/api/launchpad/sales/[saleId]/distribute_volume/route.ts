@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { db } from '@/lib/launchpad/database';
-import { calculateVolumeRewards } from '@/lib/launchpad/utils';
+import { getSale, listKOLAllocations, createKOLAllocation, updateKOLAllocation } from '@/lib/launchpad/database';
 
 // POST /api/launchpad/sales/:saleId/distribute_volume - Distribute volume rewards
 export async function POST(
@@ -20,7 +19,7 @@ export async function POST(
     }
 
     // Find sale
-    const sale = db.sales.find((s) => s.id === saleId);
+    const sale = await getSale(saleId);
     if (!sale) {
       return NextResponse.json(
         { error: 'Sale not found' },
@@ -34,8 +33,23 @@ export async function POST(
       0
     );
 
+    // Helper function to calculate volume rewards
+    const calculateVolumeRewards = (
+      totalSupply: number,
+      rewardsPercent: number,
+      rewardsDays: number,
+      kolVolume: number,
+      totalVolume: number
+    ): number => {
+      const dailyRewardPool = (totalSupply * rewardsPercent / 100) / rewardsDays;
+      const kolShare = totalVolume > 0 ? kolVolume / totalVolume : 0;
+      return Math.floor(dailyRewardPool * kolShare);
+    };
+
     // Calculate rewards for each KOL
     const distributions = [];
+    const existingAllocations = await listKOLAllocations({ sale_id: saleId });
+    
     for (const volumeData of volumes) {
       const { kol_id, volume } = volumeData;
 
@@ -48,13 +62,13 @@ export async function POST(
         total_volume
       );
 
-      // Update or create allocation
-      let allocation = db.kolAllocations.find(
-        (a) => a.sale_id === saleId && a.kol_id === kol_id
+      // Find or create allocation
+      let allocation = existingAllocations.find(
+        (a) => a.kol_id === kol_id
       );
 
       if (!allocation) {
-        allocation = {
+        allocation = await createKOLAllocation({
           id: `alloc_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
           sale_id: saleId,
           kol_id,
@@ -63,27 +77,27 @@ export async function POST(
           vested_tokens: 0,
           claimable_tokens: 0,
           volume_rewards: 0,
+          allocation_type: 'volume',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
-        };
-        db.kolAllocations.push(allocation);
+        });
       }
 
       // Add to volume rewards
-      allocation.volume_rewards = (allocation.volume_rewards || 0) + reward;
-      allocation.allocated_tokens = (allocation.allocated_tokens || 0) + reward;
-      allocation.claimable_tokens = (allocation.claimable_tokens || 0) + reward;
-      allocation.updated_at = new Date().toISOString();
+      const updatedAllocation = await updateKOLAllocation(allocation.id, {
+        volume_rewards: (allocation.volume_rewards || 0) + reward,
+        allocated_tokens: (allocation.allocated_tokens || 0) + reward,
+        claimable_tokens: (allocation.claimable_tokens || 0) + reward,
+        updated_at: new Date().toISOString(),
+      });
 
       distributions.push({
         kol_id,
         volume,
         reward,
-        new_total_allocated: allocation.allocated_tokens,
+        new_total_allocated: updatedAllocation?.allocated_tokens || 0,
       });
     }
-
-    db.persist();
 
     return NextResponse.json({
       success: true,
