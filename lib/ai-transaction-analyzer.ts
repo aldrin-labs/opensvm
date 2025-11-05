@@ -5,6 +5,7 @@
  * identify main actions and secondary effects, and provide risk assessment.
  */
 
+import 'server-only';
 import type { DetailedTransactionInfo } from './solana';
 import { accountChangesAnalyzer, type AccountChangesAnalysis } from './account-changes-analyzer';
 import { instructionParserService } from './instruction-parser-service';

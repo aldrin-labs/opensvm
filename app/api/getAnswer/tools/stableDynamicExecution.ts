@@ -1,5 +1,6 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import { isValidSolanaAddress } from "./utils";
+import { OpenRouter } from "@openrouter/sdk";
 
 interface ExecutionStep {
     tool: string;
@@ -311,9 +312,9 @@ async function generatePlanWithAI(question: string): Promise<ExecutionStep[]> {
     const addressMatch = question.match(/[1-9A-HJ-NP-Za-km-z]{32,44}/);
     const detectedAddress = addressMatch ? addressMatch[0] : null;
 
-    // If no Together AI key, fallback immediately
-    if (!process.env.TOGETHER_API_KEY) {
-        console.warn('⚠️ TOGETHER_API_KEY not configured - using simple plan fallback');
+    // If no OpenRouter API key, fallback immediately
+    if (!process.env.OPENROUTER_API_KEY) {
+        console.warn('⚠️ OPENROUTER_API_KEY not configured - using simple plan fallback');
         return generateSimplePlan(question);
     }
 
@@ -336,28 +337,31 @@ Moralis available: ${!!process.env.MORALIS_API_KEY}
 
 Return ONLY JSON array of steps.`;
 
-        const Together = (await import("together-ai")).default;
-        const together = new Together({
-            apiKey: process.env.TOGETHER_API_KEY!,
-        });
+        const openRouter = new OpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY!,
+            defaultHeaders: {
+                'HTTP-Referer': 'https://opensvm.com',
+                'X-Title': 'OpenSVM'
+            }
+        } as any);
 
         const llmTimeout = new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('AI planning timeout')), 8000)
         );
 
-        const llmCall = together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
+        const llmCall = openRouter.chat.send({
+            model: "x-ai/grok-4-fast",
             messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: userPrompt }
             ],
-            stream: false,
-            max_tokens: 800,
+            maxTokens: 800,
             temperature: 0.1,
+            stream: false
         });
 
-        const answer = await Promise.race([llmCall, llmTimeout]) as any;
-        const content: string = answer?.choices?.[0]?.message?.content || '';
+        const answer = await Promise.race([llmCall, llmTimeout]);
+        const content: string = (answer as any)?.choices?.[0]?.message?.content || '';
 
         // Extract JSON array from response (handle code fences or extra text)
         const jsonText = extractJsonArray(content);
@@ -626,8 +630,8 @@ async function synthesizeWithAI(question: string, results: Record<string, any>, 
     const totalTime = Date.now() - metrics.startTime;
 
 
-    // If we don't have TOGETHER_API_KEY, fall back to basic synthesis
-    if (!process.env.TOGETHER_API_KEY) {
+    // If we don't have OPENROUTER_API_KEY, fall back to basic synthesis
+    if (!process.env.OPENROUTER_API_KEY) {
         return synthesizeBasic(question, results, metrics);
     }
 
@@ -675,31 +679,34 @@ Looking at this data, I can see that... The account shows... This indicates...
 
 Now provide your analysis:`;
 
-        const Together = (await import("together-ai")).default;
-        const together = new Together({
-            apiKey: process.env.TOGETHER_API_KEY,
-        });
+        const openRouter = new OpenRouter({
+            apiKey: process.env.OPENROUTER_API_KEY,
+            defaultHeaders: {
+                'HTTP-Referer': 'https://opensvm.com',
+                'X-Title': 'OpenSVM'
+            }
+        } as any);
 
         // Add timeout for synthesis
         const synthesisTimeout = new Promise<never>((_, reject) => {
             setTimeout(() => reject(new Error('AI synthesis timeout')), 15000);
         });
 
-        const synthesisPromise = together.chat.completions.create({
-            model: "openai/gpt-oss-120b",
+        const synthesisPromise = openRouter.chat.send({
+            model: "x-ai/grok-4-fast",
             messages: [
                 {
                     role: "user",
                     content: synthesisPrompt
                 }
             ],
-            stream: false,
-            max_tokens: 4000,
+            maxTokens: 4000,
             temperature: 0.3,
+            stream: false
         });
 
         const answer = await Promise.race([synthesisPromise, synthesisTimeout]);
-        const response = answer.choices?.[0]?.message?.content;
+        const response = (answer as any).choices?.[0]?.message?.content;
 
         if (response && response.length > 100) {
             console.log(`🤖 AI synthesis completed in ${Date.now() - metrics.startTime - totalTime}ms`);

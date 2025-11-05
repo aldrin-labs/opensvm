@@ -14,32 +14,65 @@ export async function GET(
     // Get SOL balance
     const balance = await connection.getBalance(new PublicKey(address));
 
-    // Count transfers for this token
-    const signatures = await connection.getSignaturesForAddress(new PublicKey(address), { limit: 1000 });
+    // Count transfers for this token - use a smaller limit and batch processing
+    // to avoid timeout. Limit to 100 most recent transactions for quick response
+    const signatures = await connection.getSignaturesForAddress(
+      new PublicKey(address), 
+      { limit: 100 }
+    );
+    
     let transferCount = 0;
-
-    for (const { signature } of signatures) {
-      try {
-        const tx = await connection.getParsedTransaction(signature, {
-          maxSupportedTransactionVersion: 0
-        });
-        if (!tx?.meta) continue;
-
-        const transfers = tx.meta.postTokenBalances?.filter(
-          balance => balance.mint === mint
-        );
-
-        if (transfers?.length) {
-          transferCount++;
-        }
-      } catch (err) {
-        console.error('Error parsing transaction:', err);
-      }
+    
+    // Process transactions in batches of 10 to avoid overwhelming the RPC
+    const batchSize = 10;
+    const batches = [];
+    
+    for (let i = 0; i < signatures.length; i += batchSize) {
+      const batch = signatures.slice(i, i + batchSize);
+      batches.push(batch);
     }
+
+    // Process batches in parallel with timeout protection
+    const batchPromises = batches.map(async (batch) => {
+      const txPromises = batch.map(async ({ signature }) => {
+        try {
+          const tx = await Promise.race([
+            connection.getParsedTransaction(signature, {
+              maxSupportedTransactionVersion: 0
+            }),
+            new Promise((_, reject) => 
+              setTimeout(() => reject(new Error('Transaction fetch timeout')), 5000)
+            )
+          ]) as any;
+          
+          if (!tx?.meta) return 0;
+
+          const transfers = tx.meta.postTokenBalances?.filter(
+            (balance: any) => balance.mint === mint
+          );
+
+          return transfers?.length ? 1 : 0;
+        } catch (err) {
+          // Silent fail for individual transactions
+          return 0;
+        }
+      });
+
+      const results = await Promise.allSettled(txPromises);
+      return results
+        .filter(r => r.status === 'fulfilled')
+        .reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0), 0);
+    });
+
+    const batchResults = await Promise.allSettled(batchPromises);
+    transferCount = batchResults
+      .filter(r => r.status === 'fulfilled')
+      .reduce((sum, r) => sum + (r.status === 'fulfilled' ? r.value : 0), 0);
 
     return NextResponse.json({
       solBalance: balance / 1e9, // Convert lamports to SOL
-      transferCount
+      transferCount,
+      note: transferCount >= 100 ? 'Showing count from last 100 transactions' : undefined
     });
   } catch (error) {
     console.error('Error fetching account token stats:', error);

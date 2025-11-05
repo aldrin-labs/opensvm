@@ -24,6 +24,12 @@
 /* Import Scrollbar Theme styles */
 @import './styles/scrollbar-themes.css';
 
+/* Import Trading Terminal Scrollbar styles */
+@import './styles/trading-terminal-scrollbar.css';
+
+/* Import Trading Terminal Layout styles */
+@import './styles/trading-terminal-layout.css';
+
 /* Import Accessibility and Mobile styles */
 @import '../styles/accessibility.css';
 

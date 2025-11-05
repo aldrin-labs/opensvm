@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
-import { memoryCache } from '@/lib/cache';
+import { cache } from '@/lib/cache';
 import { queryFlipside } from '@/lib/flipside';
 
 const BATCH_SIZE = 1000;
@@ -24,7 +24,7 @@ type TransferCount = {
 
 async function getSignatureCount(pubkey: PublicKey, connection: Connection): Promise<string | number> {
   const cacheKey = `signatures-${pubkey.toBase58()}`;
-  const cachedData = memoryCache.get<number>(cacheKey);
+  const cachedData = await cache.get<number>(cacheKey);
   if (cachedData !== null) {
     return cachedData;
   }
@@ -56,13 +56,13 @@ async function getSignatureCount(pubkey: PublicKey, connection: Connection): Pro
     ? `${allSignatures.length}+`
     : allSignatures.length;
 
-  memoryCache.set(cacheKey, count, CACHE_TTL);
+  await cache.set(cacheKey, count, CACHE_TTL);
   return count;
 }
 
 async function getTokenTransfers(address: string): Promise<number> {
   const cacheKey = `transfers-${address}`;
-  const cachedData = memoryCache.get<number>(cacheKey);
+  const cachedData = await cache.get<number>(cacheKey);
   if (cachedData !== null) {
     return cachedData;
   }
@@ -102,12 +102,12 @@ async function getTokenTransfers(address: string): Promise<number> {
 
     if (Array.isArray(results) && results.length > 0) {
       const transferCount = Number(results[0]?.transfer_count) || 0;
-      memoryCache.set(cacheKey, transferCount, CACHE_TTL);
+      await cache.set(cacheKey, transferCount, CACHE_TTL);
       return transferCount;
     }
 
     // If query fails or returns no results, try getting cached data
-    const cachedCount = memoryCache.get<number>(cacheKey);
+    const cachedCount = await cache.get<number>(cacheKey);
     if (cachedCount !== null) {
       return cachedCount;
     }
@@ -116,7 +116,7 @@ async function getTokenTransfers(address: string): Promise<number> {
   } catch (error) {
     console.error('Error querying Flipside:', error);
     // Return 0 and cache it to prevent repeated timeouts
-    memoryCache.set(cacheKey, 0, CACHE_ERROR_TTL);
+    await cache.set(cacheKey, 0, CACHE_ERROR_TTL);
     return 0;
   } finally {
     if (timeoutId) {
@@ -132,7 +132,25 @@ export async function GET(
   try {
     // Get the address from params - properly awaited in Next.js 15
     const params = await context.params;
-    const { address } = await params;
+    const { address } = params;
+
+    // Validate address format before proceeding
+    if (!address || typeof address !== 'string') {
+      return NextResponse.json(
+        { error: 'Invalid address parameter' },
+        { status: 400 }
+      );
+    }
+
+    // Validate Solana address format
+    try {
+      new PublicKey(address);
+    } catch (error) {
+      return NextResponse.json(
+        { error: 'Invalid Solana address format' },
+        { status: 400 }
+      );
+    }
 
     // Add overall API timeout
     let timeoutId: NodeJS.Timeout | undefined;
@@ -143,7 +161,7 @@ export async function GET(
     });
 
     const cacheKey = `account-stats-${address}`;
-    const cachedStats = memoryCache.get<AccountStats>(cacheKey);
+    const cachedStats = await cache.get<AccountStats>(cacheKey);
 
     // Return cached data and refresh in background if stale
     if (cachedStats) {
@@ -184,7 +202,7 @@ export async function GET(
       lastUpdated: Date.now()
     };
 
-    memoryCache.set(cacheKey, stats, CACHE_TTL);
+    await cache.set(cacheKey, stats, CACHE_TTL);
 
     return NextResponse.json(stats, {
       headers: {
@@ -217,7 +235,7 @@ async function refreshAccountStats(address: string, cacheKey: string) {
       lastUpdated: Date.now()
     };
 
-    memoryCache.set(cacheKey, stats, CACHE_TTL);
+    await cache.set(cacheKey, stats, CACHE_TTL);
   } catch (error) {
     console.error('Error refreshing account stats:', error);
   }

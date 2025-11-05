@@ -3,6 +3,8 @@ import { getConnection } from '@/lib/solana-connection-server';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
 import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/validator-registry';
+import { validatorsCache } from '@/lib/cache';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 interface GeolocationData {
   country: string;
@@ -78,12 +80,20 @@ function calculatePerformanceScore(
 
 export async function GET() {
   try {
+    // Check cache first
+    const cached = await validatorsCache.get();
+    if (cached) {
+      console.log('✅ Returning cached validators data');
+      return NextResponse.json(cached);
+    }
+    console.log('📊 Cache miss, fetching fresh validators data...');
+
     // Use OpenSVM RPC connection instead of direct connection
     const connection = await getConnection();
 
-    // Add timeout wrapper for the API calls
+    // Add timeout wrapper for the API calls (reduced for better performance)
     const timeoutPromise = new Promise<never>((_, reject) => {
-      setTimeout(() => reject(new Error('Validator data fetch timeout')), 30000);
+      setTimeout(() => reject(new Error('Validator data fetch timeout')), 10000); // Reduced from 30s to 10s
     });
 
     // Fetch real validator data from Solana RPC with timeout
@@ -124,48 +134,24 @@ export async function GET() {
       }
     });
 
-    // Skip geolocation if Qdrant is not available
+    // Use fallback geolocation data (will be populated by populate-validator-geolocation.js script)
     const uniqueIps = Array.from(ipToValidatorMap.keys());
-    let geoResults = new Map<string, GeolocationData>();
-
-    // Check if we should attempt geolocation (only if Qdrant is available)
-    const shouldAttemptGeolocation = process.env.QDRANT_URL && process.env.QDRANT_API_KEY;
-
-    if (shouldAttemptGeolocation) {
-      try {
-        const geoService = await getGeolocationService();
-        geoResults = await geoService.batchGeolocation(uniqueIps);
-        console.log(`Batch geocoded ${uniqueIps.length} unique IPs for ${sortedValidators.length} validators`);
-      } catch (error) {
-        console.warn('Geolocation service failed, using fallback data:', error);
-        // Provide fallback geolocation data
-        geoResults = new Map();
-        uniqueIps.forEach(ip => {
-          geoResults.set(ip, {
-            country: '',
-            countryCode: '',
-            region: '',
-            city: '',
-            datacenter: '',
-            isp: ''
-          });
-        });
-      }
-    } else {
-      console.log('Skipping geolocation - Qdrant not configured');
-      // Provide fallback geolocation data for all validators
-      geoResults = new Map();
-      uniqueIps.forEach(ip => {
-        geoResults.set(ip, {
-          country: '',
-          countryCode: '',
-          region: '',
-          city: '',
-          datacenter: '',
-          isp: ''
-        });
+    const geoResults = new Map<string, GeolocationData>();
+    
+    console.log(`Using fallback geolocation for ${uniqueIps.length} IPs (run populate-validator-geolocation.js to enable geolocation)`);
+    
+    // TODO: After running scripts/populate-validator-geolocation.js, this will load from Qdrant cache
+    // For now, use empty geolocation for fast responses
+    uniqueIps.forEach(ip => {
+      geoResults.set(ip, {
+        country: '',
+        countryCode: '',
+        region: '',
+        city: '',
+        datacenter: '',
+        isp: ''
       });
-    }
+    });
 
     // Batch fetch validator names for better performance
     const voteAccountList = sortedValidators.map(v => v.votePubkey);
@@ -383,7 +369,7 @@ export async function GET() {
       totalRpcNodes: rpcNodes.length
     };
 
-    return NextResponse.json({
+    const response = {
       success: true,
       data: {
         validators: validatorsWithGeo,
@@ -393,7 +379,13 @@ export async function GET() {
         health
       },
       timestamp: Date.now()
-    });
+    };
+
+    // Cache the successful response
+    await validatorsCache.set(response);
+    console.log('✅ Validators data cached successfully');
+
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error('Error fetching real validator data:', error);

@@ -1,86 +1,462 @@
-type CacheEntry<T> = {
-  value: T;
-  expiresAt: number;
-};
+import 'server-only';
+import { Redis } from 'ioredis';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
-class MemoryCache {
-  private cache: Map<string, CacheEntry<any>>;
-  private maxSize: number;
+// Singleton Redis client
+let redisClient: Redis | null = null;
 
-  constructor(maxSize: number = 10000) {
-    this.cache = new Map();
-    this.maxSize = maxSize;
+// Cache configuration
+const CACHE_CONFIG = {
+  validators: {
+    ttl: 300, // 5 minutes
+    key: 'validators:data'
+  },
+  slots: {
+    ttl: 30, // 30 seconds
+    key: 'slots:data'
+  },
+  blocks: {
+    ttl: 60, // 1 minute
+    key: 'blocks'
+  },
+  transactions: {
+    ttl: 300, // 5 minutes
+    key: 'tx'
+  },
+  aiResponses: {
+    ttl: 3600, // 1 hour
+    key: 'ai'
+  },
+  rpcResponses: {
+    ttl: 10, // 10 seconds for volatile data
+    key: 'rpc'
+  }
+} as const;
+
+// Initialize Redis connection
+export function getRedisClient(): Redis | null {
+  if (!process.env.REDIS_URL) {
+    console.log('Redis URL not configured, caching disabled');
+    return null;
   }
 
-  set<T>(key: string, value: T, ttlSeconds: number): void {
-    // Handle zero or negative TTL - don't store the value
-    if (ttlSeconds <= 0) {
+  if (!redisClient) {
+    try {
+      redisClient = new Redis(process.env.REDIS_URL, {
+        maxRetriesPerRequest: 3,
+        retryStrategy(times: number) {
+          const delay = Math.min(times * 50, 2000);
+          return delay;
+        },
+        enableOfflineQueue: false,
+        lazyConnect: true
+      });
+
+      redisClient.on('error', (err: Error) => {
+        console.error('Redis connection error:', err);
+      });
+
+      redisClient.on('connect', () => {
+        console.log('Redis connected successfully');
+      });
+    } catch (error) {
+      console.error('Failed to initialize Redis:', error);
+      return null;
+    }
+  }
+
+  return redisClient;
+}
+
+// Qdrant-backed cache for rate limiting using point storage
+let qdrantClient: QdrantClient | null = null;
+
+function getQdrantClient(): QdrantClient | null {
+  if (!process.env.QDRANT_SERVER) {
+    return null;
+  }
+
+  if (!qdrantClient) {
+    try {
+      qdrantClient = new QdrantClient({
+        url: process.env.QDRANT_SERVER,
+        apiKey: process.env.QDRANT,
+      });
+      console.log('Qdrant cache client initialized');
+    } catch (error) {
+      console.error('Failed to initialize Qdrant cache client:', error);
+      return null;
+    }
+  }
+
+  return qdrantClient;
+}
+
+// Qdrant collection name for cache
+const QDRANT_CACHE_COLLECTION = 'rate_limit_cache';
+
+class QdrantCache {
+  private fallbackCache: Map<string, { value: any; expiresAt: number }> = new Map();
+  private initialized = false;
+  private useQdrant = false;
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    const client = getQdrantClient();
+    if (!client) {
+      console.log('Qdrant not configured, using in-memory fallback for cache');
+      this.initialized = true;
       return;
     }
-    
-    const expiresAt = Date.now() + ttlSeconds * 1000;
-    
-    // If key exists, delete it first to update position (LRU)
-    if (this.cache.has(key)) {
-      this.cache.delete(key);
-    }
-    
-    this.cache.set(key, { value, expiresAt });
-    
-    // Enforce size limit with proper LRU eviction
-    while (this.cache.size > this.maxSize) {
-      // Delete the first (oldest) entry
-      const firstKey = this.cache.keys().next().value;
-      if (firstKey) {
-        this.cache.delete(firstKey);
-      } else {
-        break; // Safety break if no keys found
+
+    try {
+      // Check if collection exists
+      const collections = await client.getCollections();
+      const exists = collections.collections.some(c => c.name === QDRANT_CACHE_COLLECTION);
+
+      if (!exists) {
+        // Create collection with minimal config (1D vector since we only need payload)
+        await client.createCollection(QDRANT_CACHE_COLLECTION, {
+          vectors: {
+            size: 1,
+            distance: 'Cosine'
+          }
+        });
+        console.log(`Created Qdrant cache collection: ${QDRANT_CACHE_COLLECTION}`);
       }
+
+      this.useQdrant = true;
+      console.log('Qdrant cache initialized successfully');
+      this.initialized = true;
+    } catch (error) {
+      console.warn('Qdrant cache initialization failed, using in-memory fallback:', error);
+      this.initialized = true;
     }
   }
 
   get<T>(key: string): T | null {
-    // Clean up expired entries opportunistically
-    this.cleanupExpired();
-    
-    const entry = this.cache.get(key);
-    if (!entry) return null;
+    if (!this.useQdrant) {
+      // Fallback to in-memory
+      const entry = this.fallbackCache.get(key);
+      if (!entry) return null;
+      
+      if (Date.now() > entry.expiresAt) {
+        this.fallbackCache.delete(key);
+        return null;
+      }
+      
+      return entry.value as T;
+    }
 
+    const client = getQdrantClient();
+    if (!client) {
+      return this.getFallback<T>(key);
+    }
+
+    try {
+      // Retrieve from Qdrant asynchronously (but we'll make it sync-like with cached fallback)
+      const promise = client.retrieve(QDRANT_CACHE_COLLECTION, {
+        ids: [key],
+        with_payload: true,
+        with_vector: false
+      });
+
+      // For now, use fallback and update async
+      const fallbackResult = this.getFallback<T>(key);
+      
+      // Update fallback from Qdrant in background
+      promise.then(result => {
+        if (result.length > 0 && result[0].payload) {
+          const data = result[0].payload as { value: any; expiresAt: number };
+          if (Date.now() <= data.expiresAt) {
+            this.fallbackCache.set(key, data);
+          } else {
+            this.del(key);
+          }
+        }
+      }).catch(() => {
+        // Silently fail
+      });
+
+      return fallbackResult;
+    } catch (error) {
+      return this.getFallback<T>(key);
+    }
+  }
+
+  private getFallback<T>(key: string): T | null {
+    const entry = this.fallbackCache.get(key);
+    if (!entry) return null;
+    
     if (Date.now() > entry.expiresAt) {
-      this.cache.delete(key);
+      this.fallbackCache.delete(key);
       return null;
     }
-
-    // Move to end for LRU (delete and re-add)
-    this.cache.delete(key);
-    this.cache.set(key, entry);
-
-    return entry.value;
+    
+    return entry.value as T;
   }
 
-  private cleanupExpired(): void {
-    const now = Date.now();
-    const keysToDelete: string[] = [];
+  set(key: string, value: any, ttlSeconds: number): void {
+    const expiresAt = Date.now() + (ttlSeconds * 1000);
+    const data = { value, expiresAt };
     
-    for (const [key, entry] of this.cache.entries()) {
-      if (now > entry.expiresAt) {
-        keysToDelete.push(key);
-      }
+    // Always update fallback immediately for fast access
+    this.fallbackCache.set(key, data);
+
+    if (!this.useQdrant) {
+      return;
     }
-    
-    for (const key of keysToDelete) {
-      this.cache.delete(key);
+
+    const client = getQdrantClient();
+    if (!client) {
+      return;
     }
+
+    // Update Qdrant asynchronously
+    client.upsert(QDRANT_CACHE_COLLECTION, {
+      wait: false, // Don't wait for indexing
+      points: [
+        {
+          id: key,
+          vector: [0], // Dummy vector since we only care about payload
+          payload: data
+        }
+      ]
+    }).catch(error => {
+      // Silently fail, fallback cache already updated
+      console.error('Qdrant cache set error:', error);
+    });
   }
 
-  delete(key: string): void {
-    this.cache.delete(key);
+  del(key: string): void {
+    this.fallbackCache.delete(key);
+
+    if (!this.useQdrant) {
+      return;
+    }
+    
+    const client = getQdrantClient();
+    if (!client) {
+      return;
+    }
+
+    // Delete from Qdrant asynchronously
+    client.delete(QDRANT_CACHE_COLLECTION, {
+      wait: false,
+      points: [key]
+    }).catch(() => {
+      // Silently fail
+    });
   }
 
   clear(): void {
-    this.cache.clear();
+    this.fallbackCache.clear();
+
+    if (!this.useQdrant) {
+      return;
+    }
+    
+    const client = getQdrantClient();
+    if (!client) {
+      return;
+    }
+
+    // Clear collection asynchronously
+    client.delete(QDRANT_CACHE_COLLECTION, {
+      wait: false,
+      filter: {} // Delete all points
+    }).catch(() => {
+      // Silently fail
+    });
   }
 }
 
-const memoryCache = new MemoryCache();
-export { memoryCache, MemoryCache };
+// Export singleton instance using Qdrant with in-memory fallback
+export const memoryCache = new QdrantCache();
+
+// Initialize on module load
+if (typeof window === 'undefined') {
+  memoryCache.initialize().catch(err => {
+    console.error('Failed to initialize Qdrant cache:', err);
+  });
+}
+
+
+// Generic cache operations
+export const cache = {
+  async get<T>(key: string): Promise<T | null> {
+    const client = getRedisClient();
+    if (!client) return null;
+
+    try {
+      const data = await client.get(key);
+      if (!data) return null;
+      return JSON.parse(data) as T;
+    } catch (error) {
+      console.error(`Cache get error for key ${key}:`, error);
+      return null;
+    }
+  },
+
+  async set(key: string, value: any, ttlSeconds?: number): Promise<boolean> {
+    const client = getRedisClient();
+    if (!client) return false;
+
+    try {
+      const serialized = JSON.stringify(value);
+      if (ttlSeconds) {
+        await client.setex(key, ttlSeconds, serialized);
+      } else {
+        await client.set(key, serialized);
+      }
+      return true;
+    } catch (error) {
+      console.error(`Cache set error for key ${key}:`, error);
+      return false;
+    }
+  },
+
+  async del(key: string): Promise<boolean> {
+    const client = getRedisClient();
+    if (!client) return false;
+
+    try {
+      await client.del(key);
+      return true;
+    } catch (error) {
+      console.error(`Cache delete error for key ${key}:`, error);
+      return false;
+    }
+  },
+
+  async flush(): Promise<boolean> {
+    const client = getRedisClient();
+    if (!client) return false;
+
+    try {
+      await client.flushdb();
+      return true;
+    } catch (error) {
+      console.error('Cache flush error:', error);
+      return false;
+    }
+  }
+};
+
+// Specialized cache functions for different data types
+export const validatorsCache = {
+  async get() {
+    return cache.get(`${CACHE_CONFIG.validators.key}`);
+  },
+  
+  async set(data: any) {
+    return cache.set(
+      `${CACHE_CONFIG.validators.key}`,
+      data,
+      CACHE_CONFIG.validators.ttl
+    );
+  },
+  
+  async invalidate() {
+    return cache.del(`${CACHE_CONFIG.validators.key}`);
+  }
+};
+
+export const slotsCache = {
+  async get(slot?: number) {
+    const key = slot ? `${CACHE_CONFIG.slots.key}:${slot}` : CACHE_CONFIG.slots.key;
+    return cache.get(key);
+  },
+  
+  async set(data: any, slot?: number) {
+    const key = slot ? `${CACHE_CONFIG.slots.key}:${slot}` : CACHE_CONFIG.slots.key;
+    return cache.set(key, data, CACHE_CONFIG.slots.ttl);
+  },
+  
+  async invalidate(slot?: number) {
+    const key = slot ? `${CACHE_CONFIG.slots.key}:${slot}` : CACHE_CONFIG.slots.key;
+    return cache.del(key);
+  }
+};
+
+export const blocksCache = {
+  async get(blockNumber: number) {
+    return cache.get(`${CACHE_CONFIG.blocks.key}:${blockNumber}`);
+  },
+  
+  async set(blockNumber: number, data: any) {
+    return cache.set(
+      `${CACHE_CONFIG.blocks.key}:${blockNumber}`,
+      data,
+      CACHE_CONFIG.blocks.ttl
+    );
+  }
+};
+
+export const transactionCache = {
+  async get(signature: string) {
+    return cache.get(`${CACHE_CONFIG.transactions.key}:${signature}`);
+  },
+  
+  async set(signature: string, data: any) {
+    return cache.set(
+      `${CACHE_CONFIG.transactions.key}:${signature}`,
+      data,
+      CACHE_CONFIG.transactions.ttl
+    );
+  }
+};
+
+export const aiCache = {
+  async get(questionHash: string) {
+    return cache.get(`${CACHE_CONFIG.aiResponses.key}:${questionHash}`);
+  },
+  
+  async set(questionHash: string, response: any) {
+    return cache.set(
+      `${CACHE_CONFIG.aiResponses.key}:${questionHash}`,
+      response,
+      CACHE_CONFIG.aiResponses.ttl
+    );
+  }
+};
+
+// Helper to create cache key from object
+export function createCacheKey(prefix: string, params: Record<string, any>): string {
+  const sortedParams = Object.keys(params).sort().reduce((acc, key) => {
+    if (params[key] !== undefined && params[key] !== null) {
+      acc[key] = params[key];
+    }
+    return acc;
+  }, {} as Record<string, any>);
+  
+  return `${prefix}:${JSON.stringify(sortedParams)}`;
+}
+
+// Decorator for caching async functions
+export function withCache<T extends (...args: any[]) => Promise<any>>(
+  fn: T,
+  keyPrefix: string,
+  ttlSeconds: number
+): T {
+  return (async (...args: any[]) => {
+    const cacheKey = createCacheKey(keyPrefix, { args });
+    
+    // Try to get from cache
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      console.log(`Cache hit for ${keyPrefix}`);
+      return cached;
+    }
+    
+    // If not in cache, execute function
+    console.log(`Cache miss for ${keyPrefix}`);
+    const result = await fn(...args);
+    
+    // Store in cache
+    await cache.set(cacheKey, result, ttlSeconds);
+    
+    return result;
+  }) as T;
+}

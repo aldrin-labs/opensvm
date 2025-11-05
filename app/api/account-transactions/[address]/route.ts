@@ -83,7 +83,7 @@ export async function GET(
   } catch { }
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout for date range queries
 
   try {
     // Extract the address parameter
@@ -95,6 +95,53 @@ export async function GET(
     const until = url.searchParams.get('until') || undefined;
     const classify = url.searchParams.get('classify') === 'true';
     const includeInflow = url.searchParams.get('includeInflow') === 'true';
+    
+    // New date range parameters
+    const startDateParam = url.searchParams.get('startDate');
+    const endDateParam = url.searchParams.get('endDate');
+    
+    // Parse date parameters - support both ISO strings and Unix timestamps
+    let startDate: Date | undefined;
+    let endDate: Date | undefined;
+    
+    if (startDateParam) {
+      // Check if it's a Unix timestamp (all digits)
+      if (/^\d+$/.test(startDateParam)) {
+        startDate = new Date(parseInt(startDateParam));
+      } else {
+        startDate = new Date(startDateParam);
+      }
+      
+      if (isNaN(startDate.getTime())) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid startDate format. Use ISO string or Unix timestamp.' }),
+          { status: 400, headers: new Headers(defaultHeaders) }
+        );
+      }
+    }
+    
+    if (endDateParam) {
+      if (/^\d+$/.test(endDateParam)) {
+        endDate = new Date(parseInt(endDateParam));
+      } else {
+        endDate = new Date(endDateParam);
+      }
+      
+      if (isNaN(endDate.getTime())) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid endDate format. Use ISO string or Unix timestamp.' }),
+          { status: 400, headers: new Headers(defaultHeaders) }
+        );
+      }
+    }
+    
+    // Validate date range
+    if (startDate && endDate && startDate > endDate) {
+      return new Response(
+        JSON.stringify({ error: 'startDate must be before endDate' }),
+        { status: 400, headers: new Headers(defaultHeaders) }
+      );
+    }
 
     if (!address) {
       return new Response(
@@ -121,12 +168,100 @@ export async function GET(
     // Get connection from pool
     const connection = await getConnection();
 
-    // Fetch signatures for the account
-    let signatures = await connection.getSignaturesForAddress(new PublicKey(address), {
-      limit,
-      before,
-      until
-    }, 'confirmed');
+    // Determine if we need to fetch based on date range
+    const needsDateRangeFiltering = startDate || endDate;
+    let signatures: Awaited<ReturnType<typeof connection.getSignaturesForAddress>> = [];
+    let fetchedCount = 0;
+    let rpcCallCount = 0;
+    const maxFetchLimit = 1000; // Maximum transactions to fetch to prevent excessive RPC calls
+    const batchSize = needsDateRangeFiltering ? 100 : limit; // Fetch in batches for date filtering
+    
+    // If date filtering is needed, we need to fetch transactions until we cover the date range
+    if (needsDateRangeFiltering) {
+      let allSignatures: typeof signatures = [];
+      let lastSignature: string | undefined = before;
+      let shouldContinue = true;
+      let oldestTimestamp: number | undefined;
+      let newestTimestamp: number | undefined;
+      
+      while (shouldContinue && fetchedCount < maxFetchLimit) {
+        // Fetch a batch of signatures
+        const batch = await connection.getSignaturesForAddress(
+          new PublicKey(address),
+          {
+            limit: Math.min(batchSize, maxFetchLimit - fetchedCount),
+            before: lastSignature,
+            until
+          },
+          'confirmed'
+        );
+        
+        rpcCallCount++;
+        
+        if (batch.length === 0) {
+          // No more transactions
+          shouldContinue = false;
+          break;
+        }
+        
+        // Track timestamps for metadata
+        if (batch[0]?.blockTime) {
+          const timestamp = batch[0].blockTime * 1000;
+          if (!newestTimestamp || timestamp > newestTimestamp) {
+            newestTimestamp = timestamp;
+          }
+        }
+        
+        const lastBatch = batch[batch.length - 1];
+        if (lastBatch?.blockTime) {
+          oldestTimestamp = lastBatch.blockTime * 1000;
+        }
+        
+        // Add to our collection
+        allSignatures.push(...batch);
+        fetchedCount += batch.length;
+        
+        // Check if we've fetched enough based on date range
+        if (startDate && oldestTimestamp && oldestTimestamp < startDate.getTime()) {
+          // We've gone past our start date
+          shouldContinue = false;
+        } else if (batch.length < batchSize) {
+          // No more transactions available
+          shouldContinue = false;
+        } else {
+          // Continue fetching
+          lastSignature = batch[batch.length - 1].signature;
+        }
+      }
+      
+      // Filter signatures by date range
+      signatures = allSignatures.filter(sig => {
+        if (!sig.blockTime) return false;
+        const timestamp = sig.blockTime * 1000;
+        
+        if (startDate && timestamp < startDate.getTime()) return false;
+        if (endDate && timestamp > endDate.getTime()) return false;
+        
+        return true;
+      });
+      
+      // Apply limit after filtering
+      if (limit && signatures.length > limit) {
+        signatures = signatures.slice(0, limit);
+      }
+    } else {
+      // Standard fetch without date filtering
+      signatures = await connection.getSignaturesForAddress(
+        new PublicKey(address),
+        {
+          limit,
+          before,
+          until
+        },
+        'confirmed'
+      );
+      rpcCallCount = 1;
+    }
 
     // If includeInflow is true, also fetch inbound transactions
     if (includeInflow) {
@@ -146,7 +281,7 @@ export async function GET(
 
     // Fetch full transaction details
     // Use multiple connections for parallel processing
-    const fetchTransactionDetails = async (signature: string, index: number) => {
+    const fetchTransactionDetails = async (signature: string, index: number): Promise<any> => {
       // Get a separate connection for each transaction to maximize parallelism
       const txConnection = await getConnection();
 
@@ -277,15 +412,42 @@ export async function GET(
     );
 
     clearTimeout(timeoutId);
+    
+    // Build response with date range metadata if applicable
+    const response: any = {
+      address,
+      includeInflow,
+      classified: classify,
+      transactions: transactionDetails,
+      rpcCount: rpcCallCount || 1
+    };
+    
+    // Add date range metadata if date filtering was used
+    if (needsDateRangeFiltering) {
+      const actualTransactions = transactionDetails.filter((tx: any) => tx.timestamp);
+      const timestamps = actualTransactions.map((tx: any) => tx.timestamp as number).sort((a: number, b: number) => a - b);
+      
+      response.dateRange = {
+        requested: {
+          start: startDate?.toISOString() || null,
+          end: endDate?.toISOString() || null
+        },
+        actual: timestamps.length > 0 ? {
+          start: new Date(timestamps[0]).toISOString(),
+          end: new Date(timestamps[timestamps.length - 1]).toISOString(),
+          transactionCount: actualTransactions.length
+        } : {
+          start: null,
+          end: null,
+          transactionCount: 0
+        },
+        totalFetched: fetchedCount,
+        hasMore: fetchedCount >= maxFetchLimit
+      };
+    }
 
     return new Response(
-      JSON.stringify({
-        address,
-        includeInflow,
-        classified: classify,
-        transactions: transactionDetails,
-        rpcCount: 1 // Using single connection for now
-      }),
+      JSON.stringify(response),
       {
         status: 200,
         headers: new Headers(defaultHeaders)

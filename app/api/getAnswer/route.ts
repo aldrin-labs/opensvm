@@ -1,4 +1,4 @@
-import Together from "together-ai";
+import { OpenRouter } from '@openrouter/sdk';
 import { GenerativeCapability } from "../../../lib/ai/capabilities/generative";
 import getConnection from "../../../lib/solana-connection-server";
 import { ToolRegistry, ToolContext } from "./tools";
@@ -9,17 +9,23 @@ import { createHash } from 'crypto';
 * This API endpoint uses a modular tool system to handle common Solana queries
 * (network TPS/load, current block height & epoch, wallet balance, transaction analysis)
 * by calling the appropriate tools first. If no tool handles the query,
-* it falls back to the LLM (Together) pipeline.
+* it falls back to the LLM (OpenRouter) pipeline.
 *
 * This ensures "tools" (RPC calls) are executed on the server prior to
 * returning the response to the user.
+*
+* TOKEN CONFIGURATION:
+* OpenRouter provides access to Grok 4 Fast with massive capabilities:
+* - 2,000,000 tokens context window (input + output combined)
+* - 32,000 tokens maximum output (32K)
+* - Optimized for speed with ultra-low latency responses
 */
 
-// ✅ PHASE 2: LRU Query Cache Implementation
+// ✅ PHASE 2: LRU Query Cache Implementation - MAXIMIZED
 class QueryCache {
   private cache: Map<string, { response: string; timestamp: number; status: number }> = new Map();
-  private readonly TTL_MS = 5 * 60 * 1000; // 5 minutes
-  private readonly MAX_ENTRIES = 100;
+  private readonly TTL_MS = 60 * 60 * 1000; // 60 minutes (1 hour) - MAXIMIZED
+  private readonly MAX_ENTRIES = 1000; // 10x increase - MAXIMIZED
 
   private getCacheKey(question: string, ownPlan: boolean, systemPrompt: string | null): string {
     const hash = createHash('sha256')
@@ -34,7 +40,9 @@ class QueryCache {
     // Evict oldest entry if at capacity
     if (this.cache.size >= this.MAX_ENTRIES) {
       const oldestKey = this.cache.keys().next().value;
-      this.cache.delete(oldestKey);
+      if (oldestKey) {
+        this.cache.delete(oldestKey);
+      }
     }
 
     this.cache.set(key, { response, timestamp: Date.now(), status });
@@ -69,11 +77,12 @@ class QueryCache {
 
 const queryCache = new QueryCache();
 
-// ✅ PHASE 3: Request Queue for limiting concurrent API calls
+// ✅ PHASE 3: Request Queue - MAXIMIZED for parallel processing
 class RequestQueue {
   private queue: Array<() => Promise<any>> = [];
   private activeRequests: number = 0;
-  private readonly MAX_CONCURRENT = 5;
+  private readonly MAX_CONCURRENT = 10; // 5x increase for parallel API calls - MAXIMIZED
+
 
   async add<T>(fn: () => Promise<T>): Promise<T> {
     return new Promise((resolve, reject) => {
@@ -138,21 +147,21 @@ class QueryComplexityAnalyzer {
       }
     }
 
-    // Determine timeout based on complexity score
-    let timeoutMs = 60000; // Base 60 seconds
+    // Determine timeout based on complexity score - MAXIMIZED for reliability
+    let timeoutMs = 180000; // Base 180 seconds (3 minutes) - MAXIMIZED
     let description = 'simple';
 
     if (complexityScore < 2) {
-      timeoutMs = 45000;
+      timeoutMs = 120000; // 120s (2 minutes) - MAXIMIZED
       description = 'simple';
     } else if (complexityScore < 4) {
-      timeoutMs = 60000;
+      timeoutMs = 180000; // 180s (3 minutes) - MAXIMIZED
       description = 'moderate';
     } else if (complexityScore < 7) {
-      timeoutMs = 80000;
+      timeoutMs = 240000; // 240s (4 minutes) - MAXIMIZED
       description = 'complex';
     } else {
-      timeoutMs = 100000;
+      timeoutMs = 300000; // 300s (5 minutes) - MAXIMIZED
       description = 'very complex';
     }
 
@@ -166,12 +175,23 @@ class QueryComplexityAnalyzer {
 
 const complexityAnalyzer = new QueryComplexityAnalyzer();
 
-// ✅ PHASE 5: Intelligent Query Truncation for Very Long Questions
+// ✅ PHASE 5: Query Truncation - MAXIMIZED for longest queries
 class QueryTruncator {
-  private readonly MAX_LENGTH = 5000;
-  private readonly TARGET_LENGTH = 2000;
+  private readonly MAX_LENGTH = 100000; // MAXIMIZED to 100K characters
+  private readonly TARGET_LENGTH = 100000; // MAXIMIZED to 100K characters
 
   truncateIfNeeded(question: string): { truncated: boolean; question: string; originalLength: number } {
+    // Skip truncation for OVSM/planning queries - they need full context
+    const isPlanningQuery = question.toLowerCase().includes('ovsm') ||
+                           question.toLowerCase().includes('execution plan') ||
+                           question.toLowerCase().includes('create an ovsm') ||
+                           question.toLowerCase().includes('previous ovsm plan');
+
+    if (isPlanningQuery) {
+      console.log(`📋 Planning query detected (${question.length} chars) - skipping truncation`);
+      return { truncated: false, question, originalLength: question.length };
+    }
+
     if (question.length <= this.MAX_LENGTH) {
       return { truncated: false, question, originalLength: question.length };
     }
@@ -416,17 +436,20 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       const requestStart = Date.now();
       StabilityMonitor.recordRequest();
 
-      const HAS_TOGETHER = !!process.env.TOGETHER_API_KEY;
-      if (!HAS_TOGETHER) {
-        console.warn("TOGETHER_API_KEY not set. Proceeding without LLM; tools-only mode.");
+      const HAS_OPENROUTER = !!process.env.OPENROUTER_API_KEY;
+      if (!HAS_OPENROUTER) {
+        return new Response('OPENROUTER_API_KEY not configured. Please configure OPENROUTER_API_KEY.', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
+        });
       }
 
-      // Overall request timeout of 120 seconds (3x increase, leave 15 seconds buffer for cleanup)
+      // Overall request timeout - MAXIMIZED for longest operations
       const requestTimeout = new Promise<never>((_, reject) => {
         setTimeout(() => {
           StabilityMonitor.recordTimeout();
-          reject(new Error('Request timeout after 120 seconds'));
-        }, 120000);
+          reject(new Error('Request timeout after 600 seconds (10 minutes)'));
+        }, 600000); // 600 seconds (10 minutes) - MAXIMIZED
       });
 
       try {
@@ -501,24 +524,40 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             qLower: String(question || "").toLowerCase()
           };
 
-          // Try to execute relevant tools first
+          // Try to execute relevant tools first (only when NOT in plain text mode)
           const toolRegistry = new ToolRegistry();
           const toolResult = await toolRegistry.executeTools(toolContext);
 
           if (toolResult.handled && toolResult.response) {
             const processingTime = Date.now() - requestStart;
             console.log(`✅ Tool handling successful in ${processingTime}ms`);
+            
+            // Convert Response body to text if it's a stream
+            let responseBody: string;
+            if (toolResult.response.body) {
+              try {
+                // Clone the response to avoid consuming the stream
+                const clonedResponse = toolResult.response.clone();
+                responseBody = await clonedResponse.text();
+              } catch (e) {
+                // Fallback if body can't be read
+                responseBody = String(toolResult.response.body || '');
+              }
+            } else {
+              responseBody = '';
+            }
+            
             // ✅ PHASE 2: Cache the tool response
-            queryCache.set(question, ownPlan, customSystemPrompt || null, toolResult.response.body, 200);
-            return new Response(toolResult.response.body, {
+            queryCache.set(question, ownPlan, customSystemPrompt || null, responseBody, 200);
+            
+            return new Response(responseBody, {
               status: 200,
               headers: {
                 "Content-Type": "text/plain",
                 "Cache-Control": "no-cache",
                 "X-Processing-Time": `${processingTime}ms`,
                 "X-Cache": "MISS",
-                "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' :
-    'DEGRADED'
+                "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
               },
             });
           }
@@ -601,16 +640,35 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       console.log(`🎯 Using ${isCustomPrompt ? 'CUSTOM' : 'DEFAULT'} system prompt (${systemPromptToUse.length} chars)`);
 
       try {
-        console.log(`📡 Calling Together AI API`);
+        console.log(`📡 Calling OpenRouter API`);
         console.log(`⏱️  Starting LLM request at ${new Date().toISOString()}`);
 
-        const apiKey = process.env.TOGETHER_API_KEY;
+        const apiKey = process.env.OPENROUTER_API_KEY;
+        console.log(`🔑 API Key check (ownPlan): ${apiKey ? `Present (${apiKey.substring(0, 10)}...)` : 'MISSING'}`);
         if (!apiKey) {
-          throw new Error('TOGETHER_API_KEY not configured');
+          throw new Error('OPENROUTER_API_KEY not configured');
         }
 
-        const requestBody = {
-          model: "openai/gpt-oss-120b",
+        // Initialize OpenRouter SDK
+        const openRouter = new OpenRouter({
+          apiKey: apiKey,
+          defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+          }
+        } as any);
+
+        // Choose model based on needs - using Grok 4 Fast for massive context and speed
+        const model = "x-ai/grok-4-fast"; // Supports 2M context window, 32K output
+        
+        console.log(`📤 Sending request to OpenRouter (${model})...`);
+
+        const llmTimeout = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error('Planning timeout after 300 seconds')), 300000); // 5 minutes - MAXIMIZED
+        });
+
+        const llmPromise = openRouter.chat.send({
+          model: model,
           messages: [
             {
               role: "system",
@@ -618,38 +676,24 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          stream: false,
-          max_tokens: 2000
-        };
-
-        console.log(`📤 Sending request to Together AI...`);
-
-        const llmTimeout = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error('Planning timeout after 60 seconds')), 60000);
-        });
-
-        const llmPromise = fetch('https://api.together.xyz/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(requestBody)
+          maxTokens: 32000,  // ✅ 32K tokens for Grok 4 Fast (max output)
+          stream: false
         });
 
         console.log(`⏳ Waiting for LLM response...`);
-        const response = await Promise.race([llmPromise, llmTimeout]);
-        console.log(`✅ Got response, status: ${response.status}`);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(`Together AI API error: ${response.status} - ${errorText}`);
+        const answer = await Promise.race([llmPromise, llmTimeout]);
+        console.log(`✅ LLM response received at ${new Date().toISOString()}`);
+        
+        // Check if response was truncated
+        const finishReason = answer?.choices?.[0]?.finishReason;
+        if (finishReason === 'length') {
+          console.warn(`⚠️  Response truncated due to max_tokens limit (finish_reason: length)`);
         }
 
-        const answer = await response.json();
-        console.log(`✅ LLM response parsed at ${new Date().toISOString()}`);
-        let plan = answer.choices?.[0]?.message?.content || "Failed to generate plan";
-
+        let plan = typeof answer?.choices?.[0]?.message?.content === 'string' 
+          ? answer.choices[0].message.content 
+          : "Failed to generate plan";
+        
         const processingTime = Date.now() - requestStart;
         console.log(`✅ Plan generated in ${processingTime}ms using ${isCustomPrompt ? 'custom' : 'default'} prompt`);
 
@@ -752,15 +796,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
 
     async function handleLLMFallback(question: string, requestStart: number, partialData?: any, ownPlan?: boolean, customSystemPrompt?: string | null): Promise<Response> {
 
-      // Fallback: use LLM (Together) to craft an answer if no tool handled it
-      const apiKey = process.env.TOGETHER_API_KEY;
+      // Fallback: use LLM (OpenRouter) to craft an answer if no tool handled it
+      const apiKey = process.env.OPENROUTER_API_KEY;
+      console.log(`🔑 API Key check: ${apiKey ? `Present (${apiKey.substring(0, 10)}...)` : 'MISSING'}`);
       if (!apiKey) {
-        return new Response('LLM service not configured. Please configure TOGETHER_API_KEY.', {
+        return new Response('LLM service not configured. Please configure OPENROUTER_API_KEY.', {
           status: 503,
           headers: { 'Content-Type': 'text/plain' }
         });
       }
-      const together = new Together({ apiKey });
 
       const solanaRpcKnowledge = await getSolanaRpcKnowledge();
 
@@ -921,24 +965,30 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // Adjust max tokens based on query type and complexity (aggressive optimization)
-        let maxTokens = 2000;
-        if (userVibe.isCasual && !userVibe.isTechnical) {
-          maxTokens = 500; // Casual queries need less tokens
-        } else if (complexity.complexity < 3) {
-          maxTokens = 1000; // Simple technical queries
-        } else if (complexity.complexity < 5) {
-          maxTokens = 1500; // Moderate complexity
-        }
-        // Default 2000 for complex queries
+        // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Using Grok 4 Fast limits
+        // The x-ai/grok-4-fast model supports 2M context window and up to 32K output tokens
+        let maxTokens = 32000;  // 32K tokens - maximum supported by Grok 4 Fast
+        
+        // Log token allocation for monitoring
+        console.log(`📝 Token allocation: ${maxTokens} tokens (Grok 4 Fast maximum for reliable output)`);
+
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('LLM call timeout')), complexity.timeoutMs);
         });
 
-        const llmPromise = together.chat.completions.create({
-          model: "openai/gpt-oss-120b",
+        // Initialize OpenRouter SDK
+        const openRouter = new OpenRouter({
+          apiKey: apiKey,
+          defaultHeaders: {
+            'HTTP-Referer': 'https://opensvm.com',
+            'X-Title': 'OpenSVM'
+          }
+        } as any);
+
+        const llmPromise = openRouter.chat.send({
+          model: "x-ai/grok-4-fast",  // ✅ Grok 4 Fast for massive 2M context window
           messages: [
             {
               role: "system",
@@ -946,8 +996,10 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          stream: false,
-          max_tokens: maxTokens,
+          maxTokens: maxTokens,
+          temperature: 0.7,  // Balanced creativity
+          topP: 0.9,  // Slight focus on probable tokens
+          stream: false
         });
 
         // ✅ PHASE 3: Queue the LLM request to limit concurrent API calls
@@ -955,7 +1007,17 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         let answer = await requestQueue.add(async () => {
           return Promise.race([llmPromise, llmTimeout]);
         });
-        let parsedAnswer: any = answer.choices?.[0]?.message?.content || "Failed to get answer";
+        
+        // Check if response was truncated
+        const finishReason = answer?.choices?.[0]?.finishReason;
+        if (finishReason === 'length') {
+          console.warn(`⚠️  Response truncated due to max_tokens limit (finish_reason: length)`);
+          console.warn(`💡 Consider: 1) Reducing prompt length, 2) Breaking query into smaller parts, or 3) Requesting continuation`);
+        }
+        
+        let parsedAnswer: any = typeof answer?.choices?.[0]?.message?.content === 'string'
+          ? answer.choices[0].message.content
+          : "Failed to get answer";
 
         // Post-process the response to handle plan objects and improve formatting
         const generativeCapability = new GenerativeCapability();

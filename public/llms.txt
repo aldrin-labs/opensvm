@@ -1,0 +1,669 @@
+# OpenSVM - AI-Powered Solana Blockchain Explorer
+
+> **For AI Agents & LLMs**: This file provides a comprehensive overview of the OpenSVM platform, its architecture, and API. For detailed API specifications, see `/llms-api.txt`.
+
+## Project Overview
+
+**OpenSVM** is a next-generation blockchain explorer for Solana (SVM - Solana Virtual Machine) featuring:
+- 🔍 Advanced transaction visualization and analysis
+- 🤖 AI-powered blockchain data interpretation
+- 📊 Real-time network analytics and monitoring
+- 💼 DeFi, NFT, and token tracking
+- 🔗 Wallet path finding and relationship mapping
+- ⚡ High-performance data access with caching
+
+**Live Site**: https://opensvm.com  
+**Repository**: https://github.com/aldrin-labs/opensvm  
+**Tech Stack**: Next.js 15, React, TypeScript, Tailwind CSS, Solana Web3.js, D3.js, Qdrant, Together AI
+
+---
+
+## Quick Start for AI Agents
+
+### Key Resources
+- **Full API Documentation**: `/llms-api.txt` (85+ endpoints)
+- **Architecture Docs**: `/docs/architecture/README.md`
+- **API Reference (Interactive)**: https://opensvm.com/swagger
+- **OpenAPI Spec**: https://opensvm.com/api/docs/openapi
+
+### Common Tasks
+
+**1. Analyze a Transaction**
+```http
+GET https://opensvm.com/api/transaction/{signature}
+POST https://opensvm.com/api/analyze-transaction
+Body: { "signature": "5j7s..." }
+```
+
+**2. Search Blockchain Data**
+```http
+GET https://opensvm.com/api/search?q=wallet_address
+GET https://opensvm.com/api/search-suggestions?q=partial_query
+```
+
+**3. Get Account Information**
+```http
+GET https://opensvm.com/api/account-stats/[address]
+GET https://opensvm.com/api/account-portfolio/[address]
+GET https://opensvm.com/api/account-transactions/[address]
+```
+
+**4. AI-Powered Analysis**
+```http
+POST https://opensvm.com/api/ai-response
+Body: { "query": "Explain this transaction", "context": {...} }
+```
+
+**5. Get Token Data**
+```http
+GET https://opensvm.com/api/token-metadata?mint={mint_address}
+GET https://opensvm.com/api/token-stats?mint={mint_address}
+```
+
+---
+
+## Architecture Overview
+
+### Frontend (Client Components)
+```
+/app/                       # Next.js 15 App Router pages
+  /account/[address]/      # Account explorer
+  /tx/[signature]/         # Transaction viewer
+  /block/[slot]/           # Block explorer
+  /token/[mint]/           # Token details
+  /program/[address]/      # Program inspector
+  /defi/                   # DeFi analytics
+  /analytics/              # Network analytics
+  /validators/             # Validator tracking
+
+/components/               # React components
+  /transaction-graph/      # WebGL transaction visualization
+  /ai/                     # AI chat sidebar & features
+  /solana/                 # Blockchain data displays
+  /ui/                     # Reusable UI components
+
+/lib/                      # Shared libraries
+  /ai/                     # AI/ML models & services
+  /solana-connection.ts    # Blockchain connectivity
+  /settings.ts             # User preferences (client-only)
+  /design-system/          # Theme & styling system
+```
+
+### Backend (API Routes)
+```
+/app/api/
+  /transaction/            # Transaction data & analysis
+  /account-*/             # Account queries
+  /block/                 # Block data
+  /search/                # Universal search
+  /analytics/             # Network analytics
+  /ai-response/           # AI analysis
+  /chat/                  # Conversational AI
+  /token-*/               # Token & NFT data
+  /program-*/             # Program registry
+  /validator/             # Validator info
+  /opensvm/               # Platform services
+  /v1/models/             # LLM proxy endpoints
+```
+
+### Key Technologies
+
+**Frontend Framework**
+- Next.js 15 (React 19, App Router, Server Components)
+- TypeScript for type safety
+- Tailwind CSS for styling
+- Framer Motion for animations
+
+**Data Visualization**
+- D3.js - Network graphs, charts
+- Cytoscape.js - Transaction flow visualization
+- Three.js - 3D WebGL rendering
+- Chart.js - Statistical charts
+
+**Blockchain Integration**
+- @solana/web3.js - Solana client library
+- @solana/spl-token - Token program interface
+- Custom RPC pooling & caching layer
+- Transaction parsing & instruction decoding
+
+**AI & ML**
+- Together AI - LLM provider
+- Qdrant - Vector database for semantic search
+- Custom prompt engineering for blockchain analysis
+- Chat persistence & context management
+
+**State Management**
+- XState - Complex workflow orchestration
+- React Context - Global state
+- Zustand - Lightweight stores
+
+**Performance**
+- Edge Runtime for API routes
+- Incremental Static Regeneration (ISR)
+- Service Worker caching
+- Redis-like in-memory caching
+
+---
+
+## API Categories
+
+### 1. Transaction APIs
+- Transaction details & parsing
+- AI-powered transaction analysis
+- Transaction metrics & filtering
+- Related transaction discovery
+- Enhanced transaction data with decoded instructions
+
+### 2. Account APIs
+- Account statistics & balances
+- Portfolio analysis (token holdings)
+- Transaction history
+- Transfer tracking
+- Account type detection (wallet, program, token account)
+
+### 3. Block & Network APIs
+- Block data & statistics
+- Slot information
+- Network performance metrics
+- Real-time TPS & confirmation times
+- Validator performance
+
+### 4. Search & Discovery
+- Universal search (accounts, transactions, blocks, tokens)
+- Auto-complete suggestions
+- Filtered search with parameters
+- Program discovery
+
+### 5. Token & NFT APIs
+- Token metadata & statistics
+- NFT collection data
+- Token holder tracking
+- Price & market data integration
+- New token discovery
+
+### 6. AI & Analytics
+- Natural language transaction explanations
+- Conversational AI chat
+- Similar transaction finding
+- Anomaly detection
+- Pattern recognition
+
+### 7. DeFi Analytics
+- DEX aggregated data
+- Yield analytics
+- Staking information
+- Cross-chain metrics
+- Trending validators
+
+### 8. Program APIs
+- Program metadata registry
+- Program account enumeration
+- Instruction lookup & decoding
+- Verified program database
+
+### 9. User & Social Features
+- User profiles & history
+- Following/followers
+- Activity feeds
+- Share & referral system
+- Chat history persistence
+
+### 10. Infrastructure
+- RPC proxy with load balancing
+- Health checks & monitoring
+- Error tracking & logging
+- Rate limiting
+- Caching strategies
+
+---
+
+## Authentication
+
+### Public Endpoints (No Auth)
+Most read-only endpoints are public:
+- Transaction/block/account lookups
+- Search functionality
+- Token metadata
+- Analytics data
+
+### Authenticated Endpoints
+
+**JWT Bearer Token** (for platform services):
+```http
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+```
+
+**Wallet Signature** (for user features):
+```typescript
+// Client-side: Sign message with Phantom/Solflare
+const message = `Sign in to OpenSVM\nTimestamp: ${Date.now()}`;
+const signature = await wallet.signMessage(message);
+
+// Server-side verification
+POST /api/auth/verify
+Body: { publicKey, signature, message }
+```
+
+**Session Cookie** (auto-created):
+```
+Cookie: svmai_session=<encrypted_session_data>
+```
+
+---
+
+## Rate Limiting
+
+**Default Limits**:
+- Public endpoints: 60 requests/minute per IP
+- AI endpoints: 10 requests/minute per user
+- Search: 30 requests/minute per IP
+- Analytics: 20 requests/minute per IP
+
+**Response Headers**:
+```http
+X-RateLimit-Limit: 60
+X-RateLimit-Remaining: 45
+X-RateLimit-Reset: 1698765432
+```
+
+---
+
+## Real-Time Features
+
+### Server-Sent Events (SSE)
+```http
+GET /api/sse-feed
+GET /api/sse-alerts
+GET /api/sse-events/feed
+```
+
+**Usage**:
+```javascript
+const eventSource = new EventSource('/api/sse-feed');
+eventSource.onmessage = (event) => {
+  const data = JSON.parse(event.data);
+  // Handle real-time updates
+};
+```
+
+### WebSocket (Planned)
+Future enhancement for bi-directional real-time communication.
+
+---
+
+## Data Flow Patterns
+
+### 1. Client-Side Data Fetching
+```typescript
+// React component with client-side fetching
+'use client';
+import { useState, useEffect } from 'react';
+
+export function TransactionView({ signature }) {
+  const [data, setData] = useState(null);
+  
+  useEffect(() => {
+    fetch(`/api/transaction/${signature}`)
+      .then(res => res.json())
+      .then(setData);
+  }, [signature]);
+  
+  return <div>{/* Render data */}</div>;
+}
+```
+
+### 2. Server Component with RSC
+```typescript
+// Server component with direct data access
+export default async function TransactionPage({ params }) {
+  const { signature } = await params;
+  const transaction = await getTransaction(signature);
+  
+  return <TransactionDetails data={transaction} />;
+}
+```
+
+### 3. API Route with Caching
+```typescript
+export async function GET(request: NextRequest) {
+  const cacheKey = generateCacheKey(request);
+  const cached = await cache.get(cacheKey);
+  
+  if (cached) return NextResponse.json(cached);
+  
+  const data = await fetchFromBlockchain();
+  await cache.set(cacheKey, data, { ttl: 300 });
+  
+  return NextResponse.json(data);
+}
+```
+
+---
+
+## Common Patterns & Best Practices
+
+### Client vs Server Components
+
+**Use Client Components (`'use client'`) when**:
+- Using React hooks (useState, useEffect, etc.)
+- Accessing browser APIs (window, document)
+- Using event handlers (onClick, onChange)
+- Importing libraries that require browser environment
+
+**Use Server Components (default) when**:
+- Fetching data on the server
+- Accessing backend resources directly
+- Reducing JavaScript bundle size
+- Improving SEO and initial load performance
+
+### Error Handling
+```typescript
+try {
+  const response = await fetch('/api/endpoint');
+  
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+  }
+  
+  const data = await response.json();
+  // Process data
+  
+} catch (error) {
+  console.error('API Error:', error);
+  // Handle error gracefully
+}
+```
+
+### Type Safety
+```typescript
+// Define response types
+interface TransactionResponse {
+  success: boolean;
+  data: {
+    signature: string;
+    blockTime: number;
+    slot: number;
+    fee: number;
+    status: 'success' | 'failed';
+    // ...
+  };
+}
+
+// Use typed responses
+const response = await fetch('/api/transaction/...');
+const json: TransactionResponse = await response.json();
+```
+
+---
+
+## Environment Configuration
+
+### Required Environment Variables
+
+```bash
+# Solana RPC Configuration
+NEXT_PUBLIC_SOLANA_RPC_ENDPOINT=https://api.mainnet-beta.solana.com
+SOLANA_RPC_ENDPOINT=https://api.mainnet-beta.solana.com
+
+# AI Services
+TOGETHER_API_KEY=your_together_ai_key
+NEXT_PUBLIC_TOGETHER_API_KEY=your_together_ai_key
+
+# Qdrant Vector Database
+QDRANT_URL=http://localhost:6333
+QDRANT_API_KEY=your_qdrant_key
+
+# Application Settings
+NEXT_PUBLIC_APP_URL=https://opensvm.com
+NODE_ENV=production
+
+# Optional Services
+ANTHROPIC_API_KEY=your_anthropic_key
+COINGECKO_API_KEY=your_coingecko_key
+```
+
+### Development Setup
+```bash
+# Clone repository
+git clone https://github.com/aldrin-labs/opensvm.git
+cd opensvm
+
+# Install dependencies
+npm install
+# or
+bun install
+
+# Configure environment
+cp .example.env .env.local
+# Edit .env.local with your keys
+
+# Start development server
+npm run dev
+# or
+bun run dev
+
+# Access at http://localhost:3000
+```
+
+---
+
+## Testing
+
+### Unit Tests
+```bash
+npm test
+# or
+bun test
+```
+
+### E2E Tests (Playwright)
+```bash
+npm run test:e2e
+# or
+bun run test:e2e
+```
+
+### API Testing
+```bash
+# Use the interactive Swagger UI
+open http://localhost:3000/swagger
+
+# Or curl
+curl -X GET http://localhost:3000/api/transaction/{signature}
+```
+
+---
+
+## Deployment
+
+### Production Build
+```bash
+npm run build
+npm run start
+# or
+bun run build
+bun run start
+```
+
+### Netlify Deployment
+- Continuous deployment from `main` branch
+- Edge Functions for API routes
+- Automatic preview deployments for PRs
+- Status: [![Netlify Status](https://api.netlify.com/api/v1/badges/8b8a6766-17da-4f33-a698-2e760c05c933/deploy-status)](https://app.netlify.com/projects/opensvm/deploys)
+
+### Docker Deployment
+```dockerfile
+FROM node:18-alpine
+WORKDIR /app
+COPY package*.json ./
+RUN npm ci --production
+COPY . .
+RUN npm run build
+EXPOSE 3000
+CMD ["npm", "start"]
+```
+
+---
+
+## Key Files & Directories
+
+### Configuration Files
+- `next.config.mjs` - Next.js configuration
+- `tailwind.config.ts` - Tailwind CSS settings
+- `tsconfig.json` - TypeScript configuration
+- `.env.local` - Environment variables (not committed)
+- `.example.env` - Environment variable template
+
+### Documentation
+- `/docs/architecture/` - System architecture docs
+- `/docs/architecture/adr/` - Architecture Decision Records
+- `/README.md` - Main project README
+- `/llms-api.txt` - Full API specification
+- `/llms.txt` - This file
+
+### Important Source Files
+- `/app/layout.tsx` - Root layout (server component)
+- `/app/providers.tsx` - Client-side providers (auth, theme, etc.)
+- `/lib/solana-connection.ts` - Blockchain connection facade
+- `/lib/settings.ts` - User settings management (client-only)
+- `/lib/design-system/theme-provider.tsx` - Theme system
+- `/components/NavbarInteractive.tsx` - Main navigation
+- `/components/ai/AIChatSidebar.tsx` - AI assistant interface
+
+---
+
+## Special Features
+
+### Transaction Graph Visualization
+- WebGL-powered rendering for large graphs
+- Interactive node exploration
+- Multiple layout algorithms (force, hierarchical, circular)
+- Real-time updates and animations
+- See `/components/transaction-graph/README.md`
+
+### AI Chat Sidebar
+- Context-aware blockchain analysis
+- Multi-turn conversations with memory
+- Code generation & explanation
+- Transaction pattern detection
+- Mermaid diagram rendering
+
+### Wallet Path Finding
+- Discover connections between addresses
+- Token transfer flow visualization
+- Multi-hop relationship mapping
+- Degree-of-separation calculation
+
+### Custom RPC Pooling
+- Load balancing across multiple endpoints
+- Automatic failover and retry
+- Request deduplication
+- Response caching with TTL
+- Health monitoring
+
+---
+
+## Contributing
+
+### Code Style
+- TypeScript strict mode enabled
+- ESLint for linting
+- Prettier for formatting
+- Conventional commits encouraged
+
+### Pull Request Process
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Update documentation
+5. Submit PR with clear description
+
+### Architecture Documentation
+- Update `/docs/architecture/` for significant changes
+- Create ADRs for major decisions
+- Keep API docs in sync with code
+
+---
+
+## Support & Community
+
+- **Documentation**: https://opensvm.com/docs
+- **GitHub Issues**: https://github.com/aldrin-labs/opensvm/issues
+- **API Status**: https://status.opensvm.com (if available)
+- **Email**: support@opensvm.com
+- **Twitter**: @opensvm (if available)
+
+---
+
+## Changelog
+
+### Version 1.0.0 (Current)
+- Full blockchain explorer functionality
+- 85+ API endpoints
+- AI-powered analysis
+- Real-time data feeds
+- Transaction visualization
+- DeFi & NFT tracking
+- User profiles & social features
+
+### Recent Updates
+- Added chat persistence
+- Enhanced AI sidebar
+- Improved RPC connection handling
+- Performance optimizations
+- Better error handling
+
+---
+
+## License
+
+See LICENSE file in repository.
+
+---
+
+## For AI Agents: Quick Reference
+
+### Most Common Endpoints
+```
+GET  /api/transaction/{signature}      # Transaction details
+GET  /api/account-stats/{address}      # Account info
+POST /api/analyze-transaction          # AI analysis
+GET  /api/search?q={query}             # Universal search
+GET  /api/token-metadata?mint={mint}   # Token data
+GET  /api/block/{slot}                 # Block info
+POST /api/ai-response                  # AI chat
+```
+
+### Response Format
+All endpoints return JSON with standardized structure:
+```json
+{
+  "success": true,
+  "data": { /* ... */ },
+  "timestamp": 1234567890,
+  "cached": false
+}
+```
+
+### Error Handling
+Always check `response.ok` and handle errors gracefully:
+```javascript
+if (!response.ok) {
+  const error = await response.json();
+  console.error(`Error ${response.status}:`, error.error);
+}
+```
+
+### Rate Limits
+Respect rate limits shown in response headers. For AI agents, consider:
+- Caching responses when appropriate
+- Batching requests where possible
+- Using webhooks/SSE for real-time data instead of polling
+
+---
+
+**Last Updated**: October 20, 2025  
+**API Version**: v1.0  
+**Document Version**: 1.0.0
+
+For detailed API endpoint specifications, parameters, and examples, see `/llms-api.txt`.

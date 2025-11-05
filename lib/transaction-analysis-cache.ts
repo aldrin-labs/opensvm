@@ -8,6 +8,7 @@
  * - Program registry and instruction definitions
  */
 
+import 'server-only';
 import { qdrantClient } from './qdrant';
 // Disable Qdrant cache if server URL not set
 const DISABLE_QDRANT_CACHE = !process.env.QDRANT_SERVER;
@@ -16,7 +17,6 @@ import type { TransactionExplanation } from './ai-transaction-analyzer';
 import type { AccountChangesAnalysis } from './account-changes-analyzer';
 import type { ParsedInstructionInfo } from './instruction-parser-service';
 import type { RelatedTransactionResult } from './related-transaction-finder';
-import { memoryCache } from './cache';
 
 // Cache TTL configurations (in milliseconds)
 const CACHE_TTL = {
@@ -1008,13 +1008,9 @@ export function isCacheEnabled(): boolean {
 }
 
 export function getCacheSize(): number {
-  // Estimate cache size - this is a simplified implementation
-  try {
-    const cacheData = JSON.stringify(memoryCache);
-    return new Blob([cacheData]).size;
-  } catch (error) {
-    return 0;
-  }
+  // Cache size would need to be estimated from Qdrant
+  // For now, return 0 as we don't have direct access to memory usage
+  return 0;
 }
 
 // Cache warming utilities

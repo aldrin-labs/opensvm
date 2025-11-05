@@ -149,7 +149,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
 
   // Dropdown icon component - DRY pattern
   const DropdownIcon = () => (
-    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <svg width="10" height="10" viewBox="0 0 12 12" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true" role="img">
       <path d="M2.5 4.5L6 8L9.5 4.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
     </svg>
   );
@@ -200,9 +200,13 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
           {/* Logo and brand */}
           <div className="flex items-center gap-2 z-10">
             <RpcStatusBadge />
-            <Link href="/" className="flex items-center gap-1.5 hover:opacity-80 transition-opacity">
+            <Link 
+              href="/" 
+              className="flex items-center gap-1.5 hover:opacity-80 transition-opacity"
+              aria-label="OpenSVM Home - AI-powered blockchain explorer"
+            >
               <span className="font-bold text-lg">OpenSVM</span>
-              <span className="text-sm text-foreground/70">[ai]</span>
+              <span className="text-sm text-foreground/70" aria-label="AI-enhanced">[ai]</span>
             </Link>
             <ChangelogNotification />
             <span className="hidden md:inline-block text-xs text-muted-foreground">{currentTime}</span>
@@ -250,6 +254,15 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               }
             >
               <SimpleDropdownItem asChild>
+                <Link href="/trading-terminal">Trading Terminal</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/chat">Chat</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/launchpad">Launchpad(coming soon)</Link>
+              </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
                 <Link href="/networks">Networks</Link>
               </SimpleDropdownItem>
               <SimpleDropdownItem asChild>
@@ -260,9 +273,6 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               </SimpleDropdownItem>
               <SimpleDropdownItem asChild>
                 <Link href="/validators">Validators</Link>
-              </SimpleDropdownItem>
-              <SimpleDropdownItem asChild>
-                <Link href="/launchpad">Launchpad</Link>
               </SimpleDropdownItem>
             </SimpleDropdown>
 
@@ -295,7 +305,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               </SimpleDropdownItem>
             </SimpleDropdown>
 
-            {/* Launchpad Link */}
+            {/* Launchpad Link 
             <Link href="/launchpad">
               <Button
                 variant="ghost"
@@ -306,7 +316,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 Launchpad
               </Button>
             </Link>
-
+            */}
             {/* DeFi Dropdown */}
             <SimpleDropdown
               align="end"
@@ -419,7 +429,8 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               size="sm"
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"
               onClick={openAIChat}
-              aria-label="Open AI Assistant"
+              aria-label="Open SVMAI - AI-powered blockchain assistant"
+              title="Open AI Assistant (provides blockchain analysis and insights)"
             >
               SVMAI
             </Button>
@@ -431,10 +442,12 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
             <Button
               variant="ghost"
               size="sm"
-              aria-label="Toggle mobile menu"
+              aria-label={isMobileMenuOpen ? "Close mobile menu" : "Open mobile menu"}
+              aria-expanded={isMobileMenuOpen}
               className="relative z-20"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               data-testid="mobile-menu-toggle"
+              title={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
             >
               <svg
                 width="24"
@@ -446,6 +459,7 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
+                role="img"
               >
                 {isMobileMenuOpen ?
                   <path d="M18 6L6 18M6 6l12 12" /> :
@@ -551,6 +565,13 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
                 onClick={() => { setIsMobileMenuOpen(false); router.push('/programs'); }}
               >
                 Programs
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full justify-start font-normal text-foreground/90 hover:text-foreground"
+                onClick={() => { setIsMobileMenuOpen(false); router.push('/chat'); }}
+              >
+                Chat
               </Button>
             </div>
 

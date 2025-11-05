@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Import AI Agent Animations */
+@import './ai-agent-animations.css';
+
+/* Additional global styles */
+body {
+  @apply bg-background text-foreground;
+}
+
+/* Smooth transitions for agent interactions */
+* {
+  transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Prevent layout shift when agent highlights are applied */
+.agent-highlight,
+.agent-focus,
+.agent-scanning {
+  transform-origin: center;
+}

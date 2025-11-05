@@ -1,0 +1,168 @@
+/**
+ * Enhanced Keyboard Focus Styles
+ * Provides clear visual feedback for keyboard navigation
+ */
+
+/* Global focus ring with better visibility */
+*:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Remove default outline for mouse users */
+*:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for interactive elements */
+button:focus-visible,
+a:focus-visible,
+[role="button"]:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.1);
+}
+
+/* Input field focus */
+input:focus-visible,
+textarea:focus-visible,
+select:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 0;
+  border-color: hsl(var(--primary));
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+/* Card/Panel focus for keyboard navigation */
+[data-tile-id]:focus-visible {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: -3px;
+  box-shadow: inset 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+/* Tab focus indicators */
+[role="tab"]:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+  background-color: hsl(var(--primary) / 0.1);
+}
+
+/* Menu item focus */
+[role="menuitem"]:focus-visible,
+[role="option"]:focus-visible {
+  outline: none;
+  background-color: hsl(var(--primary) / 0.15);
+  box-shadow: inset 2px 0 0 hsl(var(--primary));
+}
+
+/* Skip link - visible on focus */
+.skip-link {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  padding: 8px 16px;
+  text-decoration: none;
+  border-radius: 0 0 4px 0;
+  z-index: 100;
+  transition: top 0.2s;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* Focus within - highlight parent when child is focused */
+.focus-within-highlight:focus-within {
+  box-shadow: 0 0 0 2px hsl(var(--primary) / 0.2);
+  border-color: hsl(var(--primary) / 0.5);
+}
+
+/* Keyboard navigation hints */
+.keyboard-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: hsl(var(--muted));
+  border: 1px solid hsl(var(--border));
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: monospace;
+  color: hsl(var(--muted-foreground));
+}
+
+/* Focus indicator for custom components */
+.custom-focus:focus-visible {
+  position: relative;
+}
+
+.custom-focus:focus-visible::after {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  border: 2px solid hsl(var(--primary));
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Reduce motion for users who prefer it */
+@media (prefers-reduced-motion: reduce) {
+  *:focus-visible {
+    transition: none;
+  }
+  
+  .skip-link {
+    transition: none;
+  }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+  *:focus-visible {
+    outline-width: 3px;
+    outline-offset: 3px;
+  }
+  
+  button:focus-visible,
+  a:focus-visible {
+    outline-width: 3px;
+  }
+}
+
+/* Focus visible for trading terminal specific elements */
+.trading-terminal [data-tile-id]:focus-visible {
+  outline: 3px solid hsl(var(--primary));
+  outline-offset: -3px;
+  background-color: hsl(var(--primary) / 0.05);
+}
+
+/* Section header focus */
+.section-header:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Order book and trade history row focus */
+.order-book-row:focus-visible,
+.trade-row:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: -2px;
+  background-color: hsl(var(--primary) / 0.1) !important;
+}
+
+/* Modal/Dialog focus trap indicator */
+[role="dialog"]:focus-within {
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.2);
+}
+
+/* Keyboard shortcut button focus */
+.keyboard-shortcuts-button:focus-visible {
+  outline: 2px solid hsl(var(--primary));
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px hsl(var(--primary) / 0.2);
+  transform: scale(1.05);
+}

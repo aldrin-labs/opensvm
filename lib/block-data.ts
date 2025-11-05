@@ -19,7 +19,7 @@ export interface BlockListResponse {
  */
 export async function getRecentBlocks(limit: number = 50, fromSlot?: number): Promise<BlockListResponse> {
   try {
-    const connection = await getConnection();
+    const connection = getConnection();
     const currentSlot = await connection.getSlot();
 
     // If no starting slot provided, use current slot
@@ -88,7 +88,7 @@ export async function getBlockStats(): Promise<{
   totalTransactions: number;
 }> {
   try {
-    const connection = await getConnection();
+    const connection = getConnection();
     const currentSlot = await connection.getSlot();
 
     // Get recent performance samples

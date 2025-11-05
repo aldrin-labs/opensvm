@@ -9,6 +9,7 @@
  * - DeFi protocol interactions
  */
 
+import 'server-only';
 import type { DetailedTransactionInfo } from './solana';
 import { transactionAnalysisCache } from './transaction-analysis-cache';
 

@@ -14,13 +14,41 @@ import {
 
 export async function POST(request: Request) {
   try {
-    const { transactions } = await request.json();
-
-    if (!transactions || !Array.isArray(transactions)) {
+    let body: any;
+    try {
+      body = await request.json();
+    } catch (parseError) {
       return NextResponse.json(
-        { error: 'Invalid transactions data' },
+        { error: 'Invalid JSON in request body', details: 'Expected JSON object with transactions array' },
         { status: 400 }
       );
+    }
+
+    const { transactions } = body || {};
+
+    if (!transactions) {
+      return NextResponse.json(
+        { error: 'Missing transactions field', details: 'Request body must include a "transactions" array field' },
+        { status: 400 }
+      );
+    }
+
+    if (!Array.isArray(transactions)) {
+      return NextResponse.json(
+        { error: 'Invalid transactions data type', details: 'The "transactions" field must be an array' },
+        { status: 400 }
+      );
+    }
+
+    // Handle empty array case
+    if (transactions.length === 0) {
+      return NextResponse.json({ 
+        filteredTransactions: [],
+        aiAnalysis: false,
+        originalCount: 0,
+        filteredCount: 0,
+        message: 'No transactions to filter'
+      });
     }
 
     // Known spam/analytics tokens and addresses to filter out - now using shared constants
@@ -186,35 +214,12 @@ Return only a JSON array of transaction IDs for the top ${MAX_TRANSFER_COUNT} tr
     });
   } catch (error) {
     console.error('API: Error filtering transactions:', error);
-    
-    // Fallback to basic filtering if anything fails
-    try {
-      const { transactions } = await request.json();
-      const basicFiltered = transactions.filter((tx: any) => {
-        const amount = parseFloat(tx.tokenAmount || '0');
-        const from = tx.from || '';
-        const to = tx.to || '';
-        
-        // Filter out dust transactions (using named constant)
-        if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) return false;
-        
-        // Filter out spam tokens and addresses (using shared functions)
-        if (isSpamToken(tx.tokenSymbol) || isSpamAddress(from) || isSpamAddress(to)) return false;
-        
-        return true;
-      });
-      
-      return NextResponse.json({ 
-        filteredTransactions: basicFiltered,
-        aiAnalysis: false,
-        fallback: true,
-        error: 'AI analysis failed, used basic filtering'
-      });
-    } catch (fallbackError) {
-      return NextResponse.json(
-        { error: 'Failed to filter transactions' },
-        { status: 500 }
-      );
-    }
+    return NextResponse.json(
+      { 
+        error: 'Failed to filter transactions',
+        details: error instanceof Error ? error.message : 'Unknown error occurred'
+      },
+      { status: 500 }
+    );
   }
 }
