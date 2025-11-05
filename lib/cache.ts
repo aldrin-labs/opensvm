@@ -1,5 +1,6 @@
 import 'server-only';
 import { Redis } from 'ioredis';
+import { QdrantClient } from '@qdrant/js-client-rest';
 
 // Singleton Redis client
 let redisClient: Redis | null = null;
@@ -66,6 +67,221 @@ export function getRedisClient(): Redis | null {
 
   return redisClient;
 }
+
+// Qdrant-backed cache for rate limiting using point storage
+let qdrantClient: QdrantClient | null = null;
+
+function getQdrantClient(): QdrantClient | null {
+  if (!process.env.QDRANT_URL && !process.env.QDRANT_SERVER) {
+    return null;
+  }
+
+  if (!qdrantClient) {
+    try {
+      qdrantClient = new QdrantClient({
+        url: process.env.QDRANT_URL || process.env.QDRANT_SERVER || 'http://localhost:6333',
+        apiKey: process.env.QDRANT_API_KEY || process.env.QDRANT,
+      });
+      console.log('Qdrant cache client initialized');
+    } catch (error) {
+      console.error('Failed to initialize Qdrant cache client:', error);
+      return null;
+    }
+  }
+
+  return qdrantClient;
+}
+
+// Qdrant collection name for cache
+const QDRANT_CACHE_COLLECTION = 'rate_limit_cache';
+
+class QdrantCache {
+  private fallbackCache: Map<string, { value: any; expiresAt: number }> = new Map();
+  private initialized = false;
+  private useQdrant = false;
+
+  async initialize(): Promise<void> {
+    if (this.initialized) return;
+
+    const client = getQdrantClient();
+    if (!client) {
+      console.log('Qdrant not configured, using in-memory fallback for cache');
+      this.initialized = true;
+      return;
+    }
+
+    try {
+      // Check if collection exists
+      const collections = await client.getCollections();
+      const exists = collections.collections.some(c => c.name === QDRANT_CACHE_COLLECTION);
+
+      if (!exists) {
+        // Create collection with minimal config (1D vector since we only need payload)
+        await client.createCollection(QDRANT_CACHE_COLLECTION, {
+          vectors: {
+            size: 1,
+            distance: 'Cosine'
+          }
+        });
+        console.log(`Created Qdrant cache collection: ${QDRANT_CACHE_COLLECTION}`);
+      }
+
+      this.useQdrant = true;
+      console.log('Qdrant cache initialized successfully');
+      this.initialized = true;
+    } catch (error) {
+      console.warn('Qdrant cache initialization failed, using in-memory fallback:', error);
+      this.initialized = true;
+    }
+  }
+
+  get<T>(key: string): T | null {
+    if (!this.useQdrant) {
+      // Fallback to in-memory
+      const entry = this.fallbackCache.get(key);
+      if (!entry) return null;
+      
+      if (Date.now() > entry.expiresAt) {
+        this.fallbackCache.delete(key);
+        return null;
+      }
+      
+      return entry.value as T;
+    }
+
+    const client = getQdrantClient();
+    if (!client) {
+      return this.getFallback<T>(key);
+    }
+
+    try {
+      // Retrieve from Qdrant asynchronously (but we'll make it sync-like with cached fallback)
+      const promise = client.retrieve(QDRANT_CACHE_COLLECTION, {
+        ids: [key],
+        with_payload: true,
+        with_vector: false
+      });
+
+      // For now, use fallback and update async
+      const fallbackResult = this.getFallback<T>(key);
+      
+      // Update fallback from Qdrant in background
+      promise.then(result => {
+        if (result.length > 0 && result[0].payload) {
+          const data = result[0].payload as { value: any; expiresAt: number };
+          if (Date.now() <= data.expiresAt) {
+            this.fallbackCache.set(key, data);
+          } else {
+            this.del(key);
+          }
+        }
+      }).catch(() => {
+        // Silently fail
+      });
+
+      return fallbackResult;
+    } catch (error) {
+      return this.getFallback<T>(key);
+    }
+  }
+
+  private getFallback<T>(key: string): T | null {
+    const entry = this.fallbackCache.get(key);
+    if (!entry) return null;
+    
+    if (Date.now() > entry.expiresAt) {
+      this.fallbackCache.delete(key);
+      return null;
+    }
+    
+    return entry.value as T;
+  }
+
+  set(key: string, value: any, ttlSeconds: number): void {
+    const expiresAt = Date.now() + (ttlSeconds * 1000);
+    const data = { value, expiresAt };
+    
+    // Always update fallback immediately for fast access
+    this.fallbackCache.set(key, data);
+
+    if (!this.useQdrant) {
+      return;
+    }
+
+    const client = getQdrantClient();
+    if (!client) {
+      return;
+    }
+
+    // Update Qdrant asynchronously
+    client.upsert(QDRANT_CACHE_COLLECTION, {
+      wait: false, // Don't wait for indexing
+      points: [
+        {
+          id: key,
+          vector: [0], // Dummy vector since we only care about payload
+          payload: data
+        }
+      ]
+    }).catch(error => {
+      // Silently fail, fallback cache already updated
+      console.error('Qdrant cache set error:', error);
+    });
+  }
+
+  del(key: string): void {
+    this.fallbackCache.delete(key);
+
+    if (!this.useQdrant) {
+      return;
+    }
+    
+    const client = getQdrantClient();
+    if (!client) {
+      return;
+    }
+
+    // Delete from Qdrant asynchronously
+    client.delete(QDRANT_CACHE_COLLECTION, {
+      wait: false,
+      points: [key]
+    }).catch(() => {
+      // Silently fail
+    });
+  }
+
+  clear(): void {
+    this.fallbackCache.clear();
+
+    if (!this.useQdrant) {
+      return;
+    }
+    
+    const client = getQdrantClient();
+    if (!client) {
+      return;
+    }
+
+    // Clear collection asynchronously
+    client.delete(QDRANT_CACHE_COLLECTION, {
+      wait: false,
+      filter: {} // Delete all points
+    }).catch(() => {
+      // Silently fail
+    });
+  }
+}
+
+// Export singleton instance using Qdrant with in-memory fallback
+export const memoryCache = new QdrantCache();
+
+// Initialize on module load
+if (typeof window === 'undefined') {
+  memoryCache.initialize().catch(err => {
+    console.error('Failed to initialize Qdrant cache:', err);
+  });
+}
+
 
 // Generic cache operations
 export const cache = {

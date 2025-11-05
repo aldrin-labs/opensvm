@@ -530,18 +530,33 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           if (toolResult.handled && toolResult.response) {
             const processingTime = Date.now() - requestStart;
             console.log(`✅ Tool handling successful in ${processingTime}ms`);
+            
+            // Convert Response body to text if it's a stream
+            let responseBody: string;
+            if (toolResult.response.body) {
+              try {
+                // Clone the response to avoid consuming the stream
+                const clonedResponse = toolResult.response.clone();
+                responseBody = await clonedResponse.text();
+              } catch (e) {
+                // Fallback if body can't be read
+                responseBody = String(toolResult.response.body || '');
+              }
+            } else {
+              responseBody = '';
+            }
+            
             // ✅ PHASE 2: Cache the tool response
-            const responseBody = toolResult.response.body || '';
-            queryCache.set(question, ownPlan, customSystemPrompt || null, String(responseBody), 200);
-            return new Response(toolResult.response.body, {
+            queryCache.set(question, ownPlan, customSystemPrompt || null, responseBody, 200);
+            
+            return new Response(responseBody, {
               status: 200,
               headers: {
                 "Content-Type": "text/plain",
                 "Cache-Control": "no-cache",
                 "X-Processing-Time": `${processingTime}ms`,
                 "X-Cache": "MISS",
-                "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' :
-    'DEGRADED'
+                "X-System-Health": StabilityMonitor.isHealthy() ? 'HEALTHY' : 'DEGRADED'
               },
             });
           }
