@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/build-rpc-config.js",
     "build": "next build",
     "build:optimized": "node scripts/optimize-build.js",
     "build:analyze": "node scripts/optimize-build.js --analyze",

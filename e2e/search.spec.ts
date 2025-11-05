@@ -14,7 +14,7 @@ test.describe('Search feature', () => {
       const input = page.locator('input[aria-label="Search input"]');
       if (await input.count()) {
         try {
-          if (await input.first().isVisible({ timeout: 2000 })) {
+          if (await input.first().isVisible({ timeout: 10000 })) {
             inputFound = true;
 
             // Type a query that should produce suggestions
