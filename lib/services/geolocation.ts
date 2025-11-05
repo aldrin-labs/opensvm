@@ -34,8 +34,8 @@ class GeolocationService {
     // Initialize Qdrant client but don't fail if connection isn't available
     try {
       this.qdrant = new QdrantClient({
-        url: process.env.QDRANT_URL || 'http://localhost:6333',
-        apiKey: process.env.QDRANT_API_KEY,
+        url: process.env.QDRANT_SERVER || 'http://localhost:6333',
+        apiKey: process.env.QDRANT,
       });
     } catch (error) {
       console.warn('Qdrant client initialization failed, running without cache:', error);

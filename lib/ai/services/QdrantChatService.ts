@@ -7,8 +7,8 @@ import type {
     ChatHistorySearchOptions
 } from '../models/ChatModels';
 
-const QDRANT_URL = process.env.QDRANT_URL || 'http://localhost:6333';
-const QDRANT_API_KEY = process.env.QDRANT_API_KEY;
+const QDRANT_URL = process.env.QDRANT_SERVER || 'http://localhost:6333';
+const QDRANT_API_KEY = process.env.QDRANT;
 
 const CHATS_COLLECTION = 'ai_chats';
 const MESSAGES_COLLECTION = 'ai_messages';

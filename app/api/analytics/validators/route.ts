@@ -138,7 +138,7 @@ export async function GET() {
     let geoResults = new Map<string, GeolocationData>();
 
     // Check if we should attempt geolocation (only if Qdrant is available)
-    const shouldAttemptGeolocation = process.env.QDRANT_URL && process.env.QDRANT_API_KEY;
+    const shouldAttemptGeolocation = process.env.QDRANT_SERVER && process.env.QDRANT;
 
     if (shouldAttemptGeolocation) {
       try {

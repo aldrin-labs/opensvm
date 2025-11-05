@@ -72,15 +72,15 @@ export function getRedisClient(): Redis | null {
 let qdrantClient: QdrantClient | null = null;
 
 function getQdrantClient(): QdrantClient | null {
-  if (!process.env.QDRANT_URL && !process.env.QDRANT_SERVER) {
+  if (!process.env.QDRANT_SERVER) {
     return null;
   }
 
   if (!qdrantClient) {
     try {
       qdrantClient = new QdrantClient({
-        url: process.env.QDRANT_URL || process.env.QDRANT_SERVER || 'http://localhost:6333',
-        apiKey: process.env.QDRANT_API_KEY || process.env.QDRANT,
+        url: process.env.QDRANT_SERVER,
+        apiKey: process.env.QDRANT,
       });
       console.log('Qdrant cache client initialized');
     } catch (error) {

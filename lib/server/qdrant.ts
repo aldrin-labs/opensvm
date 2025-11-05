@@ -8,8 +8,8 @@ export const COLLECTIONS = {
 
 export const VECTOR_SIZE = 1536;
 
-const client = new QdrantClient({
-  url: process.env.QDRANT_URL || 'http://localhost:6333'
+const qdrantClient = new QdrantClient({
+  url: process.env.QDRANT_SERVER || 'http://localhost:6333'
 });
 
 // Generate vector representation for a transaction
