@@ -246,10 +246,11 @@ Notes:
 - Prefer Moralis for token price/market data, DEX swaps, holders, portfolio, NFTs.
 - Use Solana RPC for direct chain state: account info, balances, token supply, program accounts, leader schedule, validators, etc.
 - For moralisMarketData you MUST pass the Solana mint address.
+- If the user provides a mint address in the query, USE THAT ADDRESS - do not substitute it.
 
 Token Symbol → Mint Address (for moralisMarketData):
-- SVMAI -> Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
-- For other tokens, provide the exact Solana mint address.
+- Always extract and use the mint address from the user's query if provided
+- If no address is provided and only a symbol is mentioned, you may need to look it up
 
 Method Reference (Moralis API - Solana Gateway & Deep Index)
 - moralisMarketData(mint)
@@ -574,15 +575,13 @@ This focused data enables critical insights:
 
 PERFORMANCE NOTE: Only include swap data if you believe it's essential for the specific question.
 
-Known Token Mints:
-- SVMAI -> Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
-
-CRITICAL RULES:
-1) For token analysis, include ALL 6 data collection steps above
-2) Use exact mint addresses from the mapping above
-3) For unknown tokens, skip rather than guess addresses
-4) DO NOT use getEpochInfo or network tools for token queries
-5) Return ONLY valid JSON array, no explanatory text
+CRITICAL RULES FOR TOKEN QUERIES:
+1) If the user provides a mint address in their query, ALWAYS use that exact address - do not substitute it
+2) Extract mint addresses from the query (they are 32-44 character base58 strings)
+3) For token analysis with a provided mint, include data collection steps using that mint
+4) If no mint address is provided and you don't know the token, skip rather than guess
+5) DO NOT use getEpochInfo or network tools for token queries
+6) Return ONLY valid JSON array, no explanatory text
 
 Response format (JSON only):
 [
@@ -594,14 +593,11 @@ Response format (JSON only):
   }
 ]
 
-Example for "$SVMAI analysis":
+Example for "insights on token $OVSM pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS":
 [
-  { "tool": "moralisMarketData", "reason": "Current price/mcap/volume", "narrative": "📊 Fetching real-time market data", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
-  { "tool": "getHistoricalTokenPrice", "reason": "7-day OHLCV for trend detection", "narrative": "📈 Loading price history", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
-  { "tool": "getTokenHolders", "reason": "Whale concentration analysis", "narrative": "🐋 Analyzing holder distribution", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
-  { "tool": "getTokenLargestAccounts", "reason": "RPC-verified top holders", "narrative": "🔍 Verifying largest accounts", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
-  { "tool": "getSwapsByTokenAddress", "reason": "Recent DEX activity patterns", "narrative": "⚡ Tracking swap activity", "input": { "address": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump", "limit": 100 } },
-  { "tool": "getSignaturesForAddress", "reason": "Transaction timeline", "narrative": "📝 Loading transaction history", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" }
+  { "tool": "moralisMarketData", "reason": "Current price/mcap/volume", "narrative": "📊 Fetching real-time market data", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
+  { "tool": "getTokenLargestAccounts", "reason": "Top holder analysis", "narrative": "� Analyzing holder distribution", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
+  { "tool": "getSignaturesForAddress", "reason": "Transaction timeline", "narrative": "📝 Loading transaction history", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" }
 ]`;
 
         const response = await withTimeout(
@@ -645,31 +641,22 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     if (qLower.includes('price') || qLower.includes('market') || qLower.includes('volume') ||
         qLower.includes('token') || /\$[A-Z]{3,10}/.test(question)) {
 
-        // Map of known tokens to Solana mint address (Moralis requires mint)
-        const tokenMintMappings: Record<string, string> = {
-            'SVMAI': 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump'
-        };
-
-        // Extract all $SYMBOL occurrences and de-duplicate
-        const symbolMatches = [...question.toUpperCase().matchAll(/\$([A-Z0-9]{3,10})/g)].map(m => m[1]);
-        const uniqueSymbols = Array.from(new Set(symbolMatches));
-
-        // Only include tokens where we know the mint
-        const steps: AIPlanStep[] = [];
-        for (const symbol of uniqueSymbols) {
-            const mint = tokenMintMappings[symbol];
-            if (mint) {
-                steps.push({
-                    tool: 'moralisMarketData',
-                    reason: `Get current market data for ${symbol} via Moralis`,
-                    narrative: `▣ Getting Moralis market data for ${symbol}`,
-                    input: mint
-                });
-            }
+        // Extract mint addresses from the question (44-char base58 strings)
+        const mintPattern = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
+        const potentialMints = question.match(mintPattern) || [];
+        
+        // If a mint address is provided in the query, use it directly
+        if (potentialMints.length > 0) {
+            return potentialMints.map(mint => ({
+                tool: 'moralisMarketData',
+                reason: `Get current market data for token ${mint}`,
+                narrative: `▣ Getting market data for token`,
+                input: mint
+            }));
         }
-        if (steps.length > 0) return steps;
 
-        // If we don't know the mint, return empty plan to avoid guessing external sources
+        // If no mint address provided, return empty to avoid wrong substitutions
+        console.log('⚠️ Token query without mint address - skipping automatic market data fetch');
         return [];
     }
 
@@ -1124,49 +1111,258 @@ for (const r of rows) {
                     const marketCapUsd = priceUsd * supplyTokens;
 
                     // Normalized result (compatible with summarizers)
-                    // Fall back to CoinGecko if Moralis fails (price is 0)
+                    // Get token metadata for name/symbol
+                    let tokenName = 'Unknown Token';
+                    let tokenSymbol = 'UNKNOWN';
+                    try {
+                        const tokenMetadata = await moralisApi.getTokenMetadata(mint, 'mainnet');
+                        if (tokenMetadata?.name) tokenName = tokenMetadata.name;
+                        if (tokenMetadata?.symbol) tokenSymbol = tokenMetadata.symbol;
+                    } catch (e) {
+                        console.log(`   ⚠️ Could not fetch token metadata: ${(e as Error).message}`);
+                    }
+
+                    // If Moralis API is down or returns $0, try DexScreener API as first fallback
                     if (priceUsd === 0) {
-                        console.log(`   ⚠️ Moralis returned $0, falling back to CoinGecko`);
+                        console.log(`   ⚠️ Moralis returned $0 - trying DexScreener API fallback...`);
+                        
                         try {
-                            const tokenTool = await import('./tokenMarketData');
-                            const coinGeckoResult = await tokenTool.tokenMarketDataTool.execute({ coinId: 'opensvm-com' });
-                            if (coinGeckoResult.success) {
-                                result = coinGeckoResult;
-                                console.log(`   ◈ CoinGecko fallback SUCCESS`);
-                            } else {
-                                throw new Error('CoinGecko also failed');
+                            // DexScreener API - free, no API key required, excellent Solana coverage
+                            const dexscreenerUrl = `https://api.dexscreener.com/latest/dex/tokens/${mint}`;
+                            const dexResp = await fetch(dexscreenerUrl);
+                            
+                            if (dexResp.ok) {
+                                const dexData = await dexResp.json();
+                                const pairs = dexData?.pairs || [];
+                                
+                                // Find the most liquid pair (highest volume)
+                                const bestPair = pairs.sort((a: any, b: any) => 
+                                    (Number(b?.volume?.h24 || 0) - Number(a?.volume?.h24 || 0))
+                                )[0];
+                                
+                                if (bestPair) {
+                                    const dexPrice = Number(bestPair?.priceUsd || 0);
+                                    const dexVolume24h = Number(bestPair?.volume?.h24 || 0);
+                                    const dexLiquidity = Number(bestPair?.liquidity?.usd || 0);
+                                    
+                                    if (dexPrice > 0) {
+                                        console.log(`   ✓ DexScreener API provided price: $${dexPrice}, 24h volume: $${dexVolume24h}`);
+                                        const dexMarketCap = dexPrice * supplyTokens;
+                                        
+                                        // Update token name/symbol from DexScreener if available
+                                        if (bestPair?.baseToken?.name) tokenName = bestPair.baseToken.name;
+                                        if (bestPair?.baseToken?.symbol) tokenSymbol = bestPair.baseToken.symbol;
+                                        
+                                        result = {
+                                            success: true,
+                                            source: 'dexscreener-fallback',
+                                            resolved_id: 'dexscreener',
+                                            data: {
+                                                name: tokenName,
+                                                symbol: tokenSymbol,
+                                                current_price: { usd: dexPrice },
+                                                market_cap: { usd: dexMarketCap },
+                                                trading_volume: { usd: dexVolume24h, h24: dexVolume24h },
+                                                last_updated: new Date().toISOString(),
+                                                extra: {
+                                                    mint,
+                                                    supply_tokens: supplyTokens,
+                                                    supply_raw: amount,
+                                                    decimals,
+                                                    liquidity: dexLiquidity,
+                                                    pairAddress: bestPair?.pairAddress,
+                                                    dexId: bestPair?.dexId,
+                                                    note: 'Data from DexScreener API - using DexScreener price fallback.'
+                                                }
+                                            }
+                                        };
+                                        console.log(`   ◈ DexScreener fallback successful`);
+                                    } else {
+                                        console.log(`   ⚠️ DexScreener returned $0 - trying Birdeye API...`);
+                                    }
+                                } else {
+                                    console.log(`   ⚠️ DexScreener found no pairs - trying Birdeye API...`);
+                                }
                             }
-                        } catch (e) {
-                            console.log(`   ◌ CoinGecko fallback failed: ${(e as Error).message}`);
-                            result = {
-                                success: true,
-                                source: 'moralis',
-                                resolved_id: 'moralis',
-                                data: {
-                                    name: 'opensvm.com',
-                                    symbol: 'SVMAI',
-                                    current_price: { usd: priceUsd },
-                                    market_cap: { usd: marketCapUsd },
-                                    trading_volume: { usd: volume24hUsd, h24: volume24hUsd },
-                                    last_updated: new Date().toISOString(),
-                                    extra: {
-                                        mint,
-                                        supply_tokens: supplyTokens,
-                                        supply_raw: amount,
-                                        decimals,
-                                        pairAddress
+                        } catch (dexError) {
+                            console.log(`   ⚠️ DexScreener API failed: ${(dexError as Error).message} - trying GeckoTerminal API...`);
+                        }
+                    }
+
+                    // If Moralis and DexScreener failed, try GeckoTerminal API as second fallback
+                    if (priceUsd === 0 && !result) {
+                        console.log(`   ⚠️ Trying GeckoTerminal API fallback...`);
+                        
+                        try {
+                            // GeckoTerminal API - free, no API key required, CoinGecko's DEX data
+                            const geckoUrl = `https://api.geckoterminal.com/api/v2/networks/solana/tokens/${mint}`;
+                            const geckoResp = await fetch(geckoUrl, {
+                                headers: { 'Accept': 'application/json' }
+                            });
+                            
+                            if (geckoResp.ok) {
+                                const geckoData = await geckoResp.json();
+                                const tokenData = geckoData?.data?.attributes;
+                                
+                                if (tokenData) {
+                                    const geckoPrice = Number(tokenData?.price_usd || 0);
+                                    const geckoVolume24h = Number(tokenData?.volume_usd?.h24 || 0);
+                                    
+                                    if (geckoPrice > 0) {
+                                        console.log(`   ✓ GeckoTerminal API provided price: $${geckoPrice}, 24h volume: $${geckoVolume24h}`);
+                                        const geckoMarketCap = geckoPrice * supplyTokens;
+                                        
+                                        // Update token name/symbol from GeckoTerminal if available
+                                        if (tokenData?.name) tokenName = tokenData.name;
+                                        if (tokenData?.symbol) tokenSymbol = tokenData.symbol;
+                                        
+                                        result = {
+                                            success: true,
+                                            source: 'geckoterminal-fallback',
+                                            resolved_id: 'geckoterminal',
+                                            data: {
+                                                name: tokenName,
+                                                symbol: tokenSymbol,
+                                                current_price: { usd: geckoPrice },
+                                                market_cap: { usd: geckoMarketCap },
+                                                trading_volume: { usd: geckoVolume24h, h24: geckoVolume24h },
+                                                last_updated: new Date().toISOString(),
+                                                extra: {
+                                                    mint,
+                                                    supply_tokens: supplyTokens,
+                                                    supply_raw: amount,
+                                                    decimals,
+                                                    note: 'Data from GeckoTerminal API - using CoinGecko DEX aggregator fallback.'
+                                                }
+                                            }
+                                        };
+                                        console.log(`   ◈ GeckoTerminal fallback successful`);
+                                    } else {
+                                        console.log(`   ⚠️ GeckoTerminal returned $0 - trying Birdeye API...`);
                                     }
                                 }
-                            };
+                            }
+                        } catch (geckoError) {
+                            console.log(`   ⚠️ GeckoTerminal API failed: ${(geckoError as Error).message} - trying Birdeye API...`);
                         }
+                    }
+
+                    // If Moralis, DexScreener, and GeckoTerminal failed, try Birdeye API as third fallback
+                    if (priceUsd === 0 && !result) {
+                        console.log(`   ⚠️ Trying Birdeye API fallback...`);
+                        
+                        try {
+                            // Birdeye API - comprehensive token data (requires API key)
+                            const birdeyeHeaders: HeadersInit = {
+                                'Accept': 'application/json'
+                            };
+                            
+                            // Add API key if available
+                            if (process.env.BIRDEYE_API_KEY) {
+                                birdeyeHeaders['X-API-KEY'] = process.env.BIRDEYE_API_KEY;
+                                
+                                const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mint}`;
+                                const birdeyeResp = await fetch(birdeyeUrl, { headers: birdeyeHeaders });
+                                
+                                if (birdeyeResp.ok) {
+                                    const birdeyeJson = await birdeyeResp.json();
+                                    if (birdeyeJson?.success !== false) {
+                                        const birdeyeData = birdeyeJson?.data;
+                                        
+                                        const birdeyePrice = Number(birdeyeData?.price || 0);
+                                        const birdeyeVolume24h = Number(birdeyeData?.v24hUSD || birdeyeData?.volume24h || 0);
+                                        const birdeyeLiquidity = Number(birdeyeData?.liquidity || 0);
+                                        
+                                        if (birdeyePrice > 0) {
+                                            console.log(`   ✓ Birdeye API provided price: $${birdeyePrice}, 24h volume: $${birdeyeVolume24h}`);
+                                            const birdeyeMarketCap = birdeyePrice * supplyTokens;
+                                            
+                                            result = {
+                                                success: true,
+                                                source: 'birdeye-fallback',
+                                                resolved_id: 'birdeye',
+                                                data: {
+                                                    name: tokenName,
+                                                    symbol: tokenSymbol,
+                                                    current_price: { usd: birdeyePrice },
+                                                    market_cap: { usd: birdeyeMarketCap },
+                                                    trading_volume: { usd: birdeyeVolume24h, h24: birdeyeVolume24h },
+                                                    last_updated: new Date().toISOString(),
+                                                    extra: {
+                                                        mint,
+                                                        supply_tokens: supplyTokens,
+                                                        supply_raw: amount,
+                                                        decimals,
+                                                        liquidity: birdeyeLiquidity,
+                                                        note: 'Data from Birdeye API - using Birdeye price fallback.'
+                                                    }
+                                                }
+                                            };
+                                            console.log(`   ◈ Birdeye fallback successful`);
+                                        } else {
+                                            console.log(`   ⚠️ Birdeye returned $0 - falling back to RPC-only data`);
+                                        }
+                                    } else {
+                                        console.log(`   ⚠️ Birdeye API returned error: ${birdeyeJson?.message || 'Unknown'}`);
+                                    }
+                                }
+                            } else {
+                                console.log(`   ⚠️ Birdeye API key not configured - skipping`);
+                            }
+                        } catch (birdeyeError) {
+                            console.log(`   ⚠️ Birdeye API failed: ${(birdeyeError as Error).message} - falling back to RPC-only data`);
+                        }
+                    }
+
+                    // If both Moralis and Jupiter failed, use RPC-only data as last resort
+                    if (priceUsd === 0 && !result) {
+                        console.log(`   ⚠️ All price APIs failed - falling back to RPC-only data`);
+                        
+                        // Try to get basic holder info from RPC
+                        let holderCount = 0;
+                        try {
+                            const largestAccounts = await conn.getTokenLargestAccounts(pubkey);
+                            if (largestAccounts?.value) {
+                                const nonZeroAccounts = largestAccounts.value.filter(
+                                    (account: any) => account.uiAmount && account.uiAmount > 0
+                                );
+                                holderCount = nonZeroAccounts.length >= 20 
+                                    ? Math.floor(nonZeroAccounts.length * 5) 
+                                    : nonZeroAccounts.length;
+                            }
+                        } catch (e) {
+                            console.log(`   ⚠️ Could not get holder count: ${(e as Error).message}`);
+                        }
+
+                        result = {
+                            success: true,
+                            source: 'rpc-fallback',
+                            resolved_id: 'solana-rpc',
+                            data: {
+                                name: tokenName,
+                                symbol: tokenSymbol,
+                                current_price: { usd: 0 },
+                                market_cap: { usd: 0 },
+                                trading_volume: { usd: 0, h24: 0 },
+                                last_updated: new Date().toISOString(),
+                                extra: {
+                                    mint,
+                                    supply_tokens: supplyTokens,
+                                    supply_raw: amount,
+                                    decimals,
+                                    holders: holderCount,
+                                    note: 'Price data unavailable - using RPC fallback. Token supply and holder data from Solana RPC.'
+                                }
+                            }
+                        };
                     } else {
                         result = {
                             success: true,
                             source: 'moralis',
                             resolved_id: 'moralis',
                             data: {
-                                name: 'opensvm.com',
-                                symbol: 'SVMAI',
+                                name: tokenName,
+                                symbol: tokenSymbol,
                                 current_price: { usd: priceUsd },
                                 market_cap: { usd: marketCapUsd },
                                 trading_volume: { usd: volume24hUsd, h24: volume24hUsd },

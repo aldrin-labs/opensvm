@@ -455,7 +455,25 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       try {
         const mainProcessingPromise = async () => {
           const conn = getConnection();
-          let body = await request.json();
+          
+          // Parse request body with error handling
+          let body: any = {};
+          try {
+            body = await request.json();
+          } catch (jsonError) {
+            console.error('Failed to parse request JSON:', jsonError);
+            // Return error response for invalid JSON
+            return new Response(
+              JSON.stringify({ 
+                error: 'Invalid JSON in request body',
+                details: (jsonError as Error).message 
+              }),
+              { 
+                status: 400,
+                headers: { 'Content-Type': 'application/json' }
+              }
+            );
+          }
 
           // ✅ PHASE 1: Input Type Validation
           // Convert question to string (accept any value and stringify it)

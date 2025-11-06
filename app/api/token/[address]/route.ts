@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { Metaplex } from '@metaplex-foundation/js';
 import { getConnection } from '@/lib/solana-connection-server';
 import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
 import { getTokenHolders as getMoralisTokenHolders } from '@/lib/moralis-api';
+import { getTokenInfo } from '@/lib/token-registry';
 
 // Cache for token holder data
 const tokenHolderCache = new Map<string, { holders: number; volume24h: number; timestamp: number }>();
@@ -104,9 +104,6 @@ export async function GET(
           ) as Promise<ReturnType<typeof getConnection>>
         ]);
 
-        // Initialize Metaplex for metadata fetching
-        const metaplex = Metaplex.make(connection);
-
         // Validate the address format first
         let mintPubkey: PublicKey;
         try {
@@ -170,7 +167,7 @@ export async function GET(
           );
         }
 
-        // Fetch token metadata - many SPL tokens don't have on-chain metadata
+        // Fetch token metadata - use token-registry for proper SPL token metadata
         let metadata: {
           name: string;
           symbol: string;
@@ -179,25 +176,24 @@ export async function GET(
         };
 
         try {
-          // For SPL tokens, metadata is optional and often not present
-          // Try to fetch if available, but don't rely on it
-          const nft = await Promise.race([
-            metaplex.nfts().findByMint({ mintAddress: mintPubkey }),
-            new Promise((_, reject) =>
+          // Use token-registry which handles both Metaplex and basic SPL tokens
+          const tokenInfo = await Promise.race([
+            getTokenInfo(connection, mintAddress),
+            new Promise<null>((_, reject) =>
               setTimeout(() => reject(new Error('Metadata fetch timeout')), 400)
             )
           ]);
           
-          if (nft) {
-            // Use actual token metadata if available
+          if (tokenInfo && tokenInfo.name && tokenInfo.symbol) {
+            // Use token registry data
             metadata = {
-              name: nft.name || mintAddress.substring(0, 8) + '...',
-              symbol: nft.symbol || 'UNKNOWN',
-              uri: nft.uri || '',
-              description: nft.json?.description || `Token at ${mintAddress}`
+              name: tokenInfo.name,
+              symbol: tokenInfo.symbol,
+              uri: tokenInfo.logoURI || '',
+              description: `${tokenInfo.name} at ${mintAddress}`
             };
           } else {
-            // Most SPL tokens don't have metadata, use address-based naming
+            // Fallback if token info fetch fails
             metadata = {
               name: mintAddress.substring(0, 8) + '...',
               symbol: 'UNKNOWN',
@@ -207,7 +203,7 @@ export async function GET(
           }
         } catch (error) {
           console.warn('Failed to fetch metadata, using minimal fallback:', error instanceof Error ? error.message : 'Unknown error');
-          // Use address-based fallback when metadata fetch fails (common for SPL tokens)
+          // Use address-based fallback when metadata fetch fails
           metadata = {
             name: mintAddress.substring(0, 8) + '...',
             symbol: 'UNKNOWN',
