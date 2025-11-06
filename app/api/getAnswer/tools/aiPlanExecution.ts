@@ -549,7 +549,7 @@ Notes:
 - Prefer getFeeForMessage + getRecentPrioritizationFees over deprecated fee endpoints.
 `;
 
-        const planningPrompt = `You are an intelligent blockchain analyst. Analyze the user's question and create a JSON plan for which tools to use.
+        const planningPrompt = `You are an intelligent blockchain analyst. Analyze the user's question and create a COMPREHENSIVE data collection plan.
 
 User Question: "${question}"
 
@@ -558,13 +558,31 @@ ${planningContext || "N/A"}
 
 ${availableTools}
 
-Hard rules for planning:
-1) If the user asks about "price", "market cap", or "volume", or uses $SYMBOL notation, you MUST include "moralisMarketData" as the FIRST step for each detected token.
-2) "moralisMarketData" REQUIRES the Solana mint address. Use the provided symbol→mint mapping (SVMAI supported). If the mint is unknown, omit the step instead of guessing.
-3) If multiple tokens are requested, include one moralisMarketData step per token (deduplicated). Keep moralisMarketData steps first, then any extra RPC steps if the user also asked for them.
-4) Do NOT use getEpochInfo, getSlot, or other network tools to answer price/market/volume unless explicitly required in addition to market data.
-5) Return ONLY a JSON array of tool steps, no extra text.
+COMPREHENSIVE DATA COLLECTION RULES:
 
+For TOKEN ANALYSIS queries (price, market, volume, or $SYMBOL):
+You MUST collect these ESSENTIAL data points in THIS ORDER:
+
+1. moralisMarketData(mint) - Current price, market cap, 24h volume [REQUIRED]
+2. getTokenLargestAccounts(mint) - Top holder concentration for whale analysis [REQUIRED]
+3. getSwapsByTokenAddress(mint, {limit: 50}) - Recent swap activity (reduced from 100) [OPTIONAL if time permits]
+
+This focused data enables critical insights:
+- Price/volume baseline + actual market cap calculation
+- Whale control risk via top holder concentration
+- Recent activity signals for manipulation detection
+
+PERFORMANCE NOTE: Only include swap data if you believe it's essential for the specific question.
+
+Known Token Mints:
+- SVMAI -> Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
+
+CRITICAL RULES:
+1) For token analysis, include ALL 6 data collection steps above
+2) Use exact mint addresses from the mapping above
+3) For unknown tokens, skip rather than guess addresses
+4) DO NOT use getEpochInfo or network tools for token queries
+5) Return ONLY valid JSON array, no explanatory text
 
 Response format (JSON only):
 [
@@ -576,13 +594,15 @@ Response format (JSON only):
   }
 ]
 
-Examples:
-- For "$SVMAI price":
-  [
-    { "tool": "moralisMarketData", "reason": "Get market data for SVMAI via Moralis", "narrative": "⟨ ⟩ Fetching Moralis price/volume for SVMAI", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" }
-  ]
-
-- For "$SOL account balance of address X": do not use moralisMarketData; use account/balance tools instead.`;
+Example for "$SVMAI analysis":
+[
+  { "tool": "moralisMarketData", "reason": "Current price/mcap/volume", "narrative": "📊 Fetching real-time market data", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
+  { "tool": "getHistoricalTokenPrice", "reason": "7-day OHLCV for trend detection", "narrative": "📈 Loading price history", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
+  { "tool": "getTokenHolders", "reason": "Whale concentration analysis", "narrative": "🐋 Analyzing holder distribution", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
+  { "tool": "getTokenLargestAccounts", "reason": "RPC-verified top holders", "narrative": "🔍 Verifying largest accounts", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" },
+  { "tool": "getSwapsByTokenAddress", "reason": "Recent DEX activity patterns", "narrative": "⚡ Tracking swap activity", "input": { "address": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump", "limit": 100 } },
+  { "tool": "getSignaturesForAddress", "reason": "Transaction timeline", "narrative": "📝 Loading transaction history", "input": "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" }
+]`;
 
         const response = await withTimeout(
             openRouter.chat.send({
