@@ -84,17 +84,17 @@ export function WalletConnect() {
             {isAuthenticated ? (
               // Authenticated State
               <div className="space-y-3">
-                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-950 rounded-lg">
-                  <CheckCircle className="h-5 w-5 text-green-600" />
+                <div className="flex items-center gap-2 p-3 bg-success/10 border border-success/30 rounded-lg">
+                  <CheckCircle className="h-5 w-5 text-success" />
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-green-800 dark:text-green-200">
+                    <p className="text-sm font-medium text-success">
                       Authenticated
                     </p>
-                    <p className="text-xs text-green-600 dark:text-green-400">
+                    <p className="text-xs text-success/80">
                       Session active for 7 days
                     </p>
                   </div>
-                  <Badge variant="secondary" className="bg-green-100 text-green-700">
+                  <Badge variant="secondary" className="bg-success/10 text-success border border-success/30">
                     <Clock className="h-3 w-3 mr-1" />
                     Active
                   </Badge>
@@ -118,9 +118,9 @@ export function WalletConnect() {
                   </Button>
                 </div>
 
-                <div className="flex items-start gap-2 p-3 bg-blue-50 dark:bg-blue-950 rounded-lg">
-                  <CheckCircle className="h-4 w-4 text-blue-600 mt-0.5" />
-                  <p className="text-sm text-blue-800 dark:text-blue-200">
+                <div className="flex items-start gap-2 p-3 bg-info/10 border border-info/30 rounded-lg">
+                  <CheckCircle className="h-4 w-4 text-info mt-0.5" />
+                  <p className="text-sm text-info">
                     You're signed in! All social actions (follow, like, etc.) will work without requiring additional signatures.
                   </p>
                 </div>
@@ -146,9 +146,9 @@ export function WalletConnect() {
                   )}
                 </Button>
 
-                <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950 rounded-lg">
-                  <AlertCircle className="h-4 w-4 text-amber-600 mt-0.5" />
-                  <p className="text-sm text-amber-800 dark:text-amber-200">
+                <div className="flex items-start gap-2 p-3 bg-warning/10 border border-warning/30 rounded-lg">
+                  <AlertCircle className="h-4 w-4 text-warning mt-0.5" />
+                  <p className="text-sm text-warning">
                     Sign once to authenticate. Your session will last 7 days - no more signing for every action!
                   </p>
                 </div>
@@ -157,9 +157,9 @@ export function WalletConnect() {
 
             {/* Error Display */}
             {error && (
-              <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-950 rounded-lg">
-                <AlertCircle className="h-4 w-4 text-red-600 mt-0.5" />
-                <p className="text-sm text-red-800 dark:text-red-200">{error}</p>
+              <div className="flex items-start gap-2 p-3 bg-destructive/10 border border-destructive/30 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-destructive mt-0.5" />
+                <p className="text-sm text-destructive">{error}</p>
               </div>
             )}
           </div>

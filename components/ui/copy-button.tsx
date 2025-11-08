@@ -41,7 +41,7 @@ export function CopyButton({ value, className = '' }: CopyButtonProps) {
           strokeWidth="2"
           strokeLinecap="round"
           strokeLinejoin="round"
-          className="text-green-500"
+          className="text-success"
         >
           <polyline points="20 6 9 17 4 12" />
         </svg>

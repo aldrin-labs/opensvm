@@ -94,12 +94,12 @@ export default function TransactionNodeDetails({ tx }: TransactionNodeDetailsPro
                   />
                   <div className="flex gap-2">
                     {account?.signer && (
-                      <span className="px-2 py-0.5 text-xs rounded-md bg-green-700/20 text-green-500 border border-green-700/30">
+                      <span className="px-2 py-0.5 text-xs rounded-md bg-success/20 text-success border border-success/30">
                         Signer
                       </span>
                     )}
                     {account?.writable && (
-                      <span className="px-2 py-0.5 text-xs rounded-md bg-blue-700/20 text-blue-500 border border-blue-700/30">
+                      <span className="px-2 py-0.5 text-xs rounded-md bg-info/20 text-info border border-info/30">
                         Writable
                       </span>
                     )}
@@ -129,9 +129,9 @@ export default function TransactionNodeDetails({ tx }: TransactionNodeDetailsPro
                 <span className="text-muted-foreground">Efficiency</span>
                 <Tooltip content="Lower efficiency means higher potential for CU optimization">
                   <span className={`${
-                    cuEfficiency < 50 ? 'text-red-400' :
-                    cuEfficiency < 75 ? 'text-yellow-400' :
-                    'text-green-400'
+                    cuEfficiency < 50 ? 'text-destructive' :
+                    cuEfficiency < 75 ? 'text-warning' :
+                    'text-success'
                   }`}>
                     {cuEfficiency}%
                   </span>
@@ -142,7 +142,7 @@ export default function TransactionNodeDetails({ tx }: TransactionNodeDetailsPro
               <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Potential Savings</span>
                 <Tooltip content="CUs that could be saved with optimization">
-                  <span className="text-blue-400">{cuSavings.toLocaleString()} CU</span>
+                  <span className="text-info">{cuSavings.toLocaleString()} CU</span>
                 </Tooltip>
               </div>
             )}

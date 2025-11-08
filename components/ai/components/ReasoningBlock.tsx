@@ -188,7 +188,7 @@ export function ReasoningBlock({
       <button
         id={toggleId}
         onClick={handleToggle}
-        className="relative z-[3000] flex items-center gap-1 text-xs text-slate-400 hover:text-slate-300 transition-colors py-1 px-2 rounded hover:bg-slate-800/50 focus:outline-none focus:ring-1 focus:ring-slate-400 pointer-events-auto"
+        className="relative z-[3000] flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors py-1 px-2 rounded hover:bg-muted/50 focus:outline-none focus:ring-1 focus:ring-ring pointer-events-auto"
         aria-expanded={isExpanded}
         aria-controls={contentId}
         data-ai-reasoning-toggle
@@ -201,7 +201,7 @@ export function ReasoningBlock({
         )}
         <span className="font-medium">
           Reasoning
-          <span className="text-slate-500 ml-1">
+          <span className="text-muted-foreground/70 ml-1">
             ({reasoning.tokensEst} token{reasoning.tokensEst !== 1 ? 's' : ''})
           </span>
         </span>
@@ -215,7 +215,7 @@ export function ReasoningBlock({
         aria-hidden={!isExpanded}
         data-ai-reasoning-content
       >
-        <div className="mt-1 p-3 bg-slate-900/50 border border-slate-700/50 rounded text-xs font-mono text-slate-300 whitespace-pre-wrap leading-relaxed">
+        <div className="mt-1 p-3 bg-muted/50 border border-border rounded text-xs font-mono text-foreground whitespace-pre-wrap leading-relaxed">
           {reasoning.text}
         </div>
       </div>

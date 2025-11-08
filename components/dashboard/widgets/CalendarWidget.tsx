@@ -118,11 +118,11 @@ export function CalendarWidget({ config, data, size }: CalendarWidgetProps) {
 
   const getEventTypeColor = (type: string) => {
     switch (type) {
-      case 'meeting': return 'bg-blue-500';
-      case 'deadline': return 'bg-red-500';
-      case 'reminder': return 'bg-orange-500';
-      case 'event': return 'bg-green-500';
-      default: return 'bg-gray-500';
+      case 'meeting': return 'bg-info';
+      case 'deadline': return 'bg-destructive';
+      case 'reminder': return 'bg-warning';
+      case 'event': return 'bg-success';
+      default: return 'bg-muted';
     }
   };
 

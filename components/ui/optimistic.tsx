@@ -35,17 +35,17 @@ export function ActionStatus({
   const statusConfig = {
     pending: {
       icon: Clock,
-      color: 'bg-blue-100 text-blue-700 border-blue-200',
+      color: 'bg-info/10 text-info border-info/30',
       label: t('optimistic.status.pending')
     },
     success: {
       icon: Check,
-      color: 'bg-green-100 text-green-700 border-green-200',
+      color: 'bg-success/10 text-success border-success/30',
       label: t('optimistic.status.success')
     },
     error: {
       icon: X,
-      color: 'bg-red-100 text-red-700 border-red-200',
+      color: 'bg-destructive/10 text-destructive border-destructive/30',
       label: t('optimistic.status.error')
     }
   };
@@ -106,7 +106,7 @@ export function OptimisticListItem<T>({
   return (
     <div className={cn(
       'transition-all duration-200',
-      isOptimistic && 'opacity-70 bg-blue-50 dark:bg-blue-950/50',
+      isOptimistic && 'opacity-70 bg-info/10',
       isDeleting && 'opacity-30 scale-95',
       className
     )}>
@@ -164,7 +164,7 @@ export function OptimisticForm({
           </LoadingButton>
           
           {optimisticSuccess && (
-            <Badge variant="secondary" className="bg-green-50 text-green-700">
+            <Badge variant="secondary" className="bg-success/10 text-success border border-success/30">
               <Check className="w-3 h-3 mr-1" />
               Success (pending confirmation)
             </Badge>
@@ -362,7 +362,7 @@ export function OptimisticLikeButton({
       disabled={isLoading}
       className={cn(
         'flex items-center space-x-2 transition-colors',
-        optimisticLiked && 'text-red-600 hover:text-red-700',
+        optimisticLiked && 'text-destructive hover:text-destructive/90',
         pending && 'opacity-70',
         className
       )}
@@ -486,7 +486,7 @@ export function OptimisticComments({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleDeleteComment(comment)}
-                className="text-red-600 hover:text-red-700"
+                className="text-destructive hover:text-destructive/90"
               >
                 <X className="w-4 h-4" />
               </Button>

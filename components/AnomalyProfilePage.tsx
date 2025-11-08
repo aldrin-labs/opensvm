@@ -105,11 +105,11 @@ export const AnomalyProfilePage = React.memo(function AnomalyProfilePage({
 
   const getSeverityColor = (severity: string) => {
     switch (severity) {
-      case 'critical': return 'bg-red-500 text-white';
-      case 'high': return 'bg-orange-500 text-white';
-      case 'medium': return 'bg-yellow-500 text-black';
-      case 'low': return 'bg-blue-500 text-white';
-      default: return 'bg-gray-500 text-white';
+      case 'critical': return 'bg-destructive text-destructive-foreground';
+      case 'high': return 'bg-warning text-warning-foreground';
+      case 'medium': return 'bg-warning/50 text-foreground';
+      case 'low': return 'bg-info text-info-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 

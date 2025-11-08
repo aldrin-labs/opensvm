@@ -91,6 +91,9 @@ For more detailed documentation, see:
   - [Health Check Report](./docs/api/health-check-report.md) - Latest API health status
   - [API Health Summary](./docs/api/api-health-summary.md) - Performance overview
   - [Optimization Summary](./docs/api/optimization-summary.md) - Performance optimizations
+- [Testing Guide](./TESTING.md) - **🧪 Comprehensive testing documentation**
+  - [DEX API Tests](./docs/DEX_API_TESTS.md) - DEX aggregator API test coverage
+  - [Test Suite Summary](./docs/TEST_SUITE_SUMMARY.md) - Quick overview of all tests
 - [Features](./docs/FEATURES.md) - Detailed feature descriptions
 - [Development Guide](./docs/DEVELOPMENT.md) - Development setup and guidelines
 

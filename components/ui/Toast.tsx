@@ -19,19 +19,19 @@ const icons = {
 };
 
 const bgColors = {
-  success: 'bg-green-500/10 border-green-500/50',
-  error: 'bg-red-500/10 border-red-500/50',
-  warning: 'bg-yellow-500/10 border-yellow-500/50',
-  info: 'bg-blue-500/10 border-blue-500/50',
-  loading: 'bg-gray-500/10 border-gray-500/50',
+  success: 'bg-success/10 border-success/50',
+  error: 'bg-destructive/10 border-destructive/50',
+  warning: 'bg-warning/10 border-warning/50',
+  info: 'bg-info/10 border-info/50',
+  loading: 'bg-muted border-border',
 };
 
 const iconColors = {
-  success: 'text-green-500',
-  error: 'text-red-500',
-  warning: 'text-yellow-500',
-  info: 'text-blue-500',
-  loading: 'text-gray-500',
+  success: 'text-success',
+  error: 'text-destructive',
+  warning: 'text-warning',
+  info: 'text-info',
+  loading: 'text-muted-foreground',
 };
 
 export function Toast({ notification, onClose }: ToastProps) {

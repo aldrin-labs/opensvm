@@ -123,8 +123,8 @@ const NetworkChartsComponent = function({ networkId, isLive = false }: NetworkCh
   if (loading && chartData.length === 0) {
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
-        <Card className="p-4 h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800" />
-        <Card className="p-4 h-[300px] animate-pulse bg-gray-100 dark:bg-gray-800" />
+        <Card className="p-4 h-[300px] animate-pulse bg-muted" />
+        <Card className="p-4 h-[300px] animate-pulse bg-muted" />
       </div>
     );
   }
@@ -134,7 +134,7 @@ const NetworkChartsComponent = function({ networkId, isLive = false }: NetworkCh
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 p-4">
         <Card className="p-4">
-          <div className="text-red-500">Error loading network data: {error}</div>
+          <div className="text-destructive">Error loading network data: {error}</div>
         </Card>
       </div>
     );

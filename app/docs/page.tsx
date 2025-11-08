@@ -23,6 +23,7 @@ const docCategories: DocCategory[] = [
     docs: [
       { slug: 'introduction', title: 'Introduction', description: 'Overview of OpenSVM features and capabilities' },
       { slug: 'README', title: 'Quick Start', description: 'Get started with OpenSVM quickly' },
+      { slug: 'MARKET_DATA_API_GUIDE', title: 'Market Data API Guide', description: 'User-friendly guide to the DEX Aggregator API' },
       { slug: 'FEATURES', title: 'Features', description: 'Complete list of OpenSVM features' },
       { slug: 'DEVELOPMENT', title: 'Development', description: 'Setup and development guide' },
     ]
@@ -43,6 +44,8 @@ const docCategories: DocCategory[] = [
     icon: <FileText className="w-6 h-6" />,
     docs: [
       { slug: 'API', title: 'API Reference', description: 'Complete API documentation' },
+      { slug: 'DEX_API_TESTS', title: 'DEX Aggregator API', description: 'Market data, pools, OHLCV, and technical indicators' },
+      { slug: 'TESTING', title: 'Testing Guide', description: 'API testing documentation and examples' },
       { slug: 'api/api-health-summary', title: 'API Health Check', description: 'Latest API health status and performance metrics' },
       { slug: 'api/health-check-report', title: 'Health Report', description: 'Detailed health check report for all 97 endpoints' },
       { slug: 'AUTHENTICATION', title: 'Authentication', description: 'Authentication and authorization guide' },
@@ -100,7 +103,7 @@ export default async function DocsPage() {
       <div className="border-b backdrop-blur-sm bg-gradient-to-br from-background via-background to-primary/5">
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
               OpenSVM Documentation
             </h1>
             <p className="text-xl text-muted-foreground mb-8">

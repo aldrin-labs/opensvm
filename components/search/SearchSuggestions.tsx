@@ -414,9 +414,9 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
       {isLoading ? (
         <div className="px-4 py-3 text-center text-muted-foreground">
           <div className="flex items-center justify-center space-x-2">
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-purple-500 to-blue-500 animate-pulse"></div>
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-blue-500 to-teal-500 animate-pulse delay-150"></div>
-            <div className="w-2 h-2 rounded-full bg-gradient-to-r from-teal-500 to-purple-500 animate-pulse delay-300"></div>
+            <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
+            <div className="w-2 h-2 rounded-full bg-info animate-pulse delay-150"></div>
+            <div className="w-2 h-2 rounded-full bg-accent animate-pulse delay-300"></div>
           </div>
           <p className="mt-1 text-sm text-foreground">Loading suggestions...</p>
         </div>
@@ -625,19 +625,19 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                   <div className="flex items-start justify-between">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${suggestion.type === 'address' ? 'bg-blue-500/10 text-blue-600' :
-                            suggestion.type === 'token' ? 'bg-green-500/10 text-green-600' :
-                              suggestion.type === 'program' ? 'bg-purple-500/10 text-purple-600' :
-                                suggestion.type === 'recent_global' ? 'bg-muted text-muted-foreground' :
-                                  suggestion.type === 'recent_user' ? 'bg-blue-500/10 text-blue-600' :
-                                    'bg-orange-500/10 text-orange-600'
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${suggestion.type === 'address' ? 'bg-info/10 text-info border border-info/30' :
+                            suggestion.type === 'token' ? 'bg-success/10 text-success border border-success/30' :
+                              suggestion.type === 'program' ? 'bg-primary/10 text-primary border border-primary/30' :
+                                suggestion.type === 'recent_global' ? 'bg-muted text-muted-foreground border border-border' :
+                                  suggestion.type === 'recent_user' ? 'bg-info/10 text-info border border-info/30' :
+                                    'bg-warning/10 text-warning border border-warning/30'
                           }`}>
                           {suggestion.type === 'recent_global' ? 'POPULAR' :
                             suggestion.type === 'recent_user' ? 'RECENT' :
                               suggestion.type.toUpperCase()}
                         </span>
                         {suggestion.metadata?.verified && (
-                          <span className="text-xs bg-green-500/10 text-green-600 px-1.5 py-0.5 rounded">
+                          <span className="text-xs bg-success/10 text-success border border-success/30 px-1.5 py-0.5 rounded">
                             VERIFIED
                           </span>
                         )}

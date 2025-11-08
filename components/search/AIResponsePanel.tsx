@@ -184,7 +184,7 @@ const AIResponsePanel: React.FC<AIResponsePanelProps> = ({ query, onClose }) => 
       case 'account':
         return <Badge className="bg-blue-500">Account</Badge>;
       case 'transaction':
-        return <Badge className="bg-orange-500">Transaction</Badge>;
+        return <Badge className="bg-warning">Transaction</Badge>;
       case 'error':
         return <Badge className="bg-red-500">Error</Badge>;
       default:

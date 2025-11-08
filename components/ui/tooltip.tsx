@@ -32,7 +32,7 @@ export function Tooltip({ content, children, className = '' }: TooltipProps) {
       {isVisible && (
         <div
           ref={tooltipRef}
-          className="absolute z-50 px-2 py-1 text-xs text-white bg-neutral-900 rounded shadow-lg whitespace-nowrap tooltip-animation"
+          className="absolute z-50 px-2 py-1 text-xs text-popover-foreground bg-popover border border-border rounded shadow-lg whitespace-nowrap tooltip-animation"
           style={{
             left: position.x,
             top: position.y,

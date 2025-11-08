@@ -501,6 +501,193 @@ Response:
 - GET /api/analytics/user-interactions - User behavior analytics
 
 ================================================================================
+## MARKET DATA & DEX AGGREGATOR APIs
+================================================================================
+
+### GET /api/market-data
+Comprehensive market data API with DEX aggregation, OHLCV data, and technical indicators
+
+**Required Parameters:**
+  - mint: string - Token mint address
+  - endpoint: 'ohlcv' | 'markets' | 'orderbook' - Data type to fetch
+
+**OHLCV Endpoint** (Candlestick/Chart Data):
+GET /api/market-data?endpoint=ohlcv&mint={TOKEN}&type={TIMEFRAME}
+
+Optional Parameters:
+  - type: string - Timeframe ('1m', '5m', '15m', '30m', '1H', '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M')
+  - poolAddress: string - Specific pool address for pool-specific data
+
+Response:
+{
+  "success": true,
+  "endpoint": "ohlcv",
+  "mint": "...",
+  "tokenInfo": {
+    "symbol": "BONK",
+    "name": "Bonk",
+    "price": 0.000012843,
+    "liquidity": 7288519,
+    "volume24h": 3786770
+  },
+  "mainPair": {
+    "pair": "Bonk/USDC",
+    "dex": "Phoenix",
+    "poolAddress": "..."
+  },
+  "pools": [
+    {
+      "dex": "Phoenix",
+      "pair": "Bonk/USDC",
+      "poolAddress": "...",
+      "price": 0.000012812,
+      "volume24h": 59475.53,
+      "txCount24h": 710,
+      "lastSeen": "2025-11-08T12:00:00.000Z"
+    }
+  ],
+  "data": {
+    "items": [
+      {
+        "o": 0.00001234,  // open
+        "h": 0.00001250,  // high
+        "l": 0.00001220,  // low
+        "c": 0.00001245,  // close
+        "v": 123456.78,   // volume
+        "unixTime": 1699401600
+      }
+    ]
+  },
+  "indicators": {
+    "ma7": [null, null, ..., 0.00001234],
+    "ma25": [null, ..., 0.00001235],
+    "macd": {
+      "line": [null, ..., 0.0000001],
+      "signal": [null, ..., 0.0000002],
+      "histogram": [null, ..., -0.0000001]
+    }
+  }
+}
+
+**Markets Endpoint** (Pool/Liquidity Discovery):
+GET /api/market-data?endpoint=markets&mint={TOKEN}
+
+Optional Parameters:
+  - baseMint: string - Filter by base token (e.g., USDC mint)
+  - poolAddress: string - Filter to specific pool
+
+Response:
+{
+  "success": true,
+  "endpoint": "markets",
+  "mint": "...",
+  "pools": [
+    {
+      "dex": "Phoenix",
+      "pair": "Bonk-USDC",
+      "poolAddress": "...",
+      "price": 0.000012812,
+      "liquidity": 1265975.07,
+      "volume24h": 59475.53,
+      "txCount24h": 710,
+      "baseToken": "BONK",
+      "quoteToken": "USDC",
+      "baseAddress": "...",
+      "quoteAddress": "..."
+    }
+  ],
+  "count": 3,
+  "filters": {
+    "baseMint": null,
+    "poolAddress": null
+  }
+}
+
+**Orderbook Endpoint** (Market Depth):
+GET /api/market-data?endpoint=orderbook&mint={TOKEN}
+
+Optional Parameters:
+  - offset: string - Price offset in basis points (default: '100')
+
+Response:
+{
+  "success": true,
+  "endpoint": "orderbook",
+  "mint": "...",
+  "data": {
+    "bids": [[price, size], ...],
+    "asks": [[price, size], ...],
+    "updateTime": 1699401600
+  }
+}
+
+**Features:**
+- Real-time DEX aggregation across Phoenix, Raydium, Orca, Meteora, etc.
+- OHLCV candlestick data for charting
+- Technical indicators: MA7, MA25, MACD (12, 26, 9)
+- Pool discovery with liquidity rankings
+- 24h volume and transaction count tracking
+- Multi-pair support with automatic pair detection
+
+**Security:**
+- All responses exclude internal data sources
+- No API keys or upstream URLs exposed
+
+### GET /api/dex/[name]
+Comprehensive DEX profile and analytics
+
+Parameters:
+  - name: string (path) - DEX identifier (raydium, orca, phoenix, meteora, etc.)
+
+Response:
+{
+  "success": true,
+  "data": {
+    "name": "Raydium",
+    "description": "...",
+    "logo": "...",
+    "website": "https://raydium.io",
+    "twitter": "...",
+    "github": "...",
+    "programId": "...",
+    "totalVolume": 125000000000,
+    "volume24h": 95000000,
+    "volumeChange": 5.3,
+    "tvl": 450000000,
+    "tvlChange": 2.1,
+    "marketShare": 22.5,
+    "activeUsers": 15000,
+    "transactions": 125000,
+    "avgTransactionSize": 760,
+    "fees24h": 285000,
+    "totalFees": 125000000,
+    "commission": 0.003,
+    "status": "active",
+    "security": {
+      "audited": true,
+      "auditors": ["Certik", "Kudelski"],
+      "lastAudit": "2024-09-15",
+      "bugBounty": true,
+      "multisig": true,
+      "timelock": true
+    },
+    "metrics": {
+      "uptime": 99.2,
+      "avgSlippage": 0.15,
+      "poolCount": 450,
+      "tokenCount": 850,
+      "liquidityDepth": 360000000
+    },
+    "historicalData": {
+      "volumeHistory": [...],
+      "feeHistory": [...]
+    },
+    "topPools": [...],
+    "recentTrades": [...]
+  }
+}
+
+================================================================================
 ## TOKEN & NFT APIs
 ================================================================================
 

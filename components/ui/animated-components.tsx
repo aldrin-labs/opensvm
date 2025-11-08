@@ -219,8 +219,8 @@ export function AnimatedInput({
             'transition-all',
             label && 'pt-6 pb-2',
             icon && 'pr-10',
-            error && 'border-red-500 focus:border-red-500',
-            success && 'border-green-500 focus:border-green-500',
+            error && 'border-destructive focus:border-destructive',
+            success && 'border-success focus:border-success',
             className
           )}
           style={{
@@ -230,9 +230,9 @@ export function AnimatedInput({
         {icon && (
           <div className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground">
             {success ? (
-              <Check className="w-4 h-4 text-green-500" />
+              <Check className="w-4 h-4 text-success" />
             ) : error ? (
-              <X className="w-4 h-4 text-red-500" />
+              <X className="w-4 h-4 text-destructive" />
             ) : (
               icon
             )}
@@ -240,7 +240,7 @@ export function AnimatedInput({
         )}
       </div>
       {error && (
-        <p className="text-sm text-red-500 mt-1 animate-in slide-in-from-top-1 duration-200">
+        <p className="text-sm text-destructive mt-1 animate-in slide-in-from-top-1 duration-200">
           {error}
         </p>
       )}
@@ -336,8 +336,8 @@ export function FloatingActionButton({
   const variantClasses = {
     primary: 'bg-primary text-primary-foreground hover:bg-primary/90',
     secondary: 'bg-secondary text-secondary-foreground hover:bg-secondary/80',
-    success: 'bg-green-600 text-white hover:bg-green-700',
-    danger: 'bg-red-600 text-white hover:bg-red-700',
+    success: 'bg-success text-success-foreground hover:bg-success/90',
+    danger: 'bg-destructive text-destructive-foreground hover:bg-destructive/90',
   };
 
   return (
@@ -485,7 +485,7 @@ export function AnimatedLikeButton({
       className={cn(
         'flex items-center space-x-2 px-3 py-2 rounded-lg transition-all',
         'hover:bg-muted/50 focus:outline-none focus:ring-2 focus:ring-primary/20',
-        liked ? 'text-red-500' : 'text-muted-foreground',
+        liked ? 'text-destructive' : 'text-muted-foreground',
         className
       )}
       style={{

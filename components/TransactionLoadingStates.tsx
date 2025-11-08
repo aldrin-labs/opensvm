@@ -42,7 +42,7 @@ export function PaginatedInstructionsView({
 
   if (error) {
     return (
-      <div className="flex items-center justify-center p-8 text-red-600">
+      <div className="flex items-center justify-center p-8 text-destructive">
         <AlertCircle className="h-5 w-5 mr-2" />
         <span>Error loading instructions: {error.message}</span>
       </div>
@@ -224,7 +224,7 @@ export function LazyRelatedTransactionsView({
 
       {/* Error State */}
       {lazyState.error && (
-        <div className="flex items-center justify-center p-4 text-red-600 bg-red-50 rounded-md">
+        <div className="flex items-center justify-center p-4 text-destructive-foreground bg-destructive/10 border border-destructive/50 rounded-md">
           <AlertCircle className="h-5 w-5 mr-2" />
           <span>Error loading more transactions: {lazyState.error.message}</span>
         </div>
@@ -270,7 +270,7 @@ export function PerformanceMetrics({ metrics, recommendations, className = '' }:
         <BarChart3 className="h-5 w-5" />
         <h3 className="font-semibold">Performance Metrics</h3>
         {metrics.isLargeTransaction && (
-          <span className="px-2 py-1 bg-orange-100 text-orange-800 text-xs rounded-full">
+          <span className="px-2 py-1 bg-warning/10 text-warning border border-warning/30 text-xs rounded-full">
             Large Transaction
           </span>
         )}
@@ -303,7 +303,7 @@ export function PerformanceMetrics({ metrics, recommendations, className = '' }:
             {metrics.optimizationsApplied.map((optimization, index) => (
               <span
                 key={index}
-                className="px-2 py-1 bg-green-100 text-green-800 text-xs rounded-full"
+                className="px-2 py-1 bg-success/10 text-success border border-success/30 text-xs rounded-full"
               >
                 {optimization.replace(/_/g, ' ')}
               </span>
@@ -361,7 +361,7 @@ export function LoadingStateIndicator({
           <span>{loadingText}</span>
         </div>
       ) : hasError ? (
-        <div className="flex items-center space-x-2 text-red-600">
+        <div className="flex items-center space-x-2 text-destructive">
           <AlertCircle className="h-5 w-5" />
           <span>{errorText}</span>
         </div>
@@ -379,9 +379,9 @@ interface TransactionSizeBadgeProps {
 
 export function TransactionSizeBadge({ instructionCount, accountCount, isLarge }: TransactionSizeBadgeProps) {
   const getBadgeColor = () => {
-    if (isLarge) return 'bg-red-100 text-red-800';
-    if (instructionCount > 50 || accountCount > 100) return 'bg-yellow-100 text-yellow-800';
-    return 'bg-green-100 text-green-800';
+    if (isLarge) return 'bg-destructive/10 text-destructive border border-destructive/30';
+    if (instructionCount > 50 || accountCount > 100) return 'bg-warning/10 text-warning border border-warning/30';
+    return 'bg-success/10 text-success border border-success/30';
   };
 
   const getBadgeText = () => {

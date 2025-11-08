@@ -19,9 +19,9 @@ const Alert = React.forwardRef<HTMLDivElement, AlertProps>(
     
     const variantClasses = {
       default: 'bg-background text-foreground border-border',
-      destructive: 'border-red-200 bg-red-50 text-red-900 dark:border-red-800 dark:bg-red-950 dark:text-red-400',
-      success: 'border-green-200 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-400',
-      warning: 'border-yellow-200 bg-yellow-50 text-yellow-900 dark:border-yellow-800 dark:bg-yellow-950 dark:text-yellow-400'
+      destructive: 'border-destructive/50 bg-destructive/10 text-destructive-foreground',
+      success: 'border-success/50 bg-success/10 text-success-foreground',
+      warning: 'border-warning/50 bg-warning/10 text-warning-foreground'
     };
 
     return (

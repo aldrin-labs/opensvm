@@ -57,10 +57,10 @@ function TabItem({ tab, isActive, onTabClick, onTabClose, onTabRename, onTabTogg
 
     const getStatusIndicator = () => {
         if (tab.isProcessing) {
-            return <div className="w-2 h-2 bg-blue-400 rounded-full animate-pulse" data-ai-tab-status="processing" />;
+            return <div className="w-2 h-2 bg-info rounded-full animate-pulse" data-ai-tab-status="processing" />;
         }
         if (tab.status) {
-            return <div className="w-2 h-2 bg-green-400 rounded-full" data-ai-tab-status="ready" />;
+            return <div className="w-2 h-2 bg-success rounded-full" data-ai-tab-status="ready" />;
         }
         return null;
     };

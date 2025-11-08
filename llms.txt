@@ -403,9 +403,63 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
   - Body: { action: string, metadata: object }
   - Response: Earned amount
 
-### 10. TRADING TERMINAL
+### 10. MARKET DATA & DEX AGGREGATOR APIs
 
-#### Market Data
+#### Market Data API
+- **GET /api/market-data** - Token market data with DEX aggregation
+  - Query Parameters:
+    - `mint` (required): Token mint address
+    - `endpoint` (required): 'ohlcv', 'markets', or 'orderbook'
+    - `type` (optional, for ohlcv): '1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M' (default: '1H')
+    - `poolAddress` (optional, for ohlcv): Specific pool address for pool-specific data
+    - `baseMint` (optional, for markets): Filter pools by base token
+    - `offset` (optional, for orderbook): Price offset (default: '100')
+  
+  - **OHLCV Endpoint** (`endpoint=ohlcv`):
+    - Returns candlestick/OHLC data for charting
+    - Includes technical indicators: MA7, MA25, MACD (line, signal, histogram)
+    - Aggregates all available DEX pools/pairs with 24h volume and transaction counts
+    - Response includes:
+      - `tokenInfo`: Symbol, name, price, liquidity, volume24h
+      - `mainPair`: Primary trading pair (highest volume)
+      - `pools[]`: All pools with pair info, DEX name, volume, price, last seen
+      - `data`: OHLCV candlestick data
+      - `indicators`: MA7, MA25, MACD indicators
+    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=ohlcv&type=1H`
+    - Pool-specific: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=ohlcv&poolAddress=POOL_ADDRESS`
+  
+  - **Markets Endpoint** (`endpoint=markets`):
+    - Returns top 3 pools by liquidity
+    - Includes DEX, pair, price, liquidity, volume24h, transaction count
+    - Can filter by baseMint or specific poolAddress
+    - Response includes:
+      - `pools[]`: Array of pool data with liquidity rankings
+      - `count`: Number of pools returned
+      - `filters`: Applied filters
+    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=markets`
+  
+  - **Orderbook Endpoint** (`endpoint=orderbook`):
+    - Returns market depth and order book data
+    - Includes bids, asks, price levels
+    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=orderbook&offset=100`
+  
+  - **Security**: All responses exclude internal data sources - no API URLs or keys exposed
+  - **Performance**: 24h data lookback, aggregates 100 recent transactions for pool stats
+
+#### DEX Profile API
+- **GET /api/dex/[name]** - Comprehensive DEX analytics
+  - Params: name (string) - DEX identifier (raydium, orca, phoenix, meteora, etc.)
+  - Response:
+    - Profile: name, description, logo, website, social links, program ID
+    - Metrics: volume24h, volumeChange, TVL, market share, active users, transactions
+    - Historical data: volume, TVL, user activity over time
+    - Top pools: Highest volume trading pairs
+    - Recent trades: Latest DEX activity
+    - Security: Audit status, multisig, timelock, bug bounty
+    - Performance: Uptime, avg slippage, pool count, token count, liquidity depth
+  - Example: `/api/dex/raydium`, `/api/dex/orca`
+
+#### Trading Terminal (Legacy)
 - **GET /api/trading/market-data** - Real-time market data
   - Query: symbols (array), interval? (string)
   - Response: Price, volume, orderbook data

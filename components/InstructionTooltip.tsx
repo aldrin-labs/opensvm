@@ -199,7 +199,7 @@ const InstructionTooltip: React.FC<InstructionTooltipProps> = ({
                           </span>
                         )}
                         {account.isWritable && (
-                          <span className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 px-1 py-0.5 rounded text-xs">
+                          <span className="bg-warning/10 text-warning border border-warning/30 px-1 py-0.5 rounded text-xs">
                             W
                           </span>
                         )}

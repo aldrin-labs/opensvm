@@ -271,7 +271,7 @@ export function CollapsibleTable({
 
     return (
         <div
-            className={`bg-gray-900 border border-gray-700 rounded-lg overflow-hidden ${className}`}
+            className={`bg-card border border-border rounded-lg overflow-hidden ${className}`}
             data-ai-table="collapsible"
             data-ai-table-rows={data.length}
             data-ai-table-collapsed={isCollapsed}
@@ -279,9 +279,9 @@ export function CollapsibleTable({
             data-testid="collapsible-table"
         >
             {/* Header with controls */}
-            <div className="flex justify-between items-center px-4 py-2 bg-gray-800 border-b border-gray-700">
+            <div className="flex justify-between items-center px-4 py-2 bg-muted border-b border-border">
                 <div className="flex items-center space-x-4">
-                    <span className="text-xs text-gray-400 font-mono">
+                    <span className="text-xs text-muted-foreground font-mono">
                         Table ({filteredData.length} {filteredData.length === 1 ? 'row' : 'rows'})
                     </span>
 
@@ -297,7 +297,7 @@ export function CollapsibleTable({
                                     total_rows: data.length
                                 });
                             }}
-                            className="text-xs bg-gray-700 border border-gray-600 rounded px-2 py-1 text-white placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                            className="text-xs bg-background border border-input rounded px-2 py-1 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring"
                             data-ai-search="table"
                         />
                     )}

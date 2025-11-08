@@ -6,6 +6,8 @@
 3. [Response Formats](#response-formats)
 4. [Rate Limiting](#rate-limiting)
 5. [API Endpoints](#api-endpoints)
+   - [Market Data & DEX Aggregator](#-market-data--dex-aggregator)
+   - [Blockchain Core](#-blockchain-core)
 6. [External Integrations](#external-integrations)
 7. [Error Handling](#error-handling)
 8. [Best Practices](#best-practices)
@@ -88,7 +90,228 @@ Rate limit information is included in response headers:
 
 ## API Endpoints
 
-### 🔷 Blockchain Core
+### � Market Data & DEX Aggregator
+
+The Market Data API provides comprehensive DEX aggregation, token pricing, pool discovery, OHLCV data, and technical indicators for Solana tokens.
+
+#### Get OHLCV Data (Candlestick Charts)
+
+```http
+GET /api/market-data?endpoint=ohlcv&mint={TOKEN}&type={TIMEFRAME}
+```
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `endpoint` | string | Yes | Must be `ohlcv` |
+| `mint` | string | Yes | Token mint address |
+| `type` | string | Yes | Timeframe: `1m`, `5m`, `15m`, `1H`, `4H`, `1D` |
+| `poolAddress` | string | No | Specific pool address for pool-specific data |
+
+**Response:**
+```json
+{
+  "success": true,
+  "endpoint": "ohlcv",
+  "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "tokenInfo": {
+    "symbol": "Bonk",
+    "name": "Bonk",
+    "price": 0.000012843,
+    "liquidity": 7288519,
+    "volume24h": 3786770
+  },
+  "mainPair": {
+    "pair": "Bonk/USDC",
+    "dex": "Phoenix",
+    "poolAddress": "GBMoNx84HsFdVK63t8BZuDgyZhSBaeKWB4pHHpoeRM9z"
+  },
+  "pools": [
+    {
+      "dex": "Phoenix",
+      "pair": "Bonk/USDC",
+      "poolAddress": "GBMoNx84HsFdVK63t8BZuDgyZhSBaeKWB4pHHpoeRM9z",
+      "price": 0.000012812,
+      "liquidity": 1265975.07,
+      "volume24h": 59475.53,
+      "txCount24h": 710
+    }
+  ],
+  "data": {
+    "items": [
+      {
+        "o": 0.00001234,
+        "h": 0.00001250,
+        "l": 0.00001220,
+        "c": 0.00001245,
+        "v": 123456.78,
+        "unixTime": 1699401600
+      }
+    ]
+  },
+  "indicators": {
+    "ma7": [null, null, null, null, null, null, 0.00001234],
+    "ma25": [null, ...],
+    "macd": {
+      "line": [null, ...],
+      "signal": [null, ...],
+      "histogram": [null, ...]
+    }
+  }
+}
+```
+
+**Features:**
+- Real-time OHLCV (Open, High, Low, Close, Volume) data
+- Technical indicators: MA7, MA25, MACD (line, signal, histogram)
+- Token overview with price, liquidity, 24h volume
+- Main trading pair identification
+- Pool information from recent transactions
+
+**Example:**
+```bash
+curl "http://localhost:3000/api/market-data?endpoint=ohlcv&mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=1H"
+```
+
+---
+
+#### Get Markets/Pools
+
+```http
+GET /api/market-data?endpoint=markets&mint={TOKEN}
+```
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `endpoint` | string | Yes | Must be `markets` |
+| `mint` | string | Yes | Token mint address |
+| `baseMint` | string | No | Filter by base token (e.g., USDC mint) |
+| `poolAddress` | string | No | Filter to specific pool address |
+
+**Response:**
+```json
+{
+  "success": true,
+  "endpoint": "markets",
+  "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "pools": [
+    {
+      "dex": "Phoenix",
+      "pair": "Bonk-USDC",
+      "poolAddress": "GBMoNx84HsFdVK63t8BZuDgyZhSBaeKWB4pHHpoeRM9z",
+      "price": 0.000012812,
+      "liquidity": 1265975.07,
+      "volume24h": 59475.53,
+      "txCount24h": 710,
+      "baseToken": "Bonk",
+      "quoteToken": "USDC",
+      "baseAddress": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+      "quoteAddress": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+    }
+  ],
+  "count": 3,
+  "filters": {
+    "baseMint": null,
+    "poolAddress": null
+  }
+}
+```
+
+**Features:**
+- Top 3 pools by liquidity
+- Multi-DEX aggregation (Phoenix, Raydium, Orca, Meteora, Zerofi, etc.)
+- Filter by base mint (e.g., show only USDC pairs)
+- Filter by specific pool address
+- Complete pool metadata with base/quote tokens
+- Real-time price, liquidity, volume, and transaction counts
+
+**Examples:**
+```bash
+# Get top 3 pools
+curl "http://localhost:3000/api/market-data?endpoint=markets&mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+
+# Filter by USDC pairs only
+curl "http://localhost:3000/api/market-data?endpoint=markets&mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&baseMint=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+# Get specific pool
+curl "http://localhost:3000/api/market-data?endpoint=markets&mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&poolAddress=GBMoNx84HsFdVK63t8BZuDgyZhSBaeKWB4pHHpoeRM9z"
+```
+
+---
+
+#### Get Orderbook
+
+```http
+GET /api/market-data?endpoint=orderbook&mint={TOKEN}
+```
+
+**Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| `endpoint` | string | Yes | Must be `orderbook` |
+| `mint` | string | Yes | Token mint address |
+| `offset` | string | No | Offset for pagination (default: 100) |
+
+**Response:**
+```json
+{
+  "success": true,
+  "endpoint": "orderbook",
+  "mint": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263",
+  "data": {
+    "bids": [
+      {"price": 0.00001245, "size": 1000000},
+      {"price": 0.00001244, "size": 500000}
+    ],
+    "asks": [
+      {"price": 0.00001246, "size": 800000},
+      {"price": 0.00001247, "size": 600000}
+    ]
+  }
+}
+```
+
+**Features:**
+- Current orderbook state
+- Buy (bids) and sell (asks) orders
+- Price levels and order sizes
+- Market depth information
+
+**Example:**
+```bash
+curl "http://localhost:3000/api/market-data?endpoint=orderbook&mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263"
+```
+
+---
+
+#### Market Data API Notes
+
+**Security:**
+- All responses are abstracted - internal data sources are never exposed
+- No API keys required for public endpoints
+- Rate limits apply (see [Rate Limiting](#rate-limiting))
+
+**Performance:**
+- Response times < 5 seconds
+- Supports concurrent requests
+- Real-time data updates
+
+**Testing:**
+- Complete test suite available: See [DEX_API_TESTS.md](/docs/DEX_API_TESTS.md)
+- Quick validation: `bash scripts/quick-api-test.sh`
+- Interactive testing: Visit `/docs/api` for API tester
+
+**Competitive Features:**
+- ✅ Multi-DEX aggregation (7+ major DEXes)
+- ✅ Technical indicators (MA7, MA25, MACD)
+- ✅ Flexible pool filtering
+- ✅ Real-time OHLCV data (6 timeframes)
+- ✅ Complete token metadata
+
+---
+
+### �🔷 Blockchain Core
 
 #### Transaction Operations
 

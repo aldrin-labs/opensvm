@@ -18,6 +18,8 @@
     "install:legacy": "npm install --legacy-peer-deps",
     "install:force": "npm install --force",
     "test": "NODE_OPTIONS=--max_old_space_size=4096 jest",
+    "test:api": "NODE_OPTIONS=--max_old_space_size=4096 jest __tests__/api/dex-aggregator.test.ts",
+    "test:api:watch": "NODE_OPTIONS=--max_old_space_size=4096 jest __tests__/api/dex-aggregator.test.ts --watch",
     "test:e2e": "playwright test",
     "e2e:run": "node scripts/run_e2e_tests.js",
     "test:e2e:ui": "playwright test --ui",

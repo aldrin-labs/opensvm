@@ -339,7 +339,7 @@ function WidgetContainer({ widget, cellSize, gap, isDragging }: WidgetContainerP
 
         {/* Loading indicator */}
         {widget.refreshInterval && (
-          <div className="absolute top-2 left-2 w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <div className="absolute top-2 left-2 w-2 h-2 bg-success rounded-full animate-pulse" />
         )}
       </div>
     </AnimatedContainer>

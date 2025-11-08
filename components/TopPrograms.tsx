@@ -74,7 +74,7 @@ export function TopPrograms() {
         <h2 className="text-xl font-semibold mb-4">Top Programs</h2>
         <div className="space-y-4">
           {[...Array(5)].map((_, i) => (
-            <div key={i} className="h-12 bg-gray-700/50 rounded"></div>
+            <div key={i} className="h-12 bg-muted/50 rounded"></div>
           ))}
         </div>
       </div>
@@ -92,13 +92,13 @@ export function TopPrograms() {
           >
             <div className="flex items-center space-x-4">
               <div className="text-sm font-mono">
-                <div className="text-gray-300 truncate w-48">
+                <div className="text-foreground/80 truncate w-48">
                   {program.address}
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className="text-gray-400 text-sm">
+              <div className="text-muted-foreground text-sm">
                 {program.txCount.toLocaleString()} txs
               </div>
             </div>

@@ -22,11 +22,12 @@ interface NetworkCardProps {
 }
 
 function StatusBadge({ status }: { status: "Active" | "Development" }) {
-  const bgColor = status === "Active" ? "bg-primary/10" : "bg-amber-500/10";
-  const textColor = status === "Active" ? "text-primary" : "text-amber-500";
+  const bgColor = status === "Active" ? "bg-primary/10" : "bg-warning/10";
+  const textColor = status === "Active" ? "text-primary" : "text-warning";
+  const borderColor = status === "Active" ? "border-primary/30" : "border-warning/30";
   
   return (
-    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium ${bgColor} ${textColor}`}>
+    <span className={`inline-flex items-center px-3 py-1 text-xs font-medium border ${bgColor} ${textColor} ${borderColor}`}>
       {status}
     </span>
   );
