@@ -27,7 +27,15 @@ function getActiveRpcLabel(): string {
     const cluster = readCookie("cluster");
     if (!cluster || cluster === "opensvm") return "osvm rpc";
     if (cluster === "devnet" || cluster === "testnet" || cluster === "mainnet" || cluster === "mainnet-beta") return cluster;
-    return cluster; // custom URL or host
+    
+    // Extract hostname from URL for custom RPC endpoints
+    try {
+        const url = new URL(cluster);
+        return url.hostname; // Returns just the hostname without protocol
+    } catch {
+        // If not a valid URL, return a shortened version
+        return cluster.length > 20 ? cluster.substring(0, 17) + "..." : cluster;
+    }
 }
 
 function getActiveRpcKey(): string {
