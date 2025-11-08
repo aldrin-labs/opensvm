@@ -25,14 +25,21 @@ function writeCookie(name: string, value: string, maxAgeSec: number) {
 function getActiveRpcLabel(): string {
     // Priority: cluster cookie; otherwise default proxy
     const cluster = readCookie("cluster");
+    console.log('[RpcStatusBadge] cluster cookie value:', cluster);
     if (!cluster || cluster === "opensvm") return "osvm rpc";
     if (cluster === "devnet" || cluster === "testnet" || cluster === "mainnet" || cluster === "mainnet-beta") return cluster;
     
     // Extract hostname from URL for custom RPC endpoints
     try {
         const url = new URL(cluster);
+        console.log('[RpcStatusBadge] Parsed URL - hostname:', url.hostname, 'pathname:', url.pathname);
+        // Special case: if this is our own proxy endpoint, show as osvm rpc
+        if (url.pathname === "/api/proxy/rpc" && url.hostname.includes("opensvm")) {
+            return "osvm rpc";
+        }
         return url.hostname; // Returns just the hostname without protocol
-    } catch {
+    } catch (e) {
+        console.log('[RpcStatusBadge] Failed to parse as URL:', e);
         // If not a valid URL, return a shortened version
         return cluster.length > 20 ? cluster.substring(0, 17) + "..." : cluster;
     }
