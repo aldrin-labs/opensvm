@@ -463,33 +463,45 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 
 ### 12. EXTERNAL API INTEGRATIONS
 
-#### Moralis API Methods (via lib/moralis-api.ts)
+#### Birdeye API (Primary Market Data Source)
+Available through AI plan execution in /api/getAnswer (requires BIRDEYE_API_KEY):
+
+- **tokenMarketData(mint)** - Comprehensive token market data with 5-tier fallback
+  - Uses: Birdeye → DexScreener → GeckoTerminal → RPC
+  - Returns: Price, market cap, 24h volume, liquidity, holder count, supply
+  - Example: tokenMarketData("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263")
+
+- **birdeyeOHLCV(address, type?, time_from?, time_to?)** - Candlestick/chart data
+  - Types: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 8H, 12H, 1D, 3D, 1W, 1M
+  - Returns: OHLCV data with volume in USD
+  - Use for: Charts, technical analysis, price history
+  - Example: birdeyeOHLCV("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "1H")
+
+- **birdeyeOrderbook(address, offset?)** - Market depth and order book
+  - Requires: DEX market/pair address (not token mint)
+  - Returns: Bids, asks, price levels, update timestamp
+  - Note: Limited to tokens with centralized orderbook markets
+
+#### Blockchain Data API (Wallets, NFTs, Swaps)
 Available through AI plan execution in /api/getAnswer:
 
-- **getNFTMetadata(address, network)** - NFT metadata
-- **getNFTsForAddress(address, params, network)** - NFTs owned by address
-- **getTokenMetadata(address, network)** - Token metadata
-- **getTokenPrice(address, network)** - Current token price
-- **getPortfolio(address, includeNftMetadata, network)** - Full portfolio
-- **getTokenBalances(address, network)** - Token balances
-- **getNativeBalance(address, network)** - SOL balance
-- **getSwapsByWalletAddress(address, params, network)** - Wallet swaps
-- **getSwapsByTokenAddress(address, params, network)** - Token swaps
-- **getTokenHolders(address, network)** - Token holder list
-- **getSPLTokenTransfers(address, params, network)** - SPL transfers
-- **getSOLTransfers(address, params, network)** - SOL transfers
-- **getTransactionBySignature(signature, network)** - Transaction details
-- **getTransactionsByAddress(address, params, network)** - Address transactions
-- **getDomainInfo(address, network)** - Domain information
-- **resolveDomain(domain, network)** - Resolve .sol domains
-- **getHistoricalTokenPrice(address, days, network)** - Price history
-- **getTokenStats(address, network)** - Token statistics
-- **getNFTCollectionStats(address, network)** - Collection stats
-- **getNFTCollectionItems(address, params, network)** - Collection items
-- **getComprehensiveBlockchainData(query, network)** - Combined data
-- **getTopTokens(limit)** - Top tokens by market cap
-- **getNewListings(limit, daysBack, network)** - New token listings
-- **getTokenMarketData(params, network)** - Market data
+- **getTokenHolders(address)** - Top token holders and distribution
+- **getPortfolio(address, includeNftMetadata?)** - Full wallet portfolio (SOL + tokens + NFTs)
+- **getTokenBalances(address)** - SPL token balances for wallet
+- **getNativeBalance(address)** - SOL balance
+- **getNFTsForAddress(address, params)** - NFTs owned by address
+- **getNFTMetadata(address)** - NFT metadata
+- **getNFTCollectionStats(address)** - Collection floor, volume, owners
+- **getNFTCollectionItems(address, params)** - Items in collection
+- **getSwapsByWalletAddress(address, params)** - DEX swaps by wallet
+- **getSwapsByTokenAddress(address, params)** - DEX swaps for token
+- **getSPLTokenTransfers(address, params)** - SPL token transfer history
+- **getSOLTransfers(address, params)** - SOL transfer history
+- **getTransactionsByAddress(address, params)** - Transaction history
+- **getTransactionBySignature(signature)** - Transaction details
+- **getDomainInfo(address)** - Domain records for wallet
+- **resolveDomain(domain)** - Resolve .sol domains to address
+- **getComprehensiveBlockchainData(query)** - Auto-detect and fetch relevant data
 
 #### Solana Core Methods (via lib/solana.ts)
 Available through direct API calls:

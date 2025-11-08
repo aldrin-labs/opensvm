@@ -395,16 +395,35 @@ eventSource.onmessage = (event) => {
 
 ## External Integrations
 
-### Moralis API Integration
+### Birdeye API Integration (Primary Market Data)
 
-The platform integrates with Moralis for enhanced blockchain data. These methods are available through the AI plan execution system:
+The platform uses Birdeye as the primary source for token market data with automatic 5-tier fallback. These methods are available through the AI plan execution system:
 
-#### Available Methods:
-- `getNFTMetadata(address, network)`
-- `getTokenPrice(address, network)`
-- `getPortfolio(address, includeNftMetadata, network)`
-- `getSOLTransfers(address, params, network)`
-- `getSPLTokenTransfers(address, params, network)`
+#### Market Data Methods:
+- `tokenMarketData(mint)` - Comprehensive token data (price, market cap, volume, liquidity)
+  - Auto-fallback: Birdeye → DexScreener → GeckoTerminal → RPC
+  - Example: `tokenMarketData("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263")`
+
+- `birdeyeOHLCV(address, type, time_from, time_to)` - Candlestick/chart data
+  - Types: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 8H, 12H, 1D, 3D, 1W, 1M
+  - Returns: OHLCV data with USD volume
+  - Use for: Charts, technical analysis, price history
+
+- `birdeyeOrderbook(address, offset)` - Market depth and order book
+  - Requires: DEX market/pair address (not token mint)
+  - Returns: Bids, asks, price levels
+
+#### Blockchain Data Methods:
+- `getTokenHolders(address)` - Top token holders and distribution
+- `getPortfolio(address, includeNftMetadata)` - Full wallet portfolio
+- `getTokenBalances(address)` - SPL token balances
+- `getNFTsForAddress(address, params)` - NFTs owned by address
+- `getNFTMetadata(address)` - NFT metadata
+- `getSwapsByWalletAddress(address, params)` - DEX swaps by wallet
+- `getSwapsByTokenAddress(address, params)` - DEX swaps for token
+- `getSPLTokenTransfers(address, params)` - SPL token transfer history
+- `getSOLTransfers(address, params)` - SOL transfer history
+- `getTransactionsByAddress(address, params)` - Transaction history
 - And many more...
 
 ### Solana RPC Methods
@@ -549,7 +568,8 @@ eventSource.onmessage = handleUpdate;
 ### Version 2.0.0 (Current)
 - Added date range filtering for transaction endpoints
 - Enhanced AI-powered analysis capabilities
-- Improved Moralis API integration
+- Integrated Birdeye API as primary market data source with 5-tier fallback
+- Added OHLCV candlestick data and orderbook endpoints
 - Added comprehensive block statistics endpoint
 
 ### Version 1.0.0
