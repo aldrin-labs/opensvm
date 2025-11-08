@@ -1122,9 +1122,80 @@ for (const r of rows) {
                         console.log(`   ⚠️ Could not fetch token metadata: ${(e as Error).message}`);
                     }
 
-                    // If Moralis API is down or returns $0, try DexScreener API as first fallback
+                    // If Moralis API is down or returns $0, try Birdeye API as first fallback (best data quality)
                     if (priceUsd === 0) {
-                        console.log(`   ⚠️ Moralis returned $0 - trying DexScreener API fallback...`);
+                        console.log(`   ⚠️ Moralis returned $0 - trying Birdeye API fallback...`);
+                        
+                        try {
+                            // Birdeye API - comprehensive token data (requires API key, but provides best quality)
+                            const birdeyeHeaders: HeadersInit = {
+                                'Accept': 'application/json'
+                            };
+                            
+                            // Add API key if available
+                            if (process.env.BIRDEYE_API_KEY) {
+                                birdeyeHeaders['X-API-KEY'] = process.env.BIRDEYE_API_KEY;
+                                
+                                const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mint}`;
+                                const birdeyeResp = await fetch(birdeyeUrl, { headers: birdeyeHeaders });
+                                
+                                if (birdeyeResp.ok) {
+                                    const birdeyeJson = await birdeyeResp.json();
+                                    if (birdeyeJson?.success !== false) {
+                                        const birdeyeData = birdeyeJson?.data;
+                                        
+                                        const birdeyePrice = Number(birdeyeData?.price || 0);
+                                        const birdeyeVolume24h = Number(birdeyeData?.v24hUSD || birdeyeData?.volume24h || 0);
+                                        const birdeyeLiquidity = Number(birdeyeData?.liquidity || 0);
+                                        
+                                        if (birdeyePrice > 0) {
+                                            console.log(`   ✓ Birdeye API provided price: $${birdeyePrice}, 24h volume: $${birdeyeVolume24h}`);
+                                            const birdeyeMarketCap = birdeyePrice * supplyTokens;
+                                            
+                                            // Update token name/symbol from Birdeye if available
+                                            if (birdeyeData?.name) tokenName = birdeyeData.name;
+                                            if (birdeyeData?.symbol) tokenSymbol = birdeyeData.symbol;
+                                            
+                                            result = {
+                                                success: true,
+                                                source: 'birdeye-fallback',
+                                                resolved_id: 'birdeye',
+                                                data: {
+                                                    name: tokenName,
+                                                    symbol: tokenSymbol,
+                                                    current_price: { usd: birdeyePrice },
+                                                    market_cap: { usd: birdeyeMarketCap },
+                                                    trading_volume: { usd: birdeyeVolume24h, h24: birdeyeVolume24h },
+                                                    last_updated: new Date().toISOString(),
+                                                    extra: {
+                                                        mint,
+                                                        supply_tokens: supplyTokens,
+                                                        supply_raw: amount,
+                                                        decimals,
+                                                        liquidity: birdeyeLiquidity,
+                                                        note: 'Data from Birdeye API - comprehensive token data with high accuracy.'
+                                                    }
+                                                }
+                                            };
+                                            console.log(`   ◈ Birdeye fallback successful`);
+                                        } else {
+                                            console.log(`   ⚠️ Birdeye returned $0 - trying DexScreener API...`);
+                                        }
+                                    } else {
+                                        console.log(`   ⚠️ Birdeye API returned error: ${birdeyeJson?.message || 'Unknown'} - trying DexScreener API...`);
+                                    }
+                                }
+                            } else {
+                                console.log(`   ⚠️ Birdeye API key not configured - trying DexScreener API...`);
+                            }
+                        } catch (birdeyeError) {
+                            console.log(`   ⚠️ Birdeye API failed: ${(birdeyeError as Error).message} - trying DexScreener API...`);
+                        }
+                    }
+
+                    // If Moralis and Birdeye failed, try DexScreener API as second fallback
+                    if (priceUsd === 0 && !result) {
+                        console.log(`   ⚠️ Trying DexScreener API fallback...`);
                         
                         try {
                             // DexScreener API - free, no API key required, excellent Solana coverage
@@ -1178,10 +1249,10 @@ for (const r of rows) {
                                         };
                                         console.log(`   ◈ DexScreener fallback successful`);
                                     } else {
-                                        console.log(`   ⚠️ DexScreener returned $0 - trying Birdeye API...`);
+                                        console.log(`   ⚠️ DexScreener returned $0 - trying GeckoTerminal API...`);
                                     }
                                 } else {
-                                    console.log(`   ⚠️ DexScreener found no pairs - trying Birdeye API...`);
+                                    console.log(`   ⚠️ DexScreener found no pairs - trying GeckoTerminal API...`);
                                 }
                             }
                         } catch (dexError) {
@@ -1189,7 +1260,7 @@ for (const r of rows) {
                         }
                     }
 
-                    // If Moralis and DexScreener failed, try GeckoTerminal API as second fallback
+                    // If Moralis, Birdeye, and DexScreener failed, try GeckoTerminal API as third fallback
                     if (priceUsd === 0 && !result) {
                         console.log(`   ⚠️ Trying GeckoTerminal API fallback...`);
                         
@@ -1238,83 +1309,16 @@ for (const r of rows) {
                                         };
                                         console.log(`   ◈ GeckoTerminal fallback successful`);
                                     } else {
-                                        console.log(`   ⚠️ GeckoTerminal returned $0 - trying Birdeye API...`);
+                                        console.log(`   ⚠️ GeckoTerminal returned $0 - falling back to RPC-only data`);
                                     }
                                 }
                             }
                         } catch (geckoError) {
-                            console.log(`   ⚠️ GeckoTerminal API failed: ${(geckoError as Error).message} - trying Birdeye API...`);
+                            console.log(`   ⚠️ GeckoTerminal API failed: ${(geckoError as Error).message} - falling back to RPC-only data`);
                         }
                     }
 
-                    // If Moralis, DexScreener, and GeckoTerminal failed, try Birdeye API as third fallback
-                    if (priceUsd === 0 && !result) {
-                        console.log(`   ⚠️ Trying Birdeye API fallback...`);
-                        
-                        try {
-                            // Birdeye API - comprehensive token data (requires API key)
-                            const birdeyeHeaders: HeadersInit = {
-                                'Accept': 'application/json'
-                            };
-                            
-                            // Add API key if available
-                            if (process.env.BIRDEYE_API_KEY) {
-                                birdeyeHeaders['X-API-KEY'] = process.env.BIRDEYE_API_KEY;
-                                
-                                const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mint}`;
-                                const birdeyeResp = await fetch(birdeyeUrl, { headers: birdeyeHeaders });
-                                
-                                if (birdeyeResp.ok) {
-                                    const birdeyeJson = await birdeyeResp.json();
-                                    if (birdeyeJson?.success !== false) {
-                                        const birdeyeData = birdeyeJson?.data;
-                                        
-                                        const birdeyePrice = Number(birdeyeData?.price || 0);
-                                        const birdeyeVolume24h = Number(birdeyeData?.v24hUSD || birdeyeData?.volume24h || 0);
-                                        const birdeyeLiquidity = Number(birdeyeData?.liquidity || 0);
-                                        
-                                        if (birdeyePrice > 0) {
-                                            console.log(`   ✓ Birdeye API provided price: $${birdeyePrice}, 24h volume: $${birdeyeVolume24h}`);
-                                            const birdeyeMarketCap = birdeyePrice * supplyTokens;
-                                            
-                                            result = {
-                                                success: true,
-                                                source: 'birdeye-fallback',
-                                                resolved_id: 'birdeye',
-                                                data: {
-                                                    name: tokenName,
-                                                    symbol: tokenSymbol,
-                                                    current_price: { usd: birdeyePrice },
-                                                    market_cap: { usd: birdeyeMarketCap },
-                                                    trading_volume: { usd: birdeyeVolume24h, h24: birdeyeVolume24h },
-                                                    last_updated: new Date().toISOString(),
-                                                    extra: {
-                                                        mint,
-                                                        supply_tokens: supplyTokens,
-                                                        supply_raw: amount,
-                                                        decimals,
-                                                        liquidity: birdeyeLiquidity,
-                                                        note: 'Data from Birdeye API - using Birdeye price fallback.'
-                                                    }
-                                                }
-                                            };
-                                            console.log(`   ◈ Birdeye fallback successful`);
-                                        } else {
-                                            console.log(`   ⚠️ Birdeye returned $0 - falling back to RPC-only data`);
-                                        }
-                                    } else {
-                                        console.log(`   ⚠️ Birdeye API returned error: ${birdeyeJson?.message || 'Unknown'}`);
-                                    }
-                                }
-                            } else {
-                                console.log(`   ⚠️ Birdeye API key not configured - skipping`);
-                            }
-                        } catch (birdeyeError) {
-                            console.log(`   ⚠️ Birdeye API failed: ${(birdeyeError as Error).message} - falling back to RPC-only data`);
-                        }
-                    }
-
-                    // If both Moralis and Jupiter failed, use RPC-only data as last resort
+                    // If all price APIs failed (Moralis, Birdeye, DexScreener, GeckoTerminal), use RPC-only data as last resort
                     if (priceUsd === 0 && !result) {
                         console.log(`   ⚠️ All price APIs failed - falling back to RPC-only data`);
                         
