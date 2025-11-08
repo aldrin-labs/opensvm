@@ -349,6 +349,74 @@
     margin: 24px 0;
   }
 
+  /* Force theme colors on prose elements */
+  .prose {
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  .prose h1,
+  .prose h2,
+  .prose h3,
+  .prose h4,
+  .prose h5,
+  .prose h6 {
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  .prose p,
+  .prose li,
+  .prose td,
+  .prose th {
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  .prose strong {
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  .prose code {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+  
+  .prose pre {
+    background-color: hsl(var(--muted)) !important;
+    color: hsl(var(--foreground)) !important;
+    border: 1px solid hsl(var(--border)) !important;
+  }
+  
+  .prose pre code {
+    background-color: transparent !important;
+  }
+  
+  .prose a {
+    color: hsl(var(--primary)) !important;
+  }
+  
+  .prose blockquote {
+    background-color: hsl(var(--muted) / 0.5) !important;
+    color: hsl(var(--muted-foreground)) !important;
+    border-left-color: hsl(var(--primary)) !important;
+  }
+  
+  .prose table {
+    background-color: hsl(var(--card)) !important;
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  .prose thead {
+    background-color: hsl(var(--muted)) !important;
+  }
+  
+  .prose th,
+  .prose td {
+    border-color: hsl(var(--border)) !important;
+  }
+  
+  .prose hr {
+    border-color: hsl(var(--border)) !important;
+  }
+
   .slider-header {
     display: flex;
     justify-content: space-between;
