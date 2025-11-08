@@ -194,6 +194,20 @@ Moralis API (Solana Gateway & Deep Index)
 - getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
 - clearCache()
 
+Birdeye API (Advanced Market Data - requires BIRDEYE_API_KEY)
+- birdeyeOHLCV(address, type?, time_from?, time_to?): Get OHLCV candlestick data for charting
+  • address: Token mint address (e.g., "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" for BONK)
+  • type: "1m"|"3m"|"5m"|"15m"|"30m"|"1H"|"2H"|"4H"|"6H"|"8H"|"12H"|"1D"|"3D"|"1W"|"1M" (default: "15m")
+  • time_from: Unix timestamp in seconds (default: 24h ago)
+  • time_to: Unix timestamp in seconds (default: now)
+  • Returns: {items: [{o: open, h: high, l: low, c: close, v: volume, unixTime, address, type, currency}]}
+  • Example: birdeyeOHLCV("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "1H") for hourly BONK candles
+- birdeyeOrderbook(address, offset?): Get market depth and order book (DEX market address required)
+  • address: Market/pair address (NOT token mint - use pairAddress from token overview)
+  • offset: Depth offset from best bid/ask (default: 100)
+  • Returns: {bids: [{price, size}], asks: [{price, size}], updateUnixTime}
+  • Note: Only available for tokens with centralized orderbook markets
+
 Solana RPC (web3.js Connection methods)
 - getAccountInfo(address)
 - getMultipleAccountsInfo(addresses)
@@ -1385,6 +1399,90 @@ for (const r of rows) {
                 } catch (error) {
                     result = { error: `Moralis market data error: ${(error as Error).message}` };
                     console.log(`   ◌ Moralis market data failed`);
+                }
+            }
+            // Handle Birdeye OHLCV
+            else if (step.tool === 'birdeyeOHLCV') {
+                try {
+                    if (!process.env.BIRDEYE_API_KEY) {
+                        throw new Error('BIRDEYE_API_KEY not configured');
+                    }
+                    
+                    const address = typeof step.input === 'string' ? step.input : step.input?.address;
+                    if (!address) {
+                        throw new Error('Token address required for birdeyeOHLCV');
+                    }
+                    
+                    const type = step.input?.type || '15m';
+                    const time_to = step.input?.time_to || Math.floor(Date.now() / 1000);
+                    const time_from = step.input?.time_from || (time_to - 24 * 60 * 60); // 24h ago
+                    
+                    const url = `https://public-api.birdeye.so/defi/ohlcv?address=${address}&type=${type}&time_from=${time_from}&time_to=${time_to}`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-API-KEY': process.env.BIRDEYE_API_KEY
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Birdeye OHLCV API returned ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    result = {
+                        success: data.success !== false,
+                        source: 'birdeye-ohlcv',
+                        data: data.data || data,
+                        meta: { type, time_from, time_to }
+                    };
+                    
+                    console.log(`   ◈ Birdeye OHLCV: Retrieved ${result.data?.items?.length || 0} candles`);
+                } catch (error) {
+                    result = { error: `Birdeye OHLCV error: ${(error as Error).message}` };
+                    console.log(`   ◌ Birdeye OHLCV failed: ${(error as Error).message}`);
+                }
+            }
+            // Handle Birdeye Orderbook
+            else if (step.tool === 'birdeyeOrderbook') {
+                try {
+                    if (!process.env.BIRDEYE_API_KEY) {
+                        throw new Error('BIRDEYE_API_KEY not configured');
+                    }
+                    
+                    const address = typeof step.input === 'string' ? step.input : step.input?.address;
+                    if (!address) {
+                        throw new Error('Token address required for birdeyeOrderbook');
+                    }
+                    
+                    const offset = step.input?.offset || 100;
+                    
+                    const url = `https://public-api.birdeye.so/defi/orderbook?address=${address}&offset=${offset}`;
+                    const response = await fetch(url, {
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-API-KEY': process.env.BIRDEYE_API_KEY
+                        }
+                    });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Birdeye Orderbook API returned ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    result = {
+                        success: data.success !== false,
+                        source: 'birdeye-orderbook',
+                        data: data.data || data,
+                        meta: { offset, updateUnixTime: data.data?.updateUnixTime }
+                    };
+                    
+                    const bidCount = result.data?.bids?.length || 0;
+                    const askCount = result.data?.asks?.length || 0;
+                    console.log(`   ◈ Birdeye Orderbook: ${bidCount} bids, ${askCount} asks`);
+                } catch (error) {
+                    result = { error: `Birdeye Orderbook error: ${(error as Error).message}` };
+                    console.log(`   ◌ Birdeye Orderbook failed: ${(error as Error).message}`);
                 }
             }
             // Handle other Moralis API methods
