@@ -166,47 +166,47 @@ async function generateAIPoweredPlan(question: string, planningContext?: string)
         const availableTools = `
 Available Tools (Comprehensive)
 
-Moralis API (Solana Gateway & Deep Index)
-- moralisMarketData (custom orchestrator): price, computed market cap (price * supply), 24h volume via pair stats. input: mint
-- getNFTMetadata(address)
-- getNFTsForAddress(address, { nftMetadata?, limit?, cursor? }, network?)
-- getTokenMetadata(address)
-- getTokenPrice(address)
-- getPortfolio(address, includeNftMetadata?)
-- getTokenBalances(address)
-- getNativeBalance(address)
-- getSwapsByWalletAddress(address, { limit?, cursor? })
-- getSwapsByTokenAddress(address, { limit?, cursor? })
-- getTokenHolders(address)
-- getSPLTokenTransfers(address, { limit?, fromDate?, toDate?, cursor? })
-- getSOLTransfers(address, { limit?, fromDate?, toDate?, cursor? })
-- getTransactionBySignature(signature)
-- getTransactionsByAddress(address, { limit?, fromDate?, toDate?, cursor? })
-- getDomainInfo(address)
-- resolveDomain(domain)
-- getHistoricalTokenPrice(address, days?)
-- getTokenStats(address)
-- getNFTCollectionStats(address)
-- getNFTCollectionItems(address, { limit?, nftMetadata? })
-- getComprehensiveBlockchainData(query)
-- getTopTokens(limit?)           (note: currently returns null; path deprecated upstream)
-- getNewListings(limit?, daysBack?) (note: currently returns null; path unsupported upstream)
-- getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
-- clearCache()
+Birdeye API (Primary Market Data Source - requires BIRDEYE_API_KEY)
+- tokenMarketData(mint): Get comprehensive token market data
+  • input: Token mint address (e.g., "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" for BONK)
+  • Returns: price, market cap, 24h volume, liquidity, holder count, supply
+  • When to call: Price, market cap, volume for any token
+  • Note: Automatically uses 5-tier fallback (Birdeye → DexScreener → GeckoTerminal → RPC)
 
-Birdeye API (Advanced Market Data - requires BIRDEYE_API_KEY)
 - birdeyeOHLCV(address, type?, time_from?, time_to?): Get OHLCV candlestick data for charting
-  • address: Token mint address (e.g., "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" for BONK)
+  • address: Token mint address
   • type: "1m"|"3m"|"5m"|"15m"|"30m"|"1H"|"2H"|"4H"|"6H"|"8H"|"12H"|"1D"|"3D"|"1W"|"1M" (default: "15m")
   • time_from: Unix timestamp in seconds (default: 24h ago)
   • time_to: Unix timestamp in seconds (default: now)
   • Returns: {items: [{o: open, h: high, l: low, c: close, v: volume, unixTime, address, type, currency}]}
+  • When to call: Chart data, technical analysis, price history visualization
   • Example: birdeyeOHLCV("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "1H") for hourly BONK candles
+
 - birdeyeOrderbook(address, offset?): Get market depth and order book (DEX market address required)
   • address: Market/pair address (NOT token mint - use pairAddress from token overview)
   • offset: Depth offset from best bid/ask (default: 100)
   • Returns: {bids: [{price, size}], asks: [{price, size}], updateUnixTime}
+  • When to call: Market depth analysis, bid/ask spreads
   • Note: Only available for tokens with centralized orderbook markets
+
+Blockchain Data API (Wallet & NFT Data)
+- getTokenHolders(address): Top token holders
+- getPortfolio(address, includeNftMetadata?): Wallet portfolio (SOL + tokens + NFTs)
+- getTokenBalances(address): SPL token balances for a wallet
+- getNativeBalance(address): SOL balance
+- getNFTsForAddress(address, { nftMetadata?, limit?, cursor? }): NFTs held by wallet
+- getNFTMetadata(address): NFT metadata
+- getNFTCollectionStats(address): Collection stats (floor, volume, owners)
+- getNFTCollectionItems(address, { limit?, nftMetadata? }): Items in collection
+- getSwapsByWalletAddress(address, { limit?, cursor? }): DEX swaps by wallet
+- getSwapsByTokenAddress(address, { limit?, cursor? }): DEX swaps for token
+- getSPLTokenTransfers(address, { limit?, fromDate?, toDate?, cursor? }): Token transfer history
+- getSOLTransfers(address, { limit?, fromDate?, toDate?, cursor? }): SOL transfer history
+- getTransactionsByAddress(address, { limit?, fromDate?, toDate?, cursor? }): Transaction history
+- getTransactionBySignature(signature): Transaction details
+- getDomainInfo(address): Domain records for wallet
+- resolveDomain(domain): Resolve .sol domain to address
+- getComprehensiveBlockchainData(query): Auto-detect and fetch relevant data
 
 Solana RPC (web3.js Connection methods)
 - getAccountInfo(address)
@@ -257,136 +257,16 @@ Solana RPC (web3.js Connection methods)
 - simulateTransaction(txOrMessage, opts?)
 
 Notes:
-- Prefer Moralis for token price/market data, DEX swaps, holders, portfolio, NFTs.
-- Use Solana RPC for direct chain state: account info, balances, token supply, program accounts, leader schedule, validators, etc.
-- For moralisMarketData you MUST pass the Solana mint address.
-- If the user provides a mint address in the query, USE THAT ADDRESS - do not substitute it.
+- Use tokenMarketData (with Birdeye) for token price, market cap, volume, and liquidity
+- Use birdeyeOHLCV for historical price data, charts, and technical analysis
+- Use Solana RPC for chain state: account info, balances, token supply, validators, etc.
+- For tokenMarketData you MUST pass the Solana mint address
+- If the user provides a mint address in the query, USE THAT ADDRESS - do not substitute it
 
-Token Symbol → Mint Address (for moralisMarketData):
+Token Queries:
 - Always extract and use the mint address from the user's query if provided
-- If no address is provided and only a symbol is mentioned, you may need to look it up
-
-Method Reference (Moralis API - Solana Gateway & Deep Index)
-- moralisMarketData(mint)
-  • Description: Custom orchestrator that combines Solana RPC supply with Moralis price and optional pair stats.
-  • Output (normalized): { success, source: "moralis", data: { name, symbol, current_price: { usd }, market_cap: { usd }, trading_volume: { usd, h24 }, last_updated, extra: { mint, supply_tokens, supply_raw, decimals, pairAddress } } }
-  • When to call: Price, market cap, and 24h volume for a specific token. Always pass Solana mint.
-
-- getTokenPrice(address, network?)
-  • Description: Current token price and pair details when available.
-  • Output: { price_usd|usdPrice|usd|price, pairAddress? }
-  • When to call: Lightweight spot price without needing supply.
-
-- getTokenMetadata(address, network?)
-  • Description: Metadata for a token mint (name, symbol, logo, decimals).
-  • Output: { name, symbol, decimals, logo?, ... }
-  • When to call: Enrich UI or validate token info before analytics.
-
-- getTokenStats(address, network?)
-  • Description: Misc token stats if available for the mint.
-  • Output: { volume_24h?, market_cap?, holders?, ... }
-  • When to call: Supplemental metrics beyond price/supply.
-
-- getHistoricalTokenPrice(address, days?, network?)
-  • Description: Price history in a time-window.
-  • Output: { prices: [{ timestamp, price_usd }], ... } (shape may vary)
-  • When to call: Trendlines, momentum, and historical patterns.
-
-- getTokenHolders(address, network?)
-  • Description: Holder accounts for a token mint (top holders).
-  • Output: Array/list with holder addresses and balances.
-  • When to call: Concentration, distribution, whale analysis.
-
-- getSwapsByTokenAddress(address, { limit?, cursor? }, network?)
-  • Description: Recent DEX swaps for a token mint.
-  • Output: Array of swaps with amounts, timestamps, counterparties (shape depends on indexer).
-  • When to call: Activity, 24h volume aggregation, liquidity pulse.
-
-- getSwapsByWalletAddress(address, { limit?, cursor? }, network?)
-  • Description: Recent DEX swaps performed by a wallet.
-  • Output: Array of swaps with token pairs and amounts.
-  • When to call: Wallet trading behavior and PnL analysis.
-
-- getComprehensiveBlockchainData(query, network?)
-  • Description: Smart inspector that detects query type (signature/token/account/domain) and bundles relevant data.
-  • Output: { type: "transaction"|"token"|"nft"|"account"|"unknown", data: {...} }
-  • When to call: One-shot enrichment when input type is unknown.
-
-- getPortfolio(address, includeNftMetadata?, network?)
-  • Description: Portfolio summary incl. native SOL, tokens, NFTs (optionally with metadata).
-  • Output: { nativeBalance, tokens[], nfts[]? }
-  • When to call: Wallet overview and valuation (pair with price API for USD).
-
-- getTokenBalances(address, network?)
-  • Description: SPL token balances for a wallet.
-  • Output: Array of { mint, amount, decimals, uiAmount?, ... }
-  • When to call: Token inventory snapshot per wallet.
-
-- getNativeBalance(address, network?)
-  • Description: SOL balance for a wallet.
-  • Output: { lamports } or number value depending on gateway.
-  • When to call: Check funding/rent-exempt conditions or net worth.
-
-- getNFTsForAddress(address, { nftMetadata?, limit?, cursor? }, network?)
-  • Description: NFTs held by a wallet with optional metadata expansion.
-  • Output: Array of NFTs; when nftMetadata=true includes collection/name/image.
-  • When to call: Wallet NFT holdings and collection insights.
-
-- getNFTMetadata(address, network?)
-  • Description: Metadata for a specific NFT mint/collection.
-  • Output: { name, symbol, image, attributes, ... }
-  • When to call: NFT detail page or item enrichment.
-
-- getNFTCollectionStats(address, network?)
-  • Description: Stats for an NFT collection.
-  • Output: { floor_price?, volume_24h?, owners?, ... }
-  • When to call: Collection overview and market interest.
-
-- getNFTCollectionItems(address, { limit?, nftMetadata? }, network?)
-  • Description: Items inside a collection.
-  • Output: Array of items; with metadata if requested.
-  • When to call: Browsing collection inventory.
-
-- getSPLTokenTransfers(address, { limit?, fromDate?, toDate?, cursor? }, network?)
-  • Description: Transfer events related to SPL tokens for a wallet.
-  • Output: Array of token transfer records.
-  • When to call: Token activity timeline and inflow/outflow.
-
-- getSOLTransfers(address, { limit?, fromDate?, toDate?, cursor? }, network?)
-  • Description: SOL transfers for a wallet.
-  • Output: Array of SOL transfer records.
-  • When to call: Funding, withdrawals, and payment analysis.
-
-- getTransactionsByAddress(address, { limit?, fromDate?, toDate?, cursor? }, network?)
-  • Description: Transaction history for a wallet.
-  • Output: Array of transactions (signatures + metadata).
-  • When to call: Broad activity analysis and audit trails.
-
-- getTransactionBySignature(signature, network?)
-  • Description: Transaction detail by signature.
-  • Output: Parsed transaction or raw fields.
-  • When to call: Inspect specific on-chain event.
-
-- getDomainInfo(address, network?) / resolveDomain(domain, network?)
-  • Description: Domain records for a wallet or resolve .sol domain to address.
-  • Output: Domain list / { address }.
-  • When to call: Reverse lookups and vanity resolution.
-
-
-- getTokenMarketData({ limit?, cursor?, sort_by?, sort_order?, min_market_cap?, min_volume? })
-  • Description: Market list via Deep Index trending, sorted best-effort.
-  • Output: { tokens: [...] }
-  • When to call: Market overviews and paged lists.
-
-- getTopTokens(limit?) / getNewListings(limit?, daysBack?)
-  • Description: Not available on gateway; return null with warnings.
-  • Output: null
-  • When to call: Do not call unless testing availability; prefer trending endpoints.
-
-- clearCache()
-  • Description: Clears in-memory cache for Moralis API wrapper.
-  • Output: void
-  • When to call: After config changes or to force refreshes.
+- tokenMarketData automatically uses 5-tier fallback for best data quality
+- For chart data, use birdeyeOHLCV with appropriate timeframe
 
 Method Reference (Solana RPC via @solana/web3.js Connection)
 - getAccountInfo(address)
@@ -609,9 +489,14 @@ Response format (JSON only):
 
 Example for "insights on token $OVSM pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS":
 [
-  { "tool": "moralisMarketData", "reason": "Current price/mcap/volume", "narrative": "📊 Fetching real-time market data", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
-  { "tool": "getTokenLargestAccounts", "reason": "Top holder analysis", "narrative": "� Analyzing holder distribution", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
-  { "tool": "getSignaturesForAddress", "reason": "Transaction timeline", "narrative": "📝 Loading transaction history", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" }
+  { "tool": "tokenMarketData", "reason": "Current price/mcap/volume/liquidity", "narrative": "📊 Fetching real-time market data", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
+  { "tool": "getTokenHolders", "reason": "Top holder analysis", "narrative": "👥 Analyzing holder distribution", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
+  { "tool": "getTokenLargestAccounts", "reason": "Whale concentration", "narrative": "� Identifying major holders", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" }
+]
+
+Example for "show me hourly price chart for BONK":
+[
+  { "tool": "birdeyeOHLCV", "reason": "Get hourly candlestick data", "narrative": "📈 Loading price history", "input": { "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "type": "1H" } }
 ]`;
 
         const response = await withTimeout(
@@ -651,7 +536,7 @@ Example for "insights on token $OVSM pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS
 function generateBasicFallbackPlan(question: string): AIPlanStep[] {
     const qLower = question.toLowerCase();
 
-    // Token detection fallback (Moralis-only)
+    // Token detection fallback (uses Birdeye with multi-tier fallback)
     if (qLower.includes('price') || qLower.includes('market') || qLower.includes('volume') ||
         qLower.includes('token') || /\$[A-Z]{3,10}/.test(question)) {
 
@@ -662,7 +547,7 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
         // If a mint address is provided in the query, use it directly
         if (potentialMints.length > 0) {
             return potentialMints.map(mint => ({
-                tool: 'moralisMarketData',
+                tool: 'tokenMarketData',
                 reason: `Get current market data for token ${mint}`,
                 narrative: `▣ Getting market data for token`,
                 input: mint
@@ -672,6 +557,21 @@ function generateBasicFallbackPlan(question: string): AIPlanStep[] {
         // If no mint address provided, return empty to avoid wrong substitutions
         console.log('⚠️ Token query without mint address - skipping automatic market data fetch');
         return [];
+    }
+
+    // Chart/OHLCV queries
+    if (qLower.includes('chart') || qLower.includes('candle') || qLower.includes('ohlcv') || qLower.includes('price history')) {
+        const mintPattern = /[1-9A-HJ-NP-Za-km-z]{32,44}/g;
+        const potentialMints = question.match(mintPattern) || [];
+        
+        if (potentialMints.length > 0) {
+            return potentialMints.map(mint => ({
+                tool: 'birdeyeOHLCV',
+                reason: `Get candlestick data for token ${mint}`,
+                narrative: `📈 Loading price history`,
+                input: { address: mint, type: '1H' }
+            }));
+        }
     }
 
     // Validator queries fallback
