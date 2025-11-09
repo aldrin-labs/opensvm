@@ -51,6 +51,13 @@ export interface Message {
   };
 }
 
+export interface ProcessMessageOptions {
+  systemPrompt?: string;
+  ownPlan?: boolean;
+  chatHistory?: Message[];
+  currentPlan?: string;
+}
+
 export interface AgentContext {
   messages: Message[];
   networkState?: NetworkState;

@@ -375,7 +375,58 @@ export const AIChatSidebar: React.FC<AIChatSidebarProps> = ({
     const MIN_PROCESSING_MS = 400;
 
     try {
-      const rawResponse: any = await agent.processMessage(userMessage as any);
+      // Get current tab to check mode
+      const currentTab = tabs.find(t => t.id === tabId);
+      const isAgentMode = currentTab?.mode === 'agent';
+      
+      let rawResponse: any;
+      
+      if (isAgentMode) {
+        // Agent mode: build system prompt with XML plan request
+        const chatHistory = existing.slice(-10).map(m => 
+          `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content.substring(0, 200)}`
+        ).join('\n');
+        
+        const currentPlan = existing
+          .filter(m => m.metadata?.type === 'planning')
+          .slice(-1)[0]?.content || 'No active plan';
+        
+        const systemPrompt = `You are an AI agent that creates execution plans before taking actions.
+
+For this request, analyze the user's query and create a detailed execution plan in XML format that:
+1. Lists which tools/APIs you should call to collect the necessary data
+2. Specifies what data each tool should gather
+3. Determines if you should steer the current plan (if one exists) or create a new plan
+
+Available tools: getTransaction, getAccount, analyzeNetworkLoad, getValidatorInfo, getTokenInfo
+
+Chat History (last 10 messages):
+${chatHistory}
+
+Current Plan:
+${currentPlan}
+
+Create your plan in this XML format:
+<plan>
+  <tool name="tool_name">
+    <reason>Why this tool is needed</reason>
+    <data>What data to collect</data>
+  </tool>
+</plan>
+
+After creating the plan, execute it and provide results.`;
+
+        rawResponse = await agent.processMessage(userMessage as any, {
+          systemPrompt,
+          ownPlan: true,
+          chatHistory: existing,
+          currentPlan
+        });
+      } else {
+        // Assistant mode: simple message processing without system prompt
+        rawResponse = await agent.processMessage(userMessage as any);
+      }
+      
       const normalized: Message = {
         role: rawResponse.role === 'agent' ? 'assistant' : rawResponse.role,
         content: rawResponse.content,

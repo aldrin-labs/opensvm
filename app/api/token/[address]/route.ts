@@ -6,8 +6,15 @@ import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
 import { getTokenHolders as getMoralisTokenHolders } from '@/lib/moralis-api';
 import { getTokenInfo } from '@/lib/token-registry';
 
-// Cache for token holder data
-const tokenHolderCache = new Map<string, { holders: number; volume24h: number; timestamp: number }>();
+// Cache for token holder data and market data
+const tokenHolderCache = new Map<string, { 
+  holders: number; 
+  volume24h: number; 
+  price?: number;
+  liquidity?: number;
+  priceChange24h?: number;
+  timestamp: number 
+}>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
 // Rate limit configuration for token details - optimized for e2e tests
@@ -218,13 +225,16 @@ export async function GET(
         const now = Date.now();
         
         if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-          console.log(`Using cached holder data for ${mintAddress}: ${cached.holders} holders`);
+          console.log(`Using cached data for ${mintAddress}: ${cached.holders} holders`);
           const tokenData = {
             metadata,
             supply: Number(mintInfo.supply),
             decimals: mintInfo.decimals,
             holders: cached.holders,
             volume24h: cached.volume24h,
+            price: cached.price,
+            liquidity: cached.liquidity,
+            priceChange24h: cached.priceChange24h,
             isInitialized: mintInfo.isInitialized,
             freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
             mintAuthority: mintInfo.mintAuthority?.toBase58()
@@ -236,6 +246,9 @@ export async function GET(
         // Fetch actual token holder data
         let holders = 0;
         let volume24h = 0;
+        let price: number | undefined;
+        let liquidity: number | undefined;
+        let priceChange24h: number | undefined;
 
         try {
           // Method 1: Try Moralis API first (if available)
@@ -324,18 +337,50 @@ export async function GET(
             }
           }
 
-          // Get volume data (implement this separately if needed)
-          // For now, we'll leave it as 0 but this could be fetched from DEX analytics
-          volume24h = 0;
+          // Get volume data from Birdeye API
+          if (process.env.BIRDEYE_API_KEY) {
+            try {
+              console.log('Fetching market data from Birdeye API...');
+              const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`;
+              const birdeyeResp = await Promise.race([
+                fetch(birdeyeUrl, {
+                  headers: {
+                    'Accept': 'application/json',
+                    'X-API-KEY': process.env.BIRDEYE_API_KEY
+                  }
+                }),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Birdeye timeout')), 2000)
+                )
+              ]) as Response;
+
+              if (birdeyeResp.ok) {
+                const birdeyeData = await birdeyeResp.json();
+                if (birdeyeData.success && birdeyeData.data) {
+                  volume24h = birdeyeData.data.v24hUSD || 0;
+                  price = birdeyeData.data.price || undefined;
+                  liquidity = birdeyeData.data.liquidity || undefined;
+                  priceChange24h = birdeyeData.data.priceChange24hPercent || undefined;
+                  console.log(`Fetched market data from Birdeye: $${volume24h} volume, $${price} price`);
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to fetch Birdeye market data:', error instanceof Error ? error.message : 'Unknown error');
+              // Keep volume24h as 0 if Birdeye fails
+            }
+          }
           
           // Cache the results
-          if (holders > 0) {
+          if (holders > 0 || volume24h > 0) {
             tokenHolderCache.set(cacheKey, {
               holders,
               volume24h,
+              price,
+              liquidity,
+              priceChange24h,
               timestamp: now
             });
-            console.log(`Cached holder data for ${mintAddress}: ${holders} holders`);
+            console.log(`Cached data for ${mintAddress}: ${holders} holders, $${volume24h} volume24h`);
           }
           
         } catch (error) {
@@ -349,6 +394,9 @@ export async function GET(
           decimals: mintInfo.decimals,
           holders,
           volume24h,
+          price,
+          liquidity,
+          priceChange24h,
           isInitialized: mintInfo.isInitialized,
           freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
           mintAuthority: mintInfo.mintAuthority?.toBase58()

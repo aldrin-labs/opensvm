@@ -7,7 +7,8 @@ import type {
   CapabilityType,
   AgentAction,
   AgentCapability,
-  ProgressEvent
+  ProgressEvent,
+  ProcessMessageOptions
 } from '../types';
 import { NETWORK_PERFORMANCE_KNOWLEDGE } from './knowledge';
 
@@ -58,7 +59,7 @@ export class SolanaAgent {
     });
   }
 
-  async processMessage(message: Message): Promise<Message> {
+  async processMessage(message: Message, options?: ProcessMessageOptions): Promise<Message> {
     // Check for mock mode
     const isMockMode = typeof window !== 'undefined' && (
       window.location.search.includes('aimock=1') ||
@@ -81,6 +82,16 @@ export class SolanaAgent {
       };
       this.context.messages.push(message, response);
       return response;
+    }
+
+    // Handle agent mode with custom system prompt
+    if (options?.ownPlan && options?.systemPrompt) {
+      // In agent mode, inject system prompt requesting XML plan
+      const systemMessage: Message = {
+        role: 'system',
+        content: options.systemPrompt
+      };
+      this.context.messages.push(systemMessage);
     }
 
     // Add message to context
