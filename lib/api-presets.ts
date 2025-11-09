@@ -1,7 +1,7 @@
 /**
  * API Method Presets
  * Provides clickable preset examples for all API methods
- * Total: 97 Core API Routes organized by category
+ * Total: 98 Core API Routes organized by category
  */
 
 export interface ApiPreset {
@@ -550,7 +550,7 @@ export const apiMethods: ApiMethod[] = [
     presets: createExamplePresets('GET', '/api/nft-collections/new'),
   },
 
-  // ============= ANALYTICS (12 methods) =============
+  // ============= ANALYTICS (13 methods) =============
   {
     id: 'defi-overview',
     name: 'DeFi Overview',
@@ -640,6 +640,46 @@ export const apiMethods: ApiMethod[] = [
     endpoint: '/api/analytics/socialfi',
     method: 'GET',
     presets: createExamplePresets('GET', '/api/analytics/socialfi'),
+  },
+  {
+    id: 'market-data',
+    name: 'Token Market Data & OHLCV',
+    description: 'Get comprehensive token market data with OHLCV candles, pool info, and technical indicators',
+    category: 'Analytics',
+    endpoint: '/api/market-data',
+    method: 'GET',
+    presets: [
+      {
+        name: 'OSVM Token OHLCV (1H)',
+        description: 'Get hourly OHLCV data for OSVM token',
+        method: 'GET',
+        path: '/api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=ohlcv&type=1H',
+      },
+      {
+        name: 'BONK Daily Chart',
+        description: 'Get daily OHLCV data for BONK',
+        method: 'GET',
+        path: '/api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=ohlcv&type=1D',
+      },
+      {
+        name: 'Token Overview',
+        description: 'Get token overview with price, volume, market cap',
+        method: 'GET',
+        path: '/api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=overview',
+      },
+      {
+        name: 'Token Security Analysis',
+        description: 'Get token security metrics (holder concentration, authorities)',
+        method: 'GET',
+        path: '/api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=security',
+      },
+      {
+        name: 'Specific Pool OHLCV',
+        description: 'Get OHLCV data for specific DEX pool',
+        method: 'GET',
+        path: '/api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=ohlcv&type=15m&poolAddress=8kJqxAbqbPAvJKuomNFtWfJZMh3ZPSFMaGw2JTJfhHqe',
+      },
+    ],
   },
 
   // ============= AI-POWERED (6 methods) =============

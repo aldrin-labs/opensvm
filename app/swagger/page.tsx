@@ -102,14 +102,28 @@ export default function SwaggerPage() {
             <div className="text-blue-600 dark:text-blue-400 mt-1">
               <FileText className="w-5 h-5" />
             </div>
-            <div>
+            <div className="flex-1">
               <h3 className="font-semibold text-blue-900 dark:text-blue-100 mb-1">
-                API Reference
+                Complete API Reference with TypeScript Schemas
               </h3>
-              <p className="text-sm text-blue-700 dark:text-blue-300">
-                Explore all available API endpoints below. Click on any endpoint to see detailed information
-                about parameters, request body, and response formats.
+              <p className="text-sm text-blue-700 dark:text-blue-300 mb-2">
+                Explore all <strong>98 API endpoints</strong> below. Every endpoint includes detailed TypeScript response schemas,
+                request parameters, and examples. Click any endpoint to see full documentation.
               </p>
+              <div className="flex flex-wrap gap-2 mt-3">
+                <span className="px-2 py-1 text-xs bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded">
+                  22 Response Schemas
+                </span>
+                <span className="px-2 py-1 text-xs bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded">
+                  60+ Documented Paths
+                </span>
+                <span className="px-2 py-1 text-xs bg-purple-100 dark:bg-purple-900 text-purple-800 dark:text-purple-200 rounded">
+                  Full TypeScript Types
+                </span>
+                <span className="px-2 py-1 text-xs bg-amber-100 dark:bg-amber-900 text-amber-800 dark:text-amber-200 rounded">
+                  OpenAPI 3.0.3
+                </span>
+              </div>
             </div>
           </div>
         </div>
