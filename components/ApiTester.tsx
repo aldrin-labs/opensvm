@@ -1,8 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { apiMethods, getAllCategories, getMethodsByCategory } from '@/lib/api-presets';
-import { Play, Copy, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { getAllCategories, getMethodsByCategory } from '@/lib/api-presets';
+import { Play, Copy, ChevronDown, ChevronUp, FileJson } from 'lucide-react';
+import { ApiSchemaViewer } from '@/components/ApiSchemaViewer';
+import { getSchemaForEndpoint } from '@/lib/api-response-schemas';
 
 export const ApiTester: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Blockchain Core');
@@ -169,8 +171,6 @@ export const ApiTester: React.FC = () => {
 
         {categoryMethods.map(method => {
           const isExpanded = expandedMethods.has(method.id);
-          const resultKey = `${method.id}-preset-0`;
-          const hasResult = !!results[resultKey];
 
           return (
             <div key={method.id} className="border rounded-lg overflow-hidden bg-white dark:bg-gray-800">
@@ -203,8 +203,36 @@ export const ApiTester: React.FC = () => {
               {/* Method Details */}
               {isExpanded && (
                 <div className="border-t p-4 bg-gray-50 dark:bg-gray-900">
+                  {/* Response Schema Section */}
+                  <div className="mb-6">
+                    <h4 className="font-semibold mb-3 flex items-center gap-2">
+                      <FileJson className="w-5 h-5 text-blue-600" />
+                      Response Schema
+                    </h4>
+                    {(() => {
+                      const schema = getSchemaForEndpoint(method.endpoint);
+                      if (schema && schema.success) {
+                        return (
+                          <div className="space-y-4">
+                            <ApiSchemaViewer schema={schema.success} title="✓ Success Response (200)" />
+                            {schema.error && (
+                              <ApiSchemaViewer schema={schema.error} title="✗ Error Response (4xx/5xx)" />
+                            )}
+                          </div>
+                        );
+                      }
+                      return (
+                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-300 dark:border-gray-700">
+                          <p className="text-sm text-gray-600 dark:text-gray-400">
+                            Schema documentation not yet available for this endpoint.
+                          </p>
+                        </div>
+                      );
+                    })()}
+                  </div>
+
                   <div className="mb-4">
-                    <h4 className="font-semibold mb-3">Presets ({method.presets.length})</h4>
+                    <h4 className="font-semibold mb-3">Test Presets ({method.presets.length})</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                       {method.presets.map((preset, idx) => {
                         const presetKey = `${method.id}-${idx}`;
