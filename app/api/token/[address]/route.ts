@@ -8,10 +8,14 @@ import { getTokenInfo } from '@/lib/token-registry';
 // Cache for token holder data and market data
 const tokenHolderCache = new Map<string, { 
   holders: number; 
+  totalHolders?: number;
   volume24h: number; 
   price?: number;
   liquidity?: number;
   priceChange24h?: number;
+  top10Balance?: number;
+  top50Balance?: number;
+  top100Balance?: number;
   timestamp: number 
 }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
@@ -230,10 +234,14 @@ export async function GET(
             supply: Number(mintInfo.supply),
             decimals: mintInfo.decimals,
             holders: cached.holders,
+            totalHolders: cached.totalHolders,
             volume24h: cached.volume24h,
             price: cached.price,
             liquidity: cached.liquidity,
             priceChange24h: cached.priceChange24h,
+            top10Balance: cached.top10Balance,
+            top50Balance: cached.top50Balance,
+            top100Balance: cached.top100Balance,
             isInitialized: mintInfo.isInitialized,
             freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
             mintAuthority: mintInfo.mintAuthority?.toBase58()
@@ -243,11 +251,15 @@ export async function GET(
         }
 
         // Fetch actual token holder data and market data
-        let holders = 0;
+        let holders = 0; // From Birdeye
+        let totalHolders: number | undefined; // From on-chain getProgramAccounts
         let volume24h = 0;
         let price: number | undefined;
         let liquidity: number | undefined;
         let priceChange24h: number | undefined;
+        let top10Balance: number | undefined;
+        let top50Balance: number | undefined;
+        let top100Balance: number | undefined;
 
         try {
           // Method 1: Try Birdeye API first (provides both market data and holder count)
@@ -283,87 +295,91 @@ export async function GET(
             }
           }
 
-          // Method 2: If Birdeye fails or no holders found, use Solana RPC
-          if (holders === 0) {
-            console.log('Fetching token accounts from Solana RPC...');
+          // Method 2: Get accurate on-chain holder count and top holder balances via getProgramAccounts
+          try {
+            console.log('Fetching comprehensive holder data via getProgramAccounts...');
             
-            // Get the largest token accounts as a proxy for holder count
-            const largestAccounts = await Promise.race([
-              connection.getTokenLargestAccounts(mintPubkey),
-              new Promise((_, reject) =>
-                setTimeout(() => reject(new Error('Largest accounts timeout')), 1500)
-              )
-            ]) as Awaited<ReturnType<typeof connection.getTokenLargestAccounts>>;
-            
-            if (largestAccounts && largestAccounts.value) {
-              // Use the count of non-zero balance accounts from largest accounts
-              const nonZeroAccounts = largestAccounts.value.filter(
-                account => account.uiAmount && account.uiAmount > 0
-              );
-              
-              // If we have the max (20) accounts, estimate total holders
-              if (nonZeroAccounts.length === 20) {
-                // This is an estimate - multiply by a factor based on typical distribution
-                holders = Math.floor(nonZeroAccounts.length * 5); // Conservative estimate
-                console.log(`Estimated ${holders} holders based on largest accounts`);
-              } else {
-                // If we have less than 20, that's likely the actual count
-                holders = nonZeroAccounts.length;
-                console.log(`Found ${holders} holders from largest accounts`);
-              }
-            }
-
-            // Method 3: For more accurate count, try getProgramAccounts (expensive but accurate)
-            // Only do this for specific tokens or when explicitly needed
-            if (holders === 0 || holders === 100) {
-              try {
-                console.log('Attempting comprehensive holder count via getProgramAccounts...');
-                
-                const tokenAccounts = await Promise.race([
-                  connection.getProgramAccounts(
-                    TOKEN_PROGRAM_ID,
+            const tokenAccounts = await Promise.race([
+              connection.getProgramAccounts(
+                TOKEN_PROGRAM_ID,
+                {
+                  encoding: 'base64',
+                  filters: [
                     {
-                      encoding: 'base64',
-                      filters: [
-                        {
-                          dataSize: 165 // Size of token account
-                        },
-                        {
-                          memcmp: {
-                            offset: 0, // Mint is at offset 0 in token account
-                            bytes: mintPubkey.toBase58()
-                          }
-                        }
-                      ]
+                      dataSize: 165 // Size of token account
+                    },
+                    {
+                      memcmp: {
+                        offset: 0, // Mint is at offset 0 in token account
+                        bytes: mintPubkey.toBase58()
+                      }
                     }
-                  ),
-                  new Promise((_, reject) =>
-                    setTimeout(() => reject(new Error('Program accounts timeout')), 3000)
-                  )
-                ]) as Awaited<ReturnType<typeof connection.getProgramAccounts>>;
-                
-                if (tokenAccounts) {
-                  holders = tokenAccounts.length;
-                  console.log(`Found exactly ${holders} token holders via getProgramAccounts`);
+                  ]
                 }
-              } catch (error) {
-                console.warn('getProgramAccounts failed:', error instanceof Error ? error.message : 'Unknown error');
-                // Keep the estimate from Method 2 if available
+              ),
+              new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Program accounts timeout')), 5000)
+              )
+            ]) as Awaited<ReturnType<typeof connection.getProgramAccounts>>;
+            
+            if (tokenAccounts && tokenAccounts.length > 0) {
+              // Parse and sort accounts by balance
+              const balances: number[] = [];
+              
+              for (const account of tokenAccounts) {
+                try {
+                  const accountData = account.account.data;
+                  if (Buffer.isBuffer(accountData) && accountData.length >= 72) {
+                    // Token account structure: amount is at bytes 64-72 (u64 little-endian)
+                    const amountBuffer = accountData.slice(64, 72);
+                    const amount = amountBuffer.readBigUInt64LE(0);
+                    const balance = Number(amount) / Math.pow(10, mintInfo.decimals);
+                    
+                    if (balance > 0) {
+                      balances.push(balance);
+                    }
+                  }
+                } catch (parseError) {
+                  // Skip accounts that can't be parsed
+                  continue;
+                }
               }
+              
+              // Sort balances in descending order
+              balances.sort((a, b) => b - a);
+              
+              totalHolders = balances.length;
+              top10Balance = balances[9] || balances[balances.length - 1]; // 10th or last if fewer
+              top50Balance = balances[49] || balances[balances.length - 1]; // 50th or last if fewer
+              top100Balance = balances[99] || balances[balances.length - 1]; // 100th or last if fewer
+              
+              console.log(`Found ${totalHolders} on-chain holders. Top 10th: ${top10Balance}, Top 50th: ${top50Balance}, Top 100th: ${top100Balance}`);
             }
+          } catch (error) {
+            console.warn('getProgramAccounts failed:', error instanceof Error ? error.message : 'Unknown error');
+            // Continue without on-chain data if it fails
+          }
+
+          // Fallback: If no Birdeye holders, use on-chain count
+          if (holders === 0 && totalHolders) {
+            holders = totalHolders;
           }
           
           // Cache the results
           if (holders > 0 || volume24h > 0) {
             tokenHolderCache.set(cacheKey, {
               holders,
+              totalHolders,
               volume24h,
               price,
               liquidity,
               priceChange24h,
+              top10Balance,
+              top50Balance,
+              top100Balance,
               timestamp: now
             });
-            console.log(`Cached data for ${mintAddress}: ${holders} holders, $${volume24h} volume24h`);
+            console.log(`Cached data for ${mintAddress}: ${holders} holders, ${totalHolders} total on-chain`);
           }
           
         } catch (error) {
@@ -376,10 +392,14 @@ export async function GET(
           supply: Number(mintInfo.supply),
           decimals: mintInfo.decimals,
           holders,
+          totalHolders,
           volume24h,
           price,
           liquidity,
           priceChange24h,
+          top10Balance,
+          top50Balance,
+          top100Balance,
           isInitialized: mintInfo.isInitialized,
           freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
           mintAuthority: mintInfo.mintAuthority?.toBase58()
