@@ -166,28 +166,50 @@ async function generateAIPoweredPlan(question: string, planningContext?: string)
         const availableTools = `
 Available Tools (Comprehensive)
 
-Birdeye API (Primary Market Data Source - requires BIRDEYE_API_KEY)
-- tokenMarketData(mint): Get comprehensive token market data
+Birdeye API (PRIMARY Market Data - requires BIRDEYE_API_KEY)
+⚡ Fast, accurate, real-time Solana DEX data - USE THESE TOOLS FIRST for token analysis
+
+- tokenMarketData(mint): Comprehensive token market data [PRIMARY TOOL FOR TOKEN ANALYSIS]
   • input: Token mint address (e.g., "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263" for BONK)
-  • Returns: price, market cap, 24h volume, liquidity, holder count, supply
-  • When to call: Price, market cap, volume for any token
-  • Note: Automatically uses 5-tier fallback (Birdeye → DexScreener → GeckoTerminal → RPC)
+  • Returns: price, market cap, 24h volume, liquidity, holder count, supply, price changes
+  • When to call: ANY token price/market query - this is your go-to tool
+  • Data quality: ⭐⭐⭐⭐⭐ Most accurate and up-to-date
+  • Automatic fallbacks: Birdeye → DexScreener → GeckoTerminal → RPC
 
-- birdeyeOHLCV(address, type?, time_from?, time_to?): Get OHLCV candlestick data for charting
+- birdeyeOHLCV(address, type?, time_from?, time_to?): Historical price data & charts [ESSENTIAL FOR TRENDS]
   • address: Token mint address
-  • type: "1m"|"3m"|"5m"|"15m"|"30m"|"1H"|"2H"|"4H"|"6H"|"8H"|"12H"|"1D"|"3D"|"1W"|"1M" (default: "15m")
-  • time_from: Unix timestamp in seconds (default: 24h ago)
-  • time_to: Unix timestamp in seconds (default: now)
-  • Returns: {items: [{o: open, h: high, l: low, c: close, v: volume, unixTime, address, type, currency}]}
-  • When to call: Chart data, technical analysis, price history visualization
-  • Example: birdeyeOHLCV("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "1H") for hourly BONK candles
+  • type: "1m"|"3m"|"5m"|"15m"|"30m"|"1H"|"2H"|"4H"|"6H"|"8H"|"12H"|"1D"|"3D"|"1W"|"1M"
+  • time_from/time_to: Unix timestamps in seconds (default: last 24h)
+  • Returns: OHLCV candles - open, high, low, close, volume per time period
+  • When to call: Price trends, technical analysis, volatility, "show me a chart", historical performance
+  • Use cases: Pump detection, dump analysis, price patterns, support/resistance
+  • Example: birdeyeOHLCV("BONK_ADDRESS", "1H") → last 24 hours of hourly candles
 
-- birdeyeOrderbook(address, offset?): Get market depth and order book (DEX market address required)
-  • address: Market/pair address (NOT token mint - use pairAddress from token overview)
-  • offset: Depth offset from best bid/ask (default: 100)
-  • Returns: {bids: [{price, size}], asks: [{price, size}], updateUnixTime}
-  • When to call: Market depth analysis, bid/ask spreads
-  • Note: Only available for tokens with centralized orderbook markets
+- birdeyeTokenSecurity(address): Security & holder analysis [CRITICAL FOR RISK ASSESSMENT]
+  • address: Token mint address
+  • Returns: Creator holdings, top holder %, freeze authority, mint authority, LP burned, honeypot risk
+  • When to call: "Is this safe?", rug pull detection, security audit, holder concentration
+  • Essential for: Risk analysis, whale warnings, smart contract safety
+
+- birdeyeMultiPrice(addresses[]): Batch price lookup [EFFICIENT FOR PORTFOLIOS]
+  • input: Array of token mint addresses
+  • Returns: {address: price} map for all tokens
+  • When to call: Portfolio valuation, multiple token queries, comparison analysis
+  • Performance: Much faster than individual calls
+
+- birdeyeTokenSearch(query, limit?): Find tokens by name/symbol [DISCOVERY TOOL]
+  • query: Token name or symbol (e.g., "BONK", "Solana")
+  • limit: Max results (default: 10)
+  • Returns: Array of matching tokens with addresses and basic info
+  • When to call: User asks about token but doesn't provide address
+  • Use case: "What's the address for BONK?", "Find SOL tokens"
+
+- birdeyeOrderbook(address, offset?): Market depth [ADVANCED - DEX PAIR REQUIRED]
+  • address: DEX market/pair address (NOT token mint)
+  • offset: Price levels from best bid/ask (default: 100)
+  • Returns: Bids/asks orderbook snapshot
+  • When to call: Liquidity depth analysis, spread analysis
+  • Note: Requires pair address from tokenMarketData or token_overview
 
 Blockchain Data API (Wallet & NFT Data)
 - getTokenHolders(address): Top token holders
@@ -256,17 +278,36 @@ Solana RPC (web3.js Connection methods)
 - sendRawTransaction(rawTx, opts?)
 - simulateTransaction(txOrMessage, opts?)
 
-Notes:
-- Use tokenMarketData (with Birdeye) for token price, market cap, volume, and liquidity
-- Use birdeyeOHLCV for historical price data, charts, and technical analysis
-- Use Solana RPC for chain state: account info, balances, token supply, validators, etc.
-- For tokenMarketData you MUST pass the Solana mint address
-- If the user provides a mint address in the query, USE THAT ADDRESS - do not substitute it
+🎯 TOOL SELECTION PRIORITY (Most Important → Least Important):
 
-Token Queries:
-- Always extract and use the mint address from the user's query if provided
-- tokenMarketData automatically uses 5-tier fallback for best data quality
-- For chart data, use birdeyeOHLCV with appropriate timeframe
+TOKEN ANALYSIS:
+1. ⭐ tokenMarketData - Your PRIMARY tool (Birdeye-powered, most comprehensive)
+2. ⭐ birdeyeTokenSecurity - Essential for risk/safety questions
+3. ⭐ birdeyeOHLCV - Required for trends/charts/history
+4. birdeyeTokenSearch - When user doesn't provide token address
+5. birdeyeMultiPrice - For multiple tokens at once (efficient)
+6. Solana RPC tools - ONLY when Birdeye doesn't provide what you need
+
+WALLET/NFT ANALYSIS:
+- Use Blockchain Data API tools (getPortfolio, getNFTs, etc.)
+
+NETWORK/CHAIN STATE:
+- Use Solana RPC methods (getEpochInfo, getHealth, etc.)
+
+Notes:
+- 🔥 ALWAYS try Birdeye tools FIRST for any token-related query
+- tokenMarketData provides: price, volume, liquidity, market cap, holders - all in ONE call
+- birdeyeTokenSecurity reveals: holder concentration, creator balance, freeze/mint authority
+- birdeyeOHLCV gives you: complete price history for ANY timeframe
+- Birdeye data quality: ⭐⭐⭐⭐⭐ (most accurate real-time Solana DEX data)
+- If the user provides a mint address in the query, USE THAT EXACT ADDRESS
+- For token discovery, use birdeyeTokenSearch("SYMBOL") to find addresses
+
+Token Query Examples:
+✅ "What's BONK price?" → birdeyeTokenSearch("BONK") + tokenMarketData(result.address)
+✅ "Is X token safe?" → tokenMarketData(X) + birdeyeTokenSecurity(X)
+✅ "Show price chart" → birdeyeOHLCV(address, "1H" or "1D")
+✅ "Analyze token ABC..." → tokenMarketData(ABC) first, then add tools based on what analysis needs
 
 Method Reference (Solana RPC via @solana/web3.js Connection)
 - getAccountInfo(address)
@@ -456,26 +497,79 @@ ${availableTools}
 COMPREHENSIVE DATA COLLECTION RULES:
 
 For TOKEN ANALYSIS queries (price, market, volume, or $SYMBOL):
-You MUST collect these ESSENTIAL data points in THIS ORDER:
+You MUST collect these ESSENTIAL data points using BIRDEYE-FIRST approach:
 
-1. moralisMarketData(mint) - Current price, market cap, 24h volume [REQUIRED]
-2. getTokenLargestAccounts(mint) - Top holder concentration for whale analysis [REQUIRED]
-3. getSwapsByTokenAddress(mint, {limit: 50}) - Recent swap activity (reduced from 100) [OPTIONAL if time permits]
+RECOMMENDED DATA COLLECTION (prioritize based on query):
 
-This focused data enables critical insights:
-- Price/volume baseline + actual market cap calculation
-- Whale control risk via top holder concentration
-- Recent activity signals for manipulation detection
+1. tokenMarketData(mint) - [ALWAYS REQUIRED FOR TOKEN QUERIES]
+   • Current price, market cap, 24h volume, liquidity, holders
+   • Powered by Birdeye API (most accurate real-time data)
+   • Returns comprehensive market metrics in ONE call
 
-PERFORMANCE NOTE: Only include swap data if you believe it's essential for the specific question.
+2. birdeyeTokenSecurity(mint) - [HIGHLY RECOMMENDED FOR SAFETY/RISK QUERIES]
+   • Creator holdings %, top holders %, freeze/mint authority status
+   • Essential for: "Is this safe?", rug detection, risk assessment
+   • Reveals: Whale concentration, honeypot risks, LP status
+
+3. birdeyeOHLCV(mint, timeframe) - [REQUIRED FOR TREND/CHART QUERIES]
+   • Historical price candles for technical analysis
+   • Use when query mentions: chart, trend, history, pump, dump, volatility
+   • Timeframes: "15m", "1H", "1D" (choose based on analysis period)
+
+4. getTokenLargestAccounts(mint) - [OPTIONAL - ONLY IF DETAILED HOLDER ANALYSIS NEEDED]
+   • Top token holder addresses and balances
+   • Use if: Need specific wallet addresses, deep holder distribution
+   • NOTE: birdeyeTokenSecurity provides holder % which is usually sufficient
+
+5. getSwapsByTokenAddress(mint, {limit: 30}) - [OPTIONAL - ONLY FOR ACTIVITY ANALYSIS]
+   • Recent DEX swap transactions
+   • Use if: Need trade history, manipulation detection, specific transactions
+   • Keep limit LOW (30 max) for performance
+
+CRITICAL PERFORMANCE RULES:
+✅ Always use tokenMarketData FIRST - it provides 80% of what you need
+✅ Use birdeyeTokenSecurity for ANY safety/risk question
+✅ Use birdeyeOHLCV for ANY trend/chart/historical question
+❌ DON'T call getSwapsByTokenAddress unless specifically needed for the query
+❌ DON'T use getTokenLargestAccounts if birdeyeTokenSecurity suffices
+
+DATA HIERARCHY (choose tools based on what query needs):
+Level 1: tokenMarketData (price/volume/liquidity) - ALWAYS
+Level 2: birdeyeTokenSecurity (safety/holders) - for risk queries
+Level 3: birdeyeOHLCV (trends/charts) - for historical queries
+Level 4: RPC tools (holders/swaps) - ONLY if Birdeye tools insufficient
 
 CRITICAL RULES FOR TOKEN QUERIES:
 1) If the user provides a mint address in their query, ALWAYS use that exact address - do not substitute it
 2) Extract mint addresses from the query (they are 32-44 character base58 strings)
 3) For token analysis with a provided mint, include data collection steps using that mint
-4) If no mint address is provided and you don't know the token, skip rather than guess
+4) If no mint address is provided, use birdeyeTokenSearch to find it by name/symbol
 5) DO NOT use getEpochInfo or network tools for token queries
-6) Return ONLY valid JSON array, no explanatory text
+6) Use tokenMarketData as your PRIMARY tool - it's powered by Birdeye and provides the most complete data
+7) Prioritize Birdeye tools (tokenMarketData, birdeyeOHLCV, birdeyeTokenSecurity) over RPC calls
+8) Return ONLY valid JSON array, no explanatory text
+
+TOKEN DISCOVERY (when user doesn't provide address):
+- If query is like "show me BONK", "what's the price of WIF", etc.
+- First use: birdeyeTokenSearch("BONK") to get the mint address
+- Then use: tokenMarketData(found_address) for market data
+
+EXAMPLE PLAN for "What's the price of BONK?":
+[
+  { "tool": "birdeyeTokenSearch", "reason": "Find BONK token address", "narrative": "🔍 Searching for BONK token...", "input": "BONK" },
+  { "tool": "tokenMarketData", "reason": "Get current price and market data", "narrative": "💰 Fetching BONK market data...", "input": "{{BONK_ADDRESS_FROM_SEARCH}}" }
+]
+
+EXAMPLE PLAN for "Is OVSM token safe?" with address pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS:
+[
+  { "tool": "tokenMarketData", "reason": "Get basic market data", "narrative": "📊 Fetching OVSM market overview...", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" },
+  { "tool": "birdeyeTokenSecurity", "reason": "Analyze holder concentration and security", "narrative": "🔒 Analyzing OVSM security & holders...", "input": "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS" }
+]
+
+EXAMPLE PLAN for "Show me BONK price chart last 24h":
+[
+  { "tool": "birdeyeOHLCV", "reason": "Get hourly price data for chart", "narrative": "📈 Loading 24h price history...", "input": { "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "type": "1H" } }
+]
 
 Response format (JSON only):
 [
@@ -655,14 +749,14 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
         try {
             let result;
 
-            // Handle market data - use working CoinGecko instead of broken Moralis
+            // Handle market data - use Birdeye PRIMARY, then Moralis fallback
             if (step.tool === 'moralisMarketData' || step.tool === 'tokenMarketData') {
                 try {
                     if (typeof step.input !== 'string' || !step.input) {
-                        throw new Error('moralisMarketData requires mint address as input');
+                        throw new Error('tokenMarketData requires mint address as input');
                     }
                     const { PublicKey } = await import('@solana/web3.js');
-                    const moralisApi = await import('../../../../lib/moralis-api');
+                    const moralisApi = await import('../../../../lib/moralis-api'); // Import once, use throughout
 
                     const mint = step.input;
                     const pubkey = new PublicKey(mint);
@@ -673,16 +767,46 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                     const decimals = Number(supplyRes?.value?.decimals || 0);
                     const supplyTokens = decimals >= 0 ? (amount / Math.pow(10, decimals)) : 0;
 
-                    // 2) Get price (Moralis)
-                    const priceRes = await moralisApi.getTokenPrice(mint, 'mainnet');
+                    // 2) Get price - TRY BIRDEYE FIRST (primary), then Moralis fallback
+                    let priceUsd = 0;
+                    let pairAddress: string | null = null;
+                    let priceSource = 'unknown';
 
-                    // Robust extraction of price and pair address
-                    const priceUsd =
-                        Number(
+                    // Try Birdeye API first
+                    if (process.env.BIRDEYE_API_KEY) {
+                        try {
+                            console.log(`   🐦 Fetching price from Birdeye API (PRIMARY)...`);
+                            const birdeyeApi = await import('../../../../lib/birdeye-api');
+                            const birdeyeData = await birdeyeApi.getTokenOverview(mint);
+                            
+                            if (birdeyeData && birdeyeData.price > 0) {
+                                priceUsd = birdeyeData.price;
+                                priceSource = 'birdeye';
+                                console.log(`   ✓ Birdeye API: $${priceUsd}`);
+                            } else {
+                                console.log(`   ⚠️  Birdeye returned no price`);
+                            }
+                        } catch (e) {
+                            console.log(`   ⚠️  Birdeye API error: ${(e as Error).message}`);
+                        }
+                    }
+
+                    // Fallback to Moralis if Birdeye failed
+                    let priceRes: any = null;
+                    if (priceUsd === 0) {
+                        console.log(`   ⚠️  Falling back to Moralis API...`);
+                        priceRes = await moralisApi.getTokenPrice(mint, 'mainnet');
+                        priceUsd = Number(
                             (priceRes?.price_usd ?? priceRes?.usdPrice ?? priceRes?.usd ?? priceRes?.price ?? 0)
                         ) || 0;
+                        if (priceUsd > 0) {
+                            priceSource = 'moralis';
+                            console.log(`   ✓ Moralis API: $${priceUsd}`);
+                        }
+                    }
 
-                    const pairAddress = (() => {
+                    // Extract pair address from Moralis response (if available)
+                    if (!pairAddress && priceRes) {
                         const candidates: any[] = [];
                         try {
                             if (priceRes?.pairAddress) candidates.push(priceRes.pairAddress);
@@ -693,12 +817,28 @@ async function executePlan(plan: AIPlanStep[], conn: any): Promise<Record<string
                             if (priceRes?.result?.pairAddress) candidates.push(priceRes.result.pairAddress);
                             if (Array.isArray(priceRes?.result?.pairs) && priceRes.result.pairs[0]?.address) candidates.push(priceRes.result.pairs[0].address);
                             if (Array.isArray(priceRes?.result) && priceRes.result[0]?.address) candidates.push(priceRes.result[0].address);
+                            pairAddress = candidates.find(Boolean) || null;
                         } catch {}
-                        return candidates.find(Boolean) || null;
-                    })();
+                    }
 
-                    // 3) Derive 24h volume via pair stats if pair available
+                    // 3) Derive 24h volume - Try Birdeye first, then Moralis fallback
                     let volume24hUsd = 0;
+                    
+                    // Get volume from Birdeye if we got price from Birdeye
+                    if (priceSource === 'birdeye' && process.env.BIRDEYE_API_KEY) {
+                        try {
+                            const birdeyeApi = await import('../../../../lib/birdeye-api');
+                            const birdeyeData = await birdeyeApi.getTokenOverview(mint);
+                            if (birdeyeData) {
+                                volume24hUsd = Number(birdeyeData.v24hUSD || 0);
+                                console.log(`   ✓ Birdeye 24h volume: $${volume24hUsd}`);
+                            }
+                        } catch (e) {
+                            console.log(`   ⚠️  Birdeye volume fetch failed`);
+                        }
+                    }
+                    
+                    // Moralis volume fallback (original complex logic)
                     if (pairAddress && process.env.MORALIS_API_KEY) {
                         try {
                             const statsUrl = `https://solana-gateway.moralis.io/token/mainnet/pairs/${pairAddress}/stats`;
@@ -1024,24 +1164,43 @@ for (const r of rows) {
 
                     const marketCapUsd = priceUsd * supplyTokens;
 
-                    // Normalized result (compatible with summarizers)
-                    // Get token metadata for name/symbol
+                    // Get token metadata for name/symbol - Try Birdeye first
                     let tokenName = 'Unknown Token';
                     let tokenSymbol = 'UNKNOWN';
-                    try {
-                        const tokenMetadata = await moralisApi.getTokenMetadata(mint, 'mainnet');
-                        if (tokenMetadata?.name) tokenName = tokenMetadata.name;
-                        if (tokenMetadata?.symbol) tokenSymbol = tokenMetadata.symbol;
-                    } catch (e) {
-                        console.log(`   ⚠️ Could not fetch token metadata: ${(e as Error).message}`);
+                    
+                    // Try getting metadata from Birdeye first (if we used Birdeye for price)
+                    if (priceSource === 'birdeye' && process.env.BIRDEYE_API_KEY) {
+                        try {
+                            const birdeyeApi = await import('../../../../lib/birdeye-api');
+                            const birdeyeData = await birdeyeApi.getTokenOverview(mint);
+                            if (birdeyeData) {
+                                if (birdeyeData.name) tokenName = birdeyeData.name;
+                                if (birdeyeData.symbol) tokenSymbol = birdeyeData.symbol;
+                                console.log(`   ✓ Token metadata from Birdeye: ${tokenSymbol}`);
+                            }
+                        } catch (e) {
+                            console.log(`   ⚠️  Birdeye metadata fetch failed, trying Moralis...`);
+                        }
+                    }
+                    
+                    // Fallback to Moralis for metadata if needed
+                    if (tokenName === 'Unknown Token') {
+                        try {
+                            const tokenMetadata = await moralisApi.getTokenMetadata(mint, 'mainnet');
+                            if (tokenMetadata?.name) tokenName = tokenMetadata.name;
+                            if (tokenMetadata?.symbol) tokenSymbol = tokenMetadata.symbol;
+                            console.log(`   ✓ Token metadata from Moralis: ${tokenSymbol}`);
+                        } catch (e) {
+                            console.log(`   ⚠️ Could not fetch token metadata: ${(e as Error).message}`);
+                        }
                     }
 
-                    // If Moralis API is down or returns $0, try Birdeye API as first fallback (best data quality)
+                    // If we still don't have price, try additional fallbacks (DexScreener, GeckoTerminal, RPC)
                     if (priceUsd === 0) {
-                        console.log(`   ⚠️ Moralis returned $0 - trying Birdeye API fallback...`);
+                        console.log(`   ⚠️ No price from Birdeye or Moralis - trying additional fallbacks...`);
                         
                         try {
-                            // Birdeye API - comprehensive token data (requires API key, but provides best quality)
+                            // Birdeye API fallback (for when API key might not be set above)
                             const birdeyeHeaders: HeadersInit = {
                                 'Accept': 'application/json'
                             };
@@ -1383,6 +1542,107 @@ for (const r of rows) {
                 } catch (error) {
                     result = { error: `Birdeye Orderbook error: ${(error as Error).message}` };
                     console.log(`   ◌ Birdeye Orderbook failed: ${(error as Error).message}`);
+                }
+            }
+            // Handle Birdeye Token Security
+            else if (step.tool === 'birdeyeTokenSecurity') {
+                try {
+                    if (!process.env.BIRDEYE_API_KEY) {
+                        throw new Error('BIRDEYE_API_KEY not configured');
+                    }
+                    
+                    const address = typeof step.input === 'string' ? step.input : step.input?.address;
+                    if (!address) {
+                        throw new Error('Token address required for birdeyeTokenSecurity');
+                    }
+                    
+                    const birdeyeApi = await import('../../../../lib/birdeye-api');
+                    const securityData = await birdeyeApi.getTokenSecurity(address);
+                    
+                    if (!securityData) {
+                        throw new Error('No security data returned from Birdeye');
+                    }
+                    
+                    result = {
+                        success: true,
+                        source: 'birdeye-security',
+                        data: securityData,
+                        meta: { 
+                            address,
+                            analyzed_at: new Date().toISOString()
+                        }
+                    };
+                    
+                    console.log(`   ◈ Birdeye Security: Retrieved for ${address}`);
+                } catch (error) {
+                    result = { error: `Birdeye Token Security error: ${(error as Error).message}` };
+                    console.log(`   ◌ Birdeye Token Security failed: ${(error as Error).message}`);
+                }
+            }
+            // Handle Birdeye Multi Price
+            else if (step.tool === 'birdeyeMultiPrice') {
+                try {
+                    if (!process.env.BIRDEYE_API_KEY) {
+                        throw new Error('BIRDEYE_API_KEY not configured');
+                    }
+                    
+                    const addresses = Array.isArray(step.input) ? step.input : 
+                                     step.input?.addresses ? step.input.addresses : [];
+                    
+                    if (!addresses.length) {
+                        throw new Error('Array of token addresses required for birdeyeMultiPrice');
+                    }
+                    
+                    const birdeyeApi = await import('../../../../lib/birdeye-api');
+                    const prices = await birdeyeApi.getMultiPrice(addresses);
+                    
+                    result = {
+                        success: true,
+                        source: 'birdeye-multiprice',
+                        data: prices,
+                        meta: { 
+                            count: Object.keys(prices).length,
+                            addresses
+                        }
+                    };
+                    
+                    console.log(`   ◈ Birdeye Multi Price: Retrieved ${Object.keys(prices).length} prices`);
+                } catch (error) {
+                    result = { error: `Birdeye Multi Price error: ${(error as Error).message}` };
+                    console.log(`   ◌ Birdeye Multi Price failed: ${(error as Error).message}`);
+                }
+            }
+            // Handle Birdeye Token Search
+            else if (step.tool === 'birdeyeTokenSearch') {
+                try {
+                    if (!process.env.BIRDEYE_API_KEY) {
+                        throw new Error('BIRDEYE_API_KEY not configured');
+                    }
+                    
+                    const query = typeof step.input === 'string' ? step.input : step.input?.query;
+                    if (!query) {
+                        throw new Error('Search query required for birdeyeTokenSearch');
+                    }
+                    
+                    const limit = step.input?.limit || 10;
+                    
+                    const birdeyeApi = await import('../../../../lib/birdeye-api');
+                    const searchResults = await birdeyeApi.searchTokens(query, limit);
+                    
+                    result = {
+                        success: true,
+                        source: 'birdeye-search',
+                        data: searchResults,
+                        meta: { 
+                            query,
+                            count: searchResults.length
+                        }
+                    };
+                    
+                    console.log(`   ◈ Birdeye Token Search: Found ${searchResults.length} tokens for "${query}"`);
+                } catch (error) {
+                    result = { error: `Birdeye Token Search error: ${(error as Error).message}` };
+                    console.log(`   ◌ Birdeye Token Search failed: ${(error as Error).message}`);
                 }
             }
             // Handle other Moralis API methods
