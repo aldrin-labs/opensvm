@@ -3,7 +3,6 @@ import { PublicKey } from '@solana/web3.js';
 import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-connection-server';
 import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
-import { getTokenHolders as getMoralisTokenHolders } from '@/lib/moralis-api';
 import { getTokenInfo } from '@/lib/token-registry';
 
 // Cache for token holder data and market data
@@ -243,7 +242,7 @@ export async function GET(
           return NextResponse.json(tokenData, { headers: baseHeaders });
         }
 
-        // Fetch actual token holder data
+        // Fetch actual token holder data and market data
         let holders = 0;
         let volume24h = 0;
         let price: number | undefined;
@@ -251,23 +250,40 @@ export async function GET(
         let priceChange24h: number | undefined;
 
         try {
-          // Method 1: Try Moralis API first (if available)
-          if (process.env.MORALIS_API_KEY) {
-            console.log('Attempting to fetch holder data from Moralis API...');
-            const moralisData = await Promise.race([
-              getMoralisTokenHolders(mintAddress),
-              new Promise((_, reject) => 
-                setTimeout(() => reject(new Error('Moralis timeout')), 2000)
-              )
-            ]);
-            
-            if (moralisData && typeof moralisData.holders === 'number') {
-              holders = moralisData.holders;
-              console.log(`Fetched ${holders} holders from Moralis API`);
+          // Method 1: Try Birdeye API first (provides both market data and holder count)
+          if (process.env.BIRDEYE_API_KEY) {
+            try {
+              console.log('Fetching market data and holder count from Birdeye API...');
+              const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`;
+              const birdeyeResp = await Promise.race([
+                fetch(birdeyeUrl, {
+                  headers: {
+                    'Accept': 'application/json',
+                    'X-API-KEY': process.env.BIRDEYE_API_KEY
+                  }
+                }),
+                new Promise((_, reject) =>
+                  setTimeout(() => reject(new Error('Birdeye timeout')), 2000)
+                )
+              ]) as Response;
+
+              if (birdeyeResp.ok) {
+                const birdeyeData = await birdeyeResp.json();
+                if (birdeyeData.success && birdeyeData.data) {
+                  volume24h = birdeyeData.data.v24hUSD || 0;
+                  price = birdeyeData.data.price || undefined;
+                  liquidity = birdeyeData.data.liquidity || undefined;
+                  priceChange24h = birdeyeData.data.priceChange24hPercent || undefined;
+                  holders = birdeyeData.data.holder || 0; // Birdeye provides holder count
+                  console.log(`Fetched from Birdeye: ${holders} holders, $${volume24h} volume, $${price} price`);
+                }
+              }
+            } catch (error) {
+              console.warn('Failed to fetch Birdeye data:', error instanceof Error ? error.message : 'Unknown error');
             }
           }
 
-          // Method 2: If Moralis fails or no holders found, use Solana RPC
+          // Method 2: If Birdeye fails or no holders found, use Solana RPC
           if (holders === 0) {
             console.log('Fetching token accounts from Solana RPC...');
             
@@ -334,39 +350,6 @@ export async function GET(
                 console.warn('getProgramAccounts failed:', error instanceof Error ? error.message : 'Unknown error');
                 // Keep the estimate from Method 2 if available
               }
-            }
-          }
-
-          // Get volume data from Birdeye API
-          if (process.env.BIRDEYE_API_KEY) {
-            try {
-              console.log('Fetching market data from Birdeye API...');
-              const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`;
-              const birdeyeResp = await Promise.race([
-                fetch(birdeyeUrl, {
-                  headers: {
-                    'Accept': 'application/json',
-                    'X-API-KEY': process.env.BIRDEYE_API_KEY
-                  }
-                }),
-                new Promise((_, reject) =>
-                  setTimeout(() => reject(new Error('Birdeye timeout')), 2000)
-                )
-              ]) as Response;
-
-              if (birdeyeResp.ok) {
-                const birdeyeData = await birdeyeResp.json();
-                if (birdeyeData.success && birdeyeData.data) {
-                  volume24h = birdeyeData.data.v24hUSD || 0;
-                  price = birdeyeData.data.price || undefined;
-                  liquidity = birdeyeData.data.liquidity || undefined;
-                  priceChange24h = birdeyeData.data.priceChange24hPercent || undefined;
-                  console.log(`Fetched market data from Birdeye: $${volume24h} volume, $${price} price`);
-                }
-              }
-            } catch (error) {
-              console.warn('Failed to fetch Birdeye market data:', error instanceof Error ? error.message : 'Unknown error');
-              // Keep volume24h as 0 if Birdeye fails
             }
           }
           
