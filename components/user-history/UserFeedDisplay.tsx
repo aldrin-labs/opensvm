@@ -31,7 +31,8 @@ import {
   Coins,
   X,
   ChevronDown,
-  ArrowUpDown
+  ArrowUpDown,
+  Eye
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -61,6 +62,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   const [events, setEvents] = useState<FeedEvent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [systemHealthy, setSystemHealthy] = useState<boolean>(true);
   const [likeError, setLikeError] = useState<string | null>(null);
   const [eventSource, setEventSource] = useState<EventSource | null>(null);
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -100,7 +102,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Filtering and search
   const [searchQuery, setSearchQuery] = useState('');
   const [filters, setFilters] = useState({
-    eventTypes: ['transaction', 'visit', 'like', 'follow', 'other'],
+    eventTypes: [] as string[], // Empty array means show all event types
     dateRange: 'all' as 'today' | 'week' | 'month' | 'all',
     sortOrder: 'newest' as 'newest' | 'popular'
   });
@@ -151,9 +153,13 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           }));
           setEvents(convertedEvents);
           setLoading(false);
-          return;
+          
+          // Still fetch fresh data in background to update cache
+          // This ensures users see cached data immediately but get fresh data soon
+          console.log('Fetching fresh data in background to update cache...');
+        } else {
+          console.log('No valid cache found, fetching from API');
         }
-        console.log('No valid cache found, fetching from API');
       }
 
       // If cache miss or pagination, proceed with API request
@@ -173,6 +179,17 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       }
 
       const data = await response.json();
+
+      // Check system health from metadata
+      if (data.metadata && data.metadata.systemHealthy === false) {
+        setSystemHealthy(false);
+        setError(data.metadata.message || 'Feed service is temporarily unavailable');
+        setEvents([]);
+        setLoading(false);
+        return;
+      }
+
+      setSystemHealthy(true);
 
       // Update state with new data
       if (reset) {
@@ -196,7 +213,7 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       }
 
       // Check if there are more events to load
-      setHasMore(data.events.length === 10);
+      setHasMore(data.metadata?.hasMore ?? data.events.length === 10);
 
     } catch (err) {
       setError('Failed to load feed events');
@@ -224,8 +241,8 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       return false;
     }
 
-    // Check event type filter
-    if (!filters.eventTypes.includes(event.eventType)) {
+    // Check event type filter (only if filters are applied)
+    if (filters.eventTypes.length > 0 && !filters.eventTypes.includes(event.eventType)) {
       return false;
     }
 
@@ -295,20 +312,26 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
   // Initialize feed data on mount and tab change
   useEffect(() => {
     fetchFeed(activeTab);
-  }, [walletAddress, activeTab, fetchFeed]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [walletAddress, activeTab]);
 
   // Setup SSE connection separately to avoid infinite loops
   useEffect(() => {
     if (!walletAddress) return;
 
+    let currentEventSource: EventSource | null = null;
+    let currentRetryTimeout: NodeJS.Timeout | null = null;
+    let currentRetryCount = 0;
+    let setupTimeout: NodeJS.Timeout | null = null;
+
     const setupEventSource = () => {
       // Clear any existing connections
-      if (eventSource) {
-        eventSource.close();
+      if (currentEventSource) {
+        currentEventSource.close();
       }
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
-        setRetryTimeout(null);
+      if (currentRetryTimeout) {
+        clearTimeout(currentRetryTimeout);
+        currentRetryTimeout = null;
       }
 
       setConnectionStatus('connecting');
@@ -320,9 +343,12 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
       });
 
       const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
+      currentEventSource = newEventSource;
+      setEventSource(newEventSource);
 
       newEventSource.onopen = () => {
         setConnectionStatus('connected');
+        currentRetryCount = 0;
         setRetryCount(0);
         console.log('SSE connection established');
       };
@@ -349,58 +375,53 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
         newEventSource.close();
         
         // Implement exponential backoff retry logic
-        if (retryCount < maxRetries) {
-          const delay = baseRetryDelay * Math.pow(2, retryCount);
-          console.log(`SSE connection failed, retrying in ${delay}ms (attempt ${retryCount + 1}/${maxRetries})`);
+        if (currentRetryCount < maxRetries) {
+          const delay = baseRetryDelay * Math.pow(2, currentRetryCount);
+          console.log(`SSE connection failed, retrying in ${delay}ms (attempt ${currentRetryCount + 1}/${maxRetries})`);
+          
+          currentRetryCount++;
+          setRetryCount(currentRetryCount);
           
           const timeout = setTimeout(() => {
-            setRetryCount(prev => prev + 1);
             setupEventSource();
           }, delay);
           
+          currentRetryTimeout = timeout;
           setRetryTimeout(timeout);
         } else {
           console.log('Max retry attempts reached, SSE connection abandoned');
         }
       };
-
-      setEventSource(newEventSource);
     };
 
-    setupEventSource();
+    // Debounce SSE setup to prevent rapid reconnections when filters change
+    setupTimeout = setTimeout(() => {
+      setupEventSource();
+    }, 300);
 
     return () => {
-      if (eventSource) {
-        eventSource.close();
+      if (setupTimeout) {
+        clearTimeout(setupTimeout);
       }
-      if (retryTimeout) {
-        clearTimeout(retryTimeout);
+      if (currentEventSource) {
+        currentEventSource.close();
+      }
+      if (currentRetryTimeout) {
+        clearTimeout(currentRetryTimeout);
       }
     };
-  }, [walletAddress, activeTab, eventSource, retryTimeout, retryCount, filters.eventTypes, maxRetries, baseRetryDelay]);
+  }, [walletAddress, activeTab, filters.eventTypes]);
 
   // Handle tab change
   const handleTabChange = (value: string) => {
     const newTab = value as 'for-you' | 'following';
     setActiveTab(newTab);
-    fetchFeed(newTab);
-
-    // Reconnect SSE with new parameters
-    if (eventSource) {
-      eventSource.close();
-    }
     
-    // Clear any pending retry timeout
-    if (retryTimeout) {
-      clearTimeout(retryTimeout);
-      setRetryTimeout(null);
-    }
-    
-    // Reset retry state for new tab
-    setRetryCount(0);
-
     // Reset search query when changing tabs
     setSearchQuery('');
+    
+    // Note: SSE reconnection will be handled automatically by the useEffect
+    // that depends on activeTab
   };
 
   // Filter events based on current filters and search query
@@ -663,12 +684,16 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
     switch (eventType) {
       case 'transaction':
         return <Coins className="h-4 w-4 text-blue-500" />;
-      case 'visit':
-        return <Globe className="h-4 w-4 text-green-500" />;
+      case 'token_transfer':
+        return <Coins className="h-4 w-4 text-yellow-500" />;
       case 'like':
         return <Heart className="h-4 w-4 text-red-500" />;
       case 'follow':
         return <User className="h-4 w-4 text-purple-500" />;
+      case 'profile_update':
+        return <User className="h-4 w-4 text-green-500" />;
+      case 'visit':
+        return <Eye className="h-4 w-4 text-cyan-500" />;
       default:
         return <Clock className="h-4 w-4 text-gray-500" />;
     }
@@ -720,7 +745,19 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
           </div>
         </div>
 
-        <p className="text-sm">{event.content}</p>
+        {/* Event content with clickable link for visit events */}
+        {event.eventType === 'visit' && event.metadata?.clickableUrl ? (
+          <a 
+            href={event.metadata.clickableUrl} 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="text-sm hover:underline text-primary cursor-pointer block"
+          >
+            {event.content} →
+          </a>
+        ) : (
+          <p className="text-sm">{event.content}</p>
+        )}
 
         {/* Rich content for transaction events */}
         {event.eventType === 'transaction' && event.metadata?.amount && (
@@ -824,7 +861,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               />
             </div>
 
-            <p className="text-sm">{primaryEvent.content}</p>
+            {/* Event content with clickable link for visit events */}
+            {primaryEvent.eventType === 'visit' && primaryEvent.metadata?.clickableUrl ? (
+              <a 
+                href={primaryEvent.metadata.clickableUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm hover:underline text-primary cursor-pointer block"
+                onClick={(e) => e.stopPropagation()}
+              >
+                {primaryEvent.content} →
+              </a>
+            ) : (
+              <p className="text-sm">{primaryEvent.content}</p>
+            )}
 
             {/* Rich content for transaction events */}
             {primaryEvent.eventType === 'transaction' && primaryEvent.metadata?.amount && (
@@ -892,7 +942,20 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       </Badge>
                     </div>
 
-                    <p className="text-sm">{event.content}</p>
+                    {/* Event content with clickable link for visit events */}
+                    {event.eventType === 'visit' && event.metadata?.clickableUrl ? (
+                      <a 
+                        href={event.metadata.clickableUrl} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="text-sm hover:underline text-primary cursor-pointer block"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {event.content} →
+                      </a>
+                    ) : (
+                      <p className="text-sm">{event.content}</p>
+                    )}
 
                     {/* Rich content for transaction events */}
                     {event.eventType === 'transaction' && event.metadata?.amount && (
@@ -974,7 +1037,10 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
             <AlertCircle className="h-10 w-10 text-destructive mx-auto mb-2" />
             <p className="text-destructive font-medium">{error}</p>
             <p className="text-muted-foreground text-sm max-w-md mx-auto">
-              There was a problem loading the feed. This could be due to a network issue or server error.
+              {!systemHealthy 
+                ? 'The feed service is currently unavailable. Our team has been notified and is working on restoring service.'
+                : 'There was a problem loading the feed. This could be due to a network issue or temporary server error.'
+              }
             </p>
             <Button
               onClick={() => fetchFeed(activeTab)}
@@ -984,6 +1050,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <RefreshCw className="h-4 w-4 mr-2" />
               Try Again
             </Button>
+            {!systemHealthy && (
+              <p className="text-xs text-muted-foreground mt-4">
+                Status: Database service unavailable
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -1093,12 +1164,42 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                 <Button variant="outline" size="sm">
                   <Filter className="h-4 w-4 mr-2" />
                   Filter
+                  {filters.eventTypes.length > 0 && filters.eventTypes.length < 6 && (
+                    <Badge variant="secondary" className="ml-2 h-5 w-5 p-0 flex items-center justify-center rounded-full">
+                      {filters.eventTypes.length}
+                    </Badge>
+                  )}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Event Types</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                {['transaction', 'visit', 'like', 'follow', 'other'].map(type => (
+                
+                {/* Select All / Deselect All option */}
+                <DropdownMenuItem
+                  onClick={() => {
+                    const allTypes = ['transaction', 'follow', 'like', 'profile_update', 'token_transfer', 'visit'];
+                    const isAllSelected = filters.eventTypes.length === allTypes.length;
+                    setFilters(prev => ({
+                      ...prev,
+                      eventTypes: isAllSelected ? [] : allTypes
+                    }));
+                  }}
+                  className="font-medium"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border rounded flex items-center justify-center">
+                      {filters.eventTypes.length === 6 && <span>✓</span>}
+                    </div>
+                    <span>
+                      {filters.eventTypes.length === 6 ? 'Deselect All' : 'Select All'}
+                    </span>
+                  </div>
+                </DropdownMenuItem>
+                
+                <DropdownMenuSeparator />
+                
+                {['transaction', 'follow', 'like', 'profile_update', 'token_transfer', 'visit'].map(type => (
                   <DropdownMenuItem
                     key={type}
                     onClick={() => {
@@ -1117,11 +1218,29 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                       </div>
                       <span className="flex items-center gap-2">
                         {getEventIcon(type)}
-                        {type.charAt(0).toUpperCase() + type.slice(1)}
+                        {type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
                       </span>
                     </div>
                   </DropdownMenuItem>
                 ))}
+
+                {filters.eventTypes.length > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setFilters(prev => ({
+                          ...prev,
+                          eventTypes: []
+                        }));
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <X className="h-4 w-4 mr-2" />
+                      Clear Event Type Filters
+                    </DropdownMenuItem>
+                  </>
+                )}
 
                 <DropdownMenuSeparator />
                 <DropdownMenuLabel>Date Range</DropdownMenuLabel>
@@ -1226,10 +1345,24 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
               <p className="text-muted-foreground font-medium">
                 {searchQuery
                   ? 'No events match your search criteria.'
-                  : activeTab === 'for-you'
-                    ? 'No events to show at the moment.'
-                    : 'No events from users you follow.'}
+                  : filters.eventTypes.length > 0 && filters.eventTypes.length < 6
+                    ? 'No events match the selected filters.'
+                    : activeTab === 'for-you'
+                      ? systemHealthy 
+                        ? 'No events to show at the moment.'
+                        : 'Unable to load feed - service unavailable.'
+                      : 'No events from users you follow.'}
               </p>
+              {activeTab === 'for-you' && !searchQuery && (filters.eventTypes.length === 0 || filters.eventTypes.length === 6) && systemHealthy && (
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Feed events are created when users perform actions like following, liking, or making transactions. Check back later!
+                </p>
+              )}
+              {filters.eventTypes.length > 0 && filters.eventTypes.length < 6 && (
+                <p className="text-sm text-muted-foreground max-w-xs">
+                  Try removing some filters or check back later for matching events.
+                </p>
+              )}
               {activeTab === 'following' && !searchQuery && (
                 <p className="text-sm text-muted-foreground max-w-xs">
                   Follow more users to see their activity here.
@@ -1318,41 +1451,11 @@ export function UserFeedDisplay({ walletAddress, isMyProfile }: UserFeedDisplayP
                     size="sm"
                     className="h-7 ml-2 border-destructive/30 text-destructive hover:bg-destructive/10"
                     onClick={() => {
-                      if (eventSource) {
-                        eventSource.close();
-                      }
-                      if (retryTimeout) {
-                        clearTimeout(retryTimeout);
-                        setRetryTimeout(null);
-                      }
-                      // Reset retry count for manual reconnection
+                      // Reset retry count and trigger reconnection by updating a dummy state
                       setRetryCount(0);
                       setConnectionStatus('connecting');
-                      
-                      // Reinitialize the SSE connection
-                      const setupEventSource = () => {
-                        const queryParams = new URLSearchParams({
-                          walletAddress,
-                          type: activeTab,
-                          eventTypes: filters.eventTypes.join(',')
-                        });
-                        const newEventSource = new EventSource(`/api/sse-events/feed?${queryParams}`);
-                        
-                        newEventSource.onopen = () => {
-                          setConnectionStatus('connected');
-                          setRetryCount(0);
-                          console.log('SSE connection established (manual reconnect)');
-                        };
-                        
-                        newEventSource.onerror = (error) => {
-                          console.error('Manual reconnect failed:', error);
-                          setConnectionStatus('disconnected');
-                          newEventSource.close();
-                        };
-                        
-                        setEventSource(newEventSource);
-                      };
-                      setupEventSource();
+                      // The useEffect will handle reconnection when connectionStatus changes
+                      window.location.reload();
                     }}
                   >
                     <RefreshCw className="h-3 w-3 mr-1" />

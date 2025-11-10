@@ -271,20 +271,19 @@ export async function getUserHistory(
       });
     }
 
-    // Use search instead of scroll to avoid Bad Request issues with order_by
-    const searchParams: any = {
-      vector: new Array(384).fill(0), // Dummy vector for filtered search
-      limit,
-      offset,
-      with_payload: true
+    // Use scroll for filter-based retrieval (not vector search)
+    const scrollParams: any = {
+      limit: limit + offset, // Fetch limit + offset to handle offset manually
+      with_payload: true,
+      with_vector: false // We don't need vectors, just metadata
     };
 
     if (filter.must.length > 0) {
-      searchParams.filter = filter;
+      scrollParams.filter = filter;
     }
 
-    // Use search API which is more reliable than scroll with ordering
-    const result = await qdrantClient.search(COLLECTIONS.USER_HISTORY, searchParams);
+    // Use scroll API for filter-based retrieval
+    const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
 
     // Get total count
     const countParams: any = {};
@@ -293,12 +292,18 @@ export async function getUserHistory(
     }
     const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
 
-    // Search API returns array directly
-    const history = result.map(point => point.payload as unknown as UserHistoryEntry);
+    // Scroll API returns {points: [...], next_page_offset: ...}
+    const allHistory = result.points.map(point => point.payload as unknown as UserHistoryEntry);
+    
+    // Sort by timestamp (newest first) before applying offset/limit
+    allHistory.sort((a, b) => b.timestamp - a.timestamp);
+    
+    // Apply offset and limit manually
+    const history = allHistory.slice(offset, offset + limit);
 
     // Debug logging for results
     if (process.env.NODE_ENV === 'development') {
-      console.log(`getUserHistory results: ${history.length} entries retrieved out of ${countResult.count} total`);
+      console.log(`getUserHistory results: ${history.length} entries retrieved (${allHistory.length} total fetched, ${countResult.count} in DB)`);
       if (history.length > 0) {
         const uniqueWallets = [...new Set(history.map(h => h.walletAddress))];
         console.log(`Unique wallets in results: ${uniqueWallets.length}`);
@@ -316,9 +321,6 @@ export async function getUserHistory(
         });
       }
     }
-
-    // Sort by timestamp in memory since we can't rely on Qdrant ordering
-    history.sort((a, b) => b.timestamp - a.timestamp);
 
     return {
       history,

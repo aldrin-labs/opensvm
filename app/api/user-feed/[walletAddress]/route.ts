@@ -8,12 +8,20 @@ import { getSessionFromCookie } from '@/lib/auth-server';
 import { validateWalletAddress } from '@/lib/user-history-utils';
 import {
   getUserFollowing,
+  getUserHistory,
   checkQdrantHealth
 } from '@/lib/qdrant';
 import { getFeedEvents, SocialFeedEvent } from '@/lib/feed-events';
+import { UserHistoryEntry } from '@/types/user-history';
 
 // Use SocialFeedEvent from feed-events module
 type FeedEvent = SocialFeedEvent;
+
+// Unified feed item that can be either a social event or browsing history
+type UnifiedFeedItem = FeedEvent & {
+  itemType?: 'social' | 'browsing';
+  browsingData?: UserHistoryEntry;
+};
 
 // Get authenticated user from session
 async function getAuthenticatedUser(_request: NextRequest): Promise<string | null> {
@@ -29,6 +37,135 @@ async function getAuthenticatedUser(_request: NextRequest): Promise<string | nul
     console.error('Session validation error:', error);
     return null;
   }
+}
+
+// Convert browsing history to feed event format with rich context
+function convertBrowsingHistoryToFeedEvent(entry: UserHistoryEntry): UnifiedFeedItem {
+  const pageTypeLabels: Record<string, string> = {
+    transaction: 'viewed a transaction',
+    account: 'viewed an account',
+    block: 'viewed a block',
+    program: 'viewed a program',
+    token: 'viewed a token',
+    validator: 'viewed a validator',
+    analytics: 'viewed analytics',
+    search: 'performed a search',
+    'ai-chat': 'used AI chat',
+    other: 'viewed a page'
+  };
+
+  // Extract rich context based on page type
+  let richContent = '';
+  let richMetadata: any = {
+    ...entry.metadata,
+    path: entry.path,
+    pageType: entry.pageType,
+    clickableUrl: entry.path // Make event clickable
+  };
+
+  // Generate engaging, context-rich content based on page type
+  switch (entry.pageType) {
+    case 'transaction':
+      const txId = entry.metadata?.transactionId;
+      richContent = txId 
+        ? `viewed transaction ${txId.substring(0, 8)}... • ${entry.pageTitle}`
+        : `viewed a transaction • ${entry.pageTitle}`;
+      break;
+
+    case 'token':
+      const tokenMint = entry.metadata?.tokenMint;
+      const tokenSymbol = entry.metadata?.tokenSymbol;
+      if (tokenSymbol) {
+        richContent = `checked out $${tokenSymbol} token • ${entry.pageTitle}`;
+      } else if (tokenMint) {
+        richContent = `viewed token ${tokenMint.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `explored a token • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'account':
+      const accountAddr = entry.metadata?.accountAddress;
+      const accountLabel = entry.metadata?.accountLabel;
+      if (accountLabel) {
+        richContent = `viewed ${accountLabel} account • ${entry.pageTitle}`;
+      } else if (accountAddr) {
+        richContent = `checked account ${accountAddr.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `viewed an account • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'program':
+      const programId = entry.metadata?.programId;
+      const programName = entry.metadata?.programName;
+      if (programName) {
+        richContent = `explored ${programName} program • ${entry.pageTitle}`;
+      } else if (programId) {
+        richContent = `viewed program ${programId.substring(0, 8)}... • ${entry.pageTitle}`;
+      } else {
+        richContent = `checked out a program • ${entry.pageTitle}`;
+      }
+      break;
+
+    case 'block':
+      const blockNumber = entry.metadata?.blockNumber;
+      richContent = blockNumber 
+        ? `viewed block #${blockNumber.toLocaleString()} • ${entry.pageTitle}`
+        : `viewed a block • ${entry.pageTitle}`;
+      break;
+
+    case 'analytics':
+      richContent = `explored analytics • ${entry.pageTitle}`;
+      break;
+
+    case 'search':
+      const searchQuery = entry.metadata?.searchQuery;
+      richContent = searchQuery 
+        ? `searched for "${searchQuery}" • ${entry.pageTitle}`
+        : `performed a search • ${entry.pageTitle}`;
+      break;
+
+    case 'ai-chat':
+      richContent = `used AI Assistant • ${entry.pageTitle}`;
+      break;
+
+    default:
+      // For generic pages, skip the generic OpenSVM homepage title
+      const genericTitles = [
+        'OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)',
+        'OpenSVM',
+        'Home'
+      ];
+      
+      if (entry.pageTitle && !genericTitles.includes(entry.pageTitle)) {
+        richContent = `explored ${entry.pageTitle}`;
+      } else {
+        // Skip generic homepage visits entirely by returning null content
+        // This will be filtered out later
+        richContent = '';
+      }
+  }
+
+  // Skip events with empty content (generic homepage visits)
+  if (!richContent) {
+    return null as any; // Will be filtered out
+  }
+
+  return {
+    id: entry.id,
+    eventType: 'visit', // Special type for browsing history
+    timestamp: entry.timestamp,
+    userAddress: entry.walletAddress,
+    content: richContent,
+    targetAddress: entry.metadata?.accountAddress || entry.metadata?.tokenMint,
+    targetId: entry.metadata?.transactionId || entry.metadata?.programId,
+    metadata: richMetadata,
+    likes: 0,
+    hasLiked: false,
+    itemType: 'browsing',
+    browsingData: entry
+  };
 }
 
 // Get real social feed events (not browsing history)
@@ -88,6 +225,95 @@ async function getRealFeedEvents(
   }
 }
 
+// Get unified feed with both social events and browsing history
+async function getUnifiedFeed(
+  walletAddress: string,
+  type: 'for-you' | 'following',
+  currentUserWallet: string | null,
+  options: {
+    limit?: number;
+    offset?: number;
+    dateRange?: string;
+    eventTypes?: string[];
+    sortOrder?: string;
+  } = {}
+): Promise<UnifiedFeedItem[]> {
+  const { limit = 10, offset = 0, dateRange = 'all', eventTypes = [], sortOrder = 'newest' } = options;
+
+  try {
+    // Fetch social events
+    const socialEvents = await getRealFeedEvents(walletAddress, type, currentUserWallet, {
+      limit: Math.ceil(limit * 1.5), // Fetch more to mix with browsing history
+      offset,
+      dateRange,
+      eventTypes: eventTypes.filter(t => t !== 'visit'), // Exclude 'visit' from social events
+      sortOrder
+    });
+
+    // Fetch browsing history
+    // For "for-you", get history from ALL users (excluding current user)
+    // For "following", get history from users being followed
+    let browsingHistory: UserHistoryEntry[] = [];
+    
+    if (type === 'for-you') {
+      // Get browsing history from all users
+      const historyResult = await getUserHistory('', { // Empty wallet = all users
+        limit: Math.ceil(limit * 1.5),
+        offset: 0
+      });
+      // Filter out current user's own browsing history
+      browsingHistory = historyResult.history.filter(h => h.walletAddress !== walletAddress);
+    } else if (type === 'following') {
+      // Get following addresses
+      try {
+        const following = await getUserFollowing(walletAddress);
+        const followingAddresses = following.map(f => f.targetAddress);
+        
+        if (followingAddresses.length > 0) {
+          // Fetch history for each followed user and merge
+          const historyPromises = followingAddresses.slice(0, 10).map(addr => 
+            getUserHistory(addr, { limit: 5, offset: 0 })
+          );
+          const historyResults = await Promise.all(historyPromises);
+          browsingHistory = historyResults.flatMap(r => r.history);
+        }
+      } catch (error) {
+        console.error('Error fetching following history:', error);
+      }
+    }
+
+    // Convert browsing history to feed events and filter out null/empty ones
+    const browsingEvents = browsingHistory
+      .map(convertBrowsingHistoryToFeedEvent)
+      .filter(event => event && event.content); // Remove null and empty content events
+
+    // Merge and mark social events
+    const socialEventsMarked: UnifiedFeedItem[] = socialEvents.map(event => ({
+      ...event,
+      itemType: 'social' as const
+    }));
+
+    // Combine both
+    const allEvents = [...socialEventsMarked, ...browsingEvents];
+
+    // Sort by timestamp
+    allEvents.sort((a, b) => {
+      if (sortOrder === 'popular') {
+        // For popular, prioritize likes then timestamp
+        if (a.likes !== b.likes) return b.likes - a.likes;
+      }
+      return b.timestamp - a.timestamp;
+    });
+
+    // Apply limit and offset
+    return allEvents.slice(0, limit);
+
+  } catch (error) {
+    console.error('Error fetching unified feed:', error);
+    return [];
+  }
+}
+
 export async function GET(
   _request: NextRequest,
   context: { params: Promise<{ walletAddress: string }> }
@@ -120,7 +346,13 @@ export async function GET(
     const isHealthy = await checkQdrantHealth();
     if (!isHealthy) {
       console.log('Qdrant not available, returning empty feed');
-      return NextResponse.json({ events: [] });
+      return NextResponse.json({ 
+        events: [],
+        metadata: {
+          systemHealthy: false,
+          message: 'Feed service is temporarily unavailable. Please try again later.'
+        }
+      });
     }
 
 
@@ -138,8 +370,8 @@ export async function GET(
     // Calculate offset
     const offset = (page - 1) * limit;
 
-    // Get feed events from real data source
-    const events = await getRealFeedEvents(
+    // Get unified feed with both social events and browsing history
+    const events = await getUnifiedFeed(
       validatedAddress,
       feedType,
       currentUserWallet,
@@ -152,7 +384,14 @@ export async function GET(
       }
     );
 
-    return NextResponse.json({ events });
+    return NextResponse.json({ 
+      events,
+      metadata: {
+        systemHealthy: true,
+        totalReturned: events.length,
+        hasMore: events.length === limit
+      }
+    });
   } catch (error) {
     console.error('Error fetching user feed:', error);
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
