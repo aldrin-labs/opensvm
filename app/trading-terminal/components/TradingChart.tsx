@@ -356,6 +356,7 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
         ctx.fillText(hoverPrice.toFixed(2), rect.width - rightPadding + 7, mousePos.y + 3);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candleData, chartType, mousePos]);
 
   // Add resize observer to redraw on window resize

@@ -27,6 +27,7 @@ export default function SaleDetailPage() {
     if (referralCode) {
       fetchReferrerInfo(referralCode);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [saleId, referralCode]);
 
   const fetchSale = async () => {

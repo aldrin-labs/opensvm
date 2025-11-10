@@ -800,6 +800,7 @@ const CytoscapeContainer = React.memo(() => {
 
       return nextFilters;
     });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleZoomIn = useCallback(() => {
