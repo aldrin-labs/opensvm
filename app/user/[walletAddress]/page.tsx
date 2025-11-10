@@ -112,7 +112,8 @@ export default function UserProfilePage() {
       }
 
       // If viewing your own profile, always grant access (no token gating for own profile)
-      if (validatedWalletAddress && myWallet === validatedWalletAddress) {
+      if (validatedWalletAddress && myWallet && 
+          validatedWalletAddress.toLowerCase() === myWallet.toLowerCase()) {
         setTokenGating({
           hasAccess: true,
           balance: 0, // Balance irrelevant for own profile
@@ -165,7 +166,7 @@ export default function UserProfilePage() {
   }, [myWallet, validatedWalletAddress]);
 
   const handleFollowToggle = async () => {
-    if (!validatedWalletAddress || socialLoading || (myWallet && validatedWalletAddress === myWallet)) return;
+    if (!validatedWalletAddress || socialLoading || (myWallet && validatedWalletAddress.toLowerCase() === myWallet.toLowerCase())) return;
     try {
       setSocialLoading(true);
       setSocialError(null);
@@ -205,7 +206,7 @@ export default function UserProfilePage() {
   };
 
   const handleLikeToggle = async () => {
-    if (!validatedWalletAddress || socialLoading || (myWallet && validatedWalletAddress === myWallet)) return;
+    if (!validatedWalletAddress || socialLoading || (myWallet && validatedWalletAddress.toLowerCase() === myWallet.toLowerCase())) return;
     try {
       setSocialLoading(true);
       setSocialError(null);
@@ -300,7 +301,7 @@ export default function UserProfilePage() {
       setProfile(safeProfile);
 
       // Track profile view (increment view count) if not my own profile
-      if (!myWallet || validatedWalletAddress !== myWallet) {
+      if (!myWallet || validatedWalletAddress.toLowerCase() !== myWallet.toLowerCase()) {
         try {
           await fetch(`/api/user-social/view`, {
             method: 'POST',

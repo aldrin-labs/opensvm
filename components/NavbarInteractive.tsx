@@ -15,6 +15,7 @@ import { ChangelogNotification } from './ChangelogNotification';
 import { X, User, Loader2 } from 'lucide-react';
 import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { useWallet } from '@solana/wallet-adapter-react';
+import { useAuthContext } from '@/contexts/AuthContext';
 import EnhancedSearchBar from './search';
 
 interface NavbarInteractiveProps {
@@ -33,7 +34,8 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
 
   const menuRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const { connected, publicKey } = useWallet();
+  const { connected, publicKey, disconnect } = useWallet();
+  const { logout } = useAuthContext();
 
   // Check if we should hide the search bar (on home page and search page)
   const shouldHideSearchBar = pathname === '/' || pathname.startsWith('/search');
@@ -414,17 +416,61 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
           <div className="hidden md:flex items-center gap-1.5">
             <SettingsMenu />
             {connected && publicKey ? (
-              <Link href={`/user/${publicKey.toString()}`}>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="gap-1 px-3 h-9 text-sm font-medium"
-                  aria-label="View Profile"
-                >
-                  <User className="h-4 w-4" />
-                  Profile
-                </Button>
-              </Link>
+              <SimpleDropdown
+                align="end"
+                trigger={
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="gap-1 px-3 h-9 text-sm font-medium"
+                    data-testid="nav-dropdown-profile"
+                  >
+                    <User className="h-4 w-4" />
+                    Profile
+                    <DropdownIcon />
+                  </Button>
+                }
+              >
+                <SimpleDropdownItem asChild>
+                  <Link href={`/user/${publicKey.toString()}?tab=feed`}>Feed</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href={`/user/${publicKey.toString()}`}>Profile</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href="/bank">Bank</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href="/settings">Settings</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href={`/user/${publicKey.toString()}?tab=referrals`}>Rewards</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href={`/user/${publicKey.toString()}?tab=referrals`}>Referral</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href={`/user/${publicKey.toString()}?tab=api-keys`}>API Keys</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <Link href="/docs">Developer</Link>
+                </SimpleDropdownItem>
+                <SimpleDropdownItem asChild>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await logout();
+                        await disconnect();
+                      } catch (error) {
+                        console.error('Failed to logout:', error);
+                      }
+                    }}
+                    className="w-full text-left text-destructive hover:text-destructive-foreground"
+                  >
+                    Logout
+                  </button>
+                </SimpleDropdownItem>
+              </SimpleDropdown>
             ) : (
               <WalletButton />
             )}
