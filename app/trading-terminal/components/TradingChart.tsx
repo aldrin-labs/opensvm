@@ -99,7 +99,8 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
     return () => {
       clearInterval(updateInterval);
     };
-  }, [market, timeframe]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [market, timeframe]); // candleData intentionally excluded to prevent re-creation of interval
 
   // Draw chart on canvas
   useEffect(() => {
