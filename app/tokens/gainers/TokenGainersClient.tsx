@@ -1,24 +1,14 @@
-import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
-import TokenGainersClient from './TokenGainersClient';
+'use client';
 
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-export const revalidate = 0;
+import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useSettings } from '@/lib/settings';
+import TokenMarketTable from '@/components/TokenMarketTable';
+import { Badge } from '@/components/ui/badge';
+import { getTopGainers } from '@/lib/mock-token-data';
+import type { TokenGainerData } from '@/types/token-market';
 
-export default function TokenGainersPage() {
-  return (
-    <Suspense fallback={
-      <div className="container mx-auto py-8 px-4">
-        <div className="flex items-center justify-center min-h-[400px]">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>
-    }>
-      <TokenGainersClient />
-    </Suspense>
-  );
-}
+export default function TokenGainersClient() {
   const settings = useSettings();
   const router = useRouter();
   const [gainers, setGainers] = useState<TokenGainerData[]>([]);

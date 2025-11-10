@@ -385,3 +385,7 @@ export function lamportsToSol(lamports: number): string {
 export function solToLamports(sol: number): number {
   return Math.floor(sol * 1_000_000_000);
 }
+
+// Re-export database functions for backward compatibility
+export { listContributions, listKOLAllocations, getReferrer } from './database';
+

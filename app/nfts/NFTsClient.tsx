@@ -1,36 +1,17 @@
-import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
-import NFTsClient from './NFTsClient';
+'use client';
 
-export const dynamic = 'force-dynamic';
-export const dynamicParams = true;
-export const revalidate = 0;
+import { useState, useEffect } from 'react';
+import { useSettings } from '@/lib/settings';
+import Image from 'next/image';
 
-export default function NFTsPage() {
-  return (
-    <Suspense fallback={
-      <div className="container mx-auto py-8">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">NFT Collections</h1>
-          <p className="text-muted-foreground">
-            Browse NFT collections on the Solana network.
-          </p>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-lg border p-4 animate-pulse">
-              <div className="w-full h-48 bg-muted mb-4" />
-              <div className="h-4 bg-muted w-3/4 mb-2" />
-              <div className="h-4 bg-muted w-1/2" />
-            </div>
-          ))}
-        </div>
-      </div>
-    }>
-      <NFTsClient />
-    </Suspense>
-  );
+interface NFTCollection {
+  address: string;
+  name: string;
+  symbol: string;
+  image: string;
 }
+
+export default function NFTsClient() {
   const settings = useSettings();
   const [collections, setCollections] = useState<NFTCollection[]>([]);
   const [loading, setLoading] = useState(true);
