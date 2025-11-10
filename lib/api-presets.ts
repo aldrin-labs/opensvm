@@ -681,6 +681,86 @@ export const apiMethods: ApiMethod[] = [
       },
     ],
   },
+  {
+    id: 'chart',
+    name: 'Chart Data (OHLCV Alias)',
+    description: 'Clean alias for OHLCV candlestick data with automatic batch fetching for large time ranges',
+    category: 'Analytics',
+    endpoint: '/api/chart',
+    method: 'GET',
+    presets: [
+      {
+        name: 'Default Hourly Chart',
+        description: 'Get default hourly OHLCV candles',
+        method: 'GET',
+        path: '/api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+      },
+      {
+        name: '1-Minute Chart (20h)',
+        description: 'Get 1-minute candles with batching',
+        method: 'GET',
+        path: '/api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=1m',
+      },
+      {
+        name: '15-Minute Chart (10d)',
+        description: 'Get 15-minute candles for 10 days',
+        method: 'GET',
+        path: '/api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=15m',
+      },
+      {
+        name: 'Daily Chart',
+        description: 'Get daily OHLCV candles',
+        method: 'GET',
+        path: '/api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=1D',
+      },
+      {
+        name: 'Custom Time Range',
+        description: 'Get chart data for custom time range',
+        method: 'GET',
+        path: '/api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=1H&time_from=1699401600&time_to=1699488000',
+      },
+    ],
+  },
+  {
+    id: 'trades',
+    name: 'Recent Trades',
+    description: 'Fetch recent trades/swaps for any token with wallet addresses and DEX info',
+    category: 'Analytics',
+    endpoint: '/api/trades',
+    method: 'GET',
+    presets: [
+      {
+        name: 'Last 50 Trades',
+        description: 'Get last 50 trades for token',
+        method: 'GET',
+        path: '/api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+      },
+      {
+        name: 'Last 100 Trades',
+        description: 'Get maximum trades (100)',
+        method: 'GET',
+        path: '/api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&limit=100',
+      },
+      {
+        name: 'Only Swaps',
+        description: 'Filter to show only swap transactions',
+        method: 'GET',
+        path: '/api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=swap&limit=50',
+      },
+      {
+        name: 'Liquidity Additions',
+        description: 'Show liquidity add transactions',
+        method: 'GET',
+        path: '/api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=add&limit=50',
+      },
+      {
+        name: 'Paginated Results',
+        description: 'Get trades with pagination (page 2)',
+        method: 'GET',
+        path: '/api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&limit=50&offset=50',
+      },
+    ],
+  },
 
   // ============= AI-POWERED (6 methods) =============
   {

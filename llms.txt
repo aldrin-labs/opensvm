@@ -459,6 +459,179 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
     - Performance: Uptime, avg slippage, pool count, token count, liquidity depth
   - Example: `/api/dex/raydium`, `/api/dex/orca`
 
+#### Chart & Trades Endpoints (Simplified Aliases)
+
+##### GET /api/chart
+Clean alias for OHLCV candlestick data - simplified alternative to `/api/market-data?endpoint=ohlcv`
+
+**Request Parameters:**
+- `mint` (required, string): Token mint address
+- `type` (optional, string): Time interval for candles
+  - Options: '1m', '3m', '5m', '15m', '30m', '1H' (default), '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M'
+- `time_from` (optional, number): Start timestamp in unix seconds
+- `time_to` (optional, number): End timestamp in unix seconds
+- `poolAddress` (optional, string): Specific pool address for pool-specific data
+
+**Request Schema:**
+```typescript
+interface ChartRequest {
+  mint: string;                    // e.g., "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS"
+  type?: '1m' | '3m' | '5m' | '15m' | '30m' | '1H' | '2H' | '4H' | '6H' | '8H' | '12H' | '1D' | '3D' | '1W' | '1M';
+  time_from?: number;              // Unix timestamp (seconds)
+  time_to?: number;                // Unix timestamp (seconds)
+  poolAddress?: string;            // Optional pool filter
+}
+```
+
+**Response Schema (200 OK):**
+```typescript
+interface ChartResponse {
+  success: true;
+  data: {
+    items: Array<{
+      unixTime: number;            // Timestamp in seconds
+      type: string;                // Interval type
+      open: number;                // Opening price
+      high: number;                // Highest price
+      low: number;                 // Lowest price
+      close: number;               // Closing price
+      volume: number;              // Trading volume in USD
+    }>;
+    indicators?: {
+      ma7?: number[];              // 7-period moving average
+      ma25?: number[];             // 25-period moving average
+      macd?: {
+        line: number[];            // MACD line
+        signal: number[];          // Signal line
+        histogram: number[];       // MACD histogram
+      };
+    };
+  };
+  metadata?: {
+    batchCount?: number;           // Number of API batches used
+    totalCandles?: number;         // Total candles fetched
+    cacheHit?: boolean;           // Whether cached data was used
+    fetchTime?: number;           // API fetch duration (ms)
+  };
+}
+```
+
+**Error Response (4xx/5xx):**
+```typescript
+interface ErrorResponse {
+  success: false;
+  error: string;                   // Error message
+  details?: any;                   // Additional error details
+}
+```
+
+**Features:**
+- Automatic batch fetching for large time ranges (up to 10 days of 1m data)
+- Smart batching (~960 candles per batch)
+- Technical indicators included (MA7, MA25, MACD)
+- Performance metadata in response
+- 2-minute cache TTL
+
+**Example Requests:**
+```bash
+# Get 1-hour candles
+GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=1H
+
+# Get 5-minute candles for specific time range
+GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=5m&time_from=1699920000&time_to=1699930000
+
+# Get pool-specific data
+GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&poolAddress=POOL_ADDRESS&type=1H
+```
+
+---
+
+##### GET /api/trades
+Recent trades/swaps for any token
+
+**Request Parameters:**
+- `mint` (required, string): Token mint address
+- `limit` (optional, number): Number of trades to return (default: 50, max: 100)
+- `type` (optional, string): Transaction type filter
+  - Options: 'swap' (default), 'add', 'remove'
+- `offset` (optional, number): Pagination offset (default: 0)
+
+**Request Schema:**
+```typescript
+interface TradesRequest {
+  mint: string;                    // e.g., "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS"
+  limit?: number;                  // 1-100, default: 50
+  type?: 'swap' | 'add' | 'remove'; // Transaction type
+  offset?: number;                 // Pagination offset
+}
+```
+
+**Response Schema (200 OK):**
+```typescript
+interface TradesResponse {
+  success: true;
+  data: Array<{
+    signature: string;             // Transaction signature
+    blockTime: number;             // Block timestamp
+    source: string;                // DEX name (Raydium, Orca, etc.)
+    owner: string;                 // Wallet address performing trade
+    side: 'buy' | 'sell';          // Trade direction
+    from: {
+      amount: number;              // Input token amount
+      mint: string;                // Input token mint
+      symbol?: string;             // Input token symbol
+      decimals: number;            // Token decimals
+    };
+    to: {
+      amount: number;              // Output token amount
+      mint: string;                // Output token mint
+      symbol?: string;             // Output token symbol
+      decimals: number;            // Token decimals
+    };
+    price?: number;                // Trade price
+    volumeUSD?: number;            // Trade volume in USD
+    slot?: number;                 // Blockchain slot number
+  }>;
+  pagination?: {
+    offset: number;                // Current offset
+    limit: number;                 // Items per page
+    hasMore: boolean;              // More results available
+  };
+}
+```
+
+**Error Response (4xx/5xx):**
+```typescript
+interface ErrorResponse {
+  success: false;
+  error: string;                   // Error message
+  details?: any;                   // Additional error details
+}
+```
+
+**Features:**
+- Real-time trading activity tracking
+- DEX identification (Raydium, Orca, Phoenix, Meteora, Jupiter, etc.)
+- Trade side detection (buy/sell)
+- USD value calculations when available
+- Pagination support for large result sets
+- 30-second cache TTL
+
+**Example Requests:**
+```bash
+# Get latest 50 swaps
+GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS
+
+# Get latest 100 swaps
+GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&limit=100
+
+# Get liquidity additions only
+GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=add&limit=50
+
+# Paginate through results
+GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&limit=50&offset=50
+```
+
 #### Trading Terminal (Legacy)
 - **GET /api/trading/market-data** - Real-time market data
   - Query: symbols (array), interval? (string)

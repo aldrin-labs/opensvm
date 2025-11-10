@@ -80,3 +80,13 @@ screenshots/
 
 # Launchpad data directory (in-memory database persistence)
 .data/
+test*.js
+test*.sh
+.vscode/
+.idea/
+*.log
+*.sqlite
+*.sqlite3
+dump.rdb
+
+

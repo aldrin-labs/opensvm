@@ -413,18 +413,21 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
           {/* Action Buttons - Always visible */}
           <div className="hidden md:flex items-center gap-1.5">
             <SettingsMenu />
-            {connected && publicKey && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => router.push(`/user/${publicKey.toString()}`)}
-                className="gap-1 px-3 h-9 text-sm font-medium"
-                aria-label="View Profile"
-              >
-                <User className="h-4 w-4" />
-                Profile
-              </Button>
-            ) || (<WalletButton />)}
+            {connected && publicKey ? (
+              <Link href={`/user/${publicKey.toString()}`}>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 px-3 h-9 text-sm font-medium"
+                  aria-label="View Profile"
+                >
+                  <User className="h-4 w-4" />
+                  Profile
+                </Button>
+              </Link>
+            ) : (
+              <WalletButton />
+            )}
             <Button
               size="sm"
               className="bg-[#00DC82] text-black hover:bg-[#00DC82]/90 ml-1.5 font-medium h-9 px-3 text-sm"

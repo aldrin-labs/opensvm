@@ -292,6 +292,126 @@ class OpenAPIGenerator {
           analyzed_at: { type: 'string', format: 'date-time', example: '2025-11-09T12:34:56.789Z' }
         }
       },
+      // Chart & Trades Endpoint Schemas
+      ChartMetadata: {
+        type: 'object',
+        properties: {
+          requestedRange: {
+            type: 'object',
+            properties: {
+              from: { type: 'number', description: 'Start timestamp' },
+              to: { type: 'number', description: 'End timestamp' },
+              duration: { type: 'number', description: 'Duration in seconds' }
+            }
+          },
+          batching: {
+            type: 'object',
+            properties: {
+              enabled: { type: 'boolean' },
+              batchCount: { type: 'number', description: 'Number of batches used' },
+              batchSize: { type: 'number', description: 'Time range per batch (seconds)' },
+              candlesPerBatch: { type: 'number', description: 'Candles per batch (~960 optimal)' }
+            }
+          },
+          candleCount: { type: 'number', description: 'Total candles returned' }
+        }
+      },
+      ChartResponse: {
+        type: 'object',
+        required: ['success', 'endpoint', 'mint', 'data'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          endpoint: { type: 'string', example: 'ohlcv' },
+          mint: { type: 'string', example: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
+          tokenInfo: { $ref: '#/components/schemas/TokenMarketInfo' },
+          mainPair: {
+            type: 'object',
+            properties: {
+              pair: { type: 'string', example: 'BONK/USDC' },
+              dex: { type: 'string', example: 'Raydium' },
+              poolAddress: { type: 'string' }
+            }
+          },
+          pools: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/PoolInfo' }
+          },
+          data: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: { $ref: '#/components/schemas/OHLCVCandle' }
+              }
+            }
+          },
+          indicators: { $ref: '#/components/schemas/TechnicalIndicators' },
+          _meta: { $ref: '#/components/schemas/ChartMetadata' }
+        }
+      },
+      TradeData: {
+        type: 'object',
+        required: ['signature', 'timestamp', 'type', 'owner'],
+        properties: {
+          signature: { type: 'string', description: 'Transaction signature' },
+          timestamp: { type: 'number', description: 'Unix timestamp' },
+          blockTime: { type: 'number', description: 'Block timestamp' },
+          type: { type: 'string', enum: ['swap', 'add', 'remove'], description: 'Transaction type' },
+          side: { type: 'string', enum: ['buy', 'sell'], description: 'Trade side' },
+          price: { type: 'number', description: 'Price per token' },
+          priceUSD: { type: 'number', description: 'Price in USD' },
+          amount: { type: 'number', description: 'Token amount traded' },
+          amountUSD: { type: 'number', description: 'USD value of trade' },
+          volume: { type: 'number', description: 'Volume (same as amountUSD)' },
+          token: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string' },
+              name: { type: 'string' },
+              address: { type: 'string' },
+              decimals: { type: 'number' }
+            }
+          },
+          pairToken: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string', example: 'USDC' },
+              name: { type: 'string' },
+              address: { type: 'string' },
+              decimals: { type: 'number' }
+            }
+          },
+          dex: { type: 'string', example: 'Raydium', description: 'DEX name' },
+          poolAddress: { type: 'string', description: 'AMM pool address' },
+          owner: { type: 'string', description: 'Wallet address that made the trade' },
+          slot: { type: 'number', description: 'Solana slot number' },
+          raw: { type: 'object', description: 'Raw Birdeye response data' }
+        }
+      },
+      TradesResponse: {
+        type: 'object',
+        required: ['success', 'mint', 'trades', 'count', 'metadata'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          mint: { type: 'string', description: 'Token mint address' },
+          trades: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/TradeData' }
+          },
+          count: { type: 'number', description: 'Number of trades in response' },
+          total: { type: 'number', description: 'Total trades available' },
+          metadata: {
+            type: 'object',
+            properties: {
+              mint: { type: 'string' },
+              limit: { type: 'number' },
+              offset: { type: 'number' },
+              txType: { type: 'string', description: 'Filter type used' },
+              hasMore: { type: 'boolean', description: 'Whether more trades available' }
+            }
+          }
+        }
+      },
       // Search & Discovery Schemas
       SearchResult: {
         type: 'object',
