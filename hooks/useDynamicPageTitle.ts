@@ -25,8 +25,9 @@ interface DynamicTitleOptions {
   
   /**
    * Dependencies that trigger title updates
+   * Use this to pass data objects that should trigger title updates
    */
-  dependencies?: any[];
+  dependencies?: readonly unknown[];
 }
 
 /**
@@ -49,34 +50,54 @@ interface DynamicTitleOptions {
 export function useDynamicPageTitle(options: DynamicTitleOptions) {
   const { title, suffix = '| OpenSVM', disabled = false, dependencies = [] } = options;
   const previousTitleRef = useRef<string>('');
+  const originalTitleRef = useRef<string>('');
+
+  useEffect(() => {
+    // Store original title on mount
+    if (typeof document !== 'undefined' && !originalTitleRef.current) {
+      originalTitleRef.current = document.title;
+    }
+  }, []);
 
   useEffect(() => {
     if (disabled || typeof document === 'undefined') return;
 
-    // Construct the full title
-    const fullTitle = suffix ? `${title} ${suffix}` : title;
+    try {
+      // Construct the full title
+      const fullTitle = suffix ? `${title} ${suffix}` : title;
 
-    // Only update if the title has changed
-    if (previousTitleRef.current !== fullTitle) {
-      document.title = fullTitle;
-      previousTitleRef.current = fullTitle;
+      // Only update if the title has changed
+      if (previousTitleRef.current !== fullTitle) {
+        document.title = fullTitle;
+        previousTitleRef.current = fullTitle;
 
-      // Dispatch custom event for tracking/analytics
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(
-          new CustomEvent('page-title-updated', {
-            detail: { title: fullTitle, timestamp: Date.now() }
-          })
-        );
+        // Dispatch custom event for tracking/analytics
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(
+            new CustomEvent('page-title-updated', {
+              detail: { title: fullTitle, timestamp: Date.now() }
+            })
+          );
+        }
       }
+    } catch (error) {
+      // Silently fail if title update fails (shouldn't happen, but defensive)
+      console.warn('Failed to update page title:', error);
     }
 
-    // Cleanup: restore to default on unmount if needed
+    // Cleanup: restore original title on unmount
     return () => {
-      // We don't restore the title on unmount as Next.js will handle it
-      // when navigating to a new page
+      try {
+        if (originalTitleRef.current && typeof document !== 'undefined') {
+          document.title = originalTitleRef.current;
+        }
+      } catch (error) {
+        // Silently fail on cleanup
+        console.warn('Failed to restore original page title:', error);
+      }
     };
-  }, [title, suffix, disabled, ...dependencies]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [title, suffix, disabled, ...(dependencies || [])]);
 }
 
 /**
