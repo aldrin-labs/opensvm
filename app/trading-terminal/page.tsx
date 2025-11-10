@@ -1,7 +1,9 @@
-'use client';
-
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
+
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
 
 // Dynamically import the responsive terminal wrapper to ensure client-side only rendering
 const ResponsiveTradingTerminal = dynamic(
