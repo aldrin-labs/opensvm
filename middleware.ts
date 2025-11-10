@@ -2,22 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { validateApiKey, logApiKeyActivity } from './lib/api-auth/service';
 
-// Paths that require API key authentication
-const PROTECTED_API_PATHS = [
-  '/api/getAnswer',
-  '/api/opensvm',
-  '/api/analyze',
-  '/api/transaction',
-  '/api/account',
-  '/api/block',
-  '/api/program',
-  '/api/token',
-  '/api/defi',
-  '/api/analytics',
-  '/api/monitor',
-];
+// Force Node.js runtime for crypto support
+export const runtime = 'nodejs';
 
-// Paths that should be excluded from API key checks
+// Paths that should be completely excluded from middleware (no API key checking at all)
 const EXCLUDED_PATHS = [
   '/api/auth',
   '/api/health',
@@ -33,37 +21,27 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
   
-  // Skip excluded paths
+  // Skip excluded paths completely
   if (EXCLUDED_PATHS.some(path => pathname.startsWith(path))) {
-    return NextResponse.next();
-  }
-  
-  // Check if this path requires API key authentication
-  const requiresApiKey = PROTECTED_API_PATHS.some(path => pathname.startsWith(path));
-  
-  if (!requiresApiKey) {
     return NextResponse.next();
   }
   
   const startTime = Date.now();
   
-  // Extract API key from headers
+  // Extract API key from headers (optional for all endpoints now)
   const apiKey = request.headers.get('X-API-Key') || 
                  request.headers.get('Authorization')?.replace('Bearer ', '');
   
+  // If no API key provided, allow the request to proceed (API key is optional)
   if (!apiKey) {
-    // No API key provided for protected route
-    return NextResponse.json(
-      { error: 'API key required' },
-      { status: 401 }
-    );
+    return NextResponse.next();
   }
   
   try {
-    // Validate the API key
-    const validationResult = await validateApiKey(apiKey);
+    // Validate the API key if provided (returns ApiKey | null)
+    const validatedApiKey = await validateApiKey(apiKey);
     
-    if (!validationResult || !validationResult.valid) {
+    if (!validatedApiKey) {
       // Log failed authentication attempt
       await logApiKeyActivity({
         apiKeyId: apiKey.substring(0, 20), // Use partial key as ID for invalid keys
@@ -85,8 +63,8 @@ export async function middleware(request: NextRequest) {
     
     // Clone the request headers to add validated API key info
     const requestHeaders = new Headers(request.headers);
-    requestHeaders.set('x-api-key-id', validationResult.apiKey.id);
-    requestHeaders.set('x-api-key-name', validationResult.apiKey.name);
+    requestHeaders.set('x-api-key-id', validatedApiKey.id);
+    requestHeaders.set('x-api-key-name', validatedApiKey.name);
     
     // Continue with the request
     const response = NextResponse.next({
@@ -100,7 +78,7 @@ export async function middleware(request: NextRequest) {
     const statusCode = response.status;
     
     logApiKeyActivity({
-      apiKeyId: validationResult.apiKey.id,
+      apiKeyId: validatedApiKey.id,
       endpoint: pathname,
       method: request.method,
       statusCode,
@@ -118,7 +96,7 @@ export async function middleware(request: NextRequest) {
     
     // Log error
     await logApiKeyActivity({
-      apiKeyId: apiKey.substring(0, 20),
+      apiKeyId: apiKey?.substring(0, 20) || 'unknown',
       endpoint: pathname,
       method: request.method,
       statusCode: 500,
