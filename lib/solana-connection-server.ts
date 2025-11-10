@@ -183,10 +183,11 @@ function normalizeUrl(url: string): string {
     return url;
 }
 
-function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
+function resolveClusterToEndpoint(cluster: string): string | null {
     const value = cluster.trim().toLowerCase();
     if (value === 'mainnet' || value === 'mainnet-beta' || value === 'opensvm' || value === 'osvm' || value === 'gsvm') {
-        return 'opensvm';
+        // Return null to use the default connection pool
+        return null;
     }
     if (value === 'devnet') {
         return 'https://api.devnet.solana.com';
@@ -205,7 +206,8 @@ function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
 // Primary connection getter
 export function getConnection(endpoint?: string): ProxyConnection {
     // If an explicit endpoint is requested, honor it; otherwise use pool
-    return connectionPool.getConnection(endpoint ? resolveClusterToEndpoint(endpoint) || undefined : undefined);
+    const resolved = endpoint ? resolveClusterToEndpoint(endpoint) : undefined;
+    return connectionPool.getConnection(resolved || undefined);
 }
 
 // Update RPC endpoint
