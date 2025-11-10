@@ -5,7 +5,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useCallback } from 'react';
 
 interface DynamicTitleOptions {
   /**
@@ -28,6 +28,12 @@ interface DynamicTitleOptions {
    * Use this to pass data objects that should trigger title updates
    */
   dependencies?: readonly unknown[];
+  
+  /**
+   * Debounce delay in milliseconds (default: 100ms)
+   * Prevents rapid title updates when data changes quickly
+   */
+  debounceMs?: number;
 }
 
 /**
@@ -48,25 +54,43 @@ interface DynamicTitleOptions {
  * });
  */
 export function useDynamicPageTitle(options: DynamicTitleOptions) {
-  const { title, suffix = '| OpenSVM', disabled = false, dependencies = [] } = options;
+  const { title, suffix = '| OpenSVM', disabled = false, dependencies = [], debounceMs = 100 } = options;
   const previousTitleRef = useRef<string>('');
   const originalTitleRef = useRef<string>('');
+  const isMountedRef = useRef<boolean>(true);
+  const debounceTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
+  // Store original title once on mount
   useEffect(() => {
-    // Store original title on mount
     if (typeof document !== 'undefined' && !originalTitleRef.current) {
       originalTitleRef.current = document.title;
     }
-  }, []);
+    
+    // Mark as mounted
+    isMountedRef.current = true;
+    
+    // Cleanup: restore original title only on actual unmount
+    return () => {
+      isMountedRef.current = false;
+      
+      // Clear any pending debounced updates
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
+      }
+      
+      try {
+        if (originalTitleRef.current && typeof document !== 'undefined') {
+          document.title = originalTitleRef.current;
+        }
+      } catch (error) {
+        console.warn('Failed to restore original page title:', error);
+      }
+    };
+  }, []); // Empty deps - only run on mount/unmount
 
-  useEffect(() => {
-    if (disabled || typeof document === 'undefined') return;
-
+  // Memoized update function
+  const updateTitle = useCallback((fullTitle: string) => {
     try {
-      // Construct the full title
-      const fullTitle = suffix ? `${title} ${suffix}` : title;
-
-      // Only update if the title has changed
       if (previousTitleRef.current !== fullTitle) {
         document.title = fullTitle;
         previousTitleRef.current = fullTitle;
@@ -81,23 +105,34 @@ export function useDynamicPageTitle(options: DynamicTitleOptions) {
         }
       }
     } catch (error) {
-      // Silently fail if title update fails (shouldn't happen, but defensive)
       console.warn('Failed to update page title:', error);
     }
+  }, []);
 
-    // Cleanup: restore original title on unmount
+  // Update title when dependencies change (with debounce)
+  useEffect(() => {
+    if (disabled || typeof document === 'undefined' || !isMountedRef.current) return;
+
+    // Clear any existing timeout
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    // Construct the full title
+    const fullTitle = suffix ? `${title} ${suffix}` : title;
+
+    // Debounce the update
+    debounceTimeoutRef.current = setTimeout(() => {
+      updateTitle(fullTitle);
+    }, debounceMs);
+
     return () => {
-      try {
-        if (originalTitleRef.current && typeof document !== 'undefined') {
-          document.title = originalTitleRef.current;
-        }
-      } catch (error) {
-        // Silently fail on cleanup
-        console.warn('Failed to restore original page title:', error);
+      if (debounceTimeoutRef.current) {
+        clearTimeout(debounceTimeoutRef.current);
       }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [title, suffix, disabled, ...(dependencies || [])]);
+  }, [title, suffix, disabled, debounceMs, updateTitle, ...(dependencies || [])]);
 }
 
 /**
