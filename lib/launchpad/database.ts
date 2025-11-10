@@ -426,3 +426,51 @@ export async function updateFraudAlert(id: string, updates: Partial<FraudAlert>)
   await persistStore('fraudAlerts');
   return updated;
 }
+
+// ============= Legacy DB Export for API Routes =============
+// This export provides backward compatibility for API routes that expect
+// direct access to the stores as arrays with a persist() method
+
+/**
+ * Legacy database object for backward compatibility
+ * Provides direct access to stores as arrays
+ */
+export const db = {
+  get referrers() {
+    return Array.from(stores.referrers.values());
+  },
+  get referralLinks() {
+    return Array.from(stores.referralLinks.values());
+  },
+  get contributions() {
+    return Array.from(stores.contributions.values());
+  },
+  get dailyVolumeReports() {
+    return Array.from(stores.dailyVolumeReports.values());
+  },
+  get kolAllocations() {
+    return Array.from(stores.kolAllocations.values());
+  },
+  get sales() {
+    return Array.from(stores.sales.values());
+  },
+  get disputes() {
+    return Array.from(stores.disputes.values());
+  },
+  get auditLogs() {
+    return Array.from(stores.auditLogs.values());
+  },
+  get fraudAlerts() {
+    return Array.from(stores.fraudAlerts.values());
+  },
+  /**
+   * Persist all stores to disk
+   */
+  async persist() {
+    await Promise.all(
+      Object.keys(stores).map((storeName) =>
+        persistStore(storeName as keyof typeof stores)
+      )
+    );
+  },
+};

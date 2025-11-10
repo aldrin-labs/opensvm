@@ -89,6 +89,18 @@ export function signData(data: string): { signature: string; pubkey: string } {
 }
 
 /**
+ * Alias for signData for backward compatibility
+ * @deprecated Use signData instead
+ */
+export function signPayload(data: string): { signature: string; publicKey: string } {
+  const result = signData(data);
+  return {
+    signature: result.signature,
+    publicKey: result.pubkey,
+  };
+}
+
+/**
  * Verify signature (client-side or server-side)
  */
 export function verifySignature(
