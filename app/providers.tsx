@@ -9,7 +9,6 @@ import { ErrorHandlingProvider, EnhancedErrorBoundary } from '@/lib/error-handli
 import { OnboardingProvider } from '@/components/onboarding/OnboardingSystem';
 import { UserExpertiseProvider } from '@/lib/user-expertise';
 import { RBACProvider } from '@/lib/rbac';
-import { SSOProvider } from '@/lib/sso';
 import { ExportProvider } from '@/lib/export';
 import { OptimisticUIProvider } from '@/lib/optimistic-ui';
 import { AnimationProvider } from '@/lib/animations';
@@ -97,7 +96,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
                 <WalletProvider>
                   <AuthProvider>
                     <RBACProvider>
-                      <SSOProvider>
                         <ExportProvider>
                           <OptimisticUIProvider>
                             <AnimationProvider>
@@ -146,7 +144,6 @@ export function Providers({ children }: { children: React.ReactNode }) {
                           </AnimationProvider>
                         </OptimisticUIProvider>
                       </ExportProvider>
-                    </SSOProvider>
                   </RBACProvider>
                 </AuthProvider>
               </WalletProvider>

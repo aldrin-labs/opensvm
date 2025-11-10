@@ -6,6 +6,7 @@ import { ChatUI } from './ChatUI';
 import { ChatErrorBoundary } from './ChatErrorBoundary';
 import { ChatLayout } from './layouts/ChatLayout';
 import { useEffect, useState } from 'react';
+import { logger } from '@/lib/logger';
 
 export interface ChatProps {
   variant?: 'inline' | 'sidebar' | 'dialog';
@@ -170,7 +171,7 @@ export function Chat({
   }, []); // Remove earlyInputVisible dependency to prevent infinite loops
 
   useEffect(() => {
-    console.log('Chat component mounted, variant:', variant, 'isOpen:', isOpen);
+    logger.chat.debug('Chat component mounted, variant:', variant, 'isOpen:', isOpen);
     // Robust fallback detection:
     // React 18 StrictMode double-mounts components in development; the first mount/unmount
     // can schedule the legacy timeout causing premature fallback before ChatUI commits.
@@ -191,13 +192,13 @@ export function Chat({
       const inputEl = document.querySelector('[data-ai-chat-input]');
       if (inputEl) {
         if (showFallback) {
-          console.log('[Chat] Primary input appeared after fallback scheduled; keeping primary UI.');
+          logger.chat.debug('[Chat] Primary input appeared after fallback scheduled; keeping primary UI.');
         }
         return; // Input present, nothing to do
       }
 
       const uiRoot = document.querySelector('[data-ai-chat-ui]');
-      console.log(`[Chat] Fallback probe attempt ${attempt} | uiRoot=${!!uiRoot} | inputPresent=${!!inputEl}`);
+      logger.chat.debug(`[Chat] Fallback probe attempt ${attempt} | uiRoot=${!!uiRoot} | inputPresent=${!!inputEl}`);
 
       if (attempt < MAX_RETRIES) {
         // Retry regardless of uiRoot presence to avoid premature fallback when ChatUI hasn't committed yet
@@ -206,7 +207,7 @@ export function Chat({
       }
 
       if (!inputEl && !showFallback) {
-        console.log('[Chat] No chat input after phased probes; activating fallback UI');
+        logger.chat.info('[Chat] No chat input after phased probes; activating fallback UI');
         setShowFallback(true);
       }
     }
