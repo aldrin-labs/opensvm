@@ -742,7 +742,212 @@ Available through direct API calls:
 - **getTransactionDetails(signature)** - Parse transaction
 - **getRecentTransactions(address, limit)** - Recent activity
 
-### 13. UTILITY ENDPOINTS
+### 13. API KEY AUTHENTICATION & MANAGEMENT
+
+#### API Key Creation & Wallet Binding
+- **POST /api/auth/api-keys/create** - Create new API key with optional wallet binding
+  - Body:
+    ```json
+    {
+      "name": "My API Key",
+      "permissions": ["read:*"],
+      "expiresInDays": 30,
+      "metadata": {},
+      "generateAuthLink": true
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "success": true,
+      "apiKey": {
+        "id": "abc123",
+        "name": "My API Key",
+        "status": "pending",
+        "createdAt": "2025-11-10T12:00:00Z",
+        "permissions": ["read:*"]
+      },
+      "rawKey": "osvm_1234567890abcdef...",
+      "authLink": "http://localhost:3000/auth/bind?token=xyz789",
+      "authLinkExpiresAt": "2025-11-10T12:15:00Z"
+    }
+    ```
+  - ⚠️ **Important**: The `rawKey` is only shown once and cannot be retrieved later
+  - Features:
+    - Generates secure API keys for CLI tools, bots, and integrations
+    - Optional automatic auth link generation for wallet binding
+    - Configurable permissions and expiration
+    - SHA-256 hashed keys for security
+
+- **POST /api/auth/auth-link/create** - Generate auth link for wallet binding
+  - Body:
+    ```json
+    {
+      "apiKeyId": "abc123",
+      "expiresInMinutes": 15
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "success": true,
+      "authLink": "http://localhost:3000/auth/bind?token=xyz789",
+      "expiresAt": "2025-11-10T12:15:00Z",
+      "token": "xyz789"
+    }
+    ```
+  - Features:
+    - One-time use tokens for security
+    - Configurable expiration (default: 15 minutes)
+    - Automatic token generation
+    - URL ready for sharing with users
+
+- **POST /api/auth/bind-wallet** - Bind Solana wallet to API key
+  - Body:
+    ```json
+    {
+      "token": "xyz789",
+      "walletAddress": "Your_Solana_Address",
+      "signature": "base64_signature",
+      "message": "Signed message"
+    }
+    ```
+  - Response:
+    ```json
+    {
+      "success": true,
+      "apiKeyId": "abc123",
+      "walletAddress": "Your_Solana_Address",
+      "message": "Wallet successfully bound to API key"
+    }
+    ```
+  - Features:
+    - Verifies Solana wallet ownership via ed25519 signatures
+    - Single-use auth tokens for security
+    - Updates API key status from 'pending' to 'active'
+    - Prevents unauthorized key binding
+
+#### API Key Management
+- **GET /api/auth/api-keys/list** - List all API keys for authenticated user
+  - Headers: `Authorization: Bearer <token>` or session-based
+  - Query: `userId?` (optional, for admin use)
+  - Response:
+    ```json
+    {
+      "success": true,
+      "keys": [
+        {
+          "id": "abc123",
+          "name": "My Bot",
+          "status": "active",
+          "userId": "wallet_address",
+          "createdAt": "2025-11-10T12:00:00Z",
+          "lastUsedAt": "2025-11-10T13:00:00Z",
+          "permissions": ["read:*"]
+        }
+      ]
+    }
+    ```
+
+- **GET /api/auth/api-keys/metrics** - Get usage metrics for API key
+  - Headers: `Authorization: Bearer <api_key>`
+  - Response:
+    ```json
+    {
+      "success": true,
+      "metrics": {
+        "apiKeyId": "abc123",
+        "totalRequests": 1500,
+        "successfulRequests": 1450,
+        "failedRequests": 50,
+        "averageResponseTime": 250,
+        "lastActivity": "2025-11-10T13:00:00Z",
+        "requestsByEndpoint": {
+          "/api/transaction": 800,
+          "/api/account-stats": 400,
+          "/api/search": 300
+        },
+        "requestsByDay": {
+          "2025-11-10": 500,
+          "2025-11-09": 600,
+          "2025-11-08": 400
+        }
+      }
+    }
+    ```
+
+- **GET /api/auth/api-keys/activity** - Get activity logs for API key
+  - Headers: `Authorization: Bearer <api_key>`
+  - Query:
+    - `limit?` (default: 50, max: 100)
+    - `offset?` (default: 0)
+    - `startDate?` (ISO string)
+    - `endDate?` (ISO string)
+  - Response:
+    ```json
+    {
+      "success": true,
+      "activities": [
+        {
+          "id": "log_123",
+          "timestamp": "2025-11-10T13:00:00Z",
+          "endpoint": "/api/transaction/xyz",
+          "method": "GET",
+          "statusCode": 200,
+          "responseTime": 245
+        }
+      ],
+      "total": 1500,
+      "hasMore": true
+    }
+    ```
+
+- **DELETE /api/auth/api-keys/[keyId]** - Revoke/delete an API key
+  - Params: keyId (string, path)
+  - Headers: Authorization required
+  - Response:
+    ```json
+    {
+      "success": true,
+      "message": "API key revoked successfully"
+    }
+    ```
+
+#### API Key Usage
+
+**Using API Keys in Requests:**
+```bash
+# Bearer token authentication
+curl -H "Authorization: Bearer osvm_1234567890abcdef..." \
+  https://opensvm.com/api/transaction/[signature]
+
+# Environment variable
+export OPENSVM_API_KEY="osvm_1234567890abcdef..."
+curl -H "Authorization: Bearer $OPENSVM_API_KEY" \
+  https://opensvm.com/api/account-stats/[address]
+```
+
+**Key Statuses:**
+- `pending`: Awaiting wallet binding
+- `active`: Wallet bound and ready to use
+- `revoked`: Permanently disabled
+
+**Security Features:**
+- Keys are SHA-256 hashed before storage
+- One-time auth tokens with expiration
+- Solana signature verification for wallet binding
+- Activity logging for all API requests
+- Per-key rate limiting and permissions
+
+**Use Cases:**
+- CLI tools and scripts
+- Telegram/Discord bots
+- Third-party integrations
+- Automated trading systems
+- Analytics dashboards
+- Mobile applications
+
+### 14. UTILITY ENDPOINTS
 
 #### Share & Referral
 - **POST /api/share/generate** - Generate share link

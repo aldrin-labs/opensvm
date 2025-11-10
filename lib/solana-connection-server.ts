@@ -138,7 +138,7 @@ class ConnectionPool {
         if (this.endpoints.length === 0) {
             logger.rpc.error('No RPC endpoints configured! Falling back to proxy');
             // Use full URL during build time, relative URL only during runtime
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://osvm.ai';
             const fallbackEndpoint = typeof window === 'undefined' && process.env.NODE_ENV !== 'development'
                 ? `${baseUrl}/api/proxy/rpc`
                 : '/api/proxy/rpc';

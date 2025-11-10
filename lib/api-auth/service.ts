@@ -299,7 +299,7 @@ export async function createAuthLink(
   });
 
   // Generate the full auth link URL
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://osvm.ai';
   const authLinkUrl = `${baseUrl}/auth/bind?token=${token}`;
 
   return {
