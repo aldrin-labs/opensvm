@@ -244,12 +244,42 @@ export default function SwaggerPage() {
                                       <div className="space-y-2">
                                         {Object.entries(details.responses).map(([status, response]: any) => (
                                           <div key={status} className="text-sm p-3 bg-background rounded border">
-                                            <div className="flex items-center gap-2 mb-1">
+                                            <div className="flex items-center gap-2 mb-2">
                                               <span className={`font-bold ${status.startsWith('2') ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'}`}>
                                                 {status}
                                               </span>
                                               <span>{response.description}</span>
                                             </div>
+                                            {response.content?.['application/json']?.schema && (
+                                              <div className="mt-2 p-2 bg-muted/50 rounded">
+                                                <div className="text-xs font-semibold text-muted-foreground mb-1">Response Schema:</div>
+                                                {response.content['application/json'].schema.$ref ? (
+                                                  <code className="text-xs text-primary">
+                                                    {response.content['application/json'].schema.$ref.split('/').pop()}
+                                                  </code>
+                                                ) : (
+                                                  <pre className="text-xs overflow-auto">
+                                                    {JSON.stringify(response.content['application/json'].schema, null, 2)}
+                                                  </pre>
+                                                )}
+                                                {response.content['application/json'].schema.$ref && spec.components?.schemas && (
+                                                  <div className="mt-2 text-xs">
+                                                    <details className="cursor-pointer">
+                                                      <summary className="font-semibold text-primary hover:underline">
+                                                        View Schema Details
+                                                      </summary>
+                                                      <pre className="mt-2 p-2 bg-background rounded overflow-auto max-h-96">
+                                                        {JSON.stringify(
+                                                          spec.components.schemas[response.content['application/json'].schema.$ref.split('/').pop()],
+                                                          null,
+                                                          2
+                                                        )}
+                                                      </pre>
+                                                    </details>
+                                                  </div>
+                                                )}
+                                              </div>
+                                            )}
                                           </div>
                                         ))}
                                       </div>
