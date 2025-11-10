@@ -126,3 +126,16 @@ The implementation successfully adds:
 4. ✅ Support for both guest and authenticated users
 
 All features are production-ready and pass linting checks.
+
+## Screenshots
+
+The following screenshots demonstrate the working implementation:
+
+![Homepage](screens/screenshot-homepage.png)
+*Homepage showing tracking provider integration*
+
+![Token Page](screens/screenshot-token.png)
+*Token page with dynamic title updates*
+
+![Blocks Page](screens/screenshot-blocks.png)
+*Blocks page showing navigation tracking*
