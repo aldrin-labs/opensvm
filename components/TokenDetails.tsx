@@ -7,6 +7,7 @@ import { Stack } from 'rinlab';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { ShareButton } from '@/components/ShareButton';
+import { useDynamicPageTitle, TitleGenerators } from '@/hooks/useDynamicPageTitle';
 
 interface TokenData {
   metadata?: {
@@ -52,6 +53,17 @@ export default function TokenDetails({ mint }: Props) {
 
     fetchData();
   }, [mint]);
+
+  // Update page title dynamically based on loaded token data
+  useDynamicPageTitle({
+    title: TitleGenerators.token(
+      mint,
+      data?.metadata?.symbol,
+      data?.metadata?.name,
+      data?.price
+    ),
+    dependencies: [data]
+  });
 
   if (loading) {
     return <div>Loading...</div>;
