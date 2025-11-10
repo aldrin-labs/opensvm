@@ -23,7 +23,6 @@ const docCategories: DocCategory[] = [
     docs: [
       { slug: 'introduction', title: 'Introduction', description: 'Overview of OpenSVM features and capabilities' },
       { slug: 'README', title: 'Quick Start', description: 'Get started with OpenSVM quickly' },
-      { slug: 'MARKET_DATA_API_GUIDE', title: 'Market Data API Guide', description: 'User-friendly guide to the DEX Aggregator API' },
       { slug: 'FEATURES', title: 'Features', description: 'Complete list of OpenSVM features' },
       { slug: 'DEVELOPMENT', title: 'Development', description: 'Setup and development guide' },
     ]
@@ -44,7 +43,9 @@ const docCategories: DocCategory[] = [
     icon: <FileText className="w-6 h-6" />,
     docs: [
       { slug: 'API', title: 'API Reference', description: 'Complete API documentation' },
-      { slug: 'swagger', title: 'OpenAPI/Swagger Docs', description: '98 endpoints with full TypeScript schemas - Interactive API explorer' },
+      { slug: 'API-SCHEMA-REFERENCE', title: 'API Schema Reference', description: 'Complete TypeScript schemas for all 98 endpoints' },
+      { slug: 'MARKET_DATA_API_GUIDE', title: 'Market Data API Guide', description: 'User-friendly guide to the DEX Aggregator API with examples' },
+      { slug: 'swagger', title: 'OpenAPI/Swagger Docs', description: 'Interactive API explorer with live testing' },
       { slug: 'DEX_API_TESTS', title: 'DEX Aggregator API', description: 'Market data, pools, OHLCV, and technical indicators' },
       { slug: 'TESTING', title: 'Testing Guide', description: 'API testing documentation and examples' },
       { slug: 'api/api-health-summary', title: 'API Health Check', description: 'Latest API health status and performance metrics' },
