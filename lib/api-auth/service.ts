@@ -4,7 +4,7 @@
  * Uses Qdrant for persistent storage
  */
 
-import { randomBytes, createHash } from 'crypto';
+import { randomBytes, createHash, createCipheriv, createDecipheriv } from 'crypto';
 import { qdrantClient } from '@/lib/qdrant';
 import type {
   ApiKey,
@@ -145,7 +145,6 @@ function hashApiKey(key: string): string {
  * Uses AES-256-GCM with a secret key from environment
  */
 function encryptData(data: string): string {
-  const crypto = require('crypto');
   const secretKey = process.env.API_KEY_ENCRYPTION_SECRET;
   
   if (!secretKey) {
@@ -156,10 +155,10 @@ function encryptData(data: string): string {
   const key = createHash('sha256').update(secretKey).digest();
   
   // Generate a random IV (initialization vector)
-  const iv = crypto.randomBytes(16);
+  const iv = randomBytes(16);
   
   // Create cipher
-  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  const cipher = createCipheriv('aes-256-gcm', key, iv);
   
   // Encrypt the data
   let encrypted = cipher.update(data, 'utf8', 'hex');
@@ -176,7 +175,6 @@ function encryptData(data: string): string {
  * Decrypt sensitive data from database
  */
 function decryptData(encryptedData: string): string {
-  const crypto = require('crypto');
   const secretKey = process.env.API_KEY_ENCRYPTION_SECRET;
   
   if (!secretKey) {
@@ -197,7 +195,7 @@ function decryptData(encryptedData: string): string {
   const encrypted = parts[2];
   
   // Create decipher
-  const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+  const decipher = createDecipheriv('aes-256-gcm', key, iv);
   decipher.setAuthTag(authTag);
   
   // Decrypt the data
