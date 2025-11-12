@@ -11,6 +11,7 @@ const tokenHolderCache = new Map<string, {
   totalHolders?: number;
   volume24h: number; 
   price?: number;
+  marketCap?: number;
   liquidity?: number;
   priceChange24h?: number;
   top10Balance?: number;
@@ -48,9 +49,9 @@ export async function GET(
     'Content-Type': 'application/json',
   };
 
-  // Much faster timeout for performance tests
+  // Timeout adjusted to accommodate Birdeye (2s) + getProgramAccounts (5s) + overhead
   const globalTimeout = new Promise<never>((_, reject) => {
-    setTimeout(() => reject(new Error('Global request timeout')), 3000); // Reduced to 3s for performance tests
+    setTimeout(() => reject(new Error('Global request timeout')), 10000); // 10s to allow for all operations
   });
 
   try {
@@ -229,14 +230,21 @@ export async function GET(
         
         if (cached && (now - cached.timestamp) < CACHE_DURATION) {
           console.log(`Using cached data for ${mintAddress}: ${cached.holders} holders`);
+          
+          // Calculate human-readable supply
+          const rawSupply = Number(mintInfo.supply);
+          const humanReadableSupply = rawSupply / Math.pow(10, mintInfo.decimals);
+          
           const tokenData = {
             metadata,
-            supply: Number(mintInfo.supply),
+            supply: humanReadableSupply, // Human-readable supply (accounting for decimals)
+            rawSupply, // Raw supply for reference
             decimals: mintInfo.decimals,
             holders: cached.holders,
             totalHolders: cached.totalHolders,
             volume24h: cached.volume24h,
             price: cached.price,
+            marketCap: cached.marketCap,
             liquidity: cached.liquidity,
             priceChange24h: cached.priceChange24h,
             top10Balance: cached.top10Balance,
@@ -257,6 +265,7 @@ export async function GET(
         let price: number | undefined;
         let liquidity: number | undefined;
         let priceChange24h: number | undefined;
+        let marketCap: number | undefined;
         let top10Balance: number | undefined;
         let top50Balance: number | undefined;
         let top100Balance: number | undefined;
@@ -287,7 +296,14 @@ export async function GET(
                   liquidity = birdeyeData.data.liquidity || undefined;
                   priceChange24h = birdeyeData.data.priceChange24hPercent || undefined;
                   holders = birdeyeData.data.holder || 0; // Birdeye provides holder count
-                  console.log(`Fetched from Birdeye: ${holders} holders, $${volume24h} volume, $${price} price`);
+                  
+                  // Calculate market cap from price and supply if not provided
+                  let marketCap = birdeyeData.data.mc || undefined;
+                  if (!marketCap && price && mintInfo.supply) {
+                    marketCap = price * (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals));
+                  }
+                  
+                  console.log(`Fetched from Birdeye: ${holders} holders, $${volume24h} volume, $${price} price, $${marketCap} market cap`);
                 }
               }
             } catch (error) {
@@ -365,6 +381,11 @@ export async function GET(
             holders = totalHolders;
           }
           
+          // Calculate market cap if we have price but no market cap
+          if (!marketCap && price && mintInfo.supply) {
+            marketCap = price * (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals));
+          }
+          
           // Cache the results
           if (holders > 0 || volume24h > 0) {
             tokenHolderCache.set(cacheKey, {
@@ -374,12 +395,13 @@ export async function GET(
               price,
               liquidity,
               priceChange24h,
+              marketCap,
               top10Balance,
               top50Balance,
               top100Balance,
               timestamp: now
             });
-            console.log(`Cached data for ${mintAddress}: ${holders} holders, ${totalHolders} total on-chain`);
+            console.log(`Cached data for ${mintAddress}: ${holders} holders, ${totalHolders} total on-chain, $${marketCap} market cap`);
           }
           
         } catch (error) {
@@ -387,14 +409,20 @@ export async function GET(
           // Continue with defaults if fetching fails
         }
 
+        // Calculate human-readable supply
+        const rawSupply = Number(mintInfo.supply);
+        const humanReadableSupply = rawSupply / Math.pow(10, mintInfo.decimals);
+
         const tokenData = {
           metadata,
-          supply: Number(mintInfo.supply),
+          supply: humanReadableSupply, // Human-readable supply (accounting for decimals)
+          rawSupply, // Raw supply for reference
           decimals: mintInfo.decimals,
           holders,
           totalHolders,
           volume24h,
           price,
+          marketCap,
           liquidity,
           priceChange24h,
           top10Balance,

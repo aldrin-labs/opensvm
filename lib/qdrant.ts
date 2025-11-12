@@ -1391,28 +1391,111 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
       throw new Error(`Invalid token metadata: missing required fields`);
     }
 
+    // Validate and sanitize all fields to prevent Qdrant Bad Request errors
+    if (!metadata.id || typeof metadata.id !== 'string' || metadata.id.trim() === '') {
+      throw new Error('Invalid metadata ID');
+    }
+    
+    if (!metadata.mintAddress || typeof metadata.mintAddress !== 'string' || metadata.mintAddress.trim() === '') {
+      throw new Error('Invalid mintAddress');
+    }
+    
+    if (!metadata.symbol || typeof metadata.symbol !== 'string' || metadata.symbol.trim() === '') {
+      throw new Error('Invalid symbol');
+    }
+    
+    if (!metadata.name || typeof metadata.name !== 'string' || metadata.name.trim() === '') {
+      throw new Error('Invalid name');
+    }
+    
+    if (!Number.isInteger(metadata.decimals) || metadata.decimals < 0) {
+      throw new Error('Invalid decimals');
+    }
+    
+    if (!Number.isInteger(metadata.lastUpdated) || metadata.lastUpdated <= 0) {
+      throw new Error('Invalid lastUpdated timestamp');
+    }
+    
+    if (!Number.isInteger(metadata.cacheExpiry) || metadata.cacheExpiry <= 0) {
+      throw new Error('Invalid cacheExpiry timestamp');
+    }
+    
+    if (typeof metadata.verified !== 'boolean') {
+      throw new Error('Invalid verified field');
+    }
+    
+    if (typeof metadata.cached !== 'boolean') {
+      throw new Error('Invalid cached field');
+    }
+
     // Generate embedding from token content
-    const textContent = `${metadata.symbol} ${metadata.name} ${metadata.mintAddress} ${metadata.description || ''}`;
+    const textContent = `${metadata.symbol.trim()} ${metadata.name.trim()} ${metadata.mintAddress.trim()} ${metadata.description?.trim() || ''}`;
     const vector = generateSimpleEmbedding(textContent);
 
     console.log(`Storing token metadata for: ${metadata.symbol} (${metadata.mintAddress})`);
 
+    // Build clean payload with proper validation
+    const cleanPayload: any = {
+      id: metadata.id.trim(),
+      mintAddress: metadata.mintAddress.trim(),
+      symbol: metadata.symbol.trim(),
+      name: metadata.name.trim(),
+      decimals: Number(metadata.decimals),
+      verified: Boolean(metadata.verified),
+      cached: Boolean(metadata.cached),
+      lastUpdated: Number(metadata.lastUpdated),
+      cacheExpiry: Number(metadata.cacheExpiry)
+    };
+    
+    // Only add optional fields if they're properly defined and valid
+    if (metadata.logoURI && 
+        typeof metadata.logoURI === 'string' && 
+        metadata.logoURI.trim() !== '' &&
+        metadata.logoURI.trim() !== 'undefined' &&
+        metadata.logoURI.trim() !== 'null') {
+      cleanPayload.logoURI = metadata.logoURI.trim();
+    }
+    
+    if (metadata.metadataUri && 
+        typeof metadata.metadataUri === 'string' && 
+        metadata.metadataUri.trim() !== '' &&
+        metadata.metadataUri.trim() !== 'undefined' &&
+        metadata.metadataUri.trim() !== 'null') {
+      cleanPayload.metadataUri = metadata.metadataUri.trim();
+    }
+    
+    if (metadata.description && 
+        typeof metadata.description === 'string' && 
+        metadata.description.trim() !== '' &&
+        metadata.description.trim() !== 'undefined' &&
+        metadata.description.trim() !== 'null') {
+      cleanPayload.description = metadata.description.trim();
+    }
+
     const upsertData = {
       wait: true,
       points: [{
-        id: metadata.id,
+        id: metadata.id.trim(),
         vector,
-        payload: {
-          ...metadata,
-          // Ensure all fields are properly serializable
-          decimals: Number(metadata.decimals),
-          lastUpdated: Number(metadata.lastUpdated),
-          cacheExpiry: Number(metadata.cacheExpiry)
-        }
+        payload: cleanPayload
       }]
     };
 
-    await qdrantClient.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+    try {
+      await qdrantClient.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+    } catch (upsertError: any) {
+      // Log detailed error information from Qdrant
+      console.error('Qdrant upsert failed for token metadata:', {
+        mintAddress: metadata.mintAddress,
+        symbol: metadata.symbol,
+        errorMessage: upsertError?.message,
+        errorData: JSON.stringify(upsertError?.data, null, 2),
+        errorStatus: upsertError?.status,
+        payloadKeys: Object.keys(cleanPayload),
+        vectorLength: vector.length
+      });
+      throw upsertError;
+    }
   } catch (error) {
     console.error('Error storing token metadata:', error);
     throw error;
