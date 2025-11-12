@@ -10,988 +10,861 @@ OpenSVM is a comprehensive Solana blockchain explorer and analytics platform wit
 ## Authentication
 Most endpoints are public. Some endpoints require JWT authentication via Bearer token in Authorization header.
 
-## API Health Status (Last Check: November 2, 2025)
-- **Overall Success Rate:** 73.2% (71/97 endpoints working)
-- **Average Response Time:** 807ms (Target: < 1000ms) ✅
-- **Cache Performance:** 50-99% improvement on cached endpoints
-- **Total Endpoints:** 97 across 9 categories
-
-### Performance by Category
-- 🔍 Search & Discovery: 100% success, 622ms avg response
-- 💳 Account & Wallet: 93.8% success, 421ms avg response  
-- 📊 Transactions: 100% success, 99ms avg response (FASTEST)
-- ⛓️ Blockchain: 87.5% success, 4239ms avg response (SLOWEST)
-- 🪙 Tokens & NFTs: 100% success, 285ms avg response
-- 📈 Analytics: 88.9% success, 406ms avg response
-- 🤖 AI-Powered: 0% (rate limited in testing)
-- 📡 Real-Time: 0% (rate limited in testing)
-- 👤 User Services: 20% success, 1871ms avg response
-
-### Known Issues
-- Rate limiting (429 errors) on AI endpoints and streaming services
-- Slow endpoints: /blocks (18.9s), /slots (7.6s), /account-transactions (2.5s)
-- Server errors (500) on /account-stats and /analytics/trending-validators
-
-### Optimizations Implemented
-- Redis caching with TTL strategies (5min for heavy endpoints, 30s for volatile data)
-- RPC connection pooling (5 concurrent connections)
-- Response compression (Brotli/Gzip for responses > 1KB)
-- Response streaming for large datasets
-- Retry logic with exponential backoff
-
-## API Categories
-
-### 1. BLOCKCHAIN CORE APIs
-
-#### Transactions
-- **GET /api/transaction/[signature]** - Get transaction details by signature
-  - Params: signature (string) - Transaction signature
-  - Response: Detailed transaction information with instructions, accounts, balances
-  
-- **POST /api/transaction/batch** - Batch fetch multiple transactions
-  - Body: { signatures: string[], includeDetails?: boolean }
-  - Response: Array of transaction details
-  
-- **GET /api/transaction/[signature]/analysis** - AI-powered transaction analysis
-  - Params: signature (string)
-  - Response: Detailed analysis with intent, risks, patterns
-  
-- **GET /api/transaction/[signature]/explain** - Natural language explanation
-  - Params: signature (string), language? (string)
-  - Response: Human-readable transaction explanation
-  
-- **GET /api/transaction/[signature]/related** - Find related transactions
-  - Params: signature (string), limit? (number)
-  - Response: Array of related transactions
-  
-- **GET /api/transaction/[signature]/failure-analysis** - Analyze failed transactions
-  - Params: signature (string)
-  - Response: Failure reasons and recommendations
-  
-- **GET /api/transaction/[signature]/metrics** - Transaction performance metrics
-  - Params: signature (string)
-  - Response: Compute units, fees, timing metrics
-
-#### Blocks
-- **GET /api/blocks** - List recent blocks
-  - Query: limit? (number), before? (number)
-  - Response: Array of block summaries
-  
-- **GET /api/blocks/[slot]** - Get specific block details
-  - Params: slot (number)
-  - Response: Block details with transactions, rewards, programs
-  
-- **GET /api/blocks/stats** - Block statistics and performance
-  - Query: lookbackSlots? (number, 1-1000, default: 100)
-  - Response: TPS, success rate, block times, volume metrics
-  
-- **GET /api/block** - Get block by slot number (legacy)
-  - Query: slot (number)
-  - Response: Block details
-
-#### Accounts
-- **GET /api/account-stats/[address]** - Comprehensive account statistics
-  - Params: address (string) - Solana account address
-  - Response: Balance, transaction count, token holdings, activity metrics
-  
-- **GET /api/account-transactions/[address]** - Account transaction history
-  - Params: address (string)
-  - Query: limit? (number), before? (string), type? (string), startDate? (ISO string), endDate? (ISO string)
-  - Response: Paginated transaction history with date filtering
-  
-- **GET /api/account-transfers/[address]** - SOL and token transfers
-  - Params: address (string)
-  - Query: limit? (number), type? ('sol'|'spl')
-  - Response: Transfer history
-  
-- **GET /api/account-portfolio/[address]** - Account portfolio overview
-  - Params: address (string)
-  - Response: SOL balance, tokens, NFTs, DeFi positions
-  
-- **GET /api/account-token-stats/[address]/[mint]** - Token-specific stats
-  - Params: address (string), mint (string)
-  - Response: Token balance, transfers, volume for specific token
-  
-- **GET /api/check-account-type** - Determine account type
-  - Query: address (string)
-  - Response: Type (wallet, program, token, etc.)
-
-### 2. TOKEN & NFT APIs
-
-#### Token Operations
-- **GET /api/token/[address]** - Token information
-  - Params: address (string) - Token mint address
-  - Response: Token metadata, supply, holders
-  
-- **GET /api/token-metadata** - Batch token metadata lookup
-  - Query: mints (comma-separated string)
-  - Response: Array of token metadata
-  
-- **GET /api/token-stats/[account]/[mint]** - Token statistics for account
-  - Params: account (string), mint (string)
-  - Response: Balance, transfers, volume metrics
-  
-- **GET /api/check-token** - Verify token validity
-  - Query: mint (string)
-  - Response: Token validation status
-
-#### NFT Collections
-- **GET /api/nft-collections** - List NFT collections
-  - Query: limit? (number), sort? ('volume'|'floor'|'items')
-  - Response: Collection listings with stats
-  
-- **GET /api/nft-collections/trending** - Trending NFT collections
-  - Response: Top trending collections
-  
-- **GET /api/nft-collections/new** - Newly listed collections
-  - Response: Recent NFT collection launches
-  
-- **GET /api/nfts/collections** - Alternative collections endpoint
-  - Response: Comprehensive collection data
-
-### 3. ANALYTICS APIs
-
-#### DeFi Analytics
-- **GET /api/analytics/overview** - DeFi ecosystem overview
-  - Response: TVL, volume, active users, trending protocols
-  
-- **GET /api/analytics/dex** - DEX analytics
-  - Query: dex? (string), timeframe? ('1h'|'24h'|'7d')
-  - Response: Volume, liquidity, top pairs
-  
-- **GET /api/analytics/defi-health** - DeFi health metrics
-  - Response: Risk indicators, liquidations, stability metrics
-  
-- **GET /api/dex/[name]** - Specific DEX data
-  - Params: name (string)
-  - Response: DEX-specific analytics
-
-#### Validator Analytics
-- **GET /api/analytics/validators** - Validator network overview
-  - Response: Active validators, stake distribution, performance
-  
-- **GET /api/analytics/trending-validators** - Trending validators
-  - Response: Top performing validators
-  
-- **GET /api/validator/[address]** - Specific validator info
-  - Params: address (string)
-  - Response: Validator details, performance, delegators
-
-#### Market Analytics
-- **GET /api/analytics/marketplaces** - NFT marketplace analytics
-  - Response: Volume, listings, sales data
-  
-- **GET /api/analytics/aggregators** - DeFi aggregator metrics
-  - Response: Aggregator volumes, routes, efficiency
-  
-- **GET /api/analytics/launchpads** - Token launchpad analytics
-  - Response: Recent launches, success rates, volumes
-  
-- **GET /api/analytics/bots** - Trading bot activity
-  - Response: Bot volume, strategies, impact metrics
-
-#### Social & GameFi
-- **GET /api/analytics/socialfi** - SocialFi metrics
-  - Response: User activity, engagement, rewards
-  
-- **GET /api/analytics/infofi** - Information finance metrics
-  - Response: Data monetization, oracle activity
-  
-- **GET /api/analytics/defai** - AI-powered DeFi analytics
-  - Response: AI model performance, predictions
-
-### 4. AI-POWERED APIs
-
-#### Question Answering
-- **POST /api/getAnswer** - AI-powered question answering
-  - Body: { question: string, context?: any }
-  - Response: { answer: string, sources: string[], confidence: number }
-  
-- **POST /api/getSimilarQuestions** - Find similar questions
-  - Body: { question: string, limit?: number }
-  - Response: Array of similar questions with answers
-  
-- **GET /api/getSources** - Get data sources
-  - Response: Available data sources and APIs
-
-#### Transaction Analysis
-- **POST /api/analyze-transaction** - Deep transaction analysis
-  - Body: { signature: string, options?: any }
-  - Response: Comprehensive analysis with ML insights
-  
-- **POST /api/analyze** - General blockchain data analysis
-  - Body: { data: any, type: string }
-  - Response: Analysis results
-  
-- **POST /api/filter-transactions** - Filter transactions by criteria
-  - Body: { filters: any, limit?: number }
-  - Response: Filtered transaction list
-
-#### AI Context
-- **POST /api/ai-response** - Generate AI responses
-  - Body: { prompt: string, context?: any }
-  - Response: AI-generated response
-  
-- **GET /api/ai-context** - Get AI conversation context
-  - Response: Current context and session data
-
-### 5. SEARCH & DISCOVERY
-
-#### Universal Search
-- **GET /api/search** - Universal search across all data
-  - Query: q (string), type? (string), filters? (object)
-  - Response: Search results across accounts, transactions, tokens
-  
-- **GET /api/search/accounts** - Account-specific search
-  - Query: q (string), tokenMint? (string), minBalance? (number)
-  - Response: Matching accounts
-  
-- **GET /api/search/filtered** - Advanced filtered search
-  - Query: Complex filter parameters
-  - Response: Filtered results
-  
-- **GET /api/search/suggestions** - Search suggestions
-  - Query: q (string)
-  - Response: Autocomplete suggestions
-  
-- **GET /api/search-suggestions** - Alternative suggestions endpoint
-  - Query: q (string)
-  - Response: Search suggestions
-
-#### Program Discovery
-- **GET /api/program-discovery** - Discover Solana programs
-  - Query: category? (string), verified? (boolean)
-  - Response: Program listings with metadata
-  
-- **GET /api/program-registry** - Program registry
-  - Query: category? (string)
-  - Response: Registered programs
-  
-- **GET /api/program/[address]** - Program details
-  - Params: address (string)
-  - Response: Program info, IDL, usage stats
-  
-- **GET /api/program-metadata** - Batch program metadata
-  - Query: programs (comma-separated)
-  - Response: Array of program metadata
-  
-- **GET /api/program-accounts** - Program account data
-  - Query: programId (string)
-  - Response: Associated accounts
-
-### 6. USER SERVICES
-
-#### User Profile
-- **GET /api/user-profile/[walletAddress]** - Get user profile
-  - Params: walletAddress (string)
-  - Response: Profile data, preferences, stats
-  
-- **PUT /api/user-profile/[walletAddress]** - Update profile
-  - Params: walletAddress (string)
-  - Body: Profile update data
-  
-- **POST /api/user-profile/sync** - Sync profile data
-  - Body: { walletAddress: string }
-  - Response: Sync status
-
-#### User History
-- **GET /api/user-history/[walletAddress]** - Transaction history
-  - Params: walletAddress (string)
-  - Query: limit? (number), offset? (number)
-  - Response: User's transaction history
-  
-- **POST /api/user-history/sync** - Sync history
-  - Body: { walletAddress: string }
-  - Response: Sync status
-  
-- **POST /api/user-history/repair** - Repair history data
-  - Body: { walletAddress: string }
-  - Response: Repair status
-
-#### Social Features
-- **POST /api/user-social/follow** - Follow user
-  - Body: { follower: string, following: string }
-  
-- **POST /api/user-social/unfollow** - Unfollow user
-  - Body: { follower: string, following: string }
-  
-- **POST /api/user-social/like** - Like content
-  - Body: { user: string, contentId: string }
-  
-- **POST /api/user-social/unlike** - Unlike content
-  - Body: { user: string, contentId: string }
-  
-- **POST /api/user-social/view** - Track content view
-  - Body: { user: string, contentId: string }
-
-#### User Preferences
-- **GET /api/user-tab-preference/[walletAddress]** - Get tab preferences
-  - Params: walletAddress (string)
-  - Response: User's UI preferences
-  
-- **PUT /api/user-tab-preference/[walletAddress]** - Update preferences
-  - Params: walletAddress (string)
-  - Body: Preference data
-
-### 7. REAL-TIME & STREAMING
-
-#### Server-Sent Events (SSE)
-- **GET /api/sse-feed** - Real-time transaction feed
-  - Query: filter? (object)
-  - Response: SSE stream of transactions
-  
-- **GET /api/sse-events/feed** - Event feed
-  - Query: types? (array)
-  - Response: SSE stream of blockchain events
-  
-- **GET /api/sse-alerts** - Real-time alerts
-  - Query: walletAddress? (string)
-  - Response: SSE stream of alerts
-
-#### Streaming Data
-- **GET /api/stream** - General data stream
-  - Query: type (string), filters? (object)
-  - Response: Streaming data
-  
-- **POST /api/stream** - Create stream subscription
-  - Body: { type: string, filters: object }
-  - Response: Stream ID
-
-### 8. MONITORING & HEALTH
-
-#### System Health
-- **GET /api/health/anthropic** - Anthropic API health
-  - Response: API status and latency
-  
-- **GET /api/monitoring/api** - API monitoring metrics
-  - Response: Request counts, latencies, errors
-  
-- **GET /api/monitoring/requests** - Request logs
-  - Query: limit? (number), status? (number)
-  - Response: Recent API requests
-
-#### Error Tracking
-- **POST /api/error-tracking** - Report errors
-  - Body: { error: string, context: object }
-  - Response: Error ID
-  
-- **GET /api/error-tracking** - Get error logs
-  - Query: limit? (number), severity? (string)
-  - Response: Error listings
-  
-- **POST /api/crash-reporting** - Report crashes
-  - Body: { crash: object, device: object }
-  - Response: Crash ID
-
-### 9. MONETIZATION & TOKEN GATING
-
-#### Token Gating
-- **GET /api/token-gating/check** - Check access
-  - Query: walletAddress (string), requirement (object)
-  - Response: Access status
-  
-#### Monetization
-- **GET /api/monetization/balance** - Get balance
-  - Headers: Authorization (Bearer token)
-  - Response: User balance
-  
-- **POST /api/monetization/consume** - Consume credits
-  - Body: { amount: number, operation: string }
-  - Response: New balance
-  
-- **POST /api/monetization/earn** - Earn credits
-  - Body: { action: string, metadata: object }
-  - Response: Earned amount
-
-### 10. MARKET DATA & DEX AGGREGATOR APIs
-
-#### Market Data API
-- **GET /api/market-data** - Token market data with DEX aggregation
-  - Query Parameters:
-    - `mint` (required): Token mint address
-    - `endpoint` (required): 'ohlcv', 'markets', or 'orderbook'
-    - `type` (optional, for ohlcv): '1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M' (default: '1H')
-    - `poolAddress` (optional, for ohlcv): Specific pool address for pool-specific data
-    - `baseMint` (optional, for markets): Filter pools by base token
-    - `offset` (optional, for orderbook): Price offset (default: '100')
-  
-  - **OHLCV Endpoint** (`endpoint=ohlcv`):
-    - Returns candlestick/OHLC data for charting
-    - Includes technical indicators: MA7, MA25, MACD (line, signal, histogram)
-    - Aggregates all available DEX pools/pairs with 24h volume and transaction counts
-    - Response includes:
-      - `tokenInfo`: Symbol, name, price, liquidity, volume24h
-      - `mainPair`: Primary trading pair (highest volume)
-      - `pools[]`: All pools with pair info, DEX name, volume, price, last seen
-      - `data`: OHLCV candlestick data
-      - `indicators`: MA7, MA25, MACD indicators
-    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=ohlcv&type=1H`
-    - Pool-specific: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=ohlcv&poolAddress=POOL_ADDRESS`
-  
-  - **Markets Endpoint** (`endpoint=markets`):
-    - Returns top 3 pools by liquidity
-    - Includes DEX, pair, price, liquidity, volume24h, transaction count
-    - Can filter by baseMint or specific poolAddress
-    - Response includes:
-      - `pools[]`: Array of pool data with liquidity rankings
-      - `count`: Number of pools returned
-      - `filters`: Applied filters
-    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=markets`
-  
-  - **Orderbook Endpoint** (`endpoint=orderbook`):
-    - Returns market depth and order book data
-    - Includes bids, asks, price levels
-    - Example: `/api/market-data?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&endpoint=orderbook&offset=100`
-  
-  - **Security**: All responses exclude internal data sources - no API URLs or keys exposed
-  - **Performance**: 24h data lookback, aggregates 100 recent transactions for pool stats
-
-#### DEX Profile API
-- **GET /api/dex/[name]** - Comprehensive DEX analytics
-  - Params: name (string) - DEX identifier (raydium, orca, phoenix, meteora, etc.)
-  - Response:
-    - Profile: name, description, logo, website, social links, program ID
-    - Metrics: volume24h, volumeChange, TVL, market share, active users, transactions
-    - Historical data: volume, TVL, user activity over time
-    - Top pools: Highest volume trading pairs
-    - Recent trades: Latest DEX activity
-    - Security: Audit status, multisig, timelock, bug bounty
-    - Performance: Uptime, avg slippage, pool count, token count, liquidity depth
-  - Example: `/api/dex/raydium`, `/api/dex/orca`
-
-#### Chart & Trades Endpoints (Simplified Aliases)
-
-##### GET /api/chart
-Clean alias for OHLCV candlestick data - simplified alternative to `/api/market-data?endpoint=ohlcv`
-
-**Request Parameters:**
-- `mint` (required, string): Token mint address
-- `type` (optional, string): Time interval for candles
-  - Options: '1m', '3m', '5m', '15m', '30m', '1H' (default), '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M'
-- `time_from` (optional, number): Start timestamp in unix seconds
-- `time_to` (optional, number): End timestamp in unix seconds
-- `poolAddress` (optional, string): Specific pool address for pool-specific data
-
-**Request Schema:**
-```typescript
-interface ChartRequest {
-  mint: string;                    // e.g., "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS"
-  type?: '1m' | '3m' | '5m' | '15m' | '30m' | '1H' | '2H' | '4H' | '6H' | '8H' | '12H' | '1D' | '3D' | '1W' | '1M';
-  time_from?: number;              // Unix timestamp (seconds)
-  time_to?: number;                // Unix timestamp (seconds)
-  poolAddress?: string;            // Optional pool filter
-}
-```
-
-**Response Schema (200 OK):**
-```typescript
-interface ChartResponse {
-  success: true;
-  data: {
-    items: Array<{
-      unixTime: number;            // Timestamp in seconds
-      type: string;                // Interval type
-      open: number;                // Opening price
-      high: number;                // Highest price
-      low: number;                 // Lowest price
-      close: number;               // Closing price
-      volume: number;              // Trading volume in USD
-    }>;
-    indicators?: {
-      ma7?: number[];              // 7-period moving average
-      ma25?: number[];             // 25-period moving average
-      macd?: {
-        line: number[];            // MACD line
-        signal: number[];          // Signal line
-        histogram: number[];       // MACD histogram
-      };
-    };
-  };
-  metadata?: {
-    batchCount?: number;           // Number of API batches used
-    totalCandles?: number;         // Total candles fetched
-    cacheHit?: boolean;           // Whether cached data was used
-    fetchTime?: number;           // API fetch duration (ms)
-  };
-}
-```
-
-**Error Response (4xx/5xx):**
-```typescript
-interface ErrorResponse {
-  success: false;
-  error: string;                   // Error message
-  details?: any;                   // Additional error details
-}
-```
-
-**Features:**
-- Automatic batch fetching for large time ranges (up to 10 days of 1m data)
-- Smart batching (~960 candles per batch)
-- Technical indicators included (MA7, MA25, MACD)
-- Performance metadata in response
-- 2-minute cache TTL
-
-**Example Requests:**
-```bash
-# Get 1-hour candles
-GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=1H
-
-# Get 5-minute candles for specific time range
-GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=5m&time_from=1699920000&time_to=1699930000
-
-# Get pool-specific data
-GET /api/chart?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&poolAddress=POOL_ADDRESS&type=1H
-```
-
----
-
-##### GET /api/trades
-Recent trades/swaps for any token
-
-**Request Parameters:**
-- `mint` (required, string): Token mint address
-- `limit` (optional, number): Number of trades to return (default: 50, max: 100)
-- `type` (optional, string): Transaction type filter
-  - Options: 'swap' (default), 'add', 'remove'
-- `offset` (optional, number): Pagination offset (default: 0)
-
-**Request Schema:**
-```typescript
-interface TradesRequest {
-  mint: string;                    // e.g., "pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS"
-  limit?: number;                  // 1-100, default: 50
-  type?: 'swap' | 'add' | 'remove'; // Transaction type
-  offset?: number;                 // Pagination offset
-}
-```
-
-**Response Schema (200 OK):**
-```typescript
-interface TradesResponse {
-  success: true;
-  data: Array<{
-    signature: string;             // Transaction signature
-    blockTime: number;             // Block timestamp
-    source: string;                // DEX name (Raydium, Orca, etc.)
-    owner: string;                 // Wallet address performing trade
-    side: 'buy' | 'sell';          // Trade direction
-    from: {
-      amount: number;              // Input token amount
-      mint: string;                // Input token mint
-      symbol?: string;             // Input token symbol
-      decimals: number;            // Token decimals
-    };
-    to: {
-      amount: number;              // Output token amount
-      mint: string;                // Output token mint
-      symbol?: string;             // Output token symbol
-      decimals: number;            // Token decimals
-    };
-    price?: number;                // Trade price
-    volumeUSD?: number;            // Trade volume in USD
-    slot?: number;                 // Blockchain slot number
-  }>;
-  pagination?: {
-    offset: number;                // Current offset
-    limit: number;                 // Items per page
-    hasMore: boolean;              // More results available
-  };
-}
-```
-
-**Error Response (4xx/5xx):**
-```typescript
-interface ErrorResponse {
-  success: false;
-  error: string;                   // Error message
-  details?: any;                   // Additional error details
-}
-```
-
-**Features:**
-- Real-time trading activity tracking
-- DEX identification (Raydium, Orca, Phoenix, Meteora, Jupiter, etc.)
-- Trade side detection (buy/sell)
-- USD value calculations when available
-- Pagination support for large result sets
-- 30-second cache TTL
-
-**Example Requests:**
-```bash
-# Get latest 50 swaps
-GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS
-
-# Get latest 100 swaps
-GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&limit=100
-
-# Get liquidity additions only
-GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&type=add&limit=50
-
-# Paginate through results
-GET /api/trades?mint=pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS&limit=50&offset=50
-```
-
-#### Trading Terminal (Legacy)
-- **GET /api/trading/market-data** - Real-time market data
-  - Query: symbols (array), interval? (string)
-  - Response: Price, volume, orderbook data
-
-#### Position Management
-- **GET /api/trading/positions** - Get positions
-  - Headers: Authorization (Bearer token)
-  - Response: Open positions
-  
-- **POST /api/trading/positions** - Open position
-  - Body: { symbol: string, side: string, size: number }
-  - Response: Position details
-  
-- **PATCH /api/trading/positions** - Modify position
-  - Body: { positionId: string, updates: object }
-  - Response: Updated position
-  
-- **DELETE /api/trading/positions** - Close position
-  - Query: positionId (string)
-  - Response: Closure details
-
-#### Trade Execution
-- **POST /api/trading/execute** - Execute trade
-  - Body: { order: object }
-  - Response: Execution details
-  
-- **GET /api/trading/execute** - Get execution status
-  - Query: orderId (string)
-  - Response: Order status
-
-### 11. PROXY & RPC
-
-#### Solana RPC Proxy
-- **POST /api/solana-rpc** - Direct RPC calls
-  - Body: Standard Solana RPC request
-  - Response: RPC response
-  
-- **POST /api/solana-proxy** - Proxied RPC calls
-  - Body: RPC request with caching
-  - Response: Cached or fresh RPC response
-  
-- **GET /api/solana-proxy/[transaction]** - Get transaction via proxy
-  - Params: transaction (string)
-  - Response: Transaction details
-
-#### OpenRouter Proxy
-- **POST /api/proxy/rpc** - OpenRouter RPC
-  - Body: RPC request
-  - Response: RPC response
-  
-- **POST /api/proxy/rpc/[id]** - Specific RPC endpoint
-  - Params: id (string)
-  - Body: RPC parameters
-  - Response: RPC result
-
-### 12. EXTERNAL API INTEGRATIONS
-
-#### Birdeye API (Primary Market Data Source)
-Available through AI plan execution in /api/getAnswer (requires BIRDEYE_API_KEY):
-
-- **tokenMarketData(mint)** - Comprehensive token market data with 5-tier fallback
-  - Uses: Birdeye → DexScreener → GeckoTerminal → RPC
-  - Returns: Price, market cap, 24h volume, liquidity, holder count, supply
-  - Example: tokenMarketData("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263")
-
-- **birdeyeOHLCV(address, type?, time_from?, time_to?)** - Candlestick/chart data
-  - Types: 1m, 3m, 5m, 15m, 30m, 1H, 2H, 4H, 6H, 8H, 12H, 1D, 3D, 1W, 1M
-  - Returns: OHLCV data with volume in USD
-  - Use for: Charts, technical analysis, price history
-  - Example: birdeyeOHLCV("DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "1H")
-
-- **birdeyeOrderbook(address, offset?)** - Market depth and order book
-  - Requires: DEX market/pair address (not token mint)
-  - Returns: Bids, asks, price levels, update timestamp
-  - Note: Limited to tokens with centralized orderbook markets
-
-#### Blockchain Data API (Wallets, NFTs, Swaps)
-Available through AI plan execution in /api/getAnswer:
-
-- **getTokenHolders(address)** - Top token holders and distribution
-- **getPortfolio(address, includeNftMetadata?)** - Full wallet portfolio (SOL + tokens + NFTs)
-- **getTokenBalances(address)** - SPL token balances for wallet
-- **getNativeBalance(address)** - SOL balance
-- **getNFTsForAddress(address, params)** - NFTs owned by address
-- **getNFTMetadata(address)** - NFT metadata
-- **getNFTCollectionStats(address)** - Collection floor, volume, owners
-- **getNFTCollectionItems(address, params)** - Items in collection
-- **getSwapsByWalletAddress(address, params)** - DEX swaps by wallet
-- **getSwapsByTokenAddress(address, params)** - DEX swaps for token
-- **getSPLTokenTransfers(address, params)** - SPL token transfer history
-- **getSOLTransfers(address, params)** - SOL transfer history
-- **getTransactionsByAddress(address, params)** - Transaction history
-- **getTransactionBySignature(signature)** - Transaction details
-- **getDomainInfo(address)** - Domain records for wallet
-- **resolveDomain(domain)** - Resolve .sol domains to address
-- **getComprehensiveBlockchainData(query)** - Auto-detect and fetch relevant data
-
-#### Solana Core Methods (via lib/solana.ts)
-Available through direct API calls:
-
-- **validateSolanaAddress(address)** - Validate address format
-- **getAccountInfo(address)** - Account information
-- **getNetworkStats()** - Network performance stats
-- **getTokenInfo(mintAddress)** - Token mint information
-- **getBlockDetails(slot)** - Detailed block data
-- **getRPCLatency()** - Current RPC latency
-- **getTransactionDetails(signature)** - Parse transaction
-- **getRecentTransactions(address, limit)** - Recent activity
-
-### 13. API KEY AUTHENTICATION & MANAGEMENT
-
-#### API Key Creation & Wallet Binding
-- **POST /api/auth/api-keys/create** - Create new API key with optional wallet binding
-  - Body:
-    ```json
-    {
-      "name": "My API Key",
-      "permissions": ["read:*"],
-      "expiresInDays": 30,
-      "metadata": {},
-      "generateAuthLink": true
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "success": true,
-      "apiKey": {
-        "id": "abc123",
-        "name": "My API Key",
-        "status": "pending",
-        "createdAt": "2025-11-10T12:00:00Z",
-        "permissions": ["read:*"]
-      },
-      "rawKey": "osvm_1234567890abcdef...",
-      "authLink": "http://localhost:3000/auth/bind?token=xyz789",
-      "authLinkExpiresAt": "2025-11-10T12:15:00Z"
-    }
-    ```
-  - ⚠️ **Important**: The `rawKey` is only shown once and cannot be retrieved later
-  - Features:
-    - Generates secure API keys for CLI tools, bots, and integrations
-    - Optional automatic auth link generation for wallet binding
-    - Configurable permissions and expiration
-    - SHA-256 hashed keys for security
-
-- **POST /api/auth/auth-link/create** - Generate auth link for wallet binding
-  - Body:
-    ```json
-    {
-      "apiKeyId": "abc123",
-      "expiresInMinutes": 15
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "success": true,
-      "authLink": "http://localhost:3000/auth/bind?token=xyz789",
-      "expiresAt": "2025-11-10T12:15:00Z",
-      "token": "xyz789"
-    }
-    ```
-  - Features:
-    - One-time use tokens for security
-    - Configurable expiration (default: 15 minutes)
-    - Automatic token generation
-    - URL ready for sharing with users
-
-- **POST /api/auth/bind-wallet** - Bind Solana wallet to API key
-  - Body:
-    ```json
-    {
-      "token": "xyz789",
-      "walletAddress": "Your_Solana_Address",
-      "signature": "base64_signature",
-      "message": "Signed message"
-    }
-    ```
-  - Response:
-    ```json
-    {
-      "success": true,
-      "apiKeyId": "abc123",
-      "walletAddress": "Your_Solana_Address",
-      "message": "Wallet successfully bound to API key"
-    }
-    ```
-  - Features:
-    - Verifies Solana wallet ownership via ed25519 signatures
-    - Single-use auth tokens for security
-    - Updates API key status from 'pending' to 'active'
-    - Prevents unauthorized key binding
-
-#### API Key Management
-- **GET /api/auth/api-keys/list** - List all API keys for authenticated user
-  - Headers: `Authorization: Bearer <token>` or session-based
-  - Query: `userId?` (optional, for admin use)
-  - Response:
-    ```json
-    {
-      "success": true,
-      "keys": [
-        {
-          "id": "abc123",
-          "name": "My Bot",
-          "status": "active",
-          "userId": "wallet_address",
-          "createdAt": "2025-11-10T12:00:00Z",
-          "lastUsedAt": "2025-11-10T13:00:00Z",
-          "permissions": ["read:*"]
-        }
-      ]
-    }
-    ```
-
-- **GET /api/auth/api-keys/metrics** - Get usage metrics for API key
-  - Headers: `Authorization: Bearer <api_key>`
-  - Response:
-    ```json
-    {
-      "success": true,
-      "metrics": {
-        "apiKeyId": "abc123",
-        "totalRequests": 1500,
-        "successfulRequests": 1450,
-        "failedRequests": 50,
-        "averageResponseTime": 250,
-        "lastActivity": "2025-11-10T13:00:00Z",
-        "requestsByEndpoint": {
-          "/api/transaction": 800,
-          "/api/account-stats": 400,
-          "/api/search": 300
-        },
-        "requestsByDay": {
-          "2025-11-10": 500,
-          "2025-11-09": 600,
-          "2025-11-08": 400
-        }
-      }
-    }
-    ```
-
-- **GET /api/auth/api-keys/activity** - Get activity logs for API key
-  - Headers: `Authorization: Bearer <api_key>`
-  - Query:
-    - `limit?` (default: 50, max: 100)
-    - `offset?` (default: 0)
-    - `startDate?` (ISO string)
-    - `endDate?` (ISO string)
-  - Response:
-    ```json
-    {
-      "success": true,
-      "activities": [
-        {
-          "id": "log_123",
-          "timestamp": "2025-11-10T13:00:00Z",
-          "endpoint": "/api/transaction/xyz",
-          "method": "GET",
-          "statusCode": 200,
-          "responseTime": 245
-        }
-      ],
-      "total": 1500,
-      "hasMore": true
-    }
-    ```
-
-- **DELETE /api/auth/api-keys/[keyId]** - Revoke/delete an API key
-  - Params: keyId (string, path)
-  - Headers: Authorization required
-  - Response:
-    ```json
-    {
-      "success": true,
-      "message": "API key revoked successfully"
-    }
-    ```
-
-#### API Key Usage
-
-**Using API Keys in Requests:**
-```bash
-# Bearer token authentication
-curl -H "Authorization: Bearer osvm_1234567890abcdef..." \
-  https://opensvm.com/api/transaction/[signature]
-
-# Environment variable
-export OPENSVM_API_KEY="osvm_1234567890abcdef..."
-curl -H "Authorization: Bearer $OPENSVM_API_KEY" \
-  https://opensvm.com/api/account-stats/[address]
-```
-
-**Key Statuses:**
-- `pending`: Awaiting wallet binding
-- `active`: Wallet bound and ready to use
-- `revoked`: Permanently disabled
-
-**Security Features:**
-- Keys are SHA-256 hashed before storage
-- One-time auth tokens with expiration
-- Solana signature verification for wallet binding
-- Activity logging for all API requests
-- Per-key rate limiting and permissions
-
-**Use Cases:**
-- CLI tools and scripts
-- Telegram/Discord bots
-- Third-party integrations
-- Automated trading systems
-- Analytics dashboards
-- Mobile applications
-
-### 14. UTILITY ENDPOINTS
-
-#### Share & Referral
-- **POST /api/share/generate** - Generate share link
-  - Body: { content: object, type: string }
-  - Response: Share code and URL
-  
-- **GET /api/share/[shareCode]** - Get shared content
-  - Params: shareCode (string)
-  - Response: Shared data
-  
-- **POST /api/referrals/claim** - Claim referral
-  - Body: { referralCode: string, walletAddress: string }
-  - Response: Claim status
-  
-- **GET /api/referrals/balance** - Referral balance
-  - Query: walletAddress (string)
-  - Response: Referral earnings
-
-#### Authentication
-- **POST /api/auth/verify** - Verify wallet signature
-  - Body: { message: string, signature: string, publicKey: string }
-  - Response: Verification status
-  
-- **POST /api/auth/session** - Create session
-  - Body: { walletAddress: string }
-  - Response: Session token
-  
-- **POST /api/auth/logout** - Logout
-  - Headers: Authorization (Bearer token)
-  - Response: Logout status
-
-#### Miscellaneous
-- **GET /api/slots** - Get slot information
-  - Response: Current slot, epoch info
-  
-- **GET /api/favicon** - Get favicon
-  - Response: Site favicon
-  
-- **GET /api/og** - Open Graph metadata
-  - Response: OG tags for sharing
-  
-- **POST /api/wallet-path-finding** - Find wallet connections
-  - Body: { from: string, to: string }
-  - Response: Connection path
+## API Health Status (Last Check: November 12, 2025)
+- **Total Endpoints:** 193 across 94 categories
+- **Auto-Generated Documentation:** Complete reference with parameter descriptions and types
+- **Enhanced Features:** Request/response schemas, authentication requirements, example requests
+- **Documentation Source:** API_REFERENCE.md (auto-generated from source code)
+
+### API Categories
+
+### 1. ACCOUNT PORTFOLIO
+
+- **GET /api/account-portfolio/:address**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/account-portfolio/{address}" \`
+
+### 2. ACCOUNT STATS
+
+- **GET /api/account-stats/:address**
+  - Example: `curl "https://opensvm.com/api/account-stats/{address}"`
+
+### 3. ACCOUNT TOKEN STATS
+
+- **GET /api/account-token-stats/:address/:mint**
+  - Example: `curl "https://opensvm.com/api/account-token-stats/{address}/{mint}"`
+
+### 4. ACCOUNT TRANSACTIONS
+
+- **GET /api/account-transactions/:address**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/account-transactions/{address}?limit=value&before=value&until=value&cl...`
+
+### 5. ACCOUNT TRANSFERS
+
+- **GET /api/account-transfers/:address**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/account-transfers/{address}?beforeSignature=value&offset=value&limit=v...`
+
+### 6. AI ANALYZE TRANSACTION
+
+- **GET, POST /api/ai-analyze-transaction**
+  - Example: `curl -X POST "https://opensvm.com/api/ai-analyze-transaction" \`
+
+### 7. AI RESPONSE
+
+- **POST /api/ai-response**
+  - Example: `curl -X POST "https://opensvm.com/api/ai-response" \`
+
+### 8. ALERTS
+
+- **GET /api/alerts** - Real-time alerts and warnings stream
+  - Example: `curl "https://opensvm.com/api/alerts"`
+
+### 9. ANALYTICS
+
+- **GET /api/analytics/aggregators**
+  - Example: `curl "https://opensvm.com/api/analytics/aggregators"`
+
+- **GET /api/analytics/bots**
+  - Example: `curl "https://opensvm.com/api/analytics/bots"`
+
+- **GET /api/analytics/cross-chain**
+  - Example: `curl "https://opensvm.com/api/analytics/cross-chain?bridge=value"`
+
+- **GET /api/analytics/defai**
+  - Example: `curl "https://opensvm.com/api/analytics/defai"`
+
+- **GET /api/analytics/defi-health**
+  - Example: `curl "https://opensvm.com/api/analytics/defi-health?protocol=value"`
+
+- **GET /api/analytics/dex**
+  - Example: `curl "https://opensvm.com/api/analytics/dex?dex=value"`
+
+- **GET /api/analytics/infofi**
+  - Example: `curl "https://opensvm.com/api/analytics/infofi"`
+
+- **GET /api/analytics/launchpads**
+  - Example: `curl "https://opensvm.com/api/analytics/launchpads"`
+
+- **GET /api/analytics/marketplaces**
+  - Example: `curl "https://opensvm.com/api/analytics/marketplaces"`
+
+- **GET /api/analytics/overview**
+  - Example: `curl "https://opensvm.com/api/analytics/overview"`
+
+- **GET /api/analytics/socialfi**
+  - Example: `curl "https://opensvm.com/api/analytics/socialfi"`
+
+- **GET, POST /api/analytics/trending-validators**
+  - Example: `curl -X POST "https://opensvm.com/api/analytics/trending-validators" \`
+
+- **GET, POST, PATCH /api/analytics/user-interactions**
+  - Authentication: Required
+  - Example: `curl -X PATCH "https://opensvm.com/api/analytics/user-interactions" \`
+
+- **GET /api/analytics/validators**
+  - Example: `curl "https://opensvm.com/api/analytics/validators"`
+
+### 10. ANALYZE
+
+- **POST /api/analyze**
+  - Example: `curl -X POST "https://opensvm.com/api/analyze" \`
+
+### 11. ANALYZE ACCOUNT CHANGES
+
+- **POST /api/analyze-account-changes**
+  - Example: `curl -X POST "https://opensvm.com/api/analyze-account-changes" \`
+
+### 12. ANALYZE TRANSACTION
+
+- **GET, POST /api/analyze-transaction**
+  - Example: `curl -X POST "https://opensvm.com/api/analyze-transaction" \`
+
+### 13. ANOMALY
+
+- **GET, POST /api/anomaly**
+  - Example: `curl -X POST "https://opensvm.com/api/anomaly" \`
+
+- **GET /api/anomaly/related**
+  - Example: `curl "https://opensvm.com/api/anomaly/related?alertId=value&accounts=value"`
+
+- **GET /api/anomaly/similar**
+  - Example: `curl "https://opensvm.com/api/anomaly/similar?alertId=value&type=value"`
+
+### 14. API KEYS
+
+- **GET, POST /api/api-keys** - API key management
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/api-keys" \`
+
+### 15. AUTH
+
+- **GET /api/auth/api-keys/activity**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/auth/api-keys/activity?apiKeyId=value&walletAddress=value&signature=va...`
+
+- **POST /api/auth/api-keys/create** - API endpoint to create a new API key
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/api-keys/create" \`
+
+- **GET /api/auth/api-keys/list**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/auth/api-keys/list?walletAddress=value&signature=value&message=value" ...`
+
+- **GET /api/auth/api-keys/metrics**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/auth/api-keys/metrics?apiKeyId=value&walletAddress=value&signature=val...`
+
+- **POST /api/auth/auth-link/create** - API endpoint to create an auth link for an existing API key
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/auth-link/create" \`
+
+- **POST /api/auth/bind-wallet** - API endpoint to bind a wallet to an API key via auth link
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/bind-wallet" \`
+
+- **POST /api/auth/logout** - Logout endpoint
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/logout" \`
+
+- **GET, POST /api/auth/session** - Session creation endpoint
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/session" \`
+
+- **POST /api/auth/verify** - Signature verification endpoint
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/auth/verify" \`
+
+### 16. BANK
+
+- **GET /api/bank/wallets**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/bank/wallets" \`
+
+- **POST /api/bank/wallets/create** - Initialize bank wallets collection if it doesn't exist
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/bank/wallets/create" \`
+
+- **POST /api/bank/wallets/refresh** - Get Solana connection
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/bank/wallets/refresh" \`
+
+- **POST /api/bank/wallets/simulate**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/bank/wallets/simulate" \`
+
+### 17. BLOCK
+
+- **GET /api/block**
+  - Example: `curl "https://opensvm.com/api/block?slot=value"`
+
+### 18. BLOCKS
+
+- **GET /api/blocks**
+  - Example: `curl "https://opensvm.com/api/blocks?limit=value&before=value&validator=value&includeAnalytics=value...`
+
+- **GET /api/blocks/:slot** - Process block analytics based on request parameters
+  - Example: `curl "https://opensvm.com/api/blocks/{slot}?includeAnalytics=value&includeTransactions=value&include...`
+
+- **GET /api/blocks/stats**
+  - Example: `curl "https://opensvm.com/api/blocks/stats?lookbackSlots=value"`
+
+### 19. CHART
+
+- **GET /api/chart** - Chart API - Clean alias for OHLCV candlestick data
+  - Example: `curl "https://opensvm.com/api/chart"`
+
+### 20. CHAT
+
+- **POST /api/chat**
+  - Example: `curl -X POST "https://opensvm.com/api/chat" \`
+
+- **GET, POST, DELETE /api/chat/global**
+  - Example: `curl -X DELETE "https://opensvm.com/api/chat/global"`
+
+### 21. CHECK ACCOUNT TYPE
+
+- **GET /api/check-account-type**
+  - Example: `curl "https://opensvm.com/api/check-account-type?address=value"`
+
+### 22. CHECK TOKEN
+
+- **GET /api/check-token**
+  - Example: `curl "https://opensvm.com/api/check-token?address=value"`
+
+### 23. CONFIG
+
+- **GET, POST /api/config** - Configuration endpoint
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/config" \`
+
+### 24. CRASH REPORTING
+
+- **GET, POST, DELETE, PATCH /api/crash-reporting**
+  - Example: `curl -X PATCH "https://opensvm.com/api/crash-reporting" \`
+
+### 25. DEX
+
+- **GET /api/dex/:name**
+  - Example: `curl "https://opensvm.com/api/dex/{name}"`
+
+### 26. DOCS
+
+- **GET /api/docs/openapi**
+  - Example: `curl "https://opensvm.com/api/docs/openapi?format=value&download=value&scan=value"`
+
+- **GET /api/docs/page**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/docs/page" \`
+
+### 27. ERROR REPORT
+
+- **GET, POST /api/error-report** - Error reporting endpoint
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/error-report" \`
+
+### 28. ERROR TRACKING
+
+- **GET, POST, DELETE, PATCH /api/error-tracking**
+  - Example: `curl -X PATCH "https://opensvm.com/api/error-tracking" \`
+
+### 29. FAVICON
+
+- **GET /api/favicon**
+  - Example: `curl "https://opensvm.com/api/favicon"`
+
+### 30. FEED
+
+- **GET /api/feed/latest** - Real-time feed of latest blockchain activity
+  - Example: `curl "https://opensvm.com/api/feed/latest"`
+
+### 31. FILTER TRANSACTIONS
+
+- **POST /api/filter-transactions**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/filter-transactions" \`
+
+### 32. FIND RELATED TRANSACTIONS
+
+- **POST /api/find-related-transactions**
+  - Example: `curl -X POST "https://opensvm.com/api/find-related-transactions" \`
+
+### 33. GETANSWER
+
+- **POST /api/getAnswer**
+  - Example: `curl -X POST "https://opensvm.com/api/getAnswer" \`
+
+### 34. GETSIMILARQUESTIONS
+
+- **POST /api/getSimilarQuestions**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/getSimilarQuestions" \`
+
+### 35. GETSOURCES
+
+- **GET /api/getSources**
+  - Example: `curl "https://opensvm.com/api/getSources"`
+
+### 36. HEALTH
+
+- **GET /api/health** - Health check endpoint with activity logging
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/health" \`
+
+- **GET /api/health/anthropic**
+  - Example: `curl "https://opensvm.com/api/health/anthropic?backend=value&cache=value"`
+
+### 37. HOLDERSBYINTERACTION
+
+- **GET /api/holdersByInteraction**
+  - Example: `curl "https://opensvm.com/api/holdersByInteraction?program=value&period=value&limit=value&offset=val...`
+
+### 38. INSTRUCTION LOOKUP
+
+- **GET, POST /api/instruction-lookup** - GET /api/instruction-lookup
+  - Example: `curl -X POST "https://opensvm.com/api/instruction-lookup" \`
+
+### 39. LAUNCHPAD
+
+- **GET /api/launchpad/admin/referrers** - API Route: GET /api/launchpad/admin/referrers
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/launchpad/admin/referrers?status=value" \`
+
+- **POST /api/launchpad/admin/referrers/:id/approve** - API Route: POST /api/launchpad/admin/referrers/[id]/approve
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/admin/referrers/{id}/approve" \`
+
+- **POST /api/launchpad/admin/referrers/:id/reject** - API Route: POST /api/launchpad/admin/referrers/[id]/reject
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/admin/referrers/{id}/reject" \`
+
+- **GET /api/launchpad/contributions/:contribId**
+  - Example: `curl "https://opensvm.com/api/launchpad/contributions/{contribId}"`
+
+- **GET /api/launchpad/kol/:kolId** - API Route: GET /api/launchpad/kol/[kolId]
+  - Example: `curl "https://opensvm.com/api/launchpad/kol/{kolId}"`
+
+- **POST /api/launchpad/kol/:kolId/claim**
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/kol/{kolId}/claim" \`
+
+- **POST /api/launchpad/kol/apply** - API Route: POST /api/launchpad/kol/apply
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/kol/apply" \`
+
+- **GET /api/launchpad/referral-links/:code** - API Route: GET /api/launchpad/referral-links/[code]
+  - Example: `curl "https://opensvm.com/api/launchpad/referral-links/{code}"`
+
+- **GET, POST /api/launchpad/reports/daily**
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/reports/daily" \`
+
+- **GET, POST /api/launchpad/sales** - API Route: GET /api/launchpad/sales
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/sales" \`
+
+- **GET /api/launchpad/sales/:saleId** - API Route: GET /api/launchpad/sales/[saleId]
+  - Example: `curl "https://opensvm.com/api/launchpad/sales/{saleId}"`
+
+- **POST /api/launchpad/sales/:saleId/contribute** - API Route: POST /api/launchpad/sales/[saleId]/contribute
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/contribute" \`
+
+- **POST /api/launchpad/sales/:saleId/distribute_volume**
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/distribute_volume" \`
+
+- **POST /api/launchpad/sales/:saleId/referral-links** - API Route: POST /api/launchpad/sales/[saleId]/referral-links
+  - Example: `curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/referral-links" \`
+
+### 40. LIVE STATS
+
+- **GET /api/live-stats** - Real-time blockchain statistics
+  - Example: `curl "https://opensvm.com/api/live-stats"`
+
+### 41. LOGGING
+
+- **GET, POST /api/logging**
+  - Example: `curl -X POST "https://opensvm.com/api/logging" \`
+
+### 42. MARKET DATA
+
+- **GET /api/market-data**
+  - Example: `curl "https://opensvm.com/api/market-data?mint=value&endpoint=value&baseMint=value&poolAddress=value...`
+
+### 43. MEMPOOL
+
+- **GET /api/mempool** - Real-time mempool monitoring
+  - Example: `curl "https://opensvm.com/api/mempool"`
+
+### 44. METRICS
+
+- **GET, POST /api/metrics** - System metrics and performance data
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/metrics" \`
+
+### 45. MONETIZATION
+
+- **GET /api/monetization/balance**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/monetization/balance" \`
+
+- **POST /api/monetization/consume**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/monetization/consume" \`
+
+- **POST /api/monetization/earn**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/monetization/earn" \`
+
+### 46. MONITORING
+
+- **GET, DELETE /api/monitoring/api**
+  - Example: `curl -X DELETE "https://opensvm.com/api/monitoring/api"`
+
+- **GET, POST, DELETE /api/monitoring/requests**
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/monitoring/requests" \`
+
+### 47. NFT COLLECTIONS
+
+- **GET /api/nft-collections**
+  - Example: `curl "https://opensvm.com/api/nft-collections"`
+
+- **GET /api/nft-collections/new**
+  - Example: `curl "https://opensvm.com/api/nft-collections/new"`
+
+- **GET /api/nft-collections/trending**
+  - Example: `curl "https://opensvm.com/api/nft-collections/trending"`
+
+### 48. NFTS
+
+- **GET /api/nfts/collections**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/nfts/collections" \`
+
+### 49. NOTIFICATIONS
+
+- **GET /api/notifications** - Real-time notifications stream
+  - Example: `curl "https://opensvm.com/api/notifications"`
+
+### 50. OG
+
+- **GET /api/og**
+  - Example: `curl "https://opensvm.com/api/og?title=value&description=value&type=value"`
+
+- **GET /api/og/:entityType/:entityId** - OG Image Generation API
+  - Example: `curl "https://opensvm.com/api/og/{entityType}/{entityId}"`
+
+### 51. OPENSVM
+
+- **GET, POST, DELETE /api/opensvm/anthropic-keys**
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/opensvm/anthropic-keys" \`
+
+- **GET, DELETE /api/opensvm/anthropic-keys/:keyId** - Extract user ID from request with proper JWT validation
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/opensvm/anthropic-keys/{keyId}" \`
+
+- **GET /api/opensvm/anthropic-keys/stats**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/opensvm/anthropic-keys/stats" \`
+
+- **GET /api/opensvm/balance**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/opensvm/balance" \`
+
+- **GET /api/opensvm/usage**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/opensvm/usage?period=value&keyId=value&model=value&startDate=value&end...`
+
+### 52. PROGRAM
+
+- **GET /api/program/:address**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/program/{address}" \`
+
+### 53. PROGRAM ACCOUNTS
+
+- **GET, POST /api/program-accounts** - Generate PDA (Program Derived Address)
+  - Example: `curl -X POST "https://opensvm.com/api/program-accounts" \`
+
+### 54. PROGRAM DISCOVERY
+
+- **GET, POST /api/program-discovery** - GET /api/program-discovery
+  - Example: `curl -X POST "https://opensvm.com/api/program-discovery" \`
+
+### 55. PROGRAM METADATA
+
+- **GET, POST /api/program-metadata**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/program-metadata" \`
+
+### 56. PROGRAM REGISTRY
+
+- **GET, POST /api/program-registry** - GET /api/program-registry
+  - Example: `curl -X POST "https://opensvm.com/api/program-registry" \`
+
+- **GET, POST /api/program-registry/:programId** - GET /api/program-registry/[programId]
+  - Example: `curl -X POST "https://opensvm.com/api/program-registry/{programId}" \`
+
+### 57. PROXY
+
+- **POST /api/proxy/rpc**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/proxy/rpc" \`
+
+- **POST /api/proxy/rpc/:id**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/proxy/rpc/{id}" \`
+
+### 58. QDRANT
+
+- **GET /api/qdrant/init**
+  - Example: `curl "https://opensvm.com/api/qdrant/init"`
+
+### 59. REFERRALS
+
+- **GET /api/referrals/balance** - API endpoint for getting a user's token balance
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/referrals/balance?walletAddress=value" \`
+
+- **POST /api/referrals/claim** - API endpoint for claiming referral rewards
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/referrals/claim" \`
+
+### 60. SCAN
+
+- **GET /api/scan**
+  - Example: `curl "https://opensvm.com/api/scan"`
+
+### 61. SEARCH
+
+- **GET /api/search**
+  - Example: `curl "https://opensvm.com/api/search?q=value&start=value&end=value&type=value&status=value&min=value...`
+
+- **GET /api/search/accounts**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/search/accounts?q=value" \`
+
+- **GET /api/search/filtered**
+  - Example: `curl "https://opensvm.com/api/search/filtered?q=value&start=value&end=value&type=value&status=value&...`
+
+- **GET /api/search/suggestions**
+  - Example: `curl "https://opensvm.com/api/search/suggestions?q=value&networks=value&userId=value"`
+
+- **GET /api/search/suggestions/empty-state** - Get live token data for latest items section from Qdrant
+  - Example: `curl "https://opensvm.com/api/search/suggestions/empty-state"`
+
+### 62. SEARCH SUGGESTIONS
+
+- **GET /api/search-suggestions**
+  - Example: `curl "https://opensvm.com/api/search-suggestions?q=value"`
+
+### 63. SHARE
+
+- **GET /api/share/:shareCode** - Share Data API
+  - Example: `curl "https://opensvm.com/api/share/{shareCode}"`
+
+- **POST /api/share/click/:shareCode** - Share Click Tracking API
+  - Example: `curl -X POST "https://opensvm.com/api/share/click/{shareCode}" \`
+
+- **POST /api/share/conversion** - Share Conversion Tracking API
+  - Example: `curl -X POST "https://opensvm.com/api/share/conversion" \`
+
+- **POST /api/share/generate** - Fetch entity data based on type
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/share/generate" \`
+
+- **GET /api/share/stats/:walletAddress** - Share Statistics API
+  - Example: `curl "https://opensvm.com/api/share/stats/{walletAddress}"`
+
+### 64. SLOTS
+
+- **GET /api/slots** - Fetch slot details with caching
+  - Example: `curl "https://opensvm.com/api/slots?limit=value&fromSlot=value"`
+
+### 65. SOLANA PROXY
+
+- **GET, POST /api/solana-proxy**
+  - Example: `curl -X POST "https://opensvm.com/api/solana-proxy" \`
+
+- **GET /api/solana-proxy/:transaction**
+  - Example: `curl "https://opensvm.com/api/solana-proxy/{transaction}"`
+
+### 66. SOLANA RPC
+
+- **POST /api/solana-rpc** - Solana RPC proxy API endpoint
+  - Example: `curl -X POST "https://opensvm.com/api/solana-rpc" \`
+
+### 67. SSE ALERTS
+
+- **GET, DELETE /api/sse-alerts**
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/sse-alerts" \`
+
+### 68. SSE EVENTS
+
+- **GET /api/sse-events/feed** - Server-Sent Events (SSE) endpoint for real-time feed updates
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/sse-events/feed?walletAddress=value&type=value" \`
+
+### 69. SSE FEED
+
+- **GET, DELETE /api/sse-feed**
+  - Example: `curl -X DELETE "https://opensvm.com/api/sse-feed"`
+
+### 70. STATUS
+
+- **GET, POST /api/status** - System status
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/status" \`
+
+### 71. STREAM
+
+- **GET, POST /api/stream**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/stream" \`
+
+- **GET /api/stream/blocks** - Real-time block stream endpoint using SSE
+  - Example: `curl "https://opensvm.com/api/stream/blocks"`
+
+- **GET /api/stream/transactions** - Real-time transaction stream endpoint using SSE
+  - Example: `curl "https://opensvm.com/api/stream/transactions"`
+
+### 72. TEST QDRANT
+
+- **GET /api/test-qdrant**
+  - Example: `curl "https://opensvm.com/api/test-qdrant"`
+
+### 73. TEST TOKEN BALANCE
+
+- **GET /api/test-token-balance**
+  - Example: `curl "https://opensvm.com/api/test-token-balance?wallet=value"`
+
+### 74. TEST TRANSACTION
+
+- **GET /api/test-transaction**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/test-transaction" \`
+
+### 75. TOKEN
+
+- **GET /api/token/:address**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/token/{address}" \`
+
+- **GET /api/token/:address/holders**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/token/{address}/holders?limit=value&offset=value&minBalance=value&minV...`
+
+- **GET /api/token/:address/holdersByVolume**
+  - Example: `curl "https://opensvm.com/api/token/{address}/holdersByVolume?limit=value&offset=value&minBalance=va...`
+
+- **GET /api/token/:address/traders**
+  - Example: `curl "https://opensvm.com/api/token/{address}/traders?includeVolume=value&limit=value&offset=value&m...`
+
+### 76. TOKEN GATING
+
+- **GET /api/token-gating/check**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/token-gating/check" \`
+
+### 77. TOKEN METADATA
+
+- **GET, POST /api/token-metadata**
+  - Example: `curl -X POST "https://opensvm.com/api/token-metadata" \`
+
+### 78. TOKEN STATS
+
+- **GET /api/token-stats/:account/:mint**
+  - Example: `curl "https://opensvm.com/api/token-stats/{account}/{mint}"`
+
+### 79. TRADES
+
+- **GET /api/trades** - Trades API - Fetch recent trades for a specific token
+  - Example: `curl "https://opensvm.com/api/trades?mint=value&limit=value&type=value&offset=value"`
+
+### 80. TRADING
+
+- **POST /api/trading/chat**
+  - Example: `curl -X POST "https://opensvm.com/api/trading/chat" \`
+
+- **GET, POST, DELETE /api/trading/execute** - Generate a unique order ID
+  - Example: `curl -X DELETE "https://opensvm.com/api/trading/execute"`
+
+- **GET /api/trading/market-data** - Calculate price impact for a given trade size on an AMM
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/trading/market-data?market=value" \`
+
+- **GET /api/trading/markets** - Fetch trending/top tokens from Birdeye API
+  - Example: `curl "https://opensvm.com/api/trading/markets?type=value&limit=value&dex=value"`
+
+- **GET /api/trading/pools** - Fetch all trading pools/pairs for a specific token from Birdeye API
+  - Example: `curl "https://opensvm.com/api/trading/pools?token=value&symbol=value&dex=value"`
+
+- **GET, POST, DELETE, PATCH /api/trading/positions** - Calculate current PnL for a position
+  - Example: `curl -X PATCH "https://opensvm.com/api/trading/positions" \`
+
+- **GET, POST /api/trading/stream** - Trading Stream API - Real-Time Data via Server-Sent Events
+  - Example: `curl -X POST "https://opensvm.com/api/trading/stream" \`
+
+- **GET /api/trading/trades** - Fetch recent trades from Birdeye API
+  - Example: `curl "https://opensvm.com/api/trading/trades?mint=value&limit=value&source=value"`
+
+### 81. TRANSACTION
+
+- **GET /api/transaction**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/transaction?signature=value" \`
+
+- **GET /api/transaction/:signature**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/transaction/{signature}" \`
+
+- **GET, POST /api/transaction/:signature/analysis**
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/{signature}/analysis" \`
+
+- **GET, POST /api/transaction/:signature/explain**
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/{signature}/explain" \`
+
+- **GET, POST /api/transaction/:signature/failure-analysis**
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/{signature}/failure-analysis" \`
+
+- **GET /api/transaction/:signature/metrics**
+  - Example: `curl "https://opensvm.com/api/transaction/{signature}/metrics?includeComparison=value&includeBenchma...`
+
+- **GET, POST /api/transaction/:signature/related**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/{signature}/related" \`
+
+- **GET, POST /api/transaction/batch**
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/batch" \`
+
+- **GET, POST /api/transaction/mock/:signature**
+  - Example: `curl -X POST "https://opensvm.com/api/transaction/mock/{signature}" \`
+
+### 82. TRANSACTION METRICS
+
+- **GET, POST /api/transaction-metrics** - GET /api/transaction-metrics
+  - Example: `curl -X POST "https://opensvm.com/api/transaction-metrics" \`
+
+- **GET, POST /api/transaction-metrics/:signature** - GET /api/transaction-metrics/[signature]
+  - Example: `curl -X POST "https://opensvm.com/api/transaction-metrics/{signature}" \`
+
+### 83. TRANSFERS
+
+- **GET, POST /api/transfers/cache**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/transfers/cache" \`
+
+### 84. USAGE STATS
+
+- **GET, POST /api/usage-stats** - API usage statistics
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/usage-stats" \`
+
+### 85. USER FEED
+
+- **GET /api/user-feed/:walletAddress** - User Feed API
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/user-feed/{walletAddress}?type=value&realtime=value&page=value&limit=v...`
+
+### 86. USER HISTORY
+
+- **GET, POST, DELETE /api/user-history/:walletAddress** - User History API Endpoints
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/user-history/{walletAddress}" \`
+
+- **GET, POST /api/user-history/repair** - User History Repair API
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-history/repair" \`
+
+- **POST /api/user-history/sync** - User History Sync API
+  - Example: `curl -X POST "https://opensvm.com/api/user-history/sync" \`
+
+### 87. USER PROFILE
+
+- **GET, PUT /api/user-profile/:walletAddress** - User Profile API Endpoints
+  - Authentication: Required
+  - Example: `curl -X PUT "https://opensvm.com/api/user-profile/{walletAddress}" \`
+
+- **GET, POST /api/user-profile/sync** - User Profile Statistics Synchronization API
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-profile/sync" \`
+
+### 88. USER SOCIAL
+
+- **POST /api/user-social/follow** - API endpoint for following users
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/follow" \`
+
+- **GET, POST, DELETE /api/user-social/follow/:targetAddress** - User Social Follow API Endpoints
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/user-social/follow/{targetAddress}" \`
+
+- **POST /api/user-social/like** - API endpoint for liking user profiles
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/like" \`
+
+- **POST /api/user-social/like-event** - API endpoint for liking/unliking feed events
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/like-event" \`
+
+- **GET, POST, DELETE /api/user-social/like/:targetAddress** - User Social Like API Endpoints
+  - Authentication: Required
+  - Example: `curl -X DELETE "https://opensvm.com/api/user-social/like/{targetAddress}" \`
+
+- **POST /api/user-social/unfollow** - API endpoint for unfollowing users
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/unfollow" \`
+
+- **POST /api/user-social/unlike** - API endpoint for unliking user profiles
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/unlike" \`
+
+- **POST /api/user-social/unlike-event** - API endpoint for unliking feed events
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/unlike-event" \`
+
+- **POST /api/user-social/view** - API endpoint for tracking profile views
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/user-social/view" \`
+
+### 89. USER TAB PREFERENCE
+
+- **GET, PUT /api/user-tab-preference/:walletAddress** - User Tab Preference API Endpoints
+  - Authentication: Required
+  - Example: `curl -X PUT "https://opensvm.com/api/user-tab-preference/{walletAddress}" \`
+
+### 90. V1
+
+- **POST /api/v1/messages**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/v1/messages" \`
+
+- **GET /api/v1/models**
+  - Authentication: Required
+  - Example: `curl "https://opensvm.com/api/v1/models" \`
+
+### 91. VALIDATOR
+
+- **GET, POST /api/validator/:address** - Fetch real stakers delegated to a specific validator
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/validator/{address}" \`
+
+### 92. VERSION
+
+- **GET, POST /api/version** - API version information
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/version" \`
+
+### 93. WALLET PATH FINDING
+
+- **POST /api/wallet-path-finding**
+  - Authentication: Required
+  - Example: `curl -X POST "https://opensvm.com/api/wallet-path-finding" \`
+
+### 94. WEBSOCKET INFO
+
+- **GET /api/websocket-info** - WebSocket info endpoint
+  - Example: `curl "https://opensvm.com/api/websocket-info"`
+
 
 ## Response Formats
 
@@ -1016,57 +889,6 @@ curl -H "Authorization: Bearer $OPENSVM_API_KEY" \
   "timestamp": "2024-01-01T00:00:00Z"
 }
 ```
-
-### Paginated Response
-```json
-{
-  "success": true,
-  "data": [ ... ],
-  "pagination": {
-    "total": 1000,
-    "limit": 100,
-    "offset": 0,
-    "hasMore": true,
-    "cursor": "next_page_cursor"
-  }
-}
-```
-
-## Rate Limiting
-- Default: 100 requests per minute per IP
-- Authenticated: 1000 requests per minute per user
-- Headers returned: X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset
-
-## WebSocket Support
-Some endpoints support WebSocket connections for real-time data:
-- /api/scan - Real-time blockchain scanning
-- /api/stream - Data streaming
-- /api/sse-* endpoints use Server-Sent Events
-
-## Network Support
-- Mainnet (default): mainnet-beta
-- Devnet: devnet
-- Testnet: testnet
-
-Specify network via query parameter: `?network=devnet`
-
-## Error Codes
-- 400: Bad Request - Invalid parameters
-- 401: Unauthorized - Missing or invalid authentication
-- 403: Forbidden - Insufficient permissions
-- 404: Not Found - Resource not found
-- 429: Too Many Requests - Rate limit exceeded
-- 500: Internal Server Error - Server error
-- 503: Service Unavailable - Service temporarily unavailable
-
-## Best Practices
-1. Always include error handling for API calls
-2. Implement exponential backoff for retries
-3. Cache responses when appropriate
-4. Use batch endpoints for multiple queries
-5. Subscribe to SSE/WebSocket for real-time data
-6. Include proper authentication headers when required
-7. Respect rate limits to avoid throttling
 
 ## Support
 For API support, documentation updates, or to report issues:

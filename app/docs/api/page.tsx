@@ -22,7 +22,7 @@ export default function ApiTestPage() {
             </p>
             <div className="flex flex-wrap gap-2 justify-center text-sm">
               <span className="px-3 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 rounded-full">
-                200+ Endpoints
+                193 Endpoints
               </span>
               <span className="px-3 py-1 bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200 rounded-full">
                 5 Presets Each

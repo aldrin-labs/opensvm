@@ -43,7 +43,8 @@ const docCategories: DocCategory[] = [
     icon: <FileText className="w-6 h-6" />,
     docs: [
       { slug: 'API', title: 'API Reference', description: 'Complete API documentation' },
-      { slug: 'API-SCHEMA-REFERENCE', title: 'API Schema Reference', description: 'Complete TypeScript schemas for all 98 endpoints' },
+      { slug: 'API-SCHEMA-REFERENCE', title: 'API Schema Reference', description: 'Complete TypeScript schemas for all 193 endpoints' },
+      { slug: 'API_REFERENCE', title: 'Complete API Reference', description: 'Auto-generated documentation for all 193 endpoints with parameters and types' },
       { slug: 'MARKET_DATA_API_GUIDE', title: 'Market Data API Guide', description: 'User-friendly guide to the DEX Aggregator API with examples' },
       { slug: 'swagger', title: 'OpenAPI/Swagger Docs', description: 'Interactive API explorer with live testing' },
       { slug: 'DEX_API_TESTS', title: 'DEX Aggregator API', description: 'Market data, pools, OHLCV, and technical indicators' },

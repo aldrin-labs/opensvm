@@ -2,7 +2,7 @@
 
 Auto-generated documentation for all 193 API endpoints.
 
-**Generated**: 2025-11-12T06:02:16.782Z
+**Generated**: 2025-11-12T06:42:01.130Z
 
 ## Table of Contents
 
