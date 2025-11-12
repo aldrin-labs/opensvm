@@ -1532,7 +1532,7 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
     };
 
     try {
-      await client.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+      await qdrantClient.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
     } catch (upsertError: any) {
       // Log detailed error information from Qdrant but don't throw
       // This is a cache operation and shouldn't break the main flow
