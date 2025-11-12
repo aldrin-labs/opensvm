@@ -16,6 +16,24 @@ import { useRouter, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import TabContainer from './components/TabContainer';
 
+async function checkAccountType(address: string): Promise<'token' | 'program' | 'account'> {
+  try {
+    const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(address)}`, {
+      cache: 'no-store'
+    });
+    
+    if (!response.ok) {
+      return 'account';
+    }
+    
+    const data = await response.json();
+    return data.type || 'account';
+  } catch (error) {
+    console.error('Error checking account type:', error);
+    return 'account';
+  }
+}
+
 interface AccountData {
   address: string;
   isSystemProgram: boolean;
@@ -412,6 +430,38 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       }
     };
   }, [currentAddress, loadAccountData]);
+
+  // Check account type and redirect if needed
+  useEffect(() => {
+    let mounted = true;
+
+    const checkAndRedirect = async () => {
+      if (!currentAddress || !accountInfo) return;
+
+      try {
+        const accountType = await checkAccountType(currentAddress);
+        
+        if (!mounted) return;
+
+        // Redirect to appropriate page based on account type
+        if (accountType === 'token') {
+          router.push(`/token/${currentAddress}`);
+        } else if (accountType === 'program') {
+          router.push(`/program/${currentAddress}`);
+        }
+        // If it's 'account', stay on this page
+      } catch (error) {
+        console.error('Error checking account type:', error);
+        // Continue showing account page on error
+      }
+    };
+
+    checkAndRedirect();
+
+    return () => {
+      mounted = false;
+    };
+  }, [currentAddress, accountInfo, router]);
 
   if (loading) {
     return (
