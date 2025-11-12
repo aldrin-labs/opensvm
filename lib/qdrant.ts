@@ -242,8 +242,9 @@ export async function getUserHistory(
     offset?: number;
     pageType?: string;
   } = {}
-): Promise<{
-  const client = getQdrantClient(); history: UserHistoryEntry[]; total: number }> {
+): Promise<{ history: UserHistoryEntry[]; total: number }> {
+  const client = getQdrantClient();
+  
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { history: [], total: 0 };
