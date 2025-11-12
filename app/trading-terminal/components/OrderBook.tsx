@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Droplets, TrendingUp, TrendingDown, Activity } from 'lucide-react';
 
 interface OrderBookProps {
   market: string;
@@ -14,17 +15,120 @@ interface OrderBookEntry {
   total: number;
 }
 
+interface AMMState {
+  type: string;
+  dex: string;
+  poolAddress: string;
+  liquidity: number;
+  baseReserve: number;
+  quoteReserve: number;
+  constantProduct: number;
+  fee: number;
+  volume24h: number;
+  trades24h: number;
+  priceImpact: {
+    buy100: number;
+    buy1000: number;
+    sell100: number;
+    sell1000: number;
+  };
+  virtualOrderbook?: {
+    bids: Array<{ price: number; amount: number }>;
+    asks: Array<{ price: number; amount: number }>;
+    spread: number;
+    spreadPercent: number;
+    isVirtual?: boolean;
+  };
+}
+
 export default function OrderBook({ market, isLoading = false }: OrderBookProps) {
   const [bids, setBids] = useState<OrderBookEntry[]>([]);
   const [asks, setAsks] = useState<OrderBookEntry[]>([]);
   const [spread, setSpread] = useState(0);
   const [spreadPercent, setSpreadPercent] = useState(0);
+  const [ammState, setAmmState] = useState<AMMState | null>(null);
+  const [isVirtualOrderbook, setIsVirtualOrderbook] = useState(false);
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState('Loading...');
 
   useEffect(() => {
-    if (isLoading) return; // Don't generate data while loading
+    if (isLoading) return;
 
-    // Generate mock order book data
-    const generateOrderBook = () => {
+    const fetchMarketData = async () => {
+      try {
+        const response = await fetch(`/api/trading/market-data?market=${encodeURIComponent(market)}`);
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.ammState && (!data.orderBook || data.orderBook.isVirtual)) {
+          // We have AMM state, use virtual orderbook if available
+          setAmmState(data.ammState);
+          setIsVirtualOrderbook(true);
+
+          if (data.ammState.virtualOrderbook) {
+            const { bids: virtualBids, asks: virtualAsks, spread: virtualSpread, spreadPercent: virtualSpreadPercent } = data.ammState.virtualOrderbook;
+
+            // Convert to OrderBookEntry format with running totals
+            let totalBid = 0;
+            const bidData = virtualBids.map((bid: any) => {
+              totalBid += bid.amount;
+              return { price: bid.price, size: bid.amount, total: totalBid };
+            });
+
+            let totalAsk = 0;
+            const askData = virtualAsks.map((ask: any) => {
+              totalAsk += ask.amount;
+              return { price: ask.price, size: ask.amount, total: totalAsk };
+            });
+
+            setBids(bidData);
+            setAsks(askData);
+            setSpread(virtualSpread);
+            setSpreadPercent(virtualSpreadPercent);
+          }
+        } else if (data.orderBook) {
+          // Traditional orderbook
+          setAmmState(null);
+          setIsVirtualOrderbook(false);
+
+          let totalBid = 0;
+          const bidData = (data.orderBook.bids || []).map((bid: any) => {
+            totalBid += bid.amount;
+            return { price: bid.price, size: bid.amount, total: totalBid };
+          });
+
+          let totalAsk = 0;
+          const askData = (data.orderBook.asks || []).map((ask: any) => {
+            totalAsk += ask.amount;
+            return { price: ask.price, size: ask.amount, total: totalAsk };
+          });
+
+          setBids(bidData);
+          setAsks(askData);
+          setSpread(data.orderBook.spread || 0);
+          setSpreadPercent(data.orderBook.spreadPercent || 0);
+        } else {
+          // Fallback to mock data generation
+          generateMockOrderBook();
+        }
+
+        setIsRealData(data.isRealData || false);
+        setDataSource(data.dataSource || 'Unknown');
+
+      } catch (error) {
+        console.error('Failed to fetch market data:', error);
+        // Fallback to mock data
+        generateMockOrderBook();
+        setIsRealData(false);
+        setDataSource('Mock Data (API error)');
+      }
+    };
+
+    const generateMockOrderBook = () => {
       const basePrice = 100 + Math.random() * 50;
       const bidData: OrderBookEntry[] = [];
       const askData: OrderBookEntry[] = [];
@@ -32,7 +136,6 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
       let totalBid = 0;
       let totalAsk = 0;
 
-      // Generate bids (buy orders)
       for (let i = 0; i < 15; i++) {
         const price = basePrice - (i * 0.1);
         const size = 10 + Math.random() * 100;
@@ -40,7 +143,6 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
         bidData.push({ price, size, total: totalBid });
       }
 
-      // Generate asks (sell orders)
       for (let i = 0; i < 15; i++) {
         const price = basePrice + 0.05 + (i * 0.1);
         const size = 10 + Math.random() * 100;
@@ -51,17 +153,19 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
       setBids(bidData);
       setAsks(askData);
 
-      // Calculate spread
       if (bidData.length > 0 && askData.length > 0) {
         const spreadValue = askData[0].price - bidData[0].price;
         const spreadPct = (spreadValue / bidData[0].price) * 100;
         setSpread(spreadValue);
         setSpreadPercent(spreadPct);
       }
+
+      setAmmState(null);
+      setIsVirtualOrderbook(false);
     };
 
-    generateOrderBook();
-    const interval = setInterval(generateOrderBook, 2000);
+    fetchMarketData();
+    const interval = setInterval(fetchMarketData, 10000); // Update every 10 seconds
     return () => clearInterval(interval);
   }, [market, isLoading]);
 
@@ -93,13 +197,109 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
     );
   }
 
+  // Helper function to format large numbers
+  const formatNumber = (num: number): string => {
+    if (num >= 1000000) return `${(num / 1000000).toFixed(2)}M`;
+    if (num >= 1000) return `${(num / 1000).toFixed(2)}K`;
+    return num.toFixed(2);
+  };
+
   return (
     <div className="order-book h-full flex flex-col bg-background text-foreground">
-      {/* Header */}
-      <div className="px-4 py-2 bg-card border-b border-border grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
-        <div className="text-right">PRICE</div>
-        <div className="text-right">SIZE</div>
-        <div className="text-right">TOTAL</div>
+      {/* Header with data source indicator */}
+      <div className="px-4 py-2 bg-card border-b border-border">
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-primary">
+              {ammState ? 'AMM Pool State' : 'Order Book'}
+            </span>
+            {isVirtualOrderbook && (
+              <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded text-muted-foreground">
+                Virtual
+              </span>
+            )}
+            {dataSource && (
+              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border"
+                   style={{
+                     backgroundColor: isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                     borderColor: isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
+                     color: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                   }}>
+                <span className="w-1 h-1 rounded-full"
+                      style={{
+                        backgroundColor: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                      }}></span>
+                <span>{isRealData ? 'Live' : 'Demo'}</span>
+              </div>
+            )}
+          </div>
+          {ammState && (
+            <span className="text-[10px] text-muted-foreground">
+              {ammState.dex}
+            </span>
+          )}
+        </div>
+
+        {/* AMM State Info Panel */}
+        {ammState && (
+          <div className="grid grid-cols-2 gap-2 mb-2 p-2 bg-muted/20 rounded text-xs">
+            <div className="flex items-center gap-1">
+              <Droplets size={12} className="text-primary" />
+              <span className="text-muted-foreground">Liquidity:</span>
+              <span className="text-foreground font-mono">${formatNumber(ammState.liquidity)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <Activity size={12} className="text-primary" />
+              <span className="text-muted-foreground">24h Vol:</span>
+              <span className="text-foreground font-mono">${formatNumber(ammState.volume24h)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Base Reserve:</span>
+              <span className="text-foreground font-mono">{formatNumber(ammState.baseReserve)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Quote Reserve:</span>
+              <span className="text-foreground font-mono">{formatNumber(ammState.quoteReserve)}</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">Fee:</span>
+              <span className="text-foreground font-mono">{(ammState.fee * 100).toFixed(2)}%</span>
+            </div>
+            <div className="flex items-center gap-1">
+              <span className="text-muted-foreground">24h Trades:</span>
+              <span className="text-foreground font-mono">{ammState.trades24h}</span>
+            </div>
+
+            {/* Price Impact Section */}
+            <div className="col-span-2 mt-1 pt-1 border-t border-border/50">
+              <div className="text-muted-foreground mb-1">Price Impact:</div>
+              <div className="grid grid-cols-2 gap-1">
+                <div className="flex items-center gap-1">
+                  <TrendingUp size={10} className="text-green-500" />
+                  <span className="text-[10px]">Buy $100: {ammState.priceImpact.buy100.toFixed(3)}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <TrendingUp size={10} className="text-green-500" />
+                  <span className="text-[10px]">Buy $1k: {ammState.priceImpact.buy1000.toFixed(3)}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <TrendingDown size={10} className="text-red-500" />
+                  <span className="text-[10px]">Sell $100: {ammState.priceImpact.sell100.toFixed(3)}%</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <TrendingDown size={10} className="text-red-500" />
+                  <span className="text-[10px]">Sell $1k: {ammState.priceImpact.sell1000.toFixed(3)}%</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="grid grid-cols-3 gap-2 text-xs font-semibold text-muted-foreground">
+          <div className="text-right">PRICE</div>
+          <div className="text-right">SIZE</div>
+          <div className="text-right">TOTAL</div>
+        </div>
       </div>
 
       {/* Order Book Content */}
