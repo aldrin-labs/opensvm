@@ -49,6 +49,93 @@ function getEndpointPath(filePath) {
   return '/api' + endpoint;
 }
 
+// Extract parameter descriptions from comments and code
+function extractParamDescriptions(content) {
+  const params = new Map();
+  
+  // Extract from JSDoc-style comments
+  const jsdocRegex = /@param\s+{([^}]+)}\s+(\w+)\s+-?\s*(.+)/g;
+  let match;
+  while ((match = jsdocRegex.exec(content)) !== null) {
+    params.set(match[2], {
+      type: match[1],
+      description: match[3].trim()
+    });
+  }
+  
+  // Extract from inline comments near searchParams.get
+  const lines = content.split('\n');
+  lines.forEach((line, index) => {
+    const paramMatch = line.match(/searchParams\.get\(['"](\w+)['"]\)/);
+    if (paramMatch) {
+      const paramName = paramMatch[1];
+      
+      // Look for comment on same line or previous line
+      const commentMatch = line.match(/\/\/\s*(.+)/) || 
+                          (index > 0 && lines[index - 1].match(/\/\/\s*(.+)/));
+      
+      if (commentMatch && !params.has(paramName)) {
+        params.set(paramName, {
+          type: 'string',
+          description: commentMatch[1].trim()
+        });
+      }
+      
+      // Try to infer type from usage
+      if (!params.has(paramName)) {
+        let type = 'string';
+        const nextLines = lines.slice(index, index + 5).join('\n');
+        
+        if (/parseInt|Number\(/.test(nextLines)) {
+          type = 'number';
+        } else if (/=== ['"]true['"]|Boolean\(/.test(nextLines)) {
+          type = 'boolean';
+        } else if (/\.split\(/.test(nextLines)) {
+          type = 'string[]';
+        }
+        
+        params.set(paramName, {
+          type,
+          description: `${paramName} parameter`
+        });
+      }
+    }
+  });
+  
+  return params;
+}
+
+// Extract method descriptions
+function extractMethodDescriptions(content) {
+  const descriptions = {};
+  
+  // Look for comments before each HTTP method
+  const methods = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'];
+  
+  methods.forEach(method => {
+    const regex = new RegExp(`\\/\\*\\*([\\s\\S]*?)\\*\\/[\\s\\S]*?export\\s+(?:async\\s+)?function\\s+${method}`, 'm');
+    const match = content.match(regex);
+    
+    if (match) {
+      // Extract description from JSDoc
+      const jsdoc = match[1];
+      const descMatch = jsdoc.match(/\*\s*(.+?)(?:\n|$)/);
+      if (descMatch) {
+        descriptions[method] = descMatch[1].trim();
+      }
+    }
+    
+    // Also check for single-line comments
+    const singleLineRegex = new RegExp(`\\/\\/\\s*(.+?)\\n[\\s\\S]*?export\\s+(?:async\\s+)?function\\s+${method}`, 'm');
+    const singleMatch = content.match(singleLineRegex);
+    if (singleMatch && !descriptions[method]) {
+      descriptions[method] = singleMatch[1].trim();
+    }
+  });
+  
+  return descriptions;
+}
+
 // Analyze route file to extract methods and schemas
 function analyzeRouteFile(filePath) {
   const content = fs.readFileSync(filePath, 'utf-8');
@@ -78,23 +165,33 @@ function analyzeRouteFile(filePath) {
     });
   }
   
-  // Extract query parameters from searchParams.get
-  const queryParams = [];
-  const queryRegex = /searchParams\.get\(['"]([^'"]+)['"]\)/g;
-  while ((match = queryRegex.exec(content)) !== null) {
-    if (!queryParams.includes(match[1])) {
-      queryParams.push(match[1]);
-    }
-  }
+  // Extract query parameters with descriptions
+  const paramDescriptions = extractParamDescriptions(content);
+  const queryParams = Array.from(paramDescriptions.entries()).map(([name, info]) => ({
+    name,
+    ...info
+  }));
+  
+  // Extract method descriptions
+  const methodDescriptions = extractMethodDescriptions(content);
   
   // Check for authentication requirement
   const requiresAuth = /Authorization|Bearer|session|auth/i.test(content);
   
-  // Extract description from comments
+  // Extract main description from file-level comments
   let description = '';
-  const descMatch = content.match(/\/\*\*\s*\n\s*\*\s*(.+?)\n/);
-  if (descMatch) {
-    description = descMatch[1].trim();
+  const fileDescMatch = content.match(/\/\*\*\s*\n\s*\*\s*(.+?)(?:\n\s*\*\s*\n|\n\s*\*\/)/);
+  if (fileDescMatch) {
+    description = fileDescMatch[1].trim();
+  }
+  
+  // Also check for description in first comment block
+  const firstCommentMatch = content.match(/^\/\*\*([^*]*(?:\*(?!\/)[^*]*)*)\*\//);
+  if (firstCommentMatch && !description) {
+    const lines = firstCommentMatch[1].split('\n')
+      .map(l => l.replace(/^\s*\*\s?/, '').trim())
+      .filter(l => l && !l.startsWith('@'));
+    description = lines[0] || '';
   }
   
   return {
@@ -102,7 +199,8 @@ function analyzeRouteFile(filePath) {
     interfaces,
     queryParams,
     requiresAuth,
-    description
+    description,
+    methodDescriptions
   };
 }
 
@@ -148,14 +246,16 @@ Auto-generated documentation for all ${routeFiles.length} API endpoints.
   // Add category links
   Object.keys(categories).sort().forEach(category => {
     const count = categories[category].length;
-    markdown += `- [${category.charAt(0).toUpperCase() + category.slice(1)}](#${category}) (${count} endpoints)\n`;
+    const categoryName = category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+    markdown += `- [${categoryName}](#${category.toLowerCase()}) (${count} endpoint${count !== 1 ? 's' : ''})\n`;
   });
   
   markdown += '\n---\n\n';
   
   // Document each category
   Object.keys(categories).sort().forEach(category => {
-    markdown += `## ${category.charAt(0).toUpperCase() + category.slice(1)}\n\n`;
+    const categoryName = category.charAt(0).toUpperCase() + category.slice(1).replace(/-/g, ' ');
+    markdown += `## ${categoryName}\n\n`;
     
     // Sort endpoints within category
     categories[category].sort((a, b) => a.endpoint.localeCompare(b.endpoint));
@@ -164,19 +264,30 @@ Auto-generated documentation for all ${routeFiles.length} API endpoints.
       markdown += `### ${route.methods.join(', ')} ${route.endpoint}\n\n`;
       
       if (route.description) {
-        markdown += `${route.description}\n\n`;
+        markdown += `**Description**: ${route.description}\n\n`;
       }
       
       markdown += `**Methods**: ${route.methods.join(', ')}\n\n`;
+      
+      // Add method-specific descriptions
+      if (Object.keys(route.methodDescriptions).length > 0) {
+        markdown += `**Method Details**:\n`;
+        Object.entries(route.methodDescriptions).forEach(([method, desc]) => {
+          markdown += `- **${method}**: ${desc}\n`;
+        });
+        markdown += '\n';
+      }
       
       if (route.requiresAuth) {
         markdown += `**Authentication**: Required\n\n`;
       }
       
       if (route.queryParams.length > 0) {
-        markdown += `**Query Parameters**:\n`;
+        markdown += `**Query Parameters**:\n\n`;
+        markdown += `| Parameter | Type | Description |\n`;
+        markdown += `|-----------|------|-------------|\n`;
         route.queryParams.forEach(param => {
-          markdown += `- \`${param}\`\n`;
+          markdown += `| \`${param.name}\` | ${param.type} | ${param.description} |\n`;
         });
         markdown += '\n';
       }
@@ -184,9 +295,12 @@ Auto-generated documentation for all ${routeFiles.length} API endpoints.
       // Extract path parameters
       const pathParams = route.endpoint.match(/:(\w+)/g);
       if (pathParams) {
-        markdown += `**Path Parameters**:\n`;
+        markdown += `**Path Parameters**:\n\n`;
+        markdown += `| Parameter | Type | Description |\n`;
+        markdown += `|-----------|------|-------------|\n`;
         pathParams.forEach(param => {
-          markdown += `- \`${param.substring(1)}\`\n`;
+          const paramName = param.substring(1);
+          markdown += `| \`${paramName}\` | string | ${paramName} identifier |\n`;
         });
         markdown += '\n';
       }
@@ -209,7 +323,7 @@ Auto-generated documentation for all ${routeFiles.length} API endpoints.
           });
         }
         if (route.queryParams.length > 0) {
-          exampleUrl += '?' + route.queryParams.map(p => `${p}=value`).join('&');
+          exampleUrl += '?' + route.queryParams.map(p => `${p.name}=value`).join('&');
         }
         markdown += `curl "https://opensvm.com${exampleUrl}"`;
         if (route.requiresAuth) {
@@ -226,6 +340,50 @@ Auto-generated documentation for all ${routeFiles.length} API endpoints.
           });
         }
         markdown += `curl -X POST "https://opensvm.com${exampleUrl}" \\\n`;
+        markdown += `  -H "Content-Type: application/json"`;
+        if (route.requiresAuth) {
+          markdown += ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"`;
+        }
+        markdown += ` \\\n  -d '{"key":"value"}'\n`;
+      }
+      
+      if (route.methods.includes('PUT')) {
+        let exampleUrl = route.endpoint;
+        if (pathParams) {
+          pathParams.forEach(param => {
+            exampleUrl = exampleUrl.replace(param, `{${param.substring(1)}}`);
+          });
+        }
+        markdown += `curl -X PUT "https://opensvm.com${exampleUrl}" \\\n`;
+        markdown += `  -H "Content-Type: application/json"`;
+        if (route.requiresAuth) {
+          markdown += ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"`;
+        }
+        markdown += ` \\\n  -d '{"key":"value"}'\n`;
+      }
+      
+      if (route.methods.includes('DELETE')) {
+        let exampleUrl = route.endpoint;
+        if (pathParams) {
+          pathParams.forEach(param => {
+            exampleUrl = exampleUrl.replace(param, `{${param.substring(1)}}`);
+          });
+        }
+        markdown += `curl -X DELETE "https://opensvm.com${exampleUrl}"`;
+        if (route.requiresAuth) {
+          markdown += ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"`;
+        }
+        markdown += '\n';
+      }
+      
+      if (route.methods.includes('PATCH')) {
+        let exampleUrl = route.endpoint;
+        if (pathParams) {
+          pathParams.forEach(param => {
+            exampleUrl = exampleUrl.replace(param, `{${param.substring(1)}}`);
+          });
+        }
+        markdown += `curl -X PATCH "https://opensvm.com${exampleUrl}" \\\n`;
         markdown += `  -H "Content-Type: application/json"`;
         if (route.requiresAuth) {
           markdown += ` \\\n  -H "Authorization: Bearer YOUR_API_KEY"`;

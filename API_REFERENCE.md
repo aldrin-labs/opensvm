@@ -2,117 +2,123 @@
 
 Auto-generated documentation for all 193 API endpoints.
 
-**Generated**: 2025-11-12T05:45:00.955Z
+**Generated**: 2025-11-12T06:02:16.782Z
 
 ## Table of Contents
 
-- [Account-portfolio](#account-portfolio) (1 endpoints)
-- [Account-stats](#account-stats) (1 endpoints)
-- [Account-token-stats](#account-token-stats) (1 endpoints)
-- [Account-transactions](#account-transactions) (1 endpoints)
-- [Account-transfers](#account-transfers) (1 endpoints)
-- [Ai-analyze-transaction](#ai-analyze-transaction) (1 endpoints)
-- [Ai-response](#ai-response) (1 endpoints)
-- [Alerts](#alerts) (1 endpoints)
+- [Account portfolio](#account-portfolio) (1 endpoint)
+- [Account stats](#account-stats) (1 endpoint)
+- [Account token stats](#account-token-stats) (1 endpoint)
+- [Account transactions](#account-transactions) (1 endpoint)
+- [Account transfers](#account-transfers) (1 endpoint)
+- [Ai analyze transaction](#ai-analyze-transaction) (1 endpoint)
+- [Ai response](#ai-response) (1 endpoint)
+- [Alerts](#alerts) (1 endpoint)
 - [Analytics](#analytics) (14 endpoints)
-- [Analyze](#analyze) (1 endpoints)
-- [Analyze-account-changes](#analyze-account-changes) (1 endpoints)
-- [Analyze-transaction](#analyze-transaction) (1 endpoints)
+- [Analyze](#analyze) (1 endpoint)
+- [Analyze account changes](#analyze-account-changes) (1 endpoint)
+- [Analyze transaction](#analyze-transaction) (1 endpoint)
 - [Anomaly](#anomaly) (3 endpoints)
-- [Api-keys](#api-keys) (1 endpoints)
+- [Api keys](#api-keys) (1 endpoint)
 - [Auth](#auth) (9 endpoints)
 - [Bank](#bank) (4 endpoints)
-- [Block](#block) (1 endpoints)
+- [Block](#block) (1 endpoint)
 - [Blocks](#blocks) (3 endpoints)
-- [Chart](#chart) (1 endpoints)
+- [Chart](#chart) (1 endpoint)
 - [Chat](#chat) (2 endpoints)
-- [Check-account-type](#check-account-type) (1 endpoints)
-- [Check-token](#check-token) (1 endpoints)
-- [Config](#config) (1 endpoints)
-- [Crash-reporting](#crash-reporting) (1 endpoints)
-- [Dex](#dex) (1 endpoints)
+- [Check account type](#check-account-type) (1 endpoint)
+- [Check token](#check-token) (1 endpoint)
+- [Config](#config) (1 endpoint)
+- [Crash reporting](#crash-reporting) (1 endpoint)
+- [Dex](#dex) (1 endpoint)
 - [Docs](#docs) (2 endpoints)
-- [Error-report](#error-report) (1 endpoints)
-- [Error-tracking](#error-tracking) (1 endpoints)
-- [Favicon](#favicon) (1 endpoints)
-- [Feed](#feed) (1 endpoints)
-- [Filter-transactions](#filter-transactions) (1 endpoints)
-- [Find-related-transactions](#find-related-transactions) (1 endpoints)
-- [GetAnswer](#getAnswer) (1 endpoints)
-- [GetSimilarQuestions](#getSimilarQuestions) (1 endpoints)
-- [GetSources](#getSources) (1 endpoints)
+- [Error report](#error-report) (1 endpoint)
+- [Error tracking](#error-tracking) (1 endpoint)
+- [Favicon](#favicon) (1 endpoint)
+- [Feed](#feed) (1 endpoint)
+- [Filter transactions](#filter-transactions) (1 endpoint)
+- [Find related transactions](#find-related-transactions) (1 endpoint)
+- [GetAnswer](#getanswer) (1 endpoint)
+- [GetSimilarQuestions](#getsimilarquestions) (1 endpoint)
+- [GetSources](#getsources) (1 endpoint)
 - [Health](#health) (2 endpoints)
-- [HoldersByInteraction](#holdersByInteraction) (1 endpoints)
-- [Instruction-lookup](#instruction-lookup) (1 endpoints)
+- [HoldersByInteraction](#holdersbyinteraction) (1 endpoint)
+- [Instruction lookup](#instruction-lookup) (1 endpoint)
 - [Launchpad](#launchpad) (14 endpoints)
-- [Live-stats](#live-stats) (1 endpoints)
-- [Logging](#logging) (1 endpoints)
-- [Market-data](#market-data) (1 endpoints)
-- [Mempool](#mempool) (1 endpoints)
-- [Metrics](#metrics) (1 endpoints)
+- [Live stats](#live-stats) (1 endpoint)
+- [Logging](#logging) (1 endpoint)
+- [Market data](#market-data) (1 endpoint)
+- [Mempool](#mempool) (1 endpoint)
+- [Metrics](#metrics) (1 endpoint)
 - [Monetization](#monetization) (3 endpoints)
 - [Monitoring](#monitoring) (2 endpoints)
-- [Nft-collections](#nft-collections) (3 endpoints)
-- [Nfts](#nfts) (1 endpoints)
-- [Notifications](#notifications) (1 endpoints)
+- [Nft collections](#nft-collections) (3 endpoints)
+- [Nfts](#nfts) (1 endpoint)
+- [Notifications](#notifications) (1 endpoint)
 - [Og](#og) (2 endpoints)
 - [Opensvm](#opensvm) (5 endpoints)
-- [Program](#program) (1 endpoints)
-- [Program-accounts](#program-accounts) (1 endpoints)
-- [Program-discovery](#program-discovery) (1 endpoints)
-- [Program-metadata](#program-metadata) (1 endpoints)
-- [Program-registry](#program-registry) (2 endpoints)
+- [Program](#program) (1 endpoint)
+- [Program accounts](#program-accounts) (1 endpoint)
+- [Program discovery](#program-discovery) (1 endpoint)
+- [Program metadata](#program-metadata) (1 endpoint)
+- [Program registry](#program-registry) (2 endpoints)
 - [Proxy](#proxy) (2 endpoints)
-- [Qdrant](#qdrant) (1 endpoints)
+- [Qdrant](#qdrant) (1 endpoint)
 - [Referrals](#referrals) (2 endpoints)
-- [Scan](#scan) (1 endpoints)
+- [Scan](#scan) (1 endpoint)
 - [Search](#search) (5 endpoints)
-- [Search-suggestions](#search-suggestions) (1 endpoints)
+- [Search suggestions](#search-suggestions) (1 endpoint)
 - [Share](#share) (5 endpoints)
-- [Slots](#slots) (1 endpoints)
-- [Solana-proxy](#solana-proxy) (2 endpoints)
-- [Solana-rpc](#solana-rpc) (1 endpoints)
-- [Sse-alerts](#sse-alerts) (1 endpoints)
-- [Sse-events](#sse-events) (1 endpoints)
-- [Sse-feed](#sse-feed) (1 endpoints)
-- [Status](#status) (1 endpoints)
+- [Slots](#slots) (1 endpoint)
+- [Solana proxy](#solana-proxy) (2 endpoints)
+- [Solana rpc](#solana-rpc) (1 endpoint)
+- [Sse alerts](#sse-alerts) (1 endpoint)
+- [Sse events](#sse-events) (1 endpoint)
+- [Sse feed](#sse-feed) (1 endpoint)
+- [Status](#status) (1 endpoint)
 - [Stream](#stream) (3 endpoints)
-- [Test-qdrant](#test-qdrant) (1 endpoints)
-- [Test-token-balance](#test-token-balance) (1 endpoints)
-- [Test-transaction](#test-transaction) (1 endpoints)
+- [Test qdrant](#test-qdrant) (1 endpoint)
+- [Test token balance](#test-token-balance) (1 endpoint)
+- [Test transaction](#test-transaction) (1 endpoint)
 - [Token](#token) (4 endpoints)
-- [Token-gating](#token-gating) (1 endpoints)
-- [Token-metadata](#token-metadata) (1 endpoints)
-- [Token-stats](#token-stats) (1 endpoints)
-- [Trades](#trades) (1 endpoints)
+- [Token gating](#token-gating) (1 endpoint)
+- [Token metadata](#token-metadata) (1 endpoint)
+- [Token stats](#token-stats) (1 endpoint)
+- [Trades](#trades) (1 endpoint)
 - [Trading](#trading) (8 endpoints)
 - [Transaction](#transaction) (9 endpoints)
-- [Transaction-metrics](#transaction-metrics) (2 endpoints)
-- [Transfers](#transfers) (1 endpoints)
-- [Usage-stats](#usage-stats) (1 endpoints)
-- [User-feed](#user-feed) (1 endpoints)
-- [User-history](#user-history) (3 endpoints)
-- [User-profile](#user-profile) (2 endpoints)
-- [User-social](#user-social) (9 endpoints)
-- [User-tab-preference](#user-tab-preference) (1 endpoints)
+- [Transaction metrics](#transaction-metrics) (2 endpoints)
+- [Transfers](#transfers) (1 endpoint)
+- [Usage stats](#usage-stats) (1 endpoint)
+- [User feed](#user-feed) (1 endpoint)
+- [User history](#user-history) (3 endpoints)
+- [User profile](#user-profile) (2 endpoints)
+- [User social](#user-social) (9 endpoints)
+- [User tab preference](#user-tab-preference) (1 endpoint)
 - [V1](#v1) (2 endpoints)
-- [Validator](#validator) (1 endpoints)
-- [Version](#version) (1 endpoints)
-- [Wallet-path-finding](#wallet-path-finding) (1 endpoints)
-- [Websocket-info](#websocket-info) (1 endpoints)
+- [Validator](#validator) (1 endpoint)
+- [Version](#version) (1 endpoint)
+- [Wallet path finding](#wallet-path-finding) (1 endpoint)
+- [Websocket info](#websocket-info) (1 endpoint)
 
 ---
 
-## Account-portfolio
+## Account portfolio
 
 ### GET /api/account-portfolio/:address
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Rate limit configuration for portfolio data
+
 **Authentication**: Required
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -124,14 +130,20 @@ curl "https://opensvm.com/api/account-portfolio/{address}" \
 
 ---
 
-## Account-stats
+## Account stats
 
 ### GET /api/account-stats/:address
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: 5 minutes
+
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Type Definitions**:
 ```typescript
@@ -152,15 +164,18 @@ curl "https://opensvm.com/api/account-stats/{address}"
 
 ---
 
-## Account-token-stats
+## Account token stats
 
 ### GET /api/account-token-stats/:address/:mint
 
 **Methods**: GET
 
 **Path Parameters**:
-- `address`
-- `mint`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
+| `mint` | string | mint identifier |
 
 **Example Request**:
 ```bash
@@ -171,7 +186,7 @@ curl "https://opensvm.com/api/account-token-stats/{address}/{mint}"
 
 ---
 
-## Account-transactions
+## Account transactions
 
 ### GET /api/account-transactions/:address
 
@@ -180,16 +195,22 @@ curl "https://opensvm.com/api/account-token-stats/{address}/{mint}"
 **Authentication**: Required
 
 **Query Parameters**:
-- `limit`
-- `before`
-- `until`
-- `classify`
-- `includeInflow`
-- `startDate`
-- `endDate`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | number | limit parameter |
+| `before` | boolean | before parameter |
+| `until` | boolean | until parameter |
+| `classify` | boolean | classify parameter |
+| `includeInflow` | boolean | includeInflow parameter |
+| `startDate` | string | New date range parameters |
+| `endDate` | string | endDate parameter |
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -201,25 +222,32 @@ curl "https://opensvm.com/api/account-transactions/{address}?limit=value&before=
 
 ---
 
-## Account-transfers
+## Account transfers
 
 ### GET /api/account-transfers/:address
 
-Process a batch of transactions and extract transfer data
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Process a batch of transactions and extract transfer data
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `beforeSignature`
-- `offset`
-- `limit`
-- `transferType`
-- `solanaOnly`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `beforeSignature` | string | Smart cursor initialization: use oldest cached signature if no beforeSignature provided |
+| `offset` | number | offset parameter |
+| `limit` | string | Allow large requests - we'll handle pagination internally |
+| `transferType` | boolean | transferType parameter |
+| `solanaOnly` | boolean | solanaOnly parameter |
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Type Definitions**:
 ```typescript
@@ -245,14 +273,20 @@ curl "https://opensvm.com/api/account-transfers/{address}?beforeSignature=value&
 
 ---
 
-## Ai-analyze-transaction
+## Ai analyze transaction
 
 ### GET, POST /api/ai-analyze-transaction
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Analyze the transaction
+
 **Query Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature parameter |
 
 **Example Request**:
 ```bash
@@ -266,11 +300,14 @@ curl -X POST "https://opensvm.com/api/ai-analyze-transaction" \
 
 ---
 
-## Ai-response
+## Ai response
 
 ### POST /api/ai-response
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Function to extract potential sources from AI response
 
 **Example Request**:
 ```bash
@@ -287,9 +324,12 @@ curl -X POST "https://opensvm.com/api/ai-response" \
 
 ### GET /api/alerts
 
-Real-time alerts and warnings stream
+**Description**: Real-time alerts and warnings stream
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time alerts and warnings stream
 
 **Example Request**:
 ```bash
@@ -305,6 +345,9 @@ curl "https://opensvm.com/api/alerts"
 ### GET /api/analytics/aggregators
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real Aggregator Analytics API
 
 **Type Definitions**:
 ```typescript
@@ -344,6 +387,9 @@ curl "https://opensvm.com/api/analytics/aggregators"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Real Bot Analytics API for Telegram/Discord/Matrix bots
+
 **Type Definitions**:
 ```typescript
 interface BotMetrics {
@@ -382,8 +428,14 @@ curl "https://opensvm.com/api/analytics/bots"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Real Cross-Chain Analytics API using external bridge data sources
+
 **Query Parameters**:
-- `bridge`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `bridge` | string | bridge parameter |
 
 **Type Definitions**:
 ```typescript
@@ -409,6 +461,9 @@ curl "https://opensvm.com/api/analytics/cross-chain?bridge=value"
 ### GET /api/analytics/defai
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real DeFAI Analytics API
 
 **Type Definitions**:
 ```typescript
@@ -448,8 +503,14 @@ curl "https://opensvm.com/api/analytics/defai"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Real DeFi Health API using external data sources
+
 **Query Parameters**:
-- `protocol`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `protocol` | string | protocol parameter |
 
 **Type Definitions**:
 ```typescript
@@ -476,12 +537,16 @@ curl "https://opensvm.com/api/analytics/defi-health?protocol=value"
 
 ### GET /api/analytics/dex
 
-Fetch real price data from Jupiter API with:
-
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Fetch real price data from Jupiter API with:
+
 **Query Parameters**:
-- `dex`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `dex` | string | dex parameter |
 
 **Type Definitions**:
 ```typescript
@@ -537,6 +602,9 @@ curl "https://opensvm.com/api/analytics/dex?dex=value"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Real Info Fi Analytics API
+
 **Type Definitions**:
 ```typescript
 interface InfoFiMetrics {
@@ -573,6 +641,9 @@ curl "https://opensvm.com/api/analytics/infofi"
 ### GET /api/analytics/launchpads
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real Launchpad Analytics API using external APIs for real data
 
 **Type Definitions**:
 ```typescript
@@ -619,6 +690,9 @@ curl "https://opensvm.com/api/analytics/launchpads"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Real Marketplace Analytics API
+
 **Type Definitions**:
 ```typescript
 interface MarketplaceMetrics {
@@ -657,6 +731,9 @@ curl "https://opensvm.com/api/analytics/marketplaces"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Comprehensive DeFi Overview API aggregating data from all DeFi sectors
+
 **Type Definitions**:
 ```typescript
 interface OverviewMetrics {
@@ -685,6 +762,9 @@ curl "https://opensvm.com/api/analytics/overview"
 ### GET /api/analytics/socialfi
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real Social Fi Analytics API
 
 **Type Definitions**:
 ```typescript
@@ -722,6 +802,10 @@ curl "https://opensvm.com/api/analytics/socialfi"
 ### GET, POST /api/analytics/trending-validators
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: $SVMAI amount burned
+- **POST**: $SVMAI amount burned
 
 **Type Definitions**:
 ```typescript
@@ -766,19 +850,30 @@ curl -X POST "https://opensvm.com/api/analytics/trending-validators" \
 
 **Methods**: GET, POST, PATCH
 
+**Method Details**:
+- **GET**: In a real implementation, this would:
+- **PATCH**: In a real implementation, this would:
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `type`
-- `limit`
-- `sessionId`
-- `heatmapType`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | string | Parse query parameters |
+| `limit` | number | limit parameter |
+| `sessionId` | string | sessionId parameter |
+| `heatmapType` | string | heatmapType parameter |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/analytics/user-interactions?type=value&limit=value&sessionId=value&heatmapType=value" \
   -H "Authorization: Bearer YOUR_API_KEY"
 curl -X POST "https://opensvm.com/api/analytics/user-interactions" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"key":"value"}'
+curl -X PATCH "https://opensvm.com/api/analytics/user-interactions" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
@@ -791,6 +886,9 @@ curl -X POST "https://opensvm.com/api/analytics/user-interactions" \
 ### GET /api/analytics/validators
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Extract IP address from TPU or RPC endpoint
 
 **Type Definitions**:
 ```typescript
@@ -833,7 +931,7 @@ curl -X POST "https://opensvm.com/api/analyze" \
 
 ---
 
-## Analyze-account-changes
+## Analyze account changes
 
 ### POST /api/analyze-account-changes
 
@@ -850,14 +948,21 @@ curl -X POST "https://opensvm.com/api/analyze-account-changes" \
 
 ---
 
-## Analyze-transaction
+## Analyze transaction
 
 ### GET, POST /api/analyze-transaction
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Rate limiting map (in production, use Redis or similar)
+- **POST**: Rate limiting map (in production, use Redis or similar)
+
 **Query Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature parameter |
 
 **Example Request**:
 ```bash
@@ -877,8 +982,15 @@ curl -X POST "https://opensvm.com/api/analyze-transaction" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Global anomaly detector instance
+- **POST**: Global anomaly detector instance
+
 **Query Parameters**:
-- `action`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | action parameter |
 
 **Example Request**:
 ```bash
@@ -897,8 +1009,11 @@ curl -X POST "https://opensvm.com/api/anomaly" \
 **Methods**: GET
 
 **Query Parameters**:
-- `alertId`
-- `accounts`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `alertId` | string[] | alertId parameter |
+| `accounts` | string[] | accounts parameter |
 
 **Example Request**:
 ```bash
@@ -914,8 +1029,11 @@ curl "https://opensvm.com/api/anomaly/related?alertId=value&accounts=value"
 **Methods**: GET
 
 **Query Parameters**:
-- `alertId`
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `alertId` | string | alertId parameter |
+| `type` | string | type parameter |
 
 **Example Request**:
 ```bash
@@ -926,13 +1044,17 @@ curl "https://opensvm.com/api/anomaly/similar?alertId=value&type=value"
 
 ---
 
-## Api-keys
+## Api keys
 
 ### GET, POST /api/api-keys
 
-API key management
+**Description**: API key management
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: API key management
+- **POST**: API key management
 
 **Authentication**: Required
 
@@ -954,21 +1076,25 @@ curl -X POST "https://opensvm.com/api/api-keys" \
 
 ### GET /api/auth/api-keys/activity
 
-GET /api/auth/api-keys/activity
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: GET /api/auth/api-keys/activity
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `apiKeyId`
-- `walletAddress`
-- `signature`
-- `message`
-- `limit`
-- `offset`
-- `startDate`
-- `endDate`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `apiKeyId` | string | apiKeyId parameter |
+| `walletAddress` | string | walletAddress parameter |
+| `signature` | string | signature parameter |
+| `message` | string | message parameter |
+| `limit` | string | limit parameter |
+| `offset` | string | offset parameter |
+| `startDate` | string | startDate parameter |
+| `endDate` | string | endDate parameter |
 
 **Example Request**:
 ```bash
@@ -982,9 +1108,12 @@ curl "https://opensvm.com/api/auth/api-keys/activity?apiKeyId=value&walletAddres
 
 ### POST /api/auth/api-keys/create
 
-API endpoint to create a new API key
+**Description**: API endpoint to create a new API key
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint to create a new API key
 
 **Authentication**: Required
 
@@ -1002,16 +1131,20 @@ curl -X POST "https://opensvm.com/api/auth/api-keys/create" \
 
 ### GET /api/auth/api-keys/list
 
-GET /api/auth/api-keys/list
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: GET /api/auth/api-keys/list
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
-- `signature`
-- `message`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
+| `signature` | string | signature parameter |
+| `message` | string | message parameter |
 
 **Example Request**:
 ```bash
@@ -1025,17 +1158,21 @@ curl "https://opensvm.com/api/auth/api-keys/list?walletAddress=value&signature=v
 
 ### GET /api/auth/api-keys/metrics
 
-GET /api/auth/api-keys/metrics
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: GET /api/auth/api-keys/metrics
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `apiKeyId`
-- `walletAddress`
-- `signature`
-- `message`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `apiKeyId` | string | apiKeyId parameter |
+| `walletAddress` | string | walletAddress parameter |
+| `signature` | string | signature parameter |
+| `message` | string | message parameter |
 
 **Example Request**:
 ```bash
@@ -1049,9 +1186,12 @@ curl "https://opensvm.com/api/auth/api-keys/metrics?apiKeyId=value&walletAddress
 
 ### POST /api/auth/auth-link/create
 
-API endpoint to create an auth link for an existing API key
+**Description**: API endpoint to create an auth link for an existing API key
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint to create an auth link for an existing API key
 
 **Authentication**: Required
 
@@ -1069,9 +1209,12 @@ curl -X POST "https://opensvm.com/api/auth/auth-link/create" \
 
 ### POST /api/auth/bind-wallet
 
-API endpoint to bind a wallet to an API key via auth link
+**Description**: API endpoint to bind a wallet to an API key via auth link
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint to bind a wallet to an API key via auth link
 
 **Authentication**: Required
 
@@ -1089,9 +1232,12 @@ curl -X POST "https://opensvm.com/api/auth/bind-wallet" \
 
 ### POST /api/auth/logout
 
-Logout endpoint
+**Description**: Logout endpoint
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Logout endpoint
 
 **Authentication**: Required
 
@@ -1109,9 +1255,13 @@ curl -X POST "https://opensvm.com/api/auth/logout" \
 
 ### GET, POST /api/auth/session
 
-Session creation endpoint
+**Description**: Session creation endpoint
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: Session creation endpoint
+- **POST**: Session creation endpoint
 
 **Authentication**: Required
 
@@ -1131,9 +1281,12 @@ curl -X POST "https://opensvm.com/api/auth/session" \
 
 ### POST /api/auth/verify
 
-Signature verification endpoint
+**Description**: Signature verification endpoint
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Signature verification endpoint
 
 **Authentication**: Required
 
@@ -1153,9 +1306,10 @@ curl -X POST "https://opensvm.com/api/auth/verify" \
 
 ### GET /api/bank/wallets
 
-GET /api/bank/wallets
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: GET /api/bank/wallets
 
 **Authentication**: Required
 
@@ -1184,9 +1338,12 @@ curl "https://opensvm.com/api/bank/wallets" \
 
 ### POST /api/bank/wallets/create
 
-Initialize bank wallets collection if it doesn't exist
+**Description**: Initialize bank wallets collection if it doesn't exist
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Initialize bank wallets collection if it doesn't exist
 
 **Authentication**: Required
 
@@ -1221,9 +1378,12 @@ curl -X POST "https://opensvm.com/api/bank/wallets/create" \
 
 ### POST /api/bank/wallets/refresh
 
-Get Solana connection
+**Description**: Get Solana connection
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Get Solana connection
 
 **Authentication**: Required
 
@@ -1283,12 +1443,16 @@ curl -X POST "https://opensvm.com/api/bank/wallets/simulate" \
 
 ### GET /api/block
 
-Legacy block API endpoint - redirects to new structure
-
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Legacy block API endpoint - redirects to new structure
+
 **Query Parameters**:
-- `slot`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slot` | string | slot parameter |
 
 **Example Request**:
 ```bash
@@ -1305,13 +1469,19 @@ curl "https://opensvm.com/api/block?slot=value"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Rate limiter for block list requests (200 requests per minute)
+
 **Query Parameters**:
-- `limit`
-- `before`
-- `validator`
-- `includeAnalytics`
-- `sortBy`
-- `sortOrder`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | string | limit parameter |
+| `before` | string | before parameter |
+| `validator` | string | validator parameter |
+| `includeAnalytics` | string | includeAnalytics parameter |
+| `sortBy` | string | sortBy parameter |
+| `sortOrder` | string | sortOrder parameter |
 
 **Example Request**:
 ```bash
@@ -1324,19 +1494,28 @@ curl "https://opensvm.com/api/blocks?limit=value&before=value&validator=value&in
 
 ### GET /api/blocks/:slot
 
-Process block analytics based on request parameters
+**Description**: Process block analytics based on request parameters
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Process block analytics based on request parameters
+
 **Query Parameters**:
-- `includeAnalytics`
-- `includeTransactions`
-- `includePrograms`
-- `includeAccounts`
-- `includeTransfers`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeAnalytics` | string | includeAnalytics parameter |
+| `includeTransactions` | string | includeTransactions parameter |
+| `includePrograms` | string | includePrograms parameter |
+| `includeAccounts` | string | includeAccounts parameter |
+| `includeTransfers` | string | includeTransfers parameter |
 
 **Path Parameters**:
-- `slot`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `slot` | string | slot identifier |
 
 **Example Request**:
 ```bash
@@ -1351,8 +1530,14 @@ curl "https://opensvm.com/api/blocks/{slot}?includeAnalytics=value&includeTransa
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Rate limiter for block stats requests (500 requests per minute)
+
 **Query Parameters**:
-- `lookbackSlots`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `lookbackSlots` | number | lookbackSlots parameter |
 
 **Example Request**:
 ```bash
@@ -1367,9 +1552,12 @@ curl "https://opensvm.com/api/blocks/stats?lookbackSlots=value"
 
 ### GET /api/chart
 
-Chart API - Clean alias for OHLCV candlestick data
+**Description**: Chart API - Clean alias for OHLCV candlestick data
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Chart API - Clean alias for OHLCV candlestick data
 
 **Example Request**:
 ```bash
@@ -1386,8 +1574,14 @@ curl "https://opensvm.com/api/chart"
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: Mock responses for E2E testing
+
 **Query Parameters**:
-- `mock`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mock` | string | mock parameter |
 
 **Example Request**:
 ```bash
@@ -1403,6 +1597,11 @@ curl -X POST "https://opensvm.com/api/chat" \
 ### GET, POST, DELETE /api/chat/global
 
 **Methods**: GET, POST, DELETE
+
+**Method Details**:
+- **GET**: Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
+- **POST**: Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
+- **DELETE**: Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
 
 **Type Definitions**:
 ```typescript
@@ -1427,20 +1626,24 @@ curl "https://opensvm.com/api/chat/global"
 curl -X POST "https://opensvm.com/api/chat/global" \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/chat/global"
 ```
 
 **Source**: `app/api/chat/global/route.ts`
 
 ---
 
-## Check-account-type
+## Check account type
 
 ### GET /api/check-account-type
 
 **Methods**: GET
 
 **Query Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address parameter |
 
 **Example Request**:
 ```bash
@@ -1451,14 +1654,17 @@ curl "https://opensvm.com/api/check-account-type?address=value"
 
 ---
 
-## Check-token
+## Check token
 
 ### GET /api/check-token
 
 **Methods**: GET
 
 **Query Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address parameter |
 
 **Example Request**:
 ```bash
@@ -1473,9 +1679,13 @@ curl "https://opensvm.com/api/check-token?address=value"
 
 ### GET, POST /api/config
 
-Configuration endpoint
+**Description**: Configuration endpoint
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: Configuration endpoint
+- **POST**: Configuration endpoint
 
 **Authentication**: Required
 
@@ -1493,25 +1703,37 @@ curl -X POST "https://opensvm.com/api/config" \
 
 ---
 
-## Crash-reporting
+## Crash reporting
 
 ### GET, POST, DELETE, PATCH /api/crash-reporting
 
 **Methods**: GET, POST, DELETE, PATCH
 
+**Method Details**:
+- **GET**: In a real implementation, this would:
+- **DELETE**: In a real implementation, this would:
+- **PATCH**: In a real implementation, this would:
+
 **Query Parameters**:
-- `type`
-- `severity`
-- `since`
-- `limit`
-- `aggregated`
-- `crashId`
-- `fingerprint`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | string | Parse query parameters |
+| `severity` | number | severity parameter |
+| `since` | number | since parameter |
+| `limit` | number | limit parameter |
+| `aggregated` | boolean | aggregated parameter |
+| `crashId` | string | crashId parameter |
+| `fingerprint` | string | fingerprint parameter |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/crash-reporting?type=value&severity=value&since=value&limit=value&aggregated=value&crashId=value&fingerprint=value"
 curl -X POST "https://opensvm.com/api/crash-reporting" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/crash-reporting"
+curl -X PATCH "https://opensvm.com/api/crash-reporting" \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}'
 ```
@@ -1526,8 +1748,14 @@ curl -X POST "https://opensvm.com/api/crash-reporting" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: DEX configurations with real program IDs and details - standardized lowercase names
+
 **Path Parameters**:
-- `name`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `name` | string | name identifier |
 
 **Type Definitions**:
 ```typescript
@@ -1580,9 +1808,12 @@ curl "https://opensvm.com/api/dex/{name}"
 **Methods**: GET
 
 **Query Parameters**:
-- `format`
-- `download`
-- `scan`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `format` | boolean | format parameter |
+| `download` | boolean | download parameter |
+| `scan` | string | Scan API routes if requested (development only) |
 
 **Example Request**:
 ```bash
@@ -1609,13 +1840,17 @@ curl "https://opensvm.com/api/docs/page" \
 
 ---
 
-## Error-report
+## Error report
 
 ### GET, POST /api/error-report
 
-Error reporting endpoint
+**Description**: Error reporting endpoint
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: Error reporting endpoint
+- **POST**: Error reporting endpoint
 
 **Authentication**: Required
 
@@ -1633,27 +1868,39 @@ curl -X POST "https://opensvm.com/api/error-report" \
 
 ---
 
-## Error-tracking
+## Error tracking
 
 ### GET, POST, DELETE, PATCH /api/error-tracking
 
 **Methods**: GET, POST, DELETE, PATCH
 
+**Method Details**:
+- **GET**: In a real implementation, this would:
+- **DELETE**: In a real implementation, this would:
+- **PATCH**: In a real implementation, this would:
+
 **Query Parameters**:
-- `severity`
-- `category`
-- `component`
-- `resolved`
-- `since`
-- `limit`
-- `stats`
-- `timeframe`
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `severity` | string | Parse query parameters |
+| `category` | number | category parameter |
+| `component` | number | component parameter |
+| `resolved` | number | resolved parameter |
+| `since` | number | since parameter |
+| `limit` | number | limit parameter |
+| `stats` | number | stats parameter |
+| `timeframe` | string | Default 24 hours |
+| `type` | string | type parameter |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/error-tracking?severity=value&category=value&component=value&resolved=value&since=value&limit=value&stats=value&timeframe=value&type=value"
 curl -X POST "https://opensvm.com/api/error-tracking" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/error-tracking"
+curl -X PATCH "https://opensvm.com/api/error-tracking" \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}'
 ```
@@ -1681,9 +1928,12 @@ curl "https://opensvm.com/api/favicon"
 
 ### GET /api/feed/latest
 
-Real-time feed of latest blockchain activity
+**Description**: Real-time feed of latest blockchain activity
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time feed of latest blockchain activity
 
 **Example Request**:
 ```bash
@@ -1694,7 +1944,7 @@ curl "https://opensvm.com/api/feed/latest"
 
 ---
 
-## Filter-transactions
+## Filter transactions
 
 ### POST /api/filter-transactions
 
@@ -1714,7 +1964,7 @@ curl -X POST "https://opensvm.com/api/filter-transactions" \
 
 ---
 
-## Find-related-transactions
+## Find related transactions
 
 ### POST /api/find-related-transactions
 
@@ -1735,9 +1985,10 @@ curl -X POST "https://opensvm.com/api/find-related-transactions" \
 
 ### POST /api/getAnswer
 
-This API endpoint uses a modular tool system to handle common Solana queries
-
 **Methods**: POST
+
+**Method Details**:
+- **POST**: This API endpoint uses a modular tool system to handle common Solana queries
 
 **Example Request**:
 ```bash
@@ -1755,6 +2006,9 @@ curl -X POST "https://opensvm.com/api/getAnswer" \
 ### POST /api/getSimilarQuestions
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Check if required environment variables are present
 
 **Authentication**: Required
 
@@ -1799,9 +2053,12 @@ curl "https://opensvm.com/api/getSources"
 
 ### GET /api/health
 
-Health check endpoint with activity logging
+**Description**: Health check endpoint with activity logging
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Health check endpoint with activity logging
 
 **Authentication**: Required
 
@@ -1817,13 +2074,17 @@ curl "https://opensvm.com/api/health" \
 
 ### GET /api/health/anthropic
 
-GET /api/health/anthropic
-
 **Methods**: GET
 
+**Method Details**:
+- **GET**: GET /api/health/anthropic
+
 **Query Parameters**:
-- `backend`
-- `cache`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `backend` | string | backend parameter |
+| `cache` | string | cache parameter |
 
 **Example Request**:
 ```bash
@@ -1840,12 +2101,18 @@ curl "https://opensvm.com/api/health/anthropic?backend=value&cache=value"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Shared cache (5 minute TTL)
+
 **Query Parameters**:
-- `program`
-- `period`
-- `limit`
-- `offset`
-- `minInteractions`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `program` | string | Required parameter: program address |
+| `period` | string | Optional parameters |
+| `limit` | number | limit parameter |
+| `offset` | number | offset parameter |
+| `minInteractions` | number | minInteractions parameter |
 
 **Example Request**:
 ```bash
@@ -1856,21 +2123,28 @@ curl "https://opensvm.com/api/holdersByInteraction?program=value&period=value&li
 
 ---
 
-## Instruction-lookup
+## Instruction lookup
 
 ### GET, POST /api/instruction-lookup
 
-GET /api/instruction-lookup
+**Description**: GET /api/instruction-lookup
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/instruction-lookup
+- **POST**: GET /api/instruction-lookup
+
 **Query Parameters**:
-- `action`
-- `programId`
-- `discriminator`
-- `instructionName`
-- `category`
-- `riskLevel`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | action parameter |
+| `programId` | string | programId parameter |
+| `discriminator` | string | discriminator parameter |
+| `instructionName` | string | instructionName parameter |
+| `category` | string | category parameter |
+| `riskLevel` | string | riskLevel parameter |
 
 **Example Request**:
 ```bash
@@ -1888,14 +2162,20 @@ curl -X POST "https://opensvm.com/api/instruction-lookup" \
 
 ### GET /api/launchpad/admin/referrers
 
-API Route: GET /api/launchpad/admin/referrers
+**Description**: API Route: GET /api/launchpad/admin/referrers
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: API Route: GET /api/launchpad/admin/referrers
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `status`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | status parameter |
 
 **Example Request**:
 ```bash
@@ -1909,14 +2189,20 @@ curl "https://opensvm.com/api/launchpad/admin/referrers?status=value" \
 
 ### POST /api/launchpad/admin/referrers/:id/approve
 
-API Route: POST /api/launchpad/admin/referrers/[id]/approve
+**Description**: API Route: POST /api/launchpad/admin/referrers/[id]/approve
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API Route: POST /api/launchpad/admin/referrers/[id]/approve
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `id`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | id identifier |
 
 **Example Request**:
 ```bash
@@ -1932,14 +2218,20 @@ curl -X POST "https://opensvm.com/api/launchpad/admin/referrers/{id}/approve" \
 
 ### POST /api/launchpad/admin/referrers/:id/reject
 
-API Route: POST /api/launchpad/admin/referrers/[id]/reject
+**Description**: API Route: POST /api/launchpad/admin/referrers/[id]/reject
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API Route: POST /api/launchpad/admin/referrers/[id]/reject
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `id`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | id identifier |
 
 **Example Request**:
 ```bash
@@ -1957,8 +2249,14 @@ curl -X POST "https://opensvm.com/api/launchpad/admin/referrers/{id}/reject" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: GET /api/launchpad/contributions/:contribId - Get single contribution receipt
+
 **Path Parameters**:
-- `contribId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `contribId` | string | contribId identifier |
 
 **Example Request**:
 ```bash
@@ -1971,12 +2269,18 @@ curl "https://opensvm.com/api/launchpad/contributions/{contribId}"
 
 ### GET /api/launchpad/kol/:kolId
 
-API Route: GET /api/launchpad/kol/[kolId]
+**Description**: API Route: GET /api/launchpad/kol/[kolId]
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: API Route: GET /api/launchpad/kol/[kolId]
+
 **Path Parameters**:
-- `kolId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `kolId` | string | kolId identifier |
 
 **Example Request**:
 ```bash
@@ -1991,8 +2295,14 @@ curl "https://opensvm.com/api/launchpad/kol/{kolId}"
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: POST /api/launchpad/kol/:kolId/claim - Claim tokens
+
 **Path Parameters**:
-- `kolId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `kolId` | string | kolId identifier |
 
 **Example Request**:
 ```bash
@@ -2007,9 +2317,12 @@ curl -X POST "https://opensvm.com/api/launchpad/kol/{kolId}/claim" \
 
 ### POST /api/launchpad/kol/apply
 
-API Route: POST /api/launchpad/kol/apply
+**Description**: API Route: POST /api/launchpad/kol/apply
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API Route: POST /api/launchpad/kol/apply
 
 **Example Request**:
 ```bash
@@ -2024,12 +2337,18 @@ curl -X POST "https://opensvm.com/api/launchpad/kol/apply" \
 
 ### GET /api/launchpad/referral-links/:code
 
-API Route: GET /api/launchpad/referral-links/[code]
+**Description**: API Route: GET /api/launchpad/referral-links/[code]
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: API Route: GET /api/launchpad/referral-links/[code]
+
 **Path Parameters**:
-- `code`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `code` | string | code identifier |
 
 **Example Request**:
 ```bash
@@ -2044,10 +2363,17 @@ curl "https://opensvm.com/api/launchpad/referral-links/{code}"
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: POST /api/launchpad/reports/daily - Submit daily volume report
+- **POST**: POST /api/launchpad/reports/daily - Submit daily volume report
+
 **Query Parameters**:
-- `sale_id`
-- `kol_id`
-- `date`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `sale_id` | string | sale_id parameter |
+| `kol_id` | string | kol_id parameter |
+| `date` | string | date parameter |
 
 **Example Request**:
 ```bash
@@ -2063,12 +2389,19 @@ curl -X POST "https://opensvm.com/api/launchpad/reports/daily" \
 
 ### GET, POST /api/launchpad/sales
 
-API Route: GET /api/launchpad/sales
+**Description**: API Route: GET /api/launchpad/sales
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: API Route: GET /api/launchpad/sales
+- **POST**: API Route: GET /api/launchpad/sales
+
 **Query Parameters**:
-- `status`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `status` | string | status parameter |
 
 **Example Request**:
 ```bash
@@ -2084,12 +2417,18 @@ curl -X POST "https://opensvm.com/api/launchpad/sales" \
 
 ### GET /api/launchpad/sales/:saleId
 
-API Route: GET /api/launchpad/sales/[saleId]
+**Description**: API Route: GET /api/launchpad/sales/[saleId]
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: API Route: GET /api/launchpad/sales/[saleId]
+
 **Path Parameters**:
-- `saleId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `saleId` | string | saleId identifier |
 
 **Example Request**:
 ```bash
@@ -2102,12 +2441,18 @@ curl "https://opensvm.com/api/launchpad/sales/{saleId}"
 
 ### POST /api/launchpad/sales/:saleId/contribute
 
-API Route: POST /api/launchpad/sales/[saleId]/contribute
+**Description**: API Route: POST /api/launchpad/sales/[saleId]/contribute
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: API Route: POST /api/launchpad/sales/[saleId]/contribute
+
 **Path Parameters**:
-- `saleId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `saleId` | string | saleId identifier |
 
 **Example Request**:
 ```bash
@@ -2124,8 +2469,14 @@ curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/contribute" \
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: POST /api/launchpad/sales/:saleId/distribute_volume - Distribute volume rewards
+
 **Path Parameters**:
-- `saleId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `saleId` | string | saleId identifier |
 
 **Example Request**:
 ```bash
@@ -2140,12 +2491,18 @@ curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/distribute_volume
 
 ### POST /api/launchpad/sales/:saleId/referral-links
 
-API Route: POST /api/launchpad/sales/[saleId]/referral-links
+**Description**: API Route: POST /api/launchpad/sales/[saleId]/referral-links
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: API Route: POST /api/launchpad/sales/[saleId]/referral-links
+
 **Path Parameters**:
-- `saleId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `saleId` | string | saleId identifier |
 
 **Example Request**:
 ```bash
@@ -2158,13 +2515,16 @@ curl -X POST "https://opensvm.com/api/launchpad/sales/{saleId}/referral-links" \
 
 ---
 
-## Live-stats
+## Live stats
 
 ### GET /api/live-stats
 
-Real-time blockchain statistics
+**Description**: Real-time blockchain statistics
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time blockchain statistics
 
 **Example Request**:
 ```bash
@@ -2181,6 +2541,9 @@ curl "https://opensvm.com/api/live-stats"
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Handle both single log entries and batched logs
+
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/logging"
@@ -2193,21 +2556,24 @@ curl -X POST "https://opensvm.com/api/logging" \
 
 ---
 
-## Market-data
+## Market data
 
 ### GET /api/market-data
 
 **Methods**: GET
 
 **Query Parameters**:
-- `mint`
-- `endpoint`
-- `baseMint`
-- `poolAddress`
-- `type`
-- `time_to`
-- `time_from`
-- `offset`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mint` | string | mint parameter |
+| `endpoint` | string | endpoint parameter |
+| `baseMint` | string | Optional: filter by base token |
+| `poolAddress` | string | Optional: specific pool |
+| `type` | string | type parameter |
+| `time_to` | string | Support custom time ranges via query parameters |
+| `time_from` | string | time_from parameter |
+| `offset` | string | offset parameter |
 
 **Example Request**:
 ```bash
@@ -2222,9 +2588,12 @@ curl "https://opensvm.com/api/market-data?mint=value&endpoint=value&baseMint=val
 
 ### GET /api/mempool
 
-Real-time mempool monitoring
+**Description**: Real-time mempool monitoring
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time mempool monitoring
 
 **Example Request**:
 ```bash
@@ -2239,9 +2608,13 @@ curl "https://opensvm.com/api/mempool"
 
 ### GET, POST /api/metrics
 
-System metrics and performance data
+**Description**: System metrics and performance data
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: System metrics and performance data
+- **POST**: System metrics and performance data
 
 **Authentication**: Required
 
@@ -2319,16 +2692,23 @@ curl -X POST "https://opensvm.com/api/monetization/earn" \
 
 **Methods**: GET, DELETE
 
+**Method Details**:
+- **DELETE**: Parse query parameters
+
 **Query Parameters**:
-- `timeframe`
-- `endpoint`
-- `method`
-- `limit`
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `timeframe` | string | Default 1 hour |
+| `endpoint` | string | Default 1 hour |
+| `method` | number | method parameter |
+| `limit` | number | limit parameter |
+| `type` | string | type parameter |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/monitoring/api?timeframe=value&endpoint=value&method=value&limit=value&type=value"
+curl -X DELETE "https://opensvm.com/api/monitoring/api"
 ```
 
 **Source**: `app/api/monitoring/api/route.ts`
@@ -2339,19 +2719,26 @@ curl "https://opensvm.com/api/monitoring/api?timeframe=value&endpoint=value&meth
 
 **Methods**: GET, POST, DELETE
 
+**Method Details**:
+- **POST**: Parse query parameters
+- **DELETE**: Parse query parameters
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `limit`
-- `since`
-- `method`
-- `status`
-- `path`
-- `userId`
-- `sessionId`
-- `completedOnly`
-- `stats`
-- `timeframe`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | string | Parse query parameters |
+| `since` | number | since parameter |
+| `method` | number | method parameter |
+| `status` | number | status parameter |
+| `path` | boolean | path parameter |
+| `userId` | number | userId parameter |
+| `sessionId` | number | sessionId parameter |
+| `completedOnly` | number | completedOnly parameter |
+| `stats` | number | stats parameter |
+| `timeframe` | string | Default 1 hour |
 
 **Example Request**:
 ```bash
@@ -2361,13 +2748,15 @@ curl -X POST "https://opensvm.com/api/monitoring/requests" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/monitoring/requests" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Source**: `app/api/monitoring/requests/route.ts`
 
 ---
 
-## Nft-collections
+## Nft collections
 
 ### GET /api/nft-collections
 
@@ -2414,6 +2803,9 @@ curl "https://opensvm.com/api/nft-collections/trending"
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Type definitions
+
 **Authentication**: Required
 
 **Type Definitions**:
@@ -2456,9 +2848,12 @@ curl "https://opensvm.com/api/nfts/collections" \
 
 ### GET /api/notifications
 
-Real-time notifications stream
+**Description**: Real-time notifications stream
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time notifications stream
 
 **Example Request**:
 ```bash
@@ -2476,9 +2871,12 @@ curl "https://opensvm.com/api/notifications"
 **Methods**: GET
 
 **Query Parameters**:
-- `title`
-- `description`
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `title` | string | Dynamic params |
+| `description` | string | description parameter |
+| `type` | string | type parameter |
 
 **Example Request**:
 ```bash
@@ -2491,13 +2889,19 @@ curl "https://opensvm.com/api/og?title=value&description=value&type=value"
 
 ### GET /api/og/:entityType/:entityId
 
-OG Image Generation API
+**Description**: OG Image Generation API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: OG Image Generation API
+
 **Path Parameters**:
-- `entityType`
-- `entityId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `entityType` | string | entityType identifier |
+| `entityId` | string | entityId identifier |
 
 **Type Definitions**:
 ```typescript
@@ -2523,10 +2927,18 @@ curl "https://opensvm.com/api/og/{entityType}/{entityId}"
 
 **Methods**: GET, POST, DELETE
 
+**Method Details**:
+- **GET**: Enhanced user authentication with session and JWT support
+- **POST**: Enhanced user authentication with session and JWT support
+- **DELETE**: Enhanced user authentication with session and JWT support
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `keyId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `keyId` | string | keyId parameter |
 
 **Example Request**:
 ```bash
@@ -2536,6 +2948,8 @@ curl -X POST "https://opensvm.com/api/opensvm/anthropic-keys" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/opensvm/anthropic-keys" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Source**: `app/api/opensvm/anthropic-keys/route.ts`
@@ -2544,18 +2958,27 @@ curl -X POST "https://opensvm.com/api/opensvm/anthropic-keys" \
 
 ### GET, DELETE /api/opensvm/anthropic-keys/:keyId
 
-Extract user ID from request with proper JWT validation
+**Description**: Extract user ID from request with proper JWT validation
 
 **Methods**: GET, DELETE
+
+**Method Details**:
+- **GET**: Extract user ID from request with proper JWT validation
+- **DELETE**: Extract user ID from request with proper JWT validation
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `keyId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `keyId` | string | keyId identifier |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/opensvm/anthropic-keys/{keyId}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X DELETE "https://opensvm.com/api/opensvm/anthropic-keys/{keyId}" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -2565,9 +2988,10 @@ curl "https://opensvm.com/api/opensvm/anthropic-keys/{keyId}" \
 
 ### GET /api/opensvm/anthropic-keys/stats
 
-GET /api/opensvm/anthropic-keys/stats
-
 **Methods**: GET
+
+**Method Details**:
+- **GET**: GET /api/opensvm/anthropic-keys/stats
 
 **Authentication**: Required
 
@@ -2585,6 +3009,9 @@ curl "https://opensvm.com/api/opensvm/anthropic-keys/stats" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Enhanced user authentication with JWT support
+
 **Authentication**: Required
 
 **Example Request**:
@@ -2601,25 +3028,31 @@ curl "https://opensvm.com/api/opensvm/balance" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Enhanced user authentication with JWT support
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `period`
-- `keyId`
-- `model`
-- `startDate`
-- `endDate`
-- `minCost`
-- `maxCost`
-- `minTokens`
-- `maxTokens`
-- `status`
-- `sortBy`
-- `sortOrder`
-- `limit`
-- `offset`
-- `groupBy`
-- `includeMetadata`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `period` | string | period parameter |
+| `keyId` | string | keyId parameter |
+| `model` | string | model parameter |
+| `startDate` | string | startDate parameter |
+| `endDate` | string | endDate parameter |
+| `minCost` | string | minCost parameter |
+| `maxCost` | string | maxCost parameter |
+| `minTokens` | string | minTokens parameter |
+| `maxTokens` | number | maxTokens parameter |
+| `status` | number | status parameter |
+| `sortBy` | number | sortBy parameter |
+| `sortOrder` | number | sortOrder parameter |
+| `limit` | number | limit parameter |
+| `offset` | number | offset parameter |
+| `groupBy` | boolean | groupBy parameter |
+| `includeMetadata` | boolean | includeMetadata parameter |
 
 **Example Request**:
 ```bash
@@ -2637,10 +3070,16 @@ curl "https://opensvm.com/api/opensvm/usage?period=value&keyId=value&model=value
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: @ts-nocheck
+
 **Authentication**: Required
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -2652,13 +3091,17 @@ curl "https://opensvm.com/api/program/{address}" \
 
 ---
 
-## Program-accounts
+## Program accounts
 
 ### GET, POST /api/program-accounts
 
-Generate PDA (Program Derived Address)
+**Description**: Generate PDA (Program Derived Address)
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: Generate PDA (Program Derived Address)
+- **POST**: Generate PDA (Program Derived Address)
 
 **Type Definitions**:
 ```typescript
@@ -2697,20 +3140,27 @@ curl -X POST "https://opensvm.com/api/program-accounts" \
 
 ---
 
-## Program-discovery
+## Program discovery
 
 ### GET, POST /api/program-discovery
 
-GET /api/program-discovery
+**Description**: GET /api/program-discovery
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/program-discovery
+- **POST**: GET /api/program-discovery
+
 **Query Parameters**:
-- `action`
-- `programId`
-- `query`
-- `status`
-- `limit`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | number | action parameter |
+| `programId` | number | programId parameter |
+| `query` | number | query parameter |
+| `status` | number | status parameter |
+| `limit` | number | limit parameter |
 
 **Example Request**:
 ```bash
@@ -2724,7 +3174,7 @@ curl -X POST "https://opensvm.com/api/program-discovery" \
 
 ---
 
-## Program-metadata
+## Program metadata
 
 ### GET, POST /api/program-metadata
 
@@ -2733,7 +3183,10 @@ curl -X POST "https://opensvm.com/api/program-discovery" \
 **Authentication**: Required
 
 **Query Parameters**:
-- `programId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `programId` | string | programId parameter |
 
 **Example Request**:
 ```bash
@@ -2749,22 +3202,29 @@ curl -X POST "https://opensvm.com/api/program-metadata" \
 
 ---
 
-## Program-registry
+## Program registry
 
 ### GET, POST /api/program-registry
 
-GET /api/program-registry
+**Description**: GET /api/program-registry
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/program-registry
+- **POST**: GET /api/program-registry
+
 **Query Parameters**:
-- `action`
-- `programId`
-- `category`
-- `riskLevel`
-- `instructionType`
-- `query`
-- `similar`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | action parameter |
+| `programId` | string | programId parameter |
+| `category` | string | category parameter |
+| `riskLevel` | string | riskLevel parameter |
+| `instructionType` | string | instructionType parameter |
+| `query` | string | query parameter |
+| `similar` | string | similar parameter |
 
 **Example Request**:
 ```bash
@@ -2780,16 +3240,26 @@ curl -X POST "https://opensvm.com/api/program-registry" \
 
 ### GET, POST /api/program-registry/:programId
 
-GET /api/program-registry/[programId]
+**Description**: GET /api/program-registry/[programId]
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/program-registry/[programId]
+- **POST**: GET /api/program-registry/[programId]
+
 **Query Parameters**:
-- `include`
-- `instruction`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `include` | string[] | include parameter |
+| `instruction` | string | instruction parameter |
 
 **Path Parameters**:
-- `programId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `programId` | string | programId identifier |
 
 **Example Request**:
 ```bash
@@ -2812,7 +3282,10 @@ curl -X POST "https://opensvm.com/api/program-registry/{programId}" \
 **Authentication**: Required
 
 **Query Parameters**:
-- `cluster`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `cluster` | string | cluster parameter |
 
 **Example Request**:
 ```bash
@@ -2830,10 +3303,16 @@ curl -X POST "https://opensvm.com/api/proxy/rpc" \
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: Next.js 15.1.7 App Router route handler with correct type signature
+
 **Authentication**: Required
 
 **Path Parameters**:
-- `id`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | id identifier |
 
 **Example Request**:
 ```bash
@@ -2866,14 +3345,20 @@ curl "https://opensvm.com/api/qdrant/init"
 
 ### GET /api/referrals/balance
 
-API endpoint for getting a user's token balance
+**Description**: API endpoint for getting a user's token balance
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: API endpoint for getting a user's token balance
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
 
 **Example Request**:
 ```bash
@@ -2887,9 +3372,12 @@ curl "https://opensvm.com/api/referrals/balance?walletAddress=value" \
 
 ### POST /api/referrals/claim
 
-API endpoint for claiming referral rewards
+**Description**: API endpoint for claiming referral rewards
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for claiming referral rewards
 
 **Authentication**: Required
 
@@ -2910,6 +3398,9 @@ curl -X POST "https://opensvm.com/api/referrals/claim" \
 ### GET /api/scan
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Simple list of sample launchpads to mock aggregate data from
 
 **Type Definitions**:
 ```typescript
@@ -2943,13 +3434,16 @@ curl "https://opensvm.com/api/scan"
 **Methods**: GET
 
 **Query Parameters**:
-- `q`
-- `start`
-- `end`
-- `type`
-- `status`
-- `min`
-- `max`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | q parameter |
+| `start` | string | start parameter |
+| `end` | string | end parameter |
+| `type` | string | type parameter |
+| `status` | string | status parameter |
+| `min` | string | min parameter |
+| `max` | string | max parameter |
 
 **Type Definitions**:
 ```typescript
@@ -2980,10 +3474,16 @@ curl "https://opensvm.com/api/search?q=value&start=value&end=value&type=value&st
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Rate limit configuration for account search
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `q`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | q parameter |
 
 **Example Request**:
 ```bash
@@ -3000,13 +3500,16 @@ curl "https://opensvm.com/api/search/accounts?q=value" \
 **Methods**: GET
 
 **Query Parameters**:
-- `q`
-- `start`
-- `end`
-- `type`
-- `status`
-- `min`
-- `max`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | q parameter |
+| `start` | string | start parameter |
+| `end` | string | end parameter |
+| `type` | string | type parameter |
+| `status` | string | status parameter |
+| `min` | string | min parameter |
+| `max` | string | max parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3035,15 +3538,20 @@ curl "https://opensvm.com/api/search/filtered?q=value&start=value&end=value&type
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Lightweight base58 check (characters only)
+
 **Query Parameters**:
-- `q`
-- `query`
-- `networks`
-- `userId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | q parameter |
+| `networks` | string[] | networks parameter |
+| `userId` | string | Optional user ID for personalization |
 
 **Example Request**:
 ```bash
-curl "https://opensvm.com/api/search/suggestions?q=value&query=value&networks=value&userId=value"
+curl "https://opensvm.com/api/search/suggestions?q=value&networks=value&userId=value"
 ```
 
 **Source**: `app/api/search/suggestions/route.ts`
@@ -3052,9 +3560,12 @@ curl "https://opensvm.com/api/search/suggestions?q=value&query=value&networks=va
 
 ### GET /api/search/suggestions/empty-state
 
-Get live token data for latest items section from Qdrant
+**Description**: Get live token data for latest items section from Qdrant
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Get live token data for latest items section from Qdrant
 
 **Example Request**:
 ```bash
@@ -3065,14 +3576,20 @@ curl "https://opensvm.com/api/search/suggestions/empty-state"
 
 ---
 
-## Search-suggestions
+## Search suggestions
 
 ### GET /api/search-suggestions
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Common Solana-related search suggestions
+
 **Query Parameters**:
-- `q`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `q` | string | q parameter |
 
 **Example Request**:
 ```bash
@@ -3087,12 +3604,18 @@ curl "https://opensvm.com/api/search-suggestions?q=value"
 
 ### GET /api/share/:shareCode
 
-Share Data API
+**Description**: Share Data API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Share Data API
+
 **Path Parameters**:
-- `shareCode`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `shareCode` | string | shareCode identifier |
 
 **Example Request**:
 ```bash
@@ -3105,12 +3628,18 @@ curl "https://opensvm.com/api/share/{shareCode}"
 
 ### POST /api/share/click/:shareCode
 
-Share Click Tracking API
+**Description**: Share Click Tracking API
 
 **Methods**: POST
 
+**Method Details**:
+- **POST**: Share Click Tracking API
+
 **Path Parameters**:
-- `shareCode`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `shareCode` | string | shareCode identifier |
 
 **Example Request**:
 ```bash
@@ -3125,9 +3654,12 @@ curl -X POST "https://opensvm.com/api/share/click/{shareCode}" \
 
 ### POST /api/share/conversion
 
-Share Conversion Tracking API
+**Description**: Share Conversion Tracking API
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Share Conversion Tracking API
 
 **Example Request**:
 ```bash
@@ -3142,9 +3674,12 @@ curl -X POST "https://opensvm.com/api/share/conversion" \
 
 ### POST /api/share/generate
 
-Share Generation API
+**Description**: Fetch entity data based on type
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Share Generation API
 
 **Authentication**: Required
 
@@ -3162,12 +3697,18 @@ curl -X POST "https://opensvm.com/api/share/generate" \
 
 ### GET /api/share/stats/:walletAddress
 
-Share Statistics API
+**Description**: Share Statistics API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Share Statistics API
+
 **Path Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress identifier |
 
 **Example Request**:
 ```bash
@@ -3182,13 +3723,19 @@ curl "https://opensvm.com/api/share/stats/{walletAddress}"
 
 ### GET /api/slots
 
-Fetch slot details with caching
+**Description**: Fetch slot details with caching
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Fetch slot details with caching
+
 **Query Parameters**:
-- `limit`
-- `fromSlot`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | string | Reduced default limit for better performance |
+| `fromSlot` | number | fromSlot parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3224,14 +3771,20 @@ curl "https://opensvm.com/api/slots?limit=value&fromSlot=value"
 
 ---
 
-## Solana-proxy
+## Solana proxy
 
 ### GET, POST /api/solana-proxy
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **POST**: Try multiple RPC endpoints with rate limits
+
 **Query Parameters**:
-- `transaction`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `transaction` | string | transaction parameter |
 
 **Example Request**:
 ```bash
@@ -3250,7 +3803,10 @@ curl -X POST "https://opensvm.com/api/solana-proxy" \
 **Methods**: GET
 
 **Path Parameters**:
-- `transaction`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `transaction` | string | transaction identifier |
 
 **Example Request**:
 ```bash
@@ -3261,13 +3817,16 @@ curl "https://opensvm.com/api/solana-proxy/{transaction}"
 
 ---
 
-## Solana-rpc
+## Solana rpc
 
 ### POST /api/solana-rpc
 
-Solana RPC proxy API endpoint
+**Description**: Solana RPC proxy API endpoint
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Solana RPC proxy API endpoint
 
 **Example Request**:
 ```bash
@@ -3280,22 +3839,31 @@ curl -X POST "https://opensvm.com/api/solana-rpc" \
 
 ---
 
-## Sse-alerts
+## Sse alerts
 
 ### GET, DELETE /api/sse-alerts
 
 **Methods**: GET, DELETE
 
+**Method Details**:
+- **GET**: Start SSE cleanup on module load
+- **DELETE**: Start SSE cleanup on module load
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `clientId`
-- `action`
-- `eventTypes`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `clientId` | string | clientId parameter |
+| `action` | string | action parameter |
+| `eventTypes` | string | Get event types from query params, no default - require explicit specification |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/sse-alerts?clientId=value&action=value&eventTypes=value" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+curl -X DELETE "https://opensvm.com/api/sse-alerts" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
@@ -3303,19 +3871,25 @@ curl "https://opensvm.com/api/sse-alerts?clientId=value&action=value&eventTypes=
 
 ---
 
-## Sse-events
+## Sse events
 
 ### GET /api/sse-events/feed
 
-Server-Sent Events (SSE) endpoint for real-time feed updates
+**Description**: Server-Sent Events (SSE) endpoint for real-time feed updates
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Server-Sent Events (SSE) endpoint for real-time feed updates
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
+| `type` | string | type parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3339,21 +3913,29 @@ curl "https://opensvm.com/api/sse-events/feed?walletAddress=value&type=value" \
 
 ---
 
-## Sse-feed
+## Sse feed
 
 ### GET, DELETE /api/sse-feed
 
 **Methods**: GET, DELETE
 
+**Method Details**:
+- **GET**: Start SSE cleanup on module load
+- **DELETE**: Start SSE cleanup on module load
+
 **Query Parameters**:
-- `clientId`
-- `action`
-- `feedType`
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `clientId` | string | clientId parameter |
+| `action` | string | action parameter |
+| `feedType` | string | feedType parameter |
+| `walletAddress` | string | walletAddress parameter |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/sse-feed?clientId=value&action=value&feedType=value&walletAddress=value"
+curl -X DELETE "https://opensvm.com/api/sse-feed"
 ```
 
 **Source**: `app/api/sse-feed/route.ts`
@@ -3364,9 +3946,13 @@ curl "https://opensvm.com/api/sse-feed?clientId=value&action=value&feedType=valu
 
 ### GET, POST /api/status
 
-System status
+**Description**: System status
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: System status
+- **POST**: System status
 
 **Authentication**: Required
 
@@ -3390,11 +3976,18 @@ curl -X POST "https://opensvm.com/api/status" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Enhanced logger for stream API
+- **POST**: Enhanced logger for stream API
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `action`
-- `clientId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | action parameter |
+| `clientId` | string | clientId parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3435,9 +4028,12 @@ curl -X POST "https://opensvm.com/api/stream" \
 
 ### GET /api/stream/blocks
 
-Real-time block stream endpoint using SSE
+**Description**: Real-time block stream endpoint using SSE
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time block stream endpoint using SSE
 
 **Example Request**:
 ```bash
@@ -3450,9 +4046,12 @@ curl "https://opensvm.com/api/stream/blocks"
 
 ### GET /api/stream/transactions
 
-Real-time transaction stream endpoint using SSE
+**Description**: Real-time transaction stream endpoint using SSE
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Real-time transaction stream endpoint using SSE
 
 **Example Request**:
 ```bash
@@ -3463,7 +4062,7 @@ curl "https://opensvm.com/api/stream/transactions"
 
 ---
 
-## Test-qdrant
+## Test qdrant
 
 ### GET /api/test-qdrant
 
@@ -3478,14 +4077,17 @@ curl "https://opensvm.com/api/test-qdrant"
 
 ---
 
-## Test-token-balance
+## Test token balance
 
 ### GET /api/test-token-balance
 
 **Methods**: GET
 
 **Query Parameters**:
-- `wallet`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `wallet` | string | wallet parameter |
 
 **Example Request**:
 ```bash
@@ -3496,7 +4098,7 @@ curl "https://opensvm.com/api/test-token-balance?wallet=value"
 
 ---
 
-## Test-transaction
+## Test transaction
 
 ### GET /api/test-transaction
 
@@ -3520,10 +4122,16 @@ curl "https://opensvm.com/api/test-transaction" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Cache for token holder data and market data
+
 **Authentication**: Required
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -3539,20 +4147,29 @@ curl "https://opensvm.com/api/token/{address}" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Constants
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `limit`
-- `offset`
-- `minBalance`
-- `minVolume`
-- `volumeHours`
-- `sortBy`
-- `order`
-- `includeVolume`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | number | limit parameter |
+| `offset` | number | offset parameter |
+| `minBalance` | number | minBalance parameter |
+| `minVolume` | number | minVolume parameter |
+| `volumeHours` | number | volumeHours parameter |
+| `sortBy` | string | balance, address, or volume |
+| `order` | string | desc or asc |
+| `includeVolume` | string | desc or asc |
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -3568,15 +4185,24 @@ curl "https://opensvm.com/api/token/{address}/holders?limit=value&offset=value&m
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Shared cache with holders endpoint (5 minute TTL)
+
 **Query Parameters**:
-- `limit`
-- `offset`
-- `minBalance`
-- `minVolume`
-- `period`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | string | Force include volume and sort by volume |
+| `offset` | number | offset parameter |
+| `minBalance` | number | minBalance parameter |
+| `minVolume` | number | minVolume parameter |
+| `period` | string | hours |
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -3591,17 +4217,26 @@ curl "https://opensvm.com/api/token/{address}/holdersByVolume?limit=value&offset
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Shared cache with holders endpoint (5 minute TTL)
+
 **Query Parameters**:
-- `includeVolume`
-- `limit`
-- `offset`
-- `minBalance`
-- `minVolume`
-- `period`
-- `sortBy`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeVolume` | string | For traders endpoint, includeVolume is true by default |
+| `limit` | number | limit parameter |
+| `offset` | number | offset parameter |
+| `minBalance` | number | minBalance parameter |
+| `minVolume` | number | minVolume parameter |
+| `period` | string | hours |
+| `sortBy` | string | Default to sort by volume for traders |
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -3612,7 +4247,7 @@ curl "https://opensvm.com/api/token/{address}/traders?includeVolume=value&limit=
 
 ---
 
-## Token-gating
+## Token gating
 
 ### GET /api/token-gating/check
 
@@ -3630,14 +4265,20 @@ curl "https://opensvm.com/api/token-gating/check" \
 
 ---
 
-## Token-metadata
+## Token metadata
 
 ### GET, POST /api/token-metadata
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **POST**: Validate mint address format
+
 **Query Parameters**:
-- `mint`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mint` | string | mint parameter |
 
 **Example Request**:
 ```bash
@@ -3651,15 +4292,21 @@ curl -X POST "https://opensvm.com/api/token-metadata" \
 
 ---
 
-## Token-stats
+## Token stats
 
 ### GET /api/token-stats/:account/:mint
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: 5 minutes
+
 **Path Parameters**:
-- `account`
-- `mint`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `account` | string | account identifier |
+| `mint` | string | mint identifier |
 
 **Type Definitions**:
 ```typescript
@@ -3685,15 +4332,21 @@ curl "https://opensvm.com/api/token-stats/{account}/{mint}"
 
 ### GET /api/trades
 
-Trades API - Fetch recent trades for a specific token
+**Description**: Trades API - Fetch recent trades for a specific token
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Trades API - Fetch recent trades for a specific token
+
 **Query Parameters**:
-- `mint`
-- `limit`
-- `type`
-- `offset`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mint` | number | mint parameter |
+| `limit` | number | limit parameter |
+| `type` | number | type parameter |
+| `offset` | number | offset parameter |
 
 **Example Request**:
 ```bash
@@ -3709,6 +4362,9 @@ curl "https://opensvm.com/api/trades?mint=value&limit=value&type=value&offset=va
 ### POST /api/trading/chat
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Parse natural language trading commands
 
 **Type Definitions**:
 ```typescript
@@ -3743,12 +4399,20 @@ curl -X POST "https://opensvm.com/api/trading/chat" \
 
 ### GET, POST, DELETE /api/trading/execute
 
-Generate a unique order ID
+**Description**: Generate a unique order ID
 
 **Methods**: GET, POST, DELETE
 
+**Method Details**:
+- **GET**: Generate a unique order ID
+- **POST**: Generate a unique order ID
+- **DELETE**: Generate a unique order ID
+
 **Query Parameters**:
-- `orderId`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `orderId` | string | orderId parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3798,6 +4462,7 @@ curl "https://opensvm.com/api/trading/execute?orderId=value"
 curl -X POST "https://opensvm.com/api/trading/execute" \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/trading/execute"
 ```
 
 **Source**: `app/api/trading/execute/route.ts`
@@ -3806,14 +4471,20 @@ curl -X POST "https://opensvm.com/api/trading/execute" \
 
 ### GET /api/trading/market-data
 
-Calculate price impact for a given trade size on an AMM
+**Description**: Calculate price impact for a given trade size on an AMM
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Calculate price impact for a given trade size on an AMM
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `market`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `market` | string | market parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3843,14 +4514,20 @@ curl "https://opensvm.com/api/trading/market-data?market=value" \
 
 ### GET /api/trading/markets
 
-Fetch trending/top tokens from Birdeye API
+**Description**: Fetch trending/top tokens from Birdeye API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Fetch trending/top tokens from Birdeye API
+
 **Query Parameters**:
-- `type`
-- `limit`
-- `dex`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | number | type parameter |
+| `limit` | number | limit parameter |
+| `dex` | string | New: DEX filter parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3888,14 +4565,20 @@ curl "https://opensvm.com/api/trading/markets?type=value&limit=value&dex=value"
 
 ### GET /api/trading/pools
 
-Fetch all trading pools/pairs for a specific token from Birdeye API
+**Description**: Fetch all trading pools/pairs for a specific token from Birdeye API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Fetch all trading pools/pairs for a specific token from Birdeye API
+
 **Query Parameters**:
-- `token`
-- `symbol`
-- `dex`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `token` | string | token parameter |
+| `symbol` | string | For mock data |
+| `dex` | string | For mock data |
 
 **Type Definitions**:
 ```typescript
@@ -3925,15 +4608,24 @@ curl "https://opensvm.com/api/trading/pools?token=value&symbol=value&dex=value"
 
 ### GET, POST, DELETE, PATCH /api/trading/positions
 
-Calculate current PnL for a position
+**Description**: Calculate current PnL for a position
 
 **Methods**: GET, POST, DELETE, PATCH
 
+**Method Details**:
+- **GET**: Calculate current PnL for a position
+- **POST**: Calculate current PnL for a position
+- **DELETE**: Calculate current PnL for a position
+- **PATCH**: Calculate current PnL for a position
+
 **Query Parameters**:
-- `id`
-- `status`
-- `symbol`
-- `closeAll`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `id` | string | id parameter |
+| `status` | string | status parameter |
+| `symbol` | string | symbol parameter |
+| `closeAll` | boolean | closeAll parameter |
 
 **Type Definitions**:
 ```typescript
@@ -3963,6 +4655,10 @@ curl "https://opensvm.com/api/trading/positions?id=value&status=value&symbol=val
 curl -X POST "https://opensvm.com/api/trading/positions" \
   -H "Content-Type: application/json" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/trading/positions"
+curl -X PATCH "https://opensvm.com/api/trading/positions" \
+  -H "Content-Type: application/json" \
+  -d '{"key":"value"}'
 ```
 
 **Source**: `app/api/trading/positions/route.ts`
@@ -3971,13 +4667,20 @@ curl -X POST "https://opensvm.com/api/trading/positions" \
 
 ### GET, POST /api/trading/stream
 
-Trading Stream API - Real-Time Data via Server-Sent Events
+**Description**: Trading Stream API - Real-Time Data via Server-Sent Events
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Trading Stream API - Real-Time Data via Server-Sent Events
+- **POST**: Trading Stream API - Real-Time Data via Server-Sent Events
+
 **Query Parameters**:
-- `market`
-- `channels`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `market` | string[] | market parameter |
+| `channels` | string[] | channels parameter |
 
 **Type Definitions**:
 ```typescript
@@ -4006,14 +4709,20 @@ curl -X POST "https://opensvm.com/api/trading/stream" \
 
 ### GET /api/trading/trades
 
-Fetch recent trades from Birdeye API
+**Description**: Fetch recent trades from Birdeye API
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Fetch recent trades from Birdeye API
+
 **Query Parameters**:
-- `mint`
-- `limit`
-- `source`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `mint` | string | SOL by default |
+| `limit` | string | SOL by default |
+| `source` | string | 'auto', 'birdeye', or 'mock' |
 
 **Type Definitions**:
 ```typescript
@@ -4047,7 +4756,10 @@ curl "https://opensvm.com/api/trading/trades?mint=value&limit=value&source=value
 **Authentication**: Required
 
 **Query Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature parameter |
 
 **Example Request**:
 ```bash
@@ -4063,10 +4775,16 @@ curl "https://opensvm.com/api/transaction?signature=value" \
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Set to true to enable detailed logging
+
 **Authentication**: Required
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Example Request**:
 ```bash
@@ -4082,15 +4800,25 @@ curl "https://opensvm.com/api/transaction/{signature}" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+- **POST**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+
 **Query Parameters**:
-- `includeInstructions`
-- `includeAccountChanges`
-- `includeMetrics`
-- `includeFailureAnalysis`
-- `detailed`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeInstructions` | boolean | includeInstructions parameter |
+| `includeAccountChanges` | boolean | includeAccountChanges parameter |
+| `includeMetrics` | boolean | includeMetrics parameter |
+| `includeFailureAnalysis` | boolean | includeFailureAnalysis parameter |
+| `detailed` | boolean | detailed parameter |
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Type Definitions**:
 ```typescript
@@ -4125,16 +4853,26 @@ curl -X POST "https://opensvm.com/api/transaction/{signature}/analysis" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+- **POST**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+
 **Query Parameters**:
-- `level`
-- `focus`
-- `includeRisks`
-- `includeRecommendations`
-- `regenerate`
-- `language`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `level` | boolean | level parameter |
+| `focus` | boolean | focus parameter |
+| `includeRisks` | boolean | includeRisks parameter |
+| `includeRecommendations` | boolean | includeRecommendations parameter |
+| `regenerate` | boolean | regenerate parameter |
+| `language` | string | language parameter |
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Type Definitions**:
 ```typescript
@@ -4171,8 +4909,14 @@ curl -X POST "https://opensvm.com/api/transaction/{signature}/explain" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **POST**: Validate signature format
+
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Example Request**:
 ```bash
@@ -4190,14 +4934,23 @@ curl -X POST "https://opensvm.com/api/transaction/{signature}/failure-analysis" 
 
 **Methods**: GET
 
+**Method Details**:
+- **GET**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+
 **Query Parameters**:
-- `includeComparison`
-- `includeBenchmarks`
-- `includeRecommendations`
-- `timeframe`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `includeComparison` | boolean | includeComparison parameter |
+| `includeBenchmarks` | boolean | includeBenchmarks parameter |
+| `includeRecommendations` | string | includeRecommendations parameter |
+| `timeframe` | string | timeframe parameter |
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Type Definitions**:
 ```typescript
@@ -4238,18 +4991,28 @@ curl "https://opensvm.com/api/transaction/{signature}/metrics?includeComparison=
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+- **POST**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+
 **Authentication**: Required
 
 **Query Parameters**:
-- `maxResults`
-- `minScore`
-- `relationshipTypes`
-- `timeWindow`
-- `includeMetadata`
-- `sortBy`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `maxResults` | number | maxResults parameter |
+| `minScore` | number | minScore parameter |
+| `relationshipTypes` | number | relationshipTypes parameter |
+| `timeWindow` | number | timeWindow parameter |
+| `includeMetadata` | string | includeMetadata parameter |
+| `sortBy` | string | sortBy parameter |
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Type Definitions**:
 ```typescript
@@ -4288,6 +5051,10 @@ curl -X POST "https://opensvm.com/api/transaction/{signature}/related" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+- **POST**: Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
+
 **Type Definitions**:
 ```typescript
 interface BatchTransactionResponse {
@@ -4319,8 +5086,15 @@ curl -X POST "https://opensvm.com/api/transaction/batch" \
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: Mock transaction data for testing
+- **POST**: Mock transaction data for testing
+
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Example Request**:
 ```bash
@@ -4334,17 +5108,24 @@ curl -X POST "https://opensvm.com/api/transaction/mock/{signature}" \
 
 ---
 
-## Transaction-metrics
+## Transaction metrics
 
 ### GET, POST /api/transaction-metrics
 
-GET /api/transaction-metrics
+**Description**: GET /api/transaction-metrics
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/transaction-metrics
+- **POST**: GET /api/transaction-metrics
+
 **Query Parameters**:
-- `action`
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `action` | string | action parameter |
+| `signature` | string | signature parameter |
 
 **Example Request**:
 ```bash
@@ -4360,15 +5141,25 @@ curl -X POST "https://opensvm.com/api/transaction-metrics" \
 
 ### GET, POST /api/transaction-metrics/:signature
 
-GET /api/transaction-metrics/[signature]
+**Description**: GET /api/transaction-metrics/[signature]
 
 **Methods**: GET, POST
 
+**Method Details**:
+- **GET**: GET /api/transaction-metrics/[signature]
+- **POST**: GET /api/transaction-metrics/[signature]
+
 **Query Parameters**:
-- `include`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `include` | string[] | include parameter |
 
 **Path Parameters**:
-- `signature`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `signature` | string | signature identifier |
 
 **Example Request**:
 ```bash
@@ -4391,7 +5182,10 @@ curl -X POST "https://opensvm.com/api/transaction-metrics/{signature}" \
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
 
 **Example Request**:
 ```bash
@@ -4407,13 +5201,17 @@ curl -X POST "https://opensvm.com/api/transfers/cache" \
 
 ---
 
-## Usage-stats
+## Usage stats
 
 ### GET, POST /api/usage-stats
 
-API usage statistics
+**Description**: API usage statistics
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: API usage statistics
+- **POST**: API usage statistics
 
 **Authentication**: Required
 
@@ -4431,27 +5229,36 @@ curl -X POST "https://opensvm.com/api/usage-stats" \
 
 ---
 
-## User-feed
+## User feed
 
 ### GET /api/user-feed/:walletAddress
 
-User Feed API
+**Description**: User Feed API
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: User Feed API
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `type`
-- `realtime`
-- `page`
-- `limit`
-- `dateRange`
-- `eventTypes`
-- `sort`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | boolean | type parameter |
+| `realtime` | boolean | realtime parameter |
+| `page` | string | Parse query parameters |
+| `limit` | number | limit parameter |
+| `dateRange` | string[] | dateRange parameter |
+| `eventTypes` | string[] | eventTypes parameter |
+| `sort` | string | sort parameter |
 
 **Path Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress identifier |
 
 **Example Request**:
 ```bash
@@ -4463,23 +5270,34 @@ curl "https://opensvm.com/api/user-feed/{walletAddress}?type=value&realtime=valu
 
 ---
 
-## User-history
+## User history
 
 ### GET, POST, DELETE /api/user-history/:walletAddress
 
-User History API Endpoints
+**Description**: User History API Endpoints
 
 **Methods**: GET, POST, DELETE
+
+**Method Details**:
+- **GET**: User History API Endpoints
+- **POST**: User History API Endpoints
+- **DELETE**: User History API Endpoints
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `limit`
-- `offset`
-- `pageType`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `limit` | string | Cap at 1000 |
+| `offset` | string | Cap at 1000 |
+| `pageType` | string | pageType parameter |
 
 **Path Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress identifier |
 
 **Example Request**:
 ```bash
@@ -4489,6 +5307,8 @@ curl -X POST "https://opensvm.com/api/user-history/{walletAddress}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/user-history/{walletAddress}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Source**: `app/api/user-history/[walletAddress]/route.ts`
@@ -4497,14 +5317,21 @@ curl -X POST "https://opensvm.com/api/user-history/{walletAddress}" \
 
 ### GET, POST /api/user-history/repair
 
-User History Repair API
+**Description**: User History Repair API
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: User History Repair API
+- **POST**: User History Repair API
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
 
 **Example Request**:
 ```bash
@@ -4522,9 +5349,12 @@ curl -X POST "https://opensvm.com/api/user-history/repair" \
 
 ### POST /api/user-history/sync
 
-User History Sync API
+**Description**: User History Sync API
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: User History Sync API
 
 **Example Request**:
 ```bash
@@ -4537,23 +5367,34 @@ curl -X POST "https://opensvm.com/api/user-history/sync" \
 
 ---
 
-## User-profile
+## User profile
 
 ### GET, PUT /api/user-profile/:walletAddress
 
-User Profile API Endpoints
+**Description**: User Profile API Endpoints
 
 **Methods**: GET, PUT
+
+**Method Details**:
+- **GET**: User Profile API Endpoints
+- **PUT**: User Profile API Endpoints
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress identifier |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/user-profile/{walletAddress}" \
   -H "Authorization: Bearer YOUR_API_KEY"
+curl -X PUT "https://opensvm.com/api/user-profile/{walletAddress}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"key":"value"}'
 ```
 
 **Source**: `app/api/user-profile/[walletAddress]/route.ts`
@@ -4562,14 +5403,21 @@ curl "https://opensvm.com/api/user-profile/{walletAddress}" \
 
 ### GET, POST /api/user-profile/sync
 
-User Profile Statistics Synchronization API
+**Description**: User Profile Statistics Synchronization API
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: User Profile Statistics Synchronization API
+- **POST**: User Profile Statistics Synchronization API
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress parameter |
 
 **Example Request**:
 ```bash
@@ -4585,13 +5433,16 @@ curl -X POST "https://opensvm.com/api/user-profile/sync" \
 
 ---
 
-## User-social
+## User social
 
 ### POST /api/user-social/follow
 
-API endpoint for following users
+**Description**: API endpoint for following users
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for following users
 
 **Authentication**: Required
 
@@ -4609,17 +5460,28 @@ curl -X POST "https://opensvm.com/api/user-social/follow" \
 
 ### GET, POST, DELETE /api/user-social/follow/:targetAddress
 
-User Social Follow API Endpoints
+**Description**: User Social Follow API Endpoints
 
 **Methods**: GET, POST, DELETE
+
+**Method Details**:
+- **GET**: User Social Follow API Endpoints
+- **POST**: User Social Follow API Endpoints
+- **DELETE**: User Social Follow API Endpoints
 
 **Authentication**: Required
 
 **Query Parameters**:
-- `type`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `type` | string | type parameter |
 
 **Path Parameters**:
-- `targetAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `targetAddress` | string | targetAddress identifier |
 
 **Example Request**:
 ```bash
@@ -4629,6 +5491,8 @@ curl -X POST "https://opensvm.com/api/user-social/follow/{targetAddress}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/user-social/follow/{targetAddress}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Source**: `app/api/user-social/follow/[targetAddress]/route.ts`
@@ -4637,9 +5501,12 @@ curl -X POST "https://opensvm.com/api/user-social/follow/{targetAddress}" \
 
 ### POST /api/user-social/like
 
-API endpoint for liking user profiles
+**Description**: API endpoint for liking user profiles
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for liking user profiles
 
 **Authentication**: Required
 
@@ -4657,9 +5524,12 @@ curl -X POST "https://opensvm.com/api/user-social/like" \
 
 ### POST /api/user-social/like-event
 
-API endpoint for liking/unliking feed events
+**Description**: API endpoint for liking/unliking feed events
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for liking/unliking feed events
 
 **Authentication**: Required
 
@@ -4677,14 +5547,22 @@ curl -X POST "https://opensvm.com/api/user-social/like-event" \
 
 ### GET, POST, DELETE /api/user-social/like/:targetAddress
 
-User Social Like API Endpoints
+**Description**: User Social Like API Endpoints
 
 **Methods**: GET, POST, DELETE
+
+**Method Details**:
+- **GET**: User Social Like API Endpoints
+- **POST**: User Social Like API Endpoints
+- **DELETE**: User Social Like API Endpoints
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `targetAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `targetAddress` | string | targetAddress identifier |
 
 **Example Request**:
 ```bash
@@ -4694,6 +5572,8 @@ curl -X POST "https://opensvm.com/api/user-social/like/{targetAddress}" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer YOUR_API_KEY" \
   -d '{"key":"value"}'
+curl -X DELETE "https://opensvm.com/api/user-social/like/{targetAddress}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
 ```
 
 **Source**: `app/api/user-social/like/[targetAddress]/route.ts`
@@ -4702,9 +5582,12 @@ curl -X POST "https://opensvm.com/api/user-social/like/{targetAddress}" \
 
 ### POST /api/user-social/unfollow
 
-API endpoint for unfollowing users
+**Description**: API endpoint for unfollowing users
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for unfollowing users
 
 **Authentication**: Required
 
@@ -4722,9 +5605,12 @@ curl -X POST "https://opensvm.com/api/user-social/unfollow" \
 
 ### POST /api/user-social/unlike
 
-API endpoint for unliking user profiles
+**Description**: API endpoint for unliking user profiles
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for unliking user profiles
 
 **Authentication**: Required
 
@@ -4742,9 +5628,12 @@ curl -X POST "https://opensvm.com/api/user-social/unlike" \
 
 ### POST /api/user-social/unlike-event
 
-API endpoint for unliking feed events
+**Description**: API endpoint for unliking feed events
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for unliking feed events
 
 **Authentication**: Required
 
@@ -4762,9 +5651,12 @@ curl -X POST "https://opensvm.com/api/user-social/unlike-event" \
 
 ### POST /api/user-social/view
 
-API endpoint for tracking profile views
+**Description**: API endpoint for tracking profile views
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: API endpoint for tracking profile views
 
 **Authentication**: Required
 
@@ -4780,23 +5672,34 @@ curl -X POST "https://opensvm.com/api/user-social/view" \
 
 ---
 
-## User-tab-preference
+## User tab preference
 
 ### GET, PUT /api/user-tab-preference/:walletAddress
 
-User Tab Preference API Endpoints
+**Description**: User Tab Preference API Endpoints
 
 **Methods**: GET, PUT
+
+**Method Details**:
+- **GET**: User Tab Preference API Endpoints
+- **PUT**: User Tab Preference API Endpoints
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `walletAddress`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `walletAddress` | string | walletAddress identifier |
 
 **Example Request**:
 ```bash
 curl "https://opensvm.com/api/user-tab-preference/{walletAddress}" \
   -H "Authorization: Bearer YOUR_API_KEY"
+curl -X PUT "https://opensvm.com/api/user-tab-preference/{walletAddress}" \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -d '{"key":"value"}'
 ```
 
 **Source**: `app/api/user-tab-preference/[walletAddress]/route.ts`
@@ -4808,6 +5711,9 @@ curl "https://opensvm.com/api/user-tab-preference/{walletAddress}" \
 ### POST /api/v1/messages
 
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Polyfill for crypto.randomUUID in test environments
 
 **Authentication**: Required
 
@@ -4826,6 +5732,9 @@ curl -X POST "https://opensvm.com/api/v1/messages" \
 ### GET /api/v1/models
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: Simple in-memory cache for models
 
 **Authentication**: Required
 
@@ -4853,14 +5762,21 @@ curl "https://opensvm.com/api/v1/models" \
 
 ### GET, POST /api/validator/:address
 
-Fetch real stakers delegated to a specific validator
+**Description**: Fetch real stakers delegated to a specific validator
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: Fetch real stakers delegated to a specific validator
+- **POST**: Fetch real stakers delegated to a specific validator
 
 **Authentication**: Required
 
 **Path Parameters**:
-- `address`
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `address` | string | address identifier |
 
 **Example Request**:
 ```bash
@@ -4880,9 +5796,13 @@ curl -X POST "https://opensvm.com/api/validator/{address}" \
 
 ### GET, POST /api/version
 
-API version information
+**Description**: API version information
 
 **Methods**: GET, POST
+
+**Method Details**:
+- **GET**: API version information
+- **POST**: API version information
 
 **Authentication**: Required
 
@@ -4900,13 +5820,14 @@ curl -X POST "https://opensvm.com/api/version" \
 
 ---
 
-## Wallet-path-finding
+## Wallet path finding
 
 ### POST /api/wallet-path-finding
 
-Handle the wallet path finding request
-
 **Methods**: POST
+
+**Method Details**:
+- **POST**: Handle the wallet path finding request
 
 **Authentication**: Required
 
@@ -4922,13 +5843,16 @@ curl -X POST "https://opensvm.com/api/wallet-path-finding" \
 
 ---
 
-## Websocket-info
+## Websocket info
 
 ### GET /api/websocket-info
 
-WebSocket info endpoint
+**Description**: WebSocket info endpoint
 
 **Methods**: GET
+
+**Method Details**:
+- **GET**: WebSocket info endpoint
 
 **Example Request**:
 ```bash
