@@ -35,24 +35,6 @@ async function checkAccountType(address: string): Promise<'token' | 'program' | 
   }
 }
 
-async function checkAccountType(address: string): Promise<'token' | 'program' | 'account'> {
-  try {
-    const response = await fetch(`/api/check-account-type?address=${encodeURIComponent(address)}`, {
-      cache: 'no-store'
-    });
-    
-    if (!response.ok) {
-      return 'account';
-    }
-    
-    const data = await response.json();
-    return data.type || 'account';
-  } catch (error) {
-    console.error('Error checking account type:', error);
-    return 'account';
-  }
-}
-
 interface AccountData {
   address: string;
   isSystemProgram: boolean;
