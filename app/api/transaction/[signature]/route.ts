@@ -4,8 +4,15 @@ import { enhancedTransactionFetcher } from '@/lib/enhanced-transaction-fetcher';
 import { getConnection } from '@/lib/solana-connection-server';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
+import { createCache } from '@/lib/api-cache';
 
 const DEBUG = true; // Set to true to enable detailed logging
+
+// Create cache instance for transactions (5 min cache, 1 min refresh threshold)
+const transactionCache = createCache<DetailedTransactionInfo>({
+  duration: 5 * 60 * 1000,
+  refreshThreshold: 60 * 1000
+});
 
 // Demo transaction data for specific signatures
 const DEMO_TRANSACTIONS: Record<string, any> = {
@@ -218,80 +225,81 @@ export async function GET(
       console.log(`[API] Using OpenSVM RPC connection to fetch transaction data`);
     }
 
-    // Try enhanced fetcher first with shorter timeout, fallback to basic fetcher
-    let transactionInfo: DetailedTransactionInfo | undefined;
-    let retryCount = 0;
-    const maxRetries = 3;
-    
-    while (retryCount < maxRetries) {
-      try {
-        const basicTx = await Promise.race([
-          enhancedTransactionFetcher.fetchBasicTransaction(signature), // Use faster basic fetch
-          new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Basic fetch timed out')), 3000); // Shorter timeout for basic
-          })
-        ]) as ParsedTransactionWithMeta;
-
-        if (DEBUG) {
-          console.log(`[API] Basic transaction data received: ${basicTx ? 'YES' : 'NO'}`);
-        }
-
-        // Transform basic data to existing format
-        transactionInfo = transformTransactionData(signature, basicTx);
-        break; // Success, exit retry loop
-
-      } catch (basicError) {
-        retryCount++;
-        if (DEBUG) {
-          console.log(`[API] Attempt ${retryCount}/${maxRetries} failed: ${basicError instanceof Error ? basicError.message : 'Unknown error'}`);
-        }
-
-        if (retryCount >= maxRetries) {
-          // Final fallback to direct connection fetch
-          const connection = await getConnection();
-          const fallbackTx = await Promise.race([
-            connection.getParsedTransaction(signature, {
-              maxSupportedTransactionVersion: 0,
-              commitment: 'confirmed'
-            }),
+    // Use cache with background refresh
+    const result = await transactionCache.get(signature, async () => {
+      // Fetch transaction data
+      let transactionInfo: DetailedTransactionInfo | undefined;
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          const basicTx = await Promise.race([
+            enhancedTransactionFetcher.fetchBasicTransaction(signature),
             new Promise((_, reject) => {
-              setTimeout(() => reject(new Error('Fallback RPC request timed out')), 5000); // 5 second timeout for fallback
+              setTimeout(() => reject(new Error('Basic fetch timed out')), 3000);
             })
           ]) as ParsedTransactionWithMeta;
 
-          if (!fallbackTx) {
-            // If transaction truly doesn't exist, generate demo data
-            if (DEBUG) {
-              console.log(`[API] Transaction not found, generating demo data for: ${signature}`);
-            }
-            const demoTx = generateDemoTransaction(signature);
-            transactionInfo = transformTransactionData(signature, demoTx);
-          } else {
-            if (DEBUG) {
-              console.log(`[API] Fallback transaction data received`);
-            }
-            transactionInfo = transformTransactionData(signature, fallbackTx);
+          if (DEBUG) {
+            console.log(`[API] Basic transaction data received: ${basicTx ? 'YES' : 'NO'}`);
           }
-        } else {
-          // Wait before retry with exponential backoff
-          await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 500));
+
+          transactionInfo = transformTransactionData(signature, basicTx);
+          break;
+
+        } catch (basicError) {
+          retryCount++;
+          if (DEBUG) {
+            console.log(`[API] Attempt ${retryCount}/${maxRetries} failed: ${basicError instanceof Error ? basicError.message : 'Unknown error'}`);
+          }
+
+          if (retryCount >= maxRetries) {
+            const connection = await getConnection();
+            const fallbackTx = await Promise.race([
+              connection.getParsedTransaction(signature, {
+                maxSupportedTransactionVersion: 0,
+                commitment: 'confirmed'
+              }),
+              new Promise((_, reject) => {
+                setTimeout(() => reject(new Error('Fallback RPC request timed out')), 5000);
+              })
+            ]) as ParsedTransactionWithMeta;
+
+            if (!fallbackTx) {
+              if (DEBUG) {
+                console.log(`[API] Transaction not found, generating demo data for: ${signature}`);
+              }
+              const demoTx = generateDemoTransaction(signature);
+              transactionInfo = transformTransactionData(signature, demoTx);
+            } else {
+              if (DEBUG) {
+                console.log(`[API] Fallback transaction data received`);
+              }
+              transactionInfo = transformTransactionData(signature, fallbackTx);
+            }
+          } else {
+            await new Promise(resolve => setTimeout(resolve, Math.pow(2, retryCount - 1) * 500));
+          }
         }
       }
-    }
 
-    // Ensure we have transaction info before proceeding
-    if (!transactionInfo) {
-      throw new Error('Failed to fetch transaction after all retries');
-    }
+      if (!transactionInfo) {
+        throw new Error('Failed to fetch transaction after all retries');
+      }
+
+      return transactionInfo;
+    });
 
     clearTimeout(timeoutId);
 
     // Calculate and log comprehensive metrics
     if (DEBUG) {
-      const metrics = calculateResponseMetrics(transactionInfo, signature, startTime);
+      const metrics = calculateResponseMetrics(result.data, signature, startTime);
       console.log(`[API] 📊 TRANSACTION RESPONSE METRICS:`);
       console.log(`  • Signature: ${metrics.signature}`);
       console.log(`  • Processing Time: ${metrics.processingTime}`);
+      console.log(`  • Cached: ${result.cached} (age: ${result.cacheAge}s)`);
       console.log(`  • JSON Size: ${metrics.jsonSize.readable} (${metrics.jsonSize.bytes} bytes)`);
       console.log(`  • Key Count: ${metrics.keyCount.total} total, ${metrics.keyCount.topLevel} top-level`);
       console.log(`  • Instructions: ${metrics.transactionData.instructionCount} main, ${metrics.transactionData.innerInstructionCount} inner`);
@@ -303,7 +311,11 @@ export async function GET(
     }
 
     return new Response(
-      JSON.stringify(transactionInfo),
+      JSON.stringify({
+        ...result.data,
+        cached: result.cached,
+        cacheAge: result.cacheAge
+      }),
       {
         status: 200,
         headers: new Headers(defaultHeaders)

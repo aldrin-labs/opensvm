@@ -16,6 +16,10 @@ const holderCache = new Map<string, {
   timestamp: number;
 }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_REFRESH_THRESHOLD = 60 * 1000; // 1 minute - trigger background refresh
+
+// Track ongoing background updates to prevent duplicate fetches
+const ongoingUpdates = new Set<string>();
 
 // Rate limit configuration
 const HOLDER_RATE_LIMIT = {
@@ -31,6 +35,83 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+// Background update function
+async function updateHolderCacheInBackground(mintAddress: string, mintPubkey: PublicKey) {
+  // Prevent duplicate updates
+  if (ongoingUpdates.has(mintAddress)) {
+    console.log(`Background update already in progress for ${mintAddress}`);
+    return;
+  }
+
+  ongoingUpdates.add(mintAddress);
+  console.log(`Starting background cache update for ${mintAddress}`);
+
+  try {
+    const connection = await getConnection();
+    const mintInfo = await getMint(connection, mintPubkey);
+    const totalSupply = Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals);
+
+    const tokenAccounts = await connection.getProgramAccounts(
+      TOKEN_PROGRAM_ID,
+      {
+        encoding: 'base64',
+        filters: [
+          { dataSize: 165 },
+          { memcmp: { offset: 0, bytes: mintPubkey.toBase58() } }
+        ]
+      }
+    );
+
+    const holderMap = new Map<string, number>();
+    
+    for (const account of tokenAccounts) {
+      try {
+        const accountData = account.account.data;
+        if (Buffer.isBuffer(accountData) && accountData.length >= 72) {
+          const ownerBuffer = accountData.slice(32, 64);
+          const owner = new PublicKey(ownerBuffer).toBase58();
+          
+          const amountBuffer = accountData.slice(64, 72);
+          const amount = amountBuffer.readBigUInt64LE(0);
+          const balance = Number(amount) / Math.pow(10, mintInfo.decimals);
+          
+          if (balance > 0) {
+            const currentBalance = holderMap.get(owner) || 0;
+            holderMap.set(owner, currentBalance + balance);
+          }
+        }
+      } catch (parseError) {
+        continue;
+      }
+    }
+    
+    const holders = Array.from(holderMap.entries())
+      .map(([address, balance]) => ({
+        address,
+        balance,
+        percentage: (balance / totalSupply) * 100
+      }))
+      .sort((a, b) => b.balance - a.balance)
+      .map((holder, index) => ({
+        ...holder,
+        rank: index + 1
+      }));
+    
+    // Update cache
+    holderCache.set(mintAddress, {
+      holders,
+      totalSupply,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Background cache update completed for ${mintAddress}: ${holders.length} holders`);
+  } catch (error) {
+    console.error(`Background cache update failed for ${mintAddress}:`, error);
+  } finally {
+    ongoingUpdates.delete(mintAddress);
+  }
+}
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -96,13 +177,28 @@ export async function GET(
         const cached = holderCache.get(cacheKey);
         const now = Date.now();
         
-        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-          console.log(`Using cached holder data for ${mintAddress}: ${cached.holders.length} holders`);
-          return NextResponse.json({
-            holders: cached.holders,
-            totalSupply: cached.totalSupply,
-            cached: true
-          }, { headers: baseHeaders });
+        if (cached) {
+          const cacheAge = now - cached.timestamp;
+          
+          // If cache is still valid (< 5 minutes), return it
+          if (cacheAge < CACHE_DURATION) {
+            // If cache is older than 1 minute, trigger background refresh
+            if (cacheAge > CACHE_REFRESH_THRESHOLD) {
+              console.log(`Cache is ${Math.round(cacheAge / 1000)}s old, triggering background refresh for ${mintAddress}`);
+              // Trigger background update without awaiting
+              updateHolderCacheInBackground(mintAddress, mintPubkey).catch(err => 
+                console.error('Background update error:', err)
+              );
+            }
+            
+            console.log(`Returning cached holder data for ${mintAddress}: ${cached.holders.length} holders (age: ${Math.round(cacheAge / 1000)}s)`);
+            return NextResponse.json({
+              holders: cached.holders,
+              totalSupply: cached.totalSupply,
+              cached: true,
+              cacheAge: Math.round(cacheAge / 1000)
+            }, { headers: baseHeaders });
+          }
         }
 
         // Get connection

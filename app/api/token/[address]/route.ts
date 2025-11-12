@@ -20,6 +20,10 @@ const tokenHolderCache = new Map<string, {
   timestamp: number 
 }>();
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_REFRESH_THRESHOLD = 60 * 1000; // 1 minute - trigger background refresh
+
+// Track ongoing background updates to prevent duplicate fetches
+const ongoingUpdates = new Set<string>();
 
 // Rate limit configuration for token details - optimized for e2e tests
 const TOKEN_RATE_LIMIT = {
@@ -35,6 +39,135 @@ const corsHeaders = {
   'Access-Control-Allow-Methods': 'GET, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
+
+// Background update function for token details
+async function updateTokenCacheInBackground(mintAddress: string, mintPubkey: PublicKey, connection: any) {
+  if (ongoingUpdates.has(mintAddress)) {
+    console.log(`Background update already in progress for ${mintAddress}`);
+    return;
+  }
+
+  ongoingUpdates.add(mintAddress);
+  console.log(`Starting background cache update for ${mintAddress}`);
+
+  try {
+    const mintInfo = await getMint(connection, mintPubkey);
+    
+    let holders = 0;
+    let totalHolders: number | undefined;
+    let volume24h = 0;
+    let price: number | undefined;
+    let liquidity: number | undefined;
+    let priceChange24h: number | undefined;
+    let marketCap: number | undefined;
+    let top10Balance: number | undefined;
+    let top50Balance: number | undefined;
+    let top100Balance: number | undefined;
+
+    // Fetch Birdeye data
+    if (process.env.BIRDEYE_API_KEY) {
+      try {
+        const birdeyeUrl = `https://public-api.birdeye.so/defi/token_overview?address=${mintAddress}`;
+        const birdeyeResp = await fetch(birdeyeUrl, {
+          headers: {
+            'Accept': 'application/json',
+            'X-API-KEY': process.env.BIRDEYE_API_KEY
+          }
+        });
+
+        if (birdeyeResp.ok) {
+          const birdeyeData = await birdeyeResp.json();
+          if (birdeyeData.success && birdeyeData.data) {
+            volume24h = birdeyeData.data.v24hUSD || 0;
+            price = birdeyeData.data.price || undefined;
+            liquidity = birdeyeData.data.liquidity || undefined;
+            priceChange24h = birdeyeData.data.priceChange24hPercent || undefined;
+            holders = birdeyeData.data.holder || 0;
+            marketCap = birdeyeData.data.mc || undefined;
+            
+            if (!marketCap && price && mintInfo.supply) {
+              marketCap = price * (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals));
+            }
+          }
+        }
+      } catch (error) {
+        console.warn('Background Birdeye fetch failed:', error);
+      }
+    }
+
+    // Fetch on-chain holder data
+    try {
+      const tokenAccounts = await connection.getProgramAccounts(
+        TOKEN_PROGRAM_ID,
+        {
+          encoding: 'base64',
+          filters: [
+            { dataSize: 165 },
+            { memcmp: { offset: 0, bytes: mintPubkey.toBase58() } }
+          ]
+        }
+      );
+      
+      if (tokenAccounts && tokenAccounts.length > 0) {
+        const balances: number[] = [];
+        
+        for (const account of tokenAccounts) {
+          try {
+            const accountData = account.account.data;
+            if (Buffer.isBuffer(accountData) && accountData.length >= 72) {
+              const amountBuffer = accountData.slice(64, 72);
+              const amount = amountBuffer.readBigUInt64LE(0);
+              const balance = Number(amount) / Math.pow(10, mintInfo.decimals);
+              
+              if (balance > 0) {
+                balances.push(balance);
+              }
+            }
+          } catch (parseError) {
+            continue;
+          }
+        }
+        
+        balances.sort((a, b) => b - a);
+        totalHolders = balances.length;
+        top10Balance = balances[9] || balances[balances.length - 1];
+        top50Balance = balances[49] || balances[balances.length - 1];
+        top100Balance = balances[99] || balances[balances.length - 1];
+      }
+    } catch (error) {
+      console.warn('Background getProgramAccounts failed:', error);
+    }
+
+    if (holders === 0 && totalHolders) {
+      holders = totalHolders;
+    }
+    
+    if (!marketCap && price && mintInfo.supply) {
+      marketCap = price * (Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals));
+    }
+
+    // Update cache
+    tokenHolderCache.set(mintAddress, {
+      holders,
+      totalHolders,
+      volume24h,
+      price,
+      liquidity,
+      priceChange24h,
+      marketCap,
+      top10Balance,
+      top50Balance,
+      top100Balance,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Background cache update completed for ${mintAddress}: ${holders} holders`);
+  } catch (error) {
+    console.error(`Background cache update failed for ${mintAddress}:`, error);
+  } finally {
+    ongoingUpdates.delete(mintAddress);
+  }
+}
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -228,34 +361,50 @@ export async function GET(
         const cached = tokenHolderCache.get(cacheKey);
         const now = Date.now();
         
-        if (cached && (now - cached.timestamp) < CACHE_DURATION) {
-          console.log(`Using cached data for ${mintAddress}: ${cached.holders} holders`);
+        if (cached) {
+          const cacheAge = now - cached.timestamp;
           
-          // Calculate human-readable supply
-          const rawSupply = Number(mintInfo.supply);
-          const humanReadableSupply = rawSupply / Math.pow(10, mintInfo.decimals);
-          
-          const tokenData = {
-            metadata,
-            supply: humanReadableSupply, // Human-readable supply (accounting for decimals)
-            rawSupply, // Raw supply for reference
-            decimals: mintInfo.decimals,
-            holders: cached.holders,
-            totalHolders: cached.totalHolders,
-            volume24h: cached.volume24h,
-            price: cached.price,
-            marketCap: cached.marketCap,
-            liquidity: cached.liquidity,
-            priceChange24h: cached.priceChange24h,
-            top10Balance: cached.top10Balance,
-            top50Balance: cached.top50Balance,
-            top100Balance: cached.top100Balance,
-            isInitialized: mintInfo.isInitialized,
-            freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
-            mintAuthority: mintInfo.mintAuthority?.toBase58()
-          };
-          
-          return NextResponse.json(tokenData, { headers: baseHeaders });
+          // If cache is still valid (< 5 minutes), return it
+          if (cacheAge < CACHE_DURATION) {
+            // If cache is older than 1 minute, trigger background refresh
+            if (cacheAge > CACHE_REFRESH_THRESHOLD) {
+              console.log(`Cache is ${Math.round(cacheAge / 1000)}s old, triggering background refresh for ${mintAddress}`);
+              // Trigger background update without awaiting
+              updateTokenCacheInBackground(mintAddress, mintPubkey, connection).catch(err => 
+                console.error('Background update error:', err)
+              );
+            }
+            
+            console.log(`Returning cached token data for ${mintAddress}: ${cached.holders} holders (age: ${Math.round(cacheAge / 1000)}s)`);
+            
+            // Calculate human-readable supply
+            const rawSupply = Number(mintInfo.supply);
+            const humanReadableSupply = rawSupply / Math.pow(10, mintInfo.decimals);
+            
+            const tokenData = {
+              metadata,
+              supply: humanReadableSupply,
+              rawSupply,
+              decimals: mintInfo.decimals,
+              holders: cached.holders,
+              totalHolders: cached.totalHolders,
+              volume24h: cached.volume24h,
+              price: cached.price,
+              marketCap: cached.marketCap,
+              liquidity: cached.liquidity,
+              priceChange24h: cached.priceChange24h,
+              top10Balance: cached.top10Balance,
+              top50Balance: cached.top50Balance,
+              top100Balance: cached.top100Balance,
+              isInitialized: mintInfo.isInitialized,
+              freezeAuthority: mintInfo.freezeAuthority?.toBase58(),
+              mintAuthority: mintInfo.mintAuthority?.toBase58(),
+              cached: true,
+              cacheAge: Math.round(cacheAge / 1000)
+            };
+            
+            return NextResponse.json(tokenData, { headers: baseHeaders });
+          }
         }
 
         // Fetch actual token holder data and market data
