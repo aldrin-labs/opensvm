@@ -252,6 +252,37 @@ class OpenAPIGenerator {
             }
           }
         }
+      },
+      TransferListResponse: {
+        type: 'object',
+        properties: {
+          transfers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                txId: { type: 'string', description: 'Transaction signature' },
+                date: { type: 'string', description: 'Transaction timestamp' },
+                from: { type: 'string', description: 'Sender address' },
+                to: { type: 'string', description: 'Receiver address' },
+                tokenSymbol: { type: 'string', description: 'Token symbol (SOL or token)' },
+                tokenAmount: { type: 'string', description: 'Amount transferred' },
+                transferType: { 
+                  type: 'string', 
+                  enum: ['IN', 'OUT'],
+                  description: 'Transfer direction relative to the queried address'
+                }
+              },
+              required: ['txId', 'date', 'from', 'to', 'tokenSymbol', 'tokenAmount', 'transferType']
+            },
+            description: 'List of transfer transactions'
+          },
+          hasMore: { 
+            type: 'boolean',
+            description: 'Whether more transfers are available for pagination'
+          }
+        },
+        required: ['transfers', 'hasMore']
       }
     };
   }
@@ -453,10 +484,24 @@ class OpenAPIGenerator {
       description: 'Get SOL/token transfers',
       tags: ['Account & Wallet'],
       parameters: [
-        { name: 'address', in: 'path', required: true, schema: { type: 'string' } }
+        { name: 'address', in: 'path', required: true, schema: { type: 'string' }, description: 'Solana account address' },
+        { name: 'beforeSignature', in: 'query', schema: { type: 'string' }, description: 'Smart cursor initialization: use oldest cached signature if no beforeSignature provided' },
+        { name: 'offset', in: 'query', schema: { type: 'number' }, description: 'Pagination offset' },
+        { name: 'limit', in: 'query', schema: { type: 'string' }, description: 'Maximum number of transfers to return' },
+        { name: 'transferType', in: 'query', schema: { type: 'string', enum: ['IN', 'OUT'] }, description: 'Filter by transfer direction' },
+        { name: 'solanaOnly', in: 'query', schema: { type: 'boolean' }, description: 'Show only SOL transfers (exclude tokens)' }
       ],
       responses: {
-        '200': { status: 200, description: 'Transfer history' }
+        '200': { 
+          status: 200, 
+          description: 'Transfer history',
+          schema: { $ref: '#/components/schemas/TransferListResponse' }
+        },
+        '400': {
+          status: 400,
+          description: 'Bad Request - Invalid address',
+          schema: { $ref: '#/components/schemas/Error' }
+        }
       },
       operationId: 'accountTransfers'
     });

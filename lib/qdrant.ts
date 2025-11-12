@@ -1388,51 +1388,59 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
 
     // Validate metadata
     if (!metadata.id || !metadata.mintAddress || !metadata.symbol) {
-      throw new Error(`Invalid token metadata: missing required fields`);
+      console.warn('Skipping token metadata storage: missing required fields');
+      return; // Don't throw, just skip silently
     }
 
     // Validate and sanitize all fields to prevent Qdrant Bad Request errors
     if (!metadata.id || typeof metadata.id !== 'string' || metadata.id.trim() === '') {
-      throw new Error('Invalid metadata ID');
+      console.warn('Skipping token metadata storage: invalid ID');
+      return;
     }
     
     if (!metadata.mintAddress || typeof metadata.mintAddress !== 'string' || metadata.mintAddress.trim() === '') {
-      throw new Error('Invalid mintAddress');
+      console.warn('Skipping token metadata storage: invalid mintAddress');
+      return;
     }
     
     if (!metadata.symbol || typeof metadata.symbol !== 'string' || metadata.symbol.trim() === '') {
-      throw new Error('Invalid symbol');
+      console.warn('Skipping token metadata storage: invalid symbol');
+      return;
     }
     
     if (!metadata.name || typeof metadata.name !== 'string' || metadata.name.trim() === '') {
-      throw new Error('Invalid name');
+      console.warn('Skipping token metadata storage: invalid name');
+      return;
     }
     
     if (!Number.isInteger(metadata.decimals) || metadata.decimals < 0) {
-      throw new Error('Invalid decimals');
+      console.warn('Skipping token metadata storage: invalid decimals');
+      return;
     }
     
     if (!Number.isInteger(metadata.lastUpdated) || metadata.lastUpdated <= 0) {
-      throw new Error('Invalid lastUpdated timestamp');
+      console.warn('Skipping token metadata storage: invalid lastUpdated');
+      return;
     }
     
     if (!Number.isInteger(metadata.cacheExpiry) || metadata.cacheExpiry <= 0) {
-      throw new Error('Invalid cacheExpiry timestamp');
+      console.warn('Skipping token metadata storage: invalid cacheExpiry');
+      return;
     }
     
     if (typeof metadata.verified !== 'boolean') {
-      throw new Error('Invalid verified field');
+      console.warn('Skipping token metadata storage: invalid verified field');
+      return;
     }
     
     if (typeof metadata.cached !== 'boolean') {
-      throw new Error('Invalid cached field');
+      console.warn('Skipping token metadata storage: invalid cached field');
+      return;
     }
 
     // Generate embedding from token content
     const textContent = `${metadata.symbol.trim()} ${metadata.name.trim()} ${metadata.mintAddress.trim()} ${metadata.description?.trim() || ''}`;
     const vector = generateSimpleEmbedding(textContent);
-
-    console.log(`Storing token metadata for: ${metadata.symbol} (${metadata.mintAddress})`);
 
     // Build clean payload with proper validation
     const cleanPayload: any = {
@@ -1472,10 +1480,13 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
       cleanPayload.description = metadata.description.trim();
     }
 
+    // Generate a valid UUID for Qdrant point ID (Qdrant requires UUID or unsigned integer)
+    const pointId = crypto.randomUUID();
+    
     const upsertData = {
       wait: true,
       points: [{
-        id: metadata.id.trim(),
+        id: pointId, // Use UUID instead of mint address
         vector,
         payload: cleanPayload
       }]
@@ -1484,21 +1495,21 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
     try {
       await qdrantClient.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
     } catch (upsertError: any) {
-      // Log detailed error information from Qdrant
-      console.error('Qdrant upsert failed for token metadata:', {
+      // Log detailed error information from Qdrant but don't throw
+      // This is a cache operation and shouldn't break the main flow
+      console.error('Failed to cache token metadata in Qdrant:', {
         mintAddress: metadata.mintAddress,
         symbol: metadata.symbol,
         errorMessage: upsertError?.message,
-        errorData: JSON.stringify(upsertError?.data, null, 2),
         errorStatus: upsertError?.status,
-        payloadKeys: Object.keys(cleanPayload),
-        vectorLength: vector.length
+        errorUrl: upsertError?.url,
+        payloadKeys: Object.keys(cleanPayload)
       });
-      throw upsertError;
+      // Don't re-throw - caching failures shouldn't break the application
     }
   } catch (error) {
-    console.error('Error storing token metadata:', error);
-    throw error;
+    // Log but don't throw - this is a non-critical caching operation
+    console.warn('Error storing token metadata (non-critical):', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 

@@ -5,8 +5,9 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useEffect, useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, Legend } from 'recharts';
-import { Users, Wallet, TrendingUp, AlertCircle, Shield, Zap } from 'lucide-react';
+import { Users, Wallet, TrendingUp, AlertCircle, Shield, Zap, Download } from 'lucide-react';
 import { formatNumber } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 interface Props {
   mint: string;
@@ -97,6 +98,40 @@ export function TokenHolderAnalytics({ mint, totalHolders, top10Balance, top50Ba
       );
     }
     return null;
+  };
+
+  const exportToCSV = () => {
+    if (holders.length === 0) return;
+
+    // Create CSV header
+    const headers = ['Rank', 'Address', 'Balance', 'Percentage'];
+    
+    // Create CSV rows
+    const rows = holders.map((holder, index) => [
+      index + 1,
+      holder.address,
+      holder.balance,
+      holder.percentage.toFixed(4)
+    ]);
+
+    // Combine headers and rows
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.join(','))
+    ].join('\n');
+
+    // Create blob and download
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    
+    link.setAttribute('href', url);
+    link.setAttribute('download', `token-holders-${mint}.csv`);
+    link.style.visibility = 'hidden';
+    
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (
@@ -284,8 +319,17 @@ export function TokenHolderAnalytics({ mint, totalHolders, top10Balance, top50Ba
 
       {/* Top Holders Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Top Holders</CardTitle>
+          <Button 
+            onClick={exportToCSV} 
+            disabled={holders.length === 0}
+            size="sm"
+            variant="outline"
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export CSV
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -299,20 +343,46 @@ export function TokenHolderAnalytics({ mint, totalHolders, top10Balance, top50Ba
                 </tr>
               </thead>
               <tbody>
-                {holders.slice(0, 20).map((holder, index) => (
-                  <tr key={holder.address} className="border-b">
-                    <td className="p-2">
-                      <Badge variant="outline">#{index + 1}</Badge>
-                    </td>
-                    <td className="p-2 font-mono text-xs">
-                      {holder.address.slice(0, 8)}...{holder.address.slice(-8)}
-                    </td>
-                    <td className="p-2 text-right">{formatNumber(holder.balance)}</td>
-                    <td className="p-2 text-right">
-                      <Badge variant="secondary">{(holder.percentage || 0).toFixed(2)}%</Badge>
-                    </td>
-                  </tr>
-                ))}
+                {holders.slice(0, 20).map((holder, index) => {
+                  // Calculate background intensity based on rank
+                  const getRowStyle = (rank: number) => {
+                    if (rank === 1) {
+                      return 'bg-primary/20 hover:bg-primary/25';
+                    } else if (rank <= 3) {
+                      return 'bg-primary/15 hover:bg-primary/20';
+                    } else if (rank <= 10) {
+                      return 'bg-primary/10 hover:bg-primary/15';
+                    } else if (rank <= 20) {
+                      return 'bg-primary/5 hover:bg-primary/10';
+                    }
+                    return 'hover:bg-muted/50';
+                  };
+
+                  return (
+                    <tr 
+                      key={holder.address} 
+                      className={`border-b transition-colors ${getRowStyle(index + 1)}`}
+                    >
+                      <td className="p-2">
+                        <Badge variant={index < 3 ? "default" : "outline"}>#{index + 1}</Badge>
+                      </td>
+                      <td className="p-2 font-mono text-xs">
+                        <a 
+                          href={`/account/${holder.address}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="hover:underline cursor-pointer"
+                        >
+                          {holder.address.slice(0, 8)}...{holder.address.slice(-8)}
+                        </a>
+                      </td>
+                      <td className="p-2 text-right font-semibold">{formatNumber(holder.balance)}</td>
+                      <td className="p-2 text-right">
+                        <Badge variant="secondary">{(holder.percentage || 0).toFixed(2)}%</Badge>
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -213,6 +213,30 @@ export default function SwaggerPage() {
                                   {details.description && (
                                     <p className="mb-4 text-sm">{details.description}</p>
                                   )}
+
+                                  {/* cURL Example */}
+                                  {details['x-code-samples'] && details['x-code-samples'].length > 0 && (
+                                    <div className="mb-4">
+                                      <h4 className="font-semibold mb-2">Example Request</h4>
+                                      <div className="bg-slate-900 dark:bg-slate-950 rounded-lg p-4 border border-slate-700">
+                                        <div className="flex items-center justify-between mb-2">
+                                          <span className="text-xs text-slate-400 font-mono">cURL</span>
+                                          <button
+                                            onClick={() => {
+                                              navigator.clipboard.writeText(details['x-code-samples'][0].source);
+                                              // Could add a toast notification here
+                                            }}
+                                            className="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded transition-colors"
+                                          >
+                                            Copy
+                                          </button>
+                                        </div>
+                                        <pre className="text-xs text-slate-100 overflow-x-auto">
+                                          <code>{details['x-code-samples'][0].source}</code>
+                                        </pre>
+                                      </div>
+                                    </div>
+                                  )}
                                   
                                   {details.parameters && details.parameters.length > 0 && (
                                     <div className="mb-4">
