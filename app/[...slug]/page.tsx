@@ -74,32 +74,21 @@ export default async function CatchAllRoute({ params }: { params: { slug?: strin
     notFound();
   }
 
-  try {
-    // Numeric => block number
-    if (/^\d+$/.test(input)) {
-      redirect(`/block/${input}`);
-      return;
-    }
-
-    // Transaction signature (88 chars, base58)
-    if (isValidTransactionSignature(input)) {
-      redirect(`/tx/${input}`);
-      return;
-    }
-
-    // Account address - check format (lenient), redirect to account page for type detection
-    if (looksLikeSolanaAddress(input)) {
-      redirect(`/account/${input}`);
-      return;
-    }
-
-    // Fallback: search
-    redirect(`/search?q=${encodeURIComponent(input)}`);
-  } catch (error) {
-    console.error('Error in catch-all route:', error);
-    redirect(`/search?q=${encodeURIComponent(input)}`);
+  // Numeric => block number
+  if (/^\d+$/.test(input)) {
+    redirect(`/block/${input}`);
   }
 
-  // This should never be reached due to redirects above
-  return null;
+  // Transaction signature (88 chars, base58)
+  if (isValidTransactionSignature(input)) {
+    redirect(`/tx/${input}`);
+  }
+
+  // Account address - check format (lenient), redirect to account page for type detection
+  if (looksLikeSolanaAddress(input)) {
+    redirect(`/account/${input}`);
+  }
+
+  // Fallback: search
+  redirect(`/search?q=${encodeURIComponent(input)}`);
 }
