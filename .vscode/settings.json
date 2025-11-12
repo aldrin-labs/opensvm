@@ -5,5 +5,10 @@
             "path": "/bin/bash",
             "args": ["-l"]
         }
+    },
+    "files.autoSave": "afterDelay",
+    "chat.agent.todoList": {
+        
+        "position": "default"
     }
 }
