@@ -701,8 +701,8 @@ export async function getShareByCode(shareCode: string): Promise<ShareEntry | nu
 export async function getSharesByReferrer(
   referrerAddress: string,
   options: { limit?: number; offset?: number } = {}
-): Promise<{
-  const client = getQdrantClient(); shares: ShareEntry[]; total: number }> {
+): Promise<{ shares: ShareEntry[]; total: number }> {
+  const client = getQdrantClient();
   try {
 
     const { limit = 50, offset = 0 } = options;
