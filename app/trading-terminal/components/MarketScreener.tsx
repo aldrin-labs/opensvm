@@ -32,7 +32,10 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [markets, setMarkets] = useState<Market[]>([]);
   const [showFilters, setShowFilters] = useState(false);
-  
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState('Loading...');
+
   // Filter states
   const [filters, setFilters] = useState({
     minVolume: '',
@@ -63,38 +66,91 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
-  // Generate mock market data
+  // Fetch real market data from API
   useEffect(() => {
-    const generateMarkets = () => {
-      const baseTokens = ['SOL', 'USDC', 'BONK', 'JTO', 'JUP', 'PYTH', 'WIF', 'ORCA', 'RAY', 'MNGO'];
-      const quoteTokens = ['USDC', 'SOL', 'USDT'];
-      const sources = ['Jupiter', 'Raydium', 'Orca', 'Meteora'];
-      
-      const mockMarkets: Market[] = [];
-      
-      for (let i = 0; i < 50; i++) {
-        const base = baseTokens[Math.floor(Math.random() * baseTokens.length)];
-        const quote = quoteTokens[Math.floor(Math.random() * quoteTokens.length)];
-        
-        if (base === quote) continue;
-        
-        mockMarkets.push({
-          symbol: `${base}/${quote}`,
-          baseToken: base,
-          quoteToken: quote,
-          price: Math.random() * 1000,
-          change24h: (Math.random() - 0.5) * 40,
-          volume24h: Math.random() * 10000000,
-          source: sources[Math.floor(Math.random() * sources.length)],
-          marketCap: Math.random() * 100000000,
-          liquidity: Math.random() * 5000000,
-        });
+    const fetchMarkets = async () => {
+      setIsLoadingData(true);
+
+      try {
+        // Map tab types to API query types
+        const typeMap: Record<TabType, string> = {
+          'trending': 'trending',
+          'all': 'all',
+          'user': 'volume',
+          'monitor': 'gainers',
+          'followers': 'volume',
+          'kols': 'trending',
+          'whales': 'volume',
+        };
+
+        const response = await fetch(`/api/trading/markets?type=${typeMap[activeTab]}`);
+
+        if (!response.ok) {
+          throw new Error(`API returned ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.markets && data.markets.length > 0) {
+          setMarkets(data.markets);
+          setIsRealData(data.isRealData);
+          setDataSource(data.dataSource);
+        } else {
+          // Fallback to mock data if API returns empty
+          const generateMockMarkets = () => {
+            const baseTokens = ['SOL', 'BONK', 'JTO', 'JUP', 'PYTH', 'WIF', 'ORCA', 'RAY', 'MNGO'];
+            const mockMarkets: Market[] = baseTokens.map(base => ({
+              symbol: `${base}/USDC`,
+              baseToken: base,
+              quoteToken: 'USDC',
+              price: Math.random() * 100,
+              change24h: (Math.random() - 0.5) * 40,
+              volume24h: Math.random() * 10000000,
+              source: 'Mock',
+              marketCap: Math.random() * 100000000,
+              liquidity: Math.random() * 5000000,
+            }));
+            return mockMarkets;
+          };
+
+          setMarkets(generateMockMarkets());
+          setIsRealData(false);
+          setDataSource('Mock Data (API empty)');
+        }
+      } catch (error) {
+        console.error('Failed to fetch markets:', error);
+
+        // Fallback to mock data on error
+        const generateMockMarkets = () => {
+          const baseTokens = ['SOL', 'BONK', 'JTO', 'JUP', 'PYTH', 'WIF', 'ORCA', 'RAY', 'MNGO'];
+          const mockMarkets: Market[] = baseTokens.map(base => ({
+            symbol: `${base}/USDC`,
+            baseToken: base,
+            quoteToken: 'USDC',
+            price: Math.random() * 100,
+            change24h: (Math.random() - 0.5) * 40,
+            volume24h: Math.random() * 10000000,
+            source: 'Mock',
+            marketCap: Math.random() * 100000000,
+            liquidity: Math.random() * 5000000,
+          }));
+          return mockMarkets;
+        };
+
+        setMarkets(generateMockMarkets());
+        setIsRealData(false);
+        setDataSource('Mock Data (API error)');
+      } finally {
+        setIsLoadingData(false);
       }
-      
-      return mockMarkets;
     };
 
-    setMarkets(generateMarkets());
+    fetchMarkets();
+
+    // Refresh data periodically
+    const interval = setInterval(fetchMarkets, 30000); // Every 30 seconds
+
+    return () => clearInterval(interval);
   }, [activeTab]);
 
   // Filter markets based on debounced search and filters
@@ -165,10 +221,27 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
   }
 
   return (
-    <div className={`market-screener flex flex-col bg-background border-r border-border ${isExpanded ? 'w-96' : 'w-72'} transition-all duration-300`}>
+    <div className={`market-screener flex flex-col h-full bg-background border-r border-border ${isExpanded ? 'w-96' : 'w-72'} transition-all duration-300`}>
       {/* Header */}
       <div className="screener-header flex items-center justify-between px-3 py-2 bg-card border-b border-border">
-        <h2 className="text-sm font-bold text-primary">Market Screener</h2>
+        <div className="flex items-center gap-2">
+          <h2 className="text-sm font-bold text-primary">Market Screener</h2>
+          {dataSource && !isLoadingData && (
+            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border"
+                 style={{
+                   backgroundColor: isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
+                   borderColor: isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
+                   color: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                 }}
+                 title={dataSource}>
+              <span className="w-1 h-1 rounded-full"
+                    style={{
+                      backgroundColor: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
+                    }}></span>
+              <span>{isRealData ? 'Live' : 'Demo'}</span>
+            </div>
+          )}
+        </div>
         <div className="flex items-center gap-1">
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -269,7 +342,7 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
       )}
 
       {/* Markets List */}
-      <div className="markets-list flex-1 overflow-y-auto">
+      <div className="markets-list flex-1 overflow-y-auto min-h-0 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {filteredMarkets.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-32 text-muted-foreground text-sm">
             <div>No markets found</div>
@@ -284,11 +357,12 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
             <button
               key={index}
               onClick={() => onMarketChange(market.symbol)}
-              className={`w-full px-3 py-2 flex items-center justify-between hover:bg-muted transition-colors duration-150 border-b border-border/50 ${
+              className={`w-full px-3 py-2 flex items-center justify-between cursor-pointer hover:bg-muted transition-colors duration-150 border-b border-border/50 ${
                 selectedMarket === market.symbol ? 'bg-primary/10' : ''
               }`}
+              style={{ display: 'flex' }}
             >
-              <div className="flex flex-col items-start">
+              <div className="flex flex-col items-start flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm text-foreground">{market.symbol}</span>
                   {isExpanded && (
@@ -299,7 +373,7 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
                   <span className="text-xs text-muted-foreground">Vol: {formatNumber(market.volume24h)}</span>
                 )}
               </div>
-              <div className="flex flex-col items-end">
+              <div className="flex flex-col items-end flex-shrink-0">
                 <span className="text-sm font-mono text-foreground">${market.price.toFixed(2)}</span>
                 <span className={`text-xs font-medium ${market.change24h >= 0 ? 'text-primary' : 'text-destructive'}`}>
                   {market.change24h >= 0 ? '+' : ''}{market.change24h.toFixed(2)}%

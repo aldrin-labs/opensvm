@@ -1,0 +1,290 @@
+{
+  "timestamp": "2025-11-12T13:12:38.701Z",
+  "totalRoutes": 191,
+  "summary": {
+    "withCache": 66,
+    "withoutCache": 125,
+    "complete": 2,
+    "incomplete": 64,
+    "shouldHaveCache": 15
+  },
+  "complete": [
+    "token/[address]/holders",
+    "token/[address]"
+  ],
+  "incomplete": [
+    {
+      "path": "account-stats/[address]",
+      "score": 2
+    },
+    {
+      "path": "account-transactions/[address]",
+      "score": 1
+    },
+    {
+      "path": "account-transfers/[address]",
+      "score": 2
+    },
+    {
+      "path": "ai-analyze-transaction",
+      "score": 1
+    },
+    {
+      "path": "ai-response",
+      "score": 1
+    },
+    {
+      "path": "alerts",
+      "score": 1
+    },
+    {
+      "path": "analytics/dex",
+      "score": 1
+    },
+    {
+      "path": "analytics/overview",
+      "score": 3
+    },
+    {
+      "path": "analytics/trending-validators",
+      "score": 2
+    },
+    {
+      "path": "analytics/user-interactions",
+      "score": 1
+    },
+    {
+      "path": "analytics/validators",
+      "score": 1
+    },
+    {
+      "path": "api-keys",
+      "score": 1
+    },
+    {
+      "path": "blocks/[slot]",
+      "score": 2
+    },
+    {
+      "path": "blocks",
+      "score": 1
+    },
+    {
+      "path": "blocks/stats",
+      "score": 2
+    },
+    {
+      "path": "config",
+      "score": 1
+    },
+    {
+      "path": "crash-reporting",
+      "score": 1
+    },
+    {
+      "path": "docs/openapi",
+      "score": 1
+    },
+    {
+      "path": "docs/page",
+      "score": 1
+    },
+    {
+      "path": "error-report",
+      "score": 1
+    },
+    {
+      "path": "error-tracking",
+      "score": 1
+    },
+    {
+      "path": "favicon",
+      "score": 1
+    },
+    {
+      "path": "feed/latest",
+      "score": 1
+    },
+    {
+      "path": "getAnswer",
+      "score": 1
+    },
+    {
+      "path": "health/anthropic",
+      "score": 2
+    },
+    {
+      "path": "holdersByInteraction",
+      "score": 1
+    },
+    {
+      "path": "live-stats",
+      "score": 1
+    },
+    {
+      "path": "mempool",
+      "score": 1
+    },
+    {
+      "path": "metrics",
+      "score": 1
+    },
+    {
+      "path": "monitoring/api",
+      "score": 1
+    },
+    {
+      "path": "monitoring/requests",
+      "score": 1
+    },
+    {
+      "path": "nfts/collections",
+      "score": 2
+    },
+    {
+      "path": "notifications",
+      "score": 1
+    },
+    {
+      "path": "opensvm/anthropic-keys/stats",
+      "score": 1
+    },
+    {
+      "path": "program-metadata",
+      "score": 1
+    },
+    {
+      "path": "program-registry/[programId]",
+      "score": 2
+    },
+    {
+      "path": "scan",
+      "score": 1
+    },
+    {
+      "path": "slots",
+      "score": 1
+    },
+    {
+      "path": "solana-proxy/[transaction]",
+      "score": 1
+    },
+    {
+      "path": "solana-rpc",
+      "score": 1
+    },
+    {
+      "path": "sse-alerts",
+      "score": 1
+    },
+    {
+      "path": "sse-events/feed",
+      "score": 1
+    },
+    {
+      "path": "sse-feed",
+      "score": 1
+    },
+    {
+      "path": "status",
+      "score": 1
+    },
+    {
+      "path": "token/[address]/holdersByVolume",
+      "score": 1
+    },
+    {
+      "path": "token/[address]/traders",
+      "score": 1
+    },
+    {
+      "path": "token-stats/[account]/[mint]",
+      "score": 1
+    },
+    {
+      "path": "trading/execute",
+      "score": 1
+    },
+    {
+      "path": "trading/market-data",
+      "score": 1
+    },
+    {
+      "path": "trading/markets",
+      "score": 1
+    },
+    {
+      "path": "trading/stream",
+      "score": 1
+    },
+    {
+      "path": "transaction/[signature]/analysis",
+      "score": 2
+    },
+    {
+      "path": "transaction/[signature]/explain",
+      "score": 2
+    },
+    {
+      "path": "transaction/[signature]/metrics",
+      "score": 2
+    },
+    {
+      "path": "transaction/[signature]/related",
+      "score": 2
+    },
+    {
+      "path": "transaction/[signature]",
+      "score": 2
+    },
+    {
+      "path": "transaction/batch",
+      "score": 2
+    },
+    {
+      "path": "transfers/cache",
+      "score": 1
+    },
+    {
+      "path": "usage-stats",
+      "score": 1
+    },
+    {
+      "path": "v1/messages",
+      "score": 1
+    },
+    {
+      "path": "v1/models",
+      "score": 1
+    },
+    {
+      "path": "version",
+      "score": 1
+    },
+    {
+      "path": "wallet-path-finding",
+      "score": 2
+    },
+    {
+      "path": "websocket-info",
+      "score": 1
+    }
+  ],
+  "missing": [
+    "account-portfolio/[address]",
+    "account-token-stats/[address]/[mint]",
+    "analytics/defi-health",
+    "dex/[name]",
+    "market-data",
+    "nft-collections/new",
+    "nft-collections",
+    "nft-collections/trending",
+    "program/[address]",
+    "program-registry",
+    "stream/blocks",
+    "transaction/[signature]/failure-analysis",
+    "user-history/[walletAddress]",
+    "user-profile/[walletAddress]",
+    "validator/[address]"
+  ]
+}

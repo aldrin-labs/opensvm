@@ -338,9 +338,11 @@ export async function getHistoricalTokenPrice(
  * @param address The token address
  * @param network The Solana network (mainnet or devnet)
  * @returns Token stats
+ * @deprecated This endpoint has been deprecated by Moralis. Use getTokenPrice or getTokenMetadata instead.
  */
 export async function getTokenStats(address: string, network: SolanaNetwork = DEFAULT_NETWORK) {
-  return makeApiRequest(`/token/{network}/${address}/stats`, {}, network);
+  console.warn(`getTokenStats is deprecated. The /token/{network}/${address}/stats endpoint is no longer available. Use getTokenPrice or getTokenMetadata instead.`);
+  return null;
 }
 
 /**
@@ -410,12 +412,6 @@ export async function getComprehensiveBlockchainData(query: string, network: Sol
       const historicalPrice = await getHistoricalTokenPrice(query, 7, network);
       if (historicalPrice) {
         result.data.historicalPrice = historicalPrice;
-      }
-
-      // Get token stats
-      const tokenStats = await getTokenStats(query, network);
-      if (tokenStats) {
-        result.data.stats = tokenStats;
       }
 
       // Get token holders

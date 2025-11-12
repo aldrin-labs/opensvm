@@ -22,7 +22,6 @@ export type Permission =
   | 'export:reports'
   | 'customize:dashboard'
   | 'customize:branding'
-  | 'integrate:sso'
   | 'integrate:webhooks';
 
 export type Role = 'viewer' | 'analyst' | 'developer' | 'admin' | 'owner';
@@ -151,7 +150,7 @@ const roleDefinitions: RoleDefinition[] = [
       'write:analytics', 'admin:users', 'admin:roles', 'admin:organization',
       'admin:billing', 'admin:audit', 'api:access', 'api:write',
       'export:data', 'export:reports', 'customize:dashboard',
-      'customize:branding', 'integrate:sso', 'integrate:webhooks'
+      'customize:branding', 'integrate:webhooks'
     ],
   },
   {
@@ -709,7 +708,6 @@ export function getPermissionDescription(permission: Permission): string {
     'export:reports': 'Export reports and summaries',
     'customize:dashboard': 'Customize dashboard layouts',
     'customize:branding': 'Customize organization branding',
-    'integrate:sso': 'Configure SSO integration',
     'integrate:webhooks': 'Configure webhook integrations',
   };
   

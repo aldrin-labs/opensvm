@@ -22,8 +22,142 @@ export async function GET(request: NextRequest) {
 
         if (endpoint === 'ohlcv') {
             const type = searchParams.get('type') || '1H';
-            const time_to = Math.floor(Date.now() / 1000);
-            const time_from = time_to - (24 * 60 * 60); // 24h ago
+            
+            // Support custom time ranges via query parameters
+            const customTimeTo = searchParams.get('time_to');
+            const customTimeFrom = searchParams.get('time_from');
+            
+            let time_to: number;
+            let time_from: number;
+            
+            if (customTimeTo && customTimeFrom) {
+                // Use custom time range if provided
+                time_to = parseInt(customTimeTo);
+                time_from = parseInt(customTimeFrom);
+            } else if (customTimeTo) {
+                // If only time_to provided, calculate time_from using default ranges
+                time_to = parseInt(customTimeTo);
+                const defaultTimeRanges: Record<string, number> = {
+                    '1m': 20 * 60 * 60,         // 20 hours = 1,200 candles
+                    '3m': 60 * 60 * 60,         // 60 hours = 1,200 candles
+                    '5m': 100 * 60 * 60,        // 100 hours = 1,200 candles
+                    '15m': 10 * 24 * 60 * 60,   // 10 days = 960 candles
+                    '30m': 20 * 24 * 60 * 60,   // 20 days = 960 candles
+                    '1H': 70 * 24 * 60 * 60,    // 70 days = 1,680 candles
+                    '2H': 100 * 24 * 60 * 60,   // 100 days = 1,200 candles
+                    '4H': 200 * 24 * 60 * 60,   // 200 days = 1,200 candles
+                    '6H': 300 * 24 * 60 * 60,   // 300 days = 1,200 candles
+                    '8H': 300 * 24 * 60 * 60,   // 300 days = 900 candles
+                    '12H': 300 * 24 * 60 * 60,  // 300 days = 600 candles
+                    '1D': 900 * 24 * 60 * 60,   // 900 days = 900 candles
+                    '3D': 1800 * 24 * 60 * 60,  // 1800 days = 600 candles
+                    '1W': 3650 * 24 * 60 * 60,  // 10 years = 520 candles
+                    '1M': 7300 * 24 * 60 * 60,  // 20 years = 240 candles
+                };
+                const timeRange = defaultTimeRanges[type] || (24 * 60 * 60);
+                time_from = time_to - timeRange;
+            } else {
+                // Use default time ranges (10x original for batch support)
+                time_to = Math.floor(Date.now() / 1000);
+                const defaultTimeRanges: Record<string, number> = {
+                    '1m': 20 * 60 * 60,         // 20 hours = 1,200 candles
+                    '3m': 60 * 60 * 60,         // 60 hours = 1,200 candles
+                    '5m': 100 * 60 * 60,        // 100 hours = 1,200 candles
+                    '15m': 10 * 24 * 60 * 60,   // 10 days = 960 candles
+                    '30m': 20 * 24 * 60 * 60,   // 20 days = 960 candles
+                    '1H': 70 * 24 * 60 * 60,    // 70 days = 1,680 candles
+                    '2H': 100 * 24 * 60 * 60,   // 100 days = 1,200 candles
+                    '4H': 200 * 24 * 60 * 60,   // 200 days = 1,200 candles
+                    '6H': 300 * 24 * 60 * 60,   // 300 days = 1,200 candles
+                    '8H': 300 * 24 * 60 * 60,   // 300 days = 900 candles
+                    '12H': 300 * 24 * 60 * 60,  // 300 days = 600 candles
+                    '1D': 900 * 24 * 60 * 60,   // 900 days = 900 candles
+                    '3D': 1800 * 24 * 60 * 60,  // 1800 days = 600 candles
+                    '1W': 3650 * 24 * 60 * 60,  // 10 years = 520 candles
+                    '1M': 7300 * 24 * 60 * 60,  // 20 years = 240 candles
+                };
+                const timeRange = defaultTimeRanges[type] || (24 * 60 * 60);
+                time_from = time_to - timeRange;
+            }
+            
+            // Helper function to fetch OHLCV data with batching support
+            const fetchOHLCVBatch = async (mint: string, type: string, from: number, to: number): Promise<any[]> => {
+                // Calculate optimal batch size based on interval to maximize candles per request
+                // Target ~800-1000 candles per batch (Birdeye limit is ~1000)
+                const batchSizes: Record<string, number> = {
+                    '1m': 16 * 60 * 60,        // 16 hours = 960 candles per batch
+                    '3m': 48 * 60 * 60,        // 48 hours = 960 candles per batch
+                    '5m': 80 * 60 * 60,        // 80 hours = 960 candles per batch
+                    '15m': 10 * 24 * 60 * 60,  // 10 days = 960 candles per batch
+                    '30m': 20 * 24 * 60 * 60,  // 20 days = 960 candles per batch
+                    '1H': 40 * 24 * 60 * 60,   // 40 days = 960 candles per batch
+                    '2H': 80 * 24 * 60 * 60,   // 80 days = 960 candles per batch
+                    '4H': 160 * 24 * 60 * 60,  // 160 days = 960 candles per batch
+                    '6H': 240 * 24 * 60 * 60,  // 240 days = 960 candles per batch
+                    '8H': 250 * 24 * 60 * 60,  // 250 days = 750 candles per batch
+                    '12H': 250 * 24 * 60 * 60, // 250 days = 500 candles per batch
+                    '1D': 900 * 24 * 60 * 60,  // 900 days = 900 candles per batch
+                    '3D': 1800 * 24 * 60 * 60, // 1800 days = 600 candles per batch
+                    '1W': 3650 * 24 * 60 * 60, // 10 years = 520 candles per batch
+                    '1M': 7300 * 24 * 60 * 60, // 20 years = 240 candles per batch
+                };
+                
+                const batchSize = batchSizes[type] || (24 * 60 * 60);
+                const totalRange = to - from;
+                
+                // If the range fits in one batch, make a single request
+                if (totalRange <= batchSize) {
+                    const url = `https://public-api.birdeye.so/defi/ohlcv?address=${mint}&type=${type}&time_from=${from}&time_to=${to}`;
+                    const response = await fetch(url, { headers });
+                    
+                    if (!response.ok) {
+                        throw new Error(`Birdeye API returned ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    return data.data?.items || [];
+                }
+                
+                // Split into multiple batches
+                const batches: Promise<any[]>[] = [];
+                let currentFrom = from;
+                
+                while (currentFrom < to) {
+                    const currentTo = Math.min(currentFrom + batchSize, to);
+                    const url = `https://public-api.birdeye.so/defi/ohlcv?address=${mint}&type=${type}&time_from=${currentFrom}&time_to=${currentTo}`;
+                    
+                    const batchPromise = fetch(url, { headers })
+                        .then(async (response) => {
+                            if (!response.ok) {
+                                console.error(`Batch failed for range ${currentFrom}-${currentTo}: ${response.status}`);
+                                return [];
+                            }
+                            const data = await response.json();
+                            return data.data?.items || [];
+                        })
+                        .catch((error) => {
+                            console.error(`Batch error for range ${currentFrom}-${currentTo}:`, error);
+                            return [];
+                        });
+                    
+                    batches.push(batchPromise);
+                    currentFrom = currentTo;
+                }
+                
+                // Wait for all batches and concatenate results
+                const results = await Promise.all(batches);
+                const allItems = results.flat();
+                
+                // Sort by timestamp to ensure correct order
+                allItems.sort((a, b) => a.unixTime - b.unixTime);
+                
+                // Remove duplicates (by timestamp)
+                const uniqueItems = allItems.filter((item, index, self) =>
+                    index === self.findIndex((t) => t.unixTime === item.unixTime)
+                );
+                
+                return uniqueItems;
+            };
             
             // If poolAddress is provided, fetch pool-specific data
             if (poolAddress) {
@@ -189,22 +323,10 @@ export async function GET(request: NextRequest) {
                 }
             }
             
-            url = `https://public-api.birdeye.so/defi/ohlcv?address=${mint}&type=${type}&time_from=${time_from}&time_to=${time_to}`;
-            
-            const response = await fetch(url, { headers });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                return NextResponse.json({ 
-                    error: `Birdeye API returned ${response.status}`,
-                    details: errorText
-                }, { status: response.status });
-            }
-
-            const data = await response.json();
+            // Fetch OHLCV data using batch support for large time ranges
+            const items = await fetchOHLCVBatch(mint, type, time_from, time_to);
             
             // Calculate technical indicators (MACD, MA7, MA25)
-            const items = data.data?.items || [];
             const closes = items.map((item: any) => item.c);
             
             // Calculate moving averages
@@ -265,6 +387,28 @@ export async function GET(request: NextRequest) {
                 poolAddress: pools.length > 0 ? pools[0].poolAddress : null,
             };
             
+            // Calculate batch metadata (must match fetchOHLCVBatch sizes)
+            const batchSizes: Record<string, number> = {
+                '1m': 16 * 60 * 60,
+                '3m': 48 * 60 * 60,
+                '5m': 80 * 60 * 60,
+                '15m': 10 * 24 * 60 * 60,
+                '30m': 20 * 24 * 60 * 60,
+                '1H': 40 * 24 * 60 * 60,
+                '2H': 80 * 24 * 60 * 60,
+                '4H': 160 * 24 * 60 * 60,
+                '6H': 240 * 24 * 60 * 60,
+                '8H': 250 * 24 * 60 * 60,
+                '12H': 250 * 24 * 60 * 60,
+                '1D': 900 * 24 * 60 * 60,
+                '3D': 1800 * 24 * 60 * 60,
+                '1W': 3650 * 24 * 60 * 60,
+                '1M': 7300 * 24 * 60 * 60,
+            };
+            const batchSize = batchSizes[type] || (24 * 60 * 60);
+            const totalRange = time_to - time_from;
+            const batchCount = Math.ceil(totalRange / batchSize);
+            
             return NextResponse.json({
                 success: true,
                 endpoint,
@@ -272,7 +416,11 @@ export async function GET(request: NextRequest) {
                 tokenInfo: pairInfo,
                 mainPair,
                 pools,  // All available pools/pairs
-                data: data.data || data,
+                data: {
+                    items,
+                    type,
+                    unixTime: Math.floor(Date.now() / 1000)
+                },
                 indicators: {
                     ma7,
                     ma25,
@@ -282,7 +430,19 @@ export async function GET(request: NextRequest) {
                         histogram
                     }
                 },
-                raw: data
+                _meta: {
+                    requestedRange: {
+                        from: time_from,
+                        to: time_to,
+                        duration: totalRange
+                    },
+                    batching: {
+                        enabled: batchCount > 1,
+                        batchCount,
+                        batchSize
+                    },
+                    candleCount: items.length
+                }
             });
             
         } else if (endpoint === 'markets') {

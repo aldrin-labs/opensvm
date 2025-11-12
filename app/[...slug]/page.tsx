@@ -1,8 +1,21 @@
 import { notFound } from 'next/navigation'
 import { redirect } from 'next/navigation'
-import { isValidSolanaAddress, isValidTransactionSignature } from '@/lib/utils'
+import { isValidTransactionSignature } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic';
+
+// Lenient validation - just check format, not blockchain validity
+function looksLikeSolanaAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') return false;
+  
+  // Solana addresses are 32-44 characters
+  if (address.length < 32 || address.length > 44) return false;
+  
+  // Check if it contains only valid base58 characters
+  // Base58 alphabet: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  return base58Regex.test(address);
+}
 
 export default async function CatchAllRoute({ params }: { params: { slug?: string[] } }) {
   // If no slug parts, return 404
@@ -61,32 +74,21 @@ export default async function CatchAllRoute({ params }: { params: { slug?: strin
     notFound();
   }
 
-  try {
-    // Numeric => block number
-    if (/^\d+$/.test(input)) {
-      redirect(`/block/${input}`);
-      return;
-    }
-
-    // Transaction signature
-    if (isValidTransactionSignature(input)) {
-      redirect(`/tx/${input}`);
-      return;
-    }
-
-    // Account address
-    if (isValidSolanaAddress(input)) {
-      redirect(`/account/${input}`);
-      return;
-    }
-
-    // Fallback: search
-    redirect(`/search?q=${encodeURIComponent(input)}`);
-  } catch (error) {
-    console.error('Error in catch-all route:', error);
-    redirect(`/search`);
+  // Numeric => block number
+  if (/^\d+$/.test(input)) {
+    redirect(`/block/${input}`);
   }
 
-  // This should never be reached due to redirects above
-  return null;
+  // Transaction signature (88 chars, base58)
+  if (isValidTransactionSignature(input)) {
+    redirect(`/tx/${input}`);
+  }
+
+  // Account address - check format (lenient), redirect to account page for type detection
+  if (looksLikeSolanaAddress(input)) {
+    redirect(`/account/${input}`);
+  }
+
+  // Fallback: search
+  redirect(`/search?q=${encodeURIComponent(input)}`);
 }

@@ -2,6 +2,7 @@
 
 import React from 'react';
 import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
 
 // Hooks
 import { useTradingTerminal } from '@/components/hooks/trading/useTradingTerminal';
@@ -25,21 +26,39 @@ const EnhancedAIChatWidget = dynamic(() => import('./EnhancedAIChatWidget'), { s
 import { ChevronDown, ChevronUp, Keyboard, Settings, HelpCircle } from 'lucide-react';
 import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
 import { KeyboardShortcutsSettings } from '@/components/KeyboardShortcutsSettings';
-import { TutorialTour, useTutorial } from '@/components/TutorialTour';
-import { TRADING_TERMINAL_TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY } from '@/lib/trading-terminal-tutorial';
+// Temporarily disabled during testing
+// import { TutorialTour, useTutorial } from '@/components/TutorialTour';
+// import { TRADING_TERMINAL_TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY } from '@/lib/trading-terminal-tutorial';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 export default function TradingTerminalView() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial market from URL or default to SOL/USDC
+  const initialMarket = searchParams.get('market') || 'SOL/USDC';
+  
   // Use modular hooks for state management
-  const terminal = useTradingTerminal('SOL/USDC');
+  const terminal = useTradingTerminal(initialMarket);
   const marketData = useMarketData(terminal.selectedMarket);
   const wallet = useWalletConnection();
   
   // Settings modal state
   const [showSettings, setShowSettings] = React.useState(false);
   
-  // Tutorial state
-  const { showTutorial, startTutorial, closeTutorial } = useTutorial(TUTORIAL_STORAGE_KEY);
+  // Tutorial state - temporarily disabled during testing
+  // const { showTutorial, startTutorial, closeTutorial } = useTutorial(TUTORIAL_STORAGE_KEY);
+
+  // Update page title and URL when market changes
+  React.useEffect(() => {
+    // Update document title
+    document.title = `${terminal.selectedMarket} - Trading Terminal | OpenSVM`;
+    
+    // Update URL without reload
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('market', terminal.selectedMarket);
+    router.replace(`/trading-terminal?${params.toString()}`, { scroll: false });
+  }, [terminal.selectedMarket, router, searchParams]);
 
   // Setup keyboard shortcuts
   useKeyboardShortcuts({
@@ -350,7 +369,7 @@ export default function TradingTerminalView() {
         {!maximizedTile && (
           <>
             {/* Left Panel - Market Screener (70%) + Watchlist (30%) */}
-            <div className="flex flex-col border-r border-border flex-shrink-0 overflow-hidden w-full lg:w-80 hidden md:flex">
+            <div className={`flex flex-col border-r border-border flex-shrink-0 overflow-hidden w-full hidden md:flex transition-all duration-300 ${screenerExpanded ? 'lg:w-96' : 'lg:w-80'}`}>
               {/* Market Screener - 70% */}
               <div 
                 data-tile-id="screener"
@@ -750,15 +769,15 @@ export default function TradingTerminalView() {
 
       {/* Help Menu */}
       <div className="fixed bottom-4 right-4 flex flex-col gap-2 z-50">
-        {/* Tutorial Button */}
-        <button
+        {/* Tutorial Button - temporarily disabled during testing */}
+        {/* <button
           className="p-3 bg-card border border-border rounded-full shadow-lg hover:bg-muted transition-colors duration-150"
           onClick={startTutorial}
           aria-label="Start tutorial"
           title="Start tutorial"
         >
           <HelpCircle size={20} className="text-primary" />
-        </button>
+        </button> */}
         
         {/* Keyboard Shortcuts Button */}
         <button
@@ -864,22 +883,22 @@ export default function TradingTerminalView() {
       )}
 
       {/* Keyboard Shortcuts Settings Modal */}
-      <ErrorBoundary componentName="Keyboard Shortcuts Settings">
+      <ErrorBoundary>
         <KeyboardShortcutsSettings 
           isOpen={showSettings}
           onClose={() => setShowSettings(false)}
         />
       </ErrorBoundary>
 
-      {/* Tutorial Tour */}
-      <ErrorBoundary componentName="Tutorial Tour">
+      {/* Tutorial Tour - temporarily disabled during testing */}
+      {/* <ErrorBoundary>
         <TutorialTour
           steps={TRADING_TERMINAL_TUTORIAL_STEPS}
           isOpen={showTutorial}
           onClose={closeTutorial}
           storageKey={TUTORIAL_STORAGE_KEY}
         />
-      </ErrorBoundary>
+      </ErrorBoundary> */}
     </div>
   );
 }

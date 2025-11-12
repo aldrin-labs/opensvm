@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { rpcEventEmitter } from "@/lib/solana-connection-client";
+import { logger } from "@/lib/logger";
 
 // Keys for localStorage persistence
 const STORAGE_KEY_TOTALS = "rpcRequestTotals"; // map of rpc -> total count
@@ -25,21 +26,19 @@ function writeCookie(name: string, value: string, maxAgeSec: number) {
 function getActiveRpcLabel(): string {
     // Priority: cluster cookie; otherwise default proxy
     const cluster = readCookie("cluster");
-    console.log('[RpcStatusBadge] cluster cookie value:', cluster);
     if (!cluster || cluster === "opensvm") return "osvm rpc";
     if (cluster === "devnet" || cluster === "testnet" || cluster === "mainnet" || cluster === "mainnet-beta") return cluster;
     
     // Extract hostname from URL for custom RPC endpoints
     try {
         const url = new URL(cluster);
-        console.log('[RpcStatusBadge] Parsed URL - hostname:', url.hostname, 'pathname:', url.pathname);
         // Special case: if this is our own proxy endpoint, show as osvm rpc
         if (url.pathname === "/api/proxy/rpc" && url.hostname.includes("opensvm")) {
             return "osvm rpc";
         }
         return url.hostname; // Returns just the hostname without protocol
     } catch (e) {
-        console.log('[RpcStatusBadge] Failed to parse as URL:', e);
+        logger.rpc.debug('[RpcStatusBadge] Failed to parse as URL:', e);
         // If not a valid URL, return a shortened version
         return cluster.length > 20 ? cluster.substring(0, 17) + "..." : cluster;
     }
@@ -96,26 +95,24 @@ export function RpcStatusBadge() {
 
     // Subscribe to RPC events from solana-connection-client
     useEffect(() => {
-        console.log('🚀 RPC Badge: Subscribing to RPC events...');
+        logger.rpc.debug('RPC Badge: Subscribing to RPC events...');
 
         const unsubscribe = rpcEventEmitter.subscribe((eventData) => {
-            console.log('📡 RPC Event received:', eventData);
+            logger.rpc.debug('RPC Event received:', eventData);
 
             // Only count successful requests (status < 500) or if no status (for errors)
             if (eventData.status && eventData.status >= 500) {
-                console.log('❌ Skipping server error:', eventData.status);
+                logger.rpc.debug('Skipping server error:', eventData.status);
                 return;
             }
 
             const currentKey = getActiveRpcKey();
-            console.log('🔑 Current RPC key:', currentKey);
 
             // Update totals
             const totals = loadJson<Record<string, number>>(STORAGE_KEY_TOTALS, {});
             const newTotal = (totals[currentKey] || 0) + 1;
             totals[currentKey] = newTotal;
             saveJson(STORAGE_KEY_TOTALS, totals);
-            console.log('📈 Updated totals:', totals);
 
             // Update minute window
             const minute = loadJson<Record<string, { windowStartMs: number; count: number }>>(STORAGE_KEY_MINUTE, {});
@@ -127,21 +124,19 @@ export function RpcStatusBadge() {
                 minute[currentKey] = { windowStartMs: windowInfo.windowStartMs, count: windowInfo.count + 1 };
             }
             saveJson(STORAGE_KEY_MINUTE, minute);
-            console.log('⏱️ Updated minute window:', minute);
 
             // Update UI if this matches current RPC key
             if (currentKey === rpcKey) {
                 setTotalRequests(newTotal);
                 const info = minute[currentKey];
                 setRequestsPerMinute(info ? info.count : 0);
-                console.log('🎯 UI updated:', { total: newTotal, rpm: info ? info.count : 0 });
             } else {
-                console.log('⚠️ Key mismatch:', { currentKey, rpcKey });
+                logger.rpc.debug('Key mismatch:', { currentKey, rpcKey });
             }
         });
 
         return () => {
-            console.log('🛑 RPC Badge: Unsubscribing from RPC events');
+            logger.rpc.debug('RPC Badge: Unsubscribing from RPC events');
             unsubscribe();
         };
     }, [rpcKey]);
@@ -182,7 +177,6 @@ export function RpcStatusBadge() {
     const testRpcCounting = async () => {
         // Only run in browser environment, not during SSR/build
         if (typeof window === "undefined") {
-            console.log('Test RPC call skipped during SSR/build');
             return;
         }
 
@@ -201,9 +195,9 @@ export function RpcStatusBadge() {
                     params: []
                 })
             });
-            console.log('Test RPC call completed:', response.status);
+            logger.rpc.debug('Test RPC call completed:', response.status);
         } catch (error) {
-            console.error('Test RPC call failed:', error);
+            logger.rpc.error('Test RPC call failed:', error);
         }
     };
 

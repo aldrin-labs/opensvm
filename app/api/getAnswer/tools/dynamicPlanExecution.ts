@@ -800,35 +800,45 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
                     const { PublicKey } = await import('@solana/web3.js');
                     // Ensure input is a string and not an object or other type
                     const inputStr = typeof step.input === 'string' ? step.input : String(step.input);
-                    if (!inputStr || inputStr === 'undefined' || inputStr === 'null') {
+                    if (!inputStr || inputStr === 'undefined' || inputStr === 'null' || inputStr.trim() === '') {
                         result = { error: 'Invalid address: empty or null input' };
                         console.log(`   ❌ Invalid address input for getParsedTransaction: ${step.input}`);
                     } else {
-                        const pubkey = new PublicKey(inputStr);
-                        const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
+                        // Validate it's a valid Solana address before proceeding
+                        try {
+                            const pubkey = new PublicKey(inputStr);
+                            const signatures = await conn.getSignaturesForAddress(pubkey, { limit: 25 });
 
-                        if (signatures && signatures.length > 0) {
-                            // Get more detailed transactions for epic analysis
-                            const detailedTxs = await Promise.all(
-                                signatures.slice(0, 10).map(async (sig: any) => {
-                                    try {
-                                        const tx = await conn.getParsedTransaction(sig.signature, {
-                                            maxSupportedTransactionVersion: 0
-                                        });
-                                        return { signature: sig.signature, transaction: tx, slot: sig.slot };
-                                    } catch (e) {
-                                        return { signature: sig.signature, error: (e as Error).message };
-                                    }
-                                })
-                            );
-                            result = {
-                                totalSignatures: signatures.length,
-                                recentTransactions: detailedTxs
-                            };
-                            console.log(`   📜 Decoded ${detailedTxs.length} transactions in detail!`);
-                        } else {
-                            result = { totalSignatures: 0, recentTransactions: [] };
-                            console.log(`   📭 No transactions found yet`);
+                            if (signatures && Array.isArray(signatures) && signatures.length > 0) {
+                                // Get more detailed transactions for epic analysis
+                                const detailedTxs = await Promise.all(
+                                    signatures.slice(0, 10).map(async (sig: any) => {
+                                        try {
+                                            // Validate signature exists and is a string
+                                            if (!sig || !sig.signature || typeof sig.signature !== 'string') {
+                                                return { signature: 'invalid', error: 'Invalid signature object' };
+                                            }
+                                            const tx = await conn.getParsedTransaction(sig.signature, {
+                                                maxSupportedTransactionVersion: 0
+                                            });
+                                            return { signature: sig.signature, transaction: tx, slot: sig.slot };
+                                        } catch (e) {
+                                            return { signature: sig.signature || 'unknown', error: (e as Error).message };
+                                        }
+                                    })
+                                );
+                                result = {
+                                    totalSignatures: signatures.length,
+                                    recentTransactions: detailedTxs
+                                };
+                                console.log(`   📜 Decoded ${detailedTxs.length} transactions in detail!`);
+                            } else {
+                                result = { totalSignatures: 0, recentTransactions: [] };
+                                console.log(`   📭 No transactions found yet`);
+                            }
+                        } catch (pubkeyError) {
+                            result = { error: `Invalid Solana address: ${(pubkeyError as Error).message}` };
+                            console.log(`   ❌ Invalid address format: ${inputStr}`);
                         }
                     }
                 } catch (error) {
@@ -851,7 +861,9 @@ async function executePlanWithNarrative(plan: StoryDrivenPlanStep[], conn: any):
 
                 const rpcCallPromise = (async () => {
                     if (step.tool === 'getRecentPerformanceSamples') {
-                        return await conn[step.tool](50); // Get more samples
+                        // Ensure we pass a number, not an object
+                        const limit = typeof step.input === 'number' ? step.input : 50;
+                        return await conn.getRecentPerformanceSamples(limit);
                     } else if (step.input) {
                         if (step.tool === 'getAccountInfo' || step.tool === 'getBalance' ||
                             step.tool === 'getTokenSupply' || step.tool === 'getTokenLargestAccounts') {

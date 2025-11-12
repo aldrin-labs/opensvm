@@ -89,10 +89,20 @@ async function fetchTransactionBatch(
             const freshConnection = await getConnection();
 
             // Use getParsedTransactions for much better performance than individual calls
-            const batchTransactions = await freshConnection.getParsedTransactions(batch, {
+            const batchTransactionsResult = await freshConnection.getParsedTransactions(batch, {
               maxSupportedTransactionVersion: 0,
               commitment: 'confirmed'
             });
+
+            // Ensure we have a valid array before processing
+            const batchTransactions = Array.isArray(batchTransactionsResult) 
+              ? batchTransactionsResult 
+              : [];
+
+            if (!Array.isArray(batchTransactions)) {
+              console.error(`getParsedTransactions returned non-array:`, typeof batchTransactionsResult);
+              return []; // Return empty array if result is not an array
+            }
 
             const batchTransfers: Transfer[] = [];
 

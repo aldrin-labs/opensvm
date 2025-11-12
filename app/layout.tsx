@@ -27,6 +27,7 @@ const jetbrains = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(process.env.NEXT_PUBLIC_BASE_URL || 'https://opensvm.com'),
   title:
     "OpenSVM - AI Explorer and RPC nodes provider for all SVM networks (Solana Virtual Machine)",
   description:

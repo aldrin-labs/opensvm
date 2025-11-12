@@ -292,6 +292,126 @@ class OpenAPIGenerator {
           analyzed_at: { type: 'string', format: 'date-time', example: '2025-11-09T12:34:56.789Z' }
         }
       },
+      // Chart & Trades Endpoint Schemas
+      ChartMetadata: {
+        type: 'object',
+        properties: {
+          requestedRange: {
+            type: 'object',
+            properties: {
+              from: { type: 'number', description: 'Start timestamp' },
+              to: { type: 'number', description: 'End timestamp' },
+              duration: { type: 'number', description: 'Duration in seconds' }
+            }
+          },
+          batching: {
+            type: 'object',
+            properties: {
+              enabled: { type: 'boolean' },
+              batchCount: { type: 'number', description: 'Number of batches used' },
+              batchSize: { type: 'number', description: 'Time range per batch (seconds)' },
+              candlesPerBatch: { type: 'number', description: 'Candles per batch (~960 optimal)' }
+            }
+          },
+          candleCount: { type: 'number', description: 'Total candles returned' }
+        }
+      },
+      ChartResponse: {
+        type: 'object',
+        required: ['success', 'endpoint', 'mint', 'data'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          endpoint: { type: 'string', example: 'ohlcv' },
+          mint: { type: 'string', example: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
+          tokenInfo: { $ref: '#/components/schemas/TokenMarketInfo' },
+          mainPair: {
+            type: 'object',
+            properties: {
+              pair: { type: 'string', example: 'BONK/USDC' },
+              dex: { type: 'string', example: 'Raydium' },
+              poolAddress: { type: 'string' }
+            }
+          },
+          pools: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/PoolInfo' }
+          },
+          data: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: { $ref: '#/components/schemas/OHLCVCandle' }
+              }
+            }
+          },
+          indicators: { $ref: '#/components/schemas/TechnicalIndicators' },
+          _meta: { $ref: '#/components/schemas/ChartMetadata' }
+        }
+      },
+      TradeData: {
+        type: 'object',
+        required: ['signature', 'timestamp', 'type', 'owner'],
+        properties: {
+          signature: { type: 'string', description: 'Transaction signature' },
+          timestamp: { type: 'number', description: 'Unix timestamp' },
+          blockTime: { type: 'number', description: 'Block timestamp' },
+          type: { type: 'string', enum: ['swap', 'add', 'remove'], description: 'Transaction type' },
+          side: { type: 'string', enum: ['buy', 'sell'], description: 'Trade side' },
+          price: { type: 'number', description: 'Price per token' },
+          priceUSD: { type: 'number', description: 'Price in USD' },
+          amount: { type: 'number', description: 'Token amount traded' },
+          amountUSD: { type: 'number', description: 'USD value of trade' },
+          volume: { type: 'number', description: 'Volume (same as amountUSD)' },
+          token: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string' },
+              name: { type: 'string' },
+              address: { type: 'string' },
+              decimals: { type: 'number' }
+            }
+          },
+          pairToken: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string', example: 'USDC' },
+              name: { type: 'string' },
+              address: { type: 'string' },
+              decimals: { type: 'number' }
+            }
+          },
+          dex: { type: 'string', example: 'Raydium', description: 'DEX name' },
+          poolAddress: { type: 'string', description: 'AMM pool address' },
+          owner: { type: 'string', description: 'Wallet address that made the trade' },
+          slot: { type: 'number', description: 'Solana slot number' },
+          raw: { type: 'object', description: 'Raw Birdeye response data' }
+        }
+      },
+      TradesResponse: {
+        type: 'object',
+        required: ['success', 'mint', 'trades', 'count', 'metadata'],
+        properties: {
+          success: { type: 'boolean', example: true },
+          mint: { type: 'string', description: 'Token mint address' },
+          trades: {
+            type: 'array',
+            items: { $ref: '#/components/schemas/TradeData' }
+          },
+          count: { type: 'number', description: 'Number of trades in response' },
+          total: { type: 'number', description: 'Total trades available' },
+          metadata: {
+            type: 'object',
+            properties: {
+              mint: { type: 'string' },
+              limit: { type: 'number' },
+              offset: { type: 'number' },
+              txType: { type: 'string', description: 'Filter type used' },
+              hasMore: { type: 'boolean', description: 'Whether more trades available' }
+            }
+          }
+        }
+      },
       // Search & Discovery Schemas
       SearchResult: {
         type: 'object',
@@ -358,6 +478,142 @@ class OpenAPIGenerator {
           hasMore: { type: 'boolean', example: true }
         }
       },
+      TransferListResponse: {
+        type: 'object',
+        required: ['transfers', 'hasMore'],
+        properties: {
+          transfers: {
+            type: 'array',
+            description: 'List of transfer transactions',
+            items: {
+              type: 'object',
+              required: ['txId', 'date', 'from', 'to', 'tokenSymbol', 'tokenAmount', 'transferType'],
+              properties: {
+                txId: { type: 'string', description: 'Transaction signature' },
+                date: { type: 'string', description: 'Transaction timestamp' },
+                from: { type: 'string', description: 'Sender address' },
+                to: { type: 'string', description: 'Receiver address' },
+                tokenSymbol: { type: 'string', description: 'Token symbol (SOL or token)' },
+                tokenAmount: { type: 'string', description: 'Amount transferred' },
+                transferType: { 
+                  type: 'string', 
+                  enum: ['IN', 'OUT'],
+                  description: 'Transfer direction relative to the queried address'
+                }
+              }
+            }
+          },
+          hasMore: { 
+            type: 'boolean',
+            description: 'Whether more transfers are available for pagination'
+          }
+        }
+      },
+      // Account Response Schemas
+      AccountStatsResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          balance: { type: 'number' },
+          transactionCount: { type: 'integer' },
+          firstActivity: { type: 'string', format: 'date-time' },
+          lastActivity: { type: 'string', format: 'date-time' },
+          totalSent: { type: 'number' },
+          totalReceived: { type: 'number' }
+        }
+      },
+      AccountTypeResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          type: { type: 'string', enum: ['wallet', 'program', 'token', 'nft', 'pda'] },
+          isExecutable: { type: 'boolean' },
+          owner: { type: 'string' }
+        }
+      },
+      TokenStatsResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          mint: { type: 'string' },
+          balance: { type: 'number' },
+          transactions: { type: 'integer' },
+          firstSeen: { type: 'string', format: 'date-time' },
+          lastSeen: { type: 'string', format: 'date-time' }
+        }
+      },
+      UserProfileResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          displayName: { type: 'string' },
+          avatar: { type: 'string' },
+          bio: { type: 'string' },
+          stats: { $ref: '#/components/schemas/AccountStatsResponse' }
+        }
+      },
+      UserFeedResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          feed: { type: 'array', items: { type: 'object' } },
+          hasMore: { type: 'boolean' }
+        }
+      },
+      // Transaction Response Schemas
+      TransactionAnalysisResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          analysis: { type: 'string' },
+          programs: { type: 'array', items: { type: 'string' } },
+          accounts: { type: 'array', items: { type: 'string' } },
+          instructions: { type: 'integer' }
+        }
+      },
+      TransactionExplanationResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          explanation: { type: 'string' },
+          summary: { type: 'string' },
+          details: { type: 'object' }
+        }
+      },
+      TransactionMetricsResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          computeUnits: { type: 'integer' },
+          fee: { type: 'number' },
+          duration: { type: 'number' },
+          instructions: { type: 'integer' }
+        }
+      },
+      FailureAnalysisResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          error: { type: 'string' },
+          cause: { type: 'string' },
+          suggestions: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      RelatedTransactionsResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          related: { type: 'array', items: { $ref: '#/components/schemas/Transaction' } },
+          count: { type: 'integer' }
+        }
+      },
+      BatchTransactionsResponse: {
+        type: 'object',
+        properties: {
+          transactions: { type: 'array', items: { $ref: '#/components/schemas/TransactionDetail' } },
+          count: { type: 'integer' }
+        }
+      },
       // Block & Blockchain Schemas
       BlockDetail: {
         type: 'object',
@@ -371,6 +627,39 @@ class OpenAPIGenerator {
           transactions: { type: 'array', items: { $ref: '#/components/schemas/Transaction' } }
         }
       },
+      BlockListResponse: {
+        type: 'object',
+        properties: {
+          blocks: { type: 'array', items: { $ref: '#/components/schemas/BlockDetail' } },
+          count: { type: 'integer' },
+          hasMore: { type: 'boolean' }
+        }
+      },
+      BlockStatsResponse: {
+        type: 'object',
+        properties: {
+          averageBlockTime: { type: 'number' },
+          totalBlocks: { type: 'integer' },
+          averageTransactions: { type: 'number' },
+          lookbackSlots: { type: 'integer' }
+        }
+      },
+      SlotInfoResponse: {
+        type: 'object',
+        properties: {
+          slot: { type: 'integer' },
+          blockHeight: { type: 'integer' },
+          timestamp: { type: 'integer' }
+        }
+      },
+      RPCResponse: {
+        type: 'object',
+        properties: {
+          jsonrpc: { type: 'string', example: '2.0' },
+          result: { type: 'object' },
+          id: { type: 'integer' }
+        }
+      },
       // Analytics Schemas
       AnalyticsResponse: {
         type: 'object',
@@ -379,6 +668,137 @@ class OpenAPIGenerator {
           timestamp: { type: 'string', format: 'date-time' },
           metrics: { type: 'object' },
           data: { type: 'object' }
+        }
+      },
+      AnalyticsOverviewResponse: {
+        type: 'object',
+        properties: {
+          totalValueLocked: { type: 'number' },
+          totalTransactions24h: { type: 'integer' },
+          activeUsers24h: { type: 'integer' },
+          topPrograms: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      DEXAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalVolume24h: { type: 'number' },
+          dexList: { type: 'array', items: { type: 'object' } },
+          topPairs: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      DeFiHealthResponse: {
+        type: 'object',
+        properties: {
+          score: { type: 'number', example: 85.5 },
+          indicators: { type: 'object' },
+          alerts: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      ValidatorAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalValidators: { type: 'integer' },
+          activeValidators: { type: 'integer' },
+          topValidators: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      MarketplaceAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalVolume: { type: 'number' },
+          marketplaces: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      AggregatorAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalAggregators: { type: 'integer' },
+          volume24h: { type: 'number' },
+          topAggregators: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      LaunchpadAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalLaunches: { type: 'integer' },
+          successRate: { type: 'number' },
+          launchpads: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      BotAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          activeBots: { type: 'integer' },
+          volume24h: { type: 'number' },
+          topBots: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      SocialFiAnalyticsResponse: {
+        type: 'object',
+        properties: {
+          totalUsers: { type: 'integer' },
+          activeUsers24h: { type: 'integer' },
+          topPlatforms: { type: 'array', items: { type: 'object' } }
+        }
+      },
+      // Token & NFT Response Schemas
+      TokenMetadataResponse: {
+        type: 'object',
+        properties: {
+          mints: { type: 'array', items: { $ref: '#/components/schemas/TokenInfo' } }
+        }
+      },
+      TokenCheckResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          isToken: { type: 'boolean' },
+          metadata: { $ref: '#/components/schemas/TokenInfo' }
+        }
+      },
+      NFTCollectionsResponse: {
+        type: 'object',
+        properties: {
+          collections: { type: 'array', items: { type: 'object' } },
+          count: { type: 'integer' }
+        }
+      },
+      // Search Response Schemas - SearchSuggestionsResponse only
+      SearchSuggestionsResponse: {
+        type: 'object',
+        properties: {
+          suggestions: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      // Program Response Schemas
+      ProgramDetailResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          name: { type: 'string' },
+          description: { type: 'string' },
+          verified: { type: 'boolean' }
+        }
+      },
+      ProgramDiscoveryResponse: {
+        type: 'object',
+        properties: {
+          programs: { type: 'array', items: { $ref: '#/components/schemas/ProgramDetailResponse' } },
+          count: { type: 'integer' }
+        }
+      },
+      ProgramRegistryResponse: {
+        type: 'object',
+        properties: {
+          programs: { type: 'array', items: { $ref: '#/components/schemas/ProgramDetailResponse' } },
+          total: { type: 'integer' }
+        }
+      },
+      ProgramMetadataResponse: {
+        type: 'object',
+        properties: {
+          metadata: { type: 'array', items: { $ref: '#/components/schemas/ProgramDetailResponse' } }
         }
       },
       // AI-Powered Schemas
@@ -390,6 +810,44 @@ class OpenAPIGenerator {
           sources: { type: 'array', items: { type: 'object' } },
           confidence: { type: 'number', example: 0.95 },
           executedTools: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      SimilarQuestionsResponse: {
+        type: 'object',
+        properties: {
+          questions: { type: 'array', items: { type: 'string' } },
+          count: { type: 'integer' }
+        }
+      },
+      SourcesResponse: {
+        type: 'object',
+        properties: {
+          sources: { type: 'array', items: { type: 'object' } },
+          count: { type: 'integer' }
+        }
+      },
+      AnalyzeResponse: {
+        type: 'object',
+        properties: {
+          analysis: { type: 'string' },
+          insights: { type: 'array', items: { type: 'string' } },
+          recommendations: { type: 'array', items: { type: 'string' } }
+        }
+      },
+      AIContextResponse: {
+        type: 'object',
+        properties: {
+          context: { type: 'object' },
+          relevant: { type: 'boolean' }
+        }
+      },
+      // Streaming & Scan Response Schemas
+      ScanResponse: {
+        type: 'object',
+        properties: {
+          results: { type: 'array', items: { type: 'object' } },
+          scanned: { type: 'integer' },
+          found: { type: 'integer' }
         }
       },
       // Generic Success Response
@@ -458,30 +916,131 @@ class OpenAPIGenerator {
     };
 
     // Determine response schema based on endpoint pattern
+    // ORDER MATTERS: Most specific patterns first!
     let responseSchema: any;
     let description = 'Successful response';
 
-    // Market Data endpoints
+    // ===== MARKET DATA ENDPOINTS =====
     if (endpoint.includes('/market-data') || operationId === 'market-data') {
       responseSchema = { $ref: '#/components/schemas/MarketDataResponse' };
       description = 'Market data retrieved successfully';
     }
-    // Search endpoints
+    else if (endpoint.includes('/chart') || operationId === 'chart') {
+      responseSchema = { $ref: '#/components/schemas/ChartResponse' };
+      description = 'Chart data retrieved successfully';
+    }
+    else if (endpoint.includes('/trades') || operationId === 'trades') {
+      responseSchema = { $ref: '#/components/schemas/TradesResponse' };
+      description = 'Trade data retrieved successfully';
+    }
+    
+    // ===== SEARCH ENDPOINTS =====
+    else if (endpoint.includes('/search/suggestions') || operationId === 'search-suggestions') {
+      responseSchema = { $ref: '#/components/schemas/SearchSuggestionsResponse' };
+      description = 'Search suggestions retrieved successfully';
+    }
     else if (endpoint.includes('/search') || operationId.includes('search')) {
       responseSchema = { $ref: '#/components/schemas/SearchResponse' };
       description = 'Search results retrieved successfully';
     }
-    // Account/Wallet endpoints
-    else if (endpoint.includes('/account') || endpoint.includes('/wallet') || endpoint.includes('/portfolio')) {
-      if (endpoint.includes('/portfolio')) {
-        responseSchema = { $ref: '#/components/schemas/PortfolioResponse' };
-        description = 'Portfolio data retrieved successfully';
-      } else {
-        responseSchema = { $ref: '#/components/schemas/AccountInfo' };
-        description = 'Account information retrieved successfully';
-      }
+    
+    // ===== PROGRAM DISCOVERY ENDPOINTS =====
+    else if (endpoint.includes('/program-metadata') || operationId === 'program-metadata') {
+      responseSchema = { $ref: '#/components/schemas/ProgramMetadataResponse' };
+      description = 'Program metadata retrieved successfully';
     }
-    // Transaction endpoints
+    else if (endpoint.includes('/program-registry') || operationId === 'program-registry') {
+      responseSchema = { $ref: '#/components/schemas/ProgramRegistryResponse' };
+      description = 'Program registry retrieved successfully';
+    }
+    else if (endpoint.includes('/program-discovery') || operationId === 'program-discovery') {
+      responseSchema = { $ref: '#/components/schemas/ProgramDiscoveryResponse' };
+      description = 'Program discovery results retrieved successfully';
+    }
+    else if (endpoint.includes('/program/') || operationId === 'get-program') {
+      responseSchema = { $ref: '#/components/schemas/ProgramDetailResponse' };
+      description = 'Program details retrieved successfully';
+    }
+    
+    // ===== ACCOUNT ENDPOINTS (Most specific first!) =====
+    else if (endpoint.includes('/account-token-stats') || operationId === 'account-token-stats') {
+      responseSchema = { $ref: '#/components/schemas/TokenStatsResponse' };
+      description = 'Token statistics retrieved successfully';
+    }
+    else if (endpoint.includes('/account-transfers') || operationId === 'account-transfers') {
+      responseSchema = { $ref: '#/components/schemas/TransferListResponse' };
+      description = 'Transfer history retrieved successfully';
+    }
+    else if (endpoint.includes('/account-transactions') || operationId === 'account-transactions') {
+      responseSchema = { $ref: '#/components/schemas/TransactionListResponse' };
+      description = 'Transaction history retrieved successfully';
+    }
+    else if (endpoint.includes('/account-stats') || operationId === 'account-stats') {
+      responseSchema = { $ref: '#/components/schemas/AccountStatsResponse' };
+      description = 'Account statistics retrieved successfully';
+    }
+    else if (endpoint.includes('/account-portfolio') || operationId === 'account-portfolio') {
+      responseSchema = { $ref: '#/components/schemas/PortfolioResponse' };
+      description = 'Portfolio data retrieved successfully';
+    }
+    else if (endpoint.includes('/check-account-type') || operationId === 'check-account-type') {
+      responseSchema = { $ref: '#/components/schemas/AccountTypeResponse' };
+      description = 'Account type information retrieved successfully';
+    }
+    // General account endpoint - last resort for /account paths
+    else if (endpoint.includes('/account') && !endpoint.includes('/transaction')) {
+      responseSchema = { $ref: '#/components/schemas/AccountInfo' };
+      description = 'Account information retrieved successfully';
+    }
+    
+    // ===== USER ENDPOINTS =====
+    else if (endpoint.includes('/user-feed') || operationId === 'user-feed') {
+      responseSchema = { $ref: '#/components/schemas/UserFeedResponse' };
+      description = 'User feed retrieved successfully';
+    }
+    else if (endpoint.includes('/user-history') || operationId === 'user-history') {
+      responseSchema = { $ref: '#/components/schemas/TransactionListResponse' };
+      description = 'User history retrieved successfully';
+    }
+    else if (endpoint.includes('/user-profile') || operationId === 'user-profile') {
+      responseSchema = { $ref: '#/components/schemas/UserProfileResponse' };
+      description = 'User profile retrieved successfully';
+    }
+    
+    // ===== TRANSACTION ENDPOINTS (Specific first!) =====
+    else if (endpoint.includes('/transaction') && endpoint.includes('/failure-analysis')) {
+      responseSchema = { $ref: '#/components/schemas/FailureAnalysisResponse' };
+      description = 'Failure analysis retrieved successfully';
+    }
+    else if (endpoint.includes('/transaction') && endpoint.includes('/analysis')) {
+      responseSchema = { $ref: '#/components/schemas/TransactionAnalysisResponse' };
+      description = 'Transaction analysis retrieved successfully';
+    }
+    else if (endpoint.includes('/transaction') && endpoint.includes('/explain')) {
+      responseSchema = { $ref: '#/components/schemas/TransactionExplanationResponse' };
+      description = 'Transaction explanation retrieved successfully';
+    }
+    else if (endpoint.includes('/transaction') && endpoint.includes('/metrics')) {
+      responseSchema = { $ref: '#/components/schemas/TransactionMetricsResponse' };
+      description = 'Transaction metrics retrieved successfully';
+    }
+    else if (endpoint.includes('/transaction') && endpoint.includes('/related')) {
+      responseSchema = { $ref: '#/components/schemas/RelatedTransactionsResponse' };
+      description = 'Related transactions retrieved successfully';
+    }
+    else if (endpoint.includes('/transaction/batch') || operationId === 'batch-transactions') {
+      responseSchema = { $ref: '#/components/schemas/BatchTransactionsResponse' };
+      description = 'Batch transactions retrieved successfully';
+    }
+    else if (endpoint.includes('/filter-transactions') || operationId === 'filter-transactions') {
+      responseSchema = { $ref: '#/components/schemas/TransactionListResponse' };
+      description = 'Filtered transactions retrieved successfully';
+    }
+    else if (endpoint.includes('/analyze-transaction') || operationId === 'analyze-transaction') {
+      responseSchema = { $ref: '#/components/schemas/TransactionAnalysisResponse' };
+      description = 'Transaction analysis completed successfully';
+    }
+    // General transaction endpoints
     else if (endpoint.includes('/transaction') || endpoint.includes('/tx')) {
       if (endpoint.includes('/transactions') || endpoint.includes('/history')) {
         responseSchema = { $ref: '#/components/schemas/TransactionListResponse' };
@@ -491,27 +1050,144 @@ class OpenAPIGenerator {
         description = 'Transaction details retrieved successfully';
       }
     }
-    // Block endpoints
-    else if (endpoint.includes('/block') || endpoint.includes('/slot')) {
-      responseSchema = { $ref: '#/components/schemas/BlockDetail' };
-      description = 'Block information retrieved successfully';
+    
+    // ===== BLOCK ENDPOINTS =====
+    else if (endpoint.includes('/blocks/stats') || operationId === 'block-stats') {
+      responseSchema = { $ref: '#/components/schemas/BlockStatsResponse' };
+      description = 'Block statistics retrieved successfully';
     }
-    // Token/NFT endpoints
-    else if (endpoint.includes('/token') || endpoint.includes('/nft')) {
+    else if (endpoint.includes('/blocks/') && endpoint.match(/\/\d+$/)) {
+      responseSchema = { $ref: '#/components/schemas/BlockDetail' };
+      description = 'Block details retrieved successfully';
+    }
+    else if (endpoint.includes('/blocks') || operationId === 'recent-blocks') {
+      responseSchema = { $ref: '#/components/schemas/BlockListResponse' };
+      description = 'Block list retrieved successfully';
+    }
+    else if (endpoint.includes('/slots') || operationId === 'slots') {
+      responseSchema = { $ref: '#/components/schemas/SlotInfoResponse' };
+      description = 'Slot information retrieved successfully';
+    }
+    
+    // ===== RPC ENDPOINTS =====
+    else if (endpoint.includes('/solana-rpc') || operationId === 'solana-rpc') {
+      responseSchema = { $ref: '#/components/schemas/RPCResponse' };
+      description = 'RPC response retrieved successfully';
+    }
+    else if (endpoint.includes('/solana-proxy') || operationId === 'solana-proxy') {
+      responseSchema = { $ref: '#/components/schemas/RPCResponse' };
+      description = 'Proxied RPC response retrieved successfully';
+    }
+    
+    // ===== TOKEN & NFT ENDPOINTS =====
+    else if (endpoint.includes('/token-metadata') || operationId === 'token-metadata') {
+      responseSchema = { $ref: '#/components/schemas/TokenMetadataResponse' };
+      description = 'Token metadata retrieved successfully';
+    }
+    else if (endpoint.includes('/check-token') || operationId === 'check-token') {
+      responseSchema = { $ref: '#/components/schemas/TokenCheckResponse' };
+      description = 'Token check completed successfully';
+    }
+    else if (endpoint.includes('/nft-collections/trending') || operationId === 'nft-collections-trending') {
+      responseSchema = { $ref: '#/components/schemas/NFTCollectionsResponse' };
+      description = 'Trending NFT collections retrieved successfully';
+    }
+    else if (endpoint.includes('/nft-collections/new') || operationId === 'nft-collections-new') {
+      responseSchema = { $ref: '#/components/schemas/NFTCollectionsResponse' };
+      description = 'New NFT collections retrieved successfully';
+    }
+    else if (endpoint.includes('/nft-collections') || operationId === 'nft-collections') {
+      responseSchema = { $ref: '#/components/schemas/NFTCollectionsResponse' };
+      description = 'NFT collections retrieved successfully';
+    }
+    else if (endpoint.includes('/token/') || operationId === 'get-token') {
       responseSchema = { $ref: '#/components/schemas/TokenInfo' };
       description = 'Token information retrieved successfully';
     }
-    // Analytics endpoints
+    
+    // ===== ANALYTICS ENDPOINTS =====
+    else if (endpoint.includes('/analytics/overview') || operationId === 'analytics-overview') {
+      responseSchema = { $ref: '#/components/schemas/AnalyticsOverviewResponse' };
+      description = 'Analytics overview retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/dex') || operationId === 'analytics-dex') {
+      responseSchema = { $ref: '#/components/schemas/DEXAnalyticsResponse' };
+      description = 'DEX analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/defi-health') || operationId === 'analytics-defi-health') {
+      responseSchema = { $ref: '#/components/schemas/DeFiHealthResponse' };
+      description = 'DeFi health metrics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/validators') || operationId.includes('validators')) {
+      responseSchema = { $ref: '#/components/schemas/ValidatorAnalyticsResponse' };
+      description = 'Validator analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/marketplaces') || operationId === 'analytics-marketplaces') {
+      responseSchema = { $ref: '#/components/schemas/MarketplaceAnalyticsResponse' };
+      description = 'Marketplace analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/aggregators') || operationId === 'analytics-aggregators') {
+      responseSchema = { $ref: '#/components/schemas/AggregatorAnalyticsResponse' };
+      description = 'Aggregator analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/launchpads') || operationId === 'analytics-launchpads') {
+      responseSchema = { $ref: '#/components/schemas/LaunchpadAnalyticsResponse' };
+      description = 'Launchpad analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/bots') || operationId === 'analytics-bots') {
+      responseSchema = { $ref: '#/components/schemas/BotAnalyticsResponse' };
+      description = 'Bot analytics retrieved successfully';
+    }
+    else if (endpoint.includes('/analytics/socialfi') || operationId === 'analytics-socialfi') {
+      responseSchema = { $ref: '#/components/schemas/SocialFiAnalyticsResponse' };
+      description = 'SocialFi analytics retrieved successfully';
+    }
     else if (endpoint.includes('/analytics') || operationId.includes('analytics')) {
       responseSchema = { $ref: '#/components/schemas/AnalyticsResponse' };
       description = 'Analytics data retrieved successfully';
     }
-    // AI-powered endpoints
-    else if (endpoint.includes('/getAnswer') || endpoint.includes('/ai-') || operationId.includes('ai-')) {
+    
+    // ===== AI-POWERED ENDPOINTS =====
+    else if (endpoint.includes('/getAnswer') || operationId === 'get-answer') {
       responseSchema = { $ref: '#/components/schemas/AIAnswerResponse' };
-      description = 'AI-generated response retrieved successfully';
+      description = 'AI-generated answer retrieved successfully';
     }
-    // Default generic response
+    else if (endpoint.includes('/getSimilarQuestions') || operationId === 'get-similar-questions') {
+      responseSchema = { $ref: '#/components/schemas/SimilarQuestionsResponse' };
+      description = 'Similar questions retrieved successfully';
+    }
+    else if (endpoint.includes('/getSources') || operationId === 'get-sources') {
+      responseSchema = { $ref: '#/components/schemas/SourcesResponse' };
+      description = 'Sources retrieved successfully';
+    }
+    else if (endpoint.includes('/analyze') || operationId === 'analyze') {
+      responseSchema = { $ref: '#/components/schemas/AnalyzeResponse' };
+      description = 'Analysis completed successfully';
+    }
+    else if (endpoint.includes('/ai-response') || operationId === 'ai-response') {
+      responseSchema = { $ref: '#/components/schemas/AIAnswerResponse' };
+      description = 'AI response generated successfully';
+    }
+    else if (endpoint.includes('/ai-context') || operationId === 'ai-context') {
+      responseSchema = { $ref: '#/components/schemas/AIContextResponse' };
+      description = 'AI context retrieved successfully';
+    }
+    
+    // ===== SSE & STREAMING ENDPOINTS =====
+    else if (endpoint.includes('/sse-feed') || endpoint.includes('/sse-events') || endpoint.includes('/sse-alerts')) {
+      responseSchema = { type: 'string', description: 'Server-Sent Events stream' };
+      description = 'SSE stream connection established';
+    }
+    else if (endpoint.includes('/stream') || operationId === 'stream') {
+      responseSchema = { type: 'string', description: 'Data stream' };
+      description = 'Stream connection established';
+    }
+    else if (endpoint.includes('/scan') || operationId === 'scan') {
+      responseSchema = { $ref: '#/components/schemas/ScanResponse' };
+      description = 'Scan completed successfully';
+    }
+    
+    // ===== DEFAULT GENERIC RESPONSE =====
     else {
       responseSchema = { $ref: '#/components/schemas/SuccessResponse' };
       description = 'Operation completed successfully';
@@ -553,6 +1229,49 @@ class OpenAPIGenerator {
           description: `${paramName} parameter`
         });
       });
+    }
+
+    // Special handling for account-transfers endpoint
+    if (endpoint.includes('/account-transfers')) {
+      parameters.push({
+        name: 'beforeSignature',
+        in: 'query',
+        required: false,
+        schema: { type: 'string' },
+        description: 'Smart cursor initialization: use oldest cached signature if no beforeSignature provided'
+      });
+      parameters.push({
+        name: 'offset',
+        in: 'query',
+        required: false,
+        schema: { type: 'number' },
+        description: 'Pagination offset'
+      });
+      parameters.push({
+        name: 'limit',
+        in: 'query',
+        required: false,
+        schema: { type: 'string' },
+        description: 'Maximum number of transfers to return'
+      });
+      parameters.push({
+        name: 'transferType',
+        in: 'query',
+        required: false,
+        schema: { 
+          type: 'string',
+          enum: ['IN', 'OUT']
+        },
+        description: 'Filter by transfer direction'
+      });
+      parameters.push({
+        name: 'solanaOnly',
+        in: 'query',
+        required: false,
+        schema: { type: 'boolean' },
+        description: 'Show only SOL transfers (exclude tokens)'
+      });
+      return parameters;
     }
 
     // Special handling for market-data endpoint
@@ -667,10 +1386,84 @@ class OpenAPIGenerator {
         };
       }
 
+      // Add curl example (x-code-samples extension)
+      const curlExample = this.generateCurlExample(endpoint);
+      if (curlExample) {
+        operation['x-code-samples'] = [
+          {
+            lang: 'Shell',
+            label: 'cURL',
+            source: curlExample
+          }
+        ];
+      }
+
       this.spec.paths[endpoint.path][endpoint.method.toLowerCase()] = operation;
     }
 
     return this.spec;
+  }
+
+  private generateCurlExample(endpoint: OpenAPIEndpoint): string {
+    const baseUrl = 'https://opensvm.com/api';
+    let url = `${baseUrl}${endpoint.path}`;
+    
+    // Replace path parameters with example values
+    url = url.replace('{address}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
+    url = url.replace('{walletAddress}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
+    url = url.replace('{signature}', '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5');
+    url = url.replace('{slot}', '290000000');
+    url = url.replace('{mint}', 'So11111111111111111111111111111111111111112');
+    
+    // Add common query parameters based on endpoint type
+    const queryParams: string[] = [];
+    if (endpoint.path.includes('/account-transfers')) {
+      queryParams.push('limit=10');
+    } else if (endpoint.path.includes('/market-data')) {
+      queryParams.push('endpoint=ohlcv');
+      queryParams.push('type=1H');
+    } else if (endpoint.path.includes('/search')) {
+      queryParams.push('query=solana');
+    } else if (endpoint.method === 'GET' && (endpoint.path.includes('/transactions') || endpoint.path.includes('/blocks'))) {
+      queryParams.push('limit=10');
+    }
+    
+    if (queryParams.length > 0) {
+      url += '?' + queryParams.join('&');
+    }
+
+    let curl = `curl "${url}"`;
+    
+    // Add method if not GET
+    if (endpoint.method !== 'GET') {
+      curl = `curl -X ${endpoint.method} "${url}"`;
+    }
+    
+    // Add request body for POST/PUT/PATCH
+    if (endpoint.requestBody && (endpoint.method === 'POST' || endpoint.method === 'PUT' || endpoint.method === 'PATCH')) {
+      curl += ' \\\n  -H "Content-Type: application/json"';
+      
+      // Add example body based on endpoint
+      if (endpoint.path.includes('/transaction/batch')) {
+        curl += ' \\\n  -d \'{"signatures":["5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5"]}\'';
+      } else if (endpoint.path.includes('/getAnswer')) {
+        curl += ' \\\n  -d \'{"question":"What is the latest block?","conversationId":"test-123"}\'';
+      } else if (endpoint.path.includes('/analyze-transaction') || endpoint.path.includes('/analyze')) {
+        curl += ' \\\n  -d \'{"signature":"5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5"}\'';
+      } else if (endpoint.path.includes('/filter-transactions')) {
+        curl += ' \\\n  -d \'{"account":"7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH","minAmount":1}\'';
+      } else if (endpoint.path.includes('/solana-rpc') || endpoint.path.includes('/solana-proxy')) {
+        curl += ' \\\n  -d \'{"method":"getHealth","params":[]}\'';
+      } else if (endpoint.path.includes('/getSimilarQuestions')) {
+        curl += ' \\\n  -d \'{"question":"What is Solana?"}\'';
+      } else if (endpoint.path.includes('/getSources')) {
+        curl += ' \\\n  -d \'{"query":"solana transactions"}\'';
+      } else {
+        curl += ' \\\n  -d \'{}\'';
+      }
+    }
+    
+    return curl;
   }
 
   public generateSpecFile(outputPath: string): void {

@@ -4,6 +4,7 @@
 import { Connection, ConnectionConfig } from '@solana/web3.js';
 import { getRpcEndpoints, getRpcHeaders } from './opensvm-rpc';
 import { rateLimit, RateLimitError } from './rate-limit';
+import { logger } from './logger';
 
 class ProxyConnection extends Connection {
     private requestQueue: Array<{
@@ -33,7 +34,7 @@ class ProxyConnection extends Connection {
                 // During build/static generation, use a placeholder URL for relative paths
                 // This will be resolved at runtime when the actual request is made
                 finalEndpoint = `https://opensvm.com${finalEndpoint}`;
-                console.warn(`[RPC] Using fallback base URL for build-time endpoint: ${finalEndpoint}`);
+                logger.rpc.warn(`Using fallback base URL for build-time endpoint: ${finalEndpoint}`);
             }
         }
 
@@ -121,13 +122,13 @@ class ConnectionPool {
 
     constructor() {
         this.endpoints = getRpcEndpoints();
-        console.log(`[RPC Pool] Initialized with ${this.endpoints.length} OpenSVM endpoints`);
+        logger.rpc.info(`Initialized with ${this.endpoints.length} OpenSVM endpoints`);
     }
 
     getConnection(endpoint?: string): ProxyConnection {
         // If specific endpoint is requested, use it
         if (endpoint) {
-            console.log(`[RPC Pool] Using specific endpoint: ${endpoint}`);
+            logger.rpc.debug(`Using specific endpoint: ${endpoint}`);
             if (!this.connections.has(endpoint)) {
                 this.connections.set(endpoint, new ProxyConnection(endpoint));
             }
@@ -135,9 +136,9 @@ class ConnectionPool {
         }
         // Ensure we have endpoints available
         if (this.endpoints.length === 0) {
-            console.error('[RPC Pool] No RPC endpoints configured! Falling back to proxy');
+            logger.rpc.error('No RPC endpoints configured! Falling back to proxy');
             // Use full URL during build time, relative URL only during runtime
-            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+            const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://osvm.ai';
             const fallbackEndpoint = typeof window === 'undefined' && process.env.NODE_ENV !== 'development'
                 ? `${baseUrl}/api/proxy/rpc`
                 : '/api/proxy/rpc';
@@ -151,7 +152,7 @@ class ConnectionPool {
         const randomIndex = Math.floor(Math.random() * this.endpoints.length);
         const selectedEndpoint = this.endpoints[randomIndex];
 
-        console.log(`[RPC Pool] Selected OpenSVM endpoint ${randomIndex + 1}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
+        logger.rpc.debug(`Selected OpenSVM endpoint ${randomIndex + 1}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
 
         if (!this.connections.has(selectedEndpoint)) {
             this.connections.set(selectedEndpoint, new ProxyConnection(selectedEndpoint));
@@ -182,10 +183,11 @@ function normalizeUrl(url: string): string {
     return url;
 }
 
-function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
+function resolveClusterToEndpoint(cluster: string): string | null {
     const value = cluster.trim().toLowerCase();
     if (value === 'mainnet' || value === 'mainnet-beta' || value === 'opensvm' || value === 'osvm' || value === 'gsvm') {
-        return 'opensvm';
+        // Return null to use the default connection pool
+        return null;
     }
     if (value === 'devnet') {
         return 'https://api.devnet.solana.com';
@@ -204,7 +206,8 @@ function resolveClusterToEndpoint(cluster: string): string | 'opensvm' | null {
 // Primary connection getter
 export function getConnection(endpoint?: string): ProxyConnection {
     // If an explicit endpoint is requested, honor it; otherwise use pool
-    return connectionPool.getConnection(endpoint ? resolveClusterToEndpoint(endpoint) || undefined : undefined);
+    const resolved = endpoint ? resolveClusterToEndpoint(endpoint) : undefined;
+    return connectionPool.getConnection(resolved || undefined);
 }
 
 // Update RPC endpoint
@@ -216,7 +219,7 @@ export function updateRpcEndpoint(endpoint: string): void {
         // Use specific external endpoint
         connectionPool.updateEndpoints([endpoint]);
     } else {
-        console.warn('Invalid RPC endpoint:', endpoint);
+        logger.rpc.warn('Invalid RPC endpoint:', endpoint);
     }
 }
 

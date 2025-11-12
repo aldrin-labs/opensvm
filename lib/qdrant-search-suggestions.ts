@@ -126,7 +126,11 @@ export async function storeSearchQuery(
     const embedding = await generateEmbedding(query);
     
     const now = Date.now();
-    const entryId = now.toString(); // Use timestamp as simple ID
+    
+    // Use timestamp as unsigned integer ID (Qdrant accepts this)
+    // Add random component to avoid collisions if multiple queries happen in same millisecond
+    const randomSuffix = Math.floor(Math.random() * 1000);
+    const entryId = now * 1000 + randomSuffix;
 
     await qdrantClient.upsert(COLLECTIONS.SEARCH_QUERIES, {
       wait: true,

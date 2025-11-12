@@ -1427,34 +1427,128 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
 
     // Validate metadata
     if (!metadata.id || !metadata.mintAddress || !metadata.symbol) {
-      throw new Error(`Invalid token metadata: missing required fields`);
+      console.warn('Skipping token metadata storage: missing required fields');
+      return; // Don't throw, just skip silently
+    }
+
+    // Validate and sanitize all fields to prevent Qdrant Bad Request errors
+    if (!metadata.id || typeof metadata.id !== 'string' || metadata.id.trim() === '') {
+      console.warn('Skipping token metadata storage: invalid ID');
+      return;
+    }
+    
+    if (!metadata.mintAddress || typeof metadata.mintAddress !== 'string' || metadata.mintAddress.trim() === '') {
+      console.warn('Skipping token metadata storage: invalid mintAddress');
+      return;
+    }
+    
+    if (!metadata.symbol || typeof metadata.symbol !== 'string' || metadata.symbol.trim() === '') {
+      console.warn('Skipping token metadata storage: invalid symbol');
+      return;
+    }
+    
+    if (!metadata.name || typeof metadata.name !== 'string' || metadata.name.trim() === '') {
+      console.warn('Skipping token metadata storage: invalid name');
+      return;
+    }
+    
+    if (!Number.isInteger(metadata.decimals) || metadata.decimals < 0) {
+      console.warn('Skipping token metadata storage: invalid decimals');
+      return;
+    }
+    
+    if (!Number.isInteger(metadata.lastUpdated) || metadata.lastUpdated <= 0) {
+      console.warn('Skipping token metadata storage: invalid lastUpdated');
+      return;
+    }
+    
+    if (!Number.isInteger(metadata.cacheExpiry) || metadata.cacheExpiry <= 0) {
+      console.warn('Skipping token metadata storage: invalid cacheExpiry');
+      return;
+    }
+    
+    if (typeof metadata.verified !== 'boolean') {
+      console.warn('Skipping token metadata storage: invalid verified field');
+      return;
+    }
+    
+    if (typeof metadata.cached !== 'boolean') {
+      console.warn('Skipping token metadata storage: invalid cached field');
+      return;
     }
 
     // Generate embedding from token content
-    const textContent = `${metadata.symbol} ${metadata.name} ${metadata.mintAddress} ${metadata.description || ''}`;
+    const textContent = `${metadata.symbol.trim()} ${metadata.name.trim()} ${metadata.mintAddress.trim()} ${metadata.description?.trim() || ''}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    console.log(`Storing token metadata for: ${metadata.symbol} (${metadata.mintAddress})`);
+    // Build clean payload with proper validation
+    const cleanPayload: any = {
+      id: metadata.id.trim(),
+      mintAddress: metadata.mintAddress.trim(),
+      symbol: metadata.symbol.trim(),
+      name: metadata.name.trim(),
+      decimals: Number(metadata.decimals),
+      verified: Boolean(metadata.verified),
+      cached: Boolean(metadata.cached),
+      lastUpdated: Number(metadata.lastUpdated),
+      cacheExpiry: Number(metadata.cacheExpiry)
+    };
+    
+    // Only add optional fields if they're properly defined and valid
+    if (metadata.logoURI && 
+        typeof metadata.logoURI === 'string' && 
+        metadata.logoURI.trim() !== '' &&
+        metadata.logoURI.trim() !== 'undefined' &&
+        metadata.logoURI.trim() !== 'null') {
+      cleanPayload.logoURI = metadata.logoURI.trim();
+    }
+    
+    if (metadata.metadataUri && 
+        typeof metadata.metadataUri === 'string' && 
+        metadata.metadataUri.trim() !== '' &&
+        metadata.metadataUri.trim() !== 'undefined' &&
+        metadata.metadataUri.trim() !== 'null') {
+      cleanPayload.metadataUri = metadata.metadataUri.trim();
+    }
+    
+    if (metadata.description && 
+        typeof metadata.description === 'string' && 
+        metadata.description.trim() !== '' &&
+        metadata.description.trim() !== 'undefined' &&
+        metadata.description.trim() !== 'null') {
+      cleanPayload.description = metadata.description.trim();
+    }
 
+    // Generate a valid UUID for Qdrant point ID (Qdrant requires UUID or unsigned integer)
+    const pointId = crypto.randomUUID();
+    
     const upsertData = {
       wait: true,
       points: [{
-        id: metadata.id,
+        id: pointId, // Use UUID instead of mint address
         vector,
-        payload: {
-          ...metadata,
-          // Ensure all fields are properly serializable
-          decimals: Number(metadata.decimals),
-          lastUpdated: Number(metadata.lastUpdated),
-          cacheExpiry: Number(metadata.cacheExpiry)
-        }
+        payload: cleanPayload
       }]
     };
 
-    await client.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+    try {
+      await client.upsert(COLLECTIONS.TOKEN_METADATA, upsertData);
+    } catch (upsertError: any) {
+      // Log detailed error information from Qdrant but don't throw
+      // This is a cache operation and shouldn't break the main flow
+      console.error('Failed to cache token metadata in Qdrant:', {
+        mintAddress: metadata.mintAddress,
+        symbol: metadata.symbol,
+        errorMessage: upsertError?.message,
+        errorStatus: upsertError?.status,
+        errorUrl: upsertError?.url,
+        payloadKeys: Object.keys(cleanPayload)
+      });
+      // Don't re-throw - caching failures shouldn't break the application
+    }
   } catch (error) {
-    console.error('Error storing token metadata:', error);
-    throw error;
+    // Log but don't throw - this is a non-critical caching operation
+    console.warn('Error storing token metadata (non-critical):', error instanceof Error ? error.message : 'Unknown error');
   }
 }
 

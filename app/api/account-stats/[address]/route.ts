@@ -2,15 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
-import { cache } from '@/lib/cache';
 import { queryFlipside } from '@/lib/flipside';
+import { createCache } from '@/lib/api-cache';
 
 const BATCH_SIZE = 1000;
 const MAX_BATCHES = 3;
-const CACHE_TTL = 300; // 5 minutes
-const CACHE_ERROR_TTL = 60; // 1 minute
 const QUERY_TIMEOUT = 5000; // 5 seconds
 const API_TIMEOUT = 10000; // 10 seconds
+
+// Create cache instance for account stats (5 min cache, 1 min refresh threshold)
+const accountStatsCache = createCache<AccountStats>({
+  duration: 5 * 60 * 1000,
+  refreshThreshold: 60 * 1000
+});
 
 interface AccountStats {
   totalTransactions: string | number;
@@ -23,12 +27,6 @@ type TransferCount = {
 }
 
 async function getSignatureCount(pubkey: PublicKey, connection: Connection): Promise<string | number> {
-  const cacheKey = `signatures-${pubkey.toBase58()}`;
-  const cachedData = await cache.get<number>(cacheKey);
-  if (cachedData !== null) {
-    return cachedData;
-  }
-
   const batches = [];
   let before: string | null = null;
 
@@ -56,17 +54,10 @@ async function getSignatureCount(pubkey: PublicKey, connection: Connection): Pro
     ? `${allSignatures.length}+`
     : allSignatures.length;
 
-  await cache.set(cacheKey, count, CACHE_TTL);
   return count;
 }
 
 async function getTokenTransfers(address: string): Promise<number> {
-  const cacheKey = `transfers-${address}`;
-  const cachedData = await cache.get<number>(cacheKey);
-  if (cachedData !== null) {
-    return cachedData;
-  }
-
   const query = `
     WITH recent_transfers AS (
       SELECT 
@@ -102,21 +93,12 @@ async function getTokenTransfers(address: string): Promise<number> {
 
     if (Array.isArray(results) && results.length > 0) {
       const transferCount = Number(results[0]?.transfer_count) || 0;
-      await cache.set(cacheKey, transferCount, CACHE_TTL);
       return transferCount;
-    }
-
-    // If query fails or returns no results, try getting cached data
-    const cachedCount = await cache.get<number>(cacheKey);
-    if (cachedCount !== null) {
-      return cachedCount;
     }
 
     return 0;
   } catch (error) {
     console.error('Error querying Flipside:', error);
-    // Return 0 and cache it to prevent repeated timeouts
-    await cache.set(cacheKey, 0, CACHE_ERROR_TTL);
     return 0;
   } finally {
     if (timeoutId) {
@@ -160,51 +142,42 @@ export async function GET(
       }, API_TIMEOUT);
     });
 
-    const cacheKey = `account-stats-${address}`;
-    const cachedStats = await cache.get<AccountStats>(cacheKey);
+    // Use cache with background refresh
+    const result = await accountStatsCache.get(address, async () => {
+      const connection = await getConnection();
+      const pubkey = new PublicKey(address);
 
-    // Return cached data and refresh in background if stale
-    if (cachedStats) {
-      const age = Date.now() - cachedStats.lastUpdated;
-      if (age > CACHE_TTL * 1000) {
-        // Refresh in background if cache is stale
-        refreshAccountStats(address, cacheKey).catch(console.error);
-      }
+      // Race between data fetching and timeout
+      const [totalTransactions, tokenTransfers] = await Promise.race([
+        Promise.all([
+          getSignatureCount(pubkey, connection),
+          getTokenTransfers(address)
+        ]),
+        timeoutPromise
+      ]) as [string | number, number];
+
       if (timeoutId) {
         clearTimeout(timeoutId);
       }
-      return NextResponse.json(cachedStats, {
-        headers: {
-          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60'
-        }
-      });
-    }
 
-    const connection = await getConnection();
-    const pubkey = new PublicKey(address);
+      const stats: AccountStats = {
+        totalTransactions,
+        tokenTransfers,
+        lastUpdated: Date.now()
+      };
 
-    // Race between data fetching and timeout
-    const [totalTransactions, tokenTransfers] = await Promise.race([
-      Promise.all([
-        getSignatureCount(pubkey, connection),
-        getTokenTransfers(address)
-      ]),
-      timeoutPromise
-    ]) as [string | number, number];
+      return stats;
+    });
 
     if (timeoutId) {
       clearTimeout(timeoutId);
     }
 
-    const stats: AccountStats = {
-      totalTransactions,
-      tokenTransfers,
-      lastUpdated: Date.now()
-    };
-
-    await cache.set(cacheKey, stats, CACHE_TTL);
-
-    return NextResponse.json(stats, {
+    return NextResponse.json({
+      ...result.data,
+      cached: result.cached,
+      cacheAge: result.cacheAge
+    }, {
       headers: {
         'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60'
       }
@@ -215,28 +188,5 @@ export async function GET(
       { error: 'Failed to fetch account stats' },
       { status: 500 }
     );
-  }
-}
-
-// Background refresh function
-async function refreshAccountStats(address: string, cacheKey: string) {
-  try {
-    const connection = await getConnection();
-    const pubkey = new PublicKey(address);
-
-    const [totalTransactions, tokenTransfers] = await Promise.all([
-      getSignatureCount(pubkey, connection),
-      getTokenTransfers(address)
-    ]);
-
-    const stats: AccountStats = {
-      totalTransactions,
-      tokenTransfers,
-      lastUpdated: Date.now()
-    };
-
-    await cache.set(cacheKey, stats, CACHE_TTL);
-  } catch (error) {
-    console.error('Error refreshing account stats:', error);
   }
 }

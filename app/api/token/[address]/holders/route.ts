@@ -1,28 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { PublicKey, ParsedTransactionWithMeta } from '@solana/web3.js';
-import { getMint } from '@solana/spl-token';
+import { PublicKey } from '@solana/web3.js';
+import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-connection-server';
 import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
 
-// Constants
-const TOKEN_PROGRAM_ID = new PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
-const TOKEN_ACCOUNT_SIZE = 165;
-const BALANCE_OFFSET = 64;
-const BALANCE_LENGTH = 8;
+// Cache for holder data
+const holderCache = new Map<string, { 
+  holders: Array<{
+    address: string;
+    balance: number;
+    percentage: number;
+    rank: number;
+  }>;
+  totalSupply: number;
+  timestamp: number;
+}>();
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
+const CACHE_REFRESH_THRESHOLD = 60 * 1000; // 1 minute - trigger background refresh
 
-// Cache for token holder data
-const holdersCache = new Map<string, { holders: any[]; totalHolders: number; timestamp: number }>();
-const volumeCache = new Map<string, { volume: number; timestamp: number }>();
-const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
-const VOLUME_CACHE_DURATION = 5 * 60 * 1000; // 5 minutes for volume data
+// Track ongoing background updates to prevent duplicate fetches
+const ongoingUpdates = new Set<string>();
 
 // Rate limit configuration
-const HOLDERS_RATE_LIMIT = {
-  limit: 50,
+const HOLDER_RATE_LIMIT = {
+  limit: 100,
   windowMs: 60000,
-  maxRetries: 1,
-  initialRetryDelay: 100,
-  maxRetryDelay: 1000
+  maxRetries: 2,
+  initialRetryDelay: 500,
+  maxRetryDelay: 2000
 };
 
 const corsHeaders = {
@@ -31,12 +36,89 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
+// Background update function
+async function updateHolderCacheInBackground(mintAddress: string, mintPubkey: PublicKey) {
+  // Prevent duplicate updates
+  if (ongoingUpdates.has(mintAddress)) {
+    console.log(`Background update already in progress for ${mintAddress}`);
+    return;
+  }
+
+  ongoingUpdates.add(mintAddress);
+  console.log(`Starting background cache update for ${mintAddress}`);
+
+  try {
+    const connection = await getConnection();
+    const mintInfo = await getMint(connection, mintPubkey);
+    const totalSupply = Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals);
+
+    const tokenAccounts = await connection.getProgramAccounts(
+      TOKEN_PROGRAM_ID,
+      {
+        encoding: 'base64',
+        filters: [
+          { dataSize: 165 },
+          { memcmp: { offset: 0, bytes: mintPubkey.toBase58() } }
+        ]
+      }
+    );
+
+    const holderMap = new Map<string, number>();
+    
+    for (const account of tokenAccounts) {
+      try {
+        const accountData = account.account.data;
+        if (Buffer.isBuffer(accountData) && accountData.length >= 72) {
+          const ownerBuffer = accountData.slice(32, 64);
+          const owner = new PublicKey(ownerBuffer).toBase58();
+          
+          const amountBuffer = accountData.slice(64, 72);
+          const amount = amountBuffer.readBigUInt64LE(0);
+          const balance = Number(amount) / Math.pow(10, mintInfo.decimals);
+          
+          if (balance > 0) {
+            const currentBalance = holderMap.get(owner) || 0;
+            holderMap.set(owner, currentBalance + balance);
+          }
+        }
+      } catch (parseError) {
+        continue;
+      }
+    }
+    
+    const holders = Array.from(holderMap.entries())
+      .map(([address, balance]) => ({
+        address,
+        balance,
+        percentage: (balance / totalSupply) * 100
+      }))
+      .sort((a, b) => b.balance - a.balance)
+      .map((holder, index) => ({
+        ...holder,
+        rank: index + 1
+      }));
+    
+    // Update cache
+    holderCache.set(mintAddress, {
+      holders,
+      totalSupply,
+      timestamp: Date.now()
+    });
+    
+    console.log(`Background cache update completed for ${mintAddress}: ${holders.length} holders`);
+  } catch (error) {
+    console.error(`Background cache update failed for ${mintAddress}:`, error);
+  } finally {
+    ongoingUpdates.delete(mintAddress);
+  }
+}
+
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   context: { params: Promise<{ address: string }> }
 ) {
   const baseHeaders = {
@@ -44,366 +126,224 @@ export async function GET(
     'Content-Type': 'application/json',
   };
 
+  const globalTimeout = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Global request timeout')), 15000); // 15s for holder data
+  });
+
   try {
-    // Apply rate limiting
-    try {
-      await rateLimiter.rateLimit('TOKEN_HOLDERS', HOLDERS_RATE_LIMIT);
-    } catch (error) {
-      if (error instanceof RateLimitError) {
-        console.warn('Rate limit exceeded for TOKEN_HOLDERS');
-        return NextResponse.json(
-          {
-            error: 'Too many requests. Please try again later.',
-            retryAfter: Math.ceil(error.retryAfter / 1000)
-          },
-          {
-            status: 429,
-            headers: {
-              ...baseHeaders,
-              'Retry-After': Math.ceil(error.retryAfter / 1000).toString()
-            }
-          }
-        );
-      }
-      throw error;
-    }
-
-    const params = await context.params;
-    const { address } = params;
-    
-    // Parse query parameters
-    const { searchParams } = new URL(request.url);
-    const limit = Math.min(parseInt(searchParams.get('limit') || '100'), 1000);
-    const offset = parseInt(searchParams.get('offset') || '0');
-    const minBalance = searchParams.get('minBalance') ? parseFloat(searchParams.get('minBalance')!) : 0;
-    const minVolume = searchParams.get('minVolume') ? parseFloat(searchParams.get('minVolume')!) : 0;
-    const volumeHours = searchParams.get('volumeHours') ? parseInt(searchParams.get('volumeHours')!) : 24;
-    const sortBy = searchParams.get('sortBy') || 'balance'; // balance, address, or volume
-    const order = searchParams.get('order') || 'desc'; // desc or asc
-    const includeVolume = minVolume > 0 || sortBy === 'volume' || searchParams.get('includeVolume') === 'true';
-
-    // Validate mint address
-    let mintPubkey: PublicKey;
-    try {
-      mintPubkey = new PublicKey(address);
-    } catch (error) {
-      console.error('Invalid mint address format:', address);
-      return NextResponse.json(
-        { error: 'Invalid mint address format' },
-        { status: 400, headers: baseHeaders }
-      );
-    }
-
-    // Check cache first (only if not filtering/sorting by volume)
-    const cacheKey = `${address}-${minBalance}-${includeVolume ? `vol${minVolume}-${volumeHours}h` : 'novol'}`;
-    const cached = holdersCache.get(cacheKey);
-    const now = Date.now();
-    
-    if (!includeVolume && cached && (now - cached.timestamp) < CACHE_DURATION) {
-      console.log(`Using cached holder data for ${address}: ${cached.totalHolders} total holders`);
-      
-      // Apply sorting
-      let sortedHolders = [...cached.holders];
-      if (sortBy === 'balance') {
-        sortedHolders.sort((a, b) => {
-          const diff = BigInt(b.balance) - BigInt(a.balance);
-          return order === 'desc' ? Number(diff) : -Number(diff);
-        });
-      } else if (sortBy === 'address') {
-        sortedHolders.sort((a, b) => {
-          const comp = a.address.localeCompare(b.address);
-          return order === 'desc' ? -comp : comp;
-        });
-      }
-      
-      // Apply pagination
-      const paginatedHolders = sortedHolders.slice(offset, offset + limit);
-      
-      return NextResponse.json({
-        mint: address,
-        totalHolders: cached.totalHolders,
-        fetchedAt: new Date(cached.timestamp).toISOString(),
-        holders: paginatedHolders,
-        pagination: {
-          limit,
-          offset,
-          hasMore: offset + limit < cached.totalHolders,
-          nextOffset: offset + limit < cached.totalHolders ? offset + limit : null
-        }
-      }, { headers: baseHeaders });
-    }
-
-    // Get connection
-    const connection = await getConnection();
-
-    // Get mint info for decimals
-    let decimals = 9; // Default decimals
-    try {
-      const mintInfo = await getMint(connection, mintPubkey);
-      decimals = mintInfo.decimals;
-    } catch (error) {
-      console.warn('Could not fetch mint info, using default decimals:', error);
-    }
-
-    console.log(`Fetching holders for mint ${address} with decimals ${decimals}`);
-
-    // Fetch all token accounts for this mint using getProgramAccounts
-    const accounts = await connection.getProgramAccounts(
-      TOKEN_PROGRAM_ID,
-      {
-        dataSlice: {
-          offset: BALANCE_OFFSET,
-          length: BALANCE_LENGTH
-        },
-        filters: [
-          {
-            dataSize: TOKEN_ACCOUNT_SIZE
-          },
-          {
-            memcmp: {
-              offset: 0,
-              bytes: mintPubkey.toBase58()
-            }
-          }
-        ]
-      }
-    );
-
-    console.log(`Found ${accounts.length} total accounts for mint ${address}`);
-
-    // Process accounts and filter out zero balances
-    let holders: any[] = [];
-    const minBalanceRaw = minBalance * Math.pow(10, decimals);
-    
-    for (const account of accounts) {
-      try {
-        // Read balance from the data slice (8 bytes, little-endian)
-        const balanceBuffer = account.account.data;
-        
-        // Check if balance is non-zero
-        if (!balanceBuffer.equals(Buffer.from([0, 0, 0, 0, 0, 0, 0, 0]))) {
-          const balance = balanceBuffer.readBigUInt64LE();
-          const balanceNumber = Number(balance);
-          
-          // Apply minimum balance filter
-          if (balanceNumber >= minBalanceRaw) {
-            const uiBalance = balanceNumber / Math.pow(10, decimals);
-            
-            holders.push({
-              address: account.pubkey.toBase58(),
-              balance: balance.toString(),
-              uiBalance: uiBalance,
-              decimals: decimals
-            });
-          }
-        }
-      } catch (error) {
-        console.error('Error processing account:', error);
-      }
-    }
-
-    console.log(`Found ${holders.length} non-zero holders (after filtering)`);
-
-    // If volume filtering is requested, fetch transaction data for each holder
-    if (includeVolume) {
-      console.log(`Fetching volume data for ${holders.length} holders (last ${volumeHours} hours)...`);
-      
-      const cutoffTime = Math.floor(Date.now() / 1000) - (volumeHours * 3600);
-      const volumePromises = holders.slice(0, 100).map(async (holder) => { // Limit to first 100 for performance
-        const volumeCacheKey = `${holder.address}-${volumeHours}h`;
-        
-        // Check volume cache
-        const cachedVolume = volumeCache.get(volumeCacheKey);
-        if (cachedVolume && (now - cachedVolume.timestamp) < VOLUME_CACHE_DURATION) {
-          return { ...holder, volume24h: cachedVolume.volume };
-        }
-        
+    return await Promise.race([
+      (async () => {
+        // Apply rate limiting
         try {
-          // Fetch recent signatures for this holder
-          const signatures = await connection.getSignaturesForAddress(
-            new PublicKey(holder.address),
-            { limit: 100 } // Get last 100 transactions
-          );
-          
-          let totalVolume = 0;
-          
-          // Filter signatures by time and fetch transaction details
-          const recentSignatures = signatures.filter(sig => sig.blockTime && sig.blockTime > cutoffTime);
-          
-          for (const sig of recentSignatures.slice(0, 20)) { // Limit to 20 transactions for performance
-            try {
-              const tx = await connection.getParsedTransaction(sig.signature, {
-                maxSupportedTransactionVersion: 0
-              });
-              
-              if (tx && tx.meta && tx.transaction) {
-                // Look for token transfers involving this holder and mint
-                const instructions = tx.transaction.message.instructions;
-                
-                for (const instruction of instructions) {
-                  if ('parsed' in instruction && instruction.program === 'spl-token') {
-                    const parsed = instruction.parsed;
-                    if (parsed.type === 'transfer' || parsed.type === 'transferChecked') {
-                      const info = parsed.info;
-                      
-                      // Check if this transfer involves our mint
-                      if ((info.source === holder.address || info.destination === holder.address) &&
-                          (info.mint === address || info.tokenAmount?.mint === address)) {
-                        
-                        const amount = info.amount || info.tokenAmount?.amount || '0';
-                        const uiAmount = parseFloat(amount) / Math.pow(10, decimals);
-                        totalVolume += uiAmount;
-                      }
-                    }
-                  }
+          await rateLimiter.rateLimit('TOKEN_HOLDERS', HOLDER_RATE_LIMIT);
+        } catch (error) {
+          if (error instanceof RateLimitError) {
+            console.warn('Rate limit exceeded for TOKEN_HOLDERS');
+            return NextResponse.json(
+              {
+                error: 'Too many requests. Please try again later.',
+                retryAfter: Math.ceil(error.retryAfter / 1000)
+              },
+              {
+                status: 429,
+                headers: {
+                  ...baseHeaders,
+                  'Retry-After': Math.ceil(error.retryAfter / 1000).toString()
                 }
               }
-            } catch (txError) {
-              console.warn(`Error fetching transaction ${sig.signature}:`, txError);
-            }
+            );
           }
-          
-          // Cache the volume data
-          volumeCache.set(volumeCacheKey, {
-            volume: totalVolume,
-            timestamp: now
-          });
-          
-          return { ...holder, volume24h: totalVolume };
-        } catch (error) {
-          console.warn(`Error fetching volume for ${holder.address}:`, error);
-          return { ...holder, volume24h: 0 };
+          throw error;
         }
-      });
-      
-      // Wait for all volume calculations
-      const holdersWithVolume = await Promise.all(volumePromises);
-      
-      // Add volume data to remaining holders (set to 0)
-      for (let i = 100; i < holders.length; i++) {
-        holders[i].volume24h = 0;
-      }
-      
-      // Replace first 100 holders with volume data
-      holders.splice(0, 100, ...holdersWithVolume);
-      
-      // Filter by minimum volume if specified
-      if (minVolume > 0) {
-        const beforeFilter = holders.length;
-        holders = holders.filter(h => h.volume24h >= minVolume);
-        console.log(`Filtered from ${beforeFilter} to ${holders.length} holders by volume > ${minVolume}`);
-      }
-    }
 
-    // Cache the results
-    holdersCache.set(cacheKey, {
-      holders,
-      totalHolders: holders.length,
-      timestamp: now
-    });
-    
-    // Cache cleanup - remove old entries
-    for (const [key, value] of holdersCache.entries()) {
-      if (now - value.timestamp > CACHE_DURATION * 2) {
-        holdersCache.delete(key);
-      }
-    }
+        const params = await context.params;
+        const { address } = params;
+        const mintAddress = address;
 
-    // Apply sorting
-    if (sortBy === 'balance') {
-      holders.sort((a, b) => {
-        const diff = BigInt(b.balance) - BigInt(a.balance);
-        return order === 'desc' ? Number(diff) : -Number(diff);
-      });
-    } else if (sortBy === 'address') {
-      holders.sort((a, b) => {
-        const comp = a.address.localeCompare(b.address);
-        return order === 'desc' ? -comp : comp;
-      });
-    } else if (sortBy === 'volume' && includeVolume) {
-      holders.sort((a, b) => {
-        const aVol = a.volume24h || 0;
-        const bVol = b.volume24h || 0;
-        return order === 'desc' ? bVol - aVol : aVol - bVol;
-      });
-    }
+        // Validate address format
+        let mintPubkey: PublicKey;
+        try {
+          mintPubkey = new PublicKey(mintAddress);
+        } catch (error) {
+          console.error('Invalid address format:', mintAddress);
+          return NextResponse.json(
+            { error: 'Invalid address format' },
+            { status: 400, headers: baseHeaders }
+          );
+        }
 
-    // Apply pagination
-    const paginatedHolders = holders.slice(offset, offset + limit);
+        // Check cache first
+        const cacheKey = mintAddress;
+        const cached = holderCache.get(cacheKey);
+        const now = Date.now();
+        
+        if (cached) {
+          const cacheAge = now - cached.timestamp;
+          
+          // If cache is still valid (< 5 minutes), return it
+          if (cacheAge < CACHE_DURATION) {
+            // If cache is older than 1 minute, trigger background refresh
+            if (cacheAge > CACHE_REFRESH_THRESHOLD) {
+              console.log(`Cache is ${Math.round(cacheAge / 1000)}s old, triggering background refresh for ${mintAddress}`);
+              // Trigger background update without awaiting
+              updateHolderCacheInBackground(mintAddress, mintPubkey).catch(err => 
+                console.error('Background update error:', err)
+              );
+            }
+            
+            console.log(`Returning cached holder data for ${mintAddress}: ${cached.holders.length} holders (age: ${Math.round(cacheAge / 1000)}s)`);
+            return NextResponse.json({
+              holders: cached.holders,
+              totalSupply: cached.totalSupply,
+              cached: true,
+              cacheAge: Math.round(cacheAge / 1000)
+            }, { headers: baseHeaders });
+          }
+        }
 
-    // Calculate statistics
-    const totalBalance = holders.reduce((sum, h) => sum + parseFloat(h.uiBalance), 0);
-    const avgBalance = holders.length > 0 ? totalBalance / holders.length : 0;
-    const topHolders = holders.slice(0, 10);
-    const topHoldersPercentage = topHolders.reduce((sum, h) => sum + parseFloat(h.uiBalance), 0) / totalBalance * 100;
-    
-    const statistics: any = {
-      totalSupplyHeld: totalBalance,
-      averageBalance: avgBalance,
-      medianBalance: holders.length > 0 ? holders[Math.floor(holders.length / 2)]?.uiBalance : 0,
-      top10Concentration: isNaN(topHoldersPercentage) ? 0 : topHoldersPercentage.toFixed(2) + '%'
-    };
-    
-    // Add volume statistics if included
-    if (includeVolume) {
-      const totalVolume = holders.reduce((sum, h) => sum + (h.volume24h || 0), 0);
-      const avgVolume = holders.length > 0 ? totalVolume / holders.length : 0;
-      const activeTraders = holders.filter(h => h.volume24h > 0).length;
-      
-      statistics.volumeStats = {
-        totalVolume: totalVolume,
-        averageVolume: avgVolume,
-        activeTraders: activeTraders,
-        activeTradersPercentage: holders.length > 0 ? ((activeTraders / holders.length) * 100).toFixed(2) + '%' : '0%',
-        volumePeriodHours: volumeHours
-      };
-    }
+        // Get connection
+        const connection = await Promise.race<ReturnType<typeof getConnection>>([
+          getConnection(),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Connection timeout')), 2000)
+          ) as Promise<ReturnType<typeof getConnection>>
+        ]);
 
-    return NextResponse.json({
-      mint: address,
-      totalHolders: holders.length,
-      fetchedAt: new Date().toISOString(),
-      statistics,
-      holders: paginatedHolders,
-      pagination: {
-        limit,
-        offset,
-        hasMore: offset + limit < holders.length,
-        nextOffset: offset + limit < holders.length ? offset + limit : null
-      },
-      filters: {
-        minBalance: minBalance > 0 ? minBalance : undefined,
-        minVolume: includeVolume && minVolume > 0 ? minVolume : undefined,
-        volumeHours: includeVolume ? volumeHours : undefined
-      }
-    }, { headers: baseHeaders });
+        // Get mint info to get decimals and total supply
+        let mintInfo;
+        try {
+          mintInfo = await Promise.race([
+            getMint(connection, mintPubkey),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error('Mint info timeout')), 2000)
+            )
+          ]) as Awaited<ReturnType<typeof getMint>>;
+        } catch (error) {
+          console.warn('Failed to get mint info:', error instanceof Error ? error.message : 'Unknown error');
+          return NextResponse.json(
+            {
+              error: 'Not a token mint account',
+              message: 'This account is not a token mint account.',
+            },
+            { status: 400, headers: baseHeaders }
+          );
+        }
 
+        const totalSupply = Number(mintInfo.supply) / Math.pow(10, mintInfo.decimals);
+
+        // Fetch all token accounts for this mint
+        console.log('Fetching holder data via getProgramAccounts...');
+        
+        const tokenAccounts = await Promise.race([
+          connection.getProgramAccounts(
+            TOKEN_PROGRAM_ID,
+            {
+              encoding: 'base64',
+              filters: [
+                {
+                  dataSize: 165 // Size of token account
+                },
+                {
+                  memcmp: {
+                    offset: 0, // Mint is at offset 0 in token account
+                    bytes: mintPubkey.toBase58()
+                  }
+                }
+              ]
+            }
+          ),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Program accounts timeout')), 10000)
+          )
+        ]) as Awaited<ReturnType<typeof connection.getProgramAccounts>>;
+        
+        if (!tokenAccounts || tokenAccounts.length === 0) {
+          console.warn('No token accounts found for mint:', mintAddress);
+          return NextResponse.json({
+            holders: [],
+            totalSupply,
+            message: 'No holders found'
+          }, { headers: baseHeaders });
+        }
+
+        // Parse accounts and extract holder data
+        const holderMap = new Map<string, number>();
+        
+        for (const account of tokenAccounts) {
+          try {
+            const accountData = account.account.data;
+            if (Buffer.isBuffer(accountData) && accountData.length >= 72) {
+              // Token account structure:
+              // - bytes 0-32: mint (pubkey)
+              // - bytes 32-64: owner (pubkey)
+              // - bytes 64-72: amount (u64 little-endian)
+              
+              const ownerBuffer = accountData.slice(32, 64);
+              const owner = new PublicKey(ownerBuffer).toBase58();
+              
+              const amountBuffer = accountData.slice(64, 72);
+              const amount = amountBuffer.readBigUInt64LE(0);
+              const balance = Number(amount) / Math.pow(10, mintInfo.decimals);
+              
+              if (balance > 0) {
+                // Aggregate balances by owner (in case one owner has multiple token accounts)
+                const currentBalance = holderMap.get(owner) || 0;
+                holderMap.set(owner, currentBalance + balance);
+              }
+            }
+          } catch (parseError) {
+            // Skip accounts that can't be parsed
+            console.warn('Failed to parse token account:', parseError);
+            continue;
+          }
+        }
+        
+        // Convert to array and sort by balance
+        const holders = Array.from(holderMap.entries())
+          .map(([address, balance]) => ({
+            address,
+            balance,
+            percentage: (balance / totalSupply) * 100
+          }))
+          .sort((a, b) => b.balance - a.balance)
+          .map((holder, index) => ({
+            ...holder,
+            rank: index + 1
+          }));
+        
+        console.log(`Found ${holders.length} unique holders for ${mintAddress}`);
+        
+        // Cache the results
+        holderCache.set(cacheKey, {
+          holders,
+          totalSupply,
+          timestamp: now
+        });
+        
+        return NextResponse.json({
+          holders,
+          totalSupply,
+          cached: false
+        }, { headers: baseHeaders });
+      })(),
+      globalTimeout
+    ]);
   } catch (error) {
     console.error('Error fetching token holders:', error);
-    
+
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    
-    // Specific error handling
-    if (errorMessage.includes('getProgramAccounts')) {
-      return NextResponse.json(
-        { 
-          error: 'RPC provider does not support getProgramAccounts',
-          message: 'Please use an RPC provider that supports the full Solana RPC spec (e.g., Helius, QuickNode, or a self-hosted node).'
-        },
-        { status: 503, headers: baseHeaders }
-      );
-    }
-    
     if (errorMessage.includes('timeout')) {
       return NextResponse.json(
-        { error: 'Request timeout - this token may have too many holders. Try using pagination.' },
+        { error: 'Request timeout - please try again' },
         { status: 408, headers: baseHeaders }
       );
     }
 
     return NextResponse.json(
-      { error: 'Failed to fetch token holders', details: errorMessage },
+      { error: 'Failed to fetch token holders' },
       { status: 500, headers: baseHeaders }
     );
   }
 }
+
+export const maxDuration = 15; // 15 seconds for Vercel serverless function

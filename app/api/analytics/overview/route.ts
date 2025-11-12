@@ -1,4 +1,11 @@
 import { NextResponse } from 'next/server';
+import { createCache } from '@/lib/api-cache';
+
+// Create cache instance for overview analytics (5 min cache, 1 min refresh threshold)
+const overviewCache = createCache<OverviewMetrics>({
+  duration: 5 * 60 * 1000,
+  refreshThreshold: 60 * 1000
+});
 
 // Comprehensive DeFi Overview API aggregating data from all DeFi sectors
 interface OverviewMetrics {
@@ -246,13 +253,18 @@ async function fetchOverviewData(): Promise<OverviewMetrics> {
 
 export async function GET() {
   try {
-    const overview = await fetchOverviewData();
+    // Use cache with background refresh
+    const result = await overviewCache.get('overview-analytics', async () => {
+      return await fetchOverviewData();
+    });
 
     const response = NextResponse.json({
       success: true,
-      data: overview,
+      data: result.data,
       timestamp: Date.now(),
-      source: 'aggregated'
+      source: 'aggregated',
+      cached: result.cached,
+      cacheAge: result.cacheAge
     });
 
     // Add cache headers for better performance
@@ -270,7 +282,9 @@ export async function GET() {
       data: FALLBACK_OVERVIEW,
       timestamp: Date.now(),
       source: 'fallback',
-      warning: 'Using fallback data due to API errors'
+      warning: 'Using fallback data due to API errors',
+      cached: false,
+      cacheAge: null
     });
 
     // Shorter cache for fallback data

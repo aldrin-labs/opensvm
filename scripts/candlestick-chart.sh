@@ -12,9 +12,9 @@
 #   candlestick-chart.sh DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263 1H 30 "" GBMoNx84HsFdVK63t8BZuDgyZhSBaeKWB4pHHpoeRM9z
 
 # Backend API port (auto-detect or default to 3000)
-API_PORT="${API_PORT:-3001}"
+API_PORT="${API_PORT:-3000}"
 
-MINT="${1:-DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263}"
+MINT="${1:-pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS}"
 TYPE="${2:-1H}"
 BASE_MINT="${4:-}"
 POOL_ADDRESS="${5:-}"

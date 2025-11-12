@@ -2,7 +2,19 @@ import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana-connection-server';
-import { isValidSolanaAddress } from '@/lib/utils';
+
+// Lenient validation - just check format, not blockchain validity
+function looksLikeSolanaAddress(address: string): boolean {
+  if (!address || typeof address !== 'string') return false;
+  
+  // Solana addresses are 32-44 characters
+  if (address.length < 32 || address.length > 44) return false;
+  
+  // Check if it contains only valid base58 characters
+  // Base58 alphabet: 123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz
+  const base58Regex = /^[1-9A-HJ-NP-Za-km-z]+$/;
+  return base58Regex.test(address);
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
@@ -12,7 +24,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: 'Address is required' }, { status: 400 });
   }
 
-  if (!isValidSolanaAddress(address)) {
+  if (!looksLikeSolanaAddress(address)) {
     console.log('Invalid Solana address format:', address);
     return NextResponse.json({ type: 'unknown' });
   }

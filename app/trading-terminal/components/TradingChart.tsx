@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, Activity, Wifi, WifiOff } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useTradingWebSocket } from '@/hooks/useTradingWebSocket';
 
 interface TradingChartProps {
   market: string;
@@ -21,6 +22,79 @@ interface CandleData {
   volume: number;
 }
 
+// Map trading pairs to Solana token mint addresses
+const MARKET_TOKEN_MAP: Record<string, string> = {
+  'SOL/USDC': 'So11111111111111111111111111111111111111112',
+  'BONK/USDC': 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+  'JUP/USDC': 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+  'PYTH/USDC': 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
+  'ORCA/USDC': 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
+  'RAY/USDC': '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+  'MNGO/USDC': 'MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac',
+  'SRM/USDC': 'SRMuApVNdxXokk5GT7XD5cUUgXMBCoAz2LHeuAoKWRt',
+  'FIDA/USDC': 'EchesyfXePKdLtoiZSL8pBe8Myagyy8ZRqsACNCFGnvp',
+  'STEP/USDC': 'StepAscQoEioFxxWGnh2sLBDFp9d8rvKz2Yp39iDpyT'
+};
+
+// Map timeframe to API interval types
+const TIMEFRAME_MAP: Record<Timeframe, string> = {
+  '1m': '1m',
+  '5m': '5m',
+  '15m': '15m',
+  '1h': '1H',
+  '4h': '4H',
+  '1d': '1D',
+  '1w': '1W'
+};
+
+/**
+ * Aggregate trades into OHLCV candles for a given timeframe
+ */
+function aggregateTradesToCandles(trades: any[], timeframe: Timeframe): CandleData[] {
+  if (!trades || trades.length === 0) return [];
+
+  // Get timeframe in milliseconds
+  const timeframeMs = {
+    '1m': 60000,
+    '5m': 300000,
+    '15m': 900000,
+    '1h': 3600000,
+    '4h': 14400000,
+    '1d': 86400000,
+    '1w': 604800000
+  }[timeframe];
+
+  const candles: Map<number, CandleData> = new Map();
+
+  // Group trades by timeframe bucket
+  trades.forEach((trade: any) => {
+    const timestamp = trade.timestamp || trade.time || Date.now();
+    const bucket = Math.floor(timestamp / timeframeMs) * timeframeMs;
+    const price = trade.price || 0;
+    const amount = trade.amount || trade.size || 0;
+
+    if (!candles.has(bucket)) {
+      candles.set(bucket, {
+        time: bucket,
+        open: price,
+        high: price,
+        low: price,
+        close: price,
+        volume: amount,
+      });
+    } else {
+      const candle = candles.get(bucket)!;
+      candle.high = Math.max(candle.high, price);
+      candle.low = Math.min(candle.low, price);
+      candle.close = price;
+      candle.volume += amount;
+    }
+  });
+
+  // Sort candles by time
+  return Array.from(candles.values()).sort((a, b) => a.time - b.time);
+}
+
 export default function TradingChart({ market, isLoading = false }: TradingChartProps) {
   const [timeframe, setTimeframe] = useState<Timeframe>('15m');
   const [chartType, setChartType] = useState<ChartType>('candles');
@@ -29,19 +103,82 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
   const [mousePos, setMousePos] = useState<{ x: number; y: number } | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isTimeout, setIsTimeout] = useState(false);
+  const [isRealData, setIsRealData] = useState(false);
+  const [dataSource, setDataSource] = useState('Loading...');
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   const timeframes: Timeframe[] = ['1m', '5m', '15m', '1h', '4h', '1d', '1w'];
 
-  // Generate mock candle data with timeout handling
+  // Get token mint for the market
+  const tokenMint = MARKET_TOKEN_MAP[market] || MARKET_TOKEN_MAP['SOL/USDC'];
+
+  // Use WebSocket for real-time data
+  const { trades: wsTrades, candles: wsCandles, status, connect: connectWS, disconnect: disconnectWS } = useTradingWebSocket({
+    market,
+    tokenMint,
+    autoConnect: true,
+    maxTrades: 200,
+    onTrade: (trade) => {
+      console.log('[TradingChart] Received trade:', trade);
+    },
+    onCandle: (candle) => {
+      console.log('[TradingChart] Received candle:', candle);
+    },
+    onError: (error) => {
+      console.error('[TradingChart] WebSocket error:', error);
+      setLoadError(error.message);
+    },
+  });
+
+  // Update candles from WebSocket
   useEffect(() => {
-    // Generate data immediately without waiting
+    if (wsCandles.length > 0) {
+      setCandleData(wsCandles);
+      setIsRealData(true);
+      setDataSource('Live WebSocket');
+      setLoadError(null);
+    }
+  }, [wsCandles]);
+
+  // Aggregate WebSocket trades into candles (debounced to avoid expensive recalculations)
+  useEffect(() => {
+    if (wsTrades.length === 0) return;
+
+    // Debounce aggregation to avoid recalculating on every trade
+    const aggregationTimer = setTimeout(() => {
+      const aggregatedCandles = aggregateTradesToCandles(wsTrades, timeframe);
+      if (aggregatedCandles.length > 0) {
+        // Merge with existing candles
+        setCandleData((prev) => {
+          const merged = [...prev];
+          aggregatedCandles.forEach((newCandle) => {
+            const existingIndex = merged.findIndex((c) => c.time === newCandle.time);
+            if (existingIndex >= 0) {
+              // Update existing candle
+              merged[existingIndex] = newCandle;
+            } else {
+              // Add new candle
+              merged.push(newCandle);
+            }
+          });
+          return merged.sort((a, b) => a.time - b.time);
+        });
+        setIsRealData(true);
+        setDataSource(`Live Trades (${wsTrades.length})`);
+      }
+    }, 100); // 100ms debounce
+
+    return () => clearTimeout(aggregationTimer);
+  }, [wsTrades, timeframe]);
+
+  // Fetch initial historical candle data from API (one-time)
+  useEffect(() => {
     const generateMockData = () => {
       const data: CandleData[] = [];
       // Use SOL price range for more realistic data
       let currentPrice = 140 + Math.random() * 20;
       const now = Date.now();
-      const interval = timeframe === '1m' ? 60000 : 
+      const interval = timeframe === '1m' ? 60000 :
                       timeframe === '5m' ? 300000 :
                       timeframe === '15m' ? 900000 :
                       timeframe === '1h' ? 3600000 :
@@ -70,37 +207,121 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
       return data;
     };
 
-    try {
-      const data = generateMockData();
-      setCandleData(data);
-      setLoadError(null);
-      setIsTimeout(false);
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : 'Failed to generate chart data');
-    }
-    
-    // Update data periodically for live feel
-    const updateInterval = setInterval(() => {
-      if (candleData.length > 0) {
-        const lastCandle = candleData[candleData.length - 1];
-        const newPrice = lastCandle.close + (Math.random() - 0.5) * 2;
-        const updatedData = [...candleData];
-        updatedData[updatedData.length - 1] = {
-          ...lastCandle,
-          close: newPrice,
-          high: Math.max(lastCandle.high, newPrice),
-          low: Math.min(lastCandle.low, newPrice),
-          volume: lastCandle.volume + Math.random() * 100
-        };
-        setCandleData(updatedData);
+    const fetchChartData = async () => {
+      try {
+        // Get token mint address from market pair
+        const mint = MARKET_TOKEN_MAP[market] || MARKET_TOKEN_MAP['SOL/USDC'];
+        const apiTimeframe = TIMEFRAME_MAP[timeframe];
+
+        // Fetch both chart data and recent trades in parallel
+        const [chartResponse, tradesResponse] = await Promise.all([
+          fetch(`/api/chart?mint=${mint}&type=${apiTimeframe}`),
+          fetch(`/api/trading/trades?mint=${mint}&limit=100`)
+        ]);
+
+        if (!chartResponse.ok && !tradesResponse.ok) {
+          throw new Error('Both APIs failed');
+        }
+
+        let finalCandles: CandleData[] = [];
+        let hasRealData = false;
+        let source = 'Mock Data';
+
+        // Process chart data if available
+        if (chartResponse.ok) {
+          const data = await chartResponse.json();
+
+          if (data.success && data.data?.items && data.data.items.length > 0) {
+            // Map API data format to our CandleData format
+            finalCandles = data.data.items.map((item: any) => ({
+              time: item.unixTime * 1000,
+              open: item.o,
+              high: item.h,
+              low: item.l,
+              close: item.c,
+              volume: item.v || 0
+            }));
+            hasRealData = true;
+            source = `Real-time data`;
+          }
+        }
+
+        // Process trades data to update last candle in real-time
+        if (tradesResponse.ok) {
+          const tradesData = await tradesResponse.json();
+
+          if (tradesData.trades && tradesData.trades.length > 0) {
+            // Aggregate recent trades into candles
+            const tradeCandles = aggregateTradesToCandles(tradesData.trades, timeframe);
+
+            if (tradeCandles.length > 0) {
+              // If we have chart data, merge trades to update the last candle
+              if (finalCandles.length > 0) {
+                // Get the latest candle bucket from API data
+                const lastCandle = finalCandles[finalCandles.length - 1];
+                const tradeCandle = tradeCandles[tradeCandles.length - 1];
+
+                // If trades are from the same bucket as the last candle, update it
+                if (tradeCandle.time === lastCandle.time) {
+                  finalCandles[finalCandles.length - 1] = {
+                    ...lastCandle,
+                    high: Math.max(lastCandle.high, tradeCandle.high),
+                    low: Math.min(lastCandle.low, tradeCandle.low),
+                    close: tradeCandle.close,
+                    volume: lastCandle.volume + tradeCandle.volume
+                  };
+                  source = `Real-time data`;
+                } else if (tradeCandle.time > lastCandle.time) {
+                  // If trades are from a newer candle, append it
+                  finalCandles.push(tradeCandle);
+                  source = `Real-time data`;
+                }
+              } else {
+                // Use trade candles if no API data available
+                finalCandles = tradeCandles;
+                hasRealData = true;
+                source = 'Live Trades Aggregated';
+              }
+            }
+          }
+        }
+
+        if (finalCandles.length > 0) {
+          setCandleData(finalCandles);
+          setIsRealData(hasRealData);
+          setDataSource(source);
+          setLoadError(null);
+          setIsTimeout(false);
+        } else {
+          // No data from either source, fallback to mock
+          console.warn('No chart or trade data available, using mock data');
+          const mockData = generateMockData();
+          setCandleData(mockData);
+          setIsRealData(false);
+          setDataSource('Mock Data');
+        }
+      } catch (error) {
+        console.error('Failed to fetch chart data:', error);
+        setLoadError(error instanceof Error ? error.message : 'Failed to fetch chart data');
+
+        // Fallback to mock data
+        try {
+          const mockData = generateMockData();
+          setCandleData(mockData);
+          setIsRealData(false);
+          setDataSource('Mock Data (Error)');
+        } catch (mockError) {
+          setLoadError(mockError instanceof Error ? mockError.message : 'Failed to generate chart data');
+        }
       }
-    }, 2000);
-    
-    return () => {
-      clearInterval(updateInterval);
     };
+
+    // Initial fetch only - WebSocket will provide real-time updates
+    fetchChartData();
+
+    // No polling interval needed - using WebSocket for real-time updates
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [market, timeframe]); // candleData intentionally excluded to prevent re-creation of interval
+  }, [market, timeframe]); // candleData intentionally excluded to prevent interval recreation
 
   // Draw chart on canvas
   useEffect(() => {
@@ -488,6 +709,20 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
                 {tf}
               </button>
             ))}
+          </div>
+
+          {/* WebSocket Connection Status */}
+          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs border"
+               style={{
+                 backgroundColor: status.connected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
+                 borderColor: status.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
+                 color: status.connected ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'
+               }}
+               title={status.connected ? 'WebSocket Connected' : 'WebSocket Disconnected'}>
+            {status.connected ? <Wifi size={12} /> : <WifiOff size={12} />}
+            <span className="font-medium">
+              {status.connected ? 'Live' : (status.reconnecting ? 'Reconnecting...' : 'Offline')}
+            </span>
           </div>
 
           {/* Chart Type Selector */}

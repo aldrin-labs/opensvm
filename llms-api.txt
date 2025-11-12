@@ -687,6 +687,220 @@ Response:
   }
 }
 
+### GET /api/chart
+Clean alias for OHLCV candlestick data (simplified alternative to /api/market-data?endpoint=ohlcv)
+
+Request Parameters:
+  - mint: string (required, query) - Token mint address
+  - type?: string (query) - Interval type (default: '1H')
+    Options: '1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '6H', '8H', '12H', '1D', '3D', '1W', '1M'
+  - time_from?: number (query) - Start timestamp in unix seconds
+  - time_to?: number (query) - End timestamp in unix seconds
+  - poolAddress?: string (query) - Specific pool address for pool-specific data
+
+Request Schema:
+GET /api/chart?mint={TOKEN_MINT}&type={INTERVAL}&time_from={START}&time_to={END}
+
+Response Schema (200 OK):
+{
+  "success": true,
+  "endpoint": "ohlcv",
+  "mint": string,
+  "tokenInfo": {
+    "symbol": string,
+    "name": string,
+    "decimals": number,
+    "address": string,
+    "price": number,
+    "liquidity": number,
+    "volume24h": number
+  },
+  "mainPair": {
+    "pair": string,           // e.g., "BONK/USDC"
+    "dex": string,            // e.g., "Raydium"
+    "poolAddress": string
+  },
+  "pools": [
+    {
+      "dex": string,
+      "pair": string,
+      "poolAddress": string,
+      "price": number,
+      "volume24h": number,
+      "txCount24h": number,
+      "lastSeen": string      // ISO timestamp
+    }
+  ],
+  "data": {
+    "items": [
+      {
+        "o": number,          // open price
+        "h": number,          // high price
+        "l": number,          // low price
+        "c": number,          // close price
+        "v": number,          // volume in USD
+        "unixTime": number,   // unix timestamp
+        "type": string,       // interval type
+        "address": string,    // token address
+        "currency": string    // "usd"
+      }
+    ]
+  },
+  "indicators": {
+    "ma7": number[],          // 7-period moving average
+    "ma25": number[],         // 25-period moving average
+    "macd": {
+      "line": number[],       // MACD line (12, 26)
+      "signal": number[],     // Signal line (9)
+      "histogram": number[]   // Histogram (line - signal)
+    }
+  },
+  "_meta": {
+    "requestedRange": {
+      "from": number,         // start timestamp
+      "to": number,           // end timestamp
+      "duration": number      // duration in seconds
+    },
+    "batching": {
+      "enabled": boolean,
+      "batchCount": number,   // number of batches used
+      "batchSize": number,    // time range per batch (seconds)
+      "candlesPerBatch": number  // ~960 for optimal performance
+    },
+    "candleCount": number     // total candles returned
+  }
+}
+
+Error Response (400/500):
+{
+  "error": string,
+  "usage": string,
+  "details"?: any
+}
+
+Features:
+- Automatic batch fetching for large time ranges (handles up to 10 days of 1m data)
+- Smart batching with ~960 candles per batch for optimal performance
+- Technical indicators: MA7, MA25, MACD (12, 26, 9) calculated automatically
+- Enhanced default ranges (10x more data than standard)
+- Performance metadata for monitoring batch efficiency
+- Pool aggregation across all DEXes
+
+Example Requests:
+- Default (1H, last 70 hours): /api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+- 1-minute (last 20h): /api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=1m
+- Custom range: /api/chart?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=15m&time_from=1699401600&time_to=1699488000
+
+Cache: 2 minutes
+Rate Limit: 30 req/min
+
+### GET /api/trades
+Fetch recent trades/swaps for any Solana token with wallet addresses and complete trade information
+
+Request Parameters:
+  - mint: string (required, query) - Token mint address
+  - limit?: number (query) - Number of trades to return (default: 50, max: 100)
+  - type?: string (query) - Transaction type filter (default: 'swap')
+    Options: 'swap' (token swaps), 'add' (liquidity additions), 'remove' (liquidity removals)
+  - offset?: number (query) - Pagination offset for fetching more results (default: 0)
+
+Request Schema:
+GET /api/trades?mint={TOKEN_MINT}&limit={LIMIT}&type={TYPE}&offset={OFFSET}
+
+Response Schema (200 OK):
+{
+  "success": true,
+  "mint": string,
+  "trades": [
+    {
+      "signature": string,        // Transaction signature
+      "timestamp": number,        // Unix timestamp
+      "blockTime": number,        // Block timestamp
+      "type": string,             // Transaction type: "swap", "add", "remove"
+      "side": string,             // Trade side: "buy" or "sell"
+      "price": number,            // Price per token
+      "priceUSD": number,         // Price in USD
+      "amount": number,           // Token amount traded
+      "amountUSD": number,        // USD value of trade
+      "volume": number,           // Volume (same as amountUSD)
+      "token": {
+        "symbol": string,
+        "name": string,
+        "address": string,       // Token mint address
+        "decimals": number
+      },
+      "pairToken": {
+        "symbol": string,        // Usually "USDC", "SOL", etc.
+        "name": string,
+        "address": string,       // Pair token mint address
+        "decimals": number
+      },
+      "dex": string,             // DEX name: "Raydium", "Orca", "Phoenix", "Meteora", etc.
+      "poolAddress": string,     // AMM pool address
+      "owner": string,           // Wallet address that made the trade
+      "slot": number,            // Solana slot number
+      "raw": {                   // Raw Birdeye response data
+        "base": object,
+        "quote": object,
+        "pricePair": number
+      }
+    }
+  ],
+  "count": number,               // Number of trades in response
+  "total": number,               // Total trades available (if known)
+  "metadata": {
+    "mint": string,
+    "limit": number,
+    "offset": number,
+    "txType": string,            // Filter type used
+    "hasMore": boolean          // Whether more trades are available
+  }
+}
+
+Error Response (400/500):
+{
+  "error": string,
+  "usage": string,
+  "details"?: any
+}
+
+Response Fields Explained:
+- signature: Solana transaction signature for verification
+- owner: CRITICAL - Wallet address of trader (for tracking whale activity)
+- side: Automatically detected based on token flow ("buy" = acquiring target token)
+- dex: DEX where trade occurred (useful for DEX activity analysis)
+- priceUSD: Calculated USD value at time of trade
+- amountUSD: Total USD value of the trade
+- raw: Complete Birdeye response for advanced use cases
+
+Features:
+- Real-time trading activity tracking
+- Wallet address tracking in "owner" field for whale watching
+- DEX identification (Raydium, Orca, Phoenix, Meteora, Jupiter, etc.)
+- Pagination support for large datasets
+- Trade side detection (buy/sell) based on token flow
+- USD value calculations for all trades
+- Complete raw data for advanced analysis
+- Filter by transaction type (swaps, liquidity adds/removes)
+
+Use Cases:
+1. Real-time trade feeds for tokens
+2. Whale wallet tracking via owner field
+3. Trading history and pattern analysis
+4. DEX activity distribution analysis
+5. Large trade detection and alerts
+6. Volume analysis by wallet or DEX
+7. Price impact analysis
+
+Example Requests:
+- Last 50 trades: /api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263
+- Last 100 trades: /api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&limit=100
+- Only swaps: /api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&type=swap
+- Paginated (page 2): /api/trades?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&limit=50&offset=50
+
+Cache: 30 seconds
+Rate Limit: 30 req/min
+
 ================================================================================
 ## TOKEN & NFT APIs
 ================================================================================

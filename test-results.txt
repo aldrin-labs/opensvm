@@ -1,0 +1,98 @@
+🚀 Token Routes Caching and Latency Test
+Testing against: http://localhost:3000
+Test Token: Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
+Total Routes: 3
+
+================================================================================
+Testing: Token Details
+Path: /api/token/Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump
+Expected Caching: YES
+================================================================================
+
+📊 Request #1 (Initial - should fetch fresh data)
+  ✓ Status: 200
+  ⏱️  Latency: 552ms
+  💾 Cached: true
+  📦 Data Size: 0.59 KB
+
+⏳ Waiting 2 seconds...
+
+📊 Request #2 (Should be cached if enabled)
+  ✓ Status: 200
+  ⏱️  Latency: 410ms
+  💾 Cached: true
+  🕐 Cache Age: 30s
+  📦 Data Size: 0.59 KB
+  📈 Latency Change: 25.7% faster
+
+⏳ Waiting 65 seconds to test background refresh...
+
+📊 Request #3 (After 1 min - should trigger background refresh)
+  ✓ Status: 200
+  ⏱️  Latency: 558ms
+  💾 Cached: true
+  🕐 Cache Age: 23s
+  📦 Data Size: 0.59 KB
+
+📋 Analysis:
+  Average Latency: 507ms
+  Caching Status: ✓ Working
+  Overall: ✓ PASSED
+
+================================================================================
+Testing: Token Holders
+Path: /api/token/Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump/holders
+Expected Caching: YES
+================================================================================
+
+📊 Request #1 (Initial - should fetch fresh data)
+  ✓ Status: 200
+  ⏱️  Latency: 4037ms
+  💾 Cached: false
+  📦 Data Size: 768.42 KB
+
+⏳ Waiting 2 seconds...
+
+📊 Request #2 (Should be cached if enabled)
+  ✓ Status: 200
+  ⏱️  Latency: 234ms
+  💾 Cached: true
+  🕐 Cache Age: 6s
+  📦 Data Size: 768.43 KB
+  📈 Latency Change: 94.2% faster
+
+⏳ Waiting 65 seconds to test background refresh...
+
+📊 Request #3 (After 1 min - should trigger background refresh)
+  ✓ Status: 200
+  ⏱️  Latency: 213ms
+  💾 Cached: true
+  🕐 Cache Age: 71s
+  📦 Data Size: 768.43 KB
+  ⚠️  Cache is older than 60s - background refresh should have been triggered
+
+📋 Analysis:
+  Average Latency: 1495ms
+  Caching Status: ✓ Working
+  Overall: ✓ PASSED
+
+================================================================================
+Testing: Token Transactions
+Path: /api/token/Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump/transactions
+Expected Caching: NO
+================================================================================
+
+📊 Request #1 (Initial - should fetch fresh data)
+  ✗ Error: Unexpected token '<', "<!DOCTYPE "... is not valid JSON
+
+
+================================================================================
+📊 SUMMARY
+================================================================================
+✓ Token Details                  - 507ms avg
+✓ Token Holders                  - 1495ms avg
+✗ Token Transactions             - N/A
+
+================================================================================
+Results: 2/3 routes passed
+================================================================================
