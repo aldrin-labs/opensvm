@@ -161,10 +161,416 @@ const openApiSpec = {
           data: { type: 'object' },
           timestamp: { type: 'string', format: 'date-time' }
         }
+      },
+      AccountStatsResponse: {
+        type: 'object',
+        properties: {
+          totalTransactions: { type: ['string', 'number'], description: 'Total transaction count (may be "1000+" for large accounts)' },
+          tokenTransfers: { type: 'number', description: 'Number of token transfers in last 24h' },
+          lastUpdated: { type: 'number', description: 'Timestamp of last update' }
+        }
+      },
+      AccountPortfolioResponse: {
+        type: 'object',
+        properties: {
+          address: { type: 'string' },
+          timestamp: { type: 'string', format: 'date-time' },
+          data: {
+            type: 'object',
+            properties: {
+              native: {
+                type: 'object',
+                properties: {
+                  balance: { type: 'number' },
+                  symbol: { type: 'string', example: 'SOL' },
+                  name: { type: 'string', example: 'Solana' },
+                  decimals: { type: 'number', example: 9 },
+                  price: { type: ['number', 'null'] },
+                  value: { type: ['number', 'null'] },
+                  change24h: { type: ['number', 'null'] }
+                }
+              },
+              tokens: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    mint: { type: 'string' },
+                    balance: { type: 'number' },
+                    symbol: { type: 'string' },
+                    name: { type: 'string' },
+                    decimals: { type: 'number' },
+                    price: { type: ['number', 'null'] },
+                    value: { type: ['number', 'null'] },
+                    change24h: { type: ['number', 'null'] },
+                    logo: { type: ['string', 'null'] }
+                  }
+                }
+              },
+              totalValue: { type: ['number', 'null'] },
+              totalTokens: { type: 'number' }
+            }
+          }
+        }
+      },
+      TransactionListResponse: {
+        type: 'object',
+        properties: {
+          transactions: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                signature: { type: 'string' },
+                blockTime: { type: ['number', 'null'] },
+                slot: { type: 'number' },
+                err: { type: ['object', 'null'] },
+                memo: { type: ['string', 'null'] }
+              }
+            }
+          },
+          hasMore: { type: 'boolean' },
+          cursor: { type: ['string', 'null'] }
+        }
+      },
+      TransferListResponse: {
+        type: 'object',
+        properties: {
+          transfers: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                txId: { type: 'string' },
+                date: { type: 'string' },
+                from: { type: 'string' },
+                to: { type: 'string' },
+                tokenSymbol: { type: 'string' },
+                tokenAmount: { type: 'string' },
+                transferType: { type: 'string', enum: ['IN', 'OUT'] }
+              }
+            }
+          },
+          hasMore: { type: 'boolean' }
+        }
+      },
+      TransactionDetailResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          blockTime: { type: ['number', 'null'] },
+          slot: { type: 'number' },
+          meta: { type: 'object' },
+          transaction: { type: 'object' }
+        }
+      },
+      BlockListResponse: {
+        type: 'object',
+        properties: {
+          blocks: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                slot: { type: 'number' },
+                blockTime: { type: ['number', 'null'] },
+                blockHeight: { type: 'number' },
+                transactions: { type: 'number' }
+              }
+            }
+          },
+          hasMore: { type: 'boolean' }
+        }
+      },
+      TokenInfoResponse: {
+        type: 'object',
+        properties: {
+          mint: { type: 'string' },
+          symbol: { type: 'string' },
+          name: { type: 'string' },
+          decimals: { type: 'number' },
+          supply: { type: 'string' },
+          holders: { type: 'number' }
+        }
+      },
+      MarketDataResponse: {
+        type: 'object',
+        properties: {
+          tokenInfo: {
+            type: 'object',
+            properties: {
+              symbol: { type: 'string' },
+              name: { type: 'string' },
+              price: { type: 'number' },
+              liquidity: { type: 'number' },
+              volume24h: { type: 'number' }
+            }
+          },
+          pools: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                poolAddress: { type: 'string' },
+                dex: { type: 'string' },
+                pair: { type: 'string' },
+                price: { type: 'number' },
+                liquidity: { type: 'number' },
+                volume24h: { type: 'number' }
+              }
+            }
+          }
+        }
+      },
+      ChartDataResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'object',
+            properties: {
+              items: {
+                type: 'array',
+                items: {
+                  type: 'object',
+                  properties: {
+                    unixTime: { type: 'number' },
+                    type: { type: 'string' },
+                    open: { type: 'number' },
+                    high: { type: 'number' },
+                    low: { type: 'number' },
+                    close: { type: 'number' },
+                    volume: { type: 'number' }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      TradesResponse: {
+        type: 'object',
+        properties: {
+          success: { type: 'boolean' },
+          data: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                signature: { type: 'string' },
+                blockTime: { type: 'number' },
+                source: { type: 'string' },
+                side: { type: 'string', enum: ['buy', 'sell'] },
+                price: { type: 'number' },
+                amount: { type: 'number' },
+                volumeUSD: { type: 'number' }
+              }
+            }
+          }
+        }
+      },
+      SearchResultsResponse: {
+        type: 'object',
+        properties: {
+          results: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['account', 'transaction', 'token', 'program'] },
+                address: { type: 'string' },
+                signature: { type: 'string' },
+                name: { type: 'string' },
+                symbol: { type: 'string' }
+              }
+            }
+          },
+          total: { type: 'number' }
+        }
+      },
+      AIAnswerResponse: {
+        type: 'object',
+        properties: {
+          answer: { type: 'string', description: 'AI-generated answer to the question' },
+          sources: {
+            type: 'array',
+            items: { type: 'string' },
+            description: 'Data sources used to generate the answer'
+          },
+          confidence: { type: 'number', description: 'Confidence score (0-1)' },
+          timestamp: { type: 'string', format: 'date-time' }
+        }
+      },
+      TransactionResponse: {
+        type: 'object',
+        properties: {
+          signature: { type: 'string' },
+          blockTime: { type: ['number', 'null'] },
+          slot: { type: 'number' },
+          meta: { type: 'object' },
+          transaction: { type: 'object' },
+          parsed: {
+            type: 'object',
+            properties: {
+              type: { type: 'string' },
+              info: { type: 'object' }
+            }
+          }
+        }
+      },
+      BlockResponse: {
+        type: 'object',
+        properties: {
+          slot: { type: 'number' },
+          blockTime: { type: ['number', 'null'] },
+          blockHeight: { type: 'number' },
+          blockhash: { type: 'string' },
+          previousBlockhash: { type: 'string' },
+          parentSlot: { type: 'number' },
+          transactions: {
+            type: 'array',
+            items: { type: 'object' }
+          },
+          rewards: {
+            type: 'array',
+            items: { type: 'object' }
+          }
+        }
+      },
+      DeFiOverviewResponse: {
+        type: 'object',
+        properties: {
+          totalValueLocked: { type: 'number' },
+          totalVolume24h: { type: 'number' },
+          topProtocols: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                name: { type: 'string' },
+                tvl: { type: 'number' },
+                volume24h: { type: 'number' },
+                change24h: { type: 'number' }
+              }
+            }
+          },
+          timestamp: { type: 'string', format: 'date-time' }
+        }
+      },
+      NFTCollectionsResponse: {
+        type: 'object',
+        properties: {
+          collections: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                address: { type: 'string' },
+                name: { type: 'string' },
+                symbol: { type: 'string' },
+                floorPrice: { type: 'number' },
+                volume24h: { type: 'number' },
+                items: { type: 'number' },
+                owners: { type: 'number' }
+              }
+            }
+          },
+          total: { type: 'number' }
+        }
+      },
+      SearchResponse: {
+        type: 'object',
+        properties: {
+          results: {
+            type: 'array',
+            items: {
+              type: 'object',
+              properties: {
+                type: { type: 'string', enum: ['account', 'transaction', 'token', 'program', 'block'] },
+                address: { type: 'string' },
+                signature: { type: 'string' },
+                name: { type: 'string' },
+                symbol: { type: 'string' },
+                relevance: { type: 'number' }
+              }
+            }
+          },
+          total: { type: 'number' },
+          query: { type: 'string' }
+        }
+      },
+      TokenMetadataResponse: {
+        type: 'object',
+        properties: {
+          mint: { type: 'string' },
+          symbol: { type: 'string' },
+          name: { type: 'string' },
+          decimals: { type: 'number' },
+          supply: { type: 'string' },
+          logo: { type: ['string', 'null'] },
+          description: { type: ['string', 'null'] },
+          website: { type: ['string', 'null'] },
+          twitter: { type: ['string', 'null'] }
+        }
+      },
+      ProgramInfoResponse: {
+        type: 'object',
+        properties: {
+          programId: { type: 'string' },
+          name: { type: 'string' },
+          category: { type: 'string' },
+          verified: { type: 'boolean' },
+          description: { type: 'string' },
+          website: { type: ['string', 'null'] },
+          documentation: { type: ['string', 'null'] }
+        }
       }
     }
   }
 };
+
+// Helper function to create endpoint-specific response schema
+function createResponseSchema(endpointPath) {
+  // Map endpoints to their specific response schemas
+  const schemaMap = {
+    // More specific paths first (exact matches or longer paths)
+    // Use :param format as it appears in API_REFERENCE.md before conversion
+    '/api/blocks/:slot': 'BlockResponse',
+    '/api/transaction/batch': 'TransactionListResponse',
+    '/api/token-metadata': 'TokenMetadataResponse',
+    '/api/analytics/defi': 'DeFiOverviewResponse',
+    '/api/account-transactions': 'TransactionListResponse',
+    '/api/account-transfers': 'TransferListResponse',
+    '/api/account-portfolio': 'AccountPortfolioResponse',
+    '/api/account-stats': 'AccountStatsResponse',
+    '/api/nft-collections': 'NFTCollectionsResponse',
+    '/api/program': 'ProgramInfoResponse',
+    '/api/market-data': 'MarketDataResponse',
+    '/api/getAnswer': 'AIAnswerResponse',
+    '/api/chart': 'ChartDataResponse',
+    '/api/trades': 'TradesResponse',
+    '/api/search': 'SearchResponse',
+    // Less specific paths last
+    '/api/transaction': 'TransactionResponse',
+    '/api/blocks': 'BlockListResponse',
+    '/api/block': 'BlockResponse',
+    '/api/token': 'TokenInfoResponse',
+  };
+  
+  // Check if endpoint matches any schema mapping (exact match first, then prefix)
+  if (schemaMap[endpointPath]) {
+    return { $ref: `#/components/schemas/${schemaMap[endpointPath]}` };
+  }
+  
+  for (const [pathPrefix, schemaName] of Object.entries(schemaMap)) {
+    if (endpointPath.startsWith(pathPrefix)) {
+      return { $ref: `#/components/schemas/${schemaName}` };
+    }
+  }
+  
+  // Default to generic Success schema
+  return { $ref: '#/components/schemas/Success' };
+}
 
 // Convert endpoints to OpenAPI paths
 endpoints.forEach(endpoint => {
@@ -196,7 +602,7 @@ endpoints.forEach(endpoint => {
           description: 'Successful response',
           content: {
             'application/json': {
-              schema: { $ref: '#/components/schemas/Success' }
+              schema: createResponseSchema(endpoint.path)
             }
           }
         },
