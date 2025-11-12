@@ -298,11 +298,18 @@ export async function GET(
           isWritable: key.writable
         })) || [];
 
-        // Calculate transaction flow
-        const transfers: Array<{ account: string; change: number; }> = [];
+        // Calculate transaction flow - include both SOL and token transfers
+        const transfers: Array<{ 
+          account: string; 
+          change: number;
+          mint?: string;
+          decimals?: number;
+          symbol?: string;
+        }> = [];
         let primaryNetChange = 0;
+        
         if (tx?.meta) {
-          // Look at pre/post balances to determine transfers
+          // 1. Process SOL balance changes
           if (tx.meta.preBalances && tx.meta.postBalances) {
             for (let i = 0; i < tx.meta.preBalances.length; i++) {
               const pre = tx.meta.preBalances[i];
@@ -312,7 +319,10 @@ export async function GET(
               if (change !== 0 && accounts[i]) {
                 transfers.push({
                   account: accounts[i].pubkey,
-                  change
+                  change,
+                  mint: 'So11111111111111111111111111111111111111112', // Native SOL
+                  decimals: 9,
+                  symbol: 'SOL'
                 });
               }
               // Track net change for the requested address to derive direction
@@ -320,6 +330,79 @@ export async function GET(
                 primaryNetChange += change;
               }
             }
+          }
+          
+          // 2. Process token balance changes
+          if (tx.meta.preTokenBalances && tx.meta.postTokenBalances) {
+            // Create a map of account indices to their token changes
+            const tokenChangeMap = new Map<number, {
+              mint: string;
+              preAmount: string;
+              postAmount: string;
+              decimals: number;
+              symbol?: string;
+            }>();
+            
+            // Process pre-balances
+            tx.meta.preTokenBalances.forEach(preBalance => {
+              const key = preBalance.accountIndex;
+              if (!tokenChangeMap.has(key)) {
+                tokenChangeMap.set(key, {
+                  mint: preBalance.mint,
+                  preAmount: preBalance.uiTokenAmount.amount,
+                  postAmount: '0',
+                  decimals: preBalance.uiTokenAmount.decimals
+                });
+              } else {
+                const existing = tokenChangeMap.get(key)!;
+                existing.preAmount = preBalance.uiTokenAmount.amount;
+              }
+            });
+            
+            // Process post-balances
+            tx.meta.postTokenBalances.forEach(postBalance => {
+              const key = postBalance.accountIndex;
+              if (!tokenChangeMap.has(key)) {
+                tokenChangeMap.set(key, {
+                  mint: postBalance.mint,
+                  preAmount: '0',
+                  postAmount: postBalance.uiTokenAmount.amount,
+                  decimals: postBalance.uiTokenAmount.decimals
+                });
+              } else {
+                const existing = tokenChangeMap.get(key)!;
+                existing.postAmount = postBalance.uiTokenAmount.amount;
+                existing.mint = postBalance.mint; // Use post-balance mint as source of truth
+                existing.decimals = postBalance.uiTokenAmount.decimals;
+              }
+            });
+            
+            // Convert to transfers
+            tokenChangeMap.forEach((tokenChange, accountIndex) => {
+              try {
+                const preAmount = BigInt(tokenChange.preAmount);
+                const postAmount = BigInt(tokenChange.postAmount);
+                const change = postAmount - preAmount;
+                
+                if (change !== 0n && accounts[accountIndex]) {
+                  // Convert BigInt to number safely - may lose precision for very large numbers
+                  // but this is acceptable for display purposes
+                  const changeNumber = change > BigInt(Number.MAX_SAFE_INTEGER) 
+                    ? Number(change / BigInt(1000)) * 1000  // Approximate for very large numbers
+                    : Number(change);
+                  
+                  transfers.push({
+                    account: accounts[accountIndex].pubkey,
+                    change: changeNumber, // Raw token amount (not normalized)
+                    mint: tokenChange.mint,
+                    decimals: tokenChange.decimals,
+                    symbol: tokenChange.symbol
+                  });
+                }
+              } catch (error) {
+                console.warn(`Failed to process token change for account ${accountIndex}:`, error);
+              }
+            });
           }
         }
 
