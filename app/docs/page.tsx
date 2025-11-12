@@ -202,29 +202,51 @@ export default async function DocsPage() {
           </div>
 
           {/* Additional Resources */}
-          <div className="mt-16 p-8 border rounded-lg bg-card/50">
-            <h2 className="text-2xl font-bold mb-4">Additional Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Keyboard className="w-5 h-5 text-primary" />
+          <div className="mt-16 p-10 border-2 border-slate-200 dark:border-slate-700 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-700 shadow-xl">
+            <h2 className="text-3xl font-bold mb-8 text-slate-900 dark:text-slate-100">Quick Reference</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-md">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+                    <Keyboard className="w-5 h-5 text-white" />
+                  </div>
                   Keyboard Shortcuts
                 </h3>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li><code className="px-2 py-1 bg-muted rounded">Cmd/Ctrl + K</code> - Quick search</li>
-                  <li><code className="px-2 py-1 bg-muted rounded">Cmd/Ctrl + /</code> - Toggle AI chat</li>
-                  <li><code className="px-2 py-1 bg-muted rounded">Esc</code> - Close modals</li>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+                  <li className="flex items-center justify-between">
+                    <span>Quick search</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Cmd/Ctrl + K</code>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Toggle AI chat</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Cmd/Ctrl + /</code>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Close modals</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Esc</code>
+                  </li>
                 </ul>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-primary" />
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-md">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                    <HelpCircle className="w-5 h-5 text-white" />
+                  </div>
                   Need Help?
                 </h3>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Join our community for support</li>
-                  <li>• Check GitHub issues for known problems</li>
-                  <li>• Contact support@opensvm.com</li>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Join our community for support</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Check GitHub issues for known problems</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Contact support@opensvm.com</span>
+                  </li>
                 </ul>
               </div>
             </div>
