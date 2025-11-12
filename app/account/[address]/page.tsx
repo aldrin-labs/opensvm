@@ -192,8 +192,8 @@ async function getAccountData(address: string): Promise<AccountData> {
 }
 
 interface PageProps {
-  params: Promise<{ address: string }>;
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+  params: { address: string };
+  searchParams: { [key: string]: string | string[] | undefined };
 }
 
 export default function AccountPage({ params, searchParams }: PageProps) {
@@ -347,10 +347,9 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
 
-        // Resolve the promises
-        const [resolvedParams, resolvedSearchParams] = await Promise.all([params, searchParams]);
-        const rawAddress = resolvedParams.address;
-        const { tab } = resolvedSearchParams;
+        // Use params directly (no longer promises in client components)
+        const rawAddress = params.address;
+        const { tab } = searchParams;
 
         if (!mounted || signal.aborted) return;
 

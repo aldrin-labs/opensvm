@@ -18,7 +18,7 @@ import {
 import { fetchAccountTransactions } from './data-fetching';
 import { classifyTransactionType, isFundingTransaction, type TransactionClassification } from '@/lib/transaction-classifier';
 import { formatEdgeLabel } from './edge-label-utils';
-import AccountHoverTooltip from './AccountHoverTooltip';
+import { AccountHoverTooltip } from './AccountHoverTooltip';
 import { GraphControls } from './GraphControls';
 import { NavigationHistory } from './NavigationHistory';
 import { useEdgeHover } from './hooks/useEdgeHover';
@@ -544,6 +544,13 @@ const CytoscapeContainer = React.memo(() => {
     const classification: TransactionClassification = classifyTransactionType(data);
     const funding = isFundingTransaction(data, focusAccount);
 
+    // FILTER: Only process SOL and SPL transfers, skip DeFi/swaps/trades
+    const isTransferType = classification.type === 'sol_transfer' || classification.type === 'spl_transfer';
+    if (!isTransferType) {
+      debugLog('Skipping non-transfer transaction:', classification.type);
+      return { nodes, edges };
+    }
+
     // Compute net balance changes per account (prefer provided transfers; fallback to meta)
     const netChangeByAccount: Record<string, number> = {};
     const transfersArr: Array<{ account: string; change: number }> = (data as any).transfers || [];
@@ -567,39 +574,6 @@ const CytoscapeContainer = React.memo(() => {
         }
       }
     }
-
-    // Process accounts from either data.accounts or data.details.accounts
-    const accountsToProcess = data.accounts || data.details?.accounts || [];
-    debugLog('Accounts to process:', accountsToProcess.length);
-
-    accountsToProcess.forEach((account: any, _index: number) => {
-      const accountPubkey = account.pubkey || account.id || account;
-
-      if (!accountPubkey || typeof accountPubkey !== 'string') {
-        debugLog('Skipping invalid account:', account);
-        return;
-      }
-
-      if (EXCLUDED_ACCOUNTS.has(accountPubkey)) {
-        debugLog('Skipping excluded account:', accountPubkey);
-        return;
-      }
-
-      debugLog('Ensuring account node exists:', accountPubkey);
-
-      nodes.push({
-        data: {
-          id: accountPubkey,
-          label: `${accountPubkey.slice(0, 5)}...${accountPubkey.slice(-5)}`,
-          type: 'account',
-          pubkey: accountPubkey,
-          isSigner: account.isSigner || account.signer || false,
-          isWritable: account.isWritable || account.writable || false,
-          size: focusAccount === accountPubkey ? 25 : 15,
-          color: (account.isSigner || account.signer) ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
-        }
-      });
-    });
 
     // Build account-to-account edges per transfer
     const instructions: any[] = (data as any)?.details?.instructions || (data as any)?.transaction?.message?.instructions || [];
@@ -640,15 +614,25 @@ const CytoscapeContainer = React.memo(() => {
       }
     }
 
-    // Create edges between accounts
+    // Track unique accounts involved in transfers
+    const accountsInvolved = new Set<string>();
+
+    // Create edges between accounts (transactions become edges, not nodes)
     for (const t of parsedTransfers) {
       if (!t.from || !t.to || t.from === t.to) continue;
-      // Ensure nodes exist (added above), add edge
+      
+      // Skip excluded accounts
+      if (EXCLUDED_ACCOUNTS.has(t.from) || EXCLUDED_ACCOUNTS.has(t.to)) continue;
+      
+      accountsInvolved.add(t.from);
+      accountsInvolved.add(t.to);
+      
       const isSol = classification.type === 'sol_transfer' && (t.mint == null);
       const amountForEdge = isSol ? Math.abs(Number(t.amount || 0)) : classification.amount ?? t.amount;
       const direction = focusAccount
         ? (t.to === focusAccount ? 'in' : t.from === focusAccount ? 'out' : 'neutral')
         : 'neutral';
+      
       edges.push({
         data: {
           id: `${txSignature}-${t.from}-${t.to}`,
@@ -658,7 +642,11 @@ const CytoscapeContainer = React.memo(() => {
           fullSignature: txSignature,
           txType: classification.type,
           isFunding: funding || classification.isFunding,
-          color: 'hsl(var(--muted-foreground))',
+          color: direction === 'in' 
+            ? 'hsl(var(--chart-2))' // Green from theme
+            : direction === 'out' 
+            ? 'hsl(var(--chart-1))' // Red/Orange from theme
+            : 'hsl(var(--muted-foreground))', // Gray from theme
           amount: amountForEdge,
           tokenSymbol: classification.tokenSymbol,
           direction,
@@ -672,10 +660,25 @@ const CytoscapeContainer = React.memo(() => {
       });
     }
 
+    // Create nodes ONLY for accounts involved in transfers
+    accountsInvolved.forEach(accountPubkey => {
+      nodes.push({
+        data: {
+          id: accountPubkey,
+          label: `${accountPubkey.slice(0, 5)}...${accountPubkey.slice(-5)}`,
+          type: 'account',
+          pubkey: accountPubkey,
+          size: focusAccount === accountPubkey ? 25 : 15,
+          color: focusAccount === accountPubkey ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
+        }
+      });
+    });
+
     debugLog('Processed transaction data result:', {
       signature: txSignature,
       nodesCreated: nodes.length,
-      edgesCreated: edges.length
+      edgesCreated: edges.length,
+      transactionType: classification.type
     });
 
     return { nodes, edges };

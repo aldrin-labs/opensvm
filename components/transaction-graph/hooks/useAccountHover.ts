@@ -10,6 +10,8 @@ export interface AccountTooltipData {
     transactionCounts?: { totalIn: number; totalOut: number };
     topRecipients?: Array<{ address: string; amount: number; symbol?: string }>;
     accountType?: 'wallet' | 'program' | 'token_account' | 'system';
+    totalTransactions?: string | number;
+    tokenTransfers?: number;
 }
 
 export interface UseAccountHoverReturn {
@@ -102,7 +104,9 @@ export function useAccountHover(): UseAccountHoverReturn {
                             symbol: recipient?.symbol ? SecurityUtils.sanitizeText(recipient.symbol) : undefined
                         })) : undefined,
                     accountType: ['wallet', 'program', 'token_account', 'system'].includes(data.accountType) ?
-                        data.accountType : 'wallet'
+                        data.accountType : 'wallet',
+                    totalTransactions: data.totalTransactions !== undefined ? data.totalTransactions : undefined,
+                    tokenTransfers: typeof data.tokenTransfers === 'number' ? Math.max(0, data.tokenTransfers) : undefined
                 };
 
                 setTooltipData(sanitizedTooltipData);
@@ -211,5 +215,3 @@ export function useAccountHover(): UseAccountHoverReturn {
         hideTooltip
     };
 }
-
-

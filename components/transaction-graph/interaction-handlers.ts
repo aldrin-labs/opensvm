@@ -280,7 +280,7 @@ export const setupGraphInteractions = (
   cy.on('mouseover', 'node, edge', throttledHoverIn);
   cy.on('mouseout', 'node, edge', throttledHoverOut);
 
-  // Add click handler for edges
+  // Add click handler for edges (transfers)
   cy.on('tap', 'edge', (event) => {
     // Always prevent default browser behavior to avoid page reload
     if (event.originalEvent) {
@@ -295,19 +295,13 @@ export const setupGraphInteractions = (
     edge.addClass('highlighted');
     edge.connectedNodes().addClass('highlighted');
 
-    // If one of the connected nodes is a transaction, navigate to it
-    const connectedTxs = edge.connectedNodes().filter((node: any) => node.data('type') === 'transaction');
-    if (connectedTxs.length > 0) {
-      const txSignature = connectedTxs[0].id();
-
-      // Navigate to transaction page
+    // Get transaction signature from edge data (edges now represent transactions)
+    const txSignature = edge.data('fullSignature');
+    
+    if (txSignature) {
+      // Open transaction in new tab silently
       if (typeof window !== 'undefined') {
-        window.open(`/tx/${txSignature}`, '_blank');
-      }
-
-      // Also focus on it in the current graph for visual feedback
-      if (txSignature !== focusSignatureRef.current) {
-        focusOnTransaction(txSignature, true);
+        window.open(`/tx/${txSignature}`, '_blank', 'noopener,noreferrer');
       }
     }
   });
