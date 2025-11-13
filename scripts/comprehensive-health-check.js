@@ -30,7 +30,7 @@ const colors = {
 
 // Test data
 const TEST_DATA = {
-  walletAddress: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH',
+  walletAddress: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck',
   txSignature: '4RwR2w12LydcoutGYJz2TbVxY8HVV44FCN2xoo1L9xu7ZcFxFBpoxxpSFTRWf9MPwMzmr9yTuJZjGqSmzcrawF43',
   blockSlot: 200000000,
   tokenMint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',

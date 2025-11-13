@@ -64,21 +64,21 @@ Generated: 2025-11-02T09:17:10.612Z
 
 | Endpoint | Method | Status | Response Time | Cache |
 |----------|--------|--------|---------------|-------|
-| /account-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ❌ 500 | 1483ms | - |
-| /account-transactions/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 2572ms | 85% |
-| /account-token-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB | GET | ✅ 200 | 2097ms | 68% |
-| /check-account-type/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 537ms | 69% |
-| /account-balance/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 83ms | - |
-| /account-info/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 104ms | - |
-| /account-tokens/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 88ms | - |
-| /account-nfts/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 105ms | - |
-| /account-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 88ms | - |
-| /account-stakes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 93ms | - |
-| /account-rewards/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 112ms | - |
-| /account-votes/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 81ms | - |
-| /wallet-profile/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 87ms | - |
-| /wallet-analytics/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 96ms | - |
-| /portfolio/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 85ms | - |
+| /account-stats/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ❌ 500 | 1483ms | - |
+| /account-transactions/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 2572ms | 85% |
+| /account-token-stats/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck/Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB | GET | ✅ 200 | 2097ms | 68% |
+| /check-account-type/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 537ms | 69% |
+| /account-balance/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 83ms | - |
+| /account-info/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 104ms | - |
+| /account-tokens/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 88ms | - |
+| /account-nfts/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 105ms | - |
+| /account-history/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 88ms | - |
+| /account-stakes/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 93ms | - |
+| /account-rewards/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 112ms | - |
+| /account-votes/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 81ms | - |
+| /wallet-profile/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 87ms | - |
+| /wallet-analytics/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 96ms | - |
+| /portfolio/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 85ms | - |
 | /verify-wallet-signature | POST | ✅ 200 | 85ms | - |
 
 </details>
@@ -231,7 +231,7 @@ Generated: 2025-11-02T09:17:10.612Z
 
 | Endpoint | Method | Status | Response Time | Cache |
 |----------|--------|--------|---------------|-------|
-| /user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH | GET | ✅ 200 | 2094ms | 92% |
+| /user-history/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck | GET | ✅ 200 | 2094ms | 92% |
 | /usage-stats | GET | ❌ 429 | 459ms | - |
 | /api-keys | POST | ❌ 429 | 101ms | - |
 | /metrics | GET | ❌ 429 | 74ms | - |

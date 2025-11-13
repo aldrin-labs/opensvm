@@ -11,7 +11,7 @@ import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
 import { TransactionGraphLazy, AccountTabsLazy, PerformanceWrapper } from '@/components/LazyComponents';
 import { GraphErrorBoundary, TableErrorBoundary } from '@/components/ErrorBoundary';
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import TabContainer from './components/TabContainer';
@@ -193,11 +193,15 @@ async function getAccountData(address: string): Promise<AccountData> {
 }
 
 interface PageProps {
-  params: { address: string };
-  searchParams: { [key: string]: string | string[] | undefined };
+  params: Promise<{ address: string }>;
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }
 
 export default function AccountPage({ params, searchParams }: PageProps) {
+  // Unwrap params and searchParams using React.use()
+  const resolvedParams = use(params);
+  const resolvedSearchParams = use(searchParams);
+  
   const router = useRouter();
   const urlParams = useParams();
   const [accountInfo, setAccountInfo] = useState<AccountData | null>(null);
@@ -348,9 +352,9 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         abortControllerRef.current = new AbortController();
         const signal = abortControllerRef.current.signal;
 
-        // Use params directly (no longer promises in client components)
-        const rawAddress = params.address;
-        const { tab } = searchParams;
+        // Use resolved params (unwrapped from Promise)
+        const rawAddress = resolvedParams.address;
+        const { tab } = resolvedSearchParams;
 
         if (!mounted || signal.aborted) return;
 

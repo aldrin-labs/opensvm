@@ -236,23 +236,32 @@ const openApiSpec = {
       TransferListResponse: {
         type: 'object',
         properties: {
-          transfers: {
+          data: {
             type: 'array',
             items: {
               type: 'object',
               properties: {
-                txId: { type: 'string' },
-                date: { type: 'string' },
-                from: { type: 'string' },
-                to: { type: 'string' },
-                tokenSymbol: { type: 'string' },
-                tokenAmount: { type: 'string' },
-                transferType: { type: 'string', enum: ['IN', 'OUT'] }
-              }
+                txId: { type: 'string', description: 'Transaction signature' },
+                date: { type: 'string', format: 'date-time', description: 'ISO 8601 timestamp of the transaction' },
+                from: { type: 'string', description: 'Sender wallet address' },
+                to: { type: 'string', description: 'Recipient wallet address' },
+                tokenSymbol: { type: 'string', description: 'Token symbol (e.g., SOL, USDC, SVMAI)' },
+                tokenAmount: { type: 'string', description: 'Transfer amount in token\'s native units' },
+                transferType: { type: 'string', enum: ['IN', 'OUT'], description: 'Direction of transfer relative to queried address' },
+                mint: { type: 'string', description: 'Token mint address or \'SOL\' for native transfers' },
+                txType: { type: 'string', enum: ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'], description: 'Transaction category' },
+                programId: { type: 'string', description: 'Program ID for DeFi/complex transactions (optional)' }
+              },
+              required: ['txId', 'date', 'from', 'to', 'tokenSymbol', 'tokenAmount', 'transferType', 'mint', 'txType']
             }
           },
-          hasMore: { type: 'boolean' }
-        }
+          hasMore: { type: 'boolean', description: 'Indicates if more transfers are available for pagination' },
+          total: { type: 'integer', description: 'Number of transfers returned in this response' },
+          originalTotal: { type: 'integer', description: 'Total number of transfers before pagination' },
+          nextPageSignature: { type: 'string', description: 'Signature to use for next page (optional)' },
+          fromCache: { type: 'boolean', description: 'Indicates if data was served from cache' }
+        },
+        required: ['data', 'hasMore', 'total', 'originalTotal', 'fromCache']
       },
       TransactionDetailResponse: {
         type: 'object',

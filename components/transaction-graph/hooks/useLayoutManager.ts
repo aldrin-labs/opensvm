@@ -61,7 +61,7 @@ export function useLayoutManager() {
 
         // Dagre-specific settings
         if (layoutType === 'dagre') {
-          layoutConfig.rankDir = 'LR';
+          layoutConfig.rankDir = 'TB'; // Top-to-bottom: inflows above, outflows below
           layoutConfig.nodeSep = 80;
           layoutConfig.rankSep = 120;
           layoutConfig.edgeSep = 40;

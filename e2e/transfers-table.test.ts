@@ -107,7 +107,7 @@ test.describe('TransfersTable Component', () => {
         
         console.log('Empty state indicators:', JSON.stringify(emptyStateIndicators, null, 2));
         
-        // Take a screenshot for visual debugging
+                // Take a screenshot for visual debugging
         await page.screenshot({ path: 'test-results/transfers-table-empty-state.png' });
         
         // If no specific empty state indicator is found, but the table has no rows and is not loading,
@@ -120,10 +120,10 @@ test.describe('TransfersTable Component', () => {
         }
       }
     } else if (hasNoTransfers || isEmpty) {
-      console.log('No transfers found - this is expected with disabled Flipside API');
+      console.log('No transfers found');
       expect(true).toBe(true);
     } else {
-      console.log('No transfers table found - account may have no transfers or APIs are disabled');
+      console.log('No transfers table found - account may have no transfers');
       // This is acceptable when APIs are disabled
       expect(true).toBe(true);
     }

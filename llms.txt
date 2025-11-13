@@ -43,8 +43,55 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 ### 5. ACCOUNT TRANSFERS
 
 - **GET /api/account-transfers/:address**
-  - Authentication: Required
-  - Example: `curl "https://opensvm.com/api/account-transfers/{address}?beforeSignature=value&offset=value&limit=v...`
+  - Get transfer history for an address with comprehensive filtering and transaction type detection
+  - Features: Bidirectional visibility (sender + receiver), real token symbols from Metaplex, DeFi program attribution, transaction categorization
+  - Parameters:
+    - `address` (path, required): Solana wallet address to fetch transfers for
+    - `limit` (integer, optional, default: 50): Maximum number of transfers to return per request
+    - `offset` (integer, optional, default: 0): Pagination offset - number of transfers to skip
+    - `beforeSignature` (string, optional): Pagination cursor - use the signature to continue from a specific transaction
+    - `transferType` (enum: IN|OUT|ALL, optional, default: ALL): Filter by transfer direction
+    - `solanaOnly` (boolean, optional, default: false): Show only native SOL transfers, excluding all SPL tokens
+    - `txType` (string, optional): Filter by transaction type - comma-separated values: 'sol' (native SOL), 'spl' (SPL tokens), 'defi' (DEX/DeFi programs), 'nft' (NFT operations), 'program' (complex program interactions), 'system' (system/consensus), 'funding' (account creation/funding)
+    - `mints` (string, optional): Filter by specific token mint addresses - comma-separated list to track specific tokens (e.g., 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump' for SVMAI token)
+    - `bypassCache` (boolean, optional, default: false): Bypass cache and fetch fresh data directly from RPC
+  - Response includes: txId, date, from, to, tokenSymbol (SVMAI/USDC/SOL/etc), tokenAmount, transferType (IN/OUT), mint (full token address), txType (transaction category), programId (for DeFi/program transactions)
+  - Transaction Types Detected:
+    - `sol` - Simple native SOL transfers via System Program
+    - `spl` - SPL token transfers (Token Program or Token-2022)
+    - `defi` - DEX/DeFi operations (Raydium, Orca, Jupiter, Meteora, Phoenix, etc.)
+    - `nft` - NFT minting and operations (decimals=0, amount=1)
+    - `program` - Complex program interactions not covered by other categories
+    - `system` - System/consensus operations (nonce accounts, allocate, assign)
+    - `funding` - Account creation and funding operations
+  - Sorted by date (newest first)
+  - Authentication: Required (Bearer token via OPENSVM_JWT_TOKEN)
+  - Examples:
+    ```bash
+    # Basic request - get 50 most recent transfers
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?limit=50" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    
+    # Filter by transaction type - show only DeFi and SPL token transfers
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?txType=defi,spl&limit=20" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    
+    # Track specific token by mint address (SVMAI example)
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?mints=Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump&limit=100" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    
+    # Complex filtering - track multiple tokens with DeFi type only
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?txType=defi&mints=So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&limit=50" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    
+    # Show only incoming SOL transfers, bypass cache for fresh data
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?solanaOnly=true&transferType=IN&bypassCache=true" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    
+    # Pagination - get next page with offset
+    curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?limit=50&offset=50" \
+      -H "Authorization: Bearer $OPENSVM_JWT_TOKEN"
+    ```
 
 ### 6. AI ANALYZE TRANSACTION
 

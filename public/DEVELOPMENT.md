@@ -47,8 +47,8 @@ SOLANA_RPC_ENDPOINT_FALLBACK=https://solana-mainnet.g.alchemy.com/v2/your-api-ke
 TOGETHER_API_KEY=your-together-api-key
 ANTHROPIC_API_KEY=your-anthropic-api-key
 
-# Optional services
-FLIPSIDE_API_KEY=your-flipside-api-key
+# Market data
+BIRDEYE_API_KEY=your-birdeye-api-key
 ```
 
 4. **Start the development server**

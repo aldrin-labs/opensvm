@@ -8,6 +8,7 @@ export interface OpenAPIParameter {
   required?: boolean;
   schema: any;
   description?: string;
+  example?: string;
 }
 
 export interface OpenAPIResponse {
@@ -417,7 +418,7 @@ class OpenAPIGenerator {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ['account', 'transaction', 'block', 'program', 'token'], example: 'account' },
-          address: { type: 'string', example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+          address: { type: 'string', example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
           signature: { type: 'string', example: '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5' },
           name: { type: 'string', example: 'Raydium AMM' },
           description: { type: 'string', example: 'Automated market maker program' },
@@ -437,7 +438,7 @@ class OpenAPIGenerator {
       AccountInfo: {
         type: 'object',
         properties: {
-          address: { type: 'string', example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+          address: { type: 'string', example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
           lamports: { type: 'integer', example: 5000000000, description: 'Balance in lamports' },
           owner: { type: 'string', example: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
           executable: { type: 'boolean', example: false },
@@ -480,32 +481,95 @@ class OpenAPIGenerator {
       },
       TransferListResponse: {
         type: 'object',
-        required: ['transfers', 'hasMore'],
+        required: ['data', 'hasMore', 'total', 'originalTotal', 'fromCache'],
         properties: {
-          transfers: {
+          data: {
             type: 'array',
-            description: 'List of transfer transactions',
+            description: 'List of transfer transactions sorted by date (newest first)',
             items: {
               type: 'object',
-              required: ['txId', 'date', 'from', 'to', 'tokenSymbol', 'tokenAmount', 'transferType'],
+              required: ['txId', 'date', 'from', 'to', 'tokenSymbol', 'tokenAmount', 'transferType', 'mint', 'txType'],
               properties: {
-                txId: { type: 'string', description: 'Transaction signature' },
-                date: { type: 'string', description: 'Transaction timestamp' },
-                from: { type: 'string', description: 'Sender address' },
-                to: { type: 'string', description: 'Receiver address' },
-                tokenSymbol: { type: 'string', description: 'Token symbol (SOL or token)' },
-                tokenAmount: { type: 'string', description: 'Amount transferred' },
+                txId: { 
+                  type: 'string', 
+                  description: 'Transaction signature',
+                  example: '3A8HDYmoxXDQwLyz51HiQxVev1cXPEx6LwoWRA2e8kV95G9bcVPrftJSVYRAfxaDMoL5rmfTRVvCyWKKzXB9kTNn'
+                },
+                date: { 
+                  type: 'string', 
+                  format: 'date-time',
+                  description: 'Transaction timestamp in ISO format',
+                  example: '2025-11-12T06:55:26.000Z'
+                },
+                from: { 
+                  type: 'string', 
+                  description: 'Sender wallet address',
+                  example: 'CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77'
+                },
+                to: { 
+                  type: 'string', 
+                  description: 'Receiver wallet address',
+                  example: '5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85'
+                },
+                tokenSymbol: { 
+                  type: 'string', 
+                  description: 'Token symbol from Metaplex metadata (e.g., SVMAI, USDC) or full mint address',
+                  example: 'SVMAI'
+                },
+                tokenAmount: { 
+                  type: 'string', 
+                  description: 'Amount transferred in human-readable format',
+                  example: '18452280.03545'
+                },
                 transferType: { 
                   type: 'string', 
                   enum: ['IN', 'OUT'],
-                  description: 'Transfer direction relative to the queried address'
+                  description: 'Transfer direction relative to the queried address',
+                  example: 'OUT'
+                },
+                mint: {
+                  type: 'string',
+                  description: 'Token mint address (SOL for native SOL, full mint address for SPL tokens)',
+                  example: 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump'
+                },
+                txType: {
+                  type: 'string',
+                  enum: ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'],
+                  description: 'Transaction type classification',
+                  example: 'spl'
+                },
+                programId: {
+                  type: 'string',
+                  description: 'Program ID for DeFi/complex transactions (e.g., Jupiter, Raydium)',
+                  example: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4'
                 }
               }
             }
           },
           hasMore: { 
             type: 'boolean',
-            description: 'Whether more transfers are available for pagination'
+            description: 'Whether more transfers are available for pagination',
+            example: true
+          },
+          total: {
+            type: 'integer',
+            description: 'Number of transfers returned in this page',
+            example: 5
+          },
+          originalTotal: {
+            type: 'integer',
+            description: 'Total number of transfers found before pagination',
+            example: 14
+          },
+          nextPageSignature: {
+            type: 'string',
+            description: 'Signature cursor for next page (may be null)',
+            example: null
+          },
+          fromCache: {
+            type: 'boolean',
+            description: 'Whether data was served entirely from cache',
+            example: false
           }
         }
       },
@@ -1238,21 +1302,21 @@ class OpenAPIGenerator {
         in: 'query',
         required: false,
         schema: { type: 'string' },
-        description: 'Smart cursor initialization: use oldest cached signature if no beforeSignature provided'
+        description: 'Pagination cursor - use the signature to continue from a specific transaction'
       });
       parameters.push({
         name: 'offset',
         in: 'query',
         required: false,
-        schema: { type: 'number' },
-        description: 'Pagination offset'
+        schema: { type: 'integer', default: 0 },
+        description: 'Pagination offset - number of transfers to skip'
       });
       parameters.push({
         name: 'limit',
         in: 'query',
         required: false,
-        schema: { type: 'string' },
-        description: 'Maximum number of transfers to return'
+        schema: { type: 'integer', default: 50 },
+        description: 'Maximum number of transfers to return per request'
       });
       parameters.push({
         name: 'transferType',
@@ -1260,7 +1324,8 @@ class OpenAPIGenerator {
         required: false,
         schema: { 
           type: 'string',
-          enum: ['IN', 'OUT']
+          enum: ['IN', 'OUT', 'ALL'],
+          default: 'ALL'
         },
         description: 'Filter by transfer direction'
       });
@@ -1268,8 +1333,34 @@ class OpenAPIGenerator {
         name: 'solanaOnly',
         in: 'query',
         required: false,
-        schema: { type: 'boolean' },
-        description: 'Show only SOL transfers (exclude tokens)'
+        schema: { type: 'boolean', default: false },
+        description: 'Show only native SOL transfers, excluding all SPL tokens'
+      });
+      parameters.push({
+        name: 'txType',
+        in: 'query',
+        required: false,
+        schema: { 
+          type: 'string',
+          pattern: '^(sol|spl|defi|nft|program|system|funding)(,(sol|spl|defi|nft|program|system|funding))*$'
+        },
+        description: 'Filter by transaction type - comma-separated values: \'sol\' (native SOL), \'spl\' (SPL tokens), \'defi\' (DEX/DeFi programs), \'nft\' (NFT operations), \'program\' (complex program interactions), \'system\' (system/consensus), \'funding\' (account creation/funding)',
+        example: 'defi,spl'
+      });
+      parameters.push({
+        name: 'mints',
+        in: 'query',
+        required: false,
+        schema: { type: 'string' },
+        description: 'Filter by specific token mint addresses - comma-separated list to track specific tokens',
+        example: 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump,So11111111111111111111111111111111111111112'
+      });
+      parameters.push({
+        name: 'bypassCache',
+        in: 'query',
+        required: false,
+        schema: { type: 'boolean', default: false },
+        description: 'Bypass cache and fetch fresh data directly from RPC'
       });
       return parameters;
     }
@@ -1409,8 +1500,8 @@ class OpenAPIGenerator {
     let url = `${baseUrl}${endpoint.path}`;
     
     // Replace path parameters with example values
-    url = url.replace('{address}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
-    url = url.replace('{walletAddress}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
+    url = url.replace('{address}', 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck');
+    url = url.replace('{walletAddress}', 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck');
     url = url.replace('{signature}', '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5');
     url = url.replace('{slot}', '290000000');
     url = url.replace('{mint}', 'So11111111111111111111111111111111111111112');
@@ -1451,7 +1542,7 @@ class OpenAPIGenerator {
       } else if (endpoint.path.includes('/analyze-transaction') || endpoint.path.includes('/analyze')) {
         curl += ' \\\n  -d \'{"signature":"5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5"}\'';
       } else if (endpoint.path.includes('/filter-transactions')) {
-        curl += ' \\\n  -d \'{"account":"7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH","minAmount":1}\'';
+        curl += ' \\\n  -d \'{"account":"REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck","minAmount":1}\'';
       } else if (endpoint.path.includes('/solana-rpc') || endpoint.path.includes('/solana-proxy')) {
         curl += ' \\\n  -d \'{"method":"getHealth","params":[]}\'';
       } else if (endpoint.path.includes('/getSimilarQuestions')) {

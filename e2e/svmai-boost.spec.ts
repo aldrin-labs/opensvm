@@ -116,7 +116,7 @@ test.describe('SVMAI Boost Functionality', () => {
         console.log('ℹ️ Trending validators section not found - may be loading');
       }
     } else {
-      console.log('ℹ️ Trending validators API timeout/disabled - this is expected with disabled Flipside');
+      console.log('ℹ️ Trending validators API timeout/disabled');
       // Test should pass when APIs are disabled
       expect(true).toBe(true);
     }

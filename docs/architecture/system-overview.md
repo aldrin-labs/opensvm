@@ -23,8 +23,8 @@ OpenSVM is a sophisticated Solana blockchain visualization and monitoring platfo
 
 ### External Integrations
 - **Blockchain**: Solana RPC nodes
-- **Analytics**: Flipside Crypto API
 - **Vector Search**: Qdrant
+- **Market Data**: Birdeye API
 - **Monitoring**: Custom analytics services
 
 ## High-Level Architecture
@@ -60,7 +60,6 @@ graph TB
     
     subgraph "External Services"
         SOLANA_RPC[Solana RPC]
-        FLIPSIDE[Flipside API]
         QDRANT[Qdrant DB]
         LLM[LLM Services]
     end
@@ -229,7 +228,7 @@ The tokenomics system manages the native $SVMAI token economics, implementing a 
 
 ### External Service Integration
 - **Solana RPC**: Primary blockchain data source
-- **Flipside Crypto**: Advanced analytics data
+- **Birdeye API**: Token market data and analytics
 - **Qdrant**: Vector database for similarity search
 - **Together AI**: LLM services for AI features
 

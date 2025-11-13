@@ -173,7 +173,7 @@ SERPER_API_KEY=demo
 
 TOGETHER_API_KEY=demo
 HELICONE_API_KEY=demo
-FLIPSIDE_API_KEY=demo
+BIRDEYE_API_KEY=demo
 
 
 OPENSVM_RPC_LIST=https://mainnet.infura.io/v3/demo

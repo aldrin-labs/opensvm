@@ -33,7 +33,6 @@
     "@coral-xyz/anchor": "^0.30.1",
     "@debridge-finance/solana-transaction-parser": "^3.2.1",
     "@duckdb/duckdb-wasm": "^1.29.1-dev132.0",
-    "@flipsidecrypto/sdk": "^2.1.0",
     "@mlc-ai/web-llm": "^0.2.78",
     "@moralisweb3/common-evm-utils": "^2.27.2",
     "@moralisweb3/common-sol-utils": "^2.27.2",

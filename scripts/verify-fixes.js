@@ -108,7 +108,7 @@ async function runTests() {
   await testEndpoint(
     'User History (No Auth)',
     'GET',
-    `${BASE_URL}/user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH`
+    `${BASE_URL}/user-history/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck`
   );
   
   console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');

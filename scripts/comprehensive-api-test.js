@@ -99,7 +99,7 @@ const apiTests = [
           transactions: [
             { 
               txId: 'tx1',
-              from: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', 
+              from: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck', 
               to: '9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 
               tokenAmount: '1.5', 
               tokenSymbol: 'SOL',
@@ -108,7 +108,7 @@ const apiTests = [
             { 
               txId: 'tx2',
               from: '8xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin', 
-              to: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', 
+              to: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck', 
               tokenAmount: '0.5', 
               tokenSymbol: 'USDC',
               transferType: 'wallet_to_wallet'
@@ -189,7 +189,7 @@ const apiTests = [
       {
         name: 'Account Statistics',
         method: 'GET',
-        path: '/api/account-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH',
+        path: '/api/account-stats/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck',
         validate: (data) => {
           if (data && (data.balance !== undefined || data.lamports !== undefined)) return true;
           if (data && data.data) return true;
@@ -201,7 +201,7 @@ const apiTests = [
       {
         name: 'Account Transactions',
         method: 'GET',
-        path: '/api/account-transactions/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH?limit=10',
+        path: '/api/account-transactions/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck?limit=10',
         validate: (data) => Array.isArray(data) || (data.transactions && Array.isArray(data.transactions))
       },
       {
@@ -213,7 +213,7 @@ const apiTests = [
       {
         name: 'User History',
         method: 'GET',
-        path: '/api/user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH?limit=5',
+        path: '/api/user-history/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck?limit=5',
         validate: (data) => Array.isArray(data) || (data.history && Array.isArray(data.history))
       }
     ]
