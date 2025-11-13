@@ -1,13 +1,14 @@
 import React, { Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { Metadata } from 'next';
+import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Trading Terminal | OpenSVM',
   description: 'Real-time trading terminal for Solana tokens with advanced charting and analytics',
 };
 
-export const dynamic = 'force-dynamic';
+// Route segment config - renamed to avoid conflict with 'dynamic' import
+export const runtime = 'edge'; 
 export const dynamicParams = true;
 export const revalidate = 0;
 
