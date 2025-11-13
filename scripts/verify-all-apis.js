@@ -30,7 +30,7 @@ const testConfigs = [
   {
     category: 'Account & Wallet',
     tests: [
-      { method: 'GET', endpoint: '/account-stats/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', name: 'Account Statistics' },
+      { method: 'GET', endpoint: '/account-stats/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck', name: 'Account Statistics' },
       { method: 'GET', endpoint: '/check-account-type?address=11111111111111111111111111111111', name: 'Check Account Type' }
     ]
   },
@@ -87,8 +87,8 @@ const testConfigs = [
   {
     category: 'User Services',
     tests: [
-      { method: 'GET', endpoint: '/user-profile/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH', name: 'User Profile' },
-      { method: 'GET', endpoint: '/user-history/7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH?limit=5', name: 'User History' }
+      { method: 'GET', endpoint: '/user-profile/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck', name: 'User Profile' },
+      { method: 'GET', endpoint: '/user-history/REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck?limit=5', name: 'User History' }
     ]
   }
 ];

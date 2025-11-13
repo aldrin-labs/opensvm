@@ -417,7 +417,7 @@ class OpenAPIGenerator {
         type: 'object',
         properties: {
           type: { type: 'string', enum: ['account', 'transaction', 'block', 'program', 'token'], example: 'account' },
-          address: { type: 'string', example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+          address: { type: 'string', example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
           signature: { type: 'string', example: '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5' },
           name: { type: 'string', example: 'Raydium AMM' },
           description: { type: 'string', example: 'Automated market maker program' },
@@ -437,7 +437,7 @@ class OpenAPIGenerator {
       AccountInfo: {
         type: 'object',
         properties: {
-          address: { type: 'string', example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+          address: { type: 'string', example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
           lamports: { type: 'integer', example: 5000000000, description: 'Balance in lamports' },
           owner: { type: 'string', example: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA' },
           executable: { type: 'boolean', example: false },
@@ -1409,8 +1409,8 @@ class OpenAPIGenerator {
     let url = `${baseUrl}${endpoint.path}`;
     
     // Replace path parameters with example values
-    url = url.replace('{address}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
-    url = url.replace('{walletAddress}', '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH');
+    url = url.replace('{address}', 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck');
+    url = url.replace('{walletAddress}', 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck');
     url = url.replace('{signature}', '5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5');
     url = url.replace('{slot}', '290000000');
     url = url.replace('{mint}', 'So11111111111111111111111111111111111111112');
@@ -1451,7 +1451,7 @@ class OpenAPIGenerator {
       } else if (endpoint.path.includes('/analyze-transaction') || endpoint.path.includes('/analyze')) {
         curl += ' \\\n  -d \'{"signature":"5vYsYWPF4gdN1imxLpJAWi9QKpN3MSrFTFXK8pfmPogFjQNPiAkxFQCGzEEWNto16mWnwmdwNQH7KPCnkMcZ9Ba5"}\'';
       } else if (endpoint.path.includes('/filter-transactions')) {
-        curl += ' \\\n  -d \'{"account":"7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH","minAmount":1}\'';
+        curl += ' \\\n  -d \'{"account":"REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck","minAmount":1}\'';
       } else if (endpoint.path.includes('/solana-rpc') || endpoint.path.includes('/solana-proxy')) {
         curl += ' \\\n  -d \'{"method":"getHealth","params":[]}\'';
       } else if (endpoint.path.includes('/getSimilarQuestions')) {

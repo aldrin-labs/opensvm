@@ -35,7 +35,7 @@ const createExamplePresets = (method: 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH
         name: 'Popular Wallet',
         description: 'Test with a popular wallet address',
         method,
-        path: endpoint.replace(/\{address\}|\{walletAddress\}/g, '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH'),
+        path: endpoint.replace(/\{address\}|\{walletAddress\}/g, 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck'),
       },
       {
         name: 'System Program',
@@ -804,7 +804,7 @@ export const apiMethods: ApiMethod[] = [
         description: 'Analyze trading patterns',
         method: 'POST',
         path: '/api/getAnswer',
-        body: { question: 'Analyze wallet 7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+        body: { question: 'Analyze wallet REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
       },
     ]
   },

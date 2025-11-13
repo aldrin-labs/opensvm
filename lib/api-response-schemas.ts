@@ -202,7 +202,7 @@ const transactionResponseSchema: ResponseSchema = {
           items: {
             type: 'string',
             description: 'Account public key',
-            example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH'
+            example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck'
           }
         },
         data: {
@@ -219,7 +219,7 @@ const transactionResponseSchema: ResponseSchema = {
     items: {
       type: 'string',
       description: 'Account public key',
-      example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH'
+      example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck'
     }
   }
 };
@@ -229,7 +229,7 @@ const walletResponseSchema: ResponseSchema = {
   address: {
     type: 'string',
     description: 'Wallet address',
-    example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH'
+    example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck'
   },
   balance: {
     type: 'number',
@@ -336,7 +336,7 @@ const blockResponseSchema: ResponseSchema = {
         pubkey: {
           type: 'string',
           description: 'Recipient public key',
-          example: '7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH'
+          example: 'REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck'
         },
         lamports: {
           type: 'number',

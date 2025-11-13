@@ -646,7 +646,7 @@ export const apiMethodsPart3: ApiMethod[] = [
         description: 'Analyze a wallet',
         method: 'POST',
         path: '/api/getAnswer',
-        body: { question: 'Analyze the trading patterns of wallet 7aDTuuAN98tBanLcJQgq2oVaXztBzMgLNRu84iVqnVVH' },
+        body: { question: 'Analyze the trading patterns of wallet REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck' },
       },
     ]
   },
