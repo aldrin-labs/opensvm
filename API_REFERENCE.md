@@ -228,8 +228,10 @@ curl "https://opensvm.com/api/account-transactions/{address}?limit=value&before=
 
 **Methods**: GET
 
+**Description**: Get transfer history for an address with comprehensive filtering and transaction type detection. Supports bidirectional visibility (sender + receiver), real token symbols from Metaplex, and DeFi program attribution.
+
 **Method Details**:
-- **GET**: Process a batch of transactions and extract transfer data
+- **GET**: Get transfer history for an address with comprehensive filtering and transaction type detection
 
 **Authentication**: Required
 
@@ -237,35 +239,68 @@ curl "https://opensvm.com/api/account-transactions/{address}?limit=value&before=
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `beforeSignature` | string | Smart cursor initialization: use oldest cached signature if no beforeSignature provided |
-| `offset` | number | offset parameter |
-| `limit` | string | Allow large requests - we'll handle pagination internally |
-| `transferType` | boolean | transferType parameter |
-| `solanaOnly` | boolean | solanaOnly parameter |
+| `beforeSignature` | string | (Optional) Pagination cursor - use the signature to continue from a specific transaction |
+| `offset` | number | (Optional, default: 0) Pagination offset - number of transfers to skip |
+| `limit` | number | (Optional, default: 50) Maximum number of transfers to return per request |
+| `transferType` | string | (Optional, default: 'ALL') Filter by transfer direction - values: 'IN', 'OUT', 'ALL' |
+| `solanaOnly` | boolean | (Optional, default: false) Show only native SOL transfers, excluding all SPL tokens |
+| `txType` | string | (Optional) Filter by transaction type - comma-separated values: 'sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding' |
+| `mints` | string | (Optional) Filter by specific token mint addresses - comma-separated list to track specific tokens (e.g., 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump' for SVMAI token) |
+| `bypassCache` | boolean | (Optional, default: false) Bypass cache and fetch fresh data directly from RPC |
 
 **Path Parameters**:
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
-| `address` | string | address identifier |
+| `address` | string | (Required) Solana wallet address to fetch transfers for |
 
 **Type Definitions**:
 ```typescript
+type TransactionType = 'sol' | 'spl' | 'defi' | 'nft' | 'program' | 'system' | 'funding';
+
 interface Transfer {
-txId: string;
+  txId: string;
   date: string;
   from: string;
   to: string;
   tokenSymbol: string;
   tokenAmount: string;
   transferType: 'IN' | 'OUT';
+  mint: string; // Token mint address or "SOL" for native transfers
+  txType: TransactionType; // Transaction category
+  programId?: string; // Program ID for DeFi/complex transactions
 }
 
+interface AccountTransfersResponse {
+  data: Transfer[];
+  hasMore: boolean;
+  total: number;
+  originalTotal: number;
+  nextPageSignature?: string;
+  fromCache: boolean;
+}
 ```
 
-**Example Request**:
+**Example Requests**:
 ```bash
-curl "https://opensvm.com/api/account-transfers/{address}?beforeSignature=value&offset=value&limit=value&transferType=value&solanaOnly=value" \
+# Basic request - get 50 most recent transfers
+curl "https://opensvm.com/api/account-transfers/{address}" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Filter by transaction type - show only DeFi and SPL token transfers
+curl "https://opensvm.com/api/account-transfers/{address}?txType=defi,spl&limit=20" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Track specific token by mint address (SVMAI example)
+curl "https://opensvm.com/api/account-transfers/{address}?mints=Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump&limit=100" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Complex filtering - DeFi transactions for specific tokens only
+curl "https://opensvm.com/api/account-transfers/{address}?txType=defi&mints=So11111111111111111111111111111111111111112,EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v" \
+  -H "Authorization: Bearer YOUR_API_KEY"
+
+# Show only incoming SOL transfers, bypass cache
+curl "https://opensvm.com/api/account-transfers/{address}?solanaOnly=true&transferType=IN&bypassCache=true" \
   -H "Authorization: Bearer YOUR_API_KEY"
 ```
 

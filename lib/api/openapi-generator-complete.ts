@@ -8,6 +8,7 @@ export interface OpenAPIParameter {
   required?: boolean;
   schema: any;
   description?: string;
+  example?: string;
 }
 
 export interface OpenAPIResponse {
@@ -1297,35 +1298,25 @@ class OpenAPIGenerator {
     // Special handling for account-transfers endpoint
     if (endpoint.includes('/account-transfers')) {
       parameters.push({
-        name: 'limit',
+        name: 'beforeSignature',
         in: 'query',
         required: false,
-        schema: { type: 'integer', default: 50 },
-        description: 'Maximum number of transfers to return (default: 50)'
+        schema: { type: 'string' },
+        description: 'Pagination cursor - use the signature to continue from a specific transaction'
       });
       parameters.push({
         name: 'offset',
         in: 'query',
         required: false,
         schema: { type: 'integer', default: 0 },
-        description: 'Pagination offset for result slicing'
+        description: 'Pagination offset - number of transfers to skip'
       });
       parameters.push({
-        name: 'txType',
+        name: 'limit',
         in: 'query',
         required: false,
-        schema: { 
-          type: 'string',
-          enum: ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding']
-        },
-        description: 'Filter by transaction type - supports comma-separated values (e.g., "spl,defi")'
-      });
-      parameters.push({
-        name: 'mints',
-        in: 'query',
-        required: false,
-        schema: { type: 'string' },
-        description: 'Filter by mint addresses - comma-separated mint addresses to track specific tokens (e.g., "Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump" for SVMAI)'
+        schema: { type: 'integer', default: 50 },
+        description: 'Maximum number of transfers to return per request'
       });
       parameters.push({
         name: 'transferType',
@@ -1333,23 +1324,43 @@ class OpenAPIGenerator {
         required: false,
         schema: { 
           type: 'string',
-          enum: ['IN', 'OUT', 'ALL']
+          enum: ['IN', 'OUT', 'ALL'],
+          default: 'ALL'
         },
-        description: 'Filter by transfer direction (default: ALL)'
+        description: 'Filter by transfer direction'
       });
       parameters.push({
         name: 'solanaOnly',
         in: 'query',
         required: false,
         schema: { type: 'boolean', default: false },
-        description: 'Show only SOL transfers, excluding all SPL tokens'
+        description: 'Show only native SOL transfers, excluding all SPL tokens'
+      });
+      parameters.push({
+        name: 'txType',
+        in: 'query',
+        required: false,
+        schema: { 
+          type: 'string',
+          pattern: '^(sol|spl|defi|nft|program|system|funding)(,(sol|spl|defi|nft|program|system|funding))*$'
+        },
+        description: 'Filter by transaction type - comma-separated values: \'sol\' (native SOL), \'spl\' (SPL tokens), \'defi\' (DEX/DeFi programs), \'nft\' (NFT operations), \'program\' (complex program interactions), \'system\' (system/consensus), \'funding\' (account creation/funding)',
+        example: 'defi,spl'
+      });
+      parameters.push({
+        name: 'mints',
+        in: 'query',
+        required: false,
+        schema: { type: 'string' },
+        description: 'Filter by specific token mint addresses - comma-separated list to track specific tokens',
+        example: 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump,So11111111111111111111111111111111111111112'
       });
       parameters.push({
         name: 'bypassCache',
         in: 'query',
         required: false,
         schema: { type: 'boolean', default: false },
-        description: 'Bypass cache and fetch fresh data from RPC (useful for testing)'
+        description: 'Bypass cache and fetch fresh data directly from RPC'
       });
       return parameters;
     }

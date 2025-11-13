@@ -439,8 +439,8 @@
     },
     "/api/account-transfers/{address}": {
       "get": {
-        "summary": "GET /api/account-transfers/:address",
-        "description": "",
+        "summary": "Get transfer history for an address with comprehensive filtering and transaction type detection. Supports bidirectional visibility (sender + receiver), real token symbols from Metaplex, and DeFi program attribution.",
+        "description": "Get transfer history for an address with comprehensive filtering and transaction type detection. Supports bidirectional visibility (sender + receiver), real token symbols from Metaplex, and DeFi program attribution.",
         "parameters": [
           {
             "name": "beforeSignature",
@@ -449,7 +449,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "Smart cursor initialization: use oldest cached signature if no beforeSignature provided"
+            "description": "(Optional) Pagination cursor - use the signature to continue from a specific transaction"
           },
           {
             "name": "offset",
@@ -458,25 +458,25 @@
             "schema": {
               "type": "number"
             },
-            "description": "offset parameter"
+            "description": "(Optional, default: 0) Pagination offset - number of transfers to skip"
           },
           {
             "name": "limit",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "string"
+              "type": "number"
             },
-            "description": "Allow large requests - we'll handle pagination internally"
+            "description": "(Optional, default: 50) Maximum number of transfers to return per request"
           },
           {
             "name": "transferType",
             "in": "query",
             "required": false,
             "schema": {
-              "type": "boolean"
+              "type": "string"
             },
-            "description": "transferType parameter"
+            "description": "(Optional, default: 'ALL') Filter by transfer direction - values: 'IN', 'OUT', 'ALL'"
           },
           {
             "name": "solanaOnly",
@@ -485,7 +485,34 @@
             "schema": {
               "type": "boolean"
             },
-            "description": "solanaOnly parameter"
+            "description": "(Optional, default: false) Show only native SOL transfers, excluding all SPL tokens"
+          },
+          {
+            "name": "txType",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "(Optional) Filter by transaction type - comma-separated values: 'sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'"
+          },
+          {
+            "name": "mints",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "(Optional) Filter by specific token mint addresses - comma-separated list to track specific tokens (e.g., 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump' for SVMAI token)"
+          },
+          {
+            "name": "bypassCache",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            },
+            "description": "(Optional, default: false) Bypass cache and fetch fresh data directly from RPC"
           },
           {
             "name": "address",
@@ -494,7 +521,7 @@
             "schema": {
               "type": "string"
             },
-            "description": "address identifier"
+            "description": "(Required) Solana wallet address to fetch transfers for"
           }
         ],
         "responses": {
@@ -22549,43 +22576,107 @@
       "TransferListResponse": {
         "type": "object",
         "properties": {
-          "transfers": {
+          "data": {
             "type": "array",
             "items": {
               "type": "object",
               "properties": {
                 "txId": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Transaction signature"
                 },
                 "date": {
-                  "type": "string"
+                  "type": "string",
+                  "format": "date-time",
+                  "description": "ISO 8601 timestamp of the transaction"
                 },
                 "from": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Sender wallet address"
                 },
                 "to": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Recipient wallet address"
                 },
                 "tokenSymbol": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Token symbol (e.g., SOL, USDC, SVMAI)"
                 },
                 "tokenAmount": {
-                  "type": "string"
+                  "type": "string",
+                  "description": "Transfer amount in token's native units"
                 },
                 "transferType": {
                   "type": "string",
                   "enum": [
                     "IN",
                     "OUT"
-                  ]
+                  ],
+                  "description": "Direction of transfer relative to queried address"
+                },
+                "mint": {
+                  "type": "string",
+                  "description": "Token mint address or 'SOL' for native transfers"
+                },
+                "txType": {
+                  "type": "string",
+                  "enum": [
+                    "sol",
+                    "spl",
+                    "defi",
+                    "nft",
+                    "program",
+                    "system",
+                    "funding"
+                  ],
+                  "description": "Transaction category"
+                },
+                "programId": {
+                  "type": "string",
+                  "description": "Program ID for DeFi/complex transactions (optional)"
                 }
-              }
+              },
+              "required": [
+                "txId",
+                "date",
+                "from",
+                "to",
+                "tokenSymbol",
+                "tokenAmount",
+                "transferType",
+                "mint",
+                "txType"
+              ]
             }
           },
           "hasMore": {
-            "type": "boolean"
+            "type": "boolean",
+            "description": "Indicates if more transfers are available for pagination"
+          },
+          "total": {
+            "type": "integer",
+            "description": "Number of transfers returned in this response"
+          },
+          "originalTotal": {
+            "type": "integer",
+            "description": "Total number of transfers before pagination"
+          },
+          "nextPageSignature": {
+            "type": "string",
+            "description": "Signature to use for next page (optional)"
+          },
+          "fromCache": {
+            "type": "boolean",
+            "description": "Indicates if data was served from cache"
           }
-        }
+        },
+        "required": [
+          "data",
+          "hasMore",
+          "total",
+          "originalTotal",
+          "fromCache"
+        ]
       },
       "TransactionDetailResponse": {
         "type": "object",
