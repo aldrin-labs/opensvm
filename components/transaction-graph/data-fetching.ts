@@ -26,7 +26,54 @@ export async function fetchBidirectionalTransactions(
   console.log(`Starting bidirectional fetch for account: ${address}`);
 
   try {
-    // Fetch both outflow and inflow transactions
+    // PRIMARY: Try account-transfers first for better transfer visualization
+    console.log(`🔍 [BIDIRECTIONAL] PRIMARY: Fetching account transfers for ${address}`);
+    try {
+      const transfersResponse = await fetch(`/api/account-transfers/${address}?limit=20`, {
+        signal,
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+
+      if (transfersResponse.ok) {
+        const transfersData = await transfersResponse.json();
+        const transfers = transfersData.data || [];
+
+        if (transfers.length > 0) {
+          // Convert transfers to transaction format
+          const transactions = transfers.map((transfer: any) => ({
+            signature: transfer.txId,
+            timestamp: new Date(transfer.date).getTime(),
+            slot: 0,
+            err: null,
+            success: true,
+            type: 'spl-transfer',
+            accounts: [
+              { pubkey: transfer.from, isSigner: false, isWritable: true },
+              { pubkey: transfer.to, isSigner: false, isWritable: true }
+            ],
+            transfers: [{
+              account: transfer.to,
+              change: parseFloat(transfer.tokenAmount) * 1e9 // Convert to lamports
+            }],
+            memo: null
+          }));
+
+          console.log(`✅ [BIDIRECTIONAL] PRIMARY SUCCESS: Found ${transactions.length} account transfers for ${address}`);
+          return {
+            address,
+            transactions,
+            bidirectional: true,
+            outflowCount: transactions.filter((tx: any) => tx.accounts[0].pubkey === address).length,
+            inflowCount: transactions.filter((tx: any) => tx.accounts[1].pubkey === address).length
+          };
+        }
+      }
+    } catch (transferError) {
+      console.warn(`❌ [BIDIRECTIONAL] PRIMARY: Account transfers fetch failed for ${address}:`, transferError);
+    }
+
+    // FALLBACK: Fetch both outflow and inflow transactions
+    console.log(`🔄 [BIDIRECTIONAL] FALLBACK: Using regular transactions for ${address}`);
     const [outflowResponse, inflowResponse] = await Promise.all([
       fetch(`/api/account-transactions/${address}?limit=20&classify=true`, { signal }),
       fetch(`/api/account-transactions/${address}?limit=20&classify=true&includeInflow=true`, { signal })
@@ -123,10 +170,10 @@ export async function fetchAccountTransactions(
       return { address, transactions: [] };
     }
 
-    // First try to get SPL transfers (top 10 by volume)
-    console.log(`🔍 [FETCH] Trying SPL transfers for ${address}`);
+    // PRIMARY: Try to get account transfers first (this shows actual fund flows)
+    console.log(`🔍 [FETCH] PRIMARY: Fetching account transfers for ${address}`);
     try {
-      const transfersResponse = await fetch(`/api/account-transfers/${address}?limit=10`, {
+      const transfersResponse = await fetch(`/api/account-transfers/${address}?limit=20`, {
         signal,
         headers: { 'Cache-Control': 'no-cache' }
       });
@@ -155,20 +202,20 @@ export async function fetchAccountTransactions(
             memo: null
           }));
 
-          console.log(`✅ [FETCH] Found ${transactions.length} SPL transfers for ${address}`);
+          console.log(`✅ [FETCH] PRIMARY SUCCESS: Found ${transactions.length} account transfers for ${address}`);
           return { address, transactions };
         } else {
-          console.log(`⚠️ [FETCH] No SPL transfers found for ${address}, will try regular transactions`);
+          console.log(`⚠️ [FETCH] PRIMARY: No account transfers found for ${address}, will try regular transactions`);
         }
       } else {
-        console.warn(`⚠️ [FETCH] SPL transfers API failed for ${address}: ${transfersResponse.status}`);
+        console.warn(`⚠️ [FETCH] PRIMARY: Account transfers API failed for ${address}: ${transfersResponse.status}`);
       }
     } catch (transferError) {
-      console.warn(`❌ [FETCH] SPL transfers fetch failed for ${address}:`, transferError);
+      console.warn(`❌ [FETCH] PRIMARY: Account transfers fetch failed for ${address}:`, transferError);
     }
 
-    // Fallback: Get regular transactions with more inclusive filtering
-    console.log(`🔄 [FETCH] Falling back to regular transactions for ${address} (more inclusive)`);
+    // FALLBACK: Get regular transactions with more inclusive filtering
+    console.log(`🔄 [FETCH] FALLBACK: Using regular transactions for ${address}`);
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased timeout for better data fetching
