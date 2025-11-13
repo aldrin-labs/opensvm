@@ -251,16 +251,61 @@ export async function GET(
       }
     } else {
       // Standard fetch without date filtering
-      signatures = await connection.getSignaturesForAddress(
-        new PublicKey(address),
-        {
-          limit,
-          before,
-          until
-        },
-        'confirmed'
-      );
-      rpcCallCount = 1;
+      // Handle pagination for limits > 1000 (Solana RPC max)
+      const MAX_RPC_LIMIT = 1000;
+      
+      if (limit <= MAX_RPC_LIMIT) {
+        // Single request for small limits
+        signatures = await connection.getSignaturesForAddress(
+          new PublicKey(address),
+          {
+            limit,
+            before,
+            until
+          },
+          'confirmed'
+        );
+        rpcCallCount = 1;
+      } else {
+        // Batch requests for large limits
+        let allSignatures: typeof signatures = [];
+        let lastSignature: string | undefined = before;
+        let remainingLimit = limit;
+        
+        while (remainingLimit > 0) {
+          const batchLimit = Math.min(MAX_RPC_LIMIT, remainingLimit);
+          
+          const batch = await connection.getSignaturesForAddress(
+            new PublicKey(address),
+            {
+              limit: batchLimit,
+              before: lastSignature,
+              until
+            },
+            'confirmed'
+          );
+          
+          rpcCallCount++;
+          
+          if (batch.length === 0) {
+            // No more transactions available
+            break;
+          }
+          
+          allSignatures.push(...batch);
+          remainingLimit -= batch.length;
+          
+          // If we got fewer results than requested, we've reached the end
+          if (batch.length < batchLimit) {
+            break;
+          }
+          
+          // Set up for next batch
+          lastSignature = batch[batch.length - 1].signature;
+        }
+        
+        signatures = allSignatures;
+      }
     }
 
     // If includeInflow is true, also fetch inbound transactions

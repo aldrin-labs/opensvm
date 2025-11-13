@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { memoryCache } from '@/lib/cache';
-import { queryFlipside } from '@/lib/flipside';
+import { getTokenOverview } from '@/lib/birdeye-api';
 
 const CACHE_TTL = 300; // 5 minutes
 const CACHE_ERROR_TTL = 60; // 1 minute
-const QUERY_TIMEOUT = 5000; // 5 seconds
 const API_TIMEOUT = 10000; // 10 seconds
 
 interface TokenStats {
@@ -12,12 +11,6 @@ interface TokenStats {
   txCount: number;
   volume: number;
   lastUpdated: number;
-}
-
-type TokenTransfers = {
-  mint: string;
-  total_tx_count: number;
-  total_volume: number;
 }
 
 // Background refresh function
@@ -37,101 +30,34 @@ async function getTokenStats(account: string, mint: string): Promise<TokenStats>
     return cachedData;
   }
 
-  // Add timeout to prevent hanging
-  const timeoutPromise = new Promise<TokenStats>((_, reject) => {
-    setTimeout(() => reject(new Error('Flipside query timeout')), QUERY_TIMEOUT);
-  });
-
-  const query = `
-    WITH transfer_windows AS (
-      -- Recent transfers (last hour, minute granularity)
-      SELECT 
-        DATE_TRUNC('minute', block_timestamp) as ts,
-        COUNT(DISTINCT tx_id) as tx_count,
-        SUM(CASE 
-          WHEN amount > 0 AND amount < 1e12 
-          THEN amount / POW(10, 6) -- USDC has 6 decimals
-          ELSE 0 
-        END) as volume
-      FROM solana.core.fact_transfers
-      WHERE block_timestamp >= DATEADD('hour', -1, CURRENT_TIMESTAMP())
-      AND mint = '${mint}'
-      AND (tx_to = '${account}' OR tx_from = '${account}')
-      GROUP BY 1
-      
-      UNION ALL
-      
-      -- Historical transfers (last 24 hours, hour granularity)
-      SELECT 
-        DATE_TRUNC('hour', block_timestamp) as ts,
-        COUNT(DISTINCT tx_id) as tx_count,
-        SUM(CASE 
-          WHEN amount > 0 AND amount < 1e12 
-          THEN amount / POW(10, 6) -- USDC has 6 decimals
-          ELSE 0 
-        END) as volume
-      FROM solana.core.fact_transfers
-      WHERE block_timestamp >= DATEADD('hour', -24, CURRENT_TIMESTAMP())
-      AND block_timestamp < DATEADD('hour', -1, CURRENT_TIMESTAMP())
-      AND mint = '${mint}'
-      AND (tx_to = '${account}' OR tx_from = '${account}')
-      GROUP BY 1
-    ),
-    aggregated_stats AS (
-      SELECT 
-        SUM(tx_count) as total_tx_count,
-        SUM(volume) as total_volume
-      FROM transfer_windows
-    )
-    SELECT 
-      '${mint}' as mint,
-      COALESCE(total_tx_count, 0) as total_tx_count,
-      COALESCE(total_volume, 0) as total_volume
-    FROM aggregated_stats
-  `;
-
   try {
-    // Race between query and timeout
-    const results = await Promise.race([
-      queryFlipside<TokenTransfers>(query),
-      timeoutPromise
-    ]);
-
-    if (Array.isArray(results) && results.length > 0) {
-      const stats = {
-        mint: results[0]?.mint || mint,
-        txCount: Number(results[0]?.total_tx_count) || 0,
-        volume: Number(results[0]?.total_volume) || 0,
+    // Fetch token data from Birdeye
+    const tokenData = await getTokenOverview(mint);
+    
+    if (tokenData) {
+      const stats: TokenStats = {
+        mint,
+        txCount: tokenData.holder || 0, // Use holder count as proxy for activity
+        volume: tokenData.v24hUSD || 0, // 24h volume in USD
         lastUpdated: Date.now()
       };
+      
       memoryCache.set(cacheKey, stats, CACHE_TTL);
       return stats;
     }
-
-    // If query fails or returns no results, try getting cached data
-    const cachedStats = memoryCache.get<TokenStats>(cacheKey);
-    if (cachedStats !== null) {
-      return cachedStats;
-    }
-
-    return {
-      mint,
-      txCount: 0,
-      volume: 0,
-      lastUpdated: Date.now()
-    };
   } catch (error) {
-    console.error('Error querying Flipside:', error);
-    // Return empty data and cache it to prevent repeated timeouts
-    const emptyStats = {
-      mint,
-      txCount: 0,
-      volume: 0,
-      lastUpdated: Date.now()
-    };
-    memoryCache.set(cacheKey, emptyStats, CACHE_ERROR_TTL);
-    return emptyStats;
+    console.error('Error fetching Birdeye token data:', error);
   }
+
+  // Return empty stats on error
+  const emptyStats = {
+    mint,
+    txCount: 0,
+    volume: 0,
+    lastUpdated: Date.now()
+  };
+  memoryCache.set(cacheKey, emptyStats, CACHE_ERROR_TTL);
+  return emptyStats;
 }
 
 export async function GET(

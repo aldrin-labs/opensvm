@@ -2,12 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana-connection-server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
-import { queryFlipside } from '@/lib/flipside';
 import { createCache } from '@/lib/api-cache';
 
 const BATCH_SIZE = 1000;
 const MAX_BATCHES = 3;
-const QUERY_TIMEOUT = 5000; // 5 seconds
 const API_TIMEOUT = 10000; // 10 seconds
 
 // Create cache instance for account stats (5 min cache, 1 min refresh threshold)
@@ -18,12 +16,7 @@ const accountStatsCache = createCache<AccountStats>({
 
 interface AccountStats {
   totalTransactions: string | number;
-  tokenTransfers: number;
   lastUpdated: number;
-}
-
-type TransferCount = {
-  transfer_count: number;
 }
 
 async function getSignatureCount(pubkey: PublicKey, connection: Connection): Promise<string | number> {
@@ -55,56 +48,6 @@ async function getSignatureCount(pubkey: PublicKey, connection: Connection): Pro
     : allSignatures.length;
 
   return count;
-}
-
-async function getTokenTransfers(address: string): Promise<number> {
-  const query = `
-    WITH recent_transfers AS (
-      SELECT 
-        DATE_TRUNC('minute', block_timestamp) as ts,
-        COUNT(DISTINCT tx_id) as tx_count
-      FROM solana.core.fact_transfers
-      WHERE block_timestamp >= DATEADD('hour', -24, CURRENT_TIMESTAMP())
-      AND (tx_to = '${address}' OR tx_from = '${address}')
-      GROUP BY 1
-    )
-    SELECT COUNT(*) as transfer_count
-    FROM recent_transfers
-  `;
-
-  // Add timeout to prevent hanging
-  let timeoutId: NodeJS.Timeout | undefined;
-  const timeoutPromise = new Promise<number>((_, reject) => {
-    timeoutId = setTimeout(() => {
-      reject(new Error('Flipside query timeout'));
-    }, QUERY_TIMEOUT);
-  });
-
-  try {
-    // Race between query and timeout
-    const results = await Promise.race([
-      queryFlipside<TransferCount>(query),
-      timeoutPromise
-    ]);
-
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-
-    if (Array.isArray(results) && results.length > 0) {
-      const transferCount = Number(results[0]?.transfer_count) || 0;
-      return transferCount;
-    }
-
-    return 0;
-  } catch (error) {
-    console.error('Error querying Flipside:', error);
-    return 0;
-  } finally {
-    if (timeoutId) {
-      clearTimeout(timeoutId);
-    }
-  }
 }
 
 export async function GET(
@@ -148,13 +91,10 @@ export async function GET(
       const pubkey = new PublicKey(address);
 
       // Race between data fetching and timeout
-      const [totalTransactions, tokenTransfers] = await Promise.race([
-        Promise.all([
-          getSignatureCount(pubkey, connection),
-          getTokenTransfers(address)
-        ]),
+      const totalTransactions = await Promise.race([
+        getSignatureCount(pubkey, connection),
         timeoutPromise
-      ]) as [string | number, number];
+      ]) as string | number;
 
       if (timeoutId) {
         clearTimeout(timeoutId);
@@ -162,7 +102,6 @@ export async function GET(
 
       const stats: AccountStats = {
         totalTransactions,
-        tokenTransfers,
         lastUpdated: Date.now()
       };
 

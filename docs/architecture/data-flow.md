@@ -162,29 +162,6 @@ const explanation = await aiService.explainTransaction({
 - Natural language query processing
 - Contextual blockchain insights
 
-### 4. Flipside Crypto API
-
-**Purpose**: Enhanced analytics and historical data
-**Data Flow**: Additional blockchain analytics and metrics
-
-```typescript
-/**
- * Flipside Crypto API integration
- * @see docs/architecture/system-overview.md#external-integrations
- */
-
-// Historical data retrieval
-const historicalData = await flipsideAPI.query({
-  sql: "SELECT * FROM solana.fact_transactions WHERE block_timestamp > '2024-01-01'"
-});
-
-// Analytics queries
-const analytics = await flipsideAPI.getAnalytics({
-  metric: 'daily_active_users',
-  timeframe: '30d'
-});
-```
-
 ## Internal Data Flow Patterns
 
 ### 1. Component Data Flow

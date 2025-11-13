@@ -25,7 +25,10 @@ interface SearchSuggestionsProps {
 }
 
 // Helper function to format currency values
-const formatCurrency = (value: number): string => {
+const formatCurrency = (value: number | null | undefined): string => {
+  if (value === null || value === undefined || isNaN(value)) {
+    return '$0.00';
+  }
   if (value >= 1000000) {
     return `$${(value / 1000000).toFixed(1)}M`;
   } else if (value >= 1000) {

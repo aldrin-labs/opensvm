@@ -1540,6 +1540,7 @@ export async function getCachedTokenMetadata(
 
     if (result.length > 0) {
       const metadata = result[0].payload as unknown as TokenMetadataEntry;
+      const qdrantPointId = result[0].id; // Get the actual Qdrant point ID
 
       // Check if cache is still valid
       const now = Date.now();
@@ -1547,10 +1548,15 @@ export async function getCachedTokenMetadata(
         return metadata;
       } else {
         console.log(`Token metadata cache expired for ${mintAddress}`);
-        // Optionally delete expired entry
-        await qdrantClient.delete(COLLECTIONS.TOKEN_METADATA, {
-          points: [metadata.id]
-        });
+        // Delete expired entry using the correct Qdrant point ID
+        try {
+          await qdrantClient.delete(COLLECTIONS.TOKEN_METADATA, {
+            points: [qdrantPointId]
+          });
+        } catch (deleteError) {
+          console.warn(`Failed to delete expired token metadata for ${mintAddress}:`, deleteError);
+          // Don't throw - deletion failure shouldn't break the flow
+        }
         return null;
       }
     }
@@ -1729,6 +1735,7 @@ export async function getCachedProgramMetadata(
 
     if (result.length > 0) {
       const metadata = result[0].payload as unknown as ProgramMetadataEntry;
+      const qdrantPointId = result[0].id; // Get the actual Qdrant point ID
 
       // Check if cache is still valid
       const now = Date.now();
@@ -1736,10 +1743,15 @@ export async function getCachedProgramMetadata(
         return metadata;
       } else {
         console.log(`Program metadata cache expired for ${programId}`);
-        // Optionally delete expired entry
-        await qdrantClient.delete(COLLECTIONS.PROGRAM_METADATA, {
-          points: [metadata.id]
-        });
+        // Delete expired entry using the correct Qdrant point ID
+        try {
+          await qdrantClient.delete(COLLECTIONS.PROGRAM_METADATA, {
+            points: [qdrantPointId]
+          });
+        } catch (deleteError) {
+          console.warn(`Failed to delete expired program metadata for ${programId}:`, deleteError);
+          // Don't throw - deletion failure shouldn't break the flow
+        }
         return null;
       }
     }

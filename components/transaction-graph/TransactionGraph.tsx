@@ -544,12 +544,8 @@ const CytoscapeContainer = React.memo(() => {
     const classification: TransactionClassification = classifyTransactionType(data);
     const funding = isFundingTransaction(data, focusAccount);
 
-    // FILTER: Only process SOL and SPL transfers, skip DeFi/swaps/trades
-    const isTransferType = classification.type === 'sol_transfer' || classification.type === 'spl_transfer';
-    if (!isTransferType) {
-      debugLog('Skipping non-transfer transaction:', classification.type);
-      return { nodes, edges };
-    }
+    // Process ALL transaction types (SOL, SPL, DeFi, NFT, program calls, etc.)
+    debugLog('Processing transaction type:', classification.type);
 
     // Compute net balance changes per account (prefer provided transfers; fallback to meta)
     const netChangeByAccount: Record<string, number> = {};
@@ -761,26 +757,6 @@ const CytoscapeContainer = React.memo(() => {
       if (cyRef.current) {
         const cy = cyRef.current;
 
-        // Show/hide nodes based on transaction type
-        cy.nodes().forEach(node => {
-          if (node.data('type') === 'transaction') {
-            const txType = node.data('txType');
-            let shouldShow = true;
-
-            if (txType === 'sol_transfer' && !nextFilters.solTransfers) shouldShow = false;
-            else if (txType === 'spl_transfer' && !nextFilters.splTransfers) shouldShow = false;
-            else if (txType === 'defi' && !nextFilters.defi) shouldShow = false;
-            else if (txType === 'nft' && !nextFilters.nft) shouldShow = false;
-            else if (txType === 'program_call' && !nextFilters.programCalls) shouldShow = false;
-            else if (txType === 'system' && !nextFilters.system) shouldShow = false;
-
-            // Special handling for funding transactions
-            if (node.data('isFunding') && !nextFilters.funding) shouldShow = false;
-
-            node.style('display', shouldShow ? 'element' : 'none');
-          }
-        });
-
         // Show/hide edges based on transaction type
         cy.edges().forEach(edge => {
           const txType = edge.data('txType');
@@ -797,6 +773,15 @@ const CytoscapeContainer = React.memo(() => {
           if (edge.data('isFunding') && !nextFilters.funding) shouldShow = false;
 
           edge.style('display', shouldShow ? 'element' : 'none');
+        });
+
+        // Hide account nodes that have no visible edges
+        cy.nodes().forEach(node => {
+          if (node.data('type') === 'account') {
+            const connectedEdges = node.connectedEdges();
+            const hasVisibleEdge = connectedEdges.some(edge => edge.style('display') === 'element');
+            node.style('display', hasVisibleEdge ? 'element' : 'none');
+          }
         });
         // Do not run layout to preserve static positions
       }
@@ -1051,7 +1036,13 @@ const CytoscapeContainer = React.memo(() => {
     const nodes: CytoscapeNode[] = [];
     const edges: CytoscapeEdge[] = [];
 
-    // Add account node
+    debugLog('processAccountTransactions called with:', {
+      transactionCount: transactions.length,
+      account,
+      sampleTx: transactions[0]
+    });
+
+    // Add main account node
     nodes.push({
       data: {
         id: account,
@@ -1063,34 +1054,120 @@ const CytoscapeContainer = React.memo(() => {
       }
     });
 
-    // Add transaction nodes
+    // Track unique wallet addresses involved in transfers
+    const walletAddresses = new Set<string>();
+
+    // Process each transaction to create edges (transactions become edges, not nodes)
     transactions.forEach((tx: AccountTransaction) => {
       if (!tx.signature) return;
 
-      // Safe non-null signature
-      const txSignature: string = tx.signature;
+      debugLog('Processing transaction:', {
+        signature: tx.signature,
+        hasTransfers: !!(tx as any).transfers,
+        transfersCount: ((tx as any).transfers || []).length,
+        classification: (tx as any).classification
+      });
 
+      // Get classification from API response or classify locally
+      const classification: TransactionClassification = (tx as any).classification || classifyTransactionType(tx);
+      const funding = (tx as any).isFunding ?? isFundingTransaction(tx, account);
+
+      // Process ALL transaction types (SOL, SPL, DeFi, NFT, program calls, etc.)
+      debugLog('Processing transaction type:', classification.type);
+
+      // Use the transfers array from the API response
+      const transfers: any[] = (tx as any).transfers || [];
+      
+      if (transfers.length === 0) {
+        debugLog('No transfers found in transaction:', tx.signature);
+        return;
+      }
+
+      debugLog('Found transfers:', transfers.length);
+
+      // Build transfer pairs from the transfers array
+      // Transfers with negative change are outgoing, positive are incoming
+      const outgoingTransfers = transfers.filter(t => t.change < 0);
+      const incomingTransfers = transfers.filter(t => t.change > 0);
+
+      // Create edges for each transfer pair
+      outgoingTransfers.forEach(outgoing => {
+        incomingTransfers.forEach(incoming => {
+          const from = outgoing.account;
+          const to = incoming.account;
+          
+          // Skip if same account or excluded
+          if (from === to || EXCLUDED_ACCOUNTS.has(from) || EXCLUDED_ACCOUNTS.has(to)) return;
+          
+          // Track wallet addresses for node creation
+          walletAddresses.add(from);
+          walletAddresses.add(to);
+          
+          // Normalize the transfer amount using decimals
+          const decimals = outgoing.decimals ?? incoming.decimals ?? 9; // Default to 9 for SOL
+          const rawAmount = Math.abs(outgoing.change);
+          const amount = rawAmount / Math.pow(10, decimals);
+          const tokenSymbol = outgoing.symbol || incoming.symbol || 'SOL';
+          
+          // Determine direction relative to the main account
+          const direction = to === account ? 'in' : from === account ? 'out' : 'neutral';
+          
+          debugLog('Creating edge:', {
+            from: from.slice(0, 8),
+            to: to.slice(0, 8),
+            amount,
+            tokenSymbol,
+            direction
+          });
+          
+          // Create edge representing this transaction
+          edges.push({
+            data: {
+              id: `${tx.signature}-${from}-${to}`,
+              source: from,
+              target: to,
+              type: 'account_transfer',
+              fullSignature: tx.signature,
+              txType: classification.type,
+              isFunding: funding || classification.isFunding,
+              color: direction === 'in' 
+                ? 'hsl(var(--chart-2))' // Green for incoming
+                : direction === 'out' 
+                ? 'hsl(var(--chart-1))' // Red/Orange for outgoing
+                : 'hsl(var(--muted-foreground))', // Gray for neutral
+              amount: amount,
+              tokenSymbol: tokenSymbol,
+              direction,
+              label: formatEdgeLabel({
+                amount: amount,
+                tokenSymbol: tokenSymbol,
+                txType: classification.type,
+                isFunding: funding || classification.isFunding
+              })
+            }
+          });
+        });
+      });
+    });
+
+    // Create nodes for each unique wallet address involved in transfers
+    walletAddresses.forEach(walletAddress => {
       nodes.push({
         data: {
-          id: txSignature,
-          label: `${txSignature.slice(0, 5)}...${txSignature.slice(-5)}`,
-          type: 'transaction',
-          signature: txSignature,
-          success: !tx.err,
-          size: 15,
-          color: tx.err ? 'hsl(var(--destructive))' : 'hsl(var(--success))'
+          id: walletAddress,
+          label: `${walletAddress.slice(0, 5)}...${walletAddress.slice(-5)}`,
+          type: 'account',
+          pubkey: walletAddress,
+          size: account === walletAddress ? 25 : 15,
+          color: account === walletAddress ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
         }
       });
+    });
 
-      edges.push({
-        data: {
-          id: `${account}-${txSignature}`,
-          source: account,
-          target: txSignature,
-          type: 'account_transaction',
-          color: 'hsl(var(--muted-foreground))'
-        }
-      });
+    debugLog('processAccountTransactions result:', {
+      nodesCreated: nodes.length,
+      edgesCreated: edges.length,
+      walletAddresses: walletAddresses.size
     });
 
     return { nodes, edges };
@@ -1107,7 +1184,15 @@ const CytoscapeContainer = React.memo(() => {
 
     try {
       debugLog('Fetching account data for:', account);
-      const accountData: AccountData | null = await fetchAccountTransactions(account);
+      
+      // Call API directly instead of using fetchAccountTransactions from data-fetching
+      // to avoid SPL transfer filtering that interferes with graph display
+      const response = await fetch(`/api/account-transactions/${account}?limit=10000&classify=true`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch account transactions: ${response.statusText}`);
+      }
+      
+      const accountData = await response.json();
 
       if (!accountData || !cyRef.current) {
         setError('Failed to fetch account transactions. The account API might be unavailable.');
@@ -1729,74 +1814,6 @@ const CytoscapeContainer = React.memo(() => {
         </div>
       ) : null}
 
-      {/* Enhanced Controls with modern styling */}
-      <div key="controls" className="absolute top-4 right-4 z-30 flex gap-2">
-        {/* Navigation controls */}
-        <div className="flex gap-1 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl p-1 shadow-lg">
-          <button
-            onClick={navigateBack}
-            disabled={!canGoBack}
-            className={`p-2.5 rounded-lg transition-all duration-200 ${canGoBack
-              ? 'hover:bg-muted text-foreground hover:scale-105'
-              : 'opacity-40 cursor-not-allowed text-muted-foreground'
-              }`}
-            title="Navigate Back (Alt+←)"
-            aria-label="Navigate Back"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" />
-            </svg>
-          </button>
-
-          <button
-            onClick={navigateForward}
-            disabled={!canGoForward}
-            className={`p-2.5 rounded-lg transition-all duration-200 ${canGoForward
-              ? 'hover:bg-muted text-foreground hover:scale-105'
-              : 'opacity-40 cursor-not-allowed text-muted-foreground'
-              }`}
-            title="Navigate Forward (Alt+→)"
-            aria-label="Navigate Forward"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M5 12h14M12 5l7 7-7 7" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="flex gap-1 bg-background/95 backdrop-blur-md border border-border/50 rounded-xl p-1 shadow-lg">
-          <button
-            onClick={toggleFullscreen}
-            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
-            title="Toggle Fullscreen"
-            aria-label="Toggle Fullscreen"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isFullscreen ? (
-                <path d="M8 3v3a2 2 0 01-2 2H3m18 0h-3a2 2 0 01-2-2V3m0 18v-3a2 2 0 012-2h3M3 16h3a2 2 0 012 2v3" />
-              ) : (
-                <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
-              )}
-            </svg>
-          </button>
-
-          <button
-            onClick={toggleCloudView}
-            className="p-2.5 rounded-lg hover:bg-muted transition-all duration-200 hover:scale-105 text-foreground"
-            title="Toggle Cloud View"
-            aria-label="Show cloud view"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              {isCloudView ? (
-                <path d="M3 3h18v18H3zM9 9h6v6H9z" />
-              ) : (
-                <path d="M18 10h-1.26A8 8 0 109 20h9a5 5 0 000-10z" />
-              )}
-            </svg>
-          </button>
-
-        </div>
-      </div>
 
       {/* Debug Panel - only show when graph has issues */}
       {!isLoading && cyRef.current ? <DebugPanel key="debug-panel" /> : null}
