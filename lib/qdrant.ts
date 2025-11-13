@@ -1115,8 +1115,8 @@ export async function getCachedTransfers(
     solanaOnly?: boolean;
     transferType?: 'SOL' | 'TOKEN' | 'ALL';
   } = {}
-): Promise<{
-  const client = getQdrantClient(); transfers: TransferEntry[]; total: number }> {
+): Promise<{ transfers: TransferEntry[]; total: number }> {
+  const client = getQdrantClient();
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { transfers: [], total: 0 };
@@ -2001,8 +2001,8 @@ export async function getGlobalChatMessages(
     usersOnly?: boolean;
     since?: number; // timestamp
   } = {}
-): Promise<{
-  const client = getQdrantClient(); messages: GlobalChatMessage[]; total: number }> {
+): Promise<{ messages: GlobalChatMessage[]; total: number }> {
+  const client = getQdrantClient();
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { messages: [], total: 0 };
