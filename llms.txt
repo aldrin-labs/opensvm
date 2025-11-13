@@ -43,8 +43,19 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 ### 5. ACCOUNT TRANSFERS
 
 - **GET /api/account-transfers/:address**
-  - Authentication: Required
-  - Example: `curl "https://opensvm.com/api/account-transfers/{address}?beforeSignature=value&offset=value&limit=v...`
+  - Get transfer history for an address with comprehensive filtering
+  - Features: Bidirectional visibility (sender + receiver), real token symbols from Metaplex, DeFi program attribution
+  - Parameters:
+    - `limit` (integer, default: 50): Maximum number of transfers to return
+    - `offset` (integer, default: 0): Pagination offset
+    - `txType` (string): Filter by transaction type - comma-separated values (sol, spl, defi, nft, program, system, funding)
+    - `mints` (string): Filter by mint addresses - comma-separated to track specific tokens (e.g., Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump for SVMAI)
+    - `transferType` (enum: IN|OUT|ALL, default: ALL): Filter by transfer direction
+    - `solanaOnly` (boolean, default: false): Show only SOL transfers, excluding SPL tokens
+    - `bypassCache` (boolean, default: false): Fetch fresh data from RPC
+  - Response includes: txId, date, from, to, tokenSymbol (SVMAI/USDC/etc), tokenAmount, transferType, mint (full address), txType, programId
+  - Sorted by date (newest first)
+  - Example: `curl "https://opensvm.com/api/account-transfers/CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77?limit=10&txType=spl&mints=Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump"`
 
 ### 6. AI ANALYZE TRANSACTION
 

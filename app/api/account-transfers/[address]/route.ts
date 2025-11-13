@@ -23,6 +23,7 @@ import {
   isSolanaOnlyTransaction,
   type TransferEntry
 } from '@/lib/qdrant';
+import { batchFetchTokenMetadata } from '@/lib/token-registry';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -37,6 +38,8 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
+type TransactionType = 'sol' | 'spl' | 'defi' | 'nft' | 'program' | 'system' | 'funding';
+
 interface Transfer {
   txId: string;
   date: string;
@@ -45,6 +48,228 @@ interface Transfer {
   tokenSymbol: string;
   tokenAmount: string;
   transferType: 'IN' | 'OUT';
+  mint: string; // Token mint address or "SOL" for native transfers
+  txType: TransactionType; // Transaction category
+  programId?: string; // Program ID for DeFi/complex transactions
+}
+
+/**
+ * Create a unique key for a transfer to enable deduplication
+ * Uses txId, from, to, mint, and amount to ensure uniqueness
+ */
+function createTransferKey(transfer: Transfer): string {
+  return `${transfer.txId}:${transfer.from}:${transfer.to}:${transfer.mint}:${transfer.tokenAmount}`;
+}
+
+/**
+ * Deduplicate transfers by unique key (txId + from + to + mint + amount)
+ * Keeps the first occurrence of each unique transfer
+ */
+function deduplicateTransfers(transfers: Transfer[]): Transfer[] {
+  const seen = new Set<string>();
+  const deduplicated: Transfer[] = [];
+  
+  for (const transfer of transfers) {
+    const key = createTransferKey(transfer);
+    if (!seen.has(key)) {
+      seen.add(key);
+      deduplicated.push(transfer);
+    }
+  }
+  
+  return deduplicated;
+}
+
+/**
+ * Fetch token symbols for multiple mints via RPC
+ * Returns a map of mint address -> token symbol
+ */
+async function batchFetchTokenSymbols(mints: string[]): Promise<Map<string, string>> {
+  const symbolMap = new Map<string, string>();
+  
+  if (mints.length === 0) return symbolMap;
+  
+  try {
+    const connection = await getConnection();
+    
+    // Batch fetch account info for all mints
+    const mintPubkeys = mints.map(mint => new PublicKey(mint));
+    const accountInfos = await connection.getMultipleAccountsInfo(mintPubkeys);
+    
+    for (let i = 0; i < accountInfos.length; i++) {
+      const accountInfo = accountInfos[i];
+      const mint = mints[i];
+      
+      if (!accountInfo || !accountInfo.data) {
+        symbolMap.set(mint, mint);
+        continue;
+      }
+      
+      try {
+        // Try to parse token metadata from account data
+        // Token metadata is typically stored in the first few bytes
+        const data = accountInfo.data;
+        
+        // For SPL tokens, we can try to read metadata if it exists
+        // Use full mint address for now
+        symbolMap.set(mint, mint);
+      } catch (error) {
+        symbolMap.set(mint, mint);
+      }
+    }
+  } catch (error) {
+    console.error('Error batch fetching token symbols:', error);
+    // Fallback to full mint addresses
+    for (const mint of mints) {
+      symbolMap.set(mint, mint);
+    }
+  }
+  
+  return symbolMap;
+}
+
+// Known program IDs and addresses
+const KNOWN_PROGRAMS = {
+  TOKEN_PROGRAM: 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA',
+  TOKEN_2022: 'TokenzQdBNbLqP5VEhdkAS6EPFLC1PHnBqCXEpPxuEb',
+  SYSTEM_PROGRAM: '11111111111111111111111111111111',
+  STAKE_PROGRAM: 'Stake11111111111111111111111111111111111111',
+  ASSOCIATED_TOKEN: 'ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL',
+  // DEX/AMM programs
+  RAYDIUM: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
+  RAYDIUM_V4: '675kPX9MHTjS2zt1qfr1NYHuzeLXfQM9H24wFSUt1Mp8',
+  RAYDIUM_CLMM: 'CAMMCzo5YL8w4VFF8KVHrK22GGUsp5VTaW7grrKgrWqK',
+  ORCA: '9W959DqEETiGZocYWCQPaJ6sBmUzgfxXfqGeTEdp3aQP',
+  ORCA_WHIRLPOOL: 'whirLbMiicVdio4qvUfM5KAg6Ct8VwpYzGff3uctyCc',
+  JUPITER: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+  JUPITER_V6: 'JUP6LkbZbjS1jKKwapdHNy74zcZ3tLUZoi5QNyVTaV4',
+  PHOENIX: 'PhoeNiXZ8ByJGLkxNfZRnkUfjvmuYqLR89jjFHGqdXY',
+  LIFINITY: 'EewxydAPCCVuNEyrVN68PuSYdQ7wKn27V9Gjeoi8dy3S',
+  METEORA: 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo',
+  METEORA_DLMM: 'LBUZKhRxPF3XUpBCjp4YzTKgLccjZhTSDM9YuVaPwxo',
+  SABER: 'SSwpkEEcbUqx4vtoEByFjSkhKdCT862DNVb52nZg1UZ',
+  MERCURIAL: 'MERLuDFBMmsHnsBSb5Q6pR9bxaENa8zD6zF8g5nKX',
+  ALDRIN: 'AMM55ShdkoGRB5jVYPjWziwk8m5MpwyDgsMWHaMSQWH6',
+  CROPPER: 'CTMAxxk34HjKWxQ3QLZK1HpaLXmBveao3ESePXbiyfzh',
+  OPENBOOK_V1: 'srmqPvymJeFKQ4zGQed1GFppgkRHL9kaELCbyksJtPX',
+  OPENBOOK_V2: 'opnb2LAfJYbRMAHHvqjCwQxanZn7ReEHp1k81EohpZb',
+  // Lending protocols
+  SOLEND: 'So1endDq2YkqhipRh3WViPa8hdiSpxWy6z3Z6tMCpAo',
+  MANGO_V4: '4MangoMjqJ2firMokCjjGgoK8d4MXcrgL7XJaL3w6fVg',
+  // Wrapped SOL mint address
+  WRAPPED_SOL: 'So11111111111111111111111111111111111111112',
+};
+
+// Known spam addresses to filter out
+const SPAM_ADDRESSES = new Set([
+  'FLipG5QHjZe1H12f6rr5LCnrmqjhwuBTBp78GwzxnwkR', // Spam address
+]);
+
+/**
+ * Detect transaction type and primary program based on instructions and programs involved
+ * Types: 'sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'
+ * Returns both type and programId for DeFi/complex transactions
+ */
+function detectTransactionType(tx: any): { type: TransactionType; programId?: string } {
+  const instructions = tx.transaction.message.instructions || [];
+  const programIds = instructions.map((ix: any) => ix.programId?.toString() || '').filter(Boolean);
+  
+  // Check for DEX/DeFi programs (defi) - return the specific DeFi program
+  const defiPrograms = [
+    KNOWN_PROGRAMS.RAYDIUM,
+    KNOWN_PROGRAMS.RAYDIUM_V4,
+    KNOWN_PROGRAMS.RAYDIUM_CLMM,
+    KNOWN_PROGRAMS.ORCA,
+    KNOWN_PROGRAMS.ORCA_WHIRLPOOL,
+    KNOWN_PROGRAMS.JUPITER,
+    KNOWN_PROGRAMS.JUPITER_V6,
+    KNOWN_PROGRAMS.PHOENIX,
+    KNOWN_PROGRAMS.LIFINITY,
+    KNOWN_PROGRAMS.METEORA,
+    KNOWN_PROGRAMS.METEORA_DLMM,
+    KNOWN_PROGRAMS.SABER,
+    KNOWN_PROGRAMS.MERCURIAL,
+    KNOWN_PROGRAMS.ALDRIN,
+    KNOWN_PROGRAMS.CROPPER,
+    KNOWN_PROGRAMS.OPENBOOK_V1,
+    KNOWN_PROGRAMS.OPENBOOK_V2,
+    KNOWN_PROGRAMS.SOLEND,
+    KNOWN_PROGRAMS.MANGO_V4,
+    KNOWN_PROGRAMS.STAKE_PROGRAM,
+  ];
+  
+  for (const defiProgram of defiPrograms) {
+    if (programIds.includes(defiProgram)) {
+      return { type: 'defi', programId: defiProgram };
+    }
+  }
+  
+  // Check for NFT minting/operations (nft)
+  const hasNFTOperation = instructions.some((ix: any) => {
+    const parsed = ix.parsed;
+    return (parsed?.type === 'mintTo' && parsed?.info?.mintAmount === '1') || // NFT mint
+           (parsed?.type === 'initializeMint' && parsed?.info?.decimals === 0); // NFT token
+  });
+  
+  if (hasNFTOperation) {
+    return { type: 'nft' };
+  }
+  
+  // Check for account creation/funding (funding)
+  const hasAccountCreation = instructions.some((ix: any) => {
+    const parsed = ix.parsed;
+    return parsed?.type === 'createAccount' || 
+           parsed?.type === 'createAccountWithSeed' ||
+           parsed?.type === 'initializeAccount';
+  });
+  
+  if (hasAccountCreation) {
+    return { type: 'funding' };
+  }
+  
+  // Check for token program operations (spl)
+  const hasTokenProgram = programIds.includes(KNOWN_PROGRAMS.TOKEN_PROGRAM) || 
+                          programIds.includes(KNOWN_PROGRAMS.TOKEN_2022);
+  
+  if (hasTokenProgram) {
+    const hasTokenTransfer = instructions.some((ix: any) => {
+      const parsed = ix.parsed;
+      return parsed?.type === 'transfer' || parsed?.type === 'transferChecked';
+    });
+    
+    if (hasTokenTransfer) {
+      return { type: 'spl' };
+    }
+  }
+  
+  // Check for system/consensus transactions (system)
+  // These typically only involve system program with special operations
+  const isSystemOnly = programIds.length === 1 && programIds[0] === KNOWN_PROGRAMS.SYSTEM_PROGRAM;
+  const hasSystemOperation = instructions.some((ix: any) => {
+    const parsed = ix.parsed;
+    return parsed?.type === 'advanceNonceAccount' || 
+           parsed?.type === 'allocate' ||
+           parsed?.type === 'assign';
+  });
+  
+  if (isSystemOnly && hasSystemOperation) {
+    return { type: 'system' };
+  }
+  
+  // Check for complex program interactions (program) - return the first complex program
+  const complexProgram = programIds.find((pid: string) => 
+    pid !== KNOWN_PROGRAMS.SYSTEM_PROGRAM && 
+    pid !== KNOWN_PROGRAMS.TOKEN_PROGRAM &&
+    pid !== KNOWN_PROGRAMS.TOKEN_2022 &&
+    pid !== KNOWN_PROGRAMS.ASSOCIATED_TOKEN
+  );
+  
+  if (complexProgram) {
+    return { type: 'program', programId: complexProgram };
+  }
+  
+  // Default to simple SOL transfer
+  return { type: 'sol' };
 }
 
 /**
@@ -115,65 +340,364 @@ async function fetchTransactionBatch(
                 continue; // Skip failed/missing transactions
               }
 
-              const { preBalances, postBalances } = tx.meta;
+              const { preBalances, postBalances, preTokenBalances, postTokenBalances } = tx.meta;
               const accountKeys = tx.transaction.message.accountKeys;
               const blockTime = tx.blockTime! * 1000;
 
-              // Safety check: ensure all arrays have the same length
+              // Detect transaction type and program
+              const txInfo = detectTransactionType(tx);
+              const txType = txInfo.type;
+              const programId = txInfo.programId;
+
+              // Collect all instructions (both top-level and inner)
+              const allInstructions = [...(tx.transaction.message.instructions || [])];
+              
+              // Add inner instructions if they exist
+              if (tx.meta.innerInstructions) {
+                for (const inner of tx.meta.innerInstructions) {
+                  allInstructions.push(...(inner.instructions || []));
+                }
+              }
+              
+              // FIRST: Process SOL transfers from System Program transfer instructions
+              for (const instruction of allInstructions) {
+                // Type guard: only process parsed instructions
+                if (!('parsed' in instruction) || !instruction.parsed) continue;
+                
+                const { type, info } = instruction.parsed;
+                
+                // Handle System Program SOL transfers
+                if (type === 'transfer' && info.source && info.destination && info.lamports) {
+                  const sourceAddr = info.source;
+                  const destAddr = info.destination;
+                  
+                  // Skip spam addresses
+                  if (SPAM_ADDRESSES.has(sourceAddr) || SPAM_ADDRESSES.has(destAddr)) {
+                    continue;
+                  }
+                  
+                  // Only create transfer if queried address is involved
+                  if (sourceAddr === address || destAddr === address) {
+                    const amountSOL = info.lamports / 1e9;
+                    
+                    // Skip dust
+                    if (amountSOL < MIN_TRANSFER_SOL) continue;
+                    
+                    batchTransfers.push({
+                      txId: signature,
+                      date: new Date(blockTime).toISOString(),
+                      from: sourceAddr,
+                      to: destAddr,
+                      tokenSymbol: 'SOL',
+                      tokenAmount: amountSOL.toString(),
+                      transferType: sourceAddr === address ? 'OUT' : 'IN',
+                      mint: 'SOL',
+                      txType,
+                      programId,
+                    });
+                  }
+                }
+                
+                // Handle SPL token transferChecked and transfer instructions
+                if (type === 'transferChecked' || type === 'transfer') {
+                  const source = info.source;
+                  const destination = info.destination;
+                  
+                  // Get the actual amount and mint
+                  let amount: number;
+                  let decimals: number;
+                  let mint: string;
+                  
+                  if (type === 'transferChecked' && info.tokenAmount && info.mint) {
+                    // transferChecked has all info we need
+                    amount = info.tokenAmount.uiAmount || 0;
+                    decimals = info.tokenAmount.decimals || 0;
+                    mint = info.mint;
+                  } else if (type === 'transfer' && info.amount) {
+                    // For regular transfer, we need to look up mint from token balances
+                    amount = parseFloat(info.amount || '0');
+                    
+                    // Find the mint by looking up the source token account in balances
+                    const allTokenBalances = [
+                      ...(preTokenBalances || []),
+                      ...(postTokenBalances || [])
+                    ];
+                    
+                    let foundMint: string | null = null;
+                    for (const balance of allTokenBalances) {
+                      const tokenAccount = accountKeys[balance.accountIndex]?.pubkey.toString();
+                      if (tokenAccount === source || tokenAccount === destination) {
+                        foundMint = balance.mint;
+                        decimals = balance.uiTokenAmount?.decimals || 0;
+                        // Convert raw amount to UI amount if we have decimals
+                        if (decimals > 0) {
+                          amount = amount / Math.pow(10, decimals);
+                        }
+                        break;
+                      }
+                    }
+                    
+                    if (!foundMint) {
+                      console.warn(`Could not find mint for transfer instruction with source ${source}`);
+                      continue; // Skip if we can't find the mint
+                    }
+                    
+                    mint = foundMint;
+                  } else {
+                    continue;
+                  }
+                  
+                  if (amount === 0) continue;
+                  
+                  // Map token accounts to their owners
+                  // Source and destination are token accounts, we need to find the owners
+                  let sourceOwner = 'Unknown';
+                  let destOwner = 'Unknown';
+                  
+                  // Find source and destination owners from preTokenBalances or postTokenBalances
+                  const allTokenBalances = [
+                    ...(preTokenBalances || []),
+                    ...(postTokenBalances || [])
+                  ];
+                  
+                  for (const balance of allTokenBalances) {
+                    const tokenAccount = accountKeys[balance.accountIndex]?.pubkey.toString();
+                    if (tokenAccount === source) {
+                      sourceOwner = balance.owner || sourceOwner;
+                    }
+                    if (tokenAccount === destination) {
+                      destOwner = balance.owner || destOwner;
+                    }
+                  }
+                  
+                  // Skip spam addresses
+                  if (SPAM_ADDRESSES.has(sourceOwner) || SPAM_ADDRESSES.has(destOwner)) {
+                    continue;
+                  }
+                  
+                  // Only create transfer if the queried address is involved
+                  if (sourceOwner === address || destOwner === address) {
+                    const isWrappedSOL = mint === KNOWN_PROGRAMS.WRAPPED_SOL;
+                    
+                    // Use full mint address as symbol for SPL tokens
+                    const tokenSymbol = isWrappedSOL ? 'SOL' : mint;
+                    
+                    batchTransfers.push({
+                      txId: signature,
+                      date: new Date(blockTime).toISOString(),
+                      from: sourceOwner,
+                      to: destOwner,
+                      tokenSymbol,
+                      tokenAmount: amount.toString(),
+                      transferType: sourceOwner === address ? 'OUT' : 'IN',
+                      mint: isWrappedSOL ? 'SOL' : mint,
+                      txType: isWrappedSOL ? 'sol' : 'spl',
+                      programId,
+                    });
+                  }
+                }
+              }
+
+              // SECOND: Process SPL token transfers from balance changes (fallback for non-parsed transactions)
+              if (preTokenBalances && postTokenBalances && preTokenBalances.length > 0 && postTokenBalances.length > 0) {
+                // Create a map of account indices to their token changes
+                const tokenChanges = new Map<number, {
+                  mint: string;
+                  decimals: number;
+                  preBal: number;
+                  postBal: number;
+                  owner: string;
+                }>();
+
+                // Map pre-balances
+                for (const preBal of preTokenBalances) {
+                  const accountIndex = preBal.accountIndex;
+                  const owner = accountKeys[accountIndex]?.pubkey.toString() || '';
+                  const mint = preBal.mint;
+                  const decimals = preBal.uiTokenAmount?.decimals || 0;
+                  
+                  tokenChanges.set(accountIndex, {
+                    mint,
+                    decimals,
+                    preBal: parseFloat(preBal.uiTokenAmount?.uiAmountString || '0'),
+                    postBal: 0,
+                    owner,
+                  });
+                }
+
+                // Update with post-balances
+                for (const postBal of postTokenBalances) {
+                  const accountIndex = postBal.accountIndex;
+                  const existing = tokenChanges.get(accountIndex);
+                  const owner = accountKeys[accountIndex]?.pubkey.toString() || '';
+                  const mint = postBal.mint;
+                  const decimals = postBal.uiTokenAmount?.decimals || 0;
+                  
+                  if (existing) {
+                    existing.postBal = parseFloat(postBal.uiTokenAmount?.uiAmountString || '0');
+                  } else {
+                    tokenChanges.set(accountIndex, {
+                      mint,
+                      decimals,
+                      preBal: 0,
+                      postBal: parseFloat(postBal.uiTokenAmount?.uiAmountString || '0'),
+                      owner,
+                    });
+                  }
+                }
+
+                // Create transfers from ALL token balance changes (not just paired)
+                // This captures airdrops, burns, and single-sided transfers
+                tokenChanges.forEach((change) => {
+                  const delta = change.postBal - change.preBal;
+                  if (delta === 0) return;
+
+                  const amount = Math.abs(delta);
+                  if (amount === 0) return;
+
+                  // Check if this is wrapped SOL
+                  const isWrappedSOL = change.mint === KNOWN_PROGRAMS.WRAPPED_SOL;
+                  
+                  // Skip spam addresses
+                  if (SPAM_ADDRESSES.has(change.owner)) {
+                    return;
+                  }
+                  
+                  // Only include if the address is involved
+                  if (change.owner !== address) {
+                    return; // Skip if this address isn't involved in the token transfer
+                  }
+
+                  // Use full mint address as symbol for SPL tokens
+                  const tokenSymbol = isWrappedSOL ? 'SOL' : change.mint;
+                  
+                  batchTransfers.push({
+                    txId: signature,
+                    date: new Date(blockTime).toISOString(),
+                    from: delta < 0 ? change.owner : 'Unknown',
+                    to: delta > 0 ? change.owner : 'Unknown',
+                    tokenSymbol,
+                    tokenAmount: amount.toString(),
+                    transferType: delta < 0 ? 'OUT' : 'IN',
+                    mint: isWrappedSOL ? 'SOL' : change.mint,
+                    txType: isWrappedSOL ? 'sol' : 'spl',
+                    programId,
+                  });
+                });
+              }
+
+              // Process SOL transfers
               const maxLength = Math.min(
                 accountKeys.length,
                 preBalances?.length || 0,
                 postBalances?.length || 0
               );
 
-              if (maxLength === 0) {
-                continue; // No account data to process
-              }
+              if (maxLength > 0) {
+                // First pass: collect all balance changes with their accounts
+                const balanceChanges: Array<{
+                  account: string;
+                  delta: number;
+                  amount: number;
+                  index: number;
+                }> = [];
 
-              // Process balance changes for this transaction
-              for (let index = 0; index < maxLength; index++) {
-                const preBalance = preBalances?.[index] || 0;
-                const postBalance = postBalances?.[index] || 0;
-                const delta = postBalance - preBalance;
-                const account = accountKeys[index]?.pubkey.toString() || '';
-                const firstAccount = accountKeys[0]?.pubkey.toString() || '';
+                for (let index = 0; index < maxLength; index++) {
+                  const preBalance = preBalances?.[index] || 0;
+                  const postBalance = postBalances?.[index] || 0;
+                  const delta = postBalance - preBalance;
+                  const account = accountKeys[index]?.pubkey.toString() || '';
 
-                if (delta === 0 || !account) {
-                  continue;
+                  if (delta === 0 || !account) {
+                    continue;
+                  }
+
+                  const amount = Math.abs(delta / 1e9);
+
+                  // Skip spam addresses
+                  if (isSpamAddress(account) || SPAM_ADDRESSES.has(account)) {
+                    continue;
+                  }
+
+                  // Skip dust transactions
+                  if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) {
+                    continue;
+                  }
+
+                  balanceChanges.push({ account, delta, amount, index });
                 }
 
-                const amount = Math.abs(delta / 1e9);
+                // Second pass: create transfers only for accounts involved in the transfer
+                // FIXED: No longer using cartesian product - only create transfers for accounts that are directly involved
+                const senders = balanceChanges.filter(change => change.delta < 0);
+                const receivers = balanceChanges.filter(change => change.delta > 0);
 
-                // Skip if this is a spam address
-                if (isSpamAddress(account) || isSpamAddress(firstAccount)) {
-                  continue;
+                // Only create transfers if the address we're querying is involved
+                if (senders.length > 0 && receivers.length > 0) {
+                  // Check if address is a sender
+                  const senderEntry = senders.find(s => s.account === address);
+                  if (senderEntry) {
+                    // Address is sending - create OUT transfer to PRIMARY receiver
+                    // Use the largest receiver as the primary destination
+                    const primaryReceiver = receivers.reduce((max, r) => 
+                      r.amount > max.amount ? r : max
+                    );
+                    
+                    if (senderEntry.account !== primaryReceiver.account) {
+                      batchTransfers.push({
+                        txId: signature,
+                        date: new Date(blockTime).toISOString(),
+                        from: senderEntry.account,
+                        to: primaryReceiver.account,
+                        tokenSymbol: 'SOL',
+                        tokenAmount: senderEntry.amount.toString(),
+                      transferType: 'OUT',
+                      mint: 'SOL',
+                      txType,
+                      programId,
+                    });
+                    }
+                  }
+
+                  // Check if address is a receiver
+                  const receiverEntry = receivers.find(r => r.account === address);
+                  if (receiverEntry) {
+                    // Address is receiving - create IN transfer from PRIMARY sender
+                    // Use the largest sender as the primary source
+                    const primarySender = senders.reduce((max, s) => 
+                      s.amount > max.amount ? s : max
+                    );
+                    
+                    if (primarySender.account !== receiverEntry.account) {
+                      batchTransfers.push({
+                        txId: signature,
+                        date: new Date(blockTime).toISOString(),
+                        from: primarySender.account,
+                        to: receiverEntry.account,
+                        tokenSymbol: 'SOL',
+                        tokenAmount: receiverEntry.amount.toString(),
+                      transferType: 'IN',
+                      mint: 'SOL',
+                      txType,
+                      programId,
+                    });
+                    }
+                  }
                 }
-
-                // Skip dust transactions
-                if (!isAboveDustThreshold(amount, MIN_TRANSFER_SOL)) {
-                  continue;
-                }
-
-                batchTransfers.push({
-                  txId: signature,
-                  date: new Date(blockTime).toISOString(),
-                  from: delta < 0 ? account : (delta > 0 ? firstAccount : ''),
-                  to: delta > 0 ? account : (delta < 0 ? firstAccount : ''),
-                  tokenSymbol: 'SOL',
-                  tokenAmount: amount.toString(),
-                  transferType: delta < 0 ? 'OUT' : 'IN',
-                });
               }
             }
 
+            // Deduplicate transfers before caching
+            const deduplicatedBatchTransfers = deduplicateTransfers(batchTransfers);
+
             // STREAMING CACHE UPDATE: Immediately cache this batch's results
-            if (batchTransfers.length > 0) {
+            if (deduplicatedBatchTransfers.length > 0) {
               // Cache this batch asynchronously (don't wait for it)
               (async () => {
                 try {
-                  console.log(`Streaming cache update: Batch ${globalBatchIndex + 1} - caching ${batchTransfers.length} transfers`);
+                  console.log(`Streaming cache update: Batch ${globalBatchIndex + 1} - caching ${deduplicatedBatchTransfers.length} transfers (deduplicated from ${batchTransfers.length})`);
 
-                  const transferEntries: TransferEntry[] = batchTransfers.map((transfer) => ({
+                  const transferEntries: TransferEntry[] = deduplicatedBatchTransfers.map((transfer) => ({
                     id: crypto.randomUUID(),
                     walletAddress: address,
                     signature: transfer.txId || '',
@@ -209,8 +733,8 @@ async function fetchTransactionBatch(
               })();
             }
 
-            // If we got here, the batch was successful
-            return batchTransfers;
+            // If we got here, the batch was successful - return deduplicated transfers
+            return deduplicatedBatchTransfers;
 
           } catch (err) {
             console.error(`Batch ${globalBatchIndex + 1} transaction error (${retries} retries left):`, err);
@@ -256,25 +780,34 @@ async function processTransferRequest(
   transferType: string,
   solanaOnly: boolean,
   startTime: number,
-  searchParams: URLSearchParams
+  searchParams: URLSearchParams,
+  txTypeFilters: TransactionType[] | null,
+  bypassCache: boolean,
+  mintFilters: string[] | null
 ) {
   try {
     // Check cache for existing transfers (use any cached data, not just recent)
     console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
 
     let cachedTransfers: TransferEntry[] = [];
-    try {
-      const cacheResult = await getCachedTransfers(address, {
-        limit: limit * 2, // Get more from cache to account for filtering
-        offset,
-        solanaOnly,
-        transferType: transferType === 'SOL' ? 'SOL' : transferType === 'TOKEN' ? 'TOKEN' : 'ALL'
-      });
-      cachedTransfers = cacheResult.transfers;
-      console.log(`Found ${cachedTransfers.length} cached transfers for ${address}`);
-    } catch (error) {
-      console.warn('Cache lookup failed, proceeding with live fetch:', error);
-      cachedTransfers = [];
+    
+    // Skip cache if bypass requested
+    if (!bypassCache) {
+      try {
+        const cacheResult = await getCachedTransfers(address, {
+          limit: limit * 2, // Get more from cache to account for filtering
+          offset,
+          solanaOnly,
+          transferType: transferType === 'SOL' ? 'SOL' : transferType === 'TOKEN' ? 'TOKEN' : 'ALL'
+        });
+        cachedTransfers = cacheResult.transfers;
+        console.log(`Found ${cachedTransfers.length} cached transfers for ${address}`);
+      } catch (error) {
+        console.warn('Cache lookup failed, proceeding with live fetch:', error);
+        cachedTransfers = [];
+      }
+    } else {
+      console.log(`Bypassing cache as requested`);
     }
 
     // Combine cached transfers with fresh RPC data to meet user's request
@@ -282,21 +815,39 @@ async function processTransferRequest(
     let fromCache = false;
 
     // Convert cached transfers to expected format first
-    const formattedCachedTransfers = cachedTransfers.map(transfer => ({
-      txId: transfer.signature,
-      date: new Date(transfer.timestamp).toISOString(),
-      from: transfer.from,
-      to: transfer.to,
-      tokenSymbol: transfer.tokenSymbol || transfer.token,
-      tokenAmount: transfer.amount.toString(),
-      transferType: transfer.type === 'IN' ? 'IN' as const : 'OUT' as const,
-    }));
+    const formattedCachedTransfers = cachedTransfers.map(transfer => {
+      // Determine transferType correctly based on whether the requested address is sender or receiver
+      let transferType: 'IN' | 'OUT';
+      if (transfer.to === address) {
+        transferType = 'IN';
+      } else if (transfer.from === address) {
+        transferType = 'OUT';
+      } else {
+        // Fallback to stored type if address doesn't match (shouldn't happen but safety check)
+        transferType = transfer.type.toUpperCase() === 'IN' ? 'IN' : 'OUT';
+      }
+
+      return {
+        txId: transfer.signature,
+        date: new Date(transfer.timestamp).toISOString(),
+        from: transfer.from,
+        to: transfer.to,
+        tokenSymbol: transfer.tokenSymbol || transfer.token,
+        tokenAmount: transfer.amount.toString(),
+        transferType,
+        mint: transfer.mint || (transfer.tokenSymbol === 'SOL' ? 'SOL' : 'Unknown'), // Use cached mint or default
+        txType: 'sol' as TransactionType, // Default for cached (old data doesn't have this)
+      };
+    });
 
     // Always combine cache + RPC to fulfill user's complete request
     console.log(`User requested ${limit} transfers, have ${cachedTransfers.length} cached. Will fetch additional if needed...`);
 
     allTransfers = [...formattedCachedTransfers];
-    let remainingNeeded = limit - cachedTransfers.length;
+    
+    // When filtering by txType, we need to fetch MORE transfers since many will be filtered out
+    const effectiveLimit = txTypeFilters && txTypeFilters.length > 0 ? limit * 5 : limit;
+    let remainingNeeded = effectiveLimit - cachedTransfers.length;
 
     // Smart cursor initialization: use oldest cached signature if no beforeSignature provided
     let beforeSignature = searchParams.get('beforeSignature');
@@ -317,46 +868,94 @@ async function processTransferRequest(
       const connection = await getConnection();
       const pubkey = new PublicKey(address);
 
-      // STRATEGY: Fetch ALL signatures first, then process transactions in parallel
-      console.log(`Need ${remainingNeeded} more transfers. Fetching signatures...`);
+      // STRATEGY: Fetch signatures from BOTH the main account AND all token accounts
+      console.log(`Need ${remainingNeeded} more transfers. Fetching signatures from main account and token accounts...`);
 
       let allSignatures: string[] = [];
+      const seenSignatures = new Set<string>();
+      
+      // Phase 1a: Get signatures from main wallet address
+      console.log(`Fetching signatures from main wallet: ${address.substring(0, 8)}...`);
       let currentCursor = beforeSignature;
       let signatureFetchIterations = 0;
       const maxSignatureFetches = 200; // Prevent infinite loops
 
-      // Phase 1: Collect all signatures we need
-      while (allSignatures.length < remainingNeeded * 3 && signatureFetchIterations < maxSignatureFetches) {
+      // Fetch ALL signatures to support proper pagination
+      while (signatureFetchIterations < maxSignatureFetches) {
         signatureFetchIterations++;
-
-        const batchSize = Math.min(MAX_SIGNATURES_LIMIT, (remainingNeeded * 3) - allSignatures.length);
-
-        console.log(`Signature fetch ${signatureFetchIterations}: Getting ${batchSize} signatures (before: ${currentCursor?.substring(0, 8) || 'none'})`);
 
         const signatures = await connection.getSignaturesForAddress(
           pubkey,
           {
-            limit: batchSize,
+            limit: MAX_SIGNATURES_LIMIT,
             before: currentCursor || undefined
           }
         );
 
-        if (signatures.length === 0) {
-          console.log(`No more signatures available - reached end of transaction history`);
-          break;
+        if (signatures.length === 0) break;
+
+        // Add to collection (avoiding duplicates)
+        for (const sig of signatures) {
+          if (!seenSignatures.has(sig.signature)) {
+            seenSignatures.add(sig.signature);
+            allSignatures.push(sig.signature);
+          }
         }
 
-        // Add signatures to our collection
-        allSignatures.push(...signatures.map(s => s.signature));
-
-        // Update cursor to oldest signature from this batch for next iteration
-        // Note: Solana returns signatures in reverse chronological order (newest first)
         currentCursor = signatures[signatures.length - 1].signature;
-
-        console.log(`Collected ${allSignatures.length} signatures so far, cursor: ${currentCursor.substring(0, 8)}...`);
+        
+        // Stop after fetching a reasonable amount
+        if (allSignatures.length >= 1000) break;
       }
 
-      console.log(`Phase 1 complete: Collected ${allSignatures.length} signatures in ${signatureFetchIterations} fetches`);
+      console.log(`Phase 1a complete: Collected ${allSignatures.length} signatures from main wallet`);
+
+      // Phase 1b: Get all token accounts and their signatures (both SPL Token and Token2022)
+      try {
+        // Fetch both regular SPL Token accounts and Token2022 accounts
+        const [tokenAccounts, token2022Accounts] = await Promise.all([
+          connection.getParsedTokenAccountsByOwner(
+            pubkey,
+            { programId: new PublicKey(KNOWN_PROGRAMS.TOKEN_PROGRAM) }
+          ),
+          connection.getParsedTokenAccountsByOwner(
+            pubkey,
+            { programId: new PublicKey(KNOWN_PROGRAMS.TOKEN_2022) }
+          ).catch(() => ({ value: [] })) // Token2022 might not exist, handle gracefully
+        ]);
+        
+        const allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
+        
+        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022), fetching their signatures...`);
+        
+        // Fetch signatures for ALL token accounts (don't limit)
+        for (const tokenAccount of allTokenAccounts) {
+          const tokenAccountPubkey = tokenAccount.pubkey;
+          
+          try {
+            const tokenAccountSigs = await connection.getSignaturesForAddress(
+              tokenAccountPubkey,
+              { limit: 100 } // Increased limit to capture more transactions
+            );
+            
+            // Add to collection (avoiding duplicates)
+            for (const sig of tokenAccountSigs) {
+              if (!seenSignatures.has(sig.signature)) {
+                seenSignatures.add(sig.signature);
+                allSignatures.push(sig.signature);
+              }
+            }
+            
+            console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${tokenAccountSigs.length} signatures`);
+          } catch (error) {
+            console.warn(`Failed to get signatures for token account ${tokenAccountPubkey.toString()}:`, error);
+          }
+        }
+        
+        console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts)`);
+      } catch (error) {
+        console.warn('Failed to fetch token accounts:', error);
+      }
 
       // Phase 2: Process all transactions in parallel for maximum performance
       if (allSignatures.length > 0) {
@@ -381,9 +980,76 @@ async function processTransferRequest(
       }
     }
 
-    // Sort all transfers by amount descending and trim to requested limit
+    // Deduplicate all transfers before filtering and sorting
+    console.log(`Deduplicating ${allTransfers.length} total transfers...`);
+    allTransfers = deduplicateTransfers(allTransfers);
+    console.log(`After deduplication: ${allTransfers.length} unique transfers`);
+
+    // Fetch token metadata for all SPL tokens to get real symbols
+    const splTransfers = allTransfers.filter(t => t.txType === 'spl' && t.mint !== 'SOL' && t.mint !== 'Unknown');
+    if (splTransfers.length > 0) {
+      const uniqueMints = [...new Set(splTransfers.map(t => t.mint))];
+      console.log(`Fetching metadata for ${uniqueMints.length} unique token mints...`);
+      
+      try {
+        const connection = await getConnection();
+        const tokenMetadata = await batchFetchTokenMetadata(connection, uniqueMints);
+        
+        // Update tokenSymbol for all SPL transfers with fetched metadata
+        for (const transfer of allTransfers) {
+          if (transfer.txType === 'spl' && transfer.mint !== 'SOL' && transfer.mint !== 'Unknown') {
+            const metadata = tokenMetadata.get(transfer.mint);
+            if (metadata) {
+              transfer.tokenSymbol = metadata.symbol;
+            }
+          }
+        }
+        
+        console.log(`Updated ${allTransfers.filter(t => tokenMetadata.has(t.mint)).length} transfers with token symbols`);
+      } catch (error) {
+        console.warn('Failed to fetch token metadata, using mint addresses as symbols:', error);
+      }
+    }
+
+    // Apply data quality filters
+    allTransfers = allTransfers.filter(transfer => {
+      // Remove self-transfers (from === to)
+      if (transfer.from === transfer.to) {
+        return false;
+      }
+      
+      // Ensure both from and to are valid addresses
+      if (transfer.from.length < MIN_WALLET_ADDRESS_LENGTH || 
+          transfer.to.length < MIN_WALLET_ADDRESS_LENGTH) {
+        return false;
+      }
+      
+      // Ensure amount is valid
+      const amount = parseFloat(transfer.tokenAmount);
+      if (isNaN(amount) || amount <= 0) {
+        return false;
+      }
+      
+      return true;
+    });
+
+    // Apply txType filter if specified
+    if (txTypeFilters && txTypeFilters.length > 0) {
+      console.log(`Applying txType filter: ${txTypeFilters.join(',')}`);
+      allTransfers = allTransfers.filter(transfer => txTypeFilters.includes(transfer.txType));
+    }
+
+    // Apply mint filter if specified
+    if (mintFilters && mintFilters.length > 0) {
+      console.log(`Applying mint filter for ${mintFilters.length} mints`);
+      allTransfers = allTransfers.filter(transfer => 
+        mintFilters.includes(transfer.mint)
+      );
+    }
+
+    // Sort all transfers by date descending (newest first) and trim to requested limit
     const finalTransfers = allTransfers
-      .sort((a, b) => parseFloat(b.tokenAmount) - parseFloat(a.tokenAmount))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
       .slice(offset, offset + limit);
 
     const hasMore = allTransfers.length > offset + limit;
@@ -433,6 +1099,17 @@ export async function GET(
     const limit = parseInt(searchParams.get('limit') || '50');
     const transferType = searchParams.get('transferType') || 'ALL';
     const solanaOnly = searchParams.get('solanaOnly') === 'true';
+    const bypassCache = searchParams.get('bypassCache') === 'true';
+    // Get transaction type filters (comma-separated: sol,spl,defi,nft,program,system,funding)
+    const txTypeFilter = searchParams.get('txType');
+    const txTypeFilters: TransactionType[] | null = txTypeFilter 
+      ? txTypeFilter.split(',').filter(t => ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'].includes(t)) as TransactionType[]
+      : null;
+    // Get mint filters (comma-separated mint addresses to track specific tokens)
+    const mintFilter = searchParams.get('mints');
+    const mintFilters: string[] | null = mintFilter
+      ? mintFilter.split(',').map(m => m.trim()).filter(m => m.length > 0)
+      : null;
 
     // Validate address
     if (!isValidSolanaAddress(address)) {
@@ -464,7 +1141,7 @@ export async function GET(
     // Create promise for this request
     const requestPromise = (async () => {
       try {
-        return await processTransferRequest(address, offset, limit, transferType, solanaOnly, startTime, searchParams);
+        return await processTransferRequest(address, offset, limit, transferType, solanaOnly, startTime, searchParams, txTypeFilters, bypassCache, mintFilters);
       } finally {
         // Always clean up the pending request
         pendingRequests.delete(requestKey);
