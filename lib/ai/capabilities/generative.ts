@@ -1,6 +1,7 @@
 import { Connection } from '@solana/web3.js';
 import { BaseCapability } from './base';
 import type { Message, CapabilityType, ToolParams } from '../types';
+import { aiServiceClient } from '@/lib/ai-service-client';
 
 // Fallback / general LLM answer capability using server-side Together AI proxy (/api/getAnswer)
 export class GenerativeCapability extends BaseCapability {
@@ -22,18 +23,25 @@ export class GenerativeCapability extends BaseCapability {
                         return { role: 'assistant', content: 'Hello! How can I help you today?' };
                     }
                     try {
-                        const res = await fetch('/api/getAnswer', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ question: trimmed, sources: [] })
-                        });
+                        // Use the AI service client with retry logic and circuit breaker
+                        const result = await aiServiceClient.callAIService(
+                            '/api/getAnswer',
+                            { question: trimmed, sources: [] },
+                            { timeout: 45000 } // 45 second timeout for complex queries
+                        );
 
-                        // The getAnswer route returns text/plain, not JSON
-                        const text = await res.text();
-                        
-                        if (!res.ok) {
-                            return { role: 'assistant', content: `Error: ${text || 'Request failed'}` };
+                        if (!result.success) {
+                            // Return user-friendly error message
+                            return { 
+                                role: 'assistant', 
+                                content: result.error || 'I encountered an error while processing your request. Please try again.' 
+                            };
                         }
+
+                        // Handle both text and JSON responses
+                        const text = typeof result.data === 'string' 
+                            ? result.data 
+                            : result.data?.answer || 'No content generated.';
                         
                         const processed = this.postProcessResponse(text.trim());
 

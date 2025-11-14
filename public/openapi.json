@@ -6787,7 +6787,7 @@
     "/api/getAnswer": {
       "post": {
         "summary": "POST /api/getAnswer",
-        "description": "",
+        "description": "AI-powered question answering endpoint with support for custom system prompts and output length control. Provides blockchain data analysis, market insights, and general Solana knowledge.",
         "parameters": [],
         "responses": {
           "200": {
@@ -6847,7 +6847,39 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "description": "Request payload"
+                "description": "Request payload for AI question answering",
+                "required": ["question"],
+                "properties": {
+                  "question": {
+                    "type": "string",
+                    "description": "The question or query to ask the AI assistant",
+                    "example": "What is the current price of SOL token?"
+                  },
+                  "systemPrompt": {
+                    "type": "string",
+                    "description": "Optional custom system prompt to control AI behavior and response style. When provided, bypasses internal tools and uses only the LLM with your custom instructions.",
+                    "example": "You are a creative storyteller. Explain blockchain concepts as bedtime stories for children."
+                  },
+                  "maxTokens": {
+                    "type": "integer",
+                    "description": "Maximum number of tokens in the response (1-32000). Controls output length. Lower values = shorter responses.",
+                    "minimum": 1,
+                    "maximum": 32000,
+                    "default": 32000,
+                    "example": 500
+                  },
+                  "ownPlan": {
+                    "type": "boolean",
+                    "description": "If true, returns an execution plan (XML format) instead of executing the query. Useful for understanding how the AI would approach the task.",
+                    "default": false,
+                    "example": false
+                  },
+                  "_healthCheck": {
+                    "type": "boolean",
+                    "description": "Internal flag for health monitoring. Returns fast health status without processing.",
+                    "default": false
+                  }
+                }
               }
             }
           }

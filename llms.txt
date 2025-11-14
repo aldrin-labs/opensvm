@@ -339,8 +339,75 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 
 ### 33. GETANSWER
 
-- **POST /api/getAnswer**
-  - Example: `curl -X POST "https://opensvm.com/api/getAnswer" \`
+- **POST /api/getAnswer** - AI-powered question answering with custom prompts and output control
+  - **Description**: Ask questions about Solana blockchain, get market data, or use custom system prompts for creative responses
+  - **Request Body**:
+    - `question` (string, required): The question or query to ask the AI assistant
+      - Example: "What is the current price of SOL token?"
+    - `systemPrompt` (string, optional): Custom system prompt to control AI behavior and response style
+      - When provided, bypasses internal tools and Solana knowledge base
+      - Use for creative outputs, specific response formats, or custom instructions
+      - Example: "You are a pirate. Explain everything in pirate speak."
+      - Example: "You are a creative storyteller. Explain blockchain concepts as bedtime stories for children."
+    - `maxTokens` (integer, optional, 1-32000, default: 32000): Maximum output tokens to control response length
+      - Lower values = shorter responses (e.g., 50 for one sentence, 200 for a paragraph)
+      - Higher values = longer detailed responses (e.g., 1000 for comprehensive explanations)
+      - Maximum 32,000 tokens (Grok 4 Fast model limit)
+      - Example: 500 for medium-length responses
+    - `ownPlan` (boolean, optional, default: false): Return execution plan (XML) instead of executing
+      - Useful for understanding how the AI would approach complex queries
+      - Shows step-by-step breakdown with tools and data flow
+    - `_healthCheck` (boolean, optional, internal): Fast health check flag (skip for normal use)
+  - **Response**: Text answer with AI-generated content
+  - **Features**:
+    - Default mode: Uses Solana RPC knowledge base and internal tools (CoinGecko, blockchain data)
+    - Custom prompt mode: Pure LLM response with your instructions (bypasses tools)
+    - Adaptive response style based on query complexity
+    - 60-minute cache for identical queries
+    - Dynamic timeout based on complexity (2-5 minutes)
+    - Circuit breaker and retry logic for reliability
+  - **Examples**:
+    ```bash
+    # Standard blockchain query (uses internal tools)
+    curl -X POST "https://opensvm.com/api/getAnswer" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "question": "What is the current price of SOL?"
+      }'
+    
+    # Custom creative response with pirate theme
+    curl -X POST "https://opensvm.com/api/getAnswer" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "question": "Explain how DeFi works on Solana",
+        "systemPrompt": "You are a pirate captain. Use pirate slang and nautical metaphors."
+      }'
+    
+    # Short, concise answer (limited tokens)
+    curl -X POST "https://opensvm.com/api/getAnswer" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "question": "What is Solana?",
+        "systemPrompt": "Answer in one sentence only.",
+        "maxTokens": 50
+      }'
+    
+    # Detailed technical explanation with custom length
+    curl -X POST "https://opensvm.com/api/getAnswer" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "question": "Explain Solana consensus mechanism",
+        "maxTokens": 1000
+      }'
+    
+    # Get execution plan without running query
+    curl -X POST "https://opensvm.com/api/getAnswer" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "question": "Analyze wallet holdings for 3 addresses",
+        "ownPlan": true
+      }'
+    ```
 
 ### 34. GETSIMILARQUESTIONS
 

@@ -503,6 +503,18 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             }
           }
 
+          // Parse maxTokens parameter (allow user to control output length)
+          let customMaxTokens: number | undefined = undefined;
+          if (body.maxTokens !== undefined) {
+            const parsed = parseInt(String(body.maxTokens), 10);
+            if (!isNaN(parsed) && parsed > 0 && parsed <= 32000) {
+              customMaxTokens = parsed;
+              console.log(`🎯 Custom maxTokens: ${customMaxTokens}`);
+            } else {
+              console.warn(`⚠️  Invalid maxTokens value: ${body.maxTokens}, using default`);
+            }
+          }
+
           // ✅ PHASE 5: Truncate very long questions
           const truncationResult = queryTruncator.truncateIfNeeded(question);
           question = truncationResult.question;
@@ -532,7 +544,13 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           // If ownPlan mode is enabled, skip tool execution and go directly to planning
           if (ownPlan) {
             console.log(`📋 OwnPlan mode activated - generating plan without execution`);
-            return await handleOwnPlanMode(question, customSystemPrompt, requestStart);
+            return await handleOwnPlanMode(question, customSystemPrompt, requestStart, customMaxTokens);
+          }
+
+          // ✅ If custom system prompt is provided, skip tool execution and go directly to LLM
+          if (customSystemPrompt) {
+            console.log(`🎨 Custom system prompt detected - bypassing tool execution, calling LLM directly`);
+            return await handleLLMFallback(question, requestStart, null, ownPlan, customSystemPrompt, customMaxTokens);
           }
 
           // Create tool context for modular tool execution
@@ -583,7 +601,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           // If no tool handled it, proceed with LLM fallback
           // Pass any partial data we collected to help with the response
           const partialData = (toolResult as any).partialData || null;
-          return await handleLLMFallback(question, requestStart, partialData, ownPlan, customSystemPrompt || null);
+          return await handleLLMFallback(question, requestStart, partialData, ownPlan, customSystemPrompt || null, customMaxTokens);
         };
 
         const result = await Promise.race([mainProcessingPromise(), requestTimeout]);
@@ -647,7 +665,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       }
     }
 
-    async function handleOwnPlanMode(question: string, customSystemPrompt: string | null, requestStart: number): Promise<Response> {
+    async function handleOwnPlanMode(question: string, customSystemPrompt: string | null, requestStart: number, customMaxTokens?: number): Promise<Response> {
       console.log(`🎯 Starting handleOwnPlanMode`);
       console.log(`🎯 customSystemPrompt length: ${customSystemPrompt?.length || 0}`);
 
@@ -695,7 +713,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          maxTokens: 32000,  // ✅ 32K tokens for Grok 4 Fast (max output)
+          maxTokens: customMaxTokens || 32000,  // ✅ Use custom or default to 32K tokens
           stream: false
         });
 
@@ -813,7 +831,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
     - Do NOT execute anything, only plan`;
     }
 
-    async function handleLLMFallback(question: string, requestStart: number, partialData?: any, ownPlan?: boolean, customSystemPrompt?: string | null): Promise<Response> {
+    async function handleLLMFallback(question: string, requestStart: number, partialData?: any, ownPlan?: boolean, customSystemPrompt?: string | null, customMaxTokens?: number): Promise<Response> {
 
       // Fallback: use LLM (OpenRouter) to craft an answer if no tool handled it
       const apiKey = process.env.OPENROUTER_API_KEY;
@@ -861,7 +879,11 @@ async function getSolanaRpcKnowledge(): Promise<string> {
       // Create adaptive system prompt based on user's vibe
       let systemPrompt = "";
 
-      if (userVibe.isCasual && !userVibe.isTechnical) {
+      // ✅ If custom system prompt provided, use it directly and skip all internal logic
+      if (customSystemPrompt) {
+        console.log(`🎨 Using custom system prompt (${customSystemPrompt.length} chars) - bypassing internal prompts and tools`);
+        systemPrompt = customSystemPrompt;
+      } else if (userVibe.isCasual && !userVibe.isTechnical) {
         systemPrompt = `You are a friendly, knowledgeable assistant with
     expertise in Solana blockchain. You match the user's energy and
     communication style while being helpful and informative.
@@ -986,10 +1008,13 @@ async function getSolanaRpcKnowledge(): Promise<string> {
 
         // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Using Grok 4 Fast limits
         // The x-ai/grok-4-fast model supports 2M context window and up to 32K output tokens
-        let maxTokens = 32000;  // 32K tokens - maximum supported by Grok 4 Fast
+        let maxTokens = customMaxTokens || 32000;  // Use custom or default to 32K tokens
+        
+        // Clamp to valid range (1 to 32000)
+        maxTokens = Math.min(Math.max(maxTokens, 1), 32000);
         
         // Log token allocation for monitoring
-        console.log(`📝 Token allocation: ${maxTokens} tokens (Grok 4 Fast maximum for reliable output)`);
+        console.log(`📝 Token allocation: ${maxTokens} tokens ${customMaxTokens ? '(custom)' : '(default maximum)'}`);
 
 
         // Add dynamic timeout for LLM call

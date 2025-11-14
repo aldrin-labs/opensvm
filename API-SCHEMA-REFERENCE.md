@@ -194,19 +194,63 @@ GET /api/market-data?mint=DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263&endpoint=
 ### 4. AIAnswerResponse
 
 **Endpoints** (4 total):
-- `POST /api/getAnswer` - AI question answering
+- `POST /api/getAnswer` - AI question answering with custom prompts and output control
 - `POST /api/analyze` - Transaction analysis
 - `GET /api/ai-response` - AI response retrieval
 - `GET /api/ai-context` - AI context information
 
-**Properties**:
+**Request Body** (for `/api/getAnswer`):
+```typescript
+{
+  question: string; // Required: The question to ask
+  systemPrompt?: string; // Optional: Custom system prompt to control AI behavior
+  maxTokens?: number; // Optional: Max output tokens (1-32000, default: 32000)
+  ownPlan?: boolean; // Optional: Return execution plan instead of answer
+  _healthCheck?: boolean; // Internal: Health check flag
+}
+```
+
+**Response Properties**:
 ```typescript
 {
   success: boolean;
-  answer: string; // AI-generated answer
-  sources: object[]; // Data sources used
+  answer: string; // AI-generated answer (plain text or markdown)
+  sources: object[]; // Data sources used (when using internal tools)
   confidence: number; // Confidence score (0-1)
-  executedTools: string[]; // Tools used in analysis
+  executedTools: string[]; // Tools used in analysis (when not using custom prompt)
+}
+```
+
+**Features**:
+- **Custom System Prompts**: Provide `systemPrompt` to bypass internal tools and get creative/custom formatted responses
+- **Output Length Control**: Use `maxTokens` (1-32000) to control response length
+- **Execution Plans**: Set `ownPlan: true` to get XML execution plan instead of executing query
+- **Intelligent Tool Selection**: Automatically uses CoinGecko, Solana RPC, or other tools when no custom prompt provided
+- **60-Minute Cache**: Identical queries are cached for performance
+- **Dynamic Timeouts**: 2-5 minutes based on query complexity
+
+**Examples**:
+```bash
+# Standard query (uses internal tools)
+POST /api/getAnswer
+{
+  "question": "What is the current price of SOL?"
+}
+
+# Custom creative response
+POST /api/getAnswer
+{
+  "question": "Explain DeFi",
+  "systemPrompt": "You are a pirate. Use pirate slang.",
+  "maxTokens": 500
+}
+
+# Short concise answer
+POST /api/getAnswer
+{
+  "question": "What is Solana?",
+  "systemPrompt": "One sentence only.",
+  "maxTokens": 50
 }
 ```
 

@@ -2022,14 +2022,66 @@ curl -X POST "https://opensvm.com/api/find-related-transactions" \
 
 **Methods**: POST
 
-**Method Details**:
-- **POST**: This API endpoint uses a modular tool system to handle common Solana queries
+**Description**: AI-powered question answering endpoint with support for custom system prompts and output length control. Provides blockchain data analysis, market insights, and general Solana knowledge.
 
-**Example Request**:
+**Method Details**:
+- **POST**: Supports standard queries (uses internal Solana tools) or custom system prompts (pure LLM mode)
+
+**Request Body**:
+```typescript
+{
+  question: string;          // Required: The question to ask
+  systemPrompt?: string;     // Optional: Custom system prompt (bypasses internal tools)
+  maxTokens?: number;        // Optional: Max output tokens (1-32000, default: 32000)
+  ownPlan?: boolean;         // Optional: Return execution plan instead of answer
+  _healthCheck?: boolean;    // Internal: Health check flag
+}
+```
+
+**Response**: Plain text or markdown answer
+
+**Features**:
+- **Standard Mode**: Uses Solana RPC knowledge base, CoinGecko API, and internal tools
+- **Custom Prompt Mode**: Bypasses all tools, uses only your system prompt with LLM
+- **Output Control**: Set `maxTokens` to limit response length (e.g., 50 for one sentence)
+- **60-Minute Cache**: Identical queries cached for performance
+- **Dynamic Timeouts**: 2-5 minutes based on query complexity
+- **Circuit Breaker**: Automatic retry with exponential backoff
+
+**Example Requests**:
 ```bash
+# Standard blockchain query
 curl -X POST "https://opensvm.com/api/getAnswer" \
   -H "Content-Type: application/json" \
-  -d '{"key":"value"}'
+  -d '{
+    "question": "What is the current price of SOL?"
+  }'
+
+# Custom creative response with pirate theme
+curl -X POST "https://opensvm.com/api/getAnswer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Explain DeFi on Solana",
+    "systemPrompt": "You are a pirate captain. Use pirate slang and nautical metaphors.",
+    "maxTokens": 500
+  }'
+
+# Short one-sentence answer
+curl -X POST "https://opensvm.com/api/getAnswer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "What is Solana?",
+    "systemPrompt": "Answer in exactly one sentence.",
+    "maxTokens": 50
+  }'
+
+# Get execution plan without running
+curl -X POST "https://opensvm.com/api/getAnswer" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "question": "Analyze wallet holdings for 3 addresses",
+    "ownPlan": true
+  }'
 ```
 
 **Source**: `app/api/getAnswer/route.ts`

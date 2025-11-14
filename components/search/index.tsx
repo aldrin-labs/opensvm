@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isValidTransactionSignature, isValidSolanaAddress } from '@/lib/utils';
+import { aiServiceClient } from '@/lib/ai-service-client';
 import { SearchInput } from './SearchInput';
 import { SearchButton } from './SearchButton';
 import { SearchSettings } from './SearchSettings';
@@ -165,21 +166,37 @@ export default function EnhancedSearchBar({ onFocusChange }: EnhancedSearchBarPr
     }, 2000);
 
     try {
-      console.log('No suggestions found, calling AI API...');
-      const response = await fetch('/api/getAnswer', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question: query }),
-      });
+      console.log('No suggestions found, calling AI API with retry logic...');
+      
+      // Use the AI service client with automatic retry and circuit breaker
+      const result = await aiServiceClient.callAIService(
+        '/api/getAnswer',
+        { question: query },
+        { timeout: 30000 } // 30 second timeout
+      );
 
-      if (!response.ok) {
-        throw new Error(`AI API error: ${response.status}`);
+      if (result.success) {
+        // Handle both JSON and text responses
+        const answer = typeof result.data === 'string' 
+          ? result.data 
+          : result.data?.answer || 'Sorry, I couldn\'t find information about that.';
+        
+        setAiAnswer(answer);
+        
+        if (result.isCached) {
+          console.log('✅ Returned cached AI response');
+        }
+        if (result.retryCount && result.retryCount > 0) {
+          console.log(`✅ Succeeded after ${result.retryCount} retries`);
+        }
+      } else {
+        // Display user-friendly error message
+        setAiAnswer(result.error || 'Sorry, I encountered an error while searching. Please try again.');
+        
+        if (result.isTimeout) {
+          console.error('⏱️ AI service timeout');
+        }
       }
-
-      const data = await response.json();
-      setAiAnswer(data.answer || 'Sorry, I couldn\'t find information about that.');
     } catch (error) {
       console.error('Error calling AI API:', error);
       setAiAnswer('Sorry, I encountered an error while searching. Please try again.');
