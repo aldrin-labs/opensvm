@@ -13,10 +13,13 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-export async function GET(_request, { params }) {
+export async function GET(
+  _request: Request,
+  context: { params: Promise<{ address: string }> }
+) {
   try {
-    const resolvedParams = await params;
-    const address = decodeURIComponent(resolvedParams.address);
+    const params = await context.params;
+    const address = decodeURIComponent(params.address);
     const programId = new PublicKey(address);
     const connection = await getConnection();
     const accountInfo = await connection.getAccountInfo(programId);
