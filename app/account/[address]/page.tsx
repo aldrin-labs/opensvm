@@ -501,52 +501,12 @@ export default function AccountPage({ params, searchParams }: PageProps) {
     );
   }
 
-  // In E2E mode, render a simplified layout to ensure deterministic mounting of tabs/table
-  if (isE2EMode && accountInfo) {
-    return (
-      <div className="w-12/12 px-4 py-8 ai-account-page-wrapper" data-test="account-page-e2e"> {/* Added ai-account-page-wrapper here */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 ai-account-grid"> {/* Added ai-account-grid here */}
-          <div className="lg:col-span-2 space-y-6">
-            <AccountInfo
-              address={accountInfo.address}
-              isSystemProgram={accountInfo.isSystemProgram}
-              parsedOwner={accountInfo.parsedOwner}
-            />
-          </div>
-          <div className="lg:col-span-3 space-y-6">
-            <AccountOverview
-              address={accountInfo.address}
-              solBalance={accountInfo.solBalance}
-              tokenAccounts={accountInfo.tokenAccounts}
-              isSystemProgram={accountInfo.isSystemProgram}
-              parsedOwner={accountInfo.parsedOwner}
-            />
-          </div>
-          <div className="lg:col-span-7 space-y-6">
-            {/* Graph deliberately omitted in E2E fast-path to avoid heavy bundles */}
-            <div className="w-full h-[200px] border rounded-lg p-4 bg-gray-50 flex items-center justify-center">
-              <p className="text-gray-500">Graph omitted in tests</p>
-            </div>
-          </div>
-        </div>
-        <div className="mt-6 w-full">
-          <TabContainer
-            address={accountInfo.address}
-            activeTab={activeTab as string}
-            solBalance={accountInfo.solBalance}
-            tokenBalances={accountInfo.tokenBalances}
-            tokenAccounts={accountInfo.tokenAccounts}
-          />
-        </div>
-      </div>
-    );
-  }
 
   return (
-    <div className="w-12/12 px-4 py-8 ai-account-page-wrapper" data-test="account-page-e2e"> {/* Added ai-account-page-wrapper here */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 ai-account-grid"> {/* Added ai-account-grid here */}
+    <div className="w-12/12 px-4 py-2 ai-account-page-wrapper" data-test="account-page-e2e">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 ai-account-grid">
         {/* Account Info - Compact Column */}
-        <div className="lg:col-span-2 space-y-6">
+        <div className="lg:col-span-2">
           <AccountInfo
             address={accountInfo.address}
             isSystemProgram={accountInfo.isSystemProgram}
@@ -555,7 +515,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         </div>
 
         {/* Account Overview - Medium Column */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="lg:col-span-3">
           <AccountOverview
             address={accountInfo.address}
             solBalance={accountInfo.solBalance}
@@ -566,7 +526,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         </div>
 
         {/* Transaction Graph - Wide Column */}
-        <div className="lg:col-span-7 space-y-6" ref={graphRef}>
+        <div className="lg:col-span-7" ref={graphRef}>
           <GraphErrorBoundary>
             <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-full" />}>
               <TransactionGraphLazy
@@ -591,7 +551,7 @@ export default function AccountPage({ params, searchParams }: PageProps) {
         </div>
       </div>
       {/* Full-width tabs and table */}
-      <div className="mt-6 w-full">
+      <div className="mt-2 w-full">
         <TableErrorBoundary>
           <PerformanceWrapper priority="low" fallback={<Skeleton className="w-full h-[300px]" />}>
             <AccountTabsLazy

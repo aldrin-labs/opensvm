@@ -1101,10 +1101,11 @@ export async function GET(
     const solanaOnly = searchParams.get('solanaOnly') === 'true';
     const bypassCache = searchParams.get('bypassCache') === 'true';
     // Get transaction type filters (comma-separated: sol,spl,defi,nft,program,system,funding)
+    // Default to ALL types if not specified
     const txTypeFilter = searchParams.get('txType');
     const txTypeFilters: TransactionType[] | null = txTypeFilter 
       ? txTypeFilter.split(',').filter(t => ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding'].includes(t)) as TransactionType[]
-      : null;
+      : ['sol', 'spl', 'defi', 'nft', 'program', 'system', 'funding']; // Default to ALL types
     // Get mint filters (comma-separated mint addresses to track specific tokens)
     const mintFilter = searchParams.get('mints');
     const mintFilters: string[] | null = mintFilter

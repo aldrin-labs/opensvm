@@ -313,7 +313,7 @@ export const createGraphStyle = (): any[] => [
       'target-arrow-color': 'rgba(255,255,255,0.32)',
       'target-arrow-shape': 'triangle',
       'curve-style': 'bezier',
-      'opacity': 0.9,
+      'opacity': 'data(opacity)', // Use opacity from edge data
       'arrow-scale': 1.3,
       'line-cap': 'round'
     }

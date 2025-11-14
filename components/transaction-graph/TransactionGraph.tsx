@@ -268,6 +268,10 @@ const CytoscapeContainer = React.memo(() => {
     funding: true
   });
 
+  // API filter state
+  const [selectedTxType, setSelectedTxType] = useState<string>('');
+  const [selectedMints, setSelectedMints] = useState<string[]>([]);
+
   // Note: Debounced state updates could be added here for high-frequency operations
   // but would require replacing all setProgress/setProgressMessage calls throughout the component
 
@@ -1031,140 +1035,116 @@ const CytoscapeContainer = React.memo(() => {
     );
   });
 
-  // Memoized account transactions processing to avoid expensive recalculations
-  const processAccountTransactions = useCallback((transactions: AccountTransaction[], account: string) => {
+  // Process account transfers from the account-transfers API
+  const processAccountTransfers = useCallback((transfers: any[], account: string) => {
     const nodes: CytoscapeNode[] = [];
     const edges: CytoscapeEdge[] = [];
 
-    debugLog('processAccountTransactions called with:', {
-      transactionCount: transactions.length,
+    debugLog('processAccountTransfers called with:', {
+      transferCount: transfers.length,
       account,
-      sampleTx: transactions[0]
+      sampleTransfer: transfers[0]
     });
 
-    // Add main account node
-    nodes.push({
-      data: {
-        id: account,
-        label: `${account.slice(0, 5)}...${account.slice(-5)}`,
-        type: 'account',
-        pubkey: account,
-        size: 25,
-        color: 'hsl(var(--primary))'
-      }
-    });
-
-    // Track unique wallet addresses involved in transfers
+    // Track unique wallet addresses involved in transfers (excluding the center account)
     const walletAddresses = new Set<string>();
 
-    // Process each transaction to create edges (transactions become edges, not nodes)
-    transactions.forEach((tx: AccountTransaction) => {
-      if (!tx.signature) return;
+    // Calculate max amount for opacity scaling
+    const maxAmount = Math.max(
+      ...transfers.map((t: any) => parseFloat(t.tokenAmount) || 0),
+      1 // Avoid division by zero
+    );
+    
+    debugLog('Max transfer amount for opacity scaling:', maxAmount);
 
-      debugLog('Processing transaction:', {
-        signature: tx.signature,
-        hasTransfers: !!(tx as any).transfers,
-        transfersCount: ((tx as any).transfers || []).length,
-        classification: (tx as any).classification
+    // Process each transfer from the account-transfers API
+    // Each transfer is already a standalone object with txId, from, to, amount, etc.
+    transfers.forEach((transfer: any) => {
+      if (!transfer.txId) return;
+
+      debugLog('Processing transfer:', {
+        txId: transfer.txId,
+        from: transfer.from,
+        to: transfer.to,
+        amount: transfer.tokenAmount,
+        symbol: transfer.tokenSymbol
       });
 
-      // Get classification from API response or classify locally
-      const classification: TransactionClassification = (tx as any).classification || classifyTransactionType(tx);
-      const funding = (tx as any).isFunding ?? isFundingTransaction(tx, account);
-
-      // Process ALL transaction types (SOL, SPL, DeFi, NFT, program calls, etc.)
-      debugLog('Processing transaction type:', classification.type);
-
-      // Use the transfers array from the API response
-      const transfers: any[] = (tx as any).transfers || [];
+      // Skip if same account or excluded
+      if (transfer.from === transfer.to || 
+          EXCLUDED_ACCOUNTS.has(transfer.from) || 
+          EXCLUDED_ACCOUNTS.has(transfer.to)) return;
       
-      if (transfers.length === 0) {
-        debugLog('No transfers found in transaction:', tx.signature);
-        return;
-      }
-
-      debugLog('Found transfers:', transfers.length);
-
-      // Build transfer pairs from the transfers array
-      // Transfers with negative change are outgoing, positive are incoming
-      const outgoingTransfers = transfers.filter(t => t.change < 0);
-      const incomingTransfers = transfers.filter(t => t.change > 0);
-
-      // Create edges for each transfer pair
-      outgoingTransfers.forEach(outgoing => {
-        incomingTransfers.forEach(incoming => {
-          const from = outgoing.account;
-          const to = incoming.account;
-          
-          // Skip if same account or excluded
-          if (from === to || EXCLUDED_ACCOUNTS.has(from) || EXCLUDED_ACCOUNTS.has(to)) return;
-          
-          // Track wallet addresses for node creation
-          walletAddresses.add(from);
-          walletAddresses.add(to);
-          
-          // Normalize the transfer amount using decimals
-          const decimals = outgoing.decimals ?? incoming.decimals ?? 9; // Default to 9 for SOL
-          const rawAmount = Math.abs(outgoing.change);
-          const amount = rawAmount / Math.pow(10, decimals);
-          const tokenSymbol = outgoing.symbol || incoming.symbol || 'SOL';
-          
-          // Determine direction relative to the main account
-          const direction = to === account ? 'in' : from === account ? 'out' : 'neutral';
-          
-          debugLog('Creating edge:', {
-            from: from.slice(0, 8),
-            to: to.slice(0, 8),
-            amount,
-            tokenSymbol,
-            direction
-          });
-          
-          // Create edge representing this transaction
-          edges.push({
-            data: {
-              id: `${tx.signature}-${from}-${to}`,
-              source: from,
-              target: to,
-              type: 'account_transfer',
-              fullSignature: tx.signature,
-              txType: classification.type,
-              isFunding: funding || classification.isFunding,
-              color: direction === 'in' 
-                ? 'hsl(var(--chart-2))' // Green for incoming
-                : direction === 'out' 
-                ? 'hsl(var(--chart-1))' // Red/Orange for outgoing
-                : 'hsl(var(--muted-foreground))', // Gray for neutral
-              amount: amount,
-              tokenSymbol: tokenSymbol,
-              direction,
-              label: formatEdgeLabel({
-                amount: amount,
-                tokenSymbol: tokenSymbol,
-                txType: classification.type,
-                isFunding: funding || classification.isFunding
-              })
-            }
-          });
-        });
+      // Track wallet addresses for node creation
+      walletAddresses.add(transfer.from);
+      walletAddresses.add(transfer.to);
+      
+      // The amount is already normalized in the API response
+      const amount = parseFloat(transfer.tokenAmount) || 0;
+      const tokenSymbol = transfer.tokenSymbol || 'SOL';
+      
+      // Determine direction relative to the main account
+      const direction = transfer.to === account ? 'in' : transfer.from === account ? 'out' : 'neutral';
+      
+      // Calculate opacity based on transfer amount (larger = more opaque)
+      const opacity = Math.min(1.0, Math.max(0.3, amount / maxAmount));
+      
+      debugLog('Creating edge:', {
+        from: transfer.from.slice(0, 8),
+        to: transfer.to.slice(0, 8),
+        amount,
+        tokenSymbol,
+        direction,
+        opacity: opacity.toFixed(2)
+      });
+      
+      // Create edge representing this transfer
+      edges.push({
+        data: {
+          id: `${transfer.txId}-${transfer.from}-${transfer.to}`,
+          source: transfer.from,
+          target: transfer.to,
+          type: 'account_transfer',
+          fullSignature: transfer.txId,
+          txType: transfer.txType || 'spl',
+          isFunding: false,
+          color: direction === 'in' 
+            ? 'hsl(var(--chart-2))' // Green for incoming
+            : direction === 'out' 
+            ? 'hsl(var(--chart-1))' // Red/Orange for outgoing
+            : 'hsl(var(--muted-foreground))', // Gray for neutral
+          amount: amount,
+          tokenSymbol: tokenSymbol,
+          direction,
+          opacity: opacity,
+          label: formatEdgeLabel({
+            amount: amount,
+            tokenSymbol: tokenSymbol,
+            txType: transfer.txType || 'spl',
+            isFunding: false
+          })
+        }
       });
     });
 
-    // Create nodes for each unique wallet address involved in transfers
+    // Create nodes for each unique wallet address involved in transfers (excluding center account)
     walletAddresses.forEach(walletAddress => {
+      // Skip center account node since it's already added optimistically
+      if (walletAddress === account) return;
+      
       nodes.push({
         data: {
           id: walletAddress,
           label: `${walletAddress.slice(0, 5)}...${walletAddress.slice(-5)}`,
           type: 'account',
           pubkey: walletAddress,
-          size: account === walletAddress ? 25 : 15,
-          color: account === walletAddress ? 'hsl(var(--primary))' : 'hsl(var(--muted-foreground))'
+          size: 15,
+          color: 'hsl(var(--muted-foreground))'
         }
       });
     });
 
-    debugLog('processAccountTransactions result:', {
+    debugLog('processAccountTransfers result:', {
       nodesCreated: nodes.length,
       edgesCreated: edges.length,
       walletAddresses: walletAddresses.size
@@ -1173,39 +1153,20 @@ const CytoscapeContainer = React.memo(() => {
     return { nodes, edges };
   }, []); // No dependencies needed as this is a pure function
 
-  // Fetch account data
+  // Progressive/streaming account data fetch for optimistic UI
   const fetchAccountData = useCallback(async (account: string) => {
     if (!account) return;
 
-    setIsLoading(true);
+    // Don't show full loading state - use optimistic UI
     setError(null);
     setProgress(10);
-    setProgressMessage('Fetching account transactions...');
+    setProgressMessage('Loading transfers...');
 
     try {
       debugLog('Fetching account data for:', account);
       
-      // Call API directly instead of using fetchAccountTransactions from data-fetching
-      // to avoid SPL transfer filtering that interferes with graph display
-      const response = await fetch(`/api/account-transactions/${account}?limit=10000&classify=true`);
-      if (!response.ok) {
-        throw new Error(`Failed to fetch account transactions: ${response.statusText}`);
-      }
-      
-      const accountData = await response.json();
-
-      if (!accountData || !cyRef.current) {
-        setError('Failed to fetch account transactions. The account API might be unavailable.');
-        return;
-      }
-
-      // Extract transactions array from the account data
-      const transactions = accountData.transactions || [];
-      debugLog('Extracted transactions from account data:', transactions.length);
-
-      if (transactions.length === 0) {
-        setError('No transactions found for this account. This account might have limited activity or the account transactions API might be unavailable.');
-        // Still create the account node even with no transactions
+      // Immediately show account node for optimistic UI
+      if (cyRef.current) {
         const accountNode = {
           data: {
             id: account,
@@ -1216,69 +1177,177 @@ const CytoscapeContainer = React.memo(() => {
             color: 'hsl(var(--primary))'
           }
         };
+        
+        if (!cyRef.current.getElementById(account).length) {
+          cyRef.current.add(accountNode);
+          cyRef.current.center(cyRef.current.getElementById(account));
+          updateGPUGraphData(cyRef.current);
+        }
+      }
+      
+      // Build query parameters for account-transfers API with batch size
+      const batchSize = 20; // Load in smaller batches for progressive rendering
+      const params = new URLSearchParams({
+        limit: batchSize.toString()
+      });
+      
+      // Add txType filter if selected
+      if (selectedTxType) {
+        params.append('txType', selectedTxType);
+      }
+      
+      // Add mints filter if selected
+      if (selectedMints.length > 0) {
+        params.append('mints', selectedMints.join(','));
+      }
+      
+      // Use account-transfers API instead of account-transactions
+      const response = await fetch(`/api/account-transfers/${account}?${params.toString()}`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch account transfers: ${response.statusText}`);
+      }
+      
+      const accountData = await response.json();
 
-        cyRef.current.add(accountNode);
-        updateGPUGraphData(cyRef.current);
-        setIsLoading(false);
+      if (!accountData || !cyRef.current) {
+        setError('Failed to fetch account transfers. The account API might be unavailable.');
         return;
-      } setProgress(50);
-      setProgressMessage('Processing account data...');
+      }
 
-      // Set total accounts to load (estimate based on transactions)
-      const estimatedAccounts = Math.min(transactions.length * 2, 100); // Rough estimate
+      // Extract transfers array from the account data (account-transfers API returns { data, hasMore, total })
+      const transfers = accountData.data || [];
+      debugLog('Extracted transfers from account data:', transfers.length);
+
+      if (transfers.length === 0) {
+        setError('No transfers found for this account. This account might have limited activity.');
+        setProgress(0);
+        setProgressMessage('');
+        return;
+      }
+      
+      setProgress(30);
+      setProgressMessage(`Processing ${transfers.length} transfers...`);
+
+      // Set total accounts to load (estimate based on transfers)
+      const estimatedAccounts = Math.min(transfers.length * 2, 100);
       setTotalAccountsToLoad(estimatedAccounts);
 
-      // Process transactions
-      const elements = processAccountTransactions(transactions, account);
+      // Process and add transfers in real-time batches
+      const processBatchSize = 10;
+      for (let i = 0; i < transfers.length; i += processBatchSize) {
+        const batch = transfers.slice(i, i + processBatchSize);
+        const elements = processAccountTransfers(batch, account);
+        
+        const progressPercent = 30 + Math.floor((i / transfers.length) * 50);
+        setProgress(progressPercent);
+        setProgressMessage(`Adding batch ${Math.floor(i / processBatchSize) + 1}/${Math.ceil(transfers.length / processBatchSize)}...`);
 
-      setProgress(80);
-      setProgressMessage('Updating graph...');
-
-      // Add to graph
-      cyRef.current.batch(() => {
-        let newNodesCount = 0;
-        elements.nodes.forEach(node => {
-          if (!cyRef.current!.getElementById(node.data.id).length) {
-            cyRef.current!.add(node);
-            newNodesCount++;
-          }
-        });
-        elements.edges.forEach(edge => {
-          if (!cyRef.current!.getElementById(edge.data.id).length) {
-            cyRef.current!.add(edge);
-          }
-        });
-
-        // Update expanded nodes counter
-        if (newNodesCount > 0) {
-          setExpandedNodesCount(prev => prev + newNodesCount);
-        }
-      });
-
-      // Update GPU graph
-      if (cyRef.current) { updateGPUGraphData(cyRef.current); }
-
-      // Run layout
-      // Skip layout for very large transactions to prevent hanging
-      const nodeCount = elements.nodes.length;
-      if (nodeCount > 15) {
-        debugLog('Large transaction detected, skipping layout to prevent hanging');
-        setProgressMessage('Large transaction - using simple positioning...');
-
-        // Use simple grid layout for large transactions
+        // Add batch to graph in real-time
         if (cyRef.current) {
-          const nodes = cyRef.current.nodes();
-          nodes.forEach((node, index) => {
-            const row = Math.floor(index / 5);
-            const col = index % 5;
-            node.position({
-              x: col * 100,
-              y: row * 100
+          cyRef.current.batch(() => {
+            let newNodesCount = 0;
+            elements.nodes.forEach((node: any) => {
+              if (!cyRef.current!.getElementById(node.data.id).length) {
+                cyRef.current!.add(node);
+                newNodesCount++;
+              }
             });
+            elements.edges.forEach((edge: any) => {
+              if (!cyRef.current!.getElementById(edge.data.id).length) {
+                cyRef.current!.add(edge);
+              }
+            });
+
+            if (newNodesCount > 0) {
+              setExpandedNodesCount(prev => prev + newNodesCount);
+            }
           });
+
+          // Update GPU graph after each batch for real-time visualization
+          updateGPUGraphData(cyRef.current);
+          
+          // Apply layout incrementally for smooth experience
+          if (i % (processBatchSize * 2) === 0) { // Layout every 2 batches
+            const cy = cyRef.current;
+            const centerNode = cy.getElementById(account);
+            const otherNodes = cy.nodes().filter(n => n.id() !== account);
+            
+            centerNode.position({ x: 0, y: 0 });
+            
+            const inNodes: any[] = [];
+            const outNodes: any[] = [];
+            
+            otherNodes.forEach((node: any) => {
+              const edges = node.connectedEdges();
+              const hasIncoming = edges.some((e: any) => 
+                e.target().id() === account && e.source().id() === node.id()
+              );
+              if (hasIncoming) {
+                inNodes.push(node);
+              } else {
+                outNodes.push(node);
+              }
+            });
+            
+            inNodes.forEach((node: any, index: number) => {
+              const x = (index - inNodes.length / 2) * 150;
+              const y = -200;
+              node.position({ x, y });
+            });
+            
+            outNodes.forEach((node: any, index: number) => {
+              const x = (index - outNodes.length / 2) * 150;
+              const y = 200;
+              node.position({ x, y });
+            });
+
+            cy.fit(undefined, 50);
+          }
         }
-      } else {
-        await runLayoutWithProgress('dagre', true);
+        
+        // Small delay for browser to render
+        await new Promise(resolve => setTimeout(resolve, 50));
+      }
+
+      // Final layout after all data is loaded
+      if (cyRef.current) {
+        setProgress(90);
+        setProgressMessage('Finalizing layout...');
+        
+        const cy = cyRef.current;
+        const centerNode = cy.getElementById(account);
+        const otherNodes = cy.nodes().filter(n => n.id() !== account);
+        
+        centerNode.position({ x: 0, y: 0 });
+        
+        const inNodes: any[] = [];
+        const outNodes: any[] = [];
+        
+        otherNodes.forEach((node: any) => {
+          const edges = node.connectedEdges();
+          const hasIncoming = edges.some((e: any) => 
+            e.target().id() === account && e.source().id() === node.id()
+          );
+          if (hasIncoming) {
+            inNodes.push(node);
+          } else {
+            outNodes.push(node);
+          }
+        });
+        
+        inNodes.forEach((node: any, index: number) => {
+          const x = (index - inNodes.length / 2) * 150;
+          const y = -200;
+          node.position({ x, y });
+        });
+        
+        outNodes.forEach((node: any, index: number) => {
+          const x = (index - outNodes.length / 2) * 150;
+          const y = 200;
+          node.position({ x, y });
+        });
+
+        cy.fit(undefined, 50);
       }
 
       setProgress(100);
@@ -1291,10 +1360,12 @@ const CytoscapeContainer = React.memo(() => {
       errorLog('Account fetch error:', error);
       setError(error instanceof Error ? error.message : 'Unknown error');
     } finally {
-      setIsLoading(false);
+      // Don't set loading to false - graph is already showing progressively
+      setProgress(0);
+      setProgressMessage('');
     }
-  }, [cyRef, runLayoutWithProgress, processAccountTransactions, updateGPUGraphData]);
-  // Note: processAccountTransactions and updateGPUGraphData are included as dependencies
+  }, [cyRef, processAccountTransfers, updateGPUGraphData, selectedTxType, selectedMints]);
+  // Note: processAccountTransfers and updateGPUGraphData are included as dependencies
 
 
 
@@ -1859,6 +1930,22 @@ const CytoscapeContainer = React.memo(() => {
         visibleElements={{
           nodes: cyRef.current?.nodes().length || 0,
           edges: cyRef.current?.edges().length || 0
+        }}
+        selectedTxType={selectedTxType}
+        onTxTypeChange={(txType) => {
+          setSelectedTxType(txType);
+          // Refetch data when filter changes
+          if (initialAccount) {
+            fetchAccountData(initialAccount);
+          }
+        }}
+        selectedMints={selectedMints}
+        onMintsChange={(mints) => {
+          setSelectedMints(mints);
+          // Refetch data when filter changes
+          if (initialAccount) {
+            fetchAccountData(initialAccount);
+          }
         }}
       />
 

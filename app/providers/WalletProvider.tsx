@@ -120,7 +120,6 @@ function SafeWalletProvider({ children }: { children: ReactNode }) {
 function WalletProviderInner({ children }: { children: ReactNode }) {
   const settings = useSettings();
   const [endpoint, setEndpoint] = useState<string>(DEFAULT_ENDPOINT);
-  const [connectionReady, setConnectionReady] = useState(false);
 
   const rpcEndpoint = settings?.rpcEndpoint;
 
@@ -134,6 +133,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
   );
 
   // Initialize connection with abort controller for cleanup
+  // Run in background without blocking the UI
   useEffect(() => {
     let mounted = true;
     const abortController = new AbortController();
@@ -191,7 +191,6 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
           if (await tryEndpoint(poolEndpoint)) {
             if (mounted && !abortController.signal.aborted) {
               setEndpoint(poolEndpoint);
-              setConnectionReady(true);
               return;
             }
           }
@@ -204,26 +203,21 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
           if (await tryEndpoint(fallback)) {
             if (mounted && !abortController.signal.aborted) {
               setEndpoint(fallback);
-              setConnectionReady(true);
               return;
             }
           }
           await new Promise(resolve => setTimeout(resolve, 100)); // Small delay between attempts
         }
 
-        // If all fails, use default
+        // If all fails, keep using default (already set)
         if (mounted && !abortController.signal.aborted) {
-          debugLog('All RPC endpoints failed, using default');
-          setEndpoint(DEFAULT_ENDPOINT);
-          setConnectionReady(true);
+          debugLog('All RPC endpoints failed, using default endpoint');
         }
       } catch (err) {
         if (!abortController.signal.aborted) {
           debugError('Connection error:', err);
           if (mounted) {
-            debugLog('Connection error, using default endpoint');
-            setEndpoint(DEFAULT_ENDPOINT);
-            setConnectionReady(true);
+            debugLog('Connection error, keeping default endpoint');
           }
         }
       }
@@ -237,9 +231,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
     };
   }, [endpointValue]);
 
-  if (!connectionReady) {
-    return <div className="text-center py-4">Connecting to Solana network...</div>;
-  }
+  // Render immediately with default endpoint - no blocking UI
 
   return (
     <ConnectionProvider endpoint={endpoint}>
