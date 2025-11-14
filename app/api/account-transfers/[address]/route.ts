@@ -926,33 +926,42 @@ async function processTransferRequest(
         
         const allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
         
-        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022), fetching their signatures...`);
+        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022), fetching their signatures in parallel...`);
         
-        // Fetch signatures for ALL token accounts (don't limit)
-        for (const tokenAccount of allTokenAccounts) {
+        // ✅ OPTIMIZED: Fetch signatures for ALL token accounts IN PARALLEL
+        const tokenAccountSigPromises = allTokenAccounts.map(async (tokenAccount) => {
           const tokenAccountPubkey = tokenAccount.pubkey;
           
           try {
-            const tokenAccountSigs = await connection.getSignaturesForAddress(
+            // Get fresh connection for each parallel request to maximize round-robin
+            const freshConnection = await getConnection();
+            const tokenAccountSigs = await freshConnection.getSignaturesForAddress(
               tokenAccountPubkey,
               { limit: 100 } // Increased limit to capture more transactions
             );
             
-            // Add to collection (avoiding duplicates)
-            for (const sig of tokenAccountSigs) {
-              if (!seenSignatures.has(sig.signature)) {
-                seenSignatures.add(sig.signature);
-                allSignatures.push(sig.signature);
-              }
-            }
-            
             console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${tokenAccountSigs.length} signatures`);
+            return tokenAccountSigs;
           } catch (error) {
             console.warn(`Failed to get signatures for token account ${tokenAccountPubkey.toString()}:`, error);
+            return [];
+          }
+        });
+        
+        // Wait for all token account signature fetches to complete in parallel
+        const tokenAccountSigResults = await Promise.all(tokenAccountSigPromises);
+        
+        // Flatten and add all signatures to collection (avoiding duplicates)
+        for (const tokenAccountSigs of tokenAccountSigResults) {
+          for (const sig of tokenAccountSigs) {
+            if (!seenSignatures.has(sig.signature)) {
+              seenSignatures.add(sig.signature);
+              allSignatures.push(sig.signature);
+            }
           }
         }
         
-        console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts)`);
+        console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts) - PARALLEL FETCH`);
       } catch (error) {
         console.warn('Failed to fetch token accounts:', error);
       }
