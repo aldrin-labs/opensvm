@@ -89,6 +89,18 @@ export function signData(data: string): { signature: string; pubkey: string } {
 }
 
 /**
+ * Alias for signData for backward compatibility
+ * @deprecated Use signData instead
+ */
+export function signPayload(data: string): { signature: string; publicKey: string } {
+  const result = signData(data);
+  return {
+    signature: result.signature,
+    publicKey: result.pubkey,
+  };
+}
+
+/**
  * Verify signature (client-side or server-side)
  */
 export function verifySignature(
@@ -373,3 +385,7 @@ export function lamportsToSol(lamports: number): string {
 export function solToLamports(sol: number): number {
   return Math.floor(sol * 1_000_000_000);
 }
+
+// Re-export database functions for backward compatibility
+export { listContributions, listKOLAllocations, getReferrer } from './database';
+

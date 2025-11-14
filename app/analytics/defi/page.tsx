@@ -1,8 +1,8 @@
-'use client';
+import { Suspense } from 'react';
 
 export const dynamic = 'force-dynamic';
 
-export default function DeFiAnalyticsPage() {
+function DeFiAnalyticsContent() {
   return (
     <div className="container mx-auto py-8">
       <div className="mb-8">
@@ -15,5 +15,13 @@ export default function DeFiAnalyticsPage() {
         <p className="text-muted-foreground">DeFi analytics coming soon...</p>
       </div>
     </div>
+  );
+}
+
+export default function DeFiAnalyticsPage() {
+  return (
+    <Suspense fallback={<div className="container mx-auto py-8"><div className="rounded-md border p-8 text-center"><p className="text-muted-foreground">Loading...</p></div></div>}>
+      <DeFiAnalyticsContent />
+    </Suspense>
   );
 }

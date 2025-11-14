@@ -101,31 +101,35 @@ export default async function DocsPage() {
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {/* Header */}
-      <div className="border-b backdrop-blur-sm bg-gradient-to-br from-background via-background to-primary/5">
-        <div className="container mx-auto px-4 py-12">
+      <div className="border-b-2 border-slate-200 dark:border-slate-800 backdrop-blur-sm bg-gradient-to-br from-white/90 via-slate-50/90 to-blue-50/90 dark:from-slate-900/90 dark:via-slate-900/90 dark:to-slate-800/90 shadow-sm">
+        <div className="container mx-auto px-4 py-16">
           <div className="max-w-4xl mx-auto text-center">
-            <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-primary via-primary/80 to-primary/60 bg-clip-text text-transparent">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-sm font-medium mb-6 shadow-sm">
+              <Book className="w-4 h-4" />
+              Complete Documentation Hub
+            </div>
+            <h1 className="text-6xl font-bold mb-6 bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 dark:from-blue-400 dark:via-purple-400 dark:to-pink-400 bg-clip-text text-transparent leading-tight">
               OpenSVM Documentation
             </h1>
-            <p className="text-xl text-muted-foreground mb-8">
-              Comprehensive guides and API references for the Solana blockchain explorer
+            <p className="text-xl text-slate-600 dark:text-slate-400 mb-10 leading-relaxed">
+              Comprehensive guides, API references, and tutorials for the Solana blockchain explorer
             </p>
-            <div className="flex gap-4 justify-center">
+            <div className="flex gap-4 justify-center flex-wrap">
               <Link 
                 href="/swagger" 
-                className="inline-flex items-center gap-2 px-6 py-3 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-2 px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl hover:from-blue-700 hover:to-purple-700 transition-all shadow-lg hover:shadow-xl font-semibold"
               >
                 <FileText className="w-5 h-5" />
-                API Reference
+                Interactive API
               </Link>
               <Link 
                 href="/docs/README" 
-                className="inline-flex items-center gap-2 px-6 py-3 border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-lg transition-colors"
+                className="inline-flex items-center gap-2 px-8 py-4 border-2 border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-700 rounded-xl transition-all shadow-md hover:shadow-lg font-semibold"
               >
-                <Book className="w-5 h-5" />
-                Get Started
+                <Zap className="w-5 h-5" />
+                Quick Start
               </Link>
             </div>
           </div>
@@ -133,44 +137,52 @@ export default async function DocsPage() {
       </div>
 
       {/* Quick Links */}
-      <div className="container mx-auto px-4 py-8 bg-background">
+      <div className="container mx-auto px-4 py-10 bg-transparent">
         <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-16">
             <Link 
               href="/swagger"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
+              className="p-8 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-2xl transition-all duration-300 group bg-white dark:bg-slate-800 transform hover:-translate-y-1"
             >
-              <FileText className="w-8 h-8 mb-3 text-primary" />
-              <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">Interactive API</h3>
-              <p className="text-sm text-muted-foreground">Explore and test API endpoints with Swagger UI</p>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                <FileText className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">Interactive API</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Explore and test 98 API endpoints with live Swagger UI documentation</p>
             </Link>
             <Link 
               href="/openapi"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
+              className="p-8 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:border-purple-400 dark:hover:border-purple-600 hover:shadow-2xl transition-all duration-300 group bg-white dark:bg-slate-800 transform hover:-translate-y-1"
             >
-              <FileText className="w-8 h-8 mb-3 text-primary" />
-              <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">OpenAPI Spec</h3>
-              <p className="text-sm text-muted-foreground">Download OpenAPI specification in JSON format</p>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                <FileText className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-slate-100 group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">OpenAPI Spec</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Download complete OpenAPI 3.0 specification in JSON format</p>
             </Link>
             <Link 
               href="/llms.txt"
-              className="p-6 border rounded-lg hover:border-primary hover:shadow-lg transition-all group bg-card"
+              className="p-8 border-2 border-slate-200 dark:border-slate-700 rounded-2xl hover:border-green-400 dark:hover:border-green-600 hover:shadow-2xl transition-all duration-300 group bg-white dark:bg-slate-800 transform hover:-translate-y-1"
             >
-              <HelpCircle className="w-8 h-8 mb-3 text-primary" />
-              <h3 className="text-lg font-semibold mb-2 group-hover:text-primary">LLM Documentation</h3>
-              <p className="text-sm text-muted-foreground">AI-optimized documentation for agents</p>
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-lg">
+                <HelpCircle className="w-7 h-7 text-white" />
+              </div>
+              <h3 className="text-xl font-bold mb-3 text-slate-900 dark:text-slate-100 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors">LLM Documentation</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">AI-optimized documentation for language models and agents</p>
             </Link>
           </div>
 
           {/* Documentation Categories */}
-          <div className="space-y-12">
+          <div className="space-y-16">
             {docCategories.map((category, idx) => (
-              <div key={idx}>
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="text-primary">{category.icon}</div>
+              <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl p-8 border-2 border-slate-200 dark:border-slate-700 shadow-lg">
+                <div className="flex items-center gap-4 mb-8 pb-4 border-b-2 border-slate-200 dark:border-slate-700">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-md">
+                    <span className="text-white">{category.icon}</span>
+                  </div>
                   <div>
-                    <h2 className="text-2xl font-bold">{category.title}</h2>
-                    <p className="text-sm text-muted-foreground">{category.description}</p>
+                    <h2 className="text-3xl font-bold text-slate-900 dark:text-slate-100">{category.title}</h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{category.description}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -178,10 +190,10 @@ export default async function DocsPage() {
                     <Link
                       key={doc.slug}
                       href={`/docs/${doc.slug}`}
-                      className="group p-6 border rounded-lg hover:border-primary hover:shadow-md transition-all bg-card"
+                      className="group p-6 border-2 border-slate-100 dark:border-slate-700 rounded-xl hover:border-blue-400 dark:hover:border-blue-600 hover:shadow-lg transition-all duration-200 bg-slate-50/50 dark:bg-slate-900/30 transform hover:-translate-y-0.5"
                     >
-                      <h3 className="font-semibold mb-2 group-hover:text-primary">{doc.title}</h3>
-                      <p className="text-sm text-muted-foreground">{doc.description}</p>
+                      <h3 className="font-bold text-slate-900 dark:text-slate-100 mb-2 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">{doc.title}</h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">{doc.description}</p>
                     </Link>
                   ))}
                 </div>
@@ -190,29 +202,51 @@ export default async function DocsPage() {
           </div>
 
           {/* Additional Resources */}
-          <div className="mt-16 p-8 border rounded-lg bg-card/50">
-            <h2 className="text-2xl font-bold mb-4">Additional Resources</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <Keyboard className="w-5 h-5 text-primary" />
+          <div className="mt-16 p-10 border-2 border-slate-200 dark:border-slate-700 rounded-2xl bg-gradient-to-br from-slate-50 via-white to-blue-50/50 dark:from-slate-800 dark:via-slate-800 dark:to-slate-700 shadow-xl">
+            <h2 className="text-3xl font-bold mb-8 text-slate-900 dark:text-slate-100">Quick Reference</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-md">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-sm">
+                    <Keyboard className="w-5 h-5 text-white" />
+                  </div>
                   Keyboard Shortcuts
                 </h3>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li><code className="px-2 py-1 bg-muted rounded">Cmd/Ctrl + K</code> - Quick search</li>
-                  <li><code className="px-2 py-1 bg-muted rounded">Cmd/Ctrl + /</code> - Toggle AI chat</li>
-                  <li><code className="px-2 py-1 bg-muted rounded">Esc</code> - Close modals</li>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+                  <li className="flex items-center justify-between">
+                    <span>Quick search</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Cmd/Ctrl + K</code>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Toggle AI chat</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Cmd/Ctrl + /</code>
+                  </li>
+                  <li className="flex items-center justify-between">
+                    <span>Close modals</span>
+                    <code className="px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 rounded-lg font-mono text-xs border border-slate-200 dark:border-slate-700 shadow-sm">Esc</code>
+                  </li>
                 </ul>
               </div>
-              <div>
-                <h3 className="font-semibold mb-2 flex items-center gap-2">
-                  <HelpCircle className="w-5 h-5 text-primary" />
+              <div className="p-6 bg-white dark:bg-slate-900 rounded-xl border-2 border-slate-200 dark:border-slate-700 shadow-md">
+                <h3 className="font-bold text-lg mb-4 flex items-center gap-3 text-slate-900 dark:text-slate-100">
+                  <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center shadow-sm">
+                    <HelpCircle className="w-5 h-5 text-white" />
+                  </div>
                   Need Help?
                 </h3>
-                <ul className="text-sm text-muted-foreground space-y-1">
-                  <li>• Join our community for support</li>
-                  <li>• Check GitHub issues for known problems</li>
-                  <li>• Contact support@opensvm.com</li>
+                <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Join our community for support</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Check GitHub issues for known problems</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-600 dark:text-green-400 font-bold">•</span>
+                    <span>Contact support@opensvm.com</span>
+                  </li>
                 </ul>
               </div>
             </div>

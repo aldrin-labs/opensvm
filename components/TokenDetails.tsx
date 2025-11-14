@@ -9,6 +9,7 @@ import Image from 'next/image';
 import { useEffect, useState } from 'react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { ShareButton } from '@/components/ShareButton';
+import { useDynamicPageTitle, TitleGenerators } from '@/hooks/useDynamicPageTitle';
 import { TokenPriceChart } from '@/components/token/TokenPriceChart';
 import { TokenHolderAnalytics } from '@/components/token/TokenHolderAnalytics';
 import { TokenDEXAnalytics } from '@/components/token/TokenDEXAnalytics';
@@ -104,6 +105,17 @@ export default function TokenDetails({ mint }: Props) {
 
     fetchData();
   }, [mint, selectedTimeframe, refreshKey]);
+
+  // Update page title dynamically based on loaded token data
+  useDynamicPageTitle({
+    title: TitleGenerators.token(
+      mint,
+      data?.metadata?.symbol,
+      data?.metadata?.name,
+      data?.price
+    ),
+    dependencies: [data]
+  });
 
   // Auto-refresh every 30 seconds
   useEffect(() => {

@@ -1,8 +1,10 @@
 'use client';
 
 export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Loader2,
@@ -60,7 +62,7 @@ interface SlotsData {
   };
 }
 
-export default function SlotsPage() {
+function SlotsPageContent() {
   const router = useRouter();
   const [data, setData] = useState<SlotsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -392,5 +394,20 @@ export default function SlotsPage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function SlotsPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading slots...</span>
+        </div>
+      </div>
+    }>
+      <SlotsPageContent />
+    </Suspense>
   );
 }

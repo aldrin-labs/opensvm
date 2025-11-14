@@ -320,7 +320,8 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
     fetchChartData();
 
     // No polling interval needed - using WebSocket for real-time updates
-  }, [market, timeframe]); // Only refetch on market/timeframe change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [market, timeframe]); // candleData intentionally excluded to prevent interval recreation
 
   // Draw chart on canvas
   useEffect(() => {
@@ -577,6 +578,7 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
         ctx.fillText(hoverPrice.toFixed(2), rect.width - rightPadding + 7, mousePos.y + 3);
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [candleData, chartType, mousePos]);
 
   // Add resize observer to redraw on window resize

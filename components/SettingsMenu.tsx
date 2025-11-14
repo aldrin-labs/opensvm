@@ -77,6 +77,7 @@ function SettingsMenuClient() {
         customRpcEndpoint: settings.customRpcEndpoint,
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]); // Only reset when menu opens, not on config changes
 
   // E2E aid: allow tests to programmatically open the menu without relying on UI events

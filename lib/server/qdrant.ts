@@ -8,9 +8,18 @@ export const COLLECTIONS = {
 
 export const VECTOR_SIZE = 1536;
 
-const qdrantClient = new QdrantClient({
-  url: process.env.QDRANT_SERVER || 'http://localhost:6333'
-});
+// Lazy initialization to prevent connection attempts during build time
+let qdrantClient: QdrantClient | null = null;
+
+function getQdrantClient(): QdrantClient {
+  if (!qdrantClient && typeof window === 'undefined') {
+    // Only initialize on server-side at runtime
+    qdrantClient = new QdrantClient({
+      url: process.env.QDRANT_SERVER || 'http://localhost:6333'
+    });
+  }
+  return qdrantClient!;
+}
 
 // Generate vector representation for a transaction
 function generateTransactionVector(tx: any): number[] {
@@ -40,6 +49,9 @@ function generateTransactionVector(tx: any): number[] {
 
 export async function storeGraph(transactions: any[]) {
   try {
+    const client = getQdrantClient();
+    if (!client) return;
+    
     // Store transaction vectors in Qdrant
     const vectors = transactions.map(tx => ({
       id: tx.signature,
@@ -71,6 +83,9 @@ export async function storeGraph(transactions: any[]) {
 
 export async function findRelatedTransactions(signature: string) {
   try {
+    const client = getQdrantClient();
+    if (!client) return [];
+    
     // Search for similar transactions using vector similarity
     const searchResult = await client.search(COLLECTIONS.TRANSACTIONS, {
       vector: generateTransactionVector({ signature }), // Generate vector for search

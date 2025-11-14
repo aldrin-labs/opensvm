@@ -1,9 +1,14 @@
 'use client';
 
-import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+export const dynamicParams = true;
+export const revalidate = 0;
 
-export default function CreateLaunchpadPage() {
+import React, { useState, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+
+function CreateLaunchpadForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -495,5 +500,20 @@ export default function CreateLaunchpadPage() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function CreateLaunchpadPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex items-center justify-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin" />
+          <span className="ml-2">Loading form...</span>
+        </div>
+      </div>
+    }>
+      <CreateLaunchpadForm />
+    </Suspense>
   );
 }

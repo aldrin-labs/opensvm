@@ -148,6 +148,7 @@ export default function EnhancedAIChatWidget({
       planSubscription.unsubscribe();
       actionSubscription.unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showAgentVision]);
   
   // Auto-scroll to bottom

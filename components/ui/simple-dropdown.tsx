@@ -56,8 +56,10 @@ export function SimpleDropdown({
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscapeKey);
-      if (dropdownRef.current) {
-        dropdownRef.current.removeEventListener('click', handleInternalClick);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- dropdownRef.current captured in cleanup
+      const currentRef = dropdownRef.current;
+      if (currentRef) {
+        currentRef.removeEventListener('click', handleInternalClick);
       }
     };
   }, [isOpen]);
