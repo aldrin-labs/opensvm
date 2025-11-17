@@ -115,14 +115,41 @@ class ProxyConnection extends Connection {
     }
 }
 
+// Endpoint health metrics
+interface EndpointHealth {
+    successCount: number;
+    failureCount: number;
+    lastSuccess: number;
+    lastFailure: number;
+    consecutiveFailures: number;
+    avgLatency: number;
+    totalRequests: number;
+}
+
 // Connection pool for load balancing across RPC endpoints
 class ConnectionPool {
     private connections: Map<string, ProxyConnection> = new Map();
     private endpoints: string[] = [];
+    private endpointHealth: Map<string, EndpointHealth> = new Map();
+    private readonly HEALTH_FAILURE_THRESHOLD = 5; // Mark endpoint as unhealthy after 5 consecutive failures
+    private readonly HEALTH_RECOVERY_TIME = 60000; // Try unhealthy endpoints again after 1 minute
 
     constructor() {
         this.endpoints = getRpcEndpoints();
         logger.rpc.info(`Initialized with ${this.endpoints.length} OpenSVM endpoints`);
+        
+        // Initialize health tracking for all endpoints
+        for (const endpoint of this.endpoints) {
+            this.endpointHealth.set(endpoint, {
+                successCount: 0,
+                failureCount: 0,
+                lastSuccess: Date.now(),
+                lastFailure: 0,
+                consecutiveFailures: 0,
+                avgLatency: 0,
+                totalRequests: 0
+            });
+        }
     }
 
     getConnection(endpoint?: string): ProxyConnection {
@@ -148,11 +175,52 @@ class ConnectionPool {
             return this.connections.get(fallbackEndpoint)!;
         }
 
-        // Random endpoint selection for load balancing
-        const randomIndex = Math.floor(Math.random() * this.endpoints.length);
-        const selectedEndpoint = this.endpoints[randomIndex];
+        // Filter out unhealthy endpoints (too many consecutive failures)
+        const now = Date.now();
+        const healthyEndpoints = this.endpoints.filter(ep => {
+            const health = this.endpointHealth.get(ep);
+            if (!health) return true; // If no health data, consider it healthy
+            
+            // If endpoint has too many consecutive failures, only retry after recovery time
+            if (health.consecutiveFailures >= this.HEALTH_FAILURE_THRESHOLD) {
+                const timeSinceLastFailure = now - health.lastFailure;
+                if (timeSinceLastFailure < this.HEALTH_RECOVERY_TIME) {
+                    return false; // Still in recovery period
+                }
+            }
+            return true;
+        });
 
-        logger.rpc.debug(`Selected OpenSVM endpoint ${randomIndex + 1}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
+        // If all endpoints are unhealthy, use all endpoints (give them another chance)
+        const candidateEndpoints = healthyEndpoints.length > 0 ? healthyEndpoints : this.endpoints;
+
+        // Weighted random selection: prefer endpoints with better success rates
+        const endpointScores = candidateEndpoints.map(ep => {
+            const health = this.endpointHealth.get(ep);
+            if (!health || health.totalRequests === 0) return { endpoint: ep, score: 1.0 };
+            
+            const successRate = health.successCount / health.totalRequests;
+            const latencyPenalty = Math.min(health.avgLatency / 5000, 1); // Penalize high latency (>5s)
+            const score = successRate * (1 - latencyPenalty * 0.5);
+            
+            return { endpoint: ep, score: Math.max(score, 0.1) }; // Min score 0.1
+        });
+
+        // Select endpoint using weighted random
+        const totalScore = endpointScores.reduce((sum, e) => sum + e.score, 0);
+        let randomValue = Math.random() * totalScore;
+        let selectedEndpoint = endpointScores[0].endpoint;
+
+        for (const { endpoint, score } of endpointScores) {
+            randomValue -= score;
+            if (randomValue <= 0) {
+                selectedEndpoint = endpoint;
+                break;
+            }
+        }
+
+        const selectedIndex = this.endpoints.indexOf(selectedEndpoint);
+        logger.rpc.debug(`Selected OpenSVM endpoint ${selectedIndex + 1}/${this.endpoints.length}: ${selectedEndpoint.substring(0, 50)}...`);
 
         if (!this.connections.has(selectedEndpoint)) {
             this.connections.set(selectedEndpoint, new ProxyConnection(selectedEndpoint));
@@ -165,6 +233,65 @@ class ConnectionPool {
         this.endpoints = newEndpoints;
         // Clear existing connections to force new ones with new endpoints
         this.connections.clear();
+        
+        // Initialize health tracking for new endpoints
+        for (const endpoint of newEndpoints) {
+            if (!this.endpointHealth.has(endpoint)) {
+                this.endpointHealth.set(endpoint, {
+                    successCount: 0,
+                    failureCount: 0,
+                    lastSuccess: Date.now(),
+                    lastFailure: 0,
+                    consecutiveFailures: 0,
+                    avgLatency: 0,
+                    totalRequests: 0
+                });
+            }
+        }
+    }
+
+    // Track successful request for endpoint health
+    recordSuccess(endpoint: string, latencyMs: number) {
+        const health = this.endpointHealth.get(endpoint);
+        if (!health) return;
+        
+        health.successCount++;
+        health.lastSuccess = Date.now();
+        health.consecutiveFailures = 0; // Reset consecutive failures
+        health.totalRequests++;
+        
+        // Update rolling average latency
+        health.avgLatency = (health.avgLatency * (health.totalRequests - 1) + latencyMs) / health.totalRequests;
+    }
+
+    // Track failed request for endpoint health
+    recordFailure(endpoint: string) {
+        const health = this.endpointHealth.get(endpoint);
+        if (!health) return;
+        
+        health.failureCount++;
+        health.lastFailure = Date.now();
+        health.consecutiveFailures++;
+        health.totalRequests++;
+        
+        if (health.consecutiveFailures >= this.HEALTH_FAILURE_THRESHOLD) {
+            logger.rpc.warn(`Endpoint ${endpoint.substring(0, 50)}... marked unhealthy (${health.consecutiveFailures} consecutive failures)`);
+        }
+    }
+
+    // Get health stats for all endpoints
+    getHealthStats() {
+        const stats: Record<string, any> = {};
+        for (const [endpoint, health] of this.endpointHealth.entries()) {
+            const successRate = health.totalRequests > 0 ? (health.successCount / health.totalRequests * 100).toFixed(1) : 'N/A';
+            stats[endpoint] = {
+                successRate: `${successRate}%`,
+                avgLatency: `${health.avgLatency.toFixed(0)}ms`,
+                consecutiveFailures: health.consecutiveFailures,
+                totalRequests: health.totalRequests
+            };
+        }
+        return stats;
     }
 
     getAllEndpoints(): string[] {

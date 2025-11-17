@@ -24,6 +24,7 @@ import {
   type TransferEntry
 } from '@/lib/qdrant';
 import { batchFetchTokenMetadata } from '@/lib/token-registry';
+import { withRetry } from '@/lib/rpc-retry';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -313,11 +314,22 @@ async function fetchTransactionBatch(
             // Get fresh connection for batch RPC call to maximize OpenSVM rotation
             const freshConnection = await getConnection();
 
-            // Use getParsedTransactions for much better performance than individual calls
-            const batchTransactionsResult = await freshConnection.getParsedTransactions(batch, {
-              maxSupportedTransactionVersion: 0,
-              commitment: 'confirmed'
-            });
+            // Use getParsedTransactions for much better performance than individual calls - with retry wrapper
+            const batchTransactionsResult = await withRetry(
+              () => freshConnection.getParsedTransactions(batch, {
+                maxSupportedTransactionVersion: 0,
+                commitment: 'confirmed'
+              }),
+              freshConnection.rpcEndpoint,
+              {
+                maxRetries: MAX_RETRIES,
+                initialBackoffMs: INITIAL_BACKOFF_MS,
+                timeoutMs: 60000,
+                onRetry: (retryAttempt, error) => {
+                  console.warn(`Retry ${retryAttempt} for getParsedTransactions batch ${globalBatchIndex + 1}: ${error?.message}`);
+                }
+              }
+            );
 
             // Ensure we have a valid array before processing
             const batchTransactions = Array.isArray(batchTransactionsResult) 
@@ -923,52 +935,136 @@ async function processTransferRequest(
             { programId: new PublicKey(KNOWN_PROGRAMS.TOKEN_2022) }
           ).catch(() => ({ value: [] })) // Token2022 might not exist, handle gracefully
         ]);
-        
+
         const allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
-        
-        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022), fetching their signatures in parallel...`);
-        
-        // ✅ OPTIMIZED: Fetch signatures for ALL token accounts IN PARALLEL
-        const tokenAccountSigPromises = allTokenAccounts.map(async (tokenAccount) => {
-          const tokenAccountPubkey = tokenAccount.pubkey;
-          
-          try {
-            // Get fresh connection for each parallel request to maximize round-robin
-            const freshConnection = await getConnection();
-            const tokenAccountSigs = await freshConnection.getSignaturesForAddress(
-              tokenAccountPubkey,
-              { limit: 100 } // Increased limit to capture more transactions
-            );
-            
-            console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${tokenAccountSigs.length} signatures`);
-            return tokenAccountSigs;
-          } catch (error) {
-            console.warn(`Failed to get signatures for token account ${tokenAccountPubkey.toString()}:`, error);
-            return [];
+
+        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022)`);
+
+        // Helper: sleep
+        const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+        // Helper: fetch signatures for a single address with pagination, rotating fresh connections per page
+        async function fetchAllSignaturesForAddressPaginated(tokenPubkey: PublicKey, maxTotal = 2000) {
+          const collected: string[] = [];
+          const seenLocal = new Set<string>();
+          let cursor: string | undefined = undefined;
+          let iterations = 0;
+          const perPage = Math.min(MAX_SIGNATURES_LIMIT, 1000);
+
+          while (iterations < 50 && collected.length < maxTotal) {
+            iterations++;
+
+            let attempt = 0;
+            let backoff = INITIAL_BACKOFF_MS;
+            let pageResult: any[] = [];
+
+            while (attempt < MAX_RETRIES) {
+              attempt++;
+              try {
+                const freshConn = await getConnection();
+                // Use limit=perPage and pass cursor - with retry wrapper
+                const sigs = await withRetry(
+                  () => freshConn.getSignaturesForAddress(tokenPubkey, {
+                    limit: perPage,
+                    before: cursor
+                  }),
+                  freshConn.rpcEndpoint,
+                  {
+                    maxRetries: MAX_RETRIES,
+                    initialBackoffMs: INITIAL_BACKOFF_MS,
+                    onRetry: (retryAttempt, error) => {
+                      console.warn(`Retry ${retryAttempt} for getSignaturesForAddress ${tokenPubkey.toString().substring(0,8)}: ${error?.message}`);
+                    }
+                  }
+                );
+
+                if (!Array.isArray(sigs) || sigs.length === 0) {
+                  pageResult = [];
+                } else {
+                  pageResult = sigs;
+                }
+
+                break; // success
+              } catch (err: any) {
+                console.warn(`getSignaturesForAddress error for ${tokenPubkey.toString().substring(0,8)} (attempt ${attempt}):`, err?.message || err);
+                // Backoff on transient network errors
+                await sleep(backoff);
+                backoff *= 2;
+              }
+            }
+
+            if (!pageResult || pageResult.length === 0) break;
+
+            for (const s of pageResult) {
+              if (!seenLocal.has(s.signature)) {
+                seenLocal.add(s.signature);
+                collected.push(s.signature);
+              }
+            }
+
+            // Prepare cursor for next page
+            const last = pageResult[pageResult.length - 1];
+            if (!last || !last.signature) break;
+            cursor = last.signature;
+
+            // Stop early if we've collected enough
+            if (collected.length >= maxTotal) break;
           }
-        });
-        
-        // Wait for all token account signature fetches to complete in parallel
-        const tokenAccountSigResults = await Promise.all(tokenAccountSigPromises);
-        
-        // Flatten and add all signatures to collection (avoiding duplicates)
-        for (const tokenAccountSigs of tokenAccountSigResults) {
-          for (const sig of tokenAccountSigs) {
-            if (!seenSignatures.has(sig.signature)) {
-              seenSignatures.add(sig.signature);
-              allSignatures.push(sig.signature);
+
+          return collected;
+        }
+
+        // Limit parallelism so we don't flood RPC endpoints (use chunks)
+        const TOKEN_SIG_FETCH_CONCURRENCY = 8;
+        for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
+          const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);
+          console.log(`Fetching signatures for token account chunk ${Math.floor(i / TOKEN_SIG_FETCH_CONCURRENCY) + 1}/${Math.ceil(allTokenAccounts.length / TOKEN_SIG_FETCH_CONCURRENCY)} with ${chunk.length} accounts`);
+
+          const chunkPromises = chunk.map(async (tokenAccount) => {
+            const tokenAccountPubkey = tokenAccount.pubkey;
+            try {
+              // Fetch paginated signatures for this token account (rotating connections internally)
+              const sigs = await fetchAllSignaturesForAddressPaginated(tokenAccountPubkey, 2000);
+              console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${sigs.length} signatures (paginated)`);
+              return sigs;
+            } catch (error) {
+              console.warn(`Failed to get signatures for token account ${tokenAccountPubkey.toString()}:`, error);
+              return [];
+            }
+          });
+
+          const tokenAccountSigResults = await Promise.all(chunkPromises);
+
+          for (const tokenAccountSigs of tokenAccountSigResults) {
+            for (const sig of tokenAccountSigs) {
+              if (!seenSignatures.has(sig)) {
+                seenSignatures.add(sig);
+                allSignatures.push(sig);
+              }
             }
           }
+
+          // Small delay between chunks to reduce burstiness
+          if (i + TOKEN_SIG_FETCH_CONCURRENCY < allTokenAccounts.length) {
+            await sleep(50);
+          }
         }
-        
-        console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts) - PARALLEL FETCH`);
+
+        console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts) - PAGINATED FETCH`);
       } catch (error) {
         console.warn('Failed to fetch token accounts:', error);
       }
 
+      // Phase 1c: Deduplicate signatures again (final check before processing)
+      const uniqueSignatures = [...new Set(allSignatures)];
+      if (uniqueSignatures.length < allSignatures.length) {
+        console.log(`Deduplicated signatures: ${allSignatures.length} → ${uniqueSignatures.length} (removed ${allSignatures.length - uniqueSignatures.length} duplicates)`);
+        allSignatures = uniqueSignatures;
+      }
+
       // Phase 2: Process all transactions in parallel for maximum performance
       if (allSignatures.length > 0) {
-        console.log(`Phase 2: Processing ${allSignatures.length} transactions in parallel...`);
+        console.log(`Phase 2: Processing ${allSignatures.length} unique transactions in parallel...`);
 
         const allNewTransfers = await fetchTransactionBatch(allSignatures, address);
 
