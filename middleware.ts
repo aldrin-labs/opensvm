@@ -12,9 +12,27 @@ const EXCLUDED_PATHS = [
   '/api/_next',
   '/api/static',
 ];
+import { validateApiKey, logApiKeyActivity } from './lib/api-auth/service';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
+  const userAgent = request.headers.get('user-agent') || '';
+
+  // Special handling for CLI installers hitting root (e.g. `curl https://osvm.ai | sh`)
+  if (pathname === '/') {
+    const ua = userAgent.toLowerCase();
+    const isCliClient =
+      ua.includes('curl') ||
+      ua.includes('wget') ||
+      ua.includes('httpie') ||
+      ua.includes('powershell');
+
+    if (isCliClient) {
+      const url = request.nextUrl.clone();
+      url.pathname = '/install.sh';
+      return NextResponse.rewrite(url);
+    }
+  }
   
   // Skip if not an API route
   if (!pathname.startsWith('/api/')) {
