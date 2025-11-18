@@ -5,11 +5,19 @@
 import { QdrantClient } from '@qdrant/js-client-rest';
 import { UserHistoryEntry, UserProfile, UserFollowEntry } from '@/types/user-history';
 
-// Initialize Qdrant client with timeout
-const qdrantClient = new QdrantClient({
-  url: process.env.QDRANT_SERVER || 'http://localhost:6333',
-  apiKey: process.env.QDRANT || undefined,
-});
+// Lazy initialization to prevent connection attempts during build time
+let qdrantClient: QdrantClient | null = null;
+
+function getQdrantClient(): QdrantClient {
+  if (!qdrantClient && typeof window === 'undefined') {
+    // Only initialize on server-side at runtime
+    qdrantClient = new QdrantClient({
+      url: process.env.QDRANT_SERVER || 'http://localhost:6333',
+      apiKey: process.env.QDRANT || undefined,
+    });
+  }
+  return qdrantClient!;
+}
 
 // Helper function to add timeout to Qdrant operations
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number = 5000): Promise<T> {
@@ -34,18 +42,22 @@ export const COLLECTIONS = {
   GLOBAL_CHAT: 'global_chat'
 } as const;
 
-// Export qdrant client for direct access
-export { qdrantClient };
+// Export qdrant client getter for direct access
+export { getQdrantClient as qdrantClient };
 
 /**
  * Initialize Qdrant collections for user data
  */
 export async function initializeCollections() {
+  const client = getQdrantClient();
   try {
+    const client = getQdrantClient();
+    if (!client) return;
+    
     // Helper function to ensure index exists
     const ensureIndex = async (collectionName: string, fieldName: string) => {
       try {
-        await qdrantClient.createPayloadIndex(collectionName, {
+        await client.createPayloadIndex(collectionName, {
           field_name: fieldName,
           field_schema: 'keyword'
         });
@@ -62,10 +74,10 @@ export async function initializeCollections() {
     };
 
     // Check if user_history collection exists
-    const historyExists = await qdrantClient.getCollection(COLLECTIONS.USER_HISTORY).catch(() => null);
+    const historyExists = await client.getCollection(COLLECTIONS.USER_HISTORY).catch(() => null);
 
     if (!historyExists) {
-      await qdrantClient.createCollection(COLLECTIONS.USER_HISTORY, {
+      await client.createCollection(COLLECTIONS.USER_HISTORY, {
         vectors: {
           size: 384, // Dimension for text embeddings
           distance: 'Cosine'
@@ -78,10 +90,10 @@ export async function initializeCollections() {
 
 
     // Check if user_profiles collection exists
-    const profilesExists = await qdrantClient.getCollection(COLLECTIONS.USER_PROFILES).catch(() => null);
+    const profilesExists = await client.getCollection(COLLECTIONS.USER_PROFILES).catch(() => null);
 
     if (!profilesExists) {
-      await qdrantClient.createCollection(COLLECTIONS.USER_PROFILES, {
+      await client.createCollection(COLLECTIONS.USER_PROFILES, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -94,10 +106,10 @@ export async function initializeCollections() {
 
 
     // Check if user_follows collection exists
-    const followsExists = await qdrantClient.getCollection(COLLECTIONS.USER_FOLLOWS).catch(() => null);
+    const followsExists = await client.getCollection(COLLECTIONS.USER_FOLLOWS).catch(() => null);
 
     if (!followsExists) {
-      await qdrantClient.createCollection(COLLECTIONS.USER_FOLLOWS, {
+      await client.createCollection(COLLECTIONS.USER_FOLLOWS, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -111,10 +123,10 @@ export async function initializeCollections() {
 
 
     // Check if user_likes collection exists
-    const likesExists = await qdrantClient.getCollection(COLLECTIONS.USER_LIKES).catch(() => null);
+    const likesExists = await client.getCollection(COLLECTIONS.USER_LIKES).catch(() => null);
 
     if (!likesExists) {
-      await qdrantClient.createCollection(COLLECTIONS.USER_LIKES, {
+      await client.createCollection(COLLECTIONS.USER_LIKES, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -128,10 +140,10 @@ export async function initializeCollections() {
 
 
     // Check if shares collection exists
-    const sharesExists = await qdrantClient.getCollection(COLLECTIONS.SHARES).catch(() => null);
+    const sharesExists = await client.getCollection(COLLECTIONS.SHARES).catch(() => null);
 
     if (!sharesExists) {
-      await qdrantClient.createCollection(COLLECTIONS.SHARES, {
+      await client.createCollection(COLLECTIONS.SHARES, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -147,10 +159,10 @@ export async function initializeCollections() {
     }
 
     // Check if share_clicks collection exists
-    const shareClicksExists = await qdrantClient.getCollection(COLLECTIONS.SHARE_CLICKS).catch(() => null);
+    const shareClicksExists = await client.getCollection(COLLECTIONS.SHARE_CLICKS).catch(() => null);
 
     if (!shareClicksExists) {
-      await qdrantClient.createCollection(COLLECTIONS.SHARE_CLICKS, {
+      await client.createCollection(COLLECTIONS.SHARE_CLICKS, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -194,6 +206,7 @@ function generateSimpleEmbedding(text: string): number[] {
  * Store user history entry in Qdrant
  */
 export async function storeHistoryEntry(entry: UserHistoryEntry): Promise<void> {
+  const client = getQdrantClient();
   try {
 
 
@@ -201,7 +214,7 @@ export async function storeHistoryEntry(entry: UserHistoryEntry): Promise<void> 
     const textContent = `${entry.pageTitle} ${entry.path} ${entry.pageType} ${JSON.stringify(entry.metadata)}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.USER_HISTORY, {
+    await client.upsert(COLLECTIONS.USER_HISTORY, {
       wait: true,
       points: [{
         id: entry.id,
@@ -230,6 +243,8 @@ export async function getUserHistory(
     pageType?: string;
   } = {}
 ): Promise<{ history: UserHistoryEntry[]; total: number }> {
+  const client = getQdrantClient();
+  
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { history: [], total: 0 };
@@ -283,14 +298,14 @@ export async function getUserHistory(
     }
 
     // Use scroll API for filter-based retrieval
-    const result = await qdrantClient.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
+    const result = await client.scroll(COLLECTIONS.USER_HISTORY, scrollParams);
 
     // Get total count
     const countParams: any = {};
     if (filter.must.length > 0) {
       countParams.filter = filter;
     }
-    const countResult = await qdrantClient.count(COLLECTIONS.USER_HISTORY, countParams);
+    const countResult = await client.count(COLLECTIONS.USER_HISTORY, countParams);
 
     // Scroll API returns {points: [...], next_page_offset: ...}
     const allHistory = result.points.map(point => point.payload as unknown as UserHistoryEntry);
@@ -336,10 +351,11 @@ export async function getUserHistory(
  * Delete user history from Qdrant
  */
 export async function deleteUserHistory(walletAddress: string): Promise<void> {
+  const client = getQdrantClient();
   try {
 
 
-    await qdrantClient.delete(COLLECTIONS.USER_HISTORY, {
+    await client.delete(COLLECTIONS.USER_HISTORY, {
       wait: true,
       filter: {
         must: [{
@@ -358,11 +374,12 @@ export async function deleteUserHistory(walletAddress: string): Promise<void> {
  * Store user profile in Qdrant
  */
 export async function storeUserProfile(profile: UserProfile): Promise<void> {
+  const client = getQdrantClient();
   try {
 
 
     // First check if profile exists by searching for walletAddress
-    const existingResult = await qdrantClient.search(COLLECTIONS.USER_PROFILES, {
+    const existingResult = await client.search(COLLECTIONS.USER_PROFILES, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'walletAddress', match: { value: profile.walletAddress } }]
@@ -385,7 +402,7 @@ export async function storeUserProfile(profile: UserProfile): Promise<void> {
     const textContent = `${profile.walletAddress} ${profile.displayName || ''} ${profile.bio || ''}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.USER_PROFILES, {
+    await client.upsert(COLLECTIONS.USER_PROFILES, {
       wait: true,
       points: [{
         id: pointId,
@@ -403,11 +420,12 @@ export async function storeUserProfile(profile: UserProfile): Promise<void> {
  * Get user profile from Qdrant
  */
 export async function getUserProfile(walletAddress: string): Promise<UserProfile | null> {
+  const client = getQdrantClient();
   try {
 
 
     // Search for profile by walletAddress instead of using it as ID
-    const result = await qdrantClient.search(COLLECTIONS.USER_PROFILES, {
+    const result = await client.search(COLLECTIONS.USER_PROFILES, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'walletAddress', match: { value: walletAddress } }]
@@ -431,8 +449,9 @@ export async function getUserProfile(walletAddress: string): Promise<UserProfile
  * Check Qdrant connection health
  */
 export async function checkQdrantHealth(): Promise<boolean> {
+  const client = getQdrantClient();
   try {
-    await qdrantClient.getCollections();
+    await client.getCollections();
     return true;
   } catch (error) {
     console.error('Qdrant health check failed:', error);
@@ -448,13 +467,14 @@ export async function checkQdrantHealth(): Promise<boolean> {
  * Store user follow relationship
  */
 export async function storeUserFollow(entry: UserFollowEntry): Promise<void> {
+  const client = getQdrantClient();
   try {
     //await initializeCollections();
 
     const textContent = `${entry.followerAddress} follows ${entry.targetAddress}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.USER_FOLLOWS, {
+    await client.upsert(COLLECTIONS.USER_FOLLOWS, {
       wait: true,
       points: [{
         id: entry.id,
@@ -472,9 +492,10 @@ export async function storeUserFollow(entry: UserFollowEntry): Promise<void> {
  * Remove user follow relationship
  */
 export async function removeUserFollow(followerAddress: string, targetAddress: string): Promise<void> {
+  const client = getQdrantClient();
   try {
 
-    await qdrantClient.delete(COLLECTIONS.USER_FOLLOWS, {
+    await client.delete(COLLECTIONS.USER_FOLLOWS, {
       wait: true,
       filter: {
         must: [
@@ -493,9 +514,10 @@ export async function removeUserFollow(followerAddress: string, targetAddress: s
  * Get user followers
  */
 export async function getUserFollowers(targetAddress: string): Promise<UserFollowEntry[]> {
+  const client = getQdrantClient();
   try {
 
-    const result = await qdrantClient.search(COLLECTIONS.USER_FOLLOWS, {
+    const result = await client.search(COLLECTIONS.USER_FOLLOWS, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'targetAddress', match: { value: targetAddress } }]
@@ -515,9 +537,10 @@ export async function getUserFollowers(targetAddress: string): Promise<UserFollo
  * Get users that a user is following
  */
 export async function getUserFollowing(followerAddress: string): Promise<UserFollowEntry[]> {
+  const client = getQdrantClient();
   try {
 
-    const result = await qdrantClient.search(COLLECTIONS.USER_FOLLOWS, {
+    const result = await client.search(COLLECTIONS.USER_FOLLOWS, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'followerAddress', match: { value: followerAddress } }]
@@ -549,12 +572,13 @@ interface UserLikeEntry {
  * Store user like relationship
  */
 export async function storeUserLike(entry: UserLikeEntry): Promise<void> {
+  const client = getQdrantClient();
   try {
 
     const textContent = `${entry.likerAddress} likes ${entry.targetAddress}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.USER_LIKES, {
+    await client.upsert(COLLECTIONS.USER_LIKES, {
       wait: true,
       points: [{
         id: entry.id,
@@ -572,9 +596,10 @@ export async function storeUserLike(entry: UserLikeEntry): Promise<void> {
  * Remove user like relationship
  */
 export async function removeUserLike(likerAddress: string, targetAddress: string): Promise<void> {
+  const client = getQdrantClient();
   try {
 
-    await qdrantClient.delete(COLLECTIONS.USER_LIKES, {
+    await client.delete(COLLECTIONS.USER_LIKES, {
       wait: true,
       filter: {
         must: [
@@ -593,9 +618,10 @@ export async function removeUserLike(likerAddress: string, targetAddress: string
  * Get user likes
  */
 export async function getUserLikes(targetAddress: string): Promise<UserLikeEntry[]> {
+  const client = getQdrantClient();
   try {
 
-    const result = await qdrantClient.search(COLLECTIONS.USER_LIKES, {
+    const result = await client.search(COLLECTIONS.USER_LIKES, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'targetAddress', match: { value: targetAddress } }]
@@ -622,12 +648,13 @@ import { ShareEntry, ShareClickEntry } from '@/types/share';
  * Store share entry
  */
 export async function storeShareEntry(share: ShareEntry): Promise<void> {
+  const client = getQdrantClient();
   try {
 
     const textContent = `${share.entityType} ${share.entityId} shared by ${share.referrerAddress}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.SHARES, {
+    await client.upsert(COLLECTIONS.SHARES, {
       wait: true,
       points: [{
         id: share.id,
@@ -645,9 +672,10 @@ export async function storeShareEntry(share: ShareEntry): Promise<void> {
  * Get share by code
  */
 export async function getShareByCode(shareCode: string): Promise<ShareEntry | null> {
+  const client = getQdrantClient();
   try {
 
-    const result = await qdrantClient.search(COLLECTIONS.SHARES, {
+    const result = await client.search(COLLECTIONS.SHARES, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'shareCode', match: { value: shareCode } }]
@@ -674,6 +702,7 @@ export async function getSharesByReferrer(
   referrerAddress: string,
   options: { limit?: number; offset?: number } = {}
 ): Promise<{ shares: ShareEntry[]; total: number }> {
+  const client = getQdrantClient();
   try {
 
     const { limit = 50, offset = 0 } = options;
@@ -682,7 +711,7 @@ export async function getSharesByReferrer(
       must: [{ key: 'referrerAddress', match: { value: referrerAddress } }]
     };
 
-    const result = await qdrantClient.search(COLLECTIONS.SHARES, {
+    const result = await client.search(COLLECTIONS.SHARES, {
       vector: new Array(384).fill(0),
       filter,
       limit,
@@ -690,7 +719,7 @@ export async function getSharesByReferrer(
       with_payload: true
     });
 
-    const countResult = await qdrantClient.count(COLLECTIONS.SHARES, { filter });
+    const countResult = await client.count(COLLECTIONS.SHARES, { filter });
 
     const shares = result.map(point => point.payload as unknown as ShareEntry);
     shares.sort((a, b) => b.timestamp - a.timestamp);
@@ -706,13 +735,14 @@ export async function getSharesByReferrer(
  * Store share click
  */
 export async function storeShareClick(click: ShareClickEntry): Promise<void> {
+  const client = getQdrantClient();
   try {
 
 
     const textContent = `Click on share ${click.shareCode} by ${click.clickerAddress || 'anonymous'}`;
     const vector = generateSimpleEmbedding(textContent);
 
-    await qdrantClient.upsert(COLLECTIONS.SHARE_CLICKS, {
+    await client.upsert(COLLECTIONS.SHARE_CLICKS, {
       wait: true,
       points: [{
         id: click.id,
@@ -730,10 +760,11 @@ export async function storeShareClick(click: ShareClickEntry): Promise<void> {
  * Get share clicks
  */
 export async function getShareClicks(shareCode: string): Promise<ShareClickEntry[]> {
+  const client = getQdrantClient();
   try {
 
 
-    const result = await qdrantClient.search(COLLECTIONS.SHARE_CLICKS, {
+    const result = await client.search(COLLECTIONS.SHARE_CLICKS, {
       vector: new Array(384).fill(0),
       filter: {
         must: [{ key: 'shareCode', match: { value: shareCode } }]
@@ -753,6 +784,7 @@ export async function getShareClicks(shareCode: string): Promise<ShareClickEntry
  * Update share click count
  */
 export async function incrementShareClicks(shareCode: string): Promise<void> {
+  const client = getQdrantClient();
   try {
     const share = await getShareByCode(shareCode);
     if (!share) return;
@@ -768,6 +800,7 @@ export async function incrementShareClicks(shareCode: string): Promise<void> {
  * Mark share click as converted
  */
 export async function markShareConversion(shareCode: string, clickerAddress: string): Promise<void> {
+  const client = getQdrantClient();
   try {
     const share = await getShareByCode(shareCode);
     if (!share) return;
@@ -870,7 +903,7 @@ async function ensureTransfersCollection() {
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string, fieldType: 'keyword' | 'integer' | 'bool' = 'keyword') => {
       try {
-        await qdrantClient.createPayloadIndex(COLLECTIONS.TRANSFERS, {
+        await client.createPayloadIndex(COLLECTIONS.TRANSFERS, {
           field_name: fieldName,
           field_schema: fieldType
         });
@@ -885,10 +918,10 @@ async function ensureTransfersCollection() {
         }
       }
     };
-    const exists = await qdrantClient.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
+    const exists = await client.getCollection(COLLECTIONS.TRANSFERS).catch(() => null);
 
     if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.TRANSFERS, {
+      await client.createCollection(COLLECTIONS.TRANSFERS, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -926,12 +959,12 @@ async function ensureTokenMetadataCollection(): Promise<void> {
   }
 
   try {
-    const exists = await qdrantClient.getCollection(COLLECTIONS.TOKEN_METADATA).catch(() => null);
+    const exists = await client.getCollection(COLLECTIONS.TOKEN_METADATA).catch(() => null);
 
     // Helper function to ensure index exists
     const ensureIndex = async (fieldName: string) => {
       try {
-        await qdrantClient.createPayloadIndex(COLLECTIONS.TOKEN_METADATA, {
+        await client.createPayloadIndex(COLLECTIONS.TOKEN_METADATA, {
           field_name: fieldName,
           field_schema: 'keyword'
         });
@@ -946,7 +979,7 @@ async function ensureTokenMetadataCollection(): Promise<void> {
       }
     };
     if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.TOKEN_METADATA, {
+      await client.createCollection(COLLECTIONS.TOKEN_METADATA, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -976,6 +1009,7 @@ async function ensureTokenMetadataCollection(): Promise<void> {
  * Store transfer entry in Qdrant (single entry - use batchStoreTransferEntries for better performance)
  */
 export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -988,6 +1022,7 @@ export async function storeTransferEntry(entry: TransferEntry): Promise<void> {
  * Automatically chunks large batches to stay within Qdrant's 33MB payload limit
  */
 export async function batchStoreTransferEntries(entries: TransferEntry[]): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -1081,6 +1116,7 @@ export async function getCachedTransfers(
     transferType?: 'SOL' | 'TOKEN' | 'ALL';
   } = {}
 ): Promise<{ transfers: TransferEntry[]; total: number }> {
+  const client = getQdrantClient();
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { transfers: [], total: 0 };
@@ -1128,7 +1164,7 @@ export async function getCachedTransfers(
     }
 
     // Search with filter
-    const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
+    const result = await client.search(COLLECTIONS.TRANSFERS, {
       vector: new Array(384).fill(0), // Dummy vector for filtered search
       filter,
       limit,
@@ -1137,7 +1173,7 @@ export async function getCachedTransfers(
     });
 
     // Get total count
-    const countResult = await qdrantClient.count(COLLECTIONS.TRANSFERS, {
+    const countResult = await client.count(COLLECTIONS.TRANSFERS, {
       filter
     });
 
@@ -1169,11 +1205,12 @@ export async function getCachedTransfers(
  * Get last sync timestamp for incremental loading
  */
 export async function getLastSyncTimestamp(walletAddress: string): Promise<number> {
+  const client = getQdrantClient();
   try {
 
     await ensureTransfersCollection();
 
-    const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
+    const result = await client.search(COLLECTIONS.TRANSFERS, {
       vector: new Array(384).fill(0),
       filter: {
         must: [
@@ -1204,6 +1241,7 @@ export async function getLastSyncTimestamp(walletAddress: string): Promise<numbe
  * Mark transfers as cached with timestamp
  */
 export async function markTransfersCached(signatures: string[], walletAddress: string): Promise<void> {
+  const client = getQdrantClient();
   try {
 
     await ensureTransfersCollection();
@@ -1219,7 +1257,7 @@ export async function markTransfersCached(signatures: string[], walletAddress: s
         ]
       };
 
-      const result = await qdrantClient.search(COLLECTIONS.TRANSFERS, {
+      const result = await client.search(COLLECTIONS.TRANSFERS, {
         vector: new Array(384).fill(0),
         filter,
         limit: 1,
@@ -1234,7 +1272,7 @@ export async function markTransfersCached(signatures: string[], walletAddress: s
         const textContent = `${transfer.walletAddress} ${transfer.type} ${transfer.token} ${transfer.amount} ${transfer.from} ${transfer.to}`;
         const vector = generateSimpleEmbedding(textContent);
 
-        await qdrantClient.upsert(COLLECTIONS.TRANSFERS, {
+        await client.upsert(COLLECTIONS.TRANSFERS, {
           wait: true,
           points: [{
             id: result[0].id as string,
@@ -1380,6 +1418,7 @@ export function isSolanaOnlyTransaction(transfer: any): boolean {
  * Store token metadata entry in Qdrant
  */
 export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -1519,6 +1558,7 @@ export async function storeTokenMetadata(metadata: TokenMetadataEntry): Promise<
 export async function getCachedTokenMetadata(
   mintAddress: string
 ): Promise<TokenMetadataEntry | null> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') {
     return null;
@@ -1527,7 +1567,7 @@ export async function getCachedTokenMetadata(
   try {
     await ensureTokenMetadataCollection();
 
-    const result = await qdrantClient.search(COLLECTIONS.TOKEN_METADATA, {
+    const result = await client.search(COLLECTIONS.TOKEN_METADATA, {
       vector: generateSimpleEmbedding(mintAddress),
       filter: {
         must: [
@@ -1574,6 +1614,7 @@ export async function getCachedTokenMetadata(
 export async function batchGetCachedTokenMetadata(
   mintAddresses: string[]
 ): Promise<Map<string, TokenMetadataEntry>> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') {
     return new Map();
@@ -1618,10 +1659,10 @@ async function ensureProgramMetadataCollection(): Promise<void> {
   }
 
   try {
-    const exists = await qdrantClient.getCollection(COLLECTIONS.PROGRAM_METADATA).catch(() => null);
+    const exists = await client.getCollection(COLLECTIONS.PROGRAM_METADATA).catch(() => null);
 
     if (!exists) {
-      await qdrantClient.createCollection(COLLECTIONS.PROGRAM_METADATA, {
+      await client.createCollection(COLLECTIONS.PROGRAM_METADATA, {
         vectors: {
           size: 384,
           distance: 'Cosine'
@@ -1630,7 +1671,7 @@ async function ensureProgramMetadataCollection(): Promise<void> {
       // Helper function to ensure index exists
       const ensureIndex = async (fieldName: string) => {
         try {
-          await qdrantClient.createPayloadIndex(COLLECTIONS.PROGRAM_METADATA, {
+          await client.createPayloadIndex(COLLECTIONS.PROGRAM_METADATA, {
             field_name: fieldName,
             field_schema: 'keyword'
           });
@@ -1669,6 +1710,7 @@ async function ensureProgramMetadataCollection(): Promise<void> {
  * Store program metadata entry in Qdrant
  */
 export async function storeProgramMetadata(metadata: ProgramMetadataEntry): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -1701,7 +1743,7 @@ export async function storeProgramMetadata(metadata: ProgramMetadataEntry): Prom
       }]
     };
 
-    await qdrantClient.upsert(COLLECTIONS.PROGRAM_METADATA, upsertData);
+    await client.upsert(COLLECTIONS.PROGRAM_METADATA, upsertData);
   } catch (error) {
     console.error('Error storing program metadata:', error);
     throw error;
@@ -1714,6 +1756,7 @@ export async function storeProgramMetadata(metadata: ProgramMetadataEntry): Prom
 export async function getCachedProgramMetadata(
   programId: string
 ): Promise<ProgramMetadataEntry | null> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') {
     return null;
@@ -1722,7 +1765,7 @@ export async function getCachedProgramMetadata(
   try {
     await ensureProgramMetadataCollection();
 
-    const result = await qdrantClient.search(COLLECTIONS.PROGRAM_METADATA, {
+    const result = await client.search(COLLECTIONS.PROGRAM_METADATA, {
       vector: generateSimpleEmbedding(programId),
       filter: {
         must: [
@@ -1769,6 +1812,7 @@ export async function getCachedProgramMetadata(
 export async function batchGetCachedProgramMetadata(
   programIds: string[]
 ): Promise<Map<string, ProgramMetadataEntry>> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') {
     return new Map();
@@ -1878,6 +1922,7 @@ async function ensureGlobalChatCollection(): Promise<void> {
  * Store global chat message in Qdrant with vector embedding for semantic search
  */
 export async function storeGlobalChatMessage(message: GlobalChatMessage): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -1969,6 +2014,7 @@ export async function getGlobalChatMessages(
     since?: number; // timestamp
   } = {}
 ): Promise<{ messages: GlobalChatMessage[]; total: number }> {
+  const client = getQdrantClient();
   // Skip in browser - return empty result
   if (typeof window !== 'undefined') {
     return { messages: [], total: 0 };
@@ -2074,13 +2120,14 @@ export async function getGlobalChatMessages(
  * Delete global chat messages (for moderation or cleanup)
  */
 export async function deleteGlobalChatMessage(messageId: string): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
   try {
     await ensureGlobalChatCollection();
 
-    await qdrantClient.delete(COLLECTIONS.GLOBAL_CHAT, {
+    await client.delete(COLLECTIONS.GLOBAL_CHAT, {
       wait: true,
       points: [messageId]
     });
@@ -2096,6 +2143,7 @@ export async function deleteGlobalChatMessage(messageId: string): Promise<void> 
  * Batch store multiple global chat messages efficiently
  */
 export async function batchStoreGlobalChatMessages(messages: GlobalChatMessage[]): Promise<void> {
+  const client = getQdrantClient();
   // Skip in browser
   if (typeof window !== 'undefined') return;
 
@@ -2132,7 +2180,7 @@ export async function batchStoreGlobalChatMessages(messages: GlobalChatMessage[]
       points
     };
 
-    await qdrantClient.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData);
+    await client.upsert(COLLECTIONS.GLOBAL_CHAT, upsertData);
     console.log(`Successfully batch stored ${messages.length} global chat messages`);
 
   } catch (error) {

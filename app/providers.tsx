@@ -19,6 +19,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/components/providers/NotificationProvider';
 import logger from '@/lib/logging/logger';
 import { AIChatSidebarProvider } from '@/contexts/AIChatSidebarContext';
+import { HistoryTrackingProvider } from '@/components/HistoryTrackingProvider';
 
 // Enhanced error boundary for the entire app
 class AppErrorBoundary extends React.Component<
@@ -123,18 +124,20 @@ export function Providers({ children }: { children: React.ReactNode }) {
                                       autoStart={false}
                                     >
                                       <AIChatSidebarProvider>
-                                        <Suspense
-                                          fallback={
-                                            <div className="min-h-screen bg-background flex items-center justify-center">
-                                              <div className="text-center">
-                                                <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                                                <p className="text-muted-foreground">Loading OpenSVM...</p>
+                                        <HistoryTrackingProvider>
+                                          <Suspense
+                                            fallback={
+                                              <div className="min-h-screen bg-background flex items-center justify-center">
+                                                <div className="text-center">
+                                                  <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                                                  <p className="text-muted-foreground">Loading OpenSVM...</p>
+                                                </div>
                                               </div>
-                                            </div>
-                                          }
-                                        >
-                                          {children}
-                                        </Suspense>
+                                            }
+                                          >
+                                            {children}
+                                          </Suspense>
+                                        </HistoryTrackingProvider>
                                       </AIChatSidebarProvider>
                                     </PerformanceProvider>
                                   </OnboardingProvider>

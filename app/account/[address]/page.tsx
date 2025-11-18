@@ -15,6 +15,7 @@ import { use, useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Skeleton } from '@/components/ui/skeleton';
 import TabContainer from './components/TabContainer';
+import { useDynamicPageTitle, TitleGenerators } from '@/hooks/useDynamicPageTitle';
 
 async function checkAccountType(address: string): Promise<'token' | 'program' | 'account'> {
   try {
@@ -433,6 +434,16 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       }
     };
   }, [currentAddress, loadAccountData]);
+
+  // Update page title dynamically based on account data
+  useDynamicPageTitle({
+    title: TitleGenerators.account(
+      accountInfo?.address,
+      undefined, // No label for now
+      accountInfo?.solBalance
+    ),
+    dependencies: [accountInfo]
+  });
 
   // Check account type and redirect if needed
   useEffect(() => {

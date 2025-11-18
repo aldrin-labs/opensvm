@@ -38,6 +38,7 @@ export function SuccessToast({
 
       return () => clearTimeout(timer);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleClose is stable and not needed in deps
   }, [duration]);
 
   const handleClose = () => {

@@ -1120,6 +1120,7 @@ After creating the plan, execute it and provide results.`;
         messages: activeTab.messages?.map(m => ({ role: m.role, content: m.content.substring(0, 30) })) || []
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab?.messages, activeTab?.id]);
 
   return (

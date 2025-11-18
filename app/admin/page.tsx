@@ -1,12 +1,6 @@
-'use client';
-
 export const dynamic = 'force-dynamic';
 
-import { useSettings } from '@/lib/settings';
-
 export default function AdminPage() {
-  const settings = useSettings();
-  
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-6">Admin Dashboard</h1>
@@ -33,11 +27,7 @@ export default function AdminPage() {
         {/* System Settings Card */}
         <div className="p-6 bg-white dark:bg-gray-800 rounded-lg shadow">
           <h2 className="text-xl font-semibold mb-4">System Settings</h2>
-          <div className="space-y-2">
-            <p>Theme: {settings.theme}</p>
-            <p>RPC: {settings.rpcEndpoint.name}</p>
-            <p>Font: {settings.fontFamily}</p>
-          </div>
+          <p className="text-sm text-gray-600">Configure system settings</p>
           <button className="bg-gray-500 hover:bg-gray-600 text-white px-4 py-2 rounded mt-2">
             Configure Settings
           </button>
