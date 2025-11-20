@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 // Request limits to prevent abuse
-const MAX_LIMIT = 500;
+const MAX_LIMIT = 5000;
 const MAX_OFFSET = 100000;
 const MIN_LIMIT = 1;
 
@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
   
   // INPUT VALIDATION: Validate and sanitize limit parameter
   const rawLimit = searchParams.get('limit');
-  const requestedLimit = parseInt(rawLimit || '50');
+  const requestedLimit = parseInt(rawLimit || '500');
   
   if (isNaN(requestedLimit) || requestedLimit < MIN_LIMIT) {
     return NextResponse.json(

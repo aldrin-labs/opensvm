@@ -42,10 +42,10 @@ const MAX_REQUESTS_PER_MINUTE = 10; // Max 10 requests per minute per address
 const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
 
 // Request limits to prevent abuse
-const MAX_LIMIT = 500;
+const MAX_LIMIT = 5000;
 const MAX_OFFSET = 100000; // Prevent absurdly large offsets
 const MIN_LIMIT = 1;
-const MAX_RPC_CALLS_PER_REQUEST = 1000; // Limit RPC usage per request
+const MAX_RPC_CALLS_PER_REQUEST = 10000; // Limit RPC usage per request
 
 // RPC call counter class for tracking usage
 class RPCCallCounter {
@@ -1105,7 +1105,7 @@ export async function processTransferRequest(
         }
 
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
-        const TOKEN_SIG_FETCH_CONCURRENCY = 64; // Increased from 8 to 32 for faster parallel fetching
+        const TOKEN_SIG_FETCH_CONCURRENCY = 128; // Increased from 8 to 32 for faster parallel fetching
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
           checkTimeout(); // Check for timeout
           const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);

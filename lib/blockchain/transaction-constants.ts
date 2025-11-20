@@ -42,7 +42,7 @@ export function isAboveDustThreshold(amount: number, threshold: number): boolean
   return amount >= threshold;
 }
 // Transaction batch and retry constants for account transfer API
-export const TRANSACTION_BATCH_SIZE = 1000; // Increased for better throughput (RPC usually supports 100)
+export const TRANSACTION_BATCH_SIZE = 1000; // Aggressive batching (standard is 100)
 export const MAX_RETRIES = 2;
 export const INITIAL_BACKOFF_MS = 20;
 export const BATCH_DELAY_MS = 0;
@@ -51,6 +51,6 @@ export const MIN_WALLET_ADDRESS_LENGTH = 32;
 
 // Rate limiting constants - OpenSVM Business Plan: 300 RPS across all nodes
 export const MAX_RPS_LIMIT = 300; // Maximum requests per second across all endpoints
-export const MAX_CONCURRENT_BATCHES = 50; // Limit concurrent batches to stay under RPS
+export const MAX_CONCURRENT_BATCHES = 25; // Reduced from 50 to 5 to balance large batch size
 export const RATE_LIMIT_BUFFER = 0.8; // Use 80% of limit for safety margin
 export const EFFECTIVE_MAX_RPS = Math.floor(MAX_RPS_LIMIT * RATE_LIMIT_BUFFER); // 240 RPS effective
