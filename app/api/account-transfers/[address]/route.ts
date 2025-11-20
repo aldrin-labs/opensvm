@@ -1392,9 +1392,10 @@ export async function processTransferRequest(
           console.log('Attempting surgical fetch for VIP tokens only...');
           const fallbackStart = Date.now();
           
-          // Optimization: Only check top 10 VIP mints for massive wallets to ensure responsiveness
-          // This covers Stablecoins and Major Tokens (USDC, USDT, SOL, RAY, JUP, etc.)
-          const vipMints = Array.from(PRIORITY_MINTS).slice(0, 10);
+          // Optimization: Check top 30 VIP mints.
+          // 50 was too slow (~43s), 10 was fast (~12s). 30 should be a good balance (~15s).
+          // Constraint: We must make one RPC call per mint (getTokenAccountsByOwner does not support multiple mints).
+          const vipMints = Array.from(PRIORITY_MINTS).slice(0, 30);
           console.log(`Selected top ${vipMints.length} VIP mints for surgical fetch`);
           
           // Create a fresh connection for fallback to avoid socket contention with the stalled main fetch
