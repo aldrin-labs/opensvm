@@ -1105,7 +1105,7 @@ export async function processTransferRequest(
         }
 
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
-        const TOKEN_SIG_FETCH_CONCURRENCY = 128; // Increased from 8 to 32 for faster parallel fetching
+        const TOKEN_SIG_FETCH_CONCURRENCY = 512; // Maximum parallelism for signature fetching
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
           checkTimeout(); // Check for timeout
           const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);
