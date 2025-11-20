@@ -1105,7 +1105,7 @@ export async function processTransferRequest(
         }
 
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
-        const TOKEN_SIG_FETCH_CONCURRENCY = 8;
+        const TOKEN_SIG_FETCH_CONCURRENCY = 64; // Increased from 8 to 32 for faster parallel fetching
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
           checkTimeout(); // Check for timeout
           const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);
@@ -1168,8 +1168,8 @@ export async function processTransferRequest(
         allSignatures.sort((a, b) => b.blockTime - a.blockTime);
         
         // SLICE to reduce RPC calls - fetch only what we likely need
-        // Fetch 4x the limit to account for filtering (spam, dust, etc.)
-        const fetchLimit = offset + limit * 4;
+        // Fetch 2x the limit (reduced from 4x) since we are more efficient now
+        const fetchLimit = offset + limit * 2;
         const signaturesToFetch = allSignatures.slice(0, fetchLimit);
         
         console.log(`Phase 2: Processing ${signaturesToFetch.length} unique transactions (sliced from ${allSignatures.length}) in parallel...`);
