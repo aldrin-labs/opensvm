@@ -344,6 +344,15 @@ async function fetchTransactionBatch(
     const chunkPromises = batchChunk.map((batch, batchIndex) => {
       const globalBatchIndex = i + batchIndex;
       return (async (): Promise<Transfer[]> => {
+        // Check if we have time left before starting this batch
+        const timeElapsed = Date.now() - globalStartTime;
+        const remainingTime = timeoutMs - timeElapsed;
+        
+        if (remainingTime <= 0) {
+          console.warn(`Skipping batch ${globalBatchIndex + 1} due to timeout (elapsed: ${timeElapsed}ms)`);
+          return [];
+        }
+
         let retries = MAX_RETRIES;
         let backoff = INITIAL_BACKOFF_MS;
 
@@ -355,6 +364,9 @@ async function fetchTransactionBatch(
             // Track RPC call - getParsedTransactions counts as 1 call
             rpcCounter.increment(1);
 
+            // Calculate remaining time for this specific attempt
+            const currentRemainingTime = Math.max(1000, timeoutMs - (Date.now() - globalStartTime));
+
             // Use getParsedTransactions for much better performance than individual calls - with retry wrapper
             const batchTransactionsResult = await withRetry(
               () => freshConnection.getParsedTransactions(batch, {
@@ -365,7 +377,7 @@ async function fetchTransactionBatch(
               {
                 maxRetries: MAX_RETRIES,
                 initialBackoffMs: INITIAL_BACKOFF_MS,
-                timeoutMs: 60000,
+                timeoutMs: currentRemainingTime, // Use remaining time as timeout
                 onRetry: (retryAttempt, error) => {
                   console.warn(`Retry ${retryAttempt} for getParsedTransactions batch ${globalBatchIndex + 1}: ${error?.message}`);
                 }
@@ -975,11 +987,23 @@ export async function processTransferRequest(
         }
         signatureFetchIterations++;
 
-        const signatures = await connection.getSignaturesForAddress(
-          pubkey,
+        // Calculate remaining time
+        const remainingTime = Math.max(1000, TIMEOUT_MS - (Date.now() - startTime));
+
+        const signatures = await withRetry(
+          () => connection.getSignaturesForAddress(
+            pubkey,
+            {
+              limit: MAX_SIGNATURES_LIMIT,
+              before: currentCursor || undefined
+            }
+          ),
+          connection.rpcEndpoint,
           {
-            limit: MAX_SIGNATURES_LIMIT,
-            before: currentCursor || undefined
+            maxRetries: 2, // Low retries for main loop to fail fast
+            initialBackoffMs: 100,
+            timeoutMs: remainingTime,
+            onRetry: (attempt, err) => console.warn(`Retry signature fetch ${attempt}: ${err?.message}`)
           }
         );
 
@@ -1043,6 +1067,7 @@ export async function processTransferRequest(
           const perPage = Math.min(MAX_SIGNATURES_LIMIT, 1000);
 
           while (iterations < 50 && collected.length < maxTotal) {
+            if (isTimeoutApproaching()) break;
             iterations++;
 
             let attempt = 0;
@@ -1053,6 +1078,10 @@ export async function processTransferRequest(
               attempt++;
               try {
                 const freshConn = await getConnection();
+                
+                // Calculate remaining time
+                const remainingTime = Math.max(1000, TIMEOUT_MS - (Date.now() - startTime));
+                
                 // Use limit=perPage and pass cursor - with retry wrapper
                 const sigs = await withRetry(
                   () => freshConn.getSignaturesForAddress(tokenPubkey, {
@@ -1063,6 +1092,7 @@ export async function processTransferRequest(
                   {
                     maxRetries: MAX_RETRIES,
                     initialBackoffMs: INITIAL_BACKOFF_MS,
+                    timeoutMs: remainingTime,
                     onRetry: (retryAttempt, error) => {
                       console.warn(`Retry ${retryAttempt} for getSignaturesForAddress ${tokenPubkey.toString().substring(0,8)}: ${error?.message}`);
                     }
@@ -1210,13 +1240,23 @@ export async function processTransferRequest(
 
     // Fetch token metadata for all SPL tokens to get real symbols
     const splTransfers = allTransfers.filter(t => t.txType === 'spl' && t.mint !== 'SOL' && t.mint !== 'Unknown');
-    if (splTransfers.length > 0) {
+    
+    // Only fetch metadata if we have time left (leave 2s buffer)
+    const hasTimeForMetadata = Date.now() - startTime < TIMEOUT_MS - 2000;
+    
+    if (splTransfers.length > 0 && hasTimeForMetadata) {
       const uniqueMints = [...new Set(splTransfers.map(t => t.mint))];
       console.log(`Fetching metadata for ${uniqueMints.length} unique token mints...`);
       
       try {
         const connection = await getConnection();
-        const tokenMetadata = await batchFetchTokenMetadata(connection, uniqueMints);
+        // Race the metadata fetch against the remaining time
+        const metadataPromise = batchFetchTokenMetadata(connection, uniqueMints);
+        const timeoutPromise = new Promise<any>((_, reject) => 
+          setTimeout(() => reject(new Error('Metadata fetch timed out')), Math.max(1000, TIMEOUT_MS - (Date.now() - startTime)))
+        );
+        
+        const tokenMetadata = await Promise.race([metadataPromise, timeoutPromise]);
         
         // Update tokenSymbol for all SPL transfers with fetched metadata
         for (const transfer of allTransfers) {
@@ -1230,8 +1270,10 @@ export async function processTransferRequest(
         
         console.log(`Updated ${allTransfers.filter(t => tokenMetadata.has(t.mint)).length} transfers with token symbols`);
       } catch (error) {
-        console.warn('Failed to fetch token metadata, using mint addresses as symbols:', error);
+        console.warn('Failed to fetch token metadata (or timed out), using mint addresses as symbols:', error);
       }
+    } else if (splTransfers.length > 0) {
+      console.log(`Skipping metadata fetch due to timeout constraints (elapsed: ${Date.now() - startTime}ms)`);
     }
 
     // Apply data quality filters
