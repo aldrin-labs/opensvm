@@ -24,7 +24,7 @@ export async function withRetry<T>(
     maxRetries = MAX_RETRIES,
     initialBackoffMs = INITIAL_BACKOFF_MS,
     maxBackoffMs = 30000,
-    timeoutMs = 60000,
+    timeoutMs = 120000, // Increased to 120 seconds to prevent 504 errors
     onRetry
   } = options;
 

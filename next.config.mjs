@@ -45,6 +45,21 @@ const nextConfig = {
     optimizeCss: true,
     optimizePackageImports: ['lodash', 'date-fns', 'chart.js'],
   },
+  // Set default timeout for all API routes to 120 seconds
+  // This prevents 504 timeout errors on slow RPC responses
+  async headers() {
+    return [
+      {
+        source: '/api/:path*',
+        headers: [
+          {
+            key: 'x-vercel-timeout',
+            value: '120',
+          },
+        ],
+      },
+    ];
+  },
   // Compiler optimizations
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
