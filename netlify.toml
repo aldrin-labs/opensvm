@@ -13,7 +13,6 @@
 [functions]
   included_files = ["config/rpc-config.json", "config/rpc-endpoints.js", "public/solana-rpc-llms.md"]
   node_bundler = "esbuild"
-  timeout = 120
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
