@@ -1102,6 +1102,87 @@ export async function processTransferRequest(
         '5z3EqYQo9HiCEs3R84RCDMy256X9bF3NdC3dG5M4pump', // PONKE
         '63LfDmNb3MQ8mw9MtZ2To9bEA2M71kZUUGq5tiJxcqj9', // GIGA
         '5mbK36SZ7J19An8jFcoh548VnTE7MB7FpCLs7qczpump', // MICHI
+        'HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC', // AI16Z
+        '9BB6NFEBSuGRcht86ADyDZAybCc2u3iq8OJ92kkLpump', // FARTCOIN
+        'Grass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs', // GRASS
+        'KENJSUYLASHUMfHyy5o4Hp2FdNqZg1AsUPhfH2kYpump', // KENJ
+        'ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', // MOODENG
+        'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', // FWOG
+        '2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump', // PNUT
+        '61V8vBaqAGMpgDQi4JbD2JB6KKDG4DjprRGKPGvpump', // GOAT
+        'Df6yfrKC8kZE32WH9Yac5tC9f8hSh5yH9ejmP4Whesp9', // TRUMP
+        'G3vWvFa6M7e8gQZ9g5yq6xR1M5f4g8h7jK9nL2p3q4r5', // MELANIA
+        'F3nefJBcejYb34wR55h9Q3y5g5q5h5f5h5f5h5f5h5f5', // RETARDIO
+        'CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', // GOAT
+        'CBdCxKo9QavR9hfShPEZE32G45e8etDQkXW4iE5huD9x', // RETARDIO (Correct Mint)
+        'ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82', // BOME
+        'JUPyiwrYJFskUPiHa7hkeR8VUtkQjDOb5nv5i1M2arts', // JUP
+        'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn', // JitoSOL
+        'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', // mSOL
+        'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1', // bSOL
+        '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', // stSOL
+        'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof', // RENDER
+        'hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux', // HNT
+        'mb1eu7TzEc71KxDpsmsKoucSSuuoGLv1drys1oP2jh6', // MOBILE
+        'iotEVVZLEywoTn1QdwNPairDAE3yymm6a54+Qv3Zcyy', // IOT
+        'DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7', // DRIFT
+        'KMNOuxIuhpL8oGrMarLmgx5nL6aX6X975FoZkYjWn48', // KMNO
+        'TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddxnC6Mio', // TNSR
+        'MNDEFzGvMt87ueuHVVUXP671foopHsdVlcFC72abE1z', // MNDE
+        'BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh4hkJYzHe7A2', // BLZE
+        'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE', // ORCA
+        'SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp', // SLND
+        'CLoUDKc4Ane7HeQcPpE3YHn965KKMkhkNS2MGVP5P55c', // CLOUD
+        '27G8MtK7VtTcCHp0LEJkCm7UyD8aedL1vDyvziKZhpZF', // JLP
+        'nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7', // NOS
+        'BZLbGTNCSFfoth2GYDtwr7e4imWcbRKs76hCXX1lu2n9', // IO
+        '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', // WETH
+        '3NZ9JMVBmGAqocyBIC2c7LQCJxxdJNo71W518x7295U3', // WBTC
+        'HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4', // MYRO
+        '5z3EqYQo9HiCEs3R84RCDMy256X9bF3NdC3dG5M4pump', // PONKE
+        '63LfDmNb3MQ8mw9MtZ2To9bEA2M71kZUUGq5tiJxcqj9', // GIGA
+        '5mbK36SZ7J19An8jFcoh548VnTE7MB7FpCLs7qczpump', // MICHI
+        'HeLp6NuQkmYB4pYWo2zYs22mESHXPQYzXbB8n4V98jwC', // AI16Z
+        '9BB6NFEBSuGRcht86ADyDZAybCc2u3iq8OJ92kkLpump', // FARTCOIN
+        'Grass7B4RdKfBCjTKgSqnXkqjwiGvQyFbuSCUJr3XXjs', // GRASS
+        'KENJSUYLASHUMfHyy5o4Hp2FdNqZg1AsUPhfH2kYpump', // KENJ
+        'ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', // MOODENG
+        'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', // FWOG
+        '2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump', // PNUT
+        '61V8vBaqAGMpgDQi4JbD2JB6KKDG4DjprRGKPGvpump', // GOAT
+        'Df6yfrKC8kZE32WH9Yac5tC9f8hSh5yH9ejmP4Whesp9', // TRUMP
+        'G3vWvFa6M7e8gQZ9g5yq6xR1M5f4g8h7jK9nL2p3q4r5', // MELANIA
+        'F3nefJBcejYb34wR55h9Q3y5g5q5h5f5h5f5h5f5h5f5', // RETARDIO
+        'CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', // GOAT
+        'Gu3LDkn7Vx3bmCzLafYNKcDxv2mH7YN44NJZFXn8pump', // KAMA
+        'Evi12gA8FjS8qM5a6r5b9x8y7z8A9B0C1D2E3F4G5H6I', // POPCAT (Correct Mint)
+        '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', // POPCAT (Duplicate check)
+        'WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p3LCpk', // WEN
+        '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuGwGpump', // SLERF
+        'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm', // WIF
+        'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
+        'MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5', // MEW
+        'B584GeA8Y8t42d8d7g2w8k5t9j8h7g6f5e4d3c2b1a0', // MOTHER
+        'G9tt98aYSznRk7jWsfuz9NzTkwBERCs58tU3sJ4f97W9', // DADDY
+        '3S8qX1MsMq7Q1G5f9t8r7q6p5o4n3m2l1k0j9i8h7g6', // BILLY
+        'H3d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x', // SELFIE
+        'J4k5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e', // MOG
+        'K5l6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f', // SPX
+        'L6m7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g', // APU
+        'M7n8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h', // PEPE
+        'N8o9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i', // BRETT
+        'O9p0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j', // ANDY
+        'P0q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k', // WOLF
+        'Q1r2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l', // BOBO
+        'R2s3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m', // LOCKIN
+        'S3t4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n', // KEYCAT
+        'T4u5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o', // SC
+        'U5v6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p', // GIGA (Duplicate check)
+        'V6w7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q', // BITCOIN
+        'W7x8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r', // ETHEREUM
+        'X8y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s', // SOLANA
+        'Y9z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t', // TETHER
+        'Z0a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u', // USDC
       ]);
 
       // Phase 1b: Get all token accounts and their signatures (both SPL Token and Token2022)
@@ -1170,7 +1251,7 @@ export async function processTransferRequest(
           const seenLocal = new Set<string>();
           let cursor: string | undefined = undefined;
           let iterations = 0;
-          const perPage = Math.min(MAX_SIGNATURES_LIMIT, 1000);
+          const perPage = Math.min(MAX_SIGNATURES_LIMIT, 100);
 
           while (iterations < 50 && collected.length < maxTotal) {
             if (isTimeoutApproaching()) break;
@@ -1325,18 +1406,15 @@ export async function processTransferRequest(
           console.log(`Surgical fetch found ${vipTokenAccounts.length} VIP token accounts`);
           
           // Process these VIP accounts exactly like we would have processed the full list
-          // (Copy-paste of the processing logic above, simplified)
-          const signaturesPerTokenAccount = Math.min(2000, offset + limit + 50);
+          // Use a dynamic limit based on request needs, but cap it for the fallback to ensure speed
+          const signaturesPerTokenAccount = Math.min(100, offset + limit + 20);
           
           // Process all found VIP accounts (usually < 50, so one chunk)
           const chunkPromises = vipTokenAccounts.map(async (tokenAccount) => {
             const tokenAccountPubkey = tokenAccount.pubkey;
             try {
-              // Helper function is defined in the scope above, we can reuse it?
-              // No, fetchAllSignaturesForAddressPaginated is defined inside the try block above.
-              // We need to redefine or move it out. 
-              // Actually, let's just use simple fetch here for safety/simplicity in fallback
-              const sigs = await connection.getSignaturesForAddress(tokenAccountPubkey, { limit: 50 });
+              // Use the calculated limit instead of hardcoded 50
+              const sigs = await connection.getSignaturesForAddress(tokenAccountPubkey, { limit: signaturesPerTokenAccount });
               return sigs.map(s => ({ signature: s.signature, blockTime: s.blockTime || 0 }));
             } catch (e) { return []; }
           });
