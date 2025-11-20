@@ -40,7 +40,24 @@ export async function withRetry<T>(
       }
 
       const operationStartTime = Date.now();
-      const result = await operation();
+      
+      // Enforce timeout on the operation itself
+      const remainingTime = timeoutMs - (Date.now() - startTime);
+      if (remainingTime <= 0) {
+        throw new Error(`Operation timeout after ${timeoutMs}ms`);
+      }
+
+      // Create a timeout promise
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`Operation timed out after ${remainingTime}ms`)), remainingTime);
+      });
+
+      // Race the operation against the timeout
+      const result = await Promise.race([
+        operation(),
+        timeoutPromise
+      ]);
+      
       const latency = Date.now() - operationStartTime;
 
       // Record success

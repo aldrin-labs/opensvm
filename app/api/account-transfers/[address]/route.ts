@@ -990,11 +990,16 @@ export async function processTransferRequest(
         // Calculate remaining time
         const remainingTime = Math.max(1000, TIMEOUT_MS - (Date.now() - startTime));
 
+        // Calculate how many more signatures we need
+        const needed = targetSignatures - allSignatures.length;
+        // Request slightly more than needed (buffer) but cap at MAX_SIGNATURES_LIMIT
+        const fetchLimit = Math.min(MAX_SIGNATURES_LIMIT, Math.max(50, needed + 20));
+
         const signatures = await withRetry(
           () => connection.getSignaturesForAddress(
             pubkey,
             {
-              limit: MAX_SIGNATURES_LIMIT,
+              limit: fetchLimit,
               before: currentCursor || undefined
             }
           ),
@@ -1134,6 +1139,14 @@ export async function processTransferRequest(
 
         console.log(`Sorted ${allTokenAccounts.length} token accounts by priority (VIP mints + balance)`);
 
+        // HARD LIMIT: Only check the top 100 token accounts to prevent timeouts on wallets with thousands of spam tokens
+        // This covers 99% of legitimate user activity while ignoring the long tail of spam/dust
+        const MAX_TOKEN_ACCOUNTS_TO_CHECK = 100;
+        if (allTokenAccounts.length > MAX_TOKEN_ACCOUNTS_TO_CHECK) {
+          console.log(`Limiting token account scan to top ${MAX_TOKEN_ACCOUNTS_TO_CHECK} accounts (out of ${allTokenAccounts.length})`);
+          allTokenAccounts = allTokenAccounts.slice(0, MAX_TOKEN_ACCOUNTS_TO_CHECK);
+        }
+
         // Helper: sleep
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -1218,7 +1231,13 @@ export async function processTransferRequest(
         }
 
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
-        const TOKEN_SIG_FETCH_CONCURRENCY = 512; // Maximum parallelism for signature fetching
+        // Reduced from 512 to 50 to allow more frequent timeout checks and yielding
+        const TOKEN_SIG_FETCH_CONCURRENCY = 50; 
+        
+        // Calculate how many signatures we need per token account
+        // We only need enough to cover the requested page
+        const signaturesPerTokenAccount = Math.min(2000, offset + limit + 50);
+        
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
           if (isTimeoutApproaching()) {
             console.log(`Timeout approaching, stopping token signature fetch`);
@@ -1231,8 +1250,12 @@ export async function processTransferRequest(
             const tokenAccountPubkey = tokenAccount.pubkey;
             try {
               // Fetch paginated signatures for this token account (rotating connections internally)
-              const sigs = await fetchAllSignaturesForAddressPaginated(tokenAccountPubkey, 2000);
-              console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${sigs.length} signatures (paginated)`);
+              // Use dynamic limit based on request needs
+              const sigs = await fetchAllSignaturesForAddressPaginated(tokenAccountPubkey, signaturesPerTokenAccount);
+              // Only log if we found something to reduce noise
+              if (sigs.length > 0) {
+                 console.log(`Token account ${tokenAccountPubkey.toString().substring(0, 8)}... contributed ${sigs.length} signatures`);
+              }
               return sigs;
             } catch (error) {
               console.warn(`Failed to get signatures for token account ${tokenAccountPubkey.toString()}:`, error);
