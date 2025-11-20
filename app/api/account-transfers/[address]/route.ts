@@ -314,6 +314,7 @@ async function fetchTransactionBatch(
   globalStartTime: number = Date.now(),
   timeoutMs: number = 25000
 ): Promise<{ transfers: Transfer[]; hitRpcLimit: boolean }> {
+  console.log(`[${Date.now() - globalStartTime}ms] fetchTransactionBatch started with ${signatures.length} signatures`);
   const transfers: Transfer[] = [];
   const startTime = Date.now();
 
@@ -1195,7 +1196,10 @@ export async function processTransferRequest(
           commitment: 'confirmed',
           fetch: (url, options) => {
             const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 2000);
+            const timeoutId = setTimeout(() => {
+                console.log('Aborting probe connection request...');
+                controller.abort();
+            }, 500); // 500ms timeout (fail fast)
             return fetch(url, {
               ...options,
               signal: controller.signal
@@ -1203,9 +1207,70 @@ export async function processTransferRequest(
           }
         });
 
+        // Helper: Fetch VIP tokens (Surgical Fallback Logic extracted)
+        const fetchVIPTokens = async () => {
+          console.log(`[${Date.now() - startTime}ms] Starting surgical fetch for VIP tokens...`);
+          const fallbackStart = Date.now();
+          
+          // Optimization: Check top 3 VIP mints.
+          // Reduced to 3 to ensure sub-2s response time.
+          // Covers: USDC, USDT, SOL.
+          const vipMints = Array.from(PRIORITY_MINTS).slice(0, 3);
+          
+          // Create a fresh connection for fallback
+          const fallbackConnection = new Connection(connection.rpcEndpoint, { 
+              commitment: 'confirmed',
+              confirmTransactionInitialTimeout: 2000,
+              disableRetryOnRateLimit: true
+          });
+          
+          // Helper for batched execution to avoid rate limits
+          // Batch size 15 to match the list size
+          const batchSize = 15;
+          const vipResults = [];
+          
+          for (let i = 0; i < vipMints.length; i += batchSize) {
+            console.log(`[${Date.now() - startTime}ms] Fetching VIP batch ${i}...`);
+            const batch = vipMints.slice(i, i + batchSize);
+            const batchResults = await Promise.all(
+              batch.map(async (mint) => {
+                try {
+                  if (!mint || mint.length < 32 || mint.length > 44) return { value: [] };
+                  
+                  const fetchPromise = fallbackConnection.getParsedTokenAccountsByOwner(
+                    pubkey, 
+                    { mint: new PublicKey(mint) }
+                  );
+                  
+                  const timeoutPromise = new Promise<any>((_, reject) => 
+                    setTimeout(() => reject(new Error('VIP fetch timeout')), 2000)
+                  );
+                  
+                  return await Promise.race([fetchPromise, timeoutPromise])
+                    .catch(() => ({ value: [] }));
+                } catch (e) {
+                  return { value: [] };
+                }
+              })
+            );
+            vipResults.push(...batchResults);
+            console.log(`[${Date.now() - startTime}ms] VIP batch ${i} done.`);
+          }
+          
+          const vipTokenAccounts = vipResults.flatMap(r => r.value);
+          console.log(`[${Date.now() - startTime}ms] Surgical fetch found ${vipTokenAccounts.length} VIP token accounts in ${Date.now() - fallbackStart}ms`);
+          return vipTokenAccounts;
+        };
+
+        // Speculative Execution: Start VIP fetch after 100ms if Main Fetch hasn't finished
+        let vipFetchPromise: Promise<any[]> | null = null;
+        const startVipTimer = setTimeout(() => {
+           console.log("Main fetch taking >100ms, starting speculative VIP fetch...");
+           vipFetchPromise = fetchVIPTokens();
+        }, 100);
+
         // Fetch both regular SPL Token accounts and Token2022 accounts
-        // Use probeConnection to ensure we abort large downloads
-        const fetchPromise = Promise.all([
+        const mainFetchPromise = Promise.all([
           probeConnection.getParsedTokenAccountsByOwner(
             pubkey,
             { programId: new PublicKey(KNOWN_PROGRAMS.TOKEN_PROGRAM) }
@@ -1213,40 +1278,58 @@ export async function processTransferRequest(
           probeConnection.getParsedTokenAccountsByOwner(
             pubkey,
             { programId: new PublicKey(KNOWN_PROGRAMS.TOKEN_2022) }
-          ).catch(() => ({ value: [] })) // Token2022 might not exist, handle gracefully
+          ).catch(() => ({ value: [] }))
         ]);
 
-        // Race between fetch and timeout
-        // Note: probeConnection handles the timeout via AbortSignal, so we just await fetchPromise
-        const [tokenAccounts, token2022Accounts] = await fetchPromise as [any, any];
+        const mainTimeoutPromise = new Promise<any>((_, reject) => 
+            setTimeout(() => reject(new Error('Main fetch timeout')), 500)
+        );
 
-        let allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
+        let allTokenAccounts = [];
+        let usedFallback = false;
 
-        console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022)`);
+        try {
+          // Race between fetch and timeout (handled by probeConnection AND explicit race)
+          const [tokenAccounts, token2022Accounts] = await Promise.race([mainFetchPromise, mainTimeoutPromise]) as [any, any];
+          clearTimeout(startVipTimer); // Cancel VIP timer if main fetch wins
+          allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
+          console.log(`Main fetch succeeded: Found ${allTokenAccounts.length} token accounts`);
+        } catch (error) {
+          console.warn('Main fetch failed (timeout/error), falling back to VIP fetch:', error);
+          usedFallback = true;
+          if (!vipFetchPromise) vipFetchPromise = fetchVIPTokens();
+          allTokenAccounts = await vipFetchPromise;
+        }
+        
+        console.log(`Used Fallback: ${usedFallback}`);
 
-        allTokenAccounts.sort((a, b) => {
-          const mintA = a.account.data.parsed.info.mint;
-          const mintB = b.account.data.parsed.info.mint;
-          const isPriorityA = PRIORITY_MINTS.has(mintA);
-          const isPriorityB = PRIORITY_MINTS.has(mintB);
+        if (!usedFallback) {
+            allTokenAccounts.sort((a, b) => {
+            const mintA = a.account.data.parsed.info.mint;
+            const mintB = b.account.data.parsed.info.mint;
+            const isPriorityA = PRIORITY_MINTS.has(mintA);
+            const isPriorityB = PRIORITY_MINTS.has(mintB);
 
-          if (isPriorityA && !isPriorityB) return -1;
-          if (!isPriorityA && isPriorityB) return 1;
+            if (isPriorityA && !isPriorityB) return -1;
+            if (!isPriorityA && isPriorityB) return 1;
 
-          const balanceA = a.account.data.parsed.info.tokenAmount.uiAmount || 0;
-          const balanceB = b.account.data.parsed.info.tokenAmount.uiAmount || 0;
+            const balanceA = a.account.data.parsed.info.tokenAmount.uiAmount || 0;
+            const balanceB = b.account.data.parsed.info.tokenAmount.uiAmount || 0;
 
-          return balanceB - balanceA; // Descending balance
-        });
+            return balanceB - balanceA; // Descending balance
+            });
 
-        console.log(`Sorted ${allTokenAccounts.length} token accounts by priority (VIP mints + balance)`);
+            console.log(`Sorted ${allTokenAccounts.length} token accounts by priority (VIP mints + balance)`);
 
-        // HARD LIMIT: Only check the top 100 token accounts to prevent timeouts on wallets with thousands of spam tokens
-        // This covers 99% of legitimate user activity while ignoring the long tail of spam/dust
-        const MAX_TOKEN_ACCOUNTS_TO_CHECK = 100;
-        if (allTokenAccounts.length > MAX_TOKEN_ACCOUNTS_TO_CHECK) {
-          console.log(`Limiting token account scan to top ${MAX_TOKEN_ACCOUNTS_TO_CHECK} accounts (out of ${allTokenAccounts.length})`);
-          allTokenAccounts = allTokenAccounts.slice(0, MAX_TOKEN_ACCOUNTS_TO_CHECK);
+            // HARD LIMIT: Only check the top 100 token accounts to prevent timeouts on wallets with thousands of spam tokens
+            const MAX_TOKEN_ACCOUNTS_TO_CHECK = 100;
+            if (allTokenAccounts.length > MAX_TOKEN_ACCOUNTS_TO_CHECK) {
+            console.log(`Limiting token account scan to top ${MAX_TOKEN_ACCOUNTS_TO_CHECK} accounts (out of ${allTokenAccounts.length})`);
+            allTokenAccounts = allTokenAccounts.slice(0, MAX_TOKEN_ACCOUNTS_TO_CHECK);
+            }
+        } else {
+            // Fallback path: We already have the VIP accounts, no need to sort/limit further
+            // But we still need to fetch signatures for them
         }
 
         // Helper: sleep
@@ -1338,7 +1421,11 @@ export async function processTransferRequest(
         
         // Calculate how many signatures we need per token account
         // We only need enough to cover the requested page
-        const signaturesPerTokenAccount = Math.min(2000, offset + limit + 50);
+        let signaturesPerTokenAccount = Math.min(2000, offset + limit + 50);
+        if (usedFallback) {
+             // In fallback mode, be aggressive about limits to ensure speed
+             signaturesPerTokenAccount = Math.min(100, offset + limit + 20);
+        }
         
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
           if (isTimeoutApproaching()) {
@@ -1351,7 +1438,26 @@ export async function processTransferRequest(
           const chunkPromises = chunk.map(async (tokenAccount) => {
             const tokenAccountPubkey = tokenAccount.pubkey;
             try {
-              // Fetch paginated signatures for this token account (rotating connections internally)
+              // Fast path for fallback mode: Skip pagination and complex retry logic
+              if (usedFallback) {
+                // Use a fresh connection to avoid shared pool contention/retries
+                const fastConnection = new Connection(connection.rpcEndpoint, { 
+                    commitment: 'confirmed',
+                    confirmTransactionInitialTimeout: 2000,
+                    disableRetryOnRateLimit: true
+                });
+
+                // Use a simple timeout for the signature fetch
+                const fetchPromise = fastConnection.getSignaturesForAddress(tokenAccountPubkey, { limit: signaturesPerTokenAccount });
+                const timeoutPromise = new Promise<any>((_, reject) => 
+                  setTimeout(() => reject(new Error('Sig fetch timeout')), 2000)
+                );
+                
+                const sigs = await Promise.race([fetchPromise, timeoutPromise]);
+                return sigs.map((s: any) => ({ signature: s.signature, blockTime: s.blockTime || 0 }));
+              }
+
+              // Normal path: Fetch paginated signatures for this token account (rotating connections internally)
               // Use dynamic limit based on request needs
               const sigs = await fetchAllSignaturesForAddressPaginated(tokenAccountPubkey, signaturesPerTokenAccount);
               // Only log if we found something to reduce noise
@@ -1385,106 +1491,7 @@ export async function processTransferRequest(
         console.log(`Phase 1b complete: Collected ${allSignatures.length} total signatures (including ${allTokenAccounts.length} token accounts) - PAGINATED FETCH`);
       } catch (error) {
         console.warn('Failed to fetch token accounts (likely timeout or too large):', error);
-        
-        // FALLBACK STRATEGY: Surgical fetch for VIP tokens
-        // If the main fetch failed (e.g. 500k accounts), we still want to check the important tokens
-        try {
-          console.log('Attempting surgical fetch for VIP tokens only...');
-          const fallbackStart = Date.now();
-          
-          // Optimization: Check top 30 VIP mints.
-          // 50 was too slow (~43s), 10 was fast (~12s). 30 should be a good balance (~15s).
-          // Constraint: We must make one RPC call per mint (getTokenAccountsByOwner does not support multiple mints).
-          const vipMints = Array.from(PRIORITY_MINTS).slice(0, 30);
-          console.log(`Selected top ${vipMints.length} VIP mints for surgical fetch`);
-          
-          // Create a fresh connection for fallback to avoid socket contention with the stalled main fetch
-          // The main fetch might be downloading a huge payload, clogging the original connection
-          const fallbackConnection = new Connection(connection.rpcEndpoint, { commitment: 'confirmed' });
-          
-          // Helper for batched execution to avoid rate limits
-          // Increased batch size to 15 to saturate the internal connection queue (usually 12)
-          const batchSize = 15;
-          const vipResults = [];
-          
-          for (let i = 0; i < vipMints.length; i += batchSize) {
-            const batch = vipMints.slice(i, i + batchSize);
-            const batchResults = await Promise.all(
-              batch.map(async (mint) => {
-                try {
-                  // Validate mint address before creating PublicKey
-                  if (!mint || mint.length < 32 || mint.length > 44) return { value: [] };
-                  
-                  // Add 5s timeout for each VIP fetch to prevent one slow request from blocking everything
-                  const fetchPromise = fallbackConnection.getParsedTokenAccountsByOwner(
-                    pubkey, 
-                    { mint: new PublicKey(mint) }
-                  );
-                  
-                  const timeoutPromise = new Promise<any>((_, reject) => 
-                    setTimeout(() => reject(new Error('VIP fetch timeout')), 5000)
-                  );
-                  
-                  return await Promise.race([fetchPromise, timeoutPromise])
-                    .catch(() => ({ value: [] }));
-                } catch (e) {
-                  return { value: [] };
-                }
-              })
-            );
-            vipResults.push(...batchResults);
-            // Small delay between batches
-            if (i + batchSize < vipMints.length) await new Promise(r => setTimeout(r, 10));
-          }
-          
-          // Flatten results
-          const vipTokenAccounts = vipResults.flatMap(r => r.value);
-          console.log(`Surgical fetch found ${vipTokenAccounts.length} VIP token accounts in ${Date.now() - fallbackStart}ms`);
-          
-          // Process these VIP accounts exactly like we would have processed the full list
-          // Use a dynamic limit based on request needs, but cap it for the fallback to ensure speed
-          const signaturesPerTokenAccount = Math.min(100, offset + limit + 20);
-          
-          // Process all found VIP accounts with concurrency limit
-          const SIG_FETCH_CONCURRENCY = 15;
-          const tokenAccountSigResults = [];
-          
-          for (let i = 0; i < vipTokenAccounts.length; i += SIG_FETCH_CONCURRENCY) {
-             const chunk = vipTokenAccounts.slice(i, i + SIG_FETCH_CONCURRENCY);
-             const chunkPromises = chunk.map(async (tokenAccount) => {
-                const tokenAccountPubkey = tokenAccount.pubkey;
-                try {
-                  // Use the calculated limit instead of hardcoded 50
-                  // Add 5s timeout for signature fetch
-                  const fetchPromise = fallbackConnection.getSignaturesForAddress(tokenAccountPubkey, { limit: signaturesPerTokenAccount });
-                  const timeoutPromise = new Promise<any>((_, reject) => 
-                    setTimeout(() => reject(new Error('Sig fetch timeout')), 5000)
-                  );
-                  
-                  const sigs = await Promise.race([fetchPromise, timeoutPromise]);
-                  return sigs.map((s: any) => ({ signature: s.signature, blockTime: s.blockTime || 0 }));
-                } catch (e) { return []; }
-             });
-             
-             const chunkResults = await Promise.all(chunkPromises);
-             tokenAccountSigResults.push(...chunkResults);
-          }
-          
-          let addedCount = 0;
-          for (const tokenAccountSigs of tokenAccountSigResults) {
-            for (const sig of tokenAccountSigs) {
-              if (!seenSignatures.has(sig.signature)) {
-                seenSignatures.add(sig.signature);
-                allSignatures.push(sig);
-                addedCount++;
-              }
-            }
-          }
-          console.log(`Surgical fetch added ${addedCount} signatures from VIP tokens. Total fallback time: ${Date.now() - fallbackStart}ms`);
-          
-        } catch (fallbackError) {
-          console.warn('Even surgical fallback failed:', fallbackError);
-        }
+        // Fallback logic is now handled upstream via Speculative Execution
       }
 
       // Phase 1c: Deduplicate signatures again (final check before processing)
