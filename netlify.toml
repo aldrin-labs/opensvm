@@ -49,7 +49,7 @@
   to = "/api/proxy/rpc/:splat"
   status = 200
   force = false
-  conditions = {Referer = ["https://api.opensvm.com/*", "http://api.opensvm.com/*"]}
+  conditions = {Referer = ["https://api.opensvm.com/*", "http://api.opensvm.com/*"\]\}
 
 [[redirects]]
   from = "/api/*"
