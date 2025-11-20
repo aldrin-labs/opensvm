@@ -1051,9 +1051,88 @@ export async function processTransferRequest(
           ).catch(() => ({ value: [] })) // Token2022 might not exist, handle gracefully
         ]);
 
-        const allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
+        let allTokenAccounts = [...tokenAccounts.value, ...token2022Accounts.value];
 
         console.log(`Found ${allTokenAccounts.length} token accounts (${tokenAccounts.value.length} SPL + ${token2022Accounts.value.length} Token2022)`);
+
+        // OPTIMIZATION: Prioritize important token accounts to ensure they are checked before timeout
+        // 1. Priority Mints (USDC, USDT, SOL, etc.)
+        // 2. Accounts with non-zero balance
+        // 3. Everything else
+        const PRIORITY_MINTS = new Set([
+          // Stablecoins
+          'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC
+          'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT
+          'USDH1SM1ojwWUga67PGrgFWUHibbjqMvuMaDkRJTgkX', // USDH
+          'Ea5SjE2Y6yvCeW5dYTn7PYMuW5ikXkvbGdcmSnXeaLjS', // PAI
+          
+          // Major Tokens
+          'So11111111111111111111111111111111111111112', // Wrapped SOL
+          '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R', // RAY
+          'JUPyiwrYJFskUPiHa7hkeR8VUtkQjDOb5nv5i1M2arts', // JUP
+          'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3', // PYTH
+          'jtojtomePA8beP8AuQc6eKS59uyPHqHGKS2f16Gujr4', // JTO
+          'rndrizKT3MK1iimdxRdWabcF7Zg7AR5T4nud4EkHBof', // RENDER
+          'hntyVP6YFm1Hg25TN9WGLqM12b8TQmcknKrdu1oxWux', // HNT
+          'mb1eu7TzEc71KxDpsmsKoucSSuuoGLv1drys1oP2jh6', // MOBILE
+          'iotEVVZLEywoTn1QdwNPairDAE3yymm6a54+Qv3Zcyy', // IOT
+          
+          // LSTs
+          'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So', // mSOL
+          'J1toso1uCk3RLmjorhTtrVwY9HJ7X8V9yYac6Y7kGCPn', // JitoSOL
+          'bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1', // bSOL
+          '7dHbWXmci3dT8UFYWYZweBLXgycu7Y3iL6trKn1Y7ARj', // stSOL
+          '5oVNBeEEmpXWe50c8R3nrRXHNqAKRtBHf4pQ8gn5pHyg', // INF
+          
+          // Memecoins & Community
+          'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263', // BONK
+          'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm', // WIF
+          '7GCihgDB8fe6KNjn2MYtkzZcRjQy3t9GHdC8uHYmW2hr', // POPCAT
+          'MEW1gQWJ3nEXg2qgERiKu7FAFj79PHvQVREQUzScPP5', // MEW
+          'WENWENvqqNya429ubCdR81ZmD69brwQaaBYY6p3LCpk', // WEN
+          '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuGwGpump', // SLERF
+          'ukHH6c7mMyiWCf1b9pnWe25TSpkDDt3H5pQZgZ74J82', // BOME
+          
+          // DeFi & Infra
+          'DriFtupJYLTosbwoN8koMbEYSx54aFAVLddWsbksjwg7', // DRIFT
+          'KMNOuxIuhpL8oGrMarLmgx5nL6aX6X975FoZkYjWn48', // KMNO
+          'TNSRxcUxoT9xBG3de7PiJyTDYu7kskLqcpddxnC6Mio', // TNSR
+          'MNDEFzGvMt87ueuHVVUXP671foopHsdVlcFC72abE1z', // MNDE
+          'BLZEEuZUBVqFhj8adcCFPJvPVCiCyVmh4hkJYzHe7A2', // BLZE
+          'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE', // ORCA
+          'SLNDpmoWTVADgEdndyvWzroNL7zSi1dF9PC3xHGtPwp', // SLND
+          'CLoUDKc4Ane7HeQcPpE3YHn965KKMkhkNS2MGVP5P55c', // CLOUD
+          '27G8MtK7VtTcCHp0LEJkCm7UyD8aedL1vDyvziKZhpZF', // JLP
+          'nosXBVoaCTtYdLvKY6Csb4AC8JCdQKKAaWYtx2ZMoo7', // NOS
+          'BZLbGTNCSFfoth2GYDtwr7e4imWcbRKs76hCXX1lu2n9', // IO
+          
+          // Bridged Assets (Wormhole)
+          '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs', // WETH
+          '3NZ9JMVBmGAqocyBIC2c7LQCJxxdJNo71W518x7295U3', // WBTC
+          
+          // More Memecoins
+          'HhJpBhRRn4g56VsyLuT8DL5Bv31HkXqsrahTTUCZeZg4', // MYRO
+          '5z3EqYQo9HiCEs3R84RCDMy256X9bF3NdC3dG5M4pump', // PONKE
+          '63LfDmNb3MQ8mw9MtZ2To9bEA2M71kZUUGq5tiJxcqj9', // GIGA
+          '5mbK36SZ7J19An8jFcoh548VnTE7MB7FpCLs7qczpump', // MICHI
+        ]);
+
+        allTokenAccounts.sort((a, b) => {
+          const mintA = a.account.data.parsed.info.mint;
+          const mintB = b.account.data.parsed.info.mint;
+          const isPriorityA = PRIORITY_MINTS.has(mintA);
+          const isPriorityB = PRIORITY_MINTS.has(mintB);
+
+          if (isPriorityA && !isPriorityB) return -1;
+          if (!isPriorityA && isPriorityB) return 1;
+
+          const balanceA = a.account.data.parsed.info.tokenAmount.uiAmount || 0;
+          const balanceB = b.account.data.parsed.info.tokenAmount.uiAmount || 0;
+
+          return balanceB - balanceA; // Descending balance
+        });
+
+        console.log(`Sorted ${allTokenAccounts.length} token accounts by priority (VIP mints + balance)`);
 
         // Helper: sleep
         const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
