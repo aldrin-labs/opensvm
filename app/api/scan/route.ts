@@ -1,6 +1,4 @@
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
 export const runtime = 'edge';
 
 // Simple list of sample launchpads to mock aggregate data from
@@ -31,8 +29,6 @@ function createRandomMemecoin(): MemecoinInfo {
     const ageMinutes = Math.floor(Math.random() * 120);
     return { id, name, symbol, launchpad, priceUsd, marketCapUsd, liquidityUsd, volume24hUsd, ageMinutes };
 }
-
-
 
 export async function GET(_request: Request) {
     // Return mock data for now since WebSocket is not supported in Edge runtime

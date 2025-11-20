@@ -6,10 +6,6 @@ import { validateBlockListRequest, createValidationError } from '@/lib/validatio
 import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Rate limiter for block list requests (200 requests per minute)
 const blockListLimiter = new AdvancedRateLimiter({
   maxRequests: 200,

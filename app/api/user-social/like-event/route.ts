@@ -7,10 +7,6 @@ import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/api-auth/token-gating';
 import { toggleEventLike } from '@/lib/user/feed-events';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: Request) {
   try {
     // Authenticate the user

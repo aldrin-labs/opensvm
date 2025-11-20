@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { checkSVMAIAccess } from '@/lib/api-auth/token-gating';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function GET(_request: NextRequest) {
   console.log(`[Token Gating] Checking access...`);
 

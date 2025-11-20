@@ -6,10 +6,6 @@ import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/val
 import { validatorsCache } from '@/lib/caching/cache';
 import { QdrantClient } from '@qdrant/js-client-rest';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 interface GeolocationData {
   country: string;
   countryCode: string;

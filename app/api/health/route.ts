@@ -6,10 +6,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 import { validateApiKey, logApiKeyActivity } from '@/lib/api-auth/service';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function GET(req: NextRequest) {
   const startTime = Date.now();
   

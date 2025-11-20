@@ -7,10 +7,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createApiKey, createAuthLink } from '@/lib/api-auth/service';
 import type { ApiKeyCreateRequest } from '@/lib/api-auth/types';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: NextRequest) {
   try {
     const body: ApiKeyCreateRequest & { generateAuthLink?: boolean } = await request.json();

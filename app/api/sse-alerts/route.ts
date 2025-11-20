@@ -2,9 +2,6 @@ import { NextRequest } from 'next/server';
 import { SSEManager, startSSECleanup } from '@/lib/api/sse-manager';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   createSuccessResponse,
   createErrorResponse,
   CommonErrors,

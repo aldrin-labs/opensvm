@@ -2,10 +2,6 @@ import { NextResponse } from 'next/server';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import { slotsCache, cache } from '@/lib/caching/cache';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 interface SlotInfo {
     slot: number;
     blockTime: number | null;

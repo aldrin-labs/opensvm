@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { relatedTransactionFinder } from '@/lib/blockchain/related-transaction-finder';
 import type { RelatedTransactionQuery } from '@/lib/blockchain/related-transaction-finder';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

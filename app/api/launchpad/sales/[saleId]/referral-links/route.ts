@@ -8,10 +8,6 @@ import { getSale, getReferrer, createReferralLink } from '@/lib/launchpad/databa
 import { generateId, generateReferralCode, generateQRCode, generateShortUrl } from '@/lib/launchpad/utils';
 import type { CreateReferralLinkRequest } from '@/types/launchpad';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(
   request: Request,
   { params }: { params: { saleId: string } }

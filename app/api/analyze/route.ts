@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 const DEEPSEEK_PROMPT = `You are a Solana transaction analyzer. Your task is to:
 1. Analyze the transaction data and explain what happened in simple terms
 2. Identify the likely goal of the user who made this transaction

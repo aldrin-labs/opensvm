@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Lazy loader to ensure Jest module mocks are applied (avoids eager ESM binding)
 async function loadDeps() {
   const [

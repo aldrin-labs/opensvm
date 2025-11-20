@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { CrashReporter } from '@/lib/crash/crash-reporter';
 import logger from '@/lib/logging/logger';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: NextRequest) {
   const startTime = performance.now();
   

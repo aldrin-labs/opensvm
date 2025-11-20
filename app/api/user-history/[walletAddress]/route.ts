@@ -9,9 +9,6 @@ import { validateWalletAddress, sanitizeInput } from '@/lib/user/user-history-ut
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   storeHistoryEntry,
   getUserHistory,
   deleteUserHistory,

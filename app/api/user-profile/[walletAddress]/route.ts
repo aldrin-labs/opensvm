@@ -8,9 +8,6 @@ import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   getUserProfile,
   storeUserProfile,
   getUserHistory,

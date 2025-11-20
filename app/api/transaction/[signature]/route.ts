@@ -6,10 +6,6 @@ import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { createCache } from '@/lib/caching/api-cache';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 const DEBUG = true; // Set to true to enable detailed logging
 
 // Create cache instance for transactions (5 min cache, 1 min refresh threshold)

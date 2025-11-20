@@ -5,10 +5,6 @@ import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import { sanitizeSearchQuery, isValidSolanaAddress, formatNumber } from '@/lib/utils';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Rate limit configuration for account search
 const SEARCH_RATE_LIMIT = {
   limit: 1000,         // 10 requests

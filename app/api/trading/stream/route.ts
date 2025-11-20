@@ -16,7 +16,6 @@ import { Connection } from '@solana/web3.js';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-export const maxDuration = 300; // 5 minutes
 
 // Token mint addresses
 const TOKEN_MINTS: Record<string, string> = {

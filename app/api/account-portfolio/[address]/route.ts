@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
 import MoralisAPI from '@/lib/external-apis/moralis-api';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Rate limit configuration for portfolio data
 const PORTFOLIO_RATE_LIMIT = {
   limit: 100,

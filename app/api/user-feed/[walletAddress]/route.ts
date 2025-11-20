@@ -8,9 +8,6 @@ import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   getUserFollowing,
   getUserHistory,
   checkQdrantHealth
@@ -358,7 +355,6 @@ export async function GET(
         }
       });
     }
-
 
     // Get current authenticated user (if any)
     const currentUserWallet = await getAuthenticatedUser(_request);

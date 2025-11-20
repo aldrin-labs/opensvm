@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getProgramInfoWithQdrantCache } from '@/lib/solana/program-metadata-cache';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',

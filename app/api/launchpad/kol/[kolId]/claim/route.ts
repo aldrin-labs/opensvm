@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/launchpad/database';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // POST /api/launchpad/kol/:kolId/claim - Claim tokens
 export async function POST(
   request: NextRequest,

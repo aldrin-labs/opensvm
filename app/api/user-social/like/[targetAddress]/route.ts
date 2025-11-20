@@ -9,9 +9,6 @@ import { validateWalletAddress, generateId } from '@/lib/user/user-history-utils
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   storeUserLike,
   removeUserLike,
   getUserLikes,

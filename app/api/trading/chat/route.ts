@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import Together from 'together-ai';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export const runtime = 'edge';
 
 interface TradeCommand {

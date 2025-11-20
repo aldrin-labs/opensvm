@@ -3,10 +3,6 @@ import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, OPTIONS',

@@ -4,10 +4,6 @@ import { JWTAuth } from '../../../../lib/anthropic-proxy/auth/JWTAuth';
 import { globalUsageAnalytics } from '../../../../lib/anthropic-proxy/analytics/UsageAnalytics';
 import { globalChartMapper } from '../../../../lib/anthropic-proxy/utils/ChartDataMapper';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 const usageReporter = new UsageReporter();
 const jwtAuth = new JWTAuth();
 

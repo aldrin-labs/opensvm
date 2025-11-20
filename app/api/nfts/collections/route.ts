@@ -3,10 +3,6 @@ import { Connection, PublicKey } from "@solana/web3.js";
 import { getConnection } from "@/lib/solana/solana-connection-server";
 import { rateLimiter, RateLimitError } from "@/lib/api/rate-limit";
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Type definitions
 interface NFTCollection {
   address: string;

@@ -4,9 +4,6 @@ import { AnomalyDetectionCapability } from '@/lib/ai/capabilities/anomaly-detect
 import { validateAnomalyRequest, validateBlockchainEvent } from '@/lib/validation/stream-schemas';
 import {
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
   createSuccessResponse,
   createErrorResponse,
   CommonErrors,

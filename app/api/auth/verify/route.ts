@@ -8,10 +8,6 @@ import { verifySignature, SessionData } from '@/lib/api-auth/auth';
 import { validateWalletAddress, sanitizeInput } from '@/lib/user/user-history-utils';
 import { setSessionCookie } from '@/lib/api-auth/auth-server';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();

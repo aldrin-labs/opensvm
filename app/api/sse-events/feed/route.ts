@@ -8,10 +8,6 @@ import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { getUserFollowing } from '@/lib/search/qdrant';
 import { getFeedEvents, SocialFeedEvent } from '@/lib/user/feed-events';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Use SocialFeedEvent from feed-events module
 type FeedEvent = SocialFeedEvent;
 

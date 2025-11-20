@@ -4,10 +4,6 @@ import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 import { rateLimit } from '@/lib/api/rate-limit';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 interface ProgramAccountSearchRequest {
   programId: string;
   searchType: 'all' | 'filtered' | 'pda';

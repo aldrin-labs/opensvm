@@ -346,4 +346,3 @@ export async function GET(
   }
 }
 
-export const maxDuration = 15; // 15 seconds for Vercel serverless function

@@ -2,10 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAnthropicClient } from '@/lib/anthropic-proxy/core/AnthropicClientSingleton';
 import { ProxyAuth } from '@/lib/anthropic-proxy/auth/ProxyAuth';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 /**
  * GET /api/opensvm/anthropic-keys/stats
  * Returns OpenRouter API key usage statistics

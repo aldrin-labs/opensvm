@@ -4,10 +4,6 @@ import { PublicKey } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const address = searchParams.get('address');

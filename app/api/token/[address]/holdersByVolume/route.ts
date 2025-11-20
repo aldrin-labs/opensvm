@@ -3,10 +3,6 @@ import { PublicKey, ParsedAccountData } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import NodeCache from 'node-cache';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Shared cache with holders endpoint (5 minute TTL)
 const cache = new NodeCache({ stdTTL: 300 });
 

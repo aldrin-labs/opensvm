@@ -1,10 +1,6 @@
 import { NextResponse } from 'next/server';
 import { LAUNCHPAD_CONSTANTS } from '@/lib/constants/analytics-constants';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Real Launchpad Analytics API using external APIs for real data
 interface LaunchpadMetrics {
   name: string;

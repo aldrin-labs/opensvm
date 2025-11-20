@@ -2,10 +2,6 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { qdrantClient, COLLECTIONS } from '@/lib/search/qdrant';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // In-memory storage for demonstration - in production, use a database
 const recentPrompts: { query: string; timestamp: number; count: number }[] = [
   { query: 'Jupiter exchange transactions', timestamp: Date.now() - 3600000, count: 15 },

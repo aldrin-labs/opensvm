@@ -5,10 +5,6 @@ import { getConnection } from '@/lib/solana/solana-connection-server';
 import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
 import { getTokenInfo } from '@/lib/trading/token-registry';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Cache for token holder data and market data
 const tokenHolderCache = new Map<string, { 
   holders: number; 

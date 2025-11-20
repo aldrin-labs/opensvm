@@ -3,8 +3,6 @@ import { PublicKey } from '@solana/web3.js';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
 import {
   MIN_TRANSFER_SOL,
   TRANSACTION_BATCH_SIZE,

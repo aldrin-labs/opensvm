@@ -1,10 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TokenConsumptionTracker, generateSessionId } from '../../../../lib/monetization/svmai';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function GET(req: NextRequest) {
     try {
         const cookies = req.cookies;

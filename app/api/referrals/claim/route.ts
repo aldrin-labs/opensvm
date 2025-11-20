@@ -7,10 +7,6 @@ import { v4 as uuidv4 } from 'uuid';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { qdrantClient } from '@/lib/search/qdrant';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 export async function POST(request: Request) {
   try {
     // Authenticate the user

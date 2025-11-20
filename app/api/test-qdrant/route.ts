@@ -1,6 +1,4 @@
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
 export async function GET() {
   try {
     const { qdrantClient } = await import('../../../lib/qdrant');

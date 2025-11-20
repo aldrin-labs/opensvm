@@ -6,10 +6,6 @@ import { NextRequest } from 'next/server';
 import { blockStreamManager } from '@/lib/api/sse-handler';
 import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Extend global type for initialization tracking
 declare global {
   // eslint-disable-next-line no-var

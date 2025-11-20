@@ -3,10 +3,6 @@ import { createCache } from '@/lib/caching/api-cache';
 import { DEX_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { createCache } from '@/lib/caching/api-cache';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Real DEX Analytics API using external APIs for real data
 interface DexMetrics {
   name: string;
@@ -315,7 +311,6 @@ function calculateArbitrageOpportunities(
     .slice(0, 10);
 }
 
-
 // Standardize DEX names to lowercase single words
 function standardizeDexName(name: string): string {
   const nameMap: Record<string, string> = {
@@ -399,7 +394,6 @@ function getFallbackDexData(): DexMetrics[] {
     { name: 'saber', volume24h: 12000000, tvl: 55000000, volumeChange: -0.8, marketShare: 0 }
   ];
 }
-
 
 export async function GET(request: NextRequest) {
   try {

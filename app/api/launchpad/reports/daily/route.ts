@@ -3,10 +3,6 @@ import { db } from '@/lib/launchpad/database';
 import { DailyVolumeReport } from '@/types/launchpad';
 import { signPayload } from '@/lib/launchpad/utils';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // POST /api/launchpad/reports/daily - Submit daily volume report
 export async function POST(request: NextRequest) {
   try {

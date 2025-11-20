@@ -3,10 +3,6 @@ import { APIKeyManager } from '../../../../../lib/anthropic-proxy/core/APIKeyMan
 import { UsageReporter } from '../../../../../lib/anthropic-proxy/reporting/UsageReporter';
 import jwt from 'jsonwebtoken';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Initialize components
 const apiKeyManager = new APIKeyManager();
 const usageReporter = new UsageReporter();

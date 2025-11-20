@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Route segment config: Set timeout to 120 seconds
-export const maxDuration = 120;
-
-
 // Real DeFi Health API using external data sources
 interface ProtocolData {
   name: string;
