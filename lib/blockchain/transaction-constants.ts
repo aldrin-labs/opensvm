@@ -42,7 +42,7 @@ export function isAboveDustThreshold(amount: number, threshold: number): boolean
   return amount >= threshold;
 }
 // Transaction batch and retry constants for account transfer API
-export const TRANSACTION_BATCH_SIZE = 1000; // MAXIMUM batch size supported by Solana RPC
+export const TRANSACTION_BATCH_SIZE = 1000; // User requested 1000 for maximum throughput
 export const MAX_RETRIES = 3;
 export const INITIAL_BACKOFF_MS = 10;
 export const BATCH_DELAY_MS = 0;
@@ -50,7 +50,7 @@ export const MAX_SIGNATURES_LIMIT = 1000;
 export const MIN_WALLET_ADDRESS_LENGTH = 32;
 
 // Rate limiting constants - OpenSVM Business Plan: UNLIMITED/HIGH THROUGHPUT
-export const MAX_RPS_LIMIT = 5000; // Target 2500+ TPS
-export const MAX_CONCURRENT_BATCHES = 50; // 50 * 1000 = 50,000 transactions in flight
-export const RATE_LIMIT_BUFFER = 0.8; // Use 80% of limit for safety margin
-export const EFFECTIVE_MAX_RPS = Math.floor(MAX_RPS_LIMIT * RATE_LIMIT_BUFFER); // 240 RPS effective
+export const MAX_RPS_LIMIT = 10000; // Increased for 1000 tx/s target
+export const MAX_CONCURRENT_BATCHES = 100; // Massive parallelism for large batches
+export const RATE_LIMIT_BUFFER = 0.9; // Aggressive buffer usage
+export const EFFECTIVE_MAX_RPS = Math.floor(MAX_RPS_LIMIT * RATE_LIMIT_BUFFER);

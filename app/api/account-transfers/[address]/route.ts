@@ -314,7 +314,6 @@ async function fetchTransactionBatch(
   globalStartTime: number = Date.now(),
   timeoutMs: number = 25000
 ): Promise<{ transfers: Transfer[]; hitRpcLimit: boolean }> {
-  console.log(`[${Date.now() - globalStartTime}ms] fetchTransactionBatch started with ${signatures.length} signatures`);
   const transfers: Transfer[] = [];
   const startTime = Date.now();
 
@@ -1209,7 +1208,7 @@ export async function processTransferRequest(
 
         // Helper: Fetch VIP tokens (Surgical Fallback Logic extracted)
         const fetchVIPTokens = async () => {
-          console.log(`[${Date.now() - startTime}ms] Starting surgical fetch for VIP tokens...`);
+          console.log('Starting surgical fetch for VIP tokens (ATA Strategy)...');
           const fallbackStart = Date.now();
           
           // Optimization: Check top 3 VIP mints.
@@ -1217,6 +1216,23 @@ export async function processTransferRequest(
           // Covers: USDC, USDT, SOL.
           const vipMints = Array.from(PRIORITY_MINTS).slice(0, 3);
           
+          // Derive ATAs for these mints
+          const atas = vipMints.map(mint => {
+             try {
+                 return {
+                     mint,
+                     pubkey: PublicKey.findProgramAddressSync(
+                        [new PublicKey(address).toBuffer(), new PublicKey(KNOWN_PROGRAMS.TOKEN_PROGRAM).toBuffer(), new PublicKey(mint).toBuffer()],
+                        new PublicKey(KNOWN_PROGRAMS.ASSOCIATED_TOKEN)
+                     )[0]
+                 };
+             } catch (e) {
+                 return null;
+             }
+          }).filter(Boolean) as { mint: string, pubkey: PublicKey }[];
+
+          if (atas.length === 0) return [];
+
           // Create a fresh connection for fallback
           const fallbackConnection = new Connection(connection.rpcEndpoint, { 
               commitment: 'confirmed',
@@ -1224,42 +1240,41 @@ export async function processTransferRequest(
               disableRetryOnRateLimit: true
           });
           
-          // Helper for batched execution to avoid rate limits
-          // Batch size 15 to match the list size
-          const batchSize = 15;
-          const vipResults = [];
-          
-          for (let i = 0; i < vipMints.length; i += batchSize) {
-            console.log(`[${Date.now() - startTime}ms] Fetching VIP batch ${i}...`);
-            const batch = vipMints.slice(i, i + batchSize);
-            const batchResults = await Promise.all(
-              batch.map(async (mint) => {
-                try {
-                  if (!mint || mint.length < 32 || mint.length > 44) return { value: [] };
-                  
-                  const fetchPromise = fallbackConnection.getParsedTokenAccountsByOwner(
-                    pubkey, 
-                    { mint: new PublicKey(mint) }
-                  );
-                  
-                  const timeoutPromise = new Promise<any>((_, reject) => 
-                    setTimeout(() => reject(new Error('VIP fetch timeout')), 2000)
-                  );
-                  
-                  return await Promise.race([fetchPromise, timeoutPromise])
-                    .catch(() => ({ value: [] }));
-                } catch (e) {
-                  return { value: [] };
-                }
-              })
-            );
-            vipResults.push(...batchResults);
-            console.log(`[${Date.now() - startTime}ms] VIP batch ${i} done.`);
+          try {
+              // Fetch all ATAs in one go
+              const accountInfos = await fallbackConnection.getMultipleAccountsInfo(atas.map(a => a.pubkey));
+              
+              const vipTokenAccounts = [];
+              for (let i = 0; i < accountInfos.length; i++) {
+                  const info = accountInfos[i];
+                  if (info) {
+                      // Construct a mock parsed account structure
+                      vipTokenAccounts.push({
+                          pubkey: atas[i].pubkey,
+                          account: {
+                              data: {
+                                  parsed: {
+                                      info: {
+                                          mint: atas[i].mint,
+                                          tokenAmount: {
+                                              uiAmount: 0, // We don't know decimals without parsing, but we don't need it for signature fetch
+                                              amount: "0",
+                                              decimals: 0
+                                          }
+                                      }
+                                  }
+                              }
+                          }
+                      });
+                  }
+              }
+              
+              console.log(`Surgical fetch found ${vipTokenAccounts.length} VIP token accounts in ${Date.now() - fallbackStart}ms`);
+              return vipTokenAccounts;
+          } catch (error) {
+              console.warn('VIP ATA fetch failed:', error);
+              return [];
           }
-          
-          const vipTokenAccounts = vipResults.flatMap(r => r.value);
-          console.log(`[${Date.now() - startTime}ms] Surgical fetch found ${vipTokenAccounts.length} VIP token accounts in ${Date.now() - fallbackStart}ms`);
-          return vipTokenAccounts;
         };
 
         // Speculative Execution: Start VIP fetch after 100ms if Main Fetch hasn't finished
@@ -1341,7 +1356,7 @@ export async function processTransferRequest(
           const seenLocal = new Set<string>();
           let cursor: string | undefined = undefined;
           let iterations = 0;
-          const perPage = Math.min(MAX_SIGNATURES_LIMIT, 100);
+          const perPage = Math.min(MAX_SIGNATURES_LIMIT, 1000);
 
           while (iterations < 50 && collected.length < maxTotal) {
             if (isTimeoutApproaching()) break;
@@ -1516,8 +1531,8 @@ export async function processTransferRequest(
         allSignatures.sort((a, b) => b.blockTime - a.blockTime);
         
         // SLICE to reduce RPC calls - fetch only what we likely need
-        // Fetch 2x the limit (reduced from 4x) since we are more efficient now
-        const fetchLimit = offset + limit * 2;
+        // Fetch exact limit (no buffer) to minimize RPC load
+        const fetchLimit = offset + limit;
         const signaturesToFetch = allSignatures.slice(0, fetchLimit);
         
         console.log(`Phase 2: Processing ${signaturesToFetch.length} unique transactions (sliced from ${allSignatures.length}) in parallel...`);
