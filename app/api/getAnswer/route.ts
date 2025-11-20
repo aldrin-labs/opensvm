@@ -501,14 +501,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
           }
 
           // Parse maxTokens parameter (allow user to control output length)
+          // ⚡ OPTIMIZED: Default to 2K tokens for <15 second responses
           let customMaxTokens: number | undefined = undefined;
           if (body.maxTokens !== undefined) {
             const parsed = parseInt(String(body.maxTokens), 10);
-            if (!isNaN(parsed) && parsed > 0 && parsed <= 32000) {
+            if (!isNaN(parsed) && parsed > 0 && parsed <= 8000) {
               customMaxTokens = parsed;
               console.log(`🎯 Custom maxTokens: ${customMaxTokens}`);
             } else {
-              console.warn(`⚠️  Invalid maxTokens value: ${body.maxTokens}, using default`);
+              console.warn(`⚠️  Invalid maxTokens value: ${body.maxTokens}, using default 2000`);
             }
           }
 
@@ -710,7 +711,7 @@ async function getSolanaRpcKnowledge(): Promise<string> {
             },
             { role: "user", content: question }
           ],
-          maxTokens: customMaxTokens || 32000,  // ✅ Use custom or default to 32K tokens
+          maxTokens: customMaxTokens || 2000,  // ⚡ OPTIMIZED: Default 2K tokens for speed
           stream: false
         });
 
@@ -1003,15 +1004,15 @@ async function getSolanaRpcKnowledge(): Promise<string> {
         const complexity = complexityAnalyzer.analyzeComplexity(question);
         console.log(`🎯 Query complexity: ${complexity.description} (score: ${complexity.complexity}, timeout: ${complexity.timeoutMs}ms)`);
 
-        // ✅ ABSOLUTE MAXIMUM TOKEN CAPACITY: Using Grok 4 Fast limits
+        // ⚡ OPTIMIZED: Default to 2K tokens for <15 second responses
         // The x-ai/grok-4-fast model supports 2M context window and up to 32K output tokens
-        let maxTokens = customMaxTokens || 32000;  // Use custom or default to 32K tokens
+        let maxTokens = customMaxTokens || 2000;  // Default 2K for speed, max 8K if custom
         
-        // Clamp to valid range (1 to 32000)
-        maxTokens = Math.min(Math.max(maxTokens, 1), 32000);
+        // Clamp to valid range (1 to 8000)
+        maxTokens = Math.min(Math.max(maxTokens, 1), 8000);
         
         // Log token allocation for monitoring
-        console.log(`📝 Token allocation: ${maxTokens} tokens ${customMaxTokens ? '(custom)' : '(default maximum)'}`);
+        console.log(`📝 Token allocation: ${maxTokens} tokens ${customMaxTokens ? '(custom)' : '(default 2K)'}`);
 
         // Add dynamic timeout for LLM call
         const llmTimeout = new Promise<never>((_, reject) => {
