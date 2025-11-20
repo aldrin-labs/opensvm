@@ -45,20 +45,6 @@
     X-Robots-Tag = "noindex, nofollow"
 
 [[redirects]]
-  from = "/api/*"
-  to = "/api/proxy/rpc/:splat"
-  status = 200
-  force = false
-  conditions = {Referer = ["https://api.opensvm.com/*", "http://api.opensvm.com/*"\]\}
-
-[[redirects]]
-  from = "/api/*"
-  to = "/api/proxy/rpc/:splat"
-  status = 200
-  force = false
-  headers = {X-Original-Host = "api.opensvm.com"}
-
-[[redirects]]
   from = "/lib/rpc-config.json"
   to = "/404"
   status = 404
