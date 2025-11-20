@@ -902,7 +902,7 @@ async function processTransferRequest(
     let remainingNeeded = effectiveLimit - cachedTransfers.length;
     
     // Declare allSignatures at outer scope so it's accessible for hitMaxLimit check
-    let allSignatures: string[] = [];
+    let allSignatures: { signature: string; blockTime: number }[] = [];
     
     // Create RPC call counter for tracking usage
     const rpcCounter = new RPCCallCounter();
@@ -971,7 +971,10 @@ async function processTransferRequest(
         for (const sig of signatures) {
           if (!seenSignatures.has(sig.signature)) {
             seenSignatures.add(sig.signature);
-            allSignatures.push(sig.signature);
+            allSignatures.push({
+              signature: sig.signature,
+              blockTime: sig.blockTime || 0
+            });
           }
         }
 
@@ -1015,7 +1018,7 @@ async function processTransferRequest(
 
         // Helper: fetch signatures for a single address with pagination, rotating fresh connections per page
         async function fetchAllSignaturesForAddressPaginated(tokenPubkey: PublicKey, maxTotal = 2000) {
-          const collected: string[] = [];
+          const collected: { signature: string; blockTime: number }[] = [];
           const seenLocal = new Set<string>();
           let cursor: string | undefined = undefined;
           let iterations = 0;
@@ -1068,7 +1071,10 @@ async function processTransferRequest(
             for (const s of pageResult) {
               if (!seenLocal.has(s.signature)) {
                 seenLocal.add(s.signature);
-                collected.push(s.signature);
+                collected.push({
+                  signature: s.signature,
+                  blockTime: s.blockTime || 0
+                });
               }
             }
 
@@ -1107,8 +1113,8 @@ async function processTransferRequest(
 
           for (const tokenAccountSigs of tokenAccountSigResults) {
             for (const sig of tokenAccountSigs) {
-              if (!seenSignatures.has(sig)) {
-                seenSignatures.add(sig);
+              if (!seenSignatures.has(sig.signature)) {
+                seenSignatures.add(sig.signature);
                 allSignatures.push(sig);
               }
             }
@@ -1126,7 +1132,16 @@ async function processTransferRequest(
       }
 
       // Phase 1c: Deduplicate signatures again (final check before processing)
-      const uniqueSignatures = [...new Set(allSignatures)];
+      // Use a Map to keep the object with the blockTime
+      const uniqueSignaturesMap = new Map<string, { signature: string; blockTime: number }>();
+      for (const sig of allSignatures) {
+        if (!uniqueSignaturesMap.has(sig.signature)) {
+          uniqueSignaturesMap.set(sig.signature, sig);
+        }
+      }
+      
+      let uniqueSignatures = Array.from(uniqueSignaturesMap.values());
+      
       if (uniqueSignatures.length < allSignatures.length) {
         console.log(`Deduplicated signatures: ${allSignatures.length} → ${uniqueSignatures.length} (removed ${allSignatures.length - uniqueSignatures.length} duplicates)`);
         allSignatures = uniqueSignatures;
@@ -1134,9 +1149,20 @@ async function processTransferRequest(
 
       // Phase 2: Process all transactions in parallel for maximum performance
       if (allSignatures.length > 0) {
-        console.log(`Phase 2: Processing ${allSignatures.length} unique transactions in parallel...`);
+        // SORT by blockTime descending (newest first)
+        allSignatures.sort((a, b) => b.blockTime - a.blockTime);
+        
+        // SLICE to reduce RPC calls - fetch only what we likely need
+        // Fetch 4x the limit to account for filtering (spam, dust, etc.)
+        const fetchLimit = offset + limit * 4;
+        const signaturesToFetch = allSignatures.slice(0, fetchLimit);
+        
+        console.log(`Phase 2: Processing ${signaturesToFetch.length} unique transactions (sliced from ${allSignatures.length}) in parallel...`);
 
-        const result = await fetchTransactionBatch(allSignatures, address, rpcCounter);
+        // Map to strings for the batch fetcher
+        const signatureStrings = signaturesToFetch.map(s => s.signature);
+
+        const result = await fetchTransactionBatch(signatureStrings, address, rpcCounter);
         hitRpcLimit = result.hitRpcLimit;
         
         // Check RPC limit
