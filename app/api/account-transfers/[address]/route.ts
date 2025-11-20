@@ -310,7 +310,9 @@ function detectTransactionType(tx: any): { type: TransactionType; programId?: st
 async function fetchTransactionBatch(
   signatures: string[],
   address: string,
-  rpcCounter: RPCCallCounter
+  rpcCounter: RPCCallCounter,
+  globalStartTime: number = Date.now(),
+  timeoutMs: number = 25000
 ): Promise<{ transfers: Transfer[]; hitRpcLimit: boolean }> {
   const transfers: Transfer[] = [];
   const startTime = Date.now();
@@ -330,9 +332,9 @@ async function fetchTransactionBatch(
 
   // Process batches in chunks to respect rate limits
   for (let i = 0; i < batches.length; i += MAX_CONCURRENT_BATCHES) {
-    // Check if we've been running too long (simple check without passing startTime)
-    if (Date.now() - startTime > 45000) { // 45s timeout for batch processing
-       console.warn(`Batch processing timed out after ${Date.now() - startTime}ms`);
+    // Check if we've been running too long
+    if (Date.now() - globalStartTime > timeoutMs) { 
+       console.warn(`Batch processing timed out after ${Date.now() - globalStartTime}ms`);
        break;
     }
 
@@ -848,11 +850,10 @@ export async function processTransferRequest(
     console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
 
     // TIMEOUT PROTECTION: Fail fast if processing takes too long
-    const TIMEOUT_MS = 55000; // 55 seconds
-    const checkTimeout = () => {
-      if (Date.now() - startTime > TIMEOUT_MS) {
-        throw new Error(`Request timed out after ${Date.now() - startTime}ms`);
-      }
+    // Reduced to 25s to avoid 504 Gateway Timeouts (usually 30s)
+    const TIMEOUT_MS = 25000; 
+    const isTimeoutApproaching = () => {
+      return Date.now() - startTime > TIMEOUT_MS;
     };
 
     let cachedTransfers: TransferEntry[] = [];
@@ -968,7 +969,10 @@ export async function processTransferRequest(
 
       // Fetch signatures up to our calculated limit
       while (signatureFetchIterations < maxSignatureFetches) {
-        checkTimeout(); // Check for timeout
+        if (isTimeoutApproaching()) {
+          console.log(`Timeout approaching, stopping main wallet signature fetch`);
+          break;
+        }
         signatureFetchIterations++;
 
         const signatures = await connection.getSignaturesForAddress(
@@ -1107,7 +1111,10 @@ export async function processTransferRequest(
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
         const TOKEN_SIG_FETCH_CONCURRENCY = 512; // Maximum parallelism for signature fetching
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
-          checkTimeout(); // Check for timeout
+          if (isTimeoutApproaching()) {
+            console.log(`Timeout approaching, stopping token signature fetch`);
+            break;
+          }
           const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);
           console.log(`Fetching signatures for token account chunk ${Math.floor(i / TOKEN_SIG_FETCH_CONCURRENCY) + 1}/${Math.ceil(allTokenAccounts.length / TOKEN_SIG_FETCH_CONCURRENCY)} with ${chunk.length} accounts`);
 
@@ -1177,29 +1184,22 @@ export async function processTransferRequest(
         // Map to strings for the batch fetcher
         const signatureStrings = signaturesToFetch.map(s => s.signature);
 
-        checkTimeout(); // Check for timeout before batch processing
-        const result = await fetchTransactionBatch(signatureStrings, address, rpcCounter);
-        hitRpcLimit = result.hitRpcLimit;
-        
-        // Check RPC limit
-        if (hitRpcLimit || rpcCounter.hasExceeded(MAX_RPC_CALLS_PER_REQUEST)) {
-          console.warn(`RPC limit reached: ${rpcCounter.getCount()} calls (max: ${MAX_RPC_CALLS_PER_REQUEST})`);
+        if (isTimeoutApproaching()) {
+           console.log(`Timeout approaching, skipping batch processing`);
+        } else {
+          const result = await fetchTransactionBatch(signatureStrings, address, rpcCounter, startTime, TIMEOUT_MS);
+          hitRpcLimit = result.hitRpcLimit;
+          
+          // Check RPC limit
+          if (hitRpcLimit || rpcCounter.hasExceeded(MAX_RPC_CALLS_PER_REQUEST)) {
+            console.warn(`RPC limit reached: ${rpcCounter.getCount()} calls (max: ${MAX_RPC_CALLS_PER_REQUEST})`);
+          }
+
+          // Add to our collection
+          allTransfers.push(...result.transfers);
         }
 
-        // Apply filtering to new transfers
-        // const filteredNewTransfers = result.transfers
-        //   .filter(transfer => {
-        //     const amount = parseFloat(transfer.tokenAmount);
-        //     return isAboveDustThreshold(amount, MIN_TRANSFER_SOL) &&
-        //       transfer.from !== transfer.to &&
-        //       transfer.from.length >= MIN_WALLET_ADDRESS_LENGTH &&
-        //       transfer.to.length >= MIN_WALLET_ADDRESS_LENGTH;
-        //   });
 
-        // console.log(`Processed ${result.transfers.length} raw transfers, ${filteredNewTransfers.length} after filtering`);
-
-        // Add to our collection
-        allTransfers.push(...result.transfers);
       }
     }
 
