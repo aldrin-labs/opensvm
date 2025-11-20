@@ -1,6 +1,6 @@
 import fs from 'fs';
 import path from 'path';
-import { apiMethods } from '../api-presets';
+import { apiMethods } from './api-presets';
 
 export interface OpenAPIParameter {
   name: string;
@@ -561,6 +561,21 @@ class OpenAPIGenerator {
             description: 'Total number of transfers found before pagination',
             example: 14
           },
+          hitMaxLimit: {
+            type: 'boolean',
+            description: 'Whether the 10,000 signature limit was reached (indicates more signatures exist beyond the cap)',
+            example: false
+          },
+          hitRpcLimit: {
+            type: 'boolean',
+            description: 'Whether the 1,000 RPC call limit was reached during processing (indicates early stopping due to RPC usage)',
+            example: false
+          },
+          totalDisplay: {
+            type: 'string',
+            description: 'Human-readable total for UI display (appends "+" when hitMaxLimit is true)',
+            example: '14'
+          },
           nextPageSignature: {
             type: 'string',
             description: 'Signature cursor for next page (may be null)',
@@ -570,6 +585,11 @@ class OpenAPIGenerator {
             type: 'boolean',
             description: 'Whether data was served entirely from cache',
             example: false
+          },
+          rpcCalls: {
+            type: 'integer',
+            description: 'Total number of RPC calls made during this request',
+            example: 15
           }
         }
       },

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
 import {
   MIN_TRANSFER_SOL,
@@ -14,7 +14,7 @@ import {
   MIN_WALLET_ADDRESS_LENGTH,
   MAX_CONCURRENT_BATCHES,
   EFFECTIVE_MAX_RPS
-} from '@/lib/transaction-constants';
+} from '@/lib/blockchain/transaction-constants';
 import {
   getCachedTransfers,
   storeTransferEntry,
@@ -22,9 +22,9 @@ import {
   markTransfersCached,
   isSolanaOnlyTransaction,
   type TransferEntry
-} from '@/lib/qdrant';
-import { batchFetchTokenMetadata } from '@/lib/token-registry';
-import { withRetry } from '@/lib/rpc-retry';
+} from '@/lib/search/qdrant';
+import { batchFetchTokenMetadata } from '@/lib/trading/token-registry';
+import { withRetry } from '@/lib/solana/rpc/rpc-retry';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,6 +34,34 @@ const corsHeaders = {
 
 // In-memory coordination to prevent duplicate concurrent requests
 const pendingRequests = new Map<string, Promise<any>>();
+
+// Rate limiting: Track requests per address to prevent abuse
+const requestTimestamps = new Map<string, number[]>();
+const MAX_REQUESTS_PER_MINUTE = 10; // Max 10 requests per minute per address
+const RATE_LIMIT_WINDOW_MS = 60000; // 1 minute
+
+// Request limits to prevent abuse
+const MAX_LIMIT = 500;
+const MAX_OFFSET = 100000; // Prevent absurdly large offsets
+const MIN_LIMIT = 1;
+const MAX_RPC_CALLS_PER_REQUEST = 1000; // Limit RPC usage per request
+
+// RPC call counter class for tracking usage
+class RPCCallCounter {
+  private count = 0;
+  
+  increment(amount = 1): void {
+    this.count += amount;
+  }
+  
+  getCount(): number {
+    return this.count;
+  }
+  
+  hasExceeded(limit: number): boolean {
+    return this.count >= limit;
+  }
+}
 
 export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
@@ -280,8 +308,9 @@ function detectTransactionType(tx: any): { type: TransactionType; programId?: st
  */
 async function fetchTransactionBatch(
   signatures: string[],
-  address: string
-): Promise<Transfer[]> {
+  address: string,
+  rpcCounter: RPCCallCounter
+): Promise<{ transfers: Transfer[]; hitRpcLimit: boolean }> {
   const transfers: Transfer[] = [];
   const startTime = Date.now();
 
@@ -313,6 +342,9 @@ async function fetchTransactionBatch(
           try {
             // Get fresh connection for batch RPC call to maximize OpenSVM rotation
             const freshConnection = await getConnection();
+
+            // Track RPC call - getParsedTransactions counts as 1 call
+            rpcCounter.increment(1);
 
             // Use getParsedTransactions for much better performance than individual calls - with retry wrapper
             const batchTransactionsResult = await withRetry(
@@ -768,6 +800,12 @@ async function fetchTransactionBatch(
     const chunkResults = await Promise.all(chunkPromises);
     results.push(...chunkResults);
 
+    // RPC LIMIT CHECK: Stop processing if we've exceeded the RPC call limit
+    if (rpcCounter.hasExceeded(MAX_RPC_CALLS_PER_REQUEST)) {
+      console.warn(`RPC limit reached: ${rpcCounter.getCount()}/${MAX_RPC_CALLS_PER_REQUEST} calls. Stopping batch processing early and returning ${results.flat().length} transfers.`);
+      break; // Stop processing more batches
+    }
+
     // Add delay between chunks to respect rate limits (except for last chunk)
     if (i + MAX_CONCURRENT_BATCHES < batches.length) {
       const delayMs = Math.ceil(1000 / (EFFECTIVE_MAX_RPS / MAX_CONCURRENT_BATCHES)); // Ensure we don't exceed RPS
@@ -781,8 +819,9 @@ async function fetchTransactionBatch(
     transfers.push(...batchTransfers);
   });
 
+  const hitRpcLimit = rpcCounter.hasExceeded(MAX_RPC_CALLS_PER_REQUEST);
   console.log(`Processed ${transfers.length} transfers in ${Date.now() - startTime}ms`);
-  return transfers;
+  return { transfers, hitRpcLimit };
 }
 
 async function processTransferRequest(
@@ -860,6 +899,15 @@ async function processTransferRequest(
     // When filtering by txType, we need to fetch MORE transfers since many will be filtered out
     const effectiveLimit = txTypeFilters && txTypeFilters.length > 0 ? limit * 5 : limit;
     let remainingNeeded = effectiveLimit - cachedTransfers.length;
+    
+    // Declare allSignatures at outer scope so it's accessible for hitMaxLimit check
+    let allSignatures: string[] = [];
+    
+    // Create RPC call counter for tracking usage
+    const rpcCounter = new RPCCallCounter();
+    
+    // Track if we hit RPC limit (declare at function scope for proper access)
+    let hitRpcLimit = false;
 
     // Smart cursor initialization: use oldest cached signature if no beforeSignature provided
     let beforeSignature = searchParams.get('beforeSignature');
@@ -883,7 +931,6 @@ async function processTransferRequest(
       // STRATEGY: Fetch signatures from BOTH the main account AND all token accounts
       console.log(`Need ${remainingNeeded} more transfers. Fetching signatures from main account and token accounts...`);
 
-      let allSignatures: string[] = [];
       const seenSignatures = new Set<string>();
       
       // Phase 1a: Get signatures from main wallet address
@@ -891,8 +938,21 @@ async function processTransferRequest(
       let currentCursor = beforeSignature;
       let signatureFetchIterations = 0;
       const maxSignatureFetches = 200; // Prevent infinite loops
+      
+      // SMART PAGINATION: Limit total signatures to 10k to prevent excessive memory usage
+      // This prevents issues with accounts that have millions of transactions
+      const MAX_TOTAL_SIGNATURES = 10000;
+      
+      // Calculate initial fetch target based on offset + limit
+      // We need to fetch enough to satisfy the current page request
+      const targetSignatures = Math.min(
+        offset + limit * 2, // Fetch enough for current page + buffer for filtering
+        MAX_TOTAL_SIGNATURES
+      );
 
-      // Fetch ALL signatures to support proper pagination
+      console.log(`SMART PAGINATION: Target ${targetSignatures} signatures (offset: ${offset}, limit: ${limit}, max: ${MAX_TOTAL_SIGNATURES})`);
+
+      // Fetch signatures up to our calculated limit
       while (signatureFetchIterations < maxSignatureFetches) {
         signatureFetchIterations++;
 
@@ -916,8 +976,17 @@ async function processTransferRequest(
 
         currentCursor = signatures[signatures.length - 1].signature;
         
-        // Stop after fetching a reasonable amount
-        if (allSignatures.length >= 1000) break;
+        // EARLY STOP: Stop after fetching enough signatures for current request
+        if (allSignatures.length >= targetSignatures) {
+          console.log(`SMART PAGINATION: Collected ${allSignatures.length} signatures (target: ${targetSignatures})`);
+          break;
+        }
+        
+        // HARD STOP: Never fetch more than MAX_TOTAL_SIGNATURES
+        if (allSignatures.length >= MAX_TOTAL_SIGNATURES) {
+          console.log(`SMART PAGINATION: Hit max limit of ${MAX_TOTAL_SIGNATURES} signatures`);
+          break;
+        }
       }
 
       console.log(`Phase 1a complete: Collected ${allSignatures.length} signatures from main wallet`);
@@ -1066,10 +1135,16 @@ async function processTransferRequest(
       if (allSignatures.length > 0) {
         console.log(`Phase 2: Processing ${allSignatures.length} unique transactions in parallel...`);
 
-        const allNewTransfers = await fetchTransactionBatch(allSignatures, address);
+        const result = await fetchTransactionBatch(allSignatures, address, rpcCounter);
+        hitRpcLimit = result.hitRpcLimit;
+        
+        // Check RPC limit
+        if (hitRpcLimit || rpcCounter.hasExceeded(MAX_RPC_CALLS_PER_REQUEST)) {
+          console.warn(`RPC limit reached: ${rpcCounter.getCount()} calls (max: ${MAX_RPC_CALLS_PER_REQUEST})`);
+        }
 
         // Apply filtering to new transfers
-        // const filteredNewTransfers = allNewTransfers
+        // const filteredNewTransfers = result.transfers
         //   .filter(transfer => {
         //     const amount = parseFloat(transfer.tokenAmount);
         //     return isAboveDustThreshold(amount, MIN_TRANSFER_SOL) &&
@@ -1078,10 +1153,10 @@ async function processTransferRequest(
         //       transfer.to.length >= MIN_WALLET_ADDRESS_LENGTH;
         //   });
 
-        // console.log(`Processed ${allNewTransfers.length} raw transfers, ${filteredNewTransfers.length} after filtering`);
+        // console.log(`Processed ${result.transfers.length} raw transfers, ${filteredNewTransfers.length} after filtering`);
 
         // Add to our collection
-        allTransfers.push(...allNewTransfers);
+        allTransfers.push(...result.transfers);
       }
     }
 
@@ -1159,15 +1234,25 @@ async function processTransferRequest(
 
     const hasMore = allTransfers.length > offset + limit;
 
+    // Determine if we hit the max signature limit (indicating there may be more data)
+    const hitMaxLimit = allSignatures && allSignatures.length >= 10000;
+    
+    const rpcCallCount = rpcCounter.getCount();
     console.log(`API returning ${finalTransfers.length} transfers (${cachedTransfers.length} from cache + ${allTransfers.length - cachedTransfers.length} from RPC)`);
+    console.log(`Total unique transfers found: ${allTransfers.length}${hitMaxLimit ? '+' : ''}`);
+    console.log(`RPC calls made: ${rpcCallCount}`);
 
     return NextResponse.json({
       data: finalTransfers,
       hasMore,
       total: finalTransfers.length,
       originalTotal: allTransfers.length,
+      hitMaxLimit, // Indicates if we stopped at 10k limit (there may be more)
+      hitRpcLimit, // Indicates if we stopped due to RPC call limit (1000 calls)
+      totalDisplay: hitMaxLimit ? `${allTransfers.length}+` : allTransfers.length, // For UI display
       nextPageSignature: beforeSignature,
-      fromCache: cachedTransfers.length === allTransfers.length
+      fromCache: cachedTransfers.length === allTransfers.length,
+      rpcCalls: rpcCallCount // Include RPC call count in response
     }, { headers: corsHeaders });
 
   } catch (error) {
@@ -1199,9 +1284,88 @@ export async function GET(
     console.log(`Starting transfer fetch for ${address}`);
 
     const searchParams = request.nextUrl.searchParams;
-    const offset = parseInt(searchParams.get('offset') || '0');
-    // Allow large requests - we'll handle pagination internally
-    const limit = parseInt(searchParams.get('limit') || '50');
+    
+    // RATE LIMITING: Check if this address has exceeded request limits
+    const now = Date.now();
+    const addressTimestamps = requestTimestamps.get(address) || [];
+    
+    // Remove timestamps older than the window
+    const recentTimestamps = addressTimestamps.filter(ts => now - ts < RATE_LIMIT_WINDOW_MS);
+    
+    if (recentTimestamps.length >= MAX_REQUESTS_PER_MINUTE) {
+      console.warn(`Rate limit exceeded for address ${address}: ${recentTimestamps.length} requests in last minute`);
+      return NextResponse.json(
+        { 
+          error: 'Too many requests. Please wait before trying again.',
+          retryAfter: Math.ceil((recentTimestamps[0] + RATE_LIMIT_WINDOW_MS - now) / 1000)
+        },
+        {
+          status: 429,
+          headers: {
+            ...corsHeaders,
+            'Retry-After': Math.ceil((recentTimestamps[0] + RATE_LIMIT_WINDOW_MS - now) / 1000).toString()
+          }
+        }
+      );
+    }
+    
+    // Record this request
+    recentTimestamps.push(now);
+    requestTimestamps.set(address, recentTimestamps);
+    
+    // Clean up old entries periodically (keep map from growing unbounded)
+    if (requestTimestamps.size > 10000) {
+      console.log(`Cleaning up rate limit map (size: ${requestTimestamps.size})`);
+      const cutoff = now - RATE_LIMIT_WINDOW_MS * 2;
+      for (const [addr, timestamps] of requestTimestamps.entries()) {
+        const recent = timestamps.filter(ts => ts > cutoff);
+        if (recent.length === 0) {
+          requestTimestamps.delete(addr);
+        } else {
+          requestTimestamps.set(addr, recent);
+        }
+      }
+    }
+
+    // INPUT VALIDATION: Validate and sanitize offset parameter
+    const rawOffset = searchParams.get('offset');
+    let offset = parseInt(rawOffset || '0');
+    
+    if (isNaN(offset) || offset < 0) {
+      return NextResponse.json(
+        { error: 'Invalid offset parameter. Must be a non-negative integer.' },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    if (offset > MAX_OFFSET) {
+      console.warn(`Offset ${offset} exceeds maximum of ${MAX_OFFSET}, rejecting request`);
+      return NextResponse.json(
+        { error: `Offset too large. Maximum offset is ${MAX_OFFSET}.` },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    // INPUT VALIDATION: Validate and sanitize limit parameter
+    const rawLimit = searchParams.get('limit');
+    const requestedLimit = parseInt(rawLimit || '50');
+    
+    if (isNaN(requestedLimit) || requestedLimit < MIN_LIMIT) {
+      return NextResponse.json(
+        { error: `Invalid limit parameter. Must be an integer >= ${MIN_LIMIT}.` },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    if (requestedLimit > MAX_LIMIT) {
+      console.warn(`Requested limit ${requestedLimit} exceeds maximum of ${MAX_LIMIT}, rejecting request`);
+      return NextResponse.json(
+        { error: `Limit too large. Maximum limit is ${MAX_LIMIT}.` },
+        { status: 400, headers: corsHeaders }
+      );
+    }
+    
+    const limit = requestedLimit; // Use validated limit directly
     const transferType = searchParams.get('transferType') || 'ALL';
     const solanaOnly = searchParams.get('solanaOnly') === 'true';
     const bypassCache = searchParams.get('bypassCache') === 'true';

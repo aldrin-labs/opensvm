@@ -44,18 +44,34 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 
 - **GET /api/account-transfers/:address**
   - Get transfer history for an address with comprehensive filtering and transaction type detection
-  - Features: Bidirectional visibility (sender + receiver), real token symbols from Metaplex, DeFi program attribution, transaction categorization
+  - Features: Bidirectional visibility (sender + receiver), real token symbols from Metaplex, DeFi program attribution, transaction categorization, smart pagination, rate limiting, RPC cost control
+  - **Input Validation & Limits**:
+    - `limit`: 1-500 (enforced, returns 400 if exceeded)
+    - `offset`: 0-100,000 (enforced, returns 400 if exceeded)
+    - Rate limit: 10 requests per minute per address (returns 429 if exceeded)
+    - Smart pagination: Max 10,000 signatures fetched (prevents memory issues)
+    - RPC limit: Max 1,000 RPC calls per request (prevents runaway costs)
   - Parameters:
     - `address` (path, required): Solana wallet address to fetch transfers for
-    - `limit` (integer, optional, default: 50): Maximum number of transfers to return per request
-    - `offset` (integer, optional, default: 0): Pagination offset - number of transfers to skip
+    - `limit` (integer, optional, default: 50, min: 1, max: 500): Maximum number of transfers to return per request
+    - `offset` (integer, optional, default: 0, min: 0, max: 100000): Pagination offset - number of transfers to skip
     - `beforeSignature` (string, optional): Pagination cursor - use the signature to continue from a specific transaction
     - `transferType` (enum: IN|OUT|ALL, optional, default: ALL): Filter by transfer direction
     - `solanaOnly` (boolean, optional, default: false): Show only native SOL transfers, excluding all SPL tokens
     - `txType` (string, optional): Filter by transaction type - comma-separated values: 'sol' (native SOL), 'spl' (SPL tokens), 'defi' (DEX/DeFi programs), 'nft' (NFT operations), 'program' (complex program interactions), 'system' (system/consensus), 'funding' (account creation/funding)
     - `mints` (string, optional): Filter by specific token mint addresses - comma-separated list to track specific tokens (e.g., 'Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump' for SVMAI token)
     - `bypassCache` (boolean, optional, default: false): Bypass cache and fetch fresh data directly from RPC
-  - Response includes: txId, date, from, to, tokenSymbol (SVMAI/USDC/SOL/etc), tokenAmount, transferType (IN/OUT), mint (full token address), txType (transaction category), programId (for DeFi/program transactions)
+  - Response Schema:
+    - `data` (Transfer[]): Array of transfer objects with txId, date, from, to, tokenSymbol, tokenAmount, transferType, mint, txType, programId
+    - `hasMore` (boolean): Indicates if more transfers are available for pagination
+    - `total` (number): Number of transfers in current response
+    - `originalTotal` (number): Total unique transfers found (before pagination)
+    - `hitMaxLimit` (boolean): True if signature fetching stopped at 10k limit (may be more data available)
+    - `hitRpcLimit` (boolean): True if processing stopped due to 1000 RPC call limit (early stopping activated)
+    - `totalDisplay` (string): Display value with "+" suffix if hitMaxLimit is true (e.g., "10000+")
+    - `nextPageSignature` (string): Cursor for next page
+    - `fromCache` (boolean): True if all data came from cache
+    - `rpcCalls` (number): Total RPC calls made during request (for monitoring costs)
   - Transaction Types Detected:
     - `sol` - Simple native SOL transfers via System Program
     - `spl` - SPL token transfers (Token Program or Token-2022)
