@@ -8,6 +8,10 @@ import { createReferrer } from '@/lib/launchpad/database';
 import { generateId } from '@/lib/launchpad/utils';
 import type { KOLApplicationRequest } from '@/types/launchpad';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(request: Request) {
   try {
     const body: KOLApplicationRequest = await request.json();

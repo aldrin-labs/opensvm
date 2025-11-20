@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { APIKeyManager } from '../../../../lib/anthropic-proxy/core/APIKeyManager';
 import { getAnthropicClient } from '../../../../lib/anthropic-proxy/core/AnthropicClientSingleton';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const apiKeyManager = new APIKeyManager();
 
 // Simple in-memory cache for models

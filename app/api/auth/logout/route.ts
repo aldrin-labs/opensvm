@@ -6,6 +6,10 @@
 import { NextResponse } from 'next/server';
 import { clearSessionCookie } from '@/lib/api-auth/auth-server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST() {
   try {
     // Clear session cookie

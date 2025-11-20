@@ -2,6 +2,10 @@ export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * Legacy block API endpoint - redirects to new structure
  * This endpoint is deprecated. Use /api/blocks/[slot] instead.

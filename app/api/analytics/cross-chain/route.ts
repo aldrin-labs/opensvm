@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { CROSS_CHAIN_CONSTANTS } from '@/lib/constants/analytics-constants';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Real Cross-Chain Analytics API using external bridge data sources
 interface BridgeData {
   name: string;

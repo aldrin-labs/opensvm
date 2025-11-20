@@ -1,5 +1,9 @@
 import { NextRequest } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const defaultHeaders = {
   'Content-Type': 'application/json',
   'Access-Control-Allow-Origin': '*',

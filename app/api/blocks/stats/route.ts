@@ -7,6 +7,10 @@ import { z } from 'zod';
 import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Rate limiter for block stats requests (500 requests per minute)
 const blockStatsLimiter = new AdvancedRateLimiter({
   maxRequests: 500,

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey, StakeProgram } from '@solana/web3.js';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const SOLANA_RPC_URL = process.env.SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com';
 
 /**

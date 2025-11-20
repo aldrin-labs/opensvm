@@ -4,6 +4,10 @@ import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
 import { createCache } from '@/lib/caching/api-cache';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const BATCH_SIZE = 1000;
 const MAX_BATCHES = 3;
 const API_TIMEOUT = 10000; // 10 seconds

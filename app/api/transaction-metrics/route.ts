@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { TransactionMetricsCalculator } from '@/lib/blockchain/transaction-metrics-calculator';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * GET /api/transaction-metrics
  * 

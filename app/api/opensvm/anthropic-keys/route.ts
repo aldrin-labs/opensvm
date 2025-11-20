@@ -3,6 +3,10 @@ import { APIKeyManager } from '../../../../lib/anthropic-proxy/core/APIKeyManage
 import { JWTAuth } from '../../../../lib/anthropic-proxy/auth/JWTAuth';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const apiKeyManager = new APIKeyManager();
 const jwtAuth = new JWTAuth();
 

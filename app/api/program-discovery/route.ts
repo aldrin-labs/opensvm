@@ -3,6 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { dynamicProgramDiscovery } from '@/lib/maintenance/dynamic-program-discovery';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * GET /api/program-discovery
  * 

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { HealthChecker } from '../../../../lib/anthropic-proxy/health/HealthChecker';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Create a singleton health checker instance
 const healthChecker = new HealthChecker(60000); // Check every 60 seconds
 

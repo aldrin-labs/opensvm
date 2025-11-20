@@ -2,6 +2,10 @@
 import { NextResponse } from 'next/server';
 import { connectionPool } from '@/lib/solana/solana-connection-server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET() {
   try {
     const healthStats = connectionPool.getHealthStats();

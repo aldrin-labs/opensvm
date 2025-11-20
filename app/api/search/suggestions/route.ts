@@ -2,6 +2,10 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { getSearchSuggestions, storeSearchQuery } from '@/lib/search/qdrant-search-suggestions';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Lightweight base58 check (characters only)
 const BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]+$/;
 

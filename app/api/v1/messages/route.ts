@@ -7,6 +7,10 @@ import { AnthropicRequest } from '../../../../lib/anthropic-proxy/types/Anthropi
 import { globalRateLimiter } from '../../../../lib/anthropic-proxy/middleware/EnhancedRateLimiter';
 import { ProxyRequest, ProxyResponse } from '../../../../lib/anthropic-proxy/types/ProxyTypes';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Polyfill for crypto.randomUUID in test environments
 const generateRequestId = () => {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {

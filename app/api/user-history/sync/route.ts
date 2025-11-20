@@ -8,6 +8,10 @@ import { storeHistoryEntry, checkQdrantHealth } from '@/lib/search/qdrant';
 import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import type { UserHistoryEntry } from '@/types/user-history';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(request: NextRequest) {
   try {
     // Check Qdrant health first

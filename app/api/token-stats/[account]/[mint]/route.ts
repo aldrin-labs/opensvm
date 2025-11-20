@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { memoryCache } from '@/lib/caching/cache';
 import { getTokenOverview } from '@/lib/external-apis/birdeye-api';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const CACHE_TTL = 300; // 5 minutes
 const CACHE_ERROR_TTL = 60; // 1 minute
 const API_TIMEOUT = 10000; // 10 seconds

@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSale, listKOLAllocations, createKOLAllocation, updateKOLAllocation } from '@/lib/launchpad/database';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // POST /api/launchpad/sales/:saleId/distribute_volume - Distribute volume rewards
 export async function POST(
   request: NextRequest,

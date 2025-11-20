@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { transactionFailureAnalyzer } from '@/lib/blockchain/transaction-failure-analyzer';
 import { getTransactionDetails } from '@/lib/solana/solana';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ signature: string }> }

@@ -3,6 +3,10 @@ import { qdrantClient } from '@/lib/search/qdrant';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { v4 as uuidv4 } from 'uuid';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const COLLECTION_NAME = 'svm_bank_wallets';
 
 interface StoredWallet {

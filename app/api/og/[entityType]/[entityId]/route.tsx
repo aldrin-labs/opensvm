@@ -5,6 +5,10 @@
 
 import { ImageResponse } from 'next/og';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Edge runtime for better performance
 export const runtime = 'edge';
 

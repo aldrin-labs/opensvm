@@ -3,6 +3,10 @@ import { SVMAIBalanceManager } from '../../../../lib/anthropic-proxy/billing/SVM
 import { JWTAuth } from '../../../../lib/anthropic-proxy/auth/JWTAuth';
 import { globalTransactionHistory } from '../../../../lib/anthropic-proxy/billing/TransactionHistory';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const balanceManager = new SVMAIBalanceManager();
 const jwtAuth = new JWTAuth();
 

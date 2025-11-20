@@ -3,6 +3,10 @@ import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import Together from "together-ai";
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Check if required environment variables are present
 if (!process.env.TOGETHER_API_KEY) {
   console.warn('Warning: Missing required environment variables. The similar questions feature will be disabled.');

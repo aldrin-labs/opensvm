@@ -3,6 +3,10 @@ import { getTokenInfo } from '@/lib/trading/token-registry';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 import { PublicKey } from '@solana/web3.js';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(request: NextRequest) {
     try {
         const searchParams = request.nextUrl.searchParams;

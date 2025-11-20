@@ -1,6 +1,10 @@
 import { NextRequest } from 'next/server';
 import { GET as marketDataGET } from '../market-data/route';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * Chart API - Clean alias for OHLCV candlestick data
  * 

@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { Connection, PublicKey } from '@solana/web3.js';
 import NodeCache from 'node-cache';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Shared cache (5 minute TTL)
 const cache = new NodeCache({ stdTTL: 300 });
 

@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user/user-history-utils';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
+
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
   getUserProfile,
   storeUserProfile,
   getUserHistory,

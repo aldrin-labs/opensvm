@@ -5,6 +5,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(req: NextRequest) {
   // Check rate limit for admin tier
   const rateLimitResult = await tieredRateLimiter.checkLimit(req, 'admin');

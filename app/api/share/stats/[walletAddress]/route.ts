@@ -8,6 +8,10 @@ import { getSharesByReferrer } from '@/lib/search/qdrant';
 import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import { EntityType } from '@/types/share';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ walletAddress: string }> }

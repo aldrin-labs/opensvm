@@ -1,3 +1,6 @@
+
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
 export const runtime = 'edge';
 
 // Simple list of sample launchpads to mock aggregate data from

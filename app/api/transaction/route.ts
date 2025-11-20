@@ -1,6 +1,10 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(request: NextRequest) {
   try {
     const signature = request.nextUrl.searchParams.get('signature');

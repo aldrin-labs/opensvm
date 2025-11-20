@@ -7,6 +7,10 @@ import { burnRateLimiter, generalRateLimiter } from '@/lib/api/rate-limiter';
 import { getClientIP } from '@/lib/utils/client-ip';
 import { PublicKey } from '@solana/web3.js';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 interface TrendingValidator {
   voteAccount: string;
   name: string;

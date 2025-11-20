@@ -3,6 +3,10 @@ import { getConnection } from '@/lib/solana/solana-connection-server';
 import { AnomalyDetectionCapability } from '@/lib/ai/capabilities/anomaly-detection';
 import { validateAnomalyRequest, validateBlockchainEvent } from '@/lib/validation/stream-schemas';
 import {
+
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
   createSuccessResponse,
   createErrorResponse,
   CommonErrors,

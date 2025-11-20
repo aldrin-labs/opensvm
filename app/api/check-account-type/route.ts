@@ -3,6 +3,10 @@ import { PublicKey } from '@solana/web3.js';
 import { getMint } from '@solana/spl-token';
 import { getConnection } from '@/lib/solana/solana-connection-server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Lenient validation - just check format, not blockchain validity
 function looksLikeSolanaAddress(address: string): boolean {
   if (!address || typeof address !== 'string') return false;

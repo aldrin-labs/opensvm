@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { bindWallet } from '@/lib/api-auth/service';
 import type { WalletBindRequest } from '@/lib/api-auth/types';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(request: NextRequest) {
   try {
     const body: WalletBindRequest = await request.json();

@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { storeShareClick, incrementShareClicks } from '@/lib/search/qdrant';
 import { generateId } from '@/lib/user/user-history-utils';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ shareCode: string }> }

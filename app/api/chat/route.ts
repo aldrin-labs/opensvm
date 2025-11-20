@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Mock responses for E2E testing
 const getMockResponse = (userMessage: string): string => {
   const message = userMessage.toLowerCase();

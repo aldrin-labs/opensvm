@@ -4,6 +4,10 @@ import { WalletPathCache } from '@/lib/caching/wallet-path-cache';
 import { isValidSolanaAddress } from '@/lib/utils';
 import { interpret } from 'xstate';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // CORS headers for cross-origin requests
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

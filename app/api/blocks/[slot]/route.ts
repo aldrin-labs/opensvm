@@ -7,6 +7,10 @@ import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-l
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
 import { createCache } from '@/lib/caching/api-cache';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Create cache instance for block details (5 min cache, 1 min refresh threshold)
 const blockDetailsCache = createCache<any>({
   duration: 5 * 60 * 1000,

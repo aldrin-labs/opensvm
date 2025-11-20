@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/launchpad/database';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // GET /api/launchpad/contributions/:contribId - Get single contribution receipt
 export async function GET(
   request: NextRequest,

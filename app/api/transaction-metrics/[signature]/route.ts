@@ -4,6 +4,10 @@ import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSignature } from '@/lib/utils';
 import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * GET /api/transaction-metrics/[signature]
  * 

@@ -3,6 +3,10 @@ import { getApiKeyMetrics, getApiKey, validateApiKey } from '@/lib/api-auth/serv
 import { PublicKey } from '@solana/web3.js';
 import nacl from 'tweetnacl';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 /**
  * GET /api/auth/api-keys/metrics
  * Get metrics for an API key

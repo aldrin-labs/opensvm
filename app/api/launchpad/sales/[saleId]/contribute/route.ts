@@ -9,6 +9,10 @@ import { getSale, createContribution, getReferralLinkByCode, updateSale, updateC
 import { generateId, createContributionReceipt, detectFraud, listContributions } from '@/lib/launchpad/utils';
 import type { ContributeRequest } from '@/types/launchpad';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(
   request: Request,
   { params }: { params: { saleId: string } }

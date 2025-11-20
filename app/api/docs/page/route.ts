@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { API_DOCUMENTATION, API_CATEGORIES, generateCurlCommand } from '@/lib/api/api-documentation';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET() {
   // Generate HTML documentation page
   const html = `

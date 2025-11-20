@@ -1,5 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const mint = searchParams.get('mint') || 'pvv4fu1RvQBkKXozyH5A843sp1mt6gTy9rPoZrBBAGS';

@@ -1,5 +1,9 @@
 import { NextRequest } from 'next/server';
 import { 
+
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
   createSuccessResponse, 
   CommonErrors, 
 } from '@/lib/api/api-response';

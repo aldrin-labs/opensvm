@@ -3,6 +3,10 @@ import { createCache } from '@/lib/caching/api-cache';
 import { DEX_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { createCache } from '@/lib/caching/api-cache';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Real DEX Analytics API using external APIs for real data
 interface DexMetrics {
   name: string;

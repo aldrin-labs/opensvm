@@ -7,6 +7,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createAuthLink } from '@/lib/api-auth/service';
 import type { AuthLinkCreateRequest } from '@/lib/api-auth/types';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(request: NextRequest) {
   try {
     const body: AuthLinkCreateRequest = await request.json();

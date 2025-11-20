@@ -7,6 +7,10 @@ import { NextResponse } from 'next/server';
 import { updateReferrer, createAuditLog } from '@/lib/launchpad/database';
 import { generateId } from '@/lib/launchpad/utils';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }

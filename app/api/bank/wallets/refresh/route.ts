@@ -4,6 +4,10 @@ import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 const COLLECTION_NAME = 'svm_bank_wallets';
 
 interface TokenBalance {

@@ -1,5 +1,9 @@
 import { NextResponse } from 'next/server';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Real Bot Analytics API for Telegram/Discord/Matrix bots
 interface BotMetrics {
   name: string;

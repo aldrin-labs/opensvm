@@ -2,6 +2,10 @@ export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { sanitizeSearchQuery } from '@/lib/utils';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 // Common Solana-related search suggestions
 const COMMON_SUGGESTIONS = [
   'Solana mainnet status',

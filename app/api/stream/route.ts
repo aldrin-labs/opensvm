@@ -6,6 +6,10 @@ import { validateStreamRequest } from '@/lib/validation/stream-schemas';
 import { generalRateLimiter, type RateLimitResult } from '@/lib/api/rate-limiter';
 import { SSEManager } from '@/lib/api/sse-manager';
 import {
+
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
   createSuccessResponse,
   createErrorResponse,
   CommonErrors,

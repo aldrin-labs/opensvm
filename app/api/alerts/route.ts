@@ -6,6 +6,10 @@ import { NextRequest } from 'next/server';
 import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 import { createSimpleSSEResponse } from '@/lib/api/sse-handler';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function GET(req: NextRequest) {
   // Check rate limit for realtime tier
   const rateLimitResult = await tieredRateLimiter.checkLimit(req, 'realtime');

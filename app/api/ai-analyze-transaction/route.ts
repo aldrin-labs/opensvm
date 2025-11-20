@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { aiTransactionAnalyzer } from '@/lib/ai/ai-transaction-analyzer';
 import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 
+// Route segment config: Set timeout to 120 seconds
+export const maxDuration = 120;
+
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
