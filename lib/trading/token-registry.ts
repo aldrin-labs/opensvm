@@ -222,6 +222,8 @@ export async function batchFetchTokenMetadata(connection: Connection, mintAddres
   let uncachedMints = remainingMints;
   if (typeof window === 'undefined') {
     try {
+      // Dynamic import to avoid bundling server-side code in client components
+      const { batchGetCachedTokenMetadata } = await import('@/lib/search/qdrant');
       const qdrantCached = await batchGetCachedTokenMetadata(remainingMints);
       uncachedMints = [];
 
