@@ -68,7 +68,7 @@ export async function OPTIONS() {
   return NextResponse.json({}, { headers: corsHeaders });
 }
 
-type TransactionType = 'sol' | 'spl' | 'defi' | 'nft' | 'program' | 'system' | 'funding';
+export type TransactionType = 'sol' | 'spl' | 'defi' | 'nft' | 'program' | 'system' | 'funding';
 
 interface Transfer {
   txId: string;
@@ -330,6 +330,12 @@ async function fetchTransactionBatch(
 
   // Process batches in chunks to respect rate limits
   for (let i = 0; i < batches.length; i += MAX_CONCURRENT_BATCHES) {
+    // Check if we've been running too long (simple check without passing startTime)
+    if (Date.now() - startTime > 45000) { // 45s timeout for batch processing
+       console.warn(`Batch processing timed out after ${Date.now() - startTime}ms`);
+       break;
+    }
+
     const batchChunk = batches.slice(i, i + MAX_CONCURRENT_BATCHES);
     console.log(`Processing batch chunk ${Math.floor(i / MAX_CONCURRENT_BATCHES) + 1}/${Math.ceil(batches.length / MAX_CONCURRENT_BATCHES)} with ${batchChunk.length} batches`);
 
@@ -825,7 +831,7 @@ async function fetchTransactionBatch(
   return { transfers, hitRpcLimit };
 }
 
-async function processTransferRequest(
+export async function processTransferRequest(
   address: string,
   offset: number,
   limit: number,
@@ -840,6 +846,14 @@ async function processTransferRequest(
   try {
     // Check cache for existing transfers (use any cached data, not just recent)
     console.log(`Checking cache for ${address} with limit: ${limit}, offset: ${offset}`);
+
+    // TIMEOUT PROTECTION: Fail fast if processing takes too long
+    const TIMEOUT_MS = 55000; // 55 seconds
+    const checkTimeout = () => {
+      if (Date.now() - startTime > TIMEOUT_MS) {
+        throw new Error(`Request timed out after ${Date.now() - startTime}ms`);
+      }
+    };
 
     let cachedTransfers: TransferEntry[] = [];
     
@@ -864,7 +878,6 @@ async function processTransferRequest(
 
     // Combine cached transfers with fresh RPC data to meet user's request
     let allTransfers: Transfer[] = [];
-    let fromCache = false;
 
     // Convert cached transfers to expected format first
     const formattedCachedTransfers = cachedTransfers.map(transfer => {
@@ -955,6 +968,7 @@ async function processTransferRequest(
 
       // Fetch signatures up to our calculated limit
       while (signatureFetchIterations < maxSignatureFetches) {
+        checkTimeout(); // Check for timeout
         signatureFetchIterations++;
 
         const signatures = await connection.getSignaturesForAddress(
@@ -1093,6 +1107,7 @@ async function processTransferRequest(
         // Limit parallelism so we don't flood RPC endpoints (use chunks)
         const TOKEN_SIG_FETCH_CONCURRENCY = 8;
         for (let i = 0; i < allTokenAccounts.length; i += TOKEN_SIG_FETCH_CONCURRENCY) {
+          checkTimeout(); // Check for timeout
           const chunk = allTokenAccounts.slice(i, i + TOKEN_SIG_FETCH_CONCURRENCY);
           console.log(`Fetching signatures for token account chunk ${Math.floor(i / TOKEN_SIG_FETCH_CONCURRENCY) + 1}/${Math.ceil(allTokenAccounts.length / TOKEN_SIG_FETCH_CONCURRENCY)} with ${chunk.length} accounts`);
 
@@ -1162,6 +1177,7 @@ async function processTransferRequest(
         // Map to strings for the batch fetcher
         const signatureStrings = signaturesToFetch.map(s => s.signature);
 
+        checkTimeout(); // Check for timeout before batch processing
         const result = await fetchTransactionBatch(signatureStrings, address, rpcCounter);
         hitRpcLimit = result.hitRpcLimit;
         
