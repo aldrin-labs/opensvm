@@ -4,16 +4,16 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { validateWalletAddress } from '@/lib/user-history-utils';
-import { checkQdrantHealth } from '@/lib/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
+import { checkQdrantHealth } from '@/lib/search/qdrant';
 import {
   syncUserProfileStats,
   batchSyncUserProfileStats,
   repairAllUserProfiles,
   autoSyncPopularProfiles,
   needsStatsSync
-} from '@/lib/user-stats-sync';
+} from '@/lib/maintenance/user-stats-sync';
 
 /**
  * POST /api/user-profile/sync

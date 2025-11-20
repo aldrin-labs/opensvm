@@ -1,7 +1,7 @@
 import type { AccountInfo } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
 import { AccountLayout } from '@solana/spl-token';
-import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getClientConnection as getConnection } from '@/lib/solana/solana-connection';
 import { useEffect, useState } from 'react';
 
 interface TokenAccount {

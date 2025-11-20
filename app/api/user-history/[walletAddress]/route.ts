@@ -5,15 +5,15 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { UserHistoryEntry } from '@/types/user-history';
-import { validateWalletAddress, sanitizeInput } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { validateWalletAddress, sanitizeInput } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
   storeHistoryEntry,
   getUserHistory,
   deleteUserHistory,
   checkQdrantHealth
-} from '@/lib/qdrant';
-import { SSEManager } from '@/lib/sse-manager';
+} from '@/lib/search/qdrant';
+import { SSEManager } from '@/lib/api/sse-manager';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest, walletAddress: string): Promise<{ isValid: boolean; session?: any }> {

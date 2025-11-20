@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getShareByCode, incrementShareClicks } from '@/lib/qdrant';
+import { getShareByCode, incrementShareClicks } from '@/lib/search/qdrant';
 
 export async function GET(
   _request: NextRequest,

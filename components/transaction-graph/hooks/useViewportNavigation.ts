@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import cytoscape from 'cytoscape';
-import { ViewportState } from '@/lib/graph-state-cache';
+import { ViewportState } from '@/lib/caching/graph-state-cache';
 import { debounce } from '@/lib/utils';
 import { debugLog } from '../';
 

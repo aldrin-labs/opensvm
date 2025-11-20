@@ -9,7 +9,7 @@ import {
   validateShortcutKey,
   formatKeyDisplay,
   type ShortcutAction,
-} from '@/lib/keyboard-shortcuts-config';
+} from '@/lib/ui/keyboard-shortcuts-config';
 
 interface KeyboardShortcutsSettingsProps {
   isOpen: boolean;

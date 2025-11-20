@@ -1,10 +1,10 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getBlockStats } from '@/lib/block-data';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getBlockStats } from '@/lib/blockchain/block-data';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { z } from 'zod';
-import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/rate-limiter';
+import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
 
 // Rate limiter for block stats requests (500 requests per minute)

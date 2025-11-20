@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
-import { slotsCache, cache } from '@/lib/cache';
+import { getConnection } from '@/lib/solana/solana-connection-server';
+import { slotsCache, cache } from '@/lib/caching/cache';
 
 interface SlotInfo {
     slot: number;

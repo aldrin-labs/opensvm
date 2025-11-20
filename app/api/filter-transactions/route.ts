@@ -10,7 +10,7 @@ import {
   AI_MAX_TOKENS,
   AI_TEMPERATURE,
   SPAM_TOKEN_KEYWORDS
-} from '../../../lib/transaction-constants';
+} from '@/lib/blockchain/transaction-constants';
 
 export async function POST(request: Request) {
   try {

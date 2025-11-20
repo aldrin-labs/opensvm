@@ -10,8 +10,8 @@ import {
   Activity, Users, AlertCircle, CheckCircle, Info,
   Zap, Target, Link, History
 } from 'lucide-react';
-import { ViewportStats } from '@/lib/viewport-tracker';
-import { UserHistoryService } from '@/lib/user-history';
+import { ViewportStats } from '@/lib/ui/viewport-tracker';
+import { UserHistoryService } from '@/lib/user/user-history';
 import { formatDistanceToNow } from 'date-fns';
 
 interface ProgramAccount {

@@ -8,8 +8,8 @@
 import { memoryCache } from '../cache';
 import { cacheManager as persistentCache } from './persistent-cache';
 import { CacheConfig, CacheEntry } from '@/lib/types/block.types';
-import { BlockDetails } from '@/lib/solana';
-import { getConnection } from '@/lib/solana-connection-server';
+import { BlockDetails } from '@/lib/solana/solana';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 
 // ============================================================================
 // Cache Configuration

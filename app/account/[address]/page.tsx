@@ -2,11 +2,11 @@
 
 export const dynamic = 'force-dynamic';
 
-import { getClientConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana/solana-connection';
 //import { useSettings } from '@/lib/settings';
 import { PublicKey } from '@solana/web3.js';
-import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana';
-import { batchFetchTokenMetadata } from '@/lib/token-registry';
+import { validateSolanaAddress, getAccountInfo as getSolanaAccountInfo } from '@/lib/solana/solana';
+import { batchFetchTokenMetadata } from '@/lib/trading/token-registry';
 import AccountInfo from '@/components/AccountInfo';
 import AccountOverview from '@/components/AccountOverview';
 import { TransactionGraphLazy, AccountTabsLazy, PerformanceWrapper } from '@/components/LazyComponents';

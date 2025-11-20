@@ -1,6 +1,6 @@
 import { OpenRouter } from '@openrouter/sdk';
 import { GenerativeCapability } from "../../../lib/ai/capabilities/generative";
-import getConnection from "../../../lib/solana-connection-server";
+import getConnection from '@/lib/solana/solana-connection-server';
 import { ToolRegistry, ToolContext } from "./tools";
 import { moralis_swagger as moralis } from "./tools/moralis";
 import { createHash } from 'crypto';

@@ -1,0 +1,170 @@
+[
+  {
+    "CXVersion": "2.0",
+    "hasFragments": false
+  },
+  {
+    "status": [
+      {
+        "success": true
+      }
+    ]
+  },
+  {
+    "metaData": [
+      {
+        "name": "nodes",
+        "version": "1.0",
+        "elementCount": 17
+      },
+      {
+        "name": "edges",
+        "version": "1.0",
+        "elementCount": 50
+      },
+      {
+        "name": "nodeAttributes",
+        "version": "1.0"
+      },
+      {
+        "name": "edgeAttributes",
+        "version": "1.0"
+      },
+      {
+        "name": "networkAttributes",
+        "version": "1.0"
+      }
+    ]
+  },
+  {
+    "networkAttributes": [
+      {
+        "name": "name",
+        "value": "SVMAI Wallet Network",
+        "dataType": "string"
+      }
+    ]
+  },
+  {
+    "nodes": [
+      {"id": 0},
+      {"id": 1},
+      {"id": 2},
+      {"id": 3},
+      {"id": 4},
+      {"id": 5},
+      {"id": 6},
+      {"id": 7},
+      {"id": 8},
+      {"id": 9},
+      {"id": 10},
+      {"id": 11},
+      {"id": 12},
+      {"id": 13},
+      {"id": 14},
+      {"id": 15},
+      {"id": 16}
+    ]
+  },
+  {
+    "edges": [
+      {"id": 0, "s": 0, "t": 1},
+      {"id": 1, "s": 2, "t": 1},
+      {"id": 2, "s": 3, "t": 1},
+      {"id": 3, "s": 4, "t": 1},
+      {"id": 4, "s": 0, "t": 5},
+      {"id": 5, "s": 0, "t": 6},
+      {"id": 6, "s": 7, "t": 5},
+      {"id": 7, "s": 8, "t": 5},
+      {"id": 8, "s": 6, "t": 5},
+      {"id": 9, "s": 3, "t": 5},
+      {"id": 10, "s": 0, "t": 6},
+      {"id": 11, "s": 6, "t": 9},
+      {"id": 12, "s": 6, "t": 5},
+      {"id": 13, "s": 6, "t": 10},
+      {"id": 14, "s": 11, "t": 6},
+      {"id": 15, "s": 9, "t": 12},
+      {"id": 16, "s": 6, "t": 9},
+      {"id": 17, "s": 13, "t": 9},
+      {"id": 18, "s": 14, "t": 9},
+      {"id": 19, "s": 4, "t": 9},
+      {"id": 20, "s": 4, "t": 14},
+      {"id": 21, "s": 4, "t": 1},
+      {"id": 22, "s": 11, "t": 10},
+      {"id": 23, "s": 11, "t": 6},
+      {"id": 24, "s": 15, "t": 11},
+      {"id": 25, "s": 3, "t": 16},
+      {"id": 26, "s": 3, "t": 5},
+      {"id": 27, "s": 3, "t": 1}
+    ]
+  },
+  {
+    "nodeAttributes": [
+      {"po": 0, "n": "name", "v": "CradPJy4PK2s", "d": "string"},
+      {"po": 0, "n": "wallet", "v": "CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77", "d": "string"},
+      
+      {"po": 1, "n": "name", "v": "5rVDMMoBQs3z [TARGET]", "d": "string"},
+      {"po": 1, "n": "wallet", "v": "5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85", "d": "string"},
+      
+      {"po": 2, "n": "name", "v": "CQetL5oDJV34", "d": "string"},
+      {"po": 2, "n": "wallet", "v": "CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX", "d": "string"},
+      
+      {"po": 3, "n": "name", "v": "yaoirENLXP5B", "d": "string"},
+      {"po": 3, "n": "wallet", "v": "yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T", "d": "string"},
+      
+      {"po": 4, "n": "name", "v": "BUZZ5JEG9NLQ", "d": "string"},
+      {"po": 4, "n": "wallet", "v": "BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf", "d": "string"},
+      
+      {"po": 5, "n": "name", "v": "SVMs3XcLXvVn", "d": "string"},
+      {"po": 5, "n": "wallet", "v": "SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS", "d": "string"},
+      
+      {"po": 6, "n": "name", "v": "REVXui3vBCcs", "d": "string"},
+      {"po": 6, "n": "wallet", "v": "REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck", "d": "string"},
+      
+      {"po": 7, "n": "name", "v": "F82wdXzu7Jqk", "d": "string"},
+      {"po": 7, "n": "wallet", "v": "F82wdXzu7Jqke79dtzdmTNWCjyicwHTbCaSDco2NcSi4", "d": "string"},
+      
+      {"po": 8, "n": "name", "v": "5J4r87t9DaNB", "d": "string"},
+      {"po": 8, "n": "wallet", "v": "5J4r87t9DaNBdFQeTnLLJqPKF5f6Ck8GWk52fjpkxzGu", "d": "string"},
+      
+      {"po": 9, "n": "name", "v": "yB88r1YaGReD", "d": "string"},
+      {"po": 9, "n": "wallet", "v": "yB88r1YaGReDATx8UykCm1moHb7Cc92bjm8CqpoALoN", "d": "string"},
+      
+      {"po": 10, "n": "name", "v": "HV1KXxWFaSer", "d": "string"},
+      {"po": 10, "n": "wallet", "v": "HV1KXxWFaSeriyFvXyx48FqG9BoFbfinB8njCJonqP7K", "d": "string"},
+      
+      {"po": 11, "n": "name", "v": "HTJnAu5WtGm3", "d": "string"},
+      {"po": 11, "n": "wallet", "v": "HTJnAu5WtGm3JhA5rR4yNpXvN5RnVsn8LDctxkqg2L5B", "d": "string"},
+      
+      {"po": 12, "n": "name", "v": "27zyHsCbojP8", "d": "string"},
+      {"po": 12, "n": "wallet", "v": "27zyHsCbojP8WgEsyWgyWPZGzsepGaZdpDnrbnwqkwmW", "d": "string"},
+      
+      {"po": 13, "n": "name", "v": "PAYmW7tME6a1", "d": "string"},
+      {"po": 13, "n": "wallet", "v": "PAYmW7tME6a1PZQih7Hdwxafh94dBkhuhbAdU9rsK6f", "d": "string"},
+      
+      {"po": 14, "n": "name", "v": "pXymZnVjHpKW", "d": "string"},
+      {"po": 14, "n": "wallet", "v": "pXymZnVjHpKWU7m53i3WrHcDFPcWuHiVGtfqaeaTA2A", "d": "string"},
+      
+      {"po": 15, "n": "name", "v": "CRZUdacW3tzg", "d": "string"},
+      {"po": 15, "n": "wallet", "v": "CRZUdacW3tzgDvPiEPeiXCsNzVtSBCgztuUwPwNz1JYv", "d": "string"},
+      
+      {"po": 16, "n": "name", "v": "AVAJvazC8sy7", "d": "string"},
+      {"po": 16, "n": "wallet", "v": "AVAJvazC8sy7G2H34wRwDpDDFsGUvuMntMgedZS1oxGN", "d": "string"}
+    ]
+  },
+  {
+    "edgeAttributes": [
+      {"po": 0, "n": "interaction", "v": "transfer", "d": "string"},
+      {"po": 0, "n": "amount", "v": 18452280.04, "d": "double"},
+      
+      {"po": 1, "n": "interaction", "v": "transfer", "d": "string"},
+      {"po": 1, "n": "amount", "v": 4576.27, "d": "double"},
+      
+      {"po": 2, "n": "interaction", "v": "transfer", "d": "string"},
+      {"po": 2, "n": "amount", "v": 9066991.20, "d": "double"},
+      
+      {"po": 3, "n": "interaction", "v": "transfer", "d": "string"},
+      {"po": 3, "n": "amount", "v": 16000000.00, "d": "double"}
+    ]
+  }
+]

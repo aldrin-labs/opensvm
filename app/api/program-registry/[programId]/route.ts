@@ -5,7 +5,7 @@ import {
   getSimilarPrograms,
   isProgramHighRisk,
   getInstructionDefinition
-} from '@/lib/program-registry';
+} from '@/lib/solana/program-registry';
 
 /**
  * GET /api/program-registry/[programId]

@@ -4,7 +4,7 @@ import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Card } from '@/components/ui/card';
 import { NetworkTPSChart } from './NetworkTPSChart';
 import NetworkResponseChart from './NetworkResponseChart';
-import { getNetworkStats, getRPCLatency } from '@/lib/solana';
+import { getNetworkStats, getRPCLatency } from '@/lib/solana/solana';
 
 interface ChartData {
   timestamp: number;

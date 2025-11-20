@@ -3,9 +3,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
-import { toggleEventLike } from '@/lib/feed-events';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/api-auth/token-gating';
+import { toggleEventLike } from '@/lib/user/feed-events';
 
 export async function POST(request: Request) {
   try {

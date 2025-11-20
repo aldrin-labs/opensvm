@@ -12,7 +12,7 @@ import {
   getTopPrograms, 
   getProgramStats, 
   type ProgramListResponse 
-} from '@/lib/program-data';
+} from '@/lib/solana/program-data';
 import { formatLargeNumber } from '@/utils/format';
 
 type ViewMode = 'all' | 'calls' | 'transactions' | 'blocks';

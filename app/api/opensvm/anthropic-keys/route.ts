@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { APIKeyManager } from '../../../../lib/anthropic-proxy/core/APIKeyManager';
 import { JWTAuth } from '../../../../lib/anthropic-proxy/auth/JWTAuth';
-import { getSessionFromCookie } from '../../../../lib/auth-server';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 
 const apiKeyManager = new APIKeyManager();
 const jwtAuth = new JWTAuth();

@@ -23,7 +23,7 @@ import {
   EyeOffIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import { 
   findRelatedTransactions,
   formatRelationshipType,
@@ -35,7 +35,7 @@ import {
   type RelatedTransaction,
   type RelationshipType,
   type TransactionInsight
-} from '@/lib/related-transaction-finder-client';
+} from '@/lib/blockchain/related-transaction-finder-client';
 
 interface RelatedTransactionsDisplayProps {
   transaction: DetailedTransactionInfo;

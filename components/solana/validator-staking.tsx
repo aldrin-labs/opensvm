@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
-import { getClientConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana/solana-connection';
 import {
   getAssociatedTokenAddress,
   createAssociatedTokenAccountInstruction,

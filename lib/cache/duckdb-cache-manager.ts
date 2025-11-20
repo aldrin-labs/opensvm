@@ -6,7 +6,7 @@
  */
 
 import * as duckdb from '@duckdb/duckdb-wasm';
-import { generateSecureUUID } from '@/lib/crypto-utils';
+import { generateSecureUUID } from '@/lib/api-auth/crypto-utils';
 
 // Type definitions for DuckDB result objects
 interface DuckDBRow {

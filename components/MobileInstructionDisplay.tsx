@@ -15,12 +15,12 @@ import {
 import Link from 'next/link';
 import {
   useAccessibility
-} from '@/lib/accessibility-utils';
+} from '@/lib/ui/accessibility-utils';
 import {
   useMobileDetection,
   MobileEventUtils
-} from '@/lib/mobile-utils';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+} from '@/lib/ui/mobile-utils';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 
 interface MobileInstructionDisplayProps {
   transaction: DetailedTransactionInfo;

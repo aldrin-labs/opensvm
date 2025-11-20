@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 import { createWalletPathFindingMachine } from '@/app/wallet-path-finding/WalletPathFindingMachine';
-import { WalletPathCache } from '@/lib/wallet-path-cache';
+import { WalletPathCache } from '@/lib/caching/wallet-path-cache';
 import { isValidSolanaAddress } from '@/lib/utils';
 import { interpret } from 'xstate';
 

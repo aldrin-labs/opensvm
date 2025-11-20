@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { storeHistoryEntry, checkQdrantHealth } from '@/lib/qdrant';
-import { validateWalletAddress } from '@/lib/user-history-utils';
+import { storeHistoryEntry, checkQdrantHealth } from '@/lib/search/qdrant';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import type { UserHistoryEntry } from '@/types/user-history';
 
 export async function POST(request: NextRequest) {

@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import BlockExploreTable from '@/components/BlockExploreTable';
 import { Button } from '@/components/ui/button';
 import { getRecentBlocks, getBlockStats, type BlockListResponse } from '@/lib/block-data';
-import { BlockDetails } from '@/lib/solana';
+import { BlockDetails } from '@/lib/solana/solana';
 import { formatLargeNumber } from '@/utils/format';
 import { useSSEStream, type BlockchainEvent } from '@/lib/hooks/useSSEStream';
 

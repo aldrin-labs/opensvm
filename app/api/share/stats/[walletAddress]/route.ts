@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSharesByReferrer } from '@/lib/qdrant';
-import { validateWalletAddress } from '@/lib/user-history-utils';
+import { getSharesByReferrer } from '@/lib/search/qdrant';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import { EntityType } from '@/types/share';
 
 export async function GET(

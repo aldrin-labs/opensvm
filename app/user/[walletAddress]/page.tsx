@@ -12,7 +12,7 @@ import { useSettings } from '@/lib/settings';
 import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { UserProfile } from '@/types/user-history';
-import { validateWalletAddress } from '@/lib/user-history-utils';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import { UserHistoryDisplay } from '@/components/user-history/UserHistoryDisplay';
 import { UserHistoryStats } from '@/components/user-history/UserHistoryStats';
 import { UserActivityCalendar } from '@/components/user-history/UserActivityCalendar';

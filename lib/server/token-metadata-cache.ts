@@ -10,7 +10,7 @@ import {
     getCachedTokenMetadata,
     batchGetCachedTokenMetadata,
     type TokenMetadataEntry
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 
 export interface TokenInfo {
     symbol: string;

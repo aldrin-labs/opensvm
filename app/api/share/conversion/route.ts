@@ -4,7 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { markShareConversion } from '@/lib/qdrant';
+import { markShareConversion } from '@/lib/search/qdrant';
 
 export async function POST(request: NextRequest) {
   try {

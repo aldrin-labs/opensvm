@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { createLogger } from '@/lib/debug-logger';
+import { createLogger } from '@/lib/logging/debug-logger';
 
 const logger = createLogger('VIRTUAL_TABLE_ERROR_BOUNDARY');
 

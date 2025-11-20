@@ -6,9 +6,9 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import type { ParsedInstructionInfo } from '@/lib/instruction-parser-service';
-import type { RelatedTransaction } from '@/lib/related-transaction-finder';
+import type { RelatedTransaction } from '@/lib/blockchain/related-transaction-finder';
 import {
   transactionOptimizationService,
   type PaginatedInstructions,

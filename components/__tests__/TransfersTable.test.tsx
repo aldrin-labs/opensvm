@@ -3,7 +3,7 @@ import { TransfersTable } from '../TransfersTable';
 import { useTransfers } from '@/app/account/[address]/components/shared/hooks';
 import { useRouter } from 'next/navigation';
 import { formatNumber } from '@/lib/utils';
-import { isSolanaOnlyTransaction } from '@/lib/qdrant';
+import { isSolanaOnlyTransaction } from '@/lib/search/qdrant';
 
 // Mock the dependencies
 jest.mock('@/app/account/[address]/components/shared/hooks');

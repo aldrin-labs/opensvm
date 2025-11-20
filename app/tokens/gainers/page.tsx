@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useSettings } from '@/lib/settings';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Badge } from '@/components/ui/badge';
-import { getTopGainers } from '@/lib/mock-token-data';
+import { getTopGainers } from '@/lib/utils/mock-token-data';
 import type { TokenGainerData } from '@/types/token-market';
 
 export default function TokenGainersPage() {

@@ -1,5 +1,5 @@
 import { PerformanceMetrics, PerformanceAlert } from './types';
-import logger from '../logging/logger';
+import { logger } from '../logging/logger';
 
 export interface PerformanceBaseline {
   id: string;

@@ -17,8 +17,8 @@ import {
   ChevronDownIcon
 } from 'lucide-react';
 import { useHelp } from './HelpProvider';
-import { useAccessibility, useKeyboardNavigation } from '@/lib/accessibility-utils';
-import { useMobileDetection } from '@/lib/mobile-utils';
+import { useAccessibility, useKeyboardNavigation } from '@/lib/ui/accessibility-utils';
+import { useMobileDetection } from '@/lib/ui/mobile-utils';
 import { HelpContent } from './ContextualHelp';
 import { TourConfig } from './GuidedTour';
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getClientConnection as getConnection } from '@/lib/solana/solana-connection';
 
 interface Program {
   address: string;

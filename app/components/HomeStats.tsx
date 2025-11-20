@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { getClientConnection as getConnection } from '@/lib/solana-connection';
-import { getRPCLatency } from '@/lib/solana';
+import { getClientConnection as getConnection } from '@/lib/solana/solana-connection';
+import { getRPCLatency } from '@/lib/solana/solana';
 
 // Dynamically import NetworkResponseChart with no SSR
 const NetworkResponseChart = dynamic(

@@ -3,9 +3,9 @@
  */
 
 import { NextRequest } from 'next/server';
-import { transactionStreamManager } from '@/lib/sse-handler';
-import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
-import { getConnection } from '@/lib/solana-connection-server';
+import { transactionStreamManager } from '@/lib/api/sse-handler';
+import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 
 // Extend global type for initialization tracking
 declare global {

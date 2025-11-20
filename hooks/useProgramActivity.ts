@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { programActivityService, type ProgramActivity, type ParsedTransaction } from '@/lib/program-activity';
+import { programActivityService, type ProgramActivity, type ParsedTransaction } from '@/lib/solana/program-activity';
 
 export interface UseProgramActivityReturn {
   activity: ProgramActivity | null;

@@ -1,7 +1,7 @@
 'use client';
 
 import { isValidSolanaAddress } from '@/lib/utils';
-import { WalletPathCache } from '@/lib/wallet-path-cache';
+import { WalletPathCache } from '@/lib/caching/wallet-path-cache';
 
 interface WalletPathFindingProps {
   walletA: string;

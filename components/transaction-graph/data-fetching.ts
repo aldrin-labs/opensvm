@@ -9,9 +9,9 @@ const shortenString = (str: string, length: number = 8) => formatAddress(str, le
 const formatTimestamp = (timestamp: number) => new Date(timestamp * 1000).toLocaleString();
 const formatSolChange = (change: number) => `${change > 0 ? '+' : ''}${change.toFixed(6)} SOL`;
 import { runIncrementalLayout } from './layout';
-// import { GraphStateCache } from '@/lib/graph-state-cache'; // Commented out missing import
+// import { GraphStateCache } from '@/lib/caching/graph-state-cache'; // Commented out missing import
 import { checkForSplTransfers } from './spl-check';
-import { classifyTransactionType, isFundingTransaction } from '@/lib/transaction-classifier';
+import { classifyTransactionType, isFundingTransaction } from '@/lib/blockchain/transaction-classifier';
 
 /**
  * Fetch bidirectional transactions (both inflow and outflow) for an account

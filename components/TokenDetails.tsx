@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { formatNumber } from '@/lib/utils';
-import { formatSupply } from '@/lib/format-supply';
+import { formatSupply } from '@/lib/utils/format-supply';
 import { Stack } from 'rinlab';
 import Image from 'next/image';
 import { useEffect, useState } from 'react';

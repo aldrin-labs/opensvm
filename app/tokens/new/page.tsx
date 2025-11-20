@@ -8,7 +8,7 @@ import { useSettings } from '@/lib/settings';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { getNewListings } from '@/lib/mock-token-data';
+import { getNewListings } from '@/lib/utils/mock-token-data';
 import type { NewTokenData } from '@/types/token-market';
 
 export default function NewTokensPage() {

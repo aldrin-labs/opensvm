@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { decodeInstruction, type DecodedInstruction } from '@/lib/bpf';
+import { decodeInstruction, type DecodedInstruction } from '@/lib/solana/bpf';
 
 interface ProgramVisualizerProps {
   data: number[];

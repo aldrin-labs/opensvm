@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { qdrantClient, COLLECTIONS } from '../../../../../lib/qdrant';
+import { qdrantClient, COLLECTIONS } from '@/lib/search/qdrant';
 
 // In-memory storage for demonstration - in production, use a database
 const recentPrompts: { query: string; timestamp: number; count: number }[] = [

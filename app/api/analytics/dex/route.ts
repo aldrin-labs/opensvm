@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 import { DEX_CONSTANTS } from '@/lib/constants/analytics-constants';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 
 // Real DEX Analytics API using external APIs for real data
 interface DexMetrics {

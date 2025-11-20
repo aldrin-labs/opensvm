@@ -6,7 +6,7 @@ import { ChatUI } from './ChatUI';
 import { ChatErrorBoundary } from './ChatErrorBoundary';
 import { ChatLayout } from './layouts/ChatLayout';
 import { useEffect, useState } from 'react';
-import { logger } from '@/lib/logger';
+import { logger } from '@/lib/logging/logger';
 
 export interface ChatProps {
   variant?: 'inline' | 'sidebar' | 'dialog';

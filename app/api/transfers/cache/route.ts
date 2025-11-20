@@ -4,7 +4,7 @@ import {
     storeTransferEntry,
     getCachedTransfers,
     type TransferEntry
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

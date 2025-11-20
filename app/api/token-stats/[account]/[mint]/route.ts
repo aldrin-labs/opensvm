@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { memoryCache } from '@/lib/cache';
-import { getTokenOverview } from '@/lib/birdeye-api';
+import { memoryCache } from '@/lib/caching/cache';
+import { getTokenOverview } from '@/lib/external-apis/birdeye-api';
 
 const CACHE_TTL = 300; // 5 minutes
 const CACHE_ERROR_TTL = 60; // 1 minute

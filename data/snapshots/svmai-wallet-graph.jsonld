@@ -1,0 +1,477 @@
+{
+  "@context": {
+    "@vocab": "https://opensvm.com/vocab#",
+    "schema": "http://schema.org/",
+    "blockchain": "https://w3id.org/blockchain#",
+    "crypto": "https://w3id.org/crypto#",
+    "xsd": "http://www.w3.org/2001/XMLSchema#",
+    
+    "WalletGraph": "blockchain:WalletGraph",
+    "WalletNode": "blockchain:WalletNode",
+    "TokenTransfer": "blockchain:TokenTransfer",
+    "metadata": "schema:about",
+    "nodes": "blockchain:hasNode",
+    "edges": "blockchain:hasEdge",
+    "transfers": "blockchain:hasTransfer",
+    
+    "address": {
+      "@id": "blockchain:address",
+      "@type": "@id"
+    },
+    "mint": {
+      "@id": "crypto:tokenMint",
+      "@type": "@id"
+    },
+    "from": {
+      "@id": "blockchain:fromAddress",
+      "@type": "@id"
+    },
+    "to": {
+      "@id": "blockchain:toAddress",
+      "@type": "@id"
+    },
+    "amount": {
+      "@id": "crypto:amount",
+      "@type": "xsd:decimal"
+    },
+    "date": {
+      "@id": "schema:dateCreated",
+      "@type": "xsd:dateTime"
+    },
+    "txId": {
+      "@id": "blockchain:transactionId",
+      "@type": "@id"
+    },
+    "nodeCount": {
+      "@id": "blockchain:nodeCount",
+      "@type": "xsd:integer"
+    },
+    "edgeCount": {
+      "@id": "blockchain:edgeCount",
+      "@type": "xsd:integer"
+    },
+    "totalIn": {
+      "@id": "crypto:totalIncoming",
+      "@type": "xsd:decimal"
+    },
+    "totalOut": {
+      "@id": "crypto:totalOutgoing",
+      "@type": "xsd:decimal"
+    }
+  },
+  "@type": "WalletGraph",
+  "@id": "https://opensvm.com/graphs/svmai-wallet-network",
+  "metadata": {
+    "@type": "schema:DataCatalog",
+    "schema:name": "SVMAI Wallet Network Graph",
+    "schema:description": "Direct wallet-to-wallet transfer graph for SVMAI token, excluding DeFi protocols",
+    "startAddress": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+    "mint": "solana:Cpzvdx6pppc9TNArsGsqgShCsKC9NCCjA2gtzHvUpump",
+    "schema:dateCreated": "2025-11-13T21:37:27.029Z",
+    "nodeCount": 17,
+    "edgeCount": 51,
+    "maxDepth": 50,
+    "blockchain:network": "Solana",
+    "crypto:tokenSymbol": "SVMAI"
+  },
+  "nodes": [
+    {
+      "@type": "WalletNode",
+      "@id": "solana:CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77",
+      "address": "CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77",
+      "schema:name": "CradPJy4...",
+      "transfers": {
+        "in": [],
+        "out": [
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "18452280.03545",
+            "date": "2025-11-12T06:55:26.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "18452280.03545",
+            "date": "2025-11-12T06:55:26.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "1800",
+            "date": "2025-11-01T02:25:46.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "9000",
+            "date": "2025-10-31T10:19:34.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck",
+            "amount": "25481172.070366",
+            "date": "2025-10-28T19:50:16.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "1800",
+            "date": "2025-11-01T02:25:46.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "9000",
+            "date": "2025-10-31T10:19:34.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck",
+            "amount": "25481172.070366",
+            "date": "2025-10-28T19:50:16.000Z"
+          }
+        ]
+      },
+      "totalIn": 0,
+      "totalOut": 87888504.211632
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "address": "5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "schema:name": "5rVDMMoB... (Target Address)",
+      "blockchain:role": "target",
+      "transfers": {
+        "in": [
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77",
+            "amount": "18452280.03545",
+            "date": "2025-11-12T06:55:26.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX",
+            "amount": "4576.274001",
+            "date": "2025-07-06T15:44:22.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T",
+            "amount": "9066991.199909",
+            "date": "2025-01-05T05:42:36.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf",
+            "amount": "16000000",
+            "date": "2025-01-01T01:05:19.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77",
+            "amount": "18452280.03545",
+            "date": "2025-11-12T06:55:26.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf",
+            "amount": "16000000",
+            "date": "2025-01-01T01:05:19.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T",
+            "amount": "9066991.199909",
+            "date": "2025-01-05T05:42:36.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "from": "solana:CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX",
+            "amount": "4576.274001",
+            "date": "2025-07-06T15:44:22.000Z"
+          }
+        ],
+        "out": []
+      },
+      "totalIn": 87047695.01872,
+      "totalOut": 0
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX",
+      "address": "CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX",
+      "schema:name": "CQetL5oD...",
+      "transfers": {
+        "in": [],
+        "out": [
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "4576.274001",
+            "date": "2025-07-06T15:44:22.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "4576.274001",
+            "date": "2025-07-06T15:44:22.000Z"
+          }
+        ]
+      },
+      "totalIn": 0,
+      "totalOut": 9152.548002
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T",
+      "address": "yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T",
+      "schema:name": "yaoirENL...",
+      "transfers": {
+        "in": [],
+        "out": [
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "9066991.199909",
+            "date": "2025-01-05T05:42:36.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "9000",
+            "date": "2025-07-03T23:42:28.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "1000",
+            "date": "2025-07-03T15:59:13.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:AVAJvazC8sy7G2H34wRwDpDDFsGUvuMntMgedZS1oxGN",
+            "amount": "41250.463822",
+            "date": "2025-07-14T21:40:31.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "9000",
+            "date": "2025-07-03T23:42:28.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+            "amount": "1000",
+            "date": "2025-07-03T15:59:13.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "9066991.199909",
+            "date": "2025-01-05T05:42:36.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:AVAJvazC8sy7G2H34wRwDpDDFsGUvuMntMgedZS1oxGN",
+            "amount": "41250.463822",
+            "date": "2025-07-14T21:40:31.000Z"
+          }
+        ]
+      },
+      "totalIn": 0,
+      "totalOut": 18236483.327462
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf",
+      "address": "BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf",
+      "schema:name": "BUZZ5JEG...",
+      "transfers": {
+        "in": [],
+        "out": [
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "16000000",
+            "date": "2025-01-01T01:05:19.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:yB88r1YaGReDATx8UykCm1moHb7Cc92bjm8CqpoALoN",
+            "amount": "20000",
+            "date": "2025-06-05T12:00:48.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:pXymZnVjHpKWU7m53i3WrHcDFPcWuHiVGtfqaeaTA2A",
+            "amount": "50000",
+            "date": "2025-06-05T16:37:50.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:pXymZnVjHpKWU7m53i3WrHcDFPcWuHiVGtfqaeaTA2A",
+            "amount": "50000",
+            "date": "2025-06-05T16:37:50.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:yB88r1YaGReDATx8UykCm1moHb7Cc92bjm8CqpoALoN",
+            "amount": "20000",
+            "date": "2025-06-05T12:00:48.000Z"
+          },
+          {
+            "@type": "TokenTransfer",
+            "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+            "amount": "16000000",
+            "date": "2025-01-01T01:05:19.000Z"
+          }
+        ]
+      },
+      "totalIn": 0,
+      "totalOut": 32140000
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+      "address": "SVMs3XcLXvVn6hBqzdhZEZgpYACnRAxXzM916RgxfoS",
+      "schema:name": "SVMs3XcL...",
+      "totalIn": 74144,
+      "totalOut": 0
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck",
+      "address": "REVXui3vBCcsDHd7oUaiTNc885YiXT773yoD8DuFuck",
+      "schema:name": "REVXui3v...",
+      "totalIn": 51184564.140732,
+      "totalOut": 191072
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:F82wdXzu7Jqke79dtzdmTNWCjyicwHTbCaSDco2NcSi4",
+      "address": "F82wdXzu7Jqke79dtzdmTNWCjyicwHTbCaSDco2NcSi4",
+      "schema:name": "F82wdXzu...",
+      "totalIn": 0,
+      "totalOut": 7182
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:5J4r87t9DaNBdFQeTnLLJqPKF5f6Ck8GWk52fjpkxzGu",
+      "address": "5J4r87t9DaNBdFQeTnLLJqPKF5f6Ck8GWk52fjpkxzGu",
+      "schema:name": "5J4r87t9...",
+      "totalIn": 0,
+      "totalOut": 5400
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:yB88r1YaGReDATx8UykCm1moHb7Cc92bjm8CqpoALoN",
+      "address": "yB88r1YaGReDATx8UykCm1moHb7Cc92bjm8CqpoALoN",
+      "schema:name": "yB88r1Ya...",
+      "totalIn": 171800.016,
+      "totalOut": 2000
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:HV1KXxWFaSeriyFvXyx48FqG9BoFbfinB8njCJonqP7K",
+      "address": "HV1KXxWFaSeriyFvXyx48FqG9BoFbfinB8njCJonqP7K",
+      "schema:name": "HV1KXxWF...",
+      "totalIn": 149691,
+      "totalOut": 0
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:HTJnAu5WtGm3JhA5rR4yNpXvN5RnVsn8LDctxkqg2L5B",
+      "address": "HTJnAu5WtGm3JhA5rR4yNpXvN5RnVsn8LDctxkqg2L5B",
+      "schema:name": "HTJnAu5W...",
+      "totalIn": 150000,
+      "totalOut": 260801
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:27zyHsCbojP8WgEsyWgyWPZGzsepGaZdpDnrbnwqkwmW",
+      "address": "27zyHsCbojP8WgEsyWgyWPZGzsepGaZdpDnrbnwqkwmW",
+      "schema:name": "27zyHsCb...",
+      "totalIn": 2000,
+      "totalOut": 0
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:PAYmW7tME6a1PZQih7Hdwxafh94dBkhuhbAdU9rsK6f",
+      "address": "PAYmW7tME6a1PZQih7Hdwxafh94dBkhuhbAdU9rsK6f",
+      "schema:name": "PAYmW7tM...",
+      "totalIn": 0,
+      "totalOut": 39800
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:pXymZnVjHpKWU7m53i3WrHcDFPcWuHiVGtfqaeaTA2A",
+      "address": "pXymZnVjHpKWU7m53i3WrHcDFPcWuHiVGtfqaeaTA2A",
+      "schema:name": "pXymZnVj...",
+      "totalIn": 100000,
+      "totalOut": 32000.016
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:CRZUdacW3tzgDvPiEPeiXCsNzVtSBCgztuUwPwNz1JYv",
+      "address": "CRZUdacW3tzgDvPiEPeiXCsNzVtSBCgztuUwPwNz1JYv",
+      "schema:name": "CRZUdacW...",
+      "totalIn": 0,
+      "totalOut": 150000
+    },
+    {
+      "@type": "WalletNode",
+      "@id": "solana:AVAJvazC8sy7G2H34wRwDpDDFsGUvuMntMgedZS1oxGN",
+      "address": "AVAJvazC8sy7G2H34wRwDpDDFsGUvuMntMgedZS1oxGN",
+      "schema:name": "AVAJvazC...",
+      "totalIn": 82500.927644,
+      "totalOut": 0
+    }
+  ],
+  "edges": [
+    {
+      "@type": "TokenTransfer",
+      "@id": "solana:tx:whb7qWYhU9jgoWPP5Xne8U1RyGFi14f7P1CLk1kvkaRrL4Xo25TumLgfzXakhfN4k8NQsfeT6EAWSARNYeJH25L",
+      "from": "solana:CradPJy4PK2svXZeU3N4JpNg78bBbQfNZsXToCrcGE77",
+      "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "amount": 18452280.03545,
+      "date": "2025-11-12T06:55:26.000Z",
+      "txId": "solana:tx:whb7qWYhU9jgoWPP5Xne8U1RyGFi14f7P1CLk1kvkaRrL4Xo25TumLgfzXakhfN4k8NQsfeT6EAWSARNYeJH25L"
+    },
+    {
+      "@type": "TokenTransfer",
+      "@id": "solana:tx:47inhhE12umNNcuhya76byDxRTnHFs56vpS7YWq2G6sMdSBCFK68kogpgHqdBVAgtrHCYCcWCu6EhY11p3gzQSkx",
+      "from": "solana:CQetL5oDJV34dwSzZV3Q4SiE5ZtgrL9msV2QYC7v8oTX",
+      "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "amount": 4576.274001,
+      "date": "2025-07-06T15:44:22.000Z",
+      "txId": "solana:tx:47inhhE12umNNcuhya76byDxRTnHFs56vpS7YWq2G6sMdSBCFK68kogpgHqdBVAgtrHCYCcWCu6EhY11p3gzQSkx"
+    },
+    {
+      "@type": "TokenTransfer",
+      "@id": "solana:tx:2Eundy8V1FVnTXVqkHG55xDv5VHu2Y6MoiwP1GfMrTMV3W6GdJ8VcpEk3YYFzcGSdfrcycujC5U4PJZyuKFGb1j2",
+      "from": "solana:yaoirENLXP5Bus1NzqCahqu3izcagpDhbvJ4YQ5z26T",
+      "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "amount": 9066991.199909,
+      "date": "2025-01-05T05:42:36.000Z",
+      "txId": "solana:tx:2Eundy8V1FVnTXVqkHG55xDv5VHu2Y6MoiwP1GfMrTMV3W6GdJ8VcpEk3YYFzcGSdfrcycujC5U4PJZyuKFGb1j2"
+    },
+    {
+      "@type": "TokenTransfer",
+      "@id": "solana:tx:f3niHFXXykm9kgBgucWZy2cpTduw87xBLnyfoDTBp5DanEh7NBddsnCHxCNtiUyVpGwygLk3u1p8HpP1hrqNeXW",
+      "from": "solana:BUZZ5JEG9NLQY4RAFt5fLPiYBZVbXtQ3YTSjd5bMsfsf",
+      "to": "solana:5rVDMMoBQs3zJQ9DT7oxsoNZfxptgLCKhuWqdwoX9q85",
+      "amount": 16000000,
+      "date": "2025-01-01T01:05:19.000Z",
+      "txId": "solana:tx:f3niHFXXykm9kgBgucWZy2cpTduw87xBLnyfoDTBp5DanEh7NBddsnCHxCNtiUyVpGwygLk3u1p8HpP1hrqNeXW"
+    }
+  ],
+  "schema:license": "https://creativecommons.org/publicdomain/zero/1.0/",
+  "schema:creator": {
+    "@type": "schema:Organization",
+    "schema:name": "OpenSVM",
+    "schema:url": "https://opensvm.com"
+  }
+}

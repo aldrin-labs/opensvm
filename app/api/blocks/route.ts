@@ -1,9 +1,9 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getRecentBlocks } from '@/lib/block-data-optimized';
+import { getRecentBlocks } from '@/lib/blockchain/block-data-optimized';
 import { validateBlockListRequest, createValidationError } from '@/lib/validation/block-schemas';
-import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/rate-limiter';
+import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
 
 // Rate limiter for block list requests (200 requests per minute)

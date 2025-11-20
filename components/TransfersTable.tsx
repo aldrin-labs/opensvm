@@ -12,10 +12,10 @@ import { PinIcon, Search, X, Filter } from 'lucide-react';
 import Link from 'next/link';
 import {
   isSolanaOnlyTransaction
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 import { TransfersDashboard } from '@/components/TransfersDashboard';
-import { getViewportTracker } from '@/lib/viewport-tracker';
-import type { ViewportStats } from '@/lib/viewport-tracker';
+import { getViewportTracker } from '@/lib/ui/viewport-tracker';
+import type { ViewportStats } from '@/lib/ui/viewport-tracker';
 
 interface TransfersTableProps {
   address: string;

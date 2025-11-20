@@ -1,6 +1,6 @@
 import { Tool, ToolContext, ToolResult } from "./types";
 import { OpenRouter } from "@openrouter/sdk";
-import * as MoralisAPI from '../../../../lib/moralis-api';
+import * as MoralisAPI from '@/lib/external-apis/moralis-api';
 import { CHART_GENERATION_PROMPT } from './chartGenerationPrompt';
 
 interface AIPlanStep {

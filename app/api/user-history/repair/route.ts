@@ -4,15 +4,15 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { validateWalletAddress } from '@/lib/user-history-utils';
-import { checkQdrantHealth } from '@/lib/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
+import { checkQdrantHealth } from '@/lib/search/qdrant';
 import {
   repairUserHistory,
   repairAllUserHistories,
   getUserHistoryStatus,
   cleanupOldHistoryEntries
-} from '@/lib/user-history-repair';
+} from '@/lib/maintenance/user-history-repair';
 
 /**
  * POST /api/user-history/repair

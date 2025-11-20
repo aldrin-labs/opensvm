@@ -7,11 +7,11 @@ import {
   AnomalyStatistics,
   type AnomalyPattern,
   type AnomalyContext
-} from '@/lib/anomaly-patterns';
-import { SSEManager } from '@/lib/sse-manager';
-import { generateSecureUUID } from '@/lib/crypto-utils';
+} from '@/lib/analytics/anomaly-patterns';
+import { SSEManager } from '@/lib/api/sse-manager';
+import { generateSecureUUID } from '@/lib/api-auth/crypto-utils';
 import { RingBuffer } from '@/lib/utils/ring-buffer';
-import { getAnomalyPatternManager, loadAnomalyPatterns } from '@/lib/configurable-anomaly-patterns';
+import { getAnomalyPatternManager, loadAnomalyPatterns } from '@/lib/analytics/configurable-anomaly-patterns';
 
 interface AnomalyAlert {
   id: string;

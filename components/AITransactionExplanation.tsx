@@ -18,7 +18,7 @@ import {
   ChevronDownIcon,
   ChevronRightIcon
 } from 'lucide-react';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import {
   analyzeTransaction,
   getCachedExplanation,
@@ -27,7 +27,7 @@ import {
   getActionTypeIcon,
   getRiskLevelColor,
   type TransactionExplanation
-} from '@/lib/ai-transaction-analyzer-client';
+} from '@/lib/ai/ai-transaction-analyzer-client';
 
 interface AITransactionExplanationProps {
   transaction: DetailedTransactionInfo;

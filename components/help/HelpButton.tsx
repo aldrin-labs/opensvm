@@ -3,7 +3,7 @@
 import React from 'react';
 import { HelpCircleIcon, PlayIcon } from 'lucide-react';
 import { useHelp } from './HelpProvider';
-import { useAccessibility } from '@/lib/accessibility-utils';
+import { useAccessibility } from '@/lib/ui/accessibility-utils';
 
 interface HelpButtonProps {
   variant?: 'icon' | 'text' | 'tour';

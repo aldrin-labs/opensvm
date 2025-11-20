@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { getConnection } from "@/lib/solana-connection-server";
-import { rateLimiter, RateLimitError } from "@/lib/rate-limit";
+import { getConnection } from "@/lib/solana/solana-connection-server";
+import { rateLimiter, RateLimitError } from "@/lib/api/rate-limit";
 
 // Type definitions
 interface NFTCollection {

@@ -4,8 +4,8 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { storeShareClick, incrementShareClicks } from '@/lib/qdrant';
-import { generateId } from '@/lib/user-history-utils';
+import { storeShareClick, incrementShareClicks } from '@/lib/search/qdrant';
+import { generateId } from '@/lib/user/user-history-utils';
 
 export async function POST(
   request: NextRequest,

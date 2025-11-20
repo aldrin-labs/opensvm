@@ -3,8 +3,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { blockStreamManager } from '@/lib/sse-handler';
-import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
+import { blockStreamManager } from '@/lib/api/sse-handler';
+import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 
 // Extend global type for initialization tracking
 declare global {

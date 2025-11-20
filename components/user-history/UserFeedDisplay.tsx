@@ -14,7 +14,7 @@ import {
   addEventToCache,
   clearCache,
   FeedFilters
-} from '@/lib/feed-cache';
+} from '@/lib/caching/feed-cache';
 import { SocialFeedEvent } from '@/lib/feed-events';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {

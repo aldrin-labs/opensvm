@@ -1,11 +1,11 @@
 import { NextRequest } from 'next/server';
-import { SSEManager, startSSECleanup } from '@/lib/sse-manager';
+import { SSEManager, startSSECleanup } from '@/lib/api/sse-manager';
 import { 
   createSuccessResponse, 
   createErrorResponse, 
   CommonErrors, 
   ErrorCodes 
-} from '@/lib/api-response';
+} from '@/lib/api/api-response';
 
 // Start SSE cleanup on module load
 startSSECleanup();

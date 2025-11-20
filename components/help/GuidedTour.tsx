@@ -13,8 +13,8 @@ import {
   CheckCircleIcon,
   ArrowRightIcon
 } from 'lucide-react';
-import { useAccessibility, useKeyboardNavigation } from '@/lib/accessibility-utils';
-import { useMobileDetection } from '@/lib/mobile-utils';
+import { useAccessibility, useKeyboardNavigation } from '@/lib/ui/accessibility-utils';
+import { useMobileDetection } from '@/lib/ui/mobile-utils';
 
 export interface TourStep {
   id: string;

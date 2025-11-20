@@ -28,8 +28,8 @@ import {
   Target
 } from 'lucide-react';
 import { IntelligentDashboard } from '@/components/IntelligentDashboard';
-import { getViewportTracker, ViewportStats } from '@/lib/viewport-tracker';
-import { UserHistoryService } from '@/lib/user-history';
+import { getViewportTracker, ViewportStats } from '@/lib/ui/viewport-tracker';
+import { UserHistoryService } from '@/lib/user/user-history';
 import { useTheme } from '@/lib/design-system/theme-provider';
 import { formatDistanceToNow } from 'date-fns';
 

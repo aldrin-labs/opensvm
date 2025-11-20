@@ -1,10 +1,10 @@
 import { NextRequest } from 'next/server';
-import type { DetailedTransactionInfo } from '@/lib/solana';
-import { enhancedTransactionFetcher } from '@/lib/enhanced-transaction-fetcher';
-import { getConnection } from '@/lib/solana-connection-server';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
+import { enhancedTransactionFetcher } from '@/lib/blockchain/enhanced-transaction-fetcher';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import type { ParsedTransactionWithMeta } from '@solana/web3.js';
 import { PublicKey } from '@solana/web3.js';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 
 const DEBUG = true; // Set to true to enable detailed logging
 

@@ -2,7 +2,7 @@
 
 import cytoscape from 'cytoscape';
 import { debounce } from '@/lib/utils';
-import { ViewportState } from '@/lib/graph-state-cache';
+import { ViewportState } from '@/lib/caching/graph-state-cache';
 import { gpuThrottle, optimizeCytoscapeContainer } from './gpu-utils';
 
 /**

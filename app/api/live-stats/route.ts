@@ -3,8 +3,8 @@
  */
 
 import { NextRequest } from 'next/server';
-import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
-import { createSimpleSSEResponse } from '@/lib/sse-handler';
+import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
+import { createSimpleSSEResponse } from '@/lib/api/sse-handler';
 
 export async function GET(req: NextRequest) {
   // Check rate limit for realtime tier

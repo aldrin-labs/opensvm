@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { getTokenInfo } from '@/lib/solana';
+import { getTokenInfo } from '@/lib/solana/solana';
 import { formatNumber } from '@/lib/utils';
 
 export const runtime = 'edge';

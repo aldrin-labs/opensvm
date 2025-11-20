@@ -3,9 +3,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { syncUserProfileStats } from '@/lib/user-stats-sync';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { syncUserProfileStats } from '@/lib/maintenance/user-stats-sync';
 
 export async function POST(request: Request) {
   try {

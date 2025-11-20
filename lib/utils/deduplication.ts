@@ -2,8 +2,17 @@
  * Deduplication utilities for events and anomalies
  */
 
-import { generateSecureUUID } from '@/lib/crypto-utils';
-import { createHash } from 'crypto';
+import { generateSecureUUID } from '@/lib/api-auth/crypto-utils';
+
+// Conditionally import crypto only in Node environment
+const isNode = typeof window === 'undefined';
+let createHash: ((algorithm: string) => any) | undefined;
+
+if (isNode) {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const nodeCrypto = require('crypto');
+  createHash = nodeCrypto.createHash;
+}
 
 export interface DeduplicatedEvent {
   id: string;
@@ -58,7 +67,7 @@ function generateSecureHash(data: string): string {
       hash = hash & hash; // Convert to 32-bit integer
     }
     return Math.abs(hash).toString(36);
-  } else if (typeof require !== 'undefined') {
+  } else if (typeof require !== 'undefined' && createHash) {
     // Node.js environment - use crypto module
     try {
       return createHash('sha256').update(data).digest('hex').slice(0, 16);

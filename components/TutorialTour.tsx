@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { X, ChevronLeft, ChevronRight, Check } from 'lucide-react';
-import { safeStorage } from '@/lib/safe-storage';
+import { safeStorage } from '@/lib/ui/safe-storage';
 
 export interface TutorialStep {
   id: string;

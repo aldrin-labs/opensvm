@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { isValidTransactionSignature, isValidSolanaAddress } from '@/lib/utils';
-import { aiServiceClient } from '@/lib/ai-service-client';
+import { aiServiceClient } from '@/lib/ai/ai-service-client';
 import { SearchInput } from './SearchInput';
 import { SearchButton } from './SearchButton';
 import { SearchSettings } from './SearchSettings';

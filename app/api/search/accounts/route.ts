@@ -1,8 +1,8 @@
 export const dynamic = 'force-dynamic';
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
-import { getConnection } from '@/lib/solana-connection-server';
+import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { sanitizeSearchQuery, isValidSolanaAddress, formatNumber } from '@/lib/utils';
 
 // Rate limit configuration for account search

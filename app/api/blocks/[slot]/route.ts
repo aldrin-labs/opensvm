@@ -1,11 +1,11 @@
 export const dynamic = 'force-dynamic';
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getBlockDetails } from '@/lib/solana';
+import { getBlockDetails } from '@/lib/solana/solana';
 import { validateBlockDetailRequest, createValidationError } from '@/lib/validation/block-schemas';
-import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/rate-limiter';
+import { AdvancedRateLimiter, createRateLimitMiddleware } from '@/lib/api/rate-limiter';
 import { BlockExplorerErrorType } from '@/lib/types/block.types';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 
 // Create cache instance for block details (5 min cache, 1 min refresh threshold)
 const blockDetailsCache = createCache<any>({

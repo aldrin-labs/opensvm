@@ -8,7 +8,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { transactionCache } from '@/lib/transaction-cache';
+import { transactionCache } from '@/lib/caching/transaction-cache';
 
 interface TransactionCacheManagerProps {
   signature?: string;

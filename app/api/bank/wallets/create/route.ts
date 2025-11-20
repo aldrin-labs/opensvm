@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { Keypair } from '@solana/web3.js';
 import { encryptPrivateKey } from '@/lib/bank/encryption';
 import { v4 as uuidv4 } from 'uuid';

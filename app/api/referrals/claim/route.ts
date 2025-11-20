@@ -4,8 +4,8 @@
 
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { qdrantClient } from '@/lib/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { qdrantClient } from '@/lib/search/qdrant';
 
 export async function POST(request: Request) {
   try {

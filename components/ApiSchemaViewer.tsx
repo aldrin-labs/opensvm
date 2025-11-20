@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { ChevronDown, ChevronRight, Info } from 'lucide-react';
-import { SchemaField, ResponseSchema } from '@/lib/api-response-schemas';
+import { SchemaField, ResponseSchema } from '@/lib/api/api-response-schemas';
 
 interface SchemaFieldViewerProps {
   name: string;

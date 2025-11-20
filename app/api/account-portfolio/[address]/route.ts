@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
-import MoralisAPI from '@/lib/moralis-api';
+import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
+import MoralisAPI from '@/lib/external-apis/moralis-api';
 
 // Rate limit configuration for portfolio data
 const PORTFOLIO_RATE_LIMIT = {

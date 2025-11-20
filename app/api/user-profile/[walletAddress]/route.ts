@@ -4,18 +4,18 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { calculateStats, validateWalletAddress, sanitizeInput } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
   getUserProfile,
   storeUserProfile,
   getUserHistory,
   checkQdrantHealth
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 import {
   syncUserProfileStats,
   needsStatsSync
-} from '@/lib/user-stats-sync';
+} from '@/lib/maintenance/user-stats-sync';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest): Promise<boolean> {

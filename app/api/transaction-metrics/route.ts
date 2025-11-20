@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TransactionMetricsCalculator } from '@/lib/transaction-metrics-calculator';
+import { TransactionMetricsCalculator } from '@/lib/blockchain/transaction-metrics-calculator';
 
 /**
  * GET /api/transaction-metrics

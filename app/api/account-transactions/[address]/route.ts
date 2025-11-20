@@ -1,8 +1,8 @@
 import { NextRequest } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { PublicKey } from '@solana/web3.js';
-import { classifyTransactionType, isFundingTransaction } from '@/lib/transaction-classifier';
-import { getConnection as getClientConnection } from '@/lib/solana-connection-server';
+import { classifyTransactionType, isFundingTransaction } from '@/lib/blockchain/transaction-classifier';
+import { getConnection as getClientConnection } from '@/lib/solana/solana-connection-server';
 import { getTokenInfoServer } from '@/lib/server/token-metadata-cache';
 
 const defaultHeaders = {

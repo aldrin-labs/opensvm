@@ -5,14 +5,14 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { UserLikeEntry } from '@/types/user-history';
-import { validateWalletAddress, generateId } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { validateWalletAddress, generateId } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
   storeUserLike,
   removeUserLike,
   getUserLikes,
   checkQdrantHealth
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 
 // Authentication check using session validation
 async function isValidRequest(_request: NextRequest): Promise<{ isValid: boolean; walletAddress?: string }> {

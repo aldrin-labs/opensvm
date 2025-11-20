@@ -1,5 +1,5 @@
 import { Connection } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { getDuckDBCache } from '@/lib/data-cache/duckdb-cache';
 import { AnalyticsCallback, AnalyticsConfig } from '@/lib/types/solana-analytics';
 

@@ -1,7 +1,7 @@
 import { Connection } from '@solana/web3.js';
 import { BaseCapability } from './base';
 import type { Message, CapabilityType, ToolParams } from '../types';
-import { aiServiceClient } from '@/lib/ai-service-client';
+import { aiServiceClient } from '@/lib/ai/ai-service-client';
 
 // Fallback / general LLM answer capability using server-side Together AI proxy (/api/getAnswer)
 export class GenerativeCapability extends BaseCapability {

@@ -3,8 +3,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { toggleEventLike } from '@/lib/feed-events';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { toggleEventLike } from '@/lib/user/feed-events';
 
 export async function POST(request: Request) {
   try {

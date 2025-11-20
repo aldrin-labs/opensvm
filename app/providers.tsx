@@ -17,7 +17,7 @@ import { VoiceProvider } from '@/lib/voice';
 import { WalletProvider } from '@/app/providers/WalletProvider';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { NotificationProvider } from '@/components/providers/NotificationProvider';
-import logger from '@/lib/logging/logger';
+import { logger } from '@/lib/logging/logger';
 import { AIChatSidebarProvider } from '@/contexts/AIChatSidebarContext';
 
 // Enhanced error boundary for the entire app

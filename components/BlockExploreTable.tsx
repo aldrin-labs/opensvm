@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { ChevronDownIcon, ChevronUpIcon } from 'lucide-react';
 import { formatTimeAgo, formatLargeNumber } from '@/utils/format';
-import { BlockDetails } from '@/lib/solana';
+import { BlockDetails } from '@/lib/solana/solana';
 
 interface BlockExploreTableProps {
   blocks: BlockDetails[];

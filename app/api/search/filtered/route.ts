@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { getConnection as getServerConnection } from '@/lib/solana-connection-server';
+import { getConnection as getServerConnection } from '@/lib/solana/solana-connection-server';
 import { sanitizeSearchQuery } from '@/lib/utils';
 
 const connection = getServerConnection();

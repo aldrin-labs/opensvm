@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { AnomalyDetectionCapability } from '@/lib/ai/capabilities/anomaly-detection';
 import { validateAnomalyRequest, validateBlockchainEvent } from '@/lib/validation/stream-schemas';
 import {
@@ -7,7 +7,7 @@ import {
   createErrorResponse,
   CommonErrors,
   ErrorCodes
-} from '@/lib/api-response';
+} from '@/lib/api/api-response';
 
 // Global anomaly detector instance
 let anomalyDetector: AnomalyDetectionCapability | null = null;

@@ -1,18 +1,18 @@
 import { NextRequest } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { Connection, PublicKey } from '@solana/web3.js';
-import { getStreamingAnomalyDetector } from '@/lib/streaming-anomaly-detector';
+import { getStreamingAnomalyDetector } from '@/lib/analytics/streaming-anomaly-detector';
 import { validateStreamRequest } from '@/lib/validation/stream-schemas';
-import { generalRateLimiter, type RateLimitResult } from '@/lib/rate-limiter';
-import { SSEManager } from '@/lib/sse-manager';
+import { generalRateLimiter, type RateLimitResult } from '@/lib/api/rate-limiter';
+import { SSEManager } from '@/lib/api/sse-manager';
 import {
   createSuccessResponse,
   createErrorResponse,
   CommonErrors,
   ErrorCodes
-} from '@/lib/api-response';
-import { generateSecureAuthToken, generateSecureClientId } from '@/lib/crypto-utils';
-import { createLogger } from '@/lib/debug-logger';
+} from '@/lib/api/api-response';
+import { generateSecureAuthToken, generateSecureClientId } from '@/lib/api-auth/crypto-utils';
+import { createLogger } from '@/lib/logging/debug-logger';
 import { getProtocolFromProgramId, getProtocolDisplayName } from '@/lib/constants/program-ids';
 
 // Enhanced logger for stream API

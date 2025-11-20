@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { getTransactionDetails } from '@/lib/solana';
+import { getTransactionDetails } from '@/lib/solana/solana';
 
 export const runtime = 'edge';
 export const alt = 'Transaction Details';

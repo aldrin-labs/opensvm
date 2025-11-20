@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { transactionFailureAnalyzer } from '@/lib/transaction-failure-analyzer';
-import { getTransactionDetails } from '@/lib/solana';
+import { transactionFailureAnalyzer } from '@/lib/blockchain/transaction-failure-analyzer';
+import { getTransactionDetails } from '@/lib/solana/solana';
 
 export async function GET(
   _request: NextRequest,

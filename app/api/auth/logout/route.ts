@@ -4,7 +4,7 @@
  */
 
 import { NextResponse } from 'next/server';
-import { clearSessionCookie } from '@/lib/auth-server';
+import { clearSessionCookie } from '@/lib/api-auth/auth-server';
 
 export async function POST() {
   try {

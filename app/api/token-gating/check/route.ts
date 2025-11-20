@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkSVMAIAccess } from '@/lib/token-gating';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { checkSVMAIAccess } from '@/lib/api-auth/token-gating';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 
 export async function GET(_request: NextRequest) {
   console.log(`[Token Gating] Checking access...`);

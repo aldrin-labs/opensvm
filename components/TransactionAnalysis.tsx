@@ -1,6 +1,6 @@
 'use client';
 
-import type { DetailedTransactionInfo, InstructionWithAccounts } from '@/lib/solana';
+import type { DetailedTransactionInfo, InstructionWithAccounts } from '@/lib/solana/solana';
 import { useEffect, useState } from 'react';
 import AccountLink from './AccountLink';
 

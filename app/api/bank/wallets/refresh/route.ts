@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
 

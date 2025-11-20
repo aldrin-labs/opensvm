@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
-import { dynamicProgramDiscovery } from '@/lib/dynamic-program-discovery';
-import { getConnection } from '@/lib/solana-connection-server';
+import { dynamicProgramDiscovery } from '@/lib/maintenance/dynamic-program-discovery';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 
 /**
  * GET /api/program-discovery

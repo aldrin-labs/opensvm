@@ -9,10 +9,10 @@ export const runtime = 'nodejs';
 const EXCLUDED_PATHS = [
   '/api/auth',
   '/api/health',
+  '/api/install',
   '/api/_next',
   '/api/static',
 ];
-import { validateApiKey, logApiKeyActivity } from './lib/api-auth/service';
 
 export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
@@ -29,7 +29,7 @@ export async function middleware(request: NextRequest) {
 
     if (isCliClient) {
       const url = request.nextUrl.clone();
-      url.pathname = '/install.sh';
+      url.pathname = '/api/install';
       return NextResponse.rewrite(url);
     }
   }

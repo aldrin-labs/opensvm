@@ -9,7 +9,7 @@ import {
   ShieldCheckIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import InstructionTooltip from './InstructionTooltip';
 import InstructionDetailModal from './InstructionDetailModal';
 import InstructionActions from './InstructionActions';

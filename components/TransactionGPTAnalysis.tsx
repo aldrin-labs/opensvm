@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { DetailedTransactionInfo } from '@/lib/solana';
+import { DetailedTransactionInfo } from '@/lib/solana/solana';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { useAbortableFetch } from '@/lib/hooks/useAbortableFetch';
-import { logError } from '@/lib/errorLogger';
+import { logError } from '@/lib/logging/errorLogger';
 
 interface TransactionGPTAnalysisProps {
   tx: DetailedTransactionInfo;

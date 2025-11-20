@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { relatedTransactionFinder } from '@/lib/related-transaction-finder';
-import type { RelatedTransactionQuery } from '@/lib/related-transaction-finder';
+import { relatedTransactionFinder } from '@/lib/blockchain/related-transaction-finder';
+import type { RelatedTransactionQuery } from '@/lib/blockchain/related-transaction-finder';
 
 export async function POST(request: NextRequest) {
   try {

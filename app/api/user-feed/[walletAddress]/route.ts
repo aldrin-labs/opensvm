@@ -4,14 +4,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { validateWalletAddress } from '@/lib/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
 import {
   getUserFollowing,
   getUserHistory,
   checkQdrantHealth
-} from '@/lib/qdrant';
-import { getFeedEvents, SocialFeedEvent } from '@/lib/feed-events';
+} from '@/lib/search/qdrant';
+import { getFeedEvents, SocialFeedEvent } from '@/lib/user/feed-events';
 import { UserHistoryEntry } from '@/types/user-history';
 
 // Use SocialFeedEvent from feed-events module

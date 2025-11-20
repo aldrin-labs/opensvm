@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getProgramInfoWithQdrantCache } from '@/lib/program-metadata-cache';
+import { getProgramInfoWithQdrantCache } from '@/lib/solana/program-metadata-cache';
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

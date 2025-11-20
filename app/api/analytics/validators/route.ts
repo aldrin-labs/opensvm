@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { VALIDATOR_CONSTANTS } from '@/lib/constants/analytics-constants';
 import { getGeolocationService } from '@/lib/services/geolocation';
 import { batchGetValidatorNames, getValidatorName } from '@/lib/data-sources/validator-registry';
-import { validatorsCache } from '@/lib/cache';
+import { validatorsCache } from '@/lib/caching/cache';
 import { QdrantClient } from '@qdrant/js-client-rest';
 
 interface GeolocationData {

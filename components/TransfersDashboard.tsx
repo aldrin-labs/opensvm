@@ -11,7 +11,7 @@ import {
   Zap, Target, Link, History, ExternalLink, DollarSign,
   Calendar, Hash, Coins
 } from 'lucide-react';
-import { UserHistoryService } from '@/lib/user-history';
+import { UserHistoryService } from '@/lib/user/user-history';
 import { formatDistanceToNow } from 'date-fns';
 import type { Transfer } from '@/app/account/[address]/components/shared/types';
 

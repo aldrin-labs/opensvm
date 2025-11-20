@@ -9,8 +9,8 @@ async function loadDeps() {
     { scoreRelationshipStrength }
   ] = await Promise.all([
     import('@/lib/solana'),
-    import('@/lib/related-transaction-finder'),
-    import('@/lib/relationship-strength-scorer')
+    import('@/lib/blockchain/related-transaction-finder'),
+    import('@/lib/blockchain/relationship-strength-scorer')
   ]);
   return { getTransactionDetails, findRelatedTransactions, scoreRelationshipStrength };
 }

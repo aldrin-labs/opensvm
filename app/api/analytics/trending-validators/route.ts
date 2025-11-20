@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
-import { cache } from '@/lib/cache';
+import { getConnection } from '@/lib/solana/solana-connection-server';
+import { cache } from '@/lib/caching/cache';
 import { TOKEN_MINTS, TOKEN_MULTIPLIERS, MAX_BURN_AMOUNTS } from '@/lib/config/tokens';
-import { boostMutex } from '@/lib/mutex';
-import { burnRateLimiter, generalRateLimiter } from '@/lib/rate-limiter';
+import { boostMutex } from '@/lib/utils/mutex';
+import { burnRateLimiter, generalRateLimiter } from '@/lib/api/rate-limiter';
 import { getClientIP } from '@/lib/utils/client-ip';
 import { PublicKey } from '@solana/web3.js';
 

@@ -14,8 +14,8 @@ import {
   calculateShareExpiration,
   generateAIPrompt,
   extractHashtags
-} from '../../../../lib/share-utils';
-import { storeShareEntry } from '../../../../lib/qdrant';
+} from '@/lib/utils/share-utils';
+import { storeShareEntry } from '@/lib/search/qdrant';
 import {
   EntityType,
   ShareEntry,
@@ -31,7 +31,7 @@ import {
 } from '../../../../types/share';
 import { cookies } from 'next/headers';
 import { PublicKey } from '@solana/web3.js';
-import { getConnection as getServerConnection } from '../../../../lib/solana-connection-server';
+import { getConnection as getServerConnection } from '@/lib/solana/solana-connection-server';
 
 /**
  * Fetch entity data based on type

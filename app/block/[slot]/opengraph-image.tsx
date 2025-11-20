@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { formatNumber } from '@/lib/utils';
 
 export const runtime = 'edge';

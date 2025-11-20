@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 
 // Create cache instance for overview analytics (5 min cache, 1 min refresh threshold)
 const overviewCache = createCache<OverviewMetrics>({

@@ -4,9 +4,9 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { generateSessionKey, createSignMessage } from '@/lib/auth';
-import { validateWalletAddress } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { generateSessionKey, createSignMessage } from '@/lib/api-auth/auth';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 
 export async function POST(request: NextRequest) {
   try {

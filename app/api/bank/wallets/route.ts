@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { v4 as uuidv4 } from 'uuid';
 
 const COLLECTION_NAME = 'svm_bank_wallets';

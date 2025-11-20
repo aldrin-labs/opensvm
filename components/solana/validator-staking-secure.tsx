@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useWallet } from '@solana/wallet-adapter-react';
 import { Connection, PublicKey, Transaction, StakeProgram, Authorized, Lockup, LAMPORTS_PER_SOL, SystemProgram } from '@solana/web3.js';
-import { getClientConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana/solana-connection';
 import {
     getAssociatedTokenAddress,
     getAccount,
@@ -13,7 +13,7 @@ import { TOKEN_MINTS, TOKEN_DECIMALS } from '@/lib/config/tokens';
 import { TrendingDown, Lock, AlertCircle, Loader2, CheckCircle, Calculator } from 'lucide-react';
 import { isValidSolanaAddress } from '@/lib/utils';
 //import { MemoryManager } from '@/lib/memory-manager';
-import { sanitizeInput } from '@/lib/user-history-utils';
+import { sanitizeInput } from '@/lib/user/user-history-utils';
 
 interface ValidatorStakingProps {
     validatorVoteAccount: string;

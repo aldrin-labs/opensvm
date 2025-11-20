@@ -1,6 +1,6 @@
 // API endpoint to monitor RPC endpoint health
 import { NextResponse } from 'next/server';
-import { connectionPool } from '@/lib/solana-connection-server';
+import { connectionPool } from '@/lib/solana/solana-connection-server';
 
 export async function GET() {
   try {

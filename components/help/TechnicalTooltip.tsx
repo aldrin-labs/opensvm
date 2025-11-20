@@ -12,8 +12,8 @@ import {
   CheckIcon,
   ExternalLinkIcon
 } from 'lucide-react';
-import { useAccessibility } from '@/lib/accessibility-utils';
-import { useMobileDetection } from '@/lib/mobile-utils';
+import { useAccessibility } from '@/lib/ui/accessibility-utils';
+import { useMobileDetection } from '@/lib/ui/mobile-utils';
 
 interface TechnicalTooltipProps {
   term: string;

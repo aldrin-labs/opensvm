@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useRealTimeMarketData } from '@/components/hooks/trading/useRealTimeMarketData';
-import { formatTimeAgo } from '@/lib/format-time';
+import { formatTimeAgo } from '@/lib/utils/format-time';
 import { Skeleton } from '@/components/ui/skeleton';
 
 interface MarketDepthWidgetProps {

@@ -7,7 +7,7 @@ import {
     getNFTsForAddress,
     getSOLTransfers,
     getSPLTokenTransfers
-} from "../../../lib/moralis-api";
+} from "../../../lib/external-apis/moralis-api";
 
 // Timeout helper for Moralis API calls
 async function withTimeout<T>(promise: Promise<T>, timeoutMs: number, operation: string): Promise<T> {

@@ -1,6 +1,6 @@
 "use client";
 
-import { decodeInstruction } from '@/lib/bpf';
+import { decodeInstruction } from '@/lib/solana/bpf';
 
 interface DisassemblyViewProps {
   data: number[];

@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
+import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 import { validateApiKey, logApiKeyActivity } from '@/lib/api-auth/service';
 
 export async function GET(req: NextRequest) {

@@ -3,12 +3,12 @@
  */
 
 import { NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
+import { qdrantClient } from '@/lib/search/qdrant';
 import { v4 as uuidv4 } from 'uuid';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/token-gating';
-import { syncUserProfileStats } from '@/lib/user-stats-sync';
-import { createLikeEvent } from '@/lib/feed-events';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { checkSVMAIAccess, MIN_SVMAI_BALANCE } from '@/lib/api-auth/token-gating';
+import { syncUserProfileStats } from '@/lib/maintenance/user-stats-sync';
+import { createLikeEvent } from '@/lib/user/feed-events';
 
 export async function POST(request: Request) {
   try {

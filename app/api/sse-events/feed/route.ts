@@ -3,10 +3,10 @@
  */
 
 import { NextRequest } from 'next/server';
-import { validateWalletAddress } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { getUserFollowing } from '@/lib/qdrant';
-import { getFeedEvents, SocialFeedEvent } from '@/lib/feed-events';
+import { validateWalletAddress } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { getUserFollowing } from '@/lib/search/qdrant';
+import { getFeedEvents, SocialFeedEvent } from '@/lib/user/feed-events';
 
 // Use SocialFeedEvent from feed-events module
 type FeedEvent = SocialFeedEvent;

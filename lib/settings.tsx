@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useState, useCallback } from 'react';
-import { updateRpcEndpoint } from './solana-connection-client';
+import { updateRpcEndpoint } from './solana/solana-connection-client';
 
 export type Theme = 'paper' | 'high-contrast' | 'dos' | 'cyberpunk' | 'solarized';
 export type FontFamily = 'berkeley' | 'inter' | 'jetbrains';

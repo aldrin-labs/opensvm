@@ -10,7 +10,7 @@ import {
   getAllInstructionCategories,
   PROGRAM_CATEGORIES,
   RISK_LEVELS
-} from '@/lib/program-registry';
+} from '@/lib/solana/program-registry';
 
 // Use the program registry's structure directly
 type ProgramDefinition = ReturnType<typeof getProgramDefinition>;

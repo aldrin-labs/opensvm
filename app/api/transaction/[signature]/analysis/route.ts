@@ -12,11 +12,11 @@ async function loadDeps() {
     { cacheHelpersServer }
   ] = await Promise.all([
     import('@/lib/solana'),
-    import('@/lib/instruction-parser-service'),
-    import('@/lib/account-changes-analyzer'),
-    import('@/lib/transaction-metrics-calculator'),
-    import('@/lib/transaction-failure-analyzer'),
-    import('@/lib/transaction-cache-server')
+    import('@/lib/blockchain/instruction-parser-service'),
+    import('@/lib/blockchain/account-changes-analyzer'),
+    import('@/lib/blockchain/transaction-metrics-calculator'),
+    import('@/lib/blockchain/transaction-failure-analyzer'),
+    import('@/lib/caching/transaction-cache-server')
   ]);
   return {
     getTransactionDetails,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getBlockDetails, type BlockDetails as BlockDetailsType } from '@/lib/solana';
+import { getBlockDetails, type BlockDetails as BlockDetailsType } from '@/lib/solana/solana';
 import { Button } from '@/components/ui/button';
 import TransactionsInBlock from '@/components/TransactionsInBlock';
 import Link from 'next/link';

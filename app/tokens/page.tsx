@@ -8,7 +8,7 @@ import { useSettings } from '@/lib/settings';
 import TokenMarketTable from '@/components/TokenMarketTable';
 import { Button } from '@/components/ui/button';
 import { TableSkeleton } from '@/components/ui/skeleton';
-import { getAllTokens } from '@/lib/mock-token-data';
+import { getAllTokens } from '@/lib/utils/mock-token-data';
 import type { TokenMarketData, TokenListResponse } from '@/types/token-market';
 
 type ViewMode = 'all' | 'calls' | 'transactions' | 'blocks';

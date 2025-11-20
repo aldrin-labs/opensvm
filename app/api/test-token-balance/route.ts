@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { checkSVMAIAccess } from '@/lib/token-gating';
+import { checkSVMAIAccess } from '@/lib/api-auth/token-gating';
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

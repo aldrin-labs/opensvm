@@ -1,5 +1,5 @@
 import { NextRequest } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 
 const defaultHeaders = {
     'Content-Type': 'application/json',

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey, Connection } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSolanaAddress } from '@/lib/utils';
-import { rateLimit } from '@/lib/rate-limit';
+import { rateLimit } from '@/lib/api/rate-limit';
 
 interface ProgramAccountSearchRequest {
   programId: string;

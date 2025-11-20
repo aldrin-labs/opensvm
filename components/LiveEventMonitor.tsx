@@ -8,8 +8,8 @@ import { VirtualTableErrorBoundary } from './VirtualTableErrorBoundary';
 import { AnomalyAlertsTable } from './AnomalyAlertsTable';
 import { StackedAnomalyAlerts } from './StackedAnomalyAlerts';
 import { DeduplicatedEventTable } from './DeduplicatedEventTable';
-import { generateSecureClientId } from '@/lib/crypto-utils';
-import { createLogger } from '@/lib/debug-logger';
+import { generateSecureClientId } from '@/lib/api-auth/crypto-utils';
+import { createLogger } from '@/lib/logging/debug-logger';
 import { getProtocolFromProgramId, getProtocolDisplayName } from '@/lib/constants/program-ids';
 import { 
   deduplicateEvents, 

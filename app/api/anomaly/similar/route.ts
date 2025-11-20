@@ -2,7 +2,7 @@ import { NextRequest } from 'next/server';
 import { 
   createSuccessResponse, 
   CommonErrors, 
-} from '@/lib/api-response';
+} from '@/lib/api/api-response';
 
 export async function GET(request: NextRequest) {
   try {

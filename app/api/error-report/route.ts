@@ -3,7 +3,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { tieredRateLimiter } from '@/lib/rate-limiter-tiers';
+import { tieredRateLimiter } from '@/lib/api/rate-limiter-tiers';
 
 export async function GET(req: NextRequest) {
   // Check rate limit for admin tier

@@ -6,7 +6,7 @@ import { useAIChat } from '@/lib/ai/hooks/useAIChat';
 import { useGlobalChat } from '@/lib/hooks/useGlobalChat';
 import dynamic from 'next/dynamic';
 import { RotateCcw, Plus, Settings, Globe, Users, Clock } from 'lucide-react';
-import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getClientConnection as getConnection } from '@/lib/solana/solana-connection';
 import { useWallet } from '@solana/wallet-adapter-react';
 import type { Message as UIMessage } from '@/components/ai/types';
 

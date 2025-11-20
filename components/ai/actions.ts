@@ -72,7 +72,7 @@ async function executeWalletPathFinding(
 
 // --- Streaming actions ---
 import { PublicKey } from '@solana/web3.js';
-import { getClientConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana/solana-connection';
 
 async function executeLogsSubscribeProgram(
   params: { programId: string; commitment?: 'processed' | 'confirmed' | 'finalized'; durationMs?: number },

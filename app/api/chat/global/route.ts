@@ -4,7 +4,7 @@ import {
   getGlobalChatMessages, 
   deleteGlobalChatMessage,
   GlobalChatMessage 
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 // Removed @solana/web3.js import to avoid server runtime bundling issues that caused 500s
 
 // Fallback in-memory storage when Qdrant is not available

@@ -4,13 +4,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { calculateStats, validateWalletAddress } from '@/lib/user-history-utils';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { calculateStats, validateWalletAddress } from '@/lib/user/user-history-utils';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import {
   getUserProfile,
   storeUserProfile,
   checkQdrantHealth
-} from '@/lib/qdrant';
+} from '@/lib/search/qdrant';
 
 type TabType = 'overview' | 'instructions' | 'accounts' | 'graph' | 'ai' | 'metrics' | 'related' | 'failure';
 

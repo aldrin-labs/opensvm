@@ -8,7 +8,7 @@ async function loadDeps() {
     { analyzeTransactionWithAI }
   ] = await Promise.all([
     import('@/lib/solana'),
-    import('@/lib/ai-transaction-analyzer')
+    import('@/lib/ai/ai-transaction-analyzer')
   ]);
   return { getTransactionDetails, analyzeTransactionWithAI };
 }

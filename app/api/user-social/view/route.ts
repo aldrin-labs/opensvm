@@ -3,9 +3,9 @@
  */
 
 import { NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
-import { checkSVMAIAccess } from '@/lib/token-gating';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
+import { checkSVMAIAccess } from '@/lib/api-auth/token-gating';
 
 export async function POST(request: Request) {
   try {

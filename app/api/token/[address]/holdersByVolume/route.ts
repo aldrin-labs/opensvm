@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey, ParsedAccountData } from '@solana/web3.js';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import NodeCache from 'node-cache';
 
 // Shared cache with holders endpoint (5 minute TTL)

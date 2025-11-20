@@ -3,8 +3,8 @@
  */
 
 import { NextResponse } from 'next/server';
-import { qdrantClient } from '@/lib/qdrant';
-import { getSessionFromCookie } from '@/lib/auth-server';
+import { qdrantClient } from '@/lib/search/qdrant';
+import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { MINIMUM_BALANCE_REQUIRED } from '@/components/referrals/ReferralComponents';
 
 export async function GET(request: Request) {

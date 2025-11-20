@@ -15,7 +15,7 @@ import {
   exportProgramRegistry,
   PROGRAM_CATEGORIES,
   RISK_LEVELS
-} from '@/lib/program-registry';
+} from '@/lib/solana/program-registry';
 
 /**
  * GET /api/program-registry

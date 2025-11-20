@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { TransactionMetricsCalculator } from '@/lib/transaction-metrics-calculator';
-import { getConnection } from '@/lib/solana-connection-server';
+import { TransactionMetricsCalculator } from '@/lib/blockchain/transaction-metrics-calculator';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { isValidSignature } from '@/lib/utils';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 
 /**
  * GET /api/transaction-metrics/[signature]

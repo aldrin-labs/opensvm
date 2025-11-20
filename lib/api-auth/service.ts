@@ -5,7 +5,7 @@
  */
 
 import { randomBytes, createHash, createCipheriv, createDecipheriv } from 'crypto';
-import { qdrantClient } from '@/lib/qdrant';
+import { qdrantClient } from '@/lib/search/qdrant';
 import type {
   ApiKey,
   AuthLink,

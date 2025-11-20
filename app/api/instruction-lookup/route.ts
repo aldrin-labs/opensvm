@@ -4,8 +4,8 @@ import {
   getInstructionDefinition,
   getAllInstructionCategories,
   getProgramsWithInstructionType
-} from '@/lib/program-registry';
-import { InstructionParserService } from '@/lib/instruction-parser-service';
+} from '@/lib/solana/program-registry';
+import { InstructionParserService } from '@/lib/blockchain/instruction-parser-service';
 
 /**
  * GET /api/instruction-lookup

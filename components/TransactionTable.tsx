@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { type BaseTransactionInfo } from '@/lib/solana';
+import { type BaseTransactionInfo } from '@/lib/solana/solana';
 import * as VTable from '@visactor/vtable';
 import type { ListTableConstructorOptions, ColumnDefine } from '@visactor/vtable';
 

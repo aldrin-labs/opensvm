@@ -1,10 +1,10 @@
 'use client';
 
 import React, { useState } from 'react';
-import { getAllCategories, getMethodsByCategory } from '@/lib/api-presets';
+import { getAllCategories, getMethodsByCategory } from '@/lib/api/api-presets';
 import { Play, Copy, ChevronDown, ChevronUp, FileJson } from 'lucide-react';
 import { ApiSchemaViewer } from '@/components/ApiSchemaViewer';
-import { getSchemaForEndpoint } from '@/lib/api-response-schemas';
+import { getSchemaForEndpoint } from '@/lib/api/api-response-schemas';
 
 export const ApiTester: React.FC = () => {
   const [selectedCategory, setSelectedCategory] = useState<string>('Blockchain Core');

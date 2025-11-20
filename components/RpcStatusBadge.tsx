@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { rpcEventEmitter } from "@/lib/solana-connection-client";
-import { logger } from "@/lib/logger";
+import { rpcEventEmitter } from "@/lib/solana/solana-connection-client";
+import { logger } from "@/lib/logging/logger";
 
 // Keys for localStorage persistence
 const STORAGE_KEY_TOTALS = "rpcRequestTotals"; // map of rpc -> total count

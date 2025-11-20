@@ -1,5 +1,5 @@
 import { ImageResponse } from '@vercel/og';
-import { getAccountInfo } from '@/lib/solana';
+import { getAccountInfo } from '@/lib/solana/solana';
 
 export const runtime = 'edge';
 export const alt = 'Program Details';

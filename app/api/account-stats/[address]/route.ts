@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { PublicKey, Connection } from '@solana/web3.js';
 import type { ConfirmedSignatureInfo } from '@solana/web3.js';
-import { createCache } from '@/lib/api-cache';
+import { createCache } from '@/lib/caching/api-cache';
 
 const BATCH_SIZE = 1000;
 const MAX_BATCHES = 3;

@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getSearchSuggestions, storeSearchQuery } from '../../../../lib/qdrant-search-suggestions';
+import { getSearchSuggestions, storeSearchQuery } from '@/lib/search/qdrant-search-suggestions';
 
 // Lightweight base58 check (characters only)
 const BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]+$/;

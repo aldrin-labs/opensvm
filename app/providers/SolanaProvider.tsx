@@ -3,7 +3,7 @@
 import { ConnectionProvider } from '@solana/wallet-adapter-react';
 import { Connection } from '@solana/web3.js';
 import { useEffect, useState, useMemo } from 'react';
-import { getClientConnection } from '@/lib/solana-connection';
+import { getClientConnection } from '@/lib/solana/solana-connection';
 
 // Use a default endpoint to allow rendering while the real connection initializes
 const DEFAULT_ENDPOINT = 'https://api.mainnet-beta.solana.com';

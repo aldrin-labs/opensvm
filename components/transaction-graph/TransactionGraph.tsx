@@ -4,7 +4,7 @@ import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import { debounce } from '@/lib/utils';
 import { TrackingStatsPanel } from './TrackingStatsPanel';
 import TransactionGraphClouds from './TransactionGraphClouds';
-import { GraphStateCache } from '@/lib/graph-state-cache';
+import { GraphStateCache } from '@/lib/caching/graph-state-cache';
 
 
 
@@ -16,7 +16,7 @@ import {
   debugLog
 } from './utils';
 import { fetchAccountTransactions } from './data-fetching';
-import { classifyTransactionType, isFundingTransaction, type TransactionClassification } from '@/lib/transaction-classifier';
+import { classifyTransactionType, isFundingTransaction, type TransactionClassification } from '@/lib/blockchain/transaction-classifier';
 import { formatEdgeLabel } from './edge-label-utils';
 import { AccountHoverTooltip } from './AccountHoverTooltip';
 import { GraphControls } from './GraphControls';

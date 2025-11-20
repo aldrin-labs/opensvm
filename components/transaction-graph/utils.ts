@@ -4,7 +4,7 @@
  */
 
 import cytoscape from 'cytoscape';
-import { debugLog, errorLog } from '@/lib/debug-logger';
+import { debugLog, errorLog } from '@/lib/logging/debug-logger';
 
 export { debugLog, errorLog };
 

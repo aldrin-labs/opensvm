@@ -1,6 +1,6 @@
 'use client';
 
-import { createLogger } from '@/lib/debug-logger';
+import { createLogger } from '@/lib/logging/debug-logger';
 
 /**
  * VR and WebGPU capability detection and fallback utilities

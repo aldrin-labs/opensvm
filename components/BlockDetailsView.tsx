@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { getBlockDetails } from '@/lib/solana';
+import { getBlockDetails } from '@/lib/solana/solana';
 
 interface DisplayBlockDetails {
   slot: number;

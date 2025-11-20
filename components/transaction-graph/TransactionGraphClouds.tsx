@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Cloud, Save, Trash } from 'lucide-react';
-import { GraphStateCache, SavedGraphState } from '@/lib/graph-state-cache';
+import { GraphStateCache, SavedGraphState } from '@/lib/caching/graph-state-cache';
 
 // Types
 interface SavedGraphMetadata {

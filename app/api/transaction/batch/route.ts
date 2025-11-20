@@ -10,9 +10,9 @@ async function loadDeps() {
     { transactionCache }
   ] = await Promise.all([
     import('@/lib/solana'),
-    import('@/lib/instruction-parser-service'),
-    import('@/lib/account-changes-analyzer'),
-    import('@/lib/transaction-cache')
+    import('@/lib/blockchain/instruction-parser-service'),
+    import('@/lib/blockchain/account-changes-analyzer'),
+    import('@/lib/caching/transaction-cache')
   ]);
   return { getTransactionDetails, parseInstructions, analyzeAccountChanges, transactionCache };
 }

@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/lib/settings';
 import { useTheme } from '../lib/design-system/theme-provider';
-import { updateClientRpcEndpoint } from '@/lib/solana-connection';
+import { updateClientRpcEndpoint } from '@/lib/solana/solana-connection';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,

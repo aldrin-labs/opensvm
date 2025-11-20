@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { getConnection } from '@/lib/solana-connection-server';
-import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
-import { getTokenInfo } from '@/lib/token-registry';
+import { getConnection } from '@/lib/solana/solana-connection-server';
+import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
+import { getTokenInfo } from '@/lib/trading/token-registry';
 
 // Cache for token holder data and market data
 const tokenHolderCache = new Map<string, { 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { accountChangesAnalyzer } from '@/lib/account-changes-analyzer';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import { accountChangesAnalyzer } from '@/lib/blockchain/account-changes-analyzer';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 
 export async function POST(request: NextRequest) {
   try {

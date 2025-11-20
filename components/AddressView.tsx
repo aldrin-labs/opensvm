@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { type BaseTransactionInfo, type AccountData } from '@/lib/solana';
+import { type BaseTransactionInfo, type AccountData } from '@/lib/solana/solana';
 import TransactionTable from './TransactionTable';
 import AccountOverview from './AccountOverview';
 

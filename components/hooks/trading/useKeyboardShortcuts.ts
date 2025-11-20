@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react';
 import type { TileId } from './useTradingTerminal';
-import { getShortcutKey } from '@/lib/keyboard-shortcuts-config';
+import { getShortcutKey } from '@/lib/ui/keyboard-shortcuts-config';
 
 export interface KeyboardShortcutsConfig {
   maximizedTile: TileId | null;

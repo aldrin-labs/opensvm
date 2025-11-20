@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getTokenInfo } from '@/lib/token-registry';
-import { getConnection } from '@/lib/solana-connection-server';
+import { getTokenInfo } from '@/lib/trading/token-registry';
+import { getConnection } from '@/lib/solana/solana-connection-server';
 import { PublicKey } from '@solana/web3.js';
 
 export async function GET(request: NextRequest) {

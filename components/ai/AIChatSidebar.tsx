@@ -7,7 +7,7 @@ import { useAIChatSidebar } from '@/contexts/AIChatSidebarContext';
 import { TokenManagementPanel } from './monetization/TokenManagementPanel';
 // Use the centralized factory (lib) that wires full capability set instead of bare SolanaAgent
 import { createSolanaAgent } from '@/lib/ai/core/factory';
-import { getClientConnection as getConnection } from '@/lib/solana-connection';
+import { getClientConnection as getConnection } from '@/lib/solana/solana-connection';
 import type { Message, Note } from './types';
 import { loadKnowledgeNotes, addKnowledgeNote, removeKnowledgeNote, clearKnowledgeNotes } from './utils/knowledgeManager';
 import { mergeKnowledgeNotes } from './utils/mergeKnowledgeNotes'; // type:merge

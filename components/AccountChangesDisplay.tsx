@@ -4,11 +4,11 @@ import React, { useState, useMemo, useRef } from 'react';
 import {
   useKeyboardNavigation,
   useAccessibility
-} from '@/lib/accessibility-utils';
+} from '@/lib/ui/accessibility-utils';
 import {
   useMobileDetection,
   useSwipeGestures
-} from '@/lib/mobile-utils';
+} from '@/lib/ui/mobile-utils';
 import {
   ChevronDownIcon,
   ChevronRightIcon,
@@ -25,7 +25,7 @@ import {
   MinusIcon
 } from 'lucide-react';
 import Link from 'next/link';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import {
   analyzeAccountChanges,
   formatSolAmount,
@@ -36,7 +36,7 @@ import {
   type AccountChange,
   type AccountChangesAnalysis,
   type AccountChangesResponse
-} from '@/lib/account-changes-analyzer-client';
+} from '@/lib/blockchain/account-changes-analyzer-client';
 import AccountDataDiff from './AccountDataDiff';
 
 interface AccountChangesDisplayProps {

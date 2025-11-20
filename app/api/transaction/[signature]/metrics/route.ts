@@ -8,7 +8,7 @@ async function loadDeps() {
     { calculateTransactionMetrics }
   ] = await Promise.all([
     import('@/lib/solana'),
-    import('@/lib/transaction-metrics-calculator')
+    import('@/lib/blockchain/transaction-metrics-calculator')
   ]);
   return { getTransactionDetails, calculateTransactionMetrics };
 }

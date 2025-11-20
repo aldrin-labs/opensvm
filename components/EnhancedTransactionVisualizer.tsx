@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { DetailedTransactionInfo } from '@/lib/solana';
+import type { DetailedTransactionInfo } from '@/lib/solana/solana';
 import { useEffect, useRef, useCallback } from 'react';
 import * as d3 from 'd3';
 

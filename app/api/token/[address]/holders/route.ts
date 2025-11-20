@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { PublicKey } from '@solana/web3.js';
 import { getMint, TOKEN_PROGRAM_ID } from '@solana/spl-token';
-import { getConnection } from '@/lib/solana-connection-server';
-import { rateLimiter, RateLimitError } from '@/lib/rate-limit';
+import { getConnection } from '@/lib/solana/solana-connection-server';
+import { rateLimiter, RateLimitError } from '@/lib/api/rate-limit';
 
 // Cache for holder data
 const holderCache = new Map<string, { 

@@ -7,7 +7,7 @@ import {
     getNFTsForAddress,
     getSOLTransfers,
     getSPLTokenTransfers
-} from "../../../lib/moralis-api";
+} from "../../../lib/external-apis/moralis-api";
 
 // Type for API result with potential error
 type ApiResult = any | { error: string; type: string };

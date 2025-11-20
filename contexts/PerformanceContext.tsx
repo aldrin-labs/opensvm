@@ -4,7 +4,7 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 import PerformanceMonitor from '@/lib/performance/monitor';
 import { PerformanceMetrics, PerformanceAlert, PerformanceConfig, UserInteraction } from '@/lib/performance/types';
 import { regressionDetector, RegressionDetection, PerformanceBaseline } from '@/lib/performance/regression-detector';
-import logger from '@/lib/logging/logger';
+import { logger } from '@/lib/logging/logger';
 
 interface PerformanceContextType {
   monitor: PerformanceMonitor;
@@ -51,8 +51,8 @@ export function PerformanceProvider({
       setAlerts(prev => [...prev, alert]);
       
       // Log performance alerts
-      logger.performanceAlert(alert.type, alert.metric, alert.currentValue, {
-        metadata: { alertId: alert.id, threshold: alert.threshold }
+      logger.warn(`Performance alert: ${alert.type} on ${alert.metric}`, {
+        metadata: { alertId: alert.id, threshold: alert.threshold, currentValue: alert.currentValue }
       });
     };
 
@@ -85,7 +85,7 @@ export function PerformanceProvider({
 
     const handleUserInteraction = (event: CustomEvent) => {
       const interaction = event.detail as UserInteraction;
-      logger.userInteraction(interaction.type, interaction.element || 'unknown', {
+      logger.debug(`User interaction: ${interaction.type} on ${interaction.element || 'unknown'}`, {
         metadata: { interactionId: interaction.id, ...interaction.metadata }
       });
     };
@@ -263,8 +263,8 @@ export function useComponentPerformance(componentName: string) {
         mountTime: duration
       });
       
-      logger.componentMount(componentName, duration, {
-        component: componentName
+      logger.debug(`Component mounted: ${componentName} in ${duration.toFixed(2)}ms`, {
+        metadata: { component: componentName, duration }
       });
     };
 
@@ -324,9 +324,8 @@ export function useApiPerformance() {
           ...metadata
         });
         
-        logger.apiRequest('GET', operationName, duration, 200, {
-          requestId: `${operationName}-${startTimestamp}`,
-          metadata
+        logger.info(`API request completed: ${operationName} in ${duration.toFixed(2)}ms`, {
+          metadata: { operation: operationName, duration, success: true, ...metadata }
         });
         
         return result;
@@ -345,9 +344,8 @@ export function useApiPerformance() {
           ...metadata
         });
         
-        logger.apiError('GET', operationName, error instanceof Error ? error : new Error('Unknown error'), {
-          requestId: `${operationName}-${startTimestamp}`,
-          metadata
+        logger.error(`API request failed: ${operationName}`, {
+          metadata: { operation: operationName, duration, error: error instanceof Error ? error.message : 'Unknown error', ...metadata }
         });
         
         throw error;
