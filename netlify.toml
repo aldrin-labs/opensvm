@@ -7,39 +7,28 @@
   PUPPETEER_SKIP_DOWNLOAD = "true"
   NETLIFY_NEXT_PLUGIN_SKIP = "false"
   NPM_FLAGS = "--legacy-peer-deps"
-  # Build optimization flags
   NODE_OPTIONS = "--max-old-space-size=4096"
   ANALYZE = "false"
 
-# Function configuration - selective environment variables
 [functions]
-  # Include the RPC configuration file AND Solana documentation in functions
   included_files = ["config/rpc-config.json", "config/rpc-endpoints.js", "public/solana-rpc-llms.md"]
-  # Set timeout to 120 seconds for all serverless functions to prevent 504 errors
   node_bundler = "esbuild"
-  # Maximum execution timeout for functions (in seconds)
-  # This prevents 504 Gateway Timeout errors on slow RPC responses
   timeout = 120
-
 
 [[plugins]]
   package = "@netlify/plugin-nextjs"
 
-# Selectively pass only essential environment variables to specific functions
 [[plugins]]
   package = "netlify-plugin-inline-functions-env"
   [plugins.inputs]
     buildEvent = "onBuild"
-    # Only include essential API keys, not large RPC lists
     include = ["TOGETHER_API_KEY"]
 
-# Headers for static assets
 [[headers]]
   for = "/_next/static/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
 
-# Block access to sensitive configuration files with security headers
 [[headers]]
   for = "/lib/rpc-config.json"
   [headers.values]
@@ -55,9 +44,6 @@
   [headers.values]
     X-Robots-Tag = "noindex, nofollow"
 
-# Proxy requests that were redirected from api.opensvm.com
-# The condition checks if the request came from api.opensvm.com domain
-# Exclude static assets from being redirected
 [[redirects]]
   from = "/api/*"
   to = "/api/proxy/rpc/:splat"
@@ -65,8 +51,6 @@
   force = false
   conditions = {Referer = ["https://api.opensvm.com/*", "http://api.opensvm.com/*"]}
 
-# Alternative: Check for a specific header that indicates redirection from api.opensvm.com
-# Exclude static assets from being redirected
 [[redirects]]
   from = "/api/*"
   to = "/api/proxy/rpc/:splat"
@@ -74,7 +58,6 @@
   force = false
   headers = {X-Original-Host = "api.opensvm.com"}
 
-# Redirect attempts to access config files to 404
 [[redirects]]
   from = "/lib/rpc-config.json"
   to = "/404"
