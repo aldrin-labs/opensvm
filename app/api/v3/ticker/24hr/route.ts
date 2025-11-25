@@ -1,0 +1,201 @@
+// Binance-compatible 24hr Ticker endpoint
+// GET /api/v3/ticker/24hr - 24 hour rolling window price change statistics
+
+import { NextRequest, NextResponse } from 'next/server';
+import { Ticker24hr, BinanceError } from '@/lib/trading/binance-types';
+
+export const runtime = 'edge';
+
+// Cache for ticker data
+const tickerCache = new Map<string, { data: Ticker24hr; timestamp: number }>();
+const CACHE_TTL = 10000; // 10 seconds
+
+// Token mint addresses
+const TOKEN_MINTS: Record<string, string> = {
+  SOL: 'So11111111111111111111111111111111111111112',
+  USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+  USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+  BONK: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
+  JUP: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+  RAY: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
+  ORCA: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
+  WIF: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
+  PYTH: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
+  MSOL: 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
+};
+
+// Supported symbols
+const SUPPORTED_SYMBOLS = [
+  'SOLUSDC', 'SOLUSDT', 'BONKUSDC', 'BONKSOL', 'JUPUSDC', 'JUPSOL',
+  'RAYUSDC', 'RAYSOL', 'ORCAUSDC', 'WIFUSDC', 'WIFSOL', 'PYTHUSDC',
+  'MSOLSOL', 'MSOLUSDC',
+];
+
+// Parse symbol to get base/quote
+function parseSymbol(symbol: string): { base: string; quote: string } | null {
+  const quotes = ['USDC', 'USDT', 'SOL'];
+  for (const quote of quotes) {
+    if (symbol.endsWith(quote)) {
+      return { base: symbol.slice(0, -quote.length), quote };
+    }
+  }
+  return null;
+}
+
+// Fetch token price from Birdeye
+async function fetchTokenPrice(mint: string): Promise<{
+  price: number;
+  priceChange24h: number;
+  volume24h: number;
+  high24h: number;
+  low24h: number;
+} | null> {
+  const apiKey = process.env.BIRDEYE_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const response = await fetch(
+      `https://public-api.birdeye.so/defi/token_overview?address=${mint}`,
+      {
+        headers: {
+          'Accept': 'application/json',
+          'X-API-KEY': apiKey,
+          'x-chain': 'solana',
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (!data.success || !data.data) return null;
+
+    return {
+      price: data.data.price || 0,
+      priceChange24h: data.data.priceChange24hPercent || 0,
+      volume24h: data.data.v24hUSD || 0,
+      high24h: data.data.high24h || data.data.price * 1.02,
+      low24h: data.data.low24h || data.data.price * 0.98,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// Generate ticker data for a symbol
+async function generateTicker(symbol: string): Promise<Ticker24hr | null> {
+  const parsed = parseSymbol(symbol);
+  if (!parsed) return null;
+
+  const { base, quote } = parsed;
+  const baseMint = TOKEN_MINTS[base];
+  const quoteMint = TOKEN_MINTS[quote];
+
+  if (!baseMint) return null;
+
+  // Fetch price data
+  const baseData = await fetchTokenPrice(baseMint);
+  const quoteData = quote !== 'USDC' && quote !== 'USDT' ? await fetchTokenPrice(quoteMint) : null;
+
+  if (!baseData) return null;
+
+  // Calculate price in quote asset
+  let price = baseData.price;
+  let quotePrice = 1;
+
+  if (quoteData) {
+    quotePrice = quoteData.price;
+    price = baseData.price / quotePrice;
+  }
+
+  const priceChange = price * (baseData.priceChange24h / 100);
+  const openPrice = price - priceChange;
+
+  const now = Date.now();
+  const dayAgo = now - 24 * 60 * 60 * 1000;
+
+  return {
+    symbol,
+    priceChange: priceChange.toFixed(8),
+    priceChangePercent: baseData.priceChange24h.toFixed(2),
+    weightedAvgPrice: price.toFixed(8),
+    prevClosePrice: openPrice.toFixed(8),
+    lastPrice: price.toFixed(8),
+    lastQty: '0',
+    bidPrice: (price * 0.999).toFixed(8),
+    bidQty: '100',
+    askPrice: (price * 1.001).toFixed(8),
+    askQty: '100',
+    openPrice: openPrice.toFixed(8),
+    highPrice: (baseData.high24h / quotePrice).toFixed(8),
+    lowPrice: (baseData.low24h / quotePrice).toFixed(8),
+    volume: (baseData.volume24h / price).toFixed(8),
+    quoteVolume: baseData.volume24h.toFixed(8),
+    openTime: dayAgo,
+    closeTime: now,
+    firstId: 0,
+    lastId: 0,
+    count: 0,
+  };
+}
+
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const symbol = searchParams.get('symbol')?.toUpperCase();
+  const symbols = searchParams.get('symbols');
+
+  try {
+    // Single symbol
+    if (symbol) {
+      // Check cache
+      const cached = tickerCache.get(symbol);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return NextResponse.json(cached.data);
+      }
+
+      const ticker = await generateTicker(symbol);
+      if (!ticker) {
+        return NextResponse.json(
+          { code: -1121, msg: 'Invalid symbol.' } as BinanceError,
+          { status: 400 }
+        );
+      }
+
+      tickerCache.set(symbol, { data: ticker, timestamp: Date.now() });
+      return NextResponse.json(ticker);
+    }
+
+    // Multiple symbols
+    let symbolList = SUPPORTED_SYMBOLS;
+    if (symbols) {
+      try {
+        symbolList = JSON.parse(symbols).map((s: string) => s.toUpperCase());
+      } catch {
+        // Invalid JSON, use default
+      }
+    }
+
+    // Fetch all tickers in parallel
+    const tickerPromises = symbolList.map(async (sym) => {
+      const cached = tickerCache.get(sym);
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        return cached.data;
+      }
+
+      const ticker = await generateTicker(sym);
+      if (ticker) {
+        tickerCache.set(sym, { data: ticker, timestamp: Date.now() });
+      }
+      return ticker;
+    });
+
+    const tickers = (await Promise.all(tickerPromises)).filter(Boolean);
+    return NextResponse.json(tickers);
+  } catch (error) {
+    console.error('Ticker error:', error);
+    return NextResponse.json(
+      { code: -1000, msg: 'Internal error' } as BinanceError,
+      { status: 500 }
+    );
+  }
+}
