@@ -1194,6 +1194,92 @@ The OpenSVM Trading API provides Binance Spot API-compatible endpoints for tradi
 - `-2011` - Cancel rejected
 - `-2013` - Order does not exist
 
+### 96. IDL (Interface Definition Language) API
+
+Store, retrieve, and search Anchor IDL JSONs for Solana programs.
+
+#### List IDLs
+
+- **GET /api/idl** - List all stored IDLs
+  - Parameters:
+    - `network` (string, optional): Filter by network (mainnet, devnet, testnet, localnet)
+    - `verified` (boolean, optional): Filter by verified status
+    - `source` (string, optional): Filter by source (anchor, manual, onchain, github)
+    - `limit` (integer, optional, default: 100): Max results
+    - `offset` (integer, optional, default: 0): Pagination offset
+  - Example: `curl "https://opensvm.com/api/idl?network=mainnet&limit=10"`
+
+#### Get IDL by Program ID
+
+- **GET /api/idl/:programId** - Get IDL for a specific program
+  - Path Parameters:
+    - `programId` (string, required): Solana program address
+  - Query Parameters:
+    - `network` (string, optional, default: mainnet): Network to search
+    - `all` (boolean, optional): Return IDLs for all networks
+  - Example: `curl "https://opensvm.com/api/idl/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"`
+  - Response includes: programId, name, version, description, idl (full JSON), instructionCount, accountCount, typeCount, errorCount
+
+#### Upload IDL
+
+- **POST /api/idl** - Store a new IDL
+  - Request Body:
+    ```json
+    {
+      "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "idl": { ... },  // Full Anchor IDL JSON
+      "network": "mainnet",
+      "verified": false,
+      "source": "manual",
+      "sourceUrl": "https://github.com/..."
+    }
+    ```
+  - Required fields: programId, idl
+  - Optional fields: network, verified, source, sourceUrl
+  - Example:
+    ```bash
+    curl -X POST "https://opensvm.com/api/idl" \
+      -H "Content-Type: application/json" \
+      -d '{"programId": "...", "idl": {...}}'
+    ```
+
+#### Search IDLs
+
+- **GET /api/idl/search** - Search IDLs by name, program ID, or instruction names
+  - Parameters:
+    - `q` (string, required): Search query (min 2 chars)
+    - `network` (string, optional): Filter by network
+    - `verified` (boolean, optional): Filter by verified status
+    - `limit` (integer, optional, default: 20): Max results
+  - Searches across: program ID, name, description, instruction names, account names, type names
+  - Example: `curl "https://opensvm.com/api/idl/search?q=token"`
+  - Example: `curl "https://opensvm.com/api/idl/search?q=transfer&network=mainnet"`
+
+#### Get IDL Stats
+
+- **GET /api/idl/stats** - Get IDL database statistics
+  - Example: `curl "https://opensvm.com/api/idl/stats"`
+  - Response: totalIDLs, verifiedIDLs, byNetwork, bySource, totalInstructions
+
+#### Delete IDL
+
+- **DELETE /api/idl/:programId** - Delete an IDL
+  - Path Parameters:
+    - `programId` (string, required): Program address
+  - Query Parameters:
+    - `network` (string, optional, default: mainnet): Network to delete from
+  - Example: `curl -X DELETE "https://opensvm.com/api/idl/TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"`
+
+#### IDL Format
+
+Supports Anchor IDL format (v0.30+) with:
+- `address`: Program address
+- `metadata`: { name, version, spec, description }
+- `instructions`: Array of instruction definitions
+- `accounts`: Account type definitions
+- `types`: Custom type definitions
+- `errors`: Error codes and messages
+
 
 ## Response Formats
 

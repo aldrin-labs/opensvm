@@ -133,6 +133,7 @@ const openApiSpec = {
     { name: 'Monitoring', description: 'Health checks and monitoring' },
     { name: 'Trading', description: 'Trading terminal and market data' },
     { name: 'Trading API v3', description: 'Binance-compatible trading API with DEX aggregation via Jupiter (17 endpoints)' },
+    { name: 'IDL', description: 'Store, retrieve, and search Anchor IDL JSONs for Solana programs (6 endpoints)' },
     { name: 'Auth', description: 'Authentication and API key management' }
   ],
   paths: {},
@@ -945,6 +946,98 @@ const tradingApiV3Endpoints = {
 
 // Merge Trading API v3 endpoints
 Object.assign(openApiSpec.paths, tradingApiV3Endpoints);
+
+// Add IDL API endpoints
+const idlApiEndpoints = {
+  '/idl': {
+    get: {
+      tags: ['IDL'],
+      summary: 'List IDLs',
+      description: 'List all stored IDLs with optional filters',
+      parameters: [
+        { name: 'network', in: 'query', schema: { type: 'string', enum: ['mainnet', 'devnet', 'testnet', 'localnet'] }, description: 'Filter by network' },
+        { name: 'verified', in: 'query', schema: { type: 'boolean' }, description: 'Filter by verified status' },
+        { name: 'source', in: 'query', schema: { type: 'string', enum: ['anchor', 'manual', 'onchain', 'github'] }, description: 'Filter by source' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100 }, description: 'Max results' },
+        { name: 'offset', in: 'query', schema: { type: 'integer', default: 0 }, description: 'Pagination offset' }
+      ],
+      responses: { '200': { description: 'List of IDLs' } }
+    },
+    post: {
+      tags: ['IDL'],
+      summary: 'Upload IDL',
+      description: 'Store a new IDL for a Solana program',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['programId', 'idl'],
+              properties: {
+                programId: { type: 'string', description: 'Solana program address' },
+                idl: { type: 'object', description: 'Full Anchor IDL JSON' },
+                network: { type: 'string', enum: ['mainnet', 'devnet', 'testnet', 'localnet'], default: 'mainnet' },
+                verified: { type: 'boolean', default: false },
+                source: { type: 'string', enum: ['anchor', 'manual', 'onchain', 'github'] },
+                sourceUrl: { type: 'string', description: 'URL to source (e.g., GitHub repo)' }
+              }
+            }
+          }
+        }
+      },
+      responses: { '201': { description: 'IDL stored successfully' }, '400': { description: 'Invalid IDL or parameters' } }
+    }
+  },
+  '/idl/{programId}': {
+    get: {
+      tags: ['IDL'],
+      summary: 'Get IDL by Program ID',
+      description: 'Get the IDL for a specific Solana program',
+      parameters: [
+        { name: 'programId', in: 'path', required: true, schema: { type: 'string' }, description: 'Solana program address' },
+        { name: 'network', in: 'query', schema: { type: 'string', default: 'mainnet' }, description: 'Network to search' },
+        { name: 'all', in: 'query', schema: { type: 'boolean' }, description: 'Return IDLs for all networks' }
+      ],
+      responses: { '200': { description: 'IDL details with full JSON' }, '404': { description: 'IDL not found' } }
+    },
+    delete: {
+      tags: ['IDL'],
+      summary: 'Delete IDL',
+      description: 'Delete an IDL for a program',
+      parameters: [
+        { name: 'programId', in: 'path', required: true, schema: { type: 'string' }, description: 'Solana program address' },
+        { name: 'network', in: 'query', schema: { type: 'string', default: 'mainnet' }, description: 'Network to delete from' }
+      ],
+      responses: { '200': { description: 'IDL deleted' }, '404': { description: 'IDL not found' } }
+    }
+  },
+  '/idl/search': {
+    get: {
+      tags: ['IDL'],
+      summary: 'Search IDLs',
+      description: 'Search IDLs by name, program ID, instruction names, or account names',
+      parameters: [
+        { name: 'q', in: 'query', required: true, schema: { type: 'string', minLength: 2 }, description: 'Search query' },
+        { name: 'network', in: 'query', schema: { type: 'string' }, description: 'Filter by network' },
+        { name: 'verified', in: 'query', schema: { type: 'boolean' }, description: 'Filter by verified status' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 20 }, description: 'Max results' }
+      ],
+      responses: { '200': { description: 'Search results' } }
+    }
+  },
+  '/idl/stats': {
+    get: {
+      tags: ['IDL'],
+      summary: 'Get IDL Stats',
+      description: 'Get statistics about stored IDLs',
+      responses: { '200': { description: 'IDL statistics' } }
+    }
+  }
+};
+
+// Merge IDL API endpoints
+Object.assign(openApiSpec.paths, idlApiEndpoints);
 
 // Write OpenAPI spec to file
 const outputPath = path.join(process.cwd(), 'public', 'openapi.json');
