@@ -107,7 +107,8 @@ class OpenAPIGenerator {
         { name: 'Analytics', description: 'DeFi analytics, validator metrics, and ecosystem health (12 endpoints)' },
         { name: 'AI-Powered', description: 'AI-powered analysis, question answering, and insights (6 endpoints)' },
         { name: 'Real-Time', description: 'Server-sent events, streaming data, and live feeds (6 endpoints)' },
-        { name: 'User Services', description: 'User profiles, activity feeds, and personalization (14 endpoints)' }
+        { name: 'User Services', description: 'User profiles, activity feeds, and personalization (14 endpoints)' },
+        { name: 'Trading API', description: 'Binance-compatible trading API with DEX aggregation via Jupiter (17 endpoints)' }
       ]
     };
 
@@ -870,6 +871,349 @@ class OpenAPIGenerator {
         '200': { status: 200, description: 'Token metadata' }
       },
       operationId: 'tokenMetadata'
+    });
+
+    // ============= BINANCE-COMPATIBLE TRADING API (17 methods) =============
+    // Connectivity
+    this.addEndpoint({
+      path: '/v3/ping',
+      method: 'GET',
+      summary: 'Test Connectivity',
+      description: 'Test connectivity to the trading API',
+      tags: ['Trading API'],
+      responses: {
+        '200': { status: 200, description: 'API is reachable', schema: { type: 'object' } }
+      },
+      operationId: 'tradingPing'
+    });
+
+    this.addEndpoint({
+      path: '/v3/time',
+      method: 'GET',
+      summary: 'Server Time',
+      description: 'Get current server time',
+      tags: ['Trading API'],
+      responses: {
+        '200': { status: 200, description: 'Server time', schema: { type: 'object', properties: { serverTime: { type: 'integer' } } } }
+      },
+      operationId: 'tradingTime'
+    });
+
+    // Market Data
+    this.addEndpoint({
+      path: '/v3/exchangeInfo',
+      method: 'GET',
+      summary: 'Exchange Information',
+      description: 'Get trading pairs and exchange rules',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', schema: { type: 'string' }, description: 'Filter by symbol (e.g., SOLUSDC)' },
+        { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Filter by multiple symbols (JSON array)' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Exchange information' }
+      },
+      operationId: 'exchangeInfo'
+    });
+
+    this.addEndpoint({
+      path: '/v3/ticker/price',
+      method: 'GET',
+      summary: 'Current Price',
+      description: 'Get current price for a symbol',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair (e.g., SOLUSDC)' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Price ticker', schema: { type: 'object', properties: { symbol: { type: 'string' }, price: { type: 'string' } } } }
+      },
+      operationId: 'tickerPrice'
+    });
+
+    this.addEndpoint({
+      path: '/v3/ticker/24hr',
+      method: 'GET',
+      summary: '24hr Statistics',
+      description: 'Get 24-hour price change statistics',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' }
+      ],
+      responses: {
+        '200': { status: 200, description: '24hr statistics' }
+      },
+      operationId: 'ticker24hr'
+    });
+
+    this.addEndpoint({
+      path: '/v3/ticker/bookTicker',
+      method: 'GET',
+      summary: 'Best Bid/Ask',
+      description: 'Get best bid and ask prices',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Book ticker' }
+      },
+      operationId: 'bookTicker'
+    });
+
+    this.addEndpoint({
+      path: '/v3/depth',
+      method: 'GET',
+      summary: 'Order Book',
+      description: 'Get order book depth',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100 }, description: 'Depth limit (5, 10, 20, 50, 100, 500, 1000)' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Order book' }
+      },
+      operationId: 'orderBookDepth'
+    });
+
+    this.addEndpoint({
+      path: '/v3/trades',
+      method: 'GET',
+      summary: 'Recent Trades',
+      description: 'Get recent trades for a symbol',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500, maximum: 1000 }, description: 'Number of trades' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Recent trades' }
+      },
+      operationId: 'recentTrades'
+    });
+
+    this.addEndpoint({
+      path: '/v3/klines',
+      method: 'GET',
+      summary: 'Candlestick Data',
+      description: 'Get OHLCV candlestick data',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'interval', in: 'query', required: true, schema: { type: 'string', enum: ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'] }, description: 'Kline interval' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500, maximum: 1000 }, description: 'Number of candles' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Candlestick data' }
+      },
+      operationId: 'klines'
+    });
+
+    // Order Management
+    this.addEndpoint({
+      path: '/v3/order',
+      method: 'POST',
+      summary: 'Create Order',
+      description: 'Create a new order (MARKET or LIMIT)',
+      tags: ['Trading API'],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                symbol: { type: 'string', description: 'Trading pair (e.g., SOLUSDC)' },
+                side: { type: 'string', enum: ['BUY', 'SELL'], description: 'Order side' },
+                type: { type: 'string', enum: ['MARKET', 'LIMIT'], description: 'Order type' },
+                quantity: { type: 'string', description: 'Order quantity' },
+                price: { type: 'string', description: 'Limit price (required for LIMIT orders)' },
+                timeInForce: { type: 'string', enum: ['GTC', 'IOC', 'FOK'], description: 'Time in force' },
+                walletAddress: { type: 'string', description: 'Solana wallet address' },
+                slippageBps: { type: 'integer', default: 50, description: 'Slippage tolerance in basis points' }
+              },
+              required: ['symbol', 'side', 'type', 'quantity', 'walletAddress']
+            }
+          }
+        }
+      },
+      responses: {
+        '200': { status: 200, description: 'Order created' },
+        '400': { status: 400, description: 'Invalid order parameters' }
+      },
+      operationId: 'createOrder'
+    });
+
+    this.addEndpoint({
+      path: '/v3/order',
+      method: 'GET',
+      summary: 'Query Order',
+      description: 'Get order status by order ID',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'orderId', in: 'query', required: true, schema: { type: 'integer' }, description: 'Order ID' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Order details' },
+        '404': { status: 404, description: 'Order not found' }
+      },
+      operationId: 'queryOrder'
+    });
+
+    this.addEndpoint({
+      path: '/v3/order',
+      method: 'DELETE',
+      summary: 'Cancel Order',
+      description: 'Cancel an open order',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'orderId', in: 'query', required: true, schema: { type: 'integer' }, description: 'Order ID to cancel' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Order cancelled' },
+        '400': { status: 400, description: 'Cannot cancel order' }
+      },
+      operationId: 'cancelOrder'
+    });
+
+    this.addEndpoint({
+      path: '/v3/openOrders',
+      method: 'GET',
+      summary: 'Open Orders',
+      description: 'Get all open orders',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', schema: { type: 'string' }, description: 'Filter by symbol' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Open orders list' }
+      },
+      operationId: 'openOrders'
+    });
+
+    this.addEndpoint({
+      path: '/v3/allOrders',
+      method: 'GET',
+      summary: 'All Orders',
+      description: 'Get all orders (including filled and cancelled)',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500, maximum: 1000 }, description: 'Max orders to return' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'All orders list' }
+      },
+      operationId: 'allOrders'
+    });
+
+    // Account
+    this.addEndpoint({
+      path: '/v3/account',
+      method: 'GET',
+      summary: 'Account Information',
+      description: 'Get account balances and information',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'walletAddress', in: 'query', required: true, schema: { type: 'string' }, description: 'Solana wallet address' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Account information with balances' }
+      },
+      operationId: 'accountInfo'
+    });
+
+    this.addEndpoint({
+      path: '/v3/myTrades',
+      method: 'GET',
+      summary: 'Trade History',
+      description: 'Get trade history for account',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500, maximum: 1000 }, description: 'Max trades to return' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Trade history' }
+      },
+      operationId: 'myTrades'
+    });
+
+    // Swap (Jupiter)
+    this.addEndpoint({
+      path: '/v3/swap',
+      method: 'GET',
+      summary: 'Swap Quote',
+      description: 'Get swap quote from Jupiter DEX aggregator',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'inputMint', in: 'query', required: true, schema: { type: 'string' }, description: 'Input token mint address' },
+        { name: 'outputMint', in: 'query', required: true, schema: { type: 'string' }, description: 'Output token mint address' },
+        { name: 'amount', in: 'query', required: true, schema: { type: 'string' }, description: 'Input amount (in smallest units)' },
+        { name: 'slippageBps', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Slippage in basis points' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'Swap quote' }
+      },
+      operationId: 'swapQuote'
+    });
+
+    this.addEndpoint({
+      path: '/v3/swap',
+      method: 'POST',
+      summary: 'Execute Swap',
+      description: 'Get serialized swap transaction for signing',
+      tags: ['Trading API'],
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              properties: {
+                inputMint: { type: 'string', description: 'Input token mint' },
+                outputMint: { type: 'string', description: 'Output token mint' },
+                amount: { type: 'string', description: 'Input amount' },
+                userPublicKey: { type: 'string', description: 'User wallet address' },
+                slippageBps: { type: 'integer', description: 'Slippage tolerance' }
+              },
+              required: ['inputMint', 'outputMint', 'amount', 'userPublicKey']
+            }
+          }
+        }
+      },
+      responses: {
+        '200': { status: 200, description: 'Serialized transaction' }
+      },
+      operationId: 'executeSwap'
+    });
+
+    // Streaming
+    this.addEndpoint({
+      path: '/v3/ws',
+      method: 'GET',
+      summary: 'WebSocket Stream (SSE)',
+      description: 'Real-time data streaming via Server-Sent Events',
+      tags: ['Trading API'],
+      parameters: [
+        { name: 'streams', in: 'query', required: true, schema: { type: 'string' }, description: 'Comma-separated stream names (e.g., solusdc@ticker,solusdc@trade)' }
+      ],
+      responses: {
+        '200': { status: 200, description: 'SSE stream' }
+      },
+      operationId: 'wsStream'
     });
   }
 

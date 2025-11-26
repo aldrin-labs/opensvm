@@ -10,8 +10,8 @@ OpenSVM is a comprehensive Solana blockchain explorer and analytics platform wit
 ## Authentication
 Most endpoints are public. Some endpoints require JWT authentication via Bearer token in Authorization header.
 
-## API Health Status (Last Check: November 12, 2025)
-- **Total Endpoints:** 193 across 94 categories
+## API Health Status (Last Check: November 26, 2025)
+- **Total Endpoints:** 210+ across 95 categories (including 17 Binance-compatible Trading API endpoints)
 - **Auto-Generated Documentation:** Complete reference with parameter descriptions and types
 - **Enhanced Features:** Request/response schemas, authentication requirements, example requests
 - **Documentation Source:** API_REFERENCE.md (auto-generated from source code)
@@ -994,6 +994,205 @@ Most endpoints are public. Some endpoints require JWT authentication via Bearer 
 
 - **GET /api/websocket-info** - WebSocket info endpoint
   - Example: `curl "https://opensvm.com/api/websocket-info"`
+
+### 95. BINANCE-COMPATIBLE TRADING API (v3)
+
+The OpenSVM Trading API provides Binance Spot API-compatible endpoints for trading on Solana via DEX aggregation (Jupiter). All endpoints are under `/api/v3/`.
+
+#### Connectivity
+
+- **GET /api/v3/ping** - Test connectivity
+  - Example: `curl "https://opensvm.com/api/v3/ping"`
+  - Response: `{}`
+
+- **GET /api/v3/time** - Get server time
+  - Example: `curl "https://opensvm.com/api/v3/time"`
+  - Response: `{"serverTime": 1732556789000}`
+
+#### Market Data
+
+- **GET /api/v3/exchangeInfo** - Get trading pairs and rules
+  - Parameters:
+    - `symbol` (string, optional): Filter by symbol (e.g., "SOLUSDC")
+    - `symbols` (string, optional): Filter by multiple symbols
+  - Example: `curl "https://opensvm.com/api/v3/exchangeInfo?symbol=SOLUSDC"`
+
+- **GET /api/v3/ticker/price** - Get current price
+  - Parameters:
+    - `symbol` (string, required): Trading pair (e.g., "SOLUSDC", "JUPUSDC")
+  - Example: `curl "https://opensvm.com/api/v3/ticker/price?symbol=SOLUSDC"`
+  - Response: `{"symbol": "SOLUSDC", "price": "150.25"}`
+
+- **GET /api/v3/ticker/24hr** - Get 24-hour statistics
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+  - Example: `curl "https://opensvm.com/api/v3/ticker/24hr?symbol=SOLUSDC"`
+
+- **GET /api/v3/ticker/bookTicker** - Get best bid/ask
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+  - Example: `curl "https://opensvm.com/api/v3/ticker/bookTicker?symbol=SOLUSDC"`
+
+- **GET /api/v3/depth** - Get order book
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `limit` (integer, optional, default: 100): Depth limit (5, 10, 20, 50, 100, 500, 1000)
+  - Example: `curl "https://opensvm.com/api/v3/depth?symbol=SOLUSDC&limit=20"`
+
+- **GET /api/v3/trades** - Get recent trades
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `limit` (integer, optional, default: 500): Max 1000
+  - Example: `curl "https://opensvm.com/api/v3/trades?symbol=SOLUSDC&limit=100"`
+
+- **GET /api/v3/klines** - Get candlestick data
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `interval` (string, required): 1m, 5m, 15m, 30m, 1h, 4h, 1d, 1w
+    - `startTime` (integer, optional): Start timestamp (ms)
+    - `endTime` (integer, optional): End timestamp (ms)
+    - `limit` (integer, optional, default: 500): Max 1000
+  - Example: `curl "https://opensvm.com/api/v3/klines?symbol=SOLUSDC&interval=1h&limit=24"`
+
+#### Order Management
+
+- **POST /api/v3/order** - Create new order
+  - Request Body:
+    - `symbol` (string, required): Trading pair (e.g., "SOLUSDC")
+    - `side` (string, required): "BUY" or "SELL"
+    - `type` (string, required): "MARKET" or "LIMIT"
+    - `quantity` (string, required): Order quantity
+    - `price` (string, optional): Price for LIMIT orders
+    - `timeInForce` (string, optional): "GTC", "IOC", "FOK"
+    - `walletAddress` (string, required): User's Solana wallet address
+    - `slippageBps` (integer, optional, default: 50): Slippage tolerance in basis points
+  - Examples:
+    ```bash
+    # Market order
+    curl -X POST "https://opensvm.com/api/v3/order" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "symbol": "SOLUSDC",
+        "side": "BUY",
+        "type": "MARKET",
+        "quantity": "1.5",
+        "walletAddress": "7v91N7iZ9mNicL8WfG6cgSCKyRXydQjLh6UYBWwm6y1Q"
+      }'
+
+    # Limit order
+    curl -X POST "https://opensvm.com/api/v3/order" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "symbol": "SOLUSDC",
+        "side": "BUY",
+        "type": "LIMIT",
+        "quantity": "2.0",
+        "price": "145.00",
+        "timeInForce": "GTC",
+        "walletAddress": "7v91N7iZ9mNicL8WfG6cgSCKyRXydQjLh6UYBWwm6y1Q"
+      }'
+    ```
+
+- **GET /api/v3/order** - Query order status
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `orderId` (integer, required): Order ID
+  - Example: `curl "https://opensvm.com/api/v3/order?symbol=SOLUSDC&orderId=123"`
+
+- **DELETE /api/v3/order** - Cancel order
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `orderId` (integer, required): Order ID to cancel
+  - Example: `curl -X DELETE "https://opensvm.com/api/v3/order?symbol=SOLUSDC&orderId=123"`
+
+- **GET /api/v3/openOrders** - Get all open orders
+  - Parameters:
+    - `symbol` (string, optional): Filter by symbol
+    - `walletAddress` (string, optional): Filter by wallet
+  - Example: `curl "https://opensvm.com/api/v3/openOrders?walletAddress=7v91N7iZ..."`
+
+- **GET /api/v3/allOrders** - Get all orders (including filled/cancelled)
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `walletAddress` (string, optional): Filter by wallet
+    - `startTime` (integer, optional): Start timestamp (ms)
+    - `endTime` (integer, optional): End timestamp (ms)
+    - `limit` (integer, optional, default: 500): Max 1000
+  - Example: `curl "https://opensvm.com/api/v3/allOrders?symbol=SOLUSDC&limit=100"`
+
+#### Account
+
+- **GET /api/v3/account** - Get account information
+  - Parameters:
+    - `walletAddress` (string, required): Solana wallet address
+  - Response includes:
+    - Wallet balances (SOL and SPL tokens)
+    - Permissions
+    - Account status
+  - Example: `curl "https://opensvm.com/api/v3/account?walletAddress=7v91N7iZ9mNicL8WfG6cgSCKyRXydQjLh6UYBWwm6y1Q"`
+
+- **GET /api/v3/myTrades** - Get trade history
+  - Parameters:
+    - `symbol` (string, required): Trading pair
+    - `walletAddress` (string, optional): Filter by wallet
+    - `startTime` (integer, optional): Start timestamp (ms)
+    - `endTime` (integer, optional): End timestamp (ms)
+    - `limit` (integer, optional, default: 500): Max 1000
+  - Example: `curl "https://opensvm.com/api/v3/myTrades?symbol=SOLUSDC&walletAddress=7v91N7iZ..."`
+
+#### Swap (Jupiter Integration)
+
+- **GET /api/v3/swap** - Get swap quote
+  - Parameters:
+    - `inputMint` (string, required): Input token mint address
+    - `outputMint` (string, required): Output token mint address
+    - `amount` (string, required): Input amount (in smallest units)
+    - `slippageBps` (integer, optional, default: 50): Slippage in basis points
+  - Example: `curl "https://opensvm.com/api/v3/swap?inputMint=So11111111...&outputMint=EPjFWdd5...&amount=1000000000"`
+
+- **POST /api/v3/swap** - Execute swap
+  - Request Body:
+    - `inputMint` (string, required): Input token mint
+    - `outputMint` (string, required): Output token mint
+    - `amount` (string, required): Input amount
+    - `userPublicKey` (string, required): User's wallet address
+    - `slippageBps` (integer, optional): Slippage tolerance
+  - Returns: Serialized transaction for signing
+
+#### Streaming (SSE)
+
+- **GET /api/v3/ws** - WebSocket-like streaming via Server-Sent Events
+  - Parameters:
+    - `streams` (string, required): Comma-separated stream names
+  - Supported streams:
+    - `solusdc@ticker` - Real-time ticker updates
+    - `solusdc@depth` - Order book updates
+    - `solusdc@trade` - Trade updates
+    - `solusdc@kline_1m` - 1-minute candles
+  - Example:
+    ```bash
+    curl -N "https://opensvm.com/api/v3/ws?streams=solusdc@ticker,solusdc@trade"
+    ```
+
+#### Order States
+- `NEW` - Order accepted, awaiting execution
+- `PARTIALLY_FILLED` - Partially executed
+- `FILLED` - Fully executed
+- `CANCELED` - Cancelled by user
+- `REJECTED` - Rejected by system (insufficient funds, invalid params)
+- `EXPIRED` - Order expired (time-in-force)
+
+#### Error Codes (Binance-compatible)
+- `-1000` - Unknown error
+- `-1001` - Disconnected
+- `-1002` - Unauthorized
+- `-1003` - Too many requests
+- `-1015` - Too many orders
+- `-1021` - Timestamp out of recv window
+- `-1022` - Invalid signature
+- `-2010` - New order rejected
+- `-2011` - Cancel rejected
+- `-2013` - Order does not exist
 
 
 ## Response Formats

@@ -118,7 +118,7 @@ export default function SwaggerPage() {
                 </h1>
               </div>
               <p className="text-slate-600 dark:text-slate-400 text-lg ml-14">
-                Complete REST API reference with 98 endpoints
+                Complete REST API reference with 210+ endpoints including Binance-compatible Trading API
               </p>
             </div>
             <div className="flex gap-3">
@@ -162,15 +162,18 @@ export default function SwaggerPage() {
                 Complete API Reference with TypeScript Schemas
               </h3>
               <p className="text-sm text-blue-800/90 dark:text-blue-300/90 mb-3 leading-relaxed">
-                Explore all <strong className="font-bold">98 API endpoints</strong> with detailed TypeScript response schemas,
-                request parameters, and ready-to-use cURL examples. Click any endpoint to see full documentation.
+                Explore all <strong className="font-bold">210+ API endpoints</strong> with detailed TypeScript response schemas,
+                request parameters, and ready-to-use cURL examples. Includes <strong>Binance-compatible Trading API v3</strong> for DEX trading.
               </p>
               <div className="flex flex-wrap gap-2.5 mt-4">
                 <span className="px-3 py-1.5 text-xs font-semibold bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-200 rounded-lg border border-blue-200 dark:border-blue-800">
                   50+ Response Schemas
                 </span>
                 <span className="px-3 py-1.5 text-xs font-semibold bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-200 rounded-lg border border-green-200 dark:border-green-800">
-                  98 API Endpoints
+                  210+ API Endpoints
+                </span>
+                <span className="px-3 py-1.5 text-xs font-semibold bg-orange-100 dark:bg-orange-900/50 text-orange-800 dark:text-orange-200 rounded-lg border border-orange-200 dark:border-orange-800">
+                  Trading API v3 (Binance-compatible)
                 </span>
                 <span className="px-3 py-1.5 text-xs font-semibold bg-purple-100 dark:bg-purple-900/50 text-purple-800 dark:text-purple-200 rounded-lg border border-purple-200 dark:border-purple-800">
                   Full TypeScript Types

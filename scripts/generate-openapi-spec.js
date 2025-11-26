@@ -8,8 +8,14 @@
 const fs = require('fs');
 const path = require('path');
 
-// Read API_REFERENCE.md
-const apiRefPath = path.join(process.cwd(), 'API_REFERENCE.md');
+// Read API_REFERENCE.md (try multiple locations)
+let apiRefPath = path.join(process.cwd(), 'API_REFERENCE.md');
+if (!fs.existsSync(apiRefPath)) {
+  apiRefPath = path.join(process.cwd(), 'docs/api/API_REFERENCE.md');
+}
+if (!fs.existsSync(apiRefPath)) {
+  apiRefPath = path.join(process.cwd(), 'public/API_REFERENCE.md');
+}
 const apiRefContent = fs.readFileSync(apiRefPath, 'utf-8');
 
 // Parse the markdown to extract endpoint information
@@ -126,6 +132,7 @@ const openApiSpec = {
     { name: 'Real-Time', description: 'Streaming and SSE endpoints' },
     { name: 'Monitoring', description: 'Health checks and monitoring' },
     { name: 'Trading', description: 'Trading terminal and market data' },
+    { name: 'Trading API v3', description: 'Binance-compatible trading API with DEX aggregation via Jupiter (17 endpoints)' },
     { name: 'Auth', description: 'Authentication and API key management' }
   ],
   paths: {},
@@ -691,12 +698,261 @@ endpoints.forEach(endpoint => {
   });
 });
 
+// Add Trading API v3 endpoints (Binance-compatible)
+const tradingApiV3Endpoints = {
+  '/v3/ping': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Test Connectivity',
+      description: 'Test connectivity to the trading API',
+      responses: { '200': { description: 'API is reachable', content: { 'application/json': { schema: { type: 'object' } } } } }
+    }
+  },
+  '/v3/time': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Server Time',
+      description: 'Get current server time',
+      responses: { '200': { description: 'Server time', content: { 'application/json': { schema: { type: 'object', properties: { serverTime: { type: 'integer' } } } } } } }
+    }
+  },
+  '/v3/exchangeInfo': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Exchange Information',
+      description: 'Get trading pairs and exchange rules',
+      parameters: [
+        { name: 'symbol', in: 'query', schema: { type: 'string' }, description: 'Filter by symbol (e.g., SOLUSDC)' },
+        { name: 'symbols', in: 'query', schema: { type: 'string' }, description: 'Filter by multiple symbols (JSON array)' }
+      ],
+      responses: { '200': { description: 'Exchange information' } }
+    }
+  },
+  '/v3/ticker/price': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Current Price',
+      description: 'Get current price for a symbol',
+      parameters: [{ name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair (e.g., SOLUSDC)' }],
+      responses: { '200': { description: 'Price ticker', content: { 'application/json': { schema: { type: 'object', properties: { symbol: { type: 'string' }, price: { type: 'string' } } } } } } }
+    }
+  },
+  '/v3/ticker/24hr': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: '24hr Statistics',
+      description: 'Get 24-hour price change statistics',
+      parameters: [{ name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' }],
+      responses: { '200': { description: '24hr statistics' } }
+    }
+  },
+  '/v3/ticker/bookTicker': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Best Bid/Ask',
+      description: 'Get best bid and ask prices',
+      parameters: [{ name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' }],
+      responses: { '200': { description: 'Book ticker' } }
+    }
+  },
+  '/v3/depth': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Order Book',
+      description: 'Get order book depth',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 100 }, description: 'Depth limit (5, 10, 20, 50, 100, 500, 1000)' }
+      ],
+      responses: { '200': { description: 'Order book' } }
+    }
+  },
+  '/v3/trades': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Recent Trades',
+      description: 'Get recent trades for a symbol',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 }, description: 'Number of trades (max 1000)' }
+      ],
+      responses: { '200': { description: 'Recent trades' } }
+    }
+  },
+  '/v3/klines': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Candlestick Data',
+      description: 'Get OHLCV candlestick data',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'interval', in: 'query', required: true, schema: { type: 'string', enum: ['1m', '5m', '15m', '30m', '1h', '4h', '1d', '1w'] }, description: 'Kline interval' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 }, description: 'Number of candles (max 1000)' }
+      ],
+      responses: { '200': { description: 'Candlestick data' } }
+    }
+  },
+  '/v3/order': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Query Order',
+      description: 'Get order status by order ID',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'orderId', in: 'query', required: true, schema: { type: 'integer' }, description: 'Order ID' }
+      ],
+      responses: { '200': { description: 'Order details' }, '404': { description: 'Order not found' } }
+    },
+    post: {
+      tags: ['Trading API v3'],
+      summary: 'Create Order',
+      description: 'Create a new order (MARKET or LIMIT)',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['symbol', 'side', 'type', 'quantity', 'walletAddress'],
+              properties: {
+                symbol: { type: 'string', description: 'Trading pair (e.g., SOLUSDC)' },
+                side: { type: 'string', enum: ['BUY', 'SELL'], description: 'Order side' },
+                type: { type: 'string', enum: ['MARKET', 'LIMIT'], description: 'Order type' },
+                quantity: { type: 'string', description: 'Order quantity' },
+                price: { type: 'string', description: 'Limit price (required for LIMIT orders)' },
+                timeInForce: { type: 'string', enum: ['GTC', 'IOC', 'FOK'], description: 'Time in force' },
+                walletAddress: { type: 'string', description: 'Solana wallet address' },
+                slippageBps: { type: 'integer', default: 50, description: 'Slippage tolerance in basis points' }
+              }
+            }
+          }
+        }
+      },
+      responses: { '200': { description: 'Order created' }, '400': { description: 'Invalid order parameters' } }
+    },
+    delete: {
+      tags: ['Trading API v3'],
+      summary: 'Cancel Order',
+      description: 'Cancel an open order',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'orderId', in: 'query', required: true, schema: { type: 'integer' }, description: 'Order ID to cancel' }
+      ],
+      responses: { '200': { description: 'Order cancelled' }, '400': { description: 'Cannot cancel order' } }
+    }
+  },
+  '/v3/openOrders': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Open Orders',
+      description: 'Get all open orders',
+      parameters: [
+        { name: 'symbol', in: 'query', schema: { type: 'string' }, description: 'Filter by symbol' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' }
+      ],
+      responses: { '200': { description: 'Open orders list' } }
+    }
+  },
+  '/v3/allOrders': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'All Orders',
+      description: 'Get all orders (including filled and cancelled)',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 }, description: 'Max orders to return (max 1000)' }
+      ],
+      responses: { '200': { description: 'All orders list' } }
+    }
+  },
+  '/v3/account': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Account Information',
+      description: 'Get account balances and information',
+      parameters: [{ name: 'walletAddress', in: 'query', required: true, schema: { type: 'string' }, description: 'Solana wallet address' }],
+      responses: { '200': { description: 'Account information with balances' } }
+    }
+  },
+  '/v3/myTrades': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Trade History',
+      description: 'Get trade history for account',
+      parameters: [
+        { name: 'symbol', in: 'query', required: true, schema: { type: 'string' }, description: 'Trading pair' },
+        { name: 'walletAddress', in: 'query', schema: { type: 'string' }, description: 'Filter by wallet' },
+        { name: 'startTime', in: 'query', schema: { type: 'integer' }, description: 'Start time (ms)' },
+        { name: 'endTime', in: 'query', schema: { type: 'integer' }, description: 'End time (ms)' },
+        { name: 'limit', in: 'query', schema: { type: 'integer', default: 500 }, description: 'Max trades to return (max 1000)' }
+      ],
+      responses: { '200': { description: 'Trade history' } }
+    }
+  },
+  '/v3/swap': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'Swap Quote',
+      description: 'Get swap quote from Jupiter DEX aggregator',
+      parameters: [
+        { name: 'inputMint', in: 'query', required: true, schema: { type: 'string' }, description: 'Input token mint address' },
+        { name: 'outputMint', in: 'query', required: true, schema: { type: 'string' }, description: 'Output token mint address' },
+        { name: 'amount', in: 'query', required: true, schema: { type: 'string' }, description: 'Input amount (in smallest units)' },
+        { name: 'slippageBps', in: 'query', schema: { type: 'integer', default: 50 }, description: 'Slippage in basis points' }
+      ],
+      responses: { '200': { description: 'Swap quote' } }
+    },
+    post: {
+      tags: ['Trading API v3'],
+      summary: 'Execute Swap',
+      description: 'Get serialized swap transaction for signing',
+      requestBody: {
+        required: true,
+        content: {
+          'application/json': {
+            schema: {
+              type: 'object',
+              required: ['inputMint', 'outputMint', 'amount', 'userPublicKey'],
+              properties: {
+                inputMint: { type: 'string', description: 'Input token mint' },
+                outputMint: { type: 'string', description: 'Output token mint' },
+                amount: { type: 'string', description: 'Input amount' },
+                userPublicKey: { type: 'string', description: 'User wallet address' },
+                slippageBps: { type: 'integer', description: 'Slippage tolerance' }
+              }
+            }
+          }
+        }
+      },
+      responses: { '200': { description: 'Serialized transaction' } }
+    }
+  },
+  '/v3/ws': {
+    get: {
+      tags: ['Trading API v3'],
+      summary: 'WebSocket Stream (SSE)',
+      description: 'Real-time data streaming via Server-Sent Events. Streams: solusdc@ticker, solusdc@depth, solusdc@trade, solusdc@kline_1m',
+      parameters: [{ name: 'streams', in: 'query', required: true, schema: { type: 'string' }, description: 'Comma-separated stream names' }],
+      responses: { '200': { description: 'SSE stream' } }
+    }
+  }
+};
+
+// Merge Trading API v3 endpoints
+Object.assign(openApiSpec.paths, tradingApiV3Endpoints);
+
 // Write OpenAPI spec to file
 const outputPath = path.join(process.cwd(), 'public', 'openapi.json');
 fs.writeFileSync(outputPath, JSON.stringify(openApiSpec, null, 2));
 
 console.log(`✅ OpenAPI specification generated successfully!`);
 console.log(`📄 Output: ${outputPath}`);
-console.log(`📊 Total endpoints: ${endpoints.length}`);
+console.log(`📊 Total endpoints from API_REFERENCE.md: ${endpoints.length}`);
+console.log(`📊 Trading API v3 endpoints: ${Object.keys(tradingApiV3Endpoints).length}`);
 console.log(`📋 Total paths: ${Object.keys(openApiSpec.paths).length}`);
 console.log(`🏷️  Tags: ${openApiSpec.tags.map(t => t.name).join(', ')}`);
