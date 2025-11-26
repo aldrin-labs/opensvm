@@ -23,9 +23,9 @@ interface RateLimitOptions {
 }
 
 const DEFAULT_OPTIONS: Required<Omit<RateLimitOptions, 'limit' | 'windowMs'>> = {
-  maxRetries: 15000,     // Increased from 10000
-  initialRetryDelay: 25, // Decreased from 50
-  maxRetryDelay: 1000,   // Decreased from 2000
+  maxRetries: 5,         // Reduced from 15000 to 5 to prevent hanging
+  initialRetryDelay: 50, // Increased from 25
+  maxRetryDelay: 1000,
 };
 
 class RateLimiter {
@@ -48,9 +48,9 @@ class RateLimiter {
 
   async rateLimit(key: string, options: RateLimitOptions): Promise<void> {
     const { limit, windowMs, maxRetries = DEFAULT_OPTIONS.maxRetries,
-            initialRetryDelay = DEFAULT_OPTIONS.initialRetryDelay,
-            maxRetryDelay = DEFAULT_OPTIONS.maxRetryDelay } = options;
-    
+      initialRetryDelay = DEFAULT_OPTIONS.initialRetryDelay,
+      maxRetryDelay = DEFAULT_OPTIONS.maxRetryDelay } = options;
+
     let retryCount = 0;
     let delay = initialRetryDelay;
 
@@ -91,10 +91,10 @@ class RateLimiter {
           // Exponential backoff with minimal jitter
           const jitter = Math.random() * 50; // Decreased from 100
           await new Promise(resolve => setTimeout(resolve, delay + jitter));
-          
+
           delay = Math.min(delay * 1.1, maxRetryDelay); // Changed from 1.25 to 1.1
           retryCount++;
-          
+
           if (retryCount % 100 === 0) { // Log less frequently
             console.warn('Rate limit warning:', {
               ...errorDetails,
@@ -133,8 +133,9 @@ class RateLimiter {
 
     // Handle rate limit
     if (entry.count >= limit) {
+      console.warn(`[RateLimit] Key ${key} exceeded limit ${limit}. Count: ${entry.count}`);
       const retryAfter = entry.resetTime - now;
-      
+
       // If close to reset, wait for it
       if (retryAfter < 2000) { // Increased from 1000
         await new Promise(resolve => setTimeout(resolve, retryAfter));

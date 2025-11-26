@@ -33,32 +33,32 @@ export async function middleware(request: NextRequest) {
       return NextResponse.rewrite(url);
     }
   }
-  
+
   // Skip if not an API route
   if (!pathname.startsWith('/api/')) {
     return NextResponse.next();
   }
-  
+
   // Skip excluded paths completely
   if (EXCLUDED_PATHS.some(path => pathname.startsWith(path))) {
     return NextResponse.next();
   }
-  
+
   const startTime = Date.now();
-  
+
   // Extract API key from headers (optional for all endpoints now)
-  const apiKey = request.headers.get('X-API-Key') || 
-                 request.headers.get('Authorization')?.replace('Bearer ', '');
-  
+  const apiKey = request.headers.get('X-API-Key') ||
+    request.headers.get('Authorization')?.replace('Bearer ', '');
+
   // If no API key provided, allow the request to proceed (API key is optional)
   if (!apiKey) {
     return NextResponse.next();
   }
-  
+
   try {
     // Validate the API key if provided (returns ApiKey | null)
     const validatedApiKey = await validateApiKey(apiKey);
-    
+
     if (!validatedApiKey) {
       // Log failed authentication attempt
       await logApiKeyActivity({
@@ -72,29 +72,29 @@ export async function middleware(request: NextRequest) {
           ip: request.headers.get('x-forwarded-for') || request.headers.get('x-real-ip') || 'unknown'
         }
       }).catch(console.error);
-      
+
       return NextResponse.json(
         { error: 'Invalid API key' },
         { status: 401 }
       );
     }
-    
+
     // Clone the request headers to add validated API key info
     const requestHeaders = new Headers(request.headers);
     requestHeaders.set('x-api-key-id', validatedApiKey.id);
     requestHeaders.set('x-api-key-name', validatedApiKey.name);
-    
+
     // Continue with the request
     const response = NextResponse.next({
       request: {
         headers: requestHeaders,
       },
     });
-    
+
     // Log successful API activity (async, don't wait)
     const responseTime = Date.now() - startTime;
     const statusCode = response.status;
-    
+
     logApiKeyActivity({
       apiKeyId: validatedApiKey.id,
       endpoint: pathname,
@@ -106,12 +106,12 @@ export async function middleware(request: NextRequest) {
         userAgent: request.headers.get('user-agent') || 'unknown'
       }
     }).catch(console.error);
-    
+
     return response;
-    
+
   } catch (error) {
     console.error('Middleware error:', error);
-    
+
     // Log error
     await logApiKeyActivity({
       apiKeyId: apiKey?.substring(0, 20) || 'unknown',
@@ -123,7 +123,7 @@ export async function middleware(request: NextRequest) {
         error: error instanceof Error ? error.message : 'Internal error'
       }
     }).catch(console.error);
-    
+
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

@@ -141,7 +141,7 @@ function WalletProviderInner({ children }: { children: ReactNode }) {
     const tryEndpoint = async (url: string): Promise<boolean> => {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
         // Chain abort signals - abort if either parent or timeout triggers
         // Use custom signal combining since AbortSignal.any might not be available

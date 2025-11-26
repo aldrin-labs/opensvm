@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
         // Start monitoring when first client connects
         try {
           // Import EventStreamManager dynamically
-          const { EventStreamManager } = await import('@/app/api/stream/route');
+          const { EventStreamManager } = await import('@/lib/api/event-stream-manager');
           const streamManager = EventStreamManager.getInstance();
 
           // Create a mock client for the stream manager to trigger monitoring
@@ -68,7 +68,9 @@ export async function GET(request: NextRequest) {
             subscriptions: eventTypesSet,
             authenticated: true,
             connectionTime: Date.now(),
-            lastActivity: Date.now()
+            lastActivity: Date.now(),
+            isConnected: true,
+            consecutiveFailures: 0
           };
 
           // This will start monitoring if not already started

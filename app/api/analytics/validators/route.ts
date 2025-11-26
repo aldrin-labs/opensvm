@@ -137,9 +137,9 @@ export async function GET() {
     // Use fallback geolocation data (will be populated by populate-validator-geolocation.js script)
     const uniqueIps = Array.from(ipToValidatorMap.keys());
     const geoResults = new Map<string, GeolocationData>();
-    
+
     console.log(`Using fallback geolocation for ${uniqueIps.length} IPs (run populate-validator-geolocation.js to enable geolocation)`);
-    
+
     // TODO: After running scripts/populate-validator-geolocation.js, this will load from Qdrant cache
     // For now, use empty geolocation for fast responses
     uniqueIps.forEach(ip => {

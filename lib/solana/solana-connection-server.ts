@@ -137,7 +137,7 @@ class ConnectionPool {
     constructor() {
         this.endpoints = getRpcEndpoints();
         logger.rpc.info(`Initialized with ${this.endpoints.length} OpenSVM endpoints`);
-        
+
         // Initialize health tracking for all endpoints
         for (const endpoint of this.endpoints) {
             this.endpointHealth.set(endpoint, {
@@ -180,7 +180,7 @@ class ConnectionPool {
         const healthyEndpoints = this.endpoints.filter(ep => {
             const health = this.endpointHealth.get(ep);
             if (!health) return true; // If no health data, consider it healthy
-            
+
             // If endpoint has too many consecutive failures, only retry after recovery time
             if (health.consecutiveFailures >= this.HEALTH_FAILURE_THRESHOLD) {
                 const timeSinceLastFailure = now - health.lastFailure;
@@ -198,11 +198,11 @@ class ConnectionPool {
         const endpointScores = candidateEndpoints.map(ep => {
             const health = this.endpointHealth.get(ep);
             if (!health || health.totalRequests === 0) return { endpoint: ep, score: 1.0 };
-            
+
             const successRate = health.successCount / health.totalRequests;
             const latencyPenalty = Math.min(health.avgLatency / 5000, 1); // Penalize high latency (>5s)
             const score = successRate * (1 - latencyPenalty * 0.5);
-            
+
             return { endpoint: ep, score: Math.max(score, 0.1) }; // Min score 0.1
         });
 
@@ -233,7 +233,7 @@ class ConnectionPool {
         this.endpoints = newEndpoints;
         // Clear existing connections to force new ones with new endpoints
         this.connections.clear();
-        
+
         // Initialize health tracking for new endpoints
         for (const endpoint of newEndpoints) {
             if (!this.endpointHealth.has(endpoint)) {
@@ -254,12 +254,12 @@ class ConnectionPool {
     recordSuccess(endpoint: string, latencyMs: number) {
         const health = this.endpointHealth.get(endpoint);
         if (!health) return;
-        
+
         health.successCount++;
         health.lastSuccess = Date.now();
         health.consecutiveFailures = 0; // Reset consecutive failures
         health.totalRequests++;
-        
+
         // Update rolling average latency
         health.avgLatency = (health.avgLatency * (health.totalRequests - 1) + latencyMs) / health.totalRequests;
     }
@@ -268,12 +268,12 @@ class ConnectionPool {
     recordFailure(endpoint: string) {
         const health = this.endpointHealth.get(endpoint);
         if (!health) return;
-        
+
         health.failureCount++;
         health.lastFailure = Date.now();
         health.consecutiveFailures++;
         health.totalRequests++;
-        
+
         if (health.consecutiveFailures >= this.HEALTH_FAILURE_THRESHOLD) {
             logger.rpc.warn(`Endpoint ${endpoint.substring(0, 50)}... marked unhealthy (${health.consecutiveFailures} consecutive failures)`);
         }
@@ -333,7 +333,9 @@ function resolveClusterToEndpoint(cluster: string): string | null {
 // Primary connection getter
 export function getConnection(endpoint?: string): ProxyConnection {
     // If an explicit endpoint is requested, honor it; otherwise use pool
+    console.log(`getConnection called with endpoint: ${endpoint}`);
     const resolved = endpoint ? resolveClusterToEndpoint(endpoint) : undefined;
+    console.log(`resolved endpoint: ${resolved}`);
     return connectionPool.getConnection(resolved || undefined);
 }
 
