@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { TrendingUp, TrendingDown, DollarSign, BarChart3, Users, Zap, RefreshCw, Target } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -56,7 +56,7 @@ export default function PerpetualsSection() {
   const [sortBy, setSortBy] = useState<'volume' | 'openInterest' | 'fundingRate' | 'priceChange'>('volume');
   const [selectedMarket, setSelectedMarket] = useState<string>('');
 
-  const fetchPerpetualsData = async (isRefresh = false) => {
+  const fetchPerpetualsData = useCallback(async (isRefresh = false) => {
     try {
       if (!isRefresh) setLoading(true);
       setError(null);
@@ -68,9 +68,12 @@ export default function PerpetualsSection() {
         setPlatforms(data.data.platforms || []);
         setMarkets(data.data.markets || []);
         setTotals(data.data.totals || null);
-        if (!selectedMarket && data.data.markets?.length > 0) {
-          setSelectedMarket(data.data.markets[0].symbol);
-        }
+        setSelectedMarket(prev => {
+          if (!prev && data.data.markets?.length > 0) {
+            return data.data.markets[0].symbol;
+          }
+          return prev;
+        });
       } else {
         throw new Error(data.error || 'Failed to fetch data');
       }
@@ -80,7 +83,7 @@ export default function PerpetualsSection() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchPerpetualsData();
@@ -88,7 +91,7 @@ export default function PerpetualsSection() {
     // Refresh every 30 seconds
     const interval = setInterval(() => fetchPerpetualsData(true), 30000);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchPerpetualsData]);
 
   const filteredAndSortedMarkets = markets
     .filter(market => {
@@ -113,10 +116,13 @@ export default function PerpetualsSection() {
   const selectedMarketData = markets.find(m => m.symbol === selectedMarket);
 
   const formatCurrency = (value: number) => {
-    if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
-    if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
-    if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
-    return `$${value.toFixed(2)}`;
+    if (!Number.isFinite(value)) return '$0.00';
+    const absValue = Math.abs(value);
+    const sign = value < 0 ? '-' : '';
+    if (absValue >= 1e9) return `${sign}$${(absValue / 1e9).toFixed(2)}B`;
+    if (absValue >= 1e6) return `${sign}$${(absValue / 1e6).toFixed(2)}M`;
+    if (absValue >= 1e3) return `${sign}$${(absValue / 1e3).toFixed(2)}K`;
+    return `${sign}$${absValue.toFixed(2)}`;
   };
 
   const formatPrice = (price: number, symbol: string) => {
@@ -276,10 +282,13 @@ export default function PerpetualsSection() {
       {/* Controls */}
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-center">
+          <label className="sr-only" htmlFor="platform-filter">Filter by Platform</label>
           <select
+            id="platform-filter"
             value={platformFilter}
             onChange={(e) => setPlatformFilter(e.target.value)}
             className="px-4 py-2 border rounded-lg bg-background"
+            aria-label="Filter by platform"
           >
             <option value="all">All Platforms</option>
             {platforms.map((platform) => (
@@ -289,10 +298,13 @@ export default function PerpetualsSection() {
             ))}
           </select>
 
+          <label className="sr-only" htmlFor="sort-by">Sort markets</label>
           <select
+            id="sort-by"
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="px-4 py-2 border rounded-lg bg-background"
+            aria-label="Sort markets by"
           >
             <option value="volume">Sort by Volume</option>
             <option value="openInterest">Sort by Open Interest</option>
@@ -300,13 +312,16 @@ export default function PerpetualsSection() {
             <option value="priceChange">Sort by Price Change</option>
           </select>
 
+          <label className="sr-only" htmlFor="market-select">Select market</label>
           <select
+            id="market-select"
             value={selectedMarket}
             onChange={(e) => setSelectedMarket(e.target.value)}
             className="px-4 py-2 border rounded-lg bg-background"
+            aria-label="Select market for details"
           >
-            {markets.map((market) => (
-              <option key={market.symbol} value={market.symbol}>
+            {markets.map((market, idx) => (
+              <option key={`${market.symbol}-${idx}`} value={market.symbol}>
                 {market.symbol} ({market.platform})
               </option>
             ))}
