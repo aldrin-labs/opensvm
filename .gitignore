@@ -89,4 +89,9 @@ test*.sh
 *.sqlite3
 dump.rdb
 
+# Qdrant storage
+qdrant_storage/
 
+# Output files
+output*.txt
+server.pid
