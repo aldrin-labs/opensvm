@@ -1,0 +1,679 @@
+# OpenSVM IDL & Labels API Reference
+
+> Focused documentation for Interface Definition Language (IDL) storage and Address Annotations (Labels) APIs.
+
+Base URL: `https://opensvm.com/api`
+
+---
+
+## IDL API (Interface Definition Language)
+
+Store, retrieve, and search Anchor IDL JSONs for Solana programs. Enables program interface discovery and documentation.
+
+### Endpoints
+
+#### List IDLs
+```
+GET /api/idl
+```
+List all stored IDLs with optional filtering.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| network | string | mainnet | Network filter (mainnet/devnet/testnet) |
+| limit | number | 50 | Results per page |
+| offset | number | 0 | Pagination offset |
+
+**Example:**
+```bash
+curl "https://opensvm.com/api/idl?network=mainnet&limit=10"
+```
+
+**Response:**
+```json
+{
+  "idls": [
+    {
+      "programId": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA",
+      "name": "spl_token",
+      "version": "0.1.0",
+      "network": "mainnet",
+      "instructionCount": 18,
+      "createdAt": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "total": 100,
+  "hasMore": true
+}
+```
+
+---
+
+#### Get IDL by Program ID
+```
+GET /api/idl/:programId
+```
+Retrieve the full IDL for a specific program.
+
+**Path Parameters:**
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| programId | string | Yes | Solana program address |
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| network | string | mainnet | Network to query |
+| all | boolean | false | Return IDLs from all networks |
+
+**Example:**
+```bash
+curl "https://opensvm.com/api/idl/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
+```
+
+**Response:**
+```json
+{
+  "programId": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+  "name": "jupiter_v6",
+  "version": "0.1.0",
+  "network": "mainnet",
+  "idl": {
+    "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+    "metadata": {
+      "name": "jupiter_v6",
+      "version": "0.1.0",
+      "spec": "0.1.0"
+    },
+    "instructions": [...],
+    "accounts": [...],
+    "types": [...],
+    "errors": [...]
+  }
+}
+```
+
+---
+
+#### Upload IDL
+```
+POST /api/idl
+```
+Store a new IDL for a program.
+
+**Request Body:**
+```json
+{
+  "programId": "YourProgram111111111111111111111111111111111",
+  "idl": {
+    "address": "YourProgram111111111111111111111111111111111",
+    "metadata": {
+      "name": "my_program",
+      "version": "1.0.0",
+      "spec": "0.1.0",
+      "description": "My Solana program"
+    },
+    "instructions": [
+      {
+        "name": "initialize",
+        "discriminator": [0, 1, 2, 3, 4, 5, 6, 7],
+        "accounts": [],
+        "args": []
+      }
+    ],
+    "accounts": [],
+    "types": [],
+    "errors": []
+  },
+  "network": "mainnet",
+  "source": "manual"
+}
+```
+
+**Response:**
+```json
+{
+  "success": true,
+  "programId": "YourProgram111111111111111111111111111111111",
+  "message": "IDL stored successfully"
+}
+```
+
+---
+
+#### Search IDLs
+```
+GET /api/idl/search
+```
+Search IDLs by name, program ID, or instruction names.
+
+**Query Parameters:**
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| q | string | Search query |
+| network | string | Network filter |
+| limit | number | Results limit |
+
+**Example:**
+```bash
+curl "https://opensvm.com/api/idl/search?q=swap&network=mainnet"
+```
+
+---
+
+#### Get IDL Stats
+```
+GET /api/idl/stats
+```
+Get statistics about stored IDLs.
+
+**Response:**
+```json
+{
+  "totalIDLs": 150,
+  "verifiedIDLs": 45,
+  "byNetwork": {
+    "mainnet": 120,
+    "devnet": 25,
+    "testnet": 5
+  },
+  "bySource": {
+    "anchor": 100,
+    "manual": 50
+  },
+  "totalInstructions": 2500,
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+#### Delete IDL
+```
+DELETE /api/idl/:programId
+```
+Delete an IDL from the database.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| network | string | mainnet | Network to delete from |
+
+---
+
+### IDL Format (Anchor v0.30+)
+
+```json
+{
+  "address": "Program111111111111111111111111111111111111",
+  "metadata": {
+    "name": "program_name",
+    "version": "1.0.0",
+    "spec": "0.1.0",
+    "description": "Program description"
+  },
+  "instructions": [
+    {
+      "name": "instruction_name",
+      "discriminator": [0, 1, 2, 3, 4, 5, 6, 7],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        }
+      ],
+      "args": [
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [...],
+  "types": [...],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "CustomError",
+      "msg": "Error description"
+    }
+  ]
+}
+```
+
+---
+
+## Annotations API (Address Labels)
+
+Annotate and label Solana addresses for research, tracking, and organization. Data stored in Qdrant vector database with semantic search capabilities.
+
+### Endpoints
+
+#### List/Search Annotations
+```
+GET /api/annotations
+```
+Search and list annotations with filtering.
+
+**Query Parameters:**
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| q | string | - | Full-text/semantic search query |
+| type | string | - | Filter: account\|program\|wallet\|token\|nft\|pda\|other |
+| risk | string | - | Filter: safe\|suspicious\|malicious\|unknown |
+| tags | string | - | Comma-separated tags |
+| category | string | - | Category filter |
+| address | string | - | Solana address filter |
+| limit | number | 50 | Results limit (max 1000) |
+| offset | number | 0 | Pagination offset |
+
+**Examples:**
+```bash
+# Search by type
+curl "https://opensvm.com/api/annotations?type=program"
+
+# Search by multiple tags
+curl "https://opensvm.com/api/annotations?tags=defi,swap"
+
+# Semantic search
+curl "https://opensvm.com/api/annotations?q=token%20swap%20aggregator"
+
+# Filter by risk level
+curl "https://opensvm.com/api/annotations?risk=suspicious"
+```
+
+**Response:**
+```json
+{
+  "annotations": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "type": "program",
+      "label": "Jupiter Aggregator V6",
+      "description": "DEX aggregator for optimal swap routing",
+      "tags": ["dex", "swap", "aggregator"],
+      "category": "defi",
+      "risk": "safe",
+      "metadata": { "version": "6.0" },
+      "createdAt": "2024-01-01T00:00:00Z",
+      "updatedAt": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "total": 150
+}
+```
+
+---
+
+#### Create Annotation
+```
+POST /api/annotations
+```
+Create a new annotation for a Solana address.
+
+**Request Body:**
+```json
+{
+  "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+  "type": "program",
+  "label": "Jupiter Aggregator V6",
+  "description": "DEX aggregator for optimal swap routing across Solana DEXes",
+  "tags": ["dex", "swap", "aggregator", "defi"],
+  "category": "defi",
+  "risk": "safe",
+  "metadata": {
+    "version": "6.0",
+    "website": "https://jup.ag",
+    "audited": true
+  },
+  "createdBy": "researcher@example.com"
+}
+```
+
+**Field Validation:**
+| Field | Type | Required | Constraints |
+|-------|------|----------|-------------|
+| address | string | Yes | Base58, 32-44 chars |
+| label | string | Yes | Max 200 chars |
+| type | string | No | Enum: account, program, wallet, token, nft, pda, other |
+| description | string | No | Max 2000 chars |
+| tags | string[] | No | Max 20 tags, each max 50 chars |
+| category | string | No | Max 50 chars |
+| risk | string | No | Enum: safe, suspicious, malicious, unknown |
+| metadata | object | No | Arbitrary JSON (sanitized) |
+| createdBy | string | No | Creator identifier |
+
+**Response:**
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+  "type": "program",
+  "label": "Jupiter Aggregator V6",
+  "description": "DEX aggregator for optimal swap routing across Solana DEXes",
+  "tags": ["dex", "swap", "aggregator", "defi"],
+  "category": "defi",
+  "risk": "safe",
+  "metadata": { "version": "6.0", "website": "https://jup.ag", "audited": true },
+  "createdBy": "researcher@example.com",
+  "createdAt": "2024-01-01T00:00:00Z",
+  "updatedAt": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+#### Get Annotation by ID
+```
+GET /api/annotations/:id
+```
+Retrieve a specific annotation by its UUID.
+
+**Example:**
+```bash
+curl "https://opensvm.com/api/annotations/550e8400-e29b-41d4-a716-446655440000"
+```
+
+---
+
+#### Update Annotation
+```
+PUT /api/annotations/:id
+```
+Update an existing annotation. All fields optional.
+
+**Request Body:**
+```json
+{
+  "label": "Jupiter Aggregator V6 (Updated)",
+  "tags": ["dex", "swap", "aggregator", "defi", "verified"],
+  "risk": "safe"
+}
+```
+
+---
+
+#### Delete Annotation
+```
+DELETE /api/annotations/:id
+```
+Delete an annotation by ID.
+
+**Response:**
+```json
+{
+  "success": true,
+  "id": "550e8400-e29b-41d4-a716-446655440000"
+}
+```
+
+---
+
+#### Get Annotations by Address
+```
+GET /api/annotations/address/:address
+```
+Get all annotations for a specific Solana address.
+
+**Example:**
+```bash
+curl "https://opensvm.com/api/annotations/address/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+```
+
+**Response:**
+```json
+{
+  "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v",
+  "count": 2,
+  "annotations": [
+    {
+      "id": "...",
+      "label": "USDC",
+      "type": "token",
+      "tags": ["stablecoin", "usdc"],
+      "category": "stablecoin",
+      "risk": "safe"
+    }
+  ]
+}
+```
+
+---
+
+#### Get Annotation Stats
+```
+GET /api/annotations/stats
+```
+Get statistics about stored annotations.
+
+**Response:**
+```json
+{
+  "total": 500,
+  "byType": {
+    "program": 200,
+    "token": 150,
+    "wallet": 100,
+    "account": 30,
+    "nft": 15,
+    "pda": 5
+  },
+  "byRisk": {
+    "safe": 350,
+    "unknown": 100,
+    "suspicious": 40,
+    "malicious": 10
+  },
+  "uniqueAddresses": 450,
+  "timestamp": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+#### Bulk Import
+```
+POST /api/annotations/bulk
+```
+Import multiple annotations at once.
+
+**Request Body:**
+```json
+{
+  "annotations": [
+    {
+      "address": "Address111111111111111111111111111111111111",
+      "label": "Label 1",
+      "type": "program"
+    },
+    {
+      "address": "Address222222222222222222222222222222222222",
+      "label": "Label 2",
+      "type": "token"
+    }
+  ]
+}
+```
+
+**Response:**
+```json
+{
+  "imported": 2,
+  "errors": [],
+  "total": 2
+}
+```
+
+---
+
+#### Bulk Export
+```
+GET /api/annotations/bulk
+```
+Export all annotations.
+
+**Response:**
+```json
+{
+  "count": 500,
+  "annotations": [...],
+  "exportedAt": "2024-01-01T00:00:00Z"
+}
+```
+
+---
+
+## Security Features
+
+### XSS Prevention
+All user input is sanitized before storage:
+- HTML entities escaped: `<`, `>`, `"`, `'`, `/`
+- Applied to: label, description, tags, category, metadata (recursive)
+
+### Input Validation
+- Address: Must be valid Solana base58 format (32-44 characters)
+- Type: Must be one of: account, program, wallet, token, nft, pda, other
+- Risk: Must be one of: safe, suspicious, malicious, unknown
+- Length limits enforced on all string fields
+
+### Rate Limiting
+- Query limit capped at 1000 results per request
+- Negative limits/offsets handled gracefully
+
+---
+
+## Error Responses
+
+### 400 Bad Request
+```json
+{
+  "error": "Invalid Solana address"
+}
+```
+
+### 404 Not Found
+```json
+{
+  "error": "Annotation not found"
+}
+```
+
+### 500 Internal Server Error
+```json
+{
+  "error": "Failed to create annotation"
+}
+```
+
+---
+
+## Use Cases
+
+### Research & Analysis
+- Label known programs, tokens, and wallets
+- Tag addresses by category (defi, nft, gaming, etc.)
+- Track suspicious or malicious addresses
+
+### Portfolio Tracking
+- Annotate your own wallets with custom labels
+- Organize tokens by category
+- Add notes and metadata
+
+### Security Monitoring
+- Flag suspicious addresses
+- Track known scam addresses
+- Build address reputation database
+
+### Program Documentation
+- Store and retrieve Anchor IDLs
+- Document program interfaces
+- Enable IDE integration and code generation
+
+---
+
+## Integration Examples
+
+### JavaScript/TypeScript
+```typescript
+// Create annotation
+const response = await fetch('https://opensvm.com/api/annotations', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    address: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+    label: 'Jupiter V6',
+    type: 'program',
+    tags: ['dex', 'swap'],
+    risk: 'safe'
+  })
+});
+const annotation = await response.json();
+
+// Search annotations
+const searchResponse = await fetch(
+  'https://opensvm.com/api/annotations?type=program&tags=defi'
+);
+const { annotations, total } = await searchResponse.json();
+
+// Get IDL
+const idlResponse = await fetch(
+  'https://opensvm.com/api/idl/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN'
+);
+const { idl } = await idlResponse.json();
+```
+
+### Python
+```python
+import requests
+
+# Create annotation
+response = requests.post('https://opensvm.com/api/annotations', json={
+    'address': 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
+    'label': 'Jupiter V6',
+    'type': 'program',
+    'tags': ['dex', 'swap'],
+    'risk': 'safe'
+})
+annotation = response.json()
+
+# Search by risk level
+response = requests.get('https://opensvm.com/api/annotations', params={
+    'risk': 'suspicious',
+    'limit': 100
+})
+results = response.json()
+```
+
+### cURL
+```bash
+# Create annotation
+curl -X POST https://opensvm.com/api/annotations \
+  -H "Content-Type: application/json" \
+  -d '{"address":"JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN","label":"Jupiter V6","type":"program"}'
+
+# Search annotations
+curl "https://opensvm.com/api/annotations?type=program&tags=defi,swap"
+
+# Get annotations for address
+curl "https://opensvm.com/api/annotations/address/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"
+
+# Upload IDL
+curl -X POST https://opensvm.com/api/idl \
+  -H "Content-Type: application/json" \
+  -d '{"programId":"...","idl":{...},"network":"mainnet"}'
+
+# Get IDL
+curl "https://opensvm.com/api/idl/JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN"
+```
+
+---
+
+## Support
+
+- GitHub: https://github.com/opensvm
+- Discord: https://discord.gg/opensvm
+- Email: api@opensvm.com

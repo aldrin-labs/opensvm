@@ -108,7 +108,10 @@ class OpenAPIGenerator {
         { name: 'Analytics', description: 'DeFi analytics, validator metrics, and ecosystem health (13 endpoints)' },
         { name: 'AI-Powered', description: 'AI-powered analysis, question answering, and insights (6 endpoints)' },
         { name: 'Real-Time', description: 'Server-sent events, streaming data, and live feeds (6 endpoints)' },
-        { name: 'User Services', description: 'User profiles, activity feeds, and personalization (14 endpoints)' }
+        { name: 'User Services', description: 'User profiles, activity feeds, and personalization (14 endpoints)' },
+        { name: 'IDL', description: 'Interface Definition Language storage and retrieval for Anchor programs (5 endpoints)' },
+        { name: 'Annotations', description: 'Address annotations, labels, and tagging for research (8 endpoints)' },
+        { name: 'Trading', description: 'Binance-compatible trading API with DEX aggregation (17 endpoints)' }
       ]
     };
 

@@ -1281,6 +1281,80 @@ Supports Anchor IDL format (v0.30+) with:
 - `errors`: Error codes and messages
 
 
+### 97. Annotations API (Address Labels)
+
+Annotate and label Solana addresses for research, tracking, and organization. Stored in Qdrant vector database.
+
+#### List/Search Annotations
+
+- **GET /api/annotations** - Search and list annotations
+  - Query Parameters:
+    - `q` (string, optional): Full-text search query
+    - `type` (string, optional): Filter by type (account|program|wallet|token|nft|pda|other)
+    - `risk` (string, optional): Filter by risk (safe|suspicious|malicious|unknown)
+    - `tags` (string, optional): Comma-separated tags to filter by
+    - `category` (string, optional): Filter by category
+    - `address` (string, optional): Filter by Solana address
+    - `limit` (number, optional, default: 50, max: 1000): Results limit
+    - `offset` (number, optional, default: 0): Pagination offset
+  - Example: `curl "https://opensvm.com/api/annotations?type=program&tags=defi,swap"`
+
+#### Create Annotation
+
+- **POST /api/annotations** - Create a new annotation
+  - Request Body:
+    ```json
+    {
+      "address": "JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN",
+      "type": "program",
+      "label": "Jupiter Aggregator V6",
+      "description": "DEX aggregator for optimal swap routing",
+      "tags": ["dex", "swap", "aggregator"],
+      "category": "defi",
+      "risk": "safe",
+      "metadata": { "version": "6.0" }
+    }
+    ```
+  - Validation: address (base58, 32-44 chars), label (max 200), description (max 2000), tags (max 20, each max 50), category (max 50)
+
+#### Get Annotation by ID
+
+- **GET /api/annotations/:id** - Get specific annotation
+  - Path Parameters: `id` (string, required): Annotation UUID
+
+#### Update Annotation
+
+- **PUT /api/annotations/:id** - Update an annotation
+  - Path Parameters: `id` (string, required): Annotation UUID
+  - Request Body: Same fields as create (all optional)
+
+#### Delete Annotation
+
+- **DELETE /api/annotations/:id** - Delete an annotation
+  - Path Parameters: `id` (string, required): Annotation UUID
+
+#### Get Annotations by Address
+
+- **GET /api/annotations/address/:address** - Get all annotations for a Solana address
+  - Path Parameters: `address` (string, required): Solana address
+  - Example: `curl "https://opensvm.com/api/annotations/address/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"`
+
+#### Annotation Stats
+
+- **GET /api/annotations/stats** - Get annotation statistics
+  - Response: total, byType, byRisk, uniqueAddresses
+
+#### Bulk Operations
+
+- **POST /api/annotations/bulk** - Bulk import annotations
+  - Request Body: `{ "annotations": [...] }`
+- **GET /api/annotations/bulk** - Export all annotations
+
+#### Security
+
+All user input is sanitized to prevent XSS. HTML entities are escaped in label, description, tags, category, and metadata.
+
+
 ## Response Formats
 
 ### Success Response
