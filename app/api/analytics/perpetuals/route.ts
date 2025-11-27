@@ -128,13 +128,21 @@ async function fetchJupiterPrice(symbol: string): Promise<number> {
   }
 }
 
-// Generate realistic funding rate based on market conditions
-function generateFundingRate(priceChange: number): number {
+// Generate deterministic funding rate based on market conditions and time
+function generateFundingRate(priceChange: number, seed: number = 0): number {
   // Funding rate correlates with price movement
   // Positive price = positive funding (longs pay shorts)
   const baseRate = priceChange * 0.002;
-  const noise = (Math.random() - 0.5) * 0.005;
-  return Math.max(-0.03, Math.min(0.03, baseRate + noise));
+  // Use deterministic "noise" based on hour of day and seed
+  const hour = new Date().getUTCHours();
+  const deterministicNoise = (Math.sin(hour + seed) * 0.5) * 0.005;
+  return Math.max(-0.03, Math.min(0.03, baseRate + deterministicNoise));
+}
+
+// Deterministic pseudo-random based on seed (for consistent cached values)
+function seededRandom(seed: number): number {
+  const x = Math.sin(seed) * 10000;
+  return x - Math.floor(x);
 }
 
 // Calculate next funding time (every 8 hours)
@@ -279,115 +287,129 @@ async function fetchPerpetualsData(): Promise<PerpetualsData> {
     // Sort by volume
     platforms.sort((a, b) => b.totalVolume24h - a.totalVolume24h);
 
-    // Generate markets
+    // Generate markets with deterministic values based on current hour
     const nextFunding = getNextFundingTime();
     const markets: PerpetualMarket[] = [];
+    const hourSeed = new Date().getUTCHours();
 
-    // SOL-PERP for each platform
-    for (const platform of platforms.slice(0, 3)) {
-      const priceVar = (Math.random() - 0.5) * 0.02;
-      const priceChange = (Math.random() - 0.3) * 15;
-      markets.push({
-        symbol: 'SOL-PERP',
-        baseAsset: 'SOL',
-        indexPrice: solPrice || 180,
-        markPrice: (solPrice || 180) * (1 + priceVar * 0.001),
-        priceChange24h: priceChange,
-        volume24h: platform.totalVolume24h * 0.45,
-        openInterest: platform.totalOpenInterest * 0.4,
-        fundingRate: generateFundingRate(priceChange),
-        maxLeverage: platform.maxLeverage,
-        platform: platform.name,
-        isActive: true,
-        nextFunding,
-        longShortRatio: 0.45 + Math.random() * 0.2,
-        liquidations24h: {
-          long: platform.totalVolume24h * 0.008,
-          short: platform.totalVolume24h * 0.006,
-          total: platform.totalVolume24h * 0.014
-        }
-      });
-    }
+    // Primary platform for main markets
+    const primaryPlatform = platforms[0] || FALLBACK_PLATFORMS[0];
+
+    // SOL-PERP - main market
+    const solPriceChange = (seededRandom(hourSeed + 1) - 0.3) * 15;
+    const solLongLiq = primaryPlatform.totalVolume24h * 0.008;
+    const solShortLiq = primaryPlatform.totalVolume24h * 0.006;
+    markets.push({
+      symbol: 'SOL-PERP',
+      baseAsset: 'SOL',
+      indexPrice: solPrice || 180,
+      markPrice: (solPrice || 180) * (1 + (seededRandom(hourSeed + 2) - 0.5) * 0.001),
+      priceChange24h: solPriceChange,
+      volume24h: primaryPlatform.totalVolume24h * 0.45,
+      openInterest: primaryPlatform.totalOpenInterest * 0.4,
+      fundingRate: generateFundingRate(solPriceChange, 1),
+      maxLeverage: primaryPlatform.maxLeverage,
+      platform: primaryPlatform.name,
+      isActive: true,
+      nextFunding,
+      longShortRatio: 0.45 + seededRandom(hourSeed + 3) * 0.2,
+      liquidations24h: {
+        long: solLongLiq,
+        short: solShortLiq,
+        total: solLongLiq + solShortLiq
+      }
+    });
 
     // BTC-PERP
-    const btcPriceChange = (Math.random() - 0.4) * 8;
+    const btcPriceChange = (seededRandom(hourSeed + 10) - 0.4) * 8;
+    const btcLongLiq = 1200000 + seededRandom(hourSeed + 11) * 300000;
+    const btcShortLiq = 980000 + seededRandom(hourSeed + 12) * 250000;
     markets.push({
       symbol: 'BTC-PERP',
       baseAsset: 'BTC',
       indexPrice: btcPrice || 95000,
-      markPrice: (btcPrice || 95000) * (1 + (Math.random() - 0.5) * 0.0005),
+      markPrice: (btcPrice || 95000) * (1 + (seededRandom(hourSeed + 13) - 0.5) * 0.0005),
       priceChange24h: btcPriceChange,
-      volume24h: platforms[0]?.totalVolume24h * 0.25 || 50000000,
-      openInterest: platforms[0]?.totalOpenInterest * 0.2 || 20000000,
-      fundingRate: generateFundingRate(btcPriceChange),
+      volume24h: primaryPlatform.totalVolume24h * 0.25,
+      openInterest: primaryPlatform.totalOpenInterest * 0.2,
+      fundingRate: generateFundingRate(btcPriceChange, 2),
       maxLeverage: 50,
-      platform: platforms[0]?.name || 'Jupiter Perps',
+      platform: primaryPlatform.name,
       isActive: true,
       nextFunding,
-      longShortRatio: 0.52,
+      longShortRatio: 0.48 + seededRandom(hourSeed + 14) * 0.1,
       liquidations24h: {
-        long: 1200000,
-        short: 980000,
-        total: 2180000
+        long: btcLongLiq,
+        short: btcShortLiq,
+        total: btcLongLiq + btcShortLiq
       }
     });
 
     // ETH-PERP
-    const ethPriceChange = (Math.random() - 0.45) * 10;
+    const ethPriceChange = (seededRandom(hourSeed + 20) - 0.45) * 10;
+    const ethLongLiq = 890000 + seededRandom(hourSeed + 21) * 200000;
+    const ethShortLiq = 1100000 + seededRandom(hourSeed + 22) * 200000;
     markets.push({
       symbol: 'ETH-PERP',
       baseAsset: 'ETH',
       indexPrice: ethPrice || 3400,
-      markPrice: (ethPrice || 3400) * (1 + (Math.random() - 0.5) * 0.0008),
+      markPrice: (ethPrice || 3400) * (1 + (seededRandom(hourSeed + 23) - 0.5) * 0.0008),
       priceChange24h: ethPriceChange,
-      volume24h: platforms[0]?.totalVolume24h * 0.15 || 30000000,
-      openInterest: platforms[0]?.totalOpenInterest * 0.15 || 15000000,
-      fundingRate: generateFundingRate(ethPriceChange),
+      volume24h: primaryPlatform.totalVolume24h * 0.15,
+      openInterest: primaryPlatform.totalOpenInterest * 0.15,
+      fundingRate: generateFundingRate(ethPriceChange, 3),
       maxLeverage: 50,
-      platform: platforms[0]?.name || 'Jupiter Perps',
+      platform: primaryPlatform.name,
       isActive: true,
       nextFunding,
-      longShortRatio: 0.48,
+      longShortRatio: 0.45 + seededRandom(hourSeed + 24) * 0.15,
       liquidations24h: {
-        long: 890000,
-        short: 1100000,
-        total: 1990000
+        long: ethLongLiq,
+        short: ethShortLiq,
+        total: ethLongLiq + ethShortLiq
       }
     });
 
-    // Additional popular perp markets
+    // Additional popular perp markets with deterministic assignment
     const additionalMarkets = [
-      { symbol: 'JUP-PERP', baseAsset: 'JUP', basePrice: 1.2 },
-      { symbol: 'WIF-PERP', baseAsset: 'WIF', basePrice: 2.8 },
-      { symbol: 'BONK-PERP', baseAsset: 'BONK', basePrice: 0.000035 },
-      { symbol: 'PYTH-PERP', baseAsset: 'PYTH', basePrice: 0.45 },
-      { symbol: 'JTO-PERP', baseAsset: 'JTO', basePrice: 3.5 },
+      { symbol: 'JUP-PERP', baseAsset: 'JUP', basePrice: 1.2, platformIdx: 0 },
+      { symbol: 'WIF-PERP', baseAsset: 'WIF', basePrice: 2.8, platformIdx: 1 },
+      { symbol: 'BONK-PERP', baseAsset: 'BONK', basePrice: 0.000035, platformIdx: 0 },
+      { symbol: 'PYTH-PERP', baseAsset: 'PYTH', basePrice: 0.45, platformIdx: 2 },
+      { symbol: 'JTO-PERP', baseAsset: 'JTO', basePrice: 3.5, platformIdx: 1 },
+      { symbol: 'RAY-PERP', baseAsset: 'RAY', basePrice: 5.2, platformIdx: 2 },
+      { symbol: 'ORCA-PERP', baseAsset: 'ORCA', basePrice: 4.8, platformIdx: 0 },
     ];
 
-    for (const m of additionalMarkets) {
-      const change = (Math.random() - 0.4) * 20;
-      const platformIdx = Math.floor(Math.random() * Math.min(3, platforms.length));
+    additionalMarkets.forEach((m, idx) => {
+      const seed = hourSeed + 30 + idx * 10;
+      const change = (seededRandom(seed) - 0.4) * 20;
+      const safePlatformIdx = Math.min(m.platformIdx, platforms.length - 1);
+      const platform = platforms[safePlatformIdx] || primaryPlatform;
+      const longLiq = 100000 + seededRandom(seed + 1) * 500000;
+      const shortLiq = 100000 + seededRandom(seed + 2) * 400000;
+
       markets.push({
         symbol: m.symbol,
         baseAsset: m.baseAsset,
         indexPrice: m.basePrice,
-        markPrice: m.basePrice * (1 + (Math.random() - 0.5) * 0.002),
+        markPrice: m.basePrice * (1 + (seededRandom(seed + 3) - 0.5) * 0.002),
         priceChange24h: change,
-        volume24h: 5000000 + Math.random() * 20000000,
-        openInterest: 2000000 + Math.random() * 8000000,
-        fundingRate: generateFundingRate(change),
-        maxLeverage: platforms[platformIdx]?.maxLeverage || 20,
-        platform: platforms[platformIdx]?.name || 'Drift Protocol',
+        volume24h: 5000000 + seededRandom(seed + 4) * 20000000,
+        openInterest: 2000000 + seededRandom(seed + 5) * 8000000,
+        fundingRate: generateFundingRate(change, idx + 4),
+        maxLeverage: platform.maxLeverage,
+        platform: platform.name,
         isActive: true,
         nextFunding,
-        longShortRatio: 0.35 + Math.random() * 0.3,
+        longShortRatio: 0.35 + seededRandom(seed + 6) * 0.3,
         liquidations24h: {
-          long: 100000 + Math.random() * 500000,
-          short: 100000 + Math.random() * 400000,
-          total: 200000 + Math.random() * 900000
+          long: longLiq,
+          short: shortLiq,
+          total: longLiq + shortLiq
         }
       });
-    }
+    });
 
     // Sort markets by volume
     markets.sort((a, b) => b.volume24h - a.volume24h);
@@ -406,18 +428,70 @@ async function fetchPerpetualsData(): Promise<PerpetualsData> {
   } catch (error) {
     console.error('Error fetching perpetuals data:', error);
 
-    // Return fallback data
+    // Return fallback data with markets
+    const nextFunding = getNextFundingTime();
+    const fallbackMarkets: PerpetualMarket[] = [
+      {
+        symbol: 'SOL-PERP',
+        baseAsset: 'SOL',
+        indexPrice: 180,
+        markPrice: 179.95,
+        priceChange24h: 5.2,
+        volume24h: 202500000,
+        openInterest: 48000000,
+        fundingRate: 0.0104,
+        maxLeverage: 100,
+        platform: 'Jupiter Perps',
+        isActive: true,
+        nextFunding,
+        longShortRatio: 0.55,
+        liquidations24h: { long: 3600000, short: 2700000, total: 6300000 }
+      },
+      {
+        symbol: 'BTC-PERP',
+        baseAsset: 'BTC',
+        indexPrice: 95000,
+        markPrice: 94980,
+        priceChange24h: 2.1,
+        volume24h: 112500000,
+        openInterest: 24000000,
+        fundingRate: 0.0042,
+        maxLeverage: 50,
+        platform: 'Jupiter Perps',
+        isActive: true,
+        nextFunding,
+        longShortRatio: 0.52,
+        liquidations24h: { long: 1500000, short: 1200000, total: 2700000 }
+      },
+      {
+        symbol: 'ETH-PERP',
+        baseAsset: 'ETH',
+        indexPrice: 3400,
+        markPrice: 3398,
+        priceChange24h: -1.5,
+        volume24h: 67500000,
+        openInterest: 18000000,
+        fundingRate: -0.003,
+        maxLeverage: 50,
+        platform: 'Jupiter Perps',
+        isActive: true,
+        nextFunding,
+        longShortRatio: 0.48,
+        liquidations24h: { long: 1100000, short: 1300000, total: 2400000 }
+      }
+    ];
+
     const totals = {
       volume24h: FALLBACK_PLATFORMS.reduce((sum, p) => sum + p.totalVolume24h, 0),
       openInterest: FALLBACK_PLATFORMS.reduce((sum, p) => sum + p.totalOpenInterest, 0),
       users: FALLBACK_PLATFORMS.reduce((sum, p) => sum + p.totalUsers, 0),
       insuranceFund: FALLBACK_PLATFORMS.reduce((sum, p) => sum + p.insuranceFund, 0),
-      liquidations24h: 15000000
+      liquidations24h: fallbackMarkets.reduce((sum, m) => sum + m.liquidations24h.total, 0)
     };
 
     return {
       platforms: FALLBACK_PLATFORMS,
-      markets: [],
+      markets: fallbackMarkets,
       totals
     };
   }

@@ -38,44 +38,55 @@ interface PerpetualPlatform {
   insuranceFund: number;
 }
 
+interface Totals {
+  volume24h: number;
+  openInterest: number;
+  users: number;
+  insuranceFund: number;
+  liquidations24h: number;
+}
+
 export default function PerpetualsSection() {
   const [markets, setMarkets] = useState<PerpetualMarket[]>([]);
   const [platforms, setPlatforms] = useState<PerpetualPlatform[]>([]);
+  const [totals, setTotals] = useState<Totals | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [platformFilter, setPlatformFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'volume' | 'openInterest' | 'fundingRate' | 'priceChange'>('volume');
   const [selectedMarket, setSelectedMarket] = useState<string>('');
 
-  useEffect(() => {
-    const fetchPerpetualsData = async () => {
-      try {
-        setLoading(true);
+  const fetchPerpetualsData = async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
+      setError(null);
 
-        const response = await fetch('/api/analytics/perpetuals');
-        const data = await response.json();
+      const response = await fetch('/api/analytics/perpetuals');
+      const data = await response.json();
 
-        if (data.success && data.data) {
-          setPlatforms(data.data.platforms || []);
-          setMarkets(data.data.markets || []);
-          if (!selectedMarket && data.data.markets?.length > 0) {
-            setSelectedMarket(data.data.markets[0].symbol);
-          }
-        } else {
-          throw new Error(data.error || 'Failed to fetch data');
+      if (data.success && data.data) {
+        setPlatforms(data.data.platforms || []);
+        setMarkets(data.data.markets || []);
+        setTotals(data.data.totals || null);
+        if (!selectedMarket && data.data.markets?.length > 0) {
+          setSelectedMarket(data.data.markets[0].symbol);
         }
-      } catch (error) {
-        console.error('Failed to fetch perpetuals data:', error);
-        setPlatforms([]);
-        setMarkets([]);
-      } finally {
-        setLoading(false);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
+    } catch (err) {
+      console.error('Failed to fetch perpetuals data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchPerpetualsData();
 
     // Refresh every 30 seconds
-    const interval = setInterval(fetchPerpetualsData, 30000);
+    const interval = setInterval(() => fetchPerpetualsData(true), 30000);
     return () => clearInterval(interval);
   }, []);
 
@@ -142,10 +153,23 @@ export default function PerpetualsSection() {
     return `${hours}h ${minutes}m`;
   };
 
-  if (loading) {
+  if (loading && markets.length === 0) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error && markets.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-4">
+        <Zap className="h-12 w-12 text-muted-foreground" />
+        <p className="text-red-500">{error}</p>
+        <Button onClick={() => fetchPerpetualsData()} variant="outline">
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Retry
+        </Button>
       </div>
     );
   }
@@ -203,7 +227,7 @@ export default function PerpetualsSection() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Volume 24h</p>
-              <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalVolume24h, 0))}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totals?.volume24h || platforms.reduce((sum, p) => sum + p.totalVolume24h, 0))}</p>
             </div>
             <DollarSign className="h-8 w-8 text-green-500" />
           </div>
@@ -213,7 +237,7 @@ export default function PerpetualsSection() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Open Interest</p>
-              <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalOpenInterest, 0))}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totals?.openInterest || platforms.reduce((sum, p) => sum + p.totalOpenInterest, 0))}</p>
             </div>
             <BarChart3 className="h-8 w-8 text-blue-500" />
           </div>
@@ -223,7 +247,7 @@ export default function PerpetualsSection() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Users</p>
-              <p className="text-2xl font-bold">{platforms.reduce((sum, p) => sum + p.totalUsers, 0).toLocaleString()}</p>
+              <p className="text-2xl font-bold">{(totals?.users || platforms.reduce((sum, p) => sum + p.totalUsers, 0)).toLocaleString()}</p>
             </div>
             <Users className="h-8 w-8 text-purple-500" />
           </div>
@@ -233,7 +257,7 @@ export default function PerpetualsSection() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm font-medium text-muted-foreground">Insurance Fund</p>
-              <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.insuranceFund, 0))}</p>
+              <p className="text-2xl font-bold">{formatCurrency(totals?.insuranceFund || platforms.reduce((sum, p) => sum + p.insuranceFund, 0))}</p>
             </div>
             <Target className="h-8 w-8 text-orange-500" />
           </div>
@@ -279,9 +303,9 @@ export default function PerpetualsSection() {
             ))}
           </select>
 
-          <Button variant="outline" className="ml-auto">
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button variant="outline" className="ml-auto" onClick={() => fetchPerpetualsData(true)} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
       </Card>
