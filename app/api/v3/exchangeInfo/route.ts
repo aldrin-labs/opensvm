@@ -7,136 +7,110 @@ import {
   SymbolInfo,
   OrderType,
 } from '@/lib/trading/binance-types';
+import solanaTokens from '@/data/tokens/solana-tokens.json';
 
-export const runtime = 'edge';
+// Quote assets for trading pairs
+const QUOTE_TOKENS = {
+  USDC: {
+    mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
+    decimals: 6,
+  },
+  USDT: {
+    mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
+    decimals: 6,
+  },
+  SOL: {
+    mint: 'So11111111111111111111111111111111111111112',
+    decimals: 9,
+  },
+};
 
-// Common Solana trading pairs
-const TRADING_PAIRS: Array<{
+// Token interface
+interface SolanaToken {
+  address: string;
+  symbol: string;
+  name: string;
+  decimals: number;
+  logoURI?: string;
+  verified?: boolean;
+}
+
+// Load tokens from local JSON file (781 tokens from Jupiter validated list)
+function getTokenList(): SolanaToken[] {
+  return solanaTokens as SolanaToken[];
+}
+
+// Generate trading pairs from tokens
+function generateTradingPairs(tokens: SolanaToken[]): Array<{
   base: string;
   quote: string;
   baseMint: string;
   quoteMint: string;
   baseDecimals: number;
   quoteDecimals: number;
-}> = [
-  {
-    base: 'SOL',
-    quote: 'USDC',
-    baseMint: 'So11111111111111111111111111111111111111112',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 9,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'SOL',
-    quote: 'USDT',
-    baseMint: 'So11111111111111111111111111111111111111112',
-    quoteMint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB',
-    baseDecimals: 9,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'BONK',
-    quote: 'USDC',
-    baseMint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 5,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'BONK',
-    quote: 'SOL',
-    baseMint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263',
-    quoteMint: 'So11111111111111111111111111111111111111112',
-    baseDecimals: 5,
-    quoteDecimals: 9,
-  },
-  {
-    base: 'JUP',
-    quote: 'USDC',
-    baseMint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 6,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'JUP',
-    quote: 'SOL',
-    baseMint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN',
-    quoteMint: 'So11111111111111111111111111111111111111112',
-    baseDecimals: 6,
-    quoteDecimals: 9,
-  },
-  {
-    base: 'RAY',
-    quote: 'USDC',
-    baseMint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 6,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'RAY',
-    quote: 'SOL',
-    baseMint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R',
-    quoteMint: 'So11111111111111111111111111111111111111112',
-    baseDecimals: 6,
-    quoteDecimals: 9,
-  },
-  {
-    base: 'ORCA',
-    quote: 'USDC',
-    baseMint: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 6,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'WIF',
-    quote: 'USDC',
-    baseMint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 6,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'WIF',
-    quote: 'SOL',
-    baseMint: 'EKpQGSJtjMFqKZ9KQanSqYXRcF8fBopzLHYxdM65zcjm',
-    quoteMint: 'So11111111111111111111111111111111111111112',
-    baseDecimals: 6,
-    quoteDecimals: 9,
-  },
-  {
-    base: 'PYTH',
-    quote: 'USDC',
-    baseMint: 'HZ1JovNiVvGrGNiiYvEozEVgZ58xaU3RKwX8eACQBCt3',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 6,
-    quoteDecimals: 6,
-  },
-  {
-    base: 'MSOL',
-    quote: 'SOL',
-    baseMint: 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
-    quoteMint: 'So11111111111111111111111111111111111111112',
-    baseDecimals: 9,
-    quoteDecimals: 9,
-  },
-  {
-    base: 'MSOL',
-    quote: 'USDC',
-    baseMint: 'mSoLzYCxHdYgdzU16g5QSh3i5K3z3KZK7ytfqcJm7So',
-    quoteMint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v',
-    baseDecimals: 9,
-    quoteDecimals: 6,
-  },
-];
+  baseName: string;
+  logoURI?: string;
+  tags?: string[];
+}> {
+  const pairs: Array<{
+    base: string;
+    quote: string;
+    baseMint: string;
+    quoteMint: string;
+    baseDecimals: number;
+    quoteDecimals: number;
+    baseName: string;
+    logoURI?: string;
+    tags?: string[];
+  }> = [];
+
+  const quoteMints = new Set(Object.values(QUOTE_TOKENS).map(q => q.mint));
+
+  for (const token of tokens) {
+    // Skip if token is a quote token itself
+    if (quoteMints.has(token.address)) continue;
+
+    // Skip tokens without symbols or with very long symbols
+    if (!token.symbol || token.symbol.length > 10) continue;
+
+    // Create pairs with each quote token
+    for (const [quoteSymbol, quoteInfo] of Object.entries(QUOTE_TOKENS)) {
+      // Don't create SOL/SOL pair
+      if (token.address === quoteInfo.mint) continue;
+
+      pairs.push({
+        base: token.symbol.toUpperCase(),
+        quote: quoteSymbol,
+        baseMint: token.address,
+        quoteMint: quoteInfo.mint,
+        baseDecimals: token.decimals,
+        quoteDecimals: quoteInfo.decimals,
+        baseName: token.name,
+        logoURI: token.logoURI,
+        tags: token.tags,
+      });
+    }
+  }
+
+  return pairs;
+}
 
 // Supported DEX sources
 const DEX_SOURCES = ['Jupiter', 'Raydium', 'Orca', 'Phoenix', 'Meteora', 'Lifinity'];
 
-function createSymbolInfo(pair: typeof TRADING_PAIRS[0]): SymbolInfo {
+type TradingPair = {
+  base: string;
+  quote: string;
+  baseMint: string;
+  quoteMint: string;
+  baseDecimals: number;
+  quoteDecimals: number;
+  baseName?: string;
+  logoURI?: string;
+  tags?: string[];
+};
+
+function createSymbolInfo(pair: TradingPair): SymbolInfo {
   const tickSize = Math.pow(10, -pair.quoteDecimals).toString();
   const stepSize = Math.pow(10, -pair.baseDecimals).toString();
 
@@ -181,34 +155,62 @@ function createSymbolInfo(pair: typeof TRADING_PAIRS[0]): SymbolInfo {
     baseMint: pair.baseMint,
     quoteMint: pair.quoteMint,
     dexSources: DEX_SOURCES,
-  };
+    // Extended info
+    baseAssetName: pair.baseName,
+    logoURI: pair.logoURI,
+    tags: pair.tags,
+  } as SymbolInfo;
 }
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const symbol = searchParams.get('symbol');
   const symbols = searchParams.get('symbols');
+  const baseAsset = searchParams.get('baseAsset');
+  const quoteAsset = searchParams.get('quoteAsset');
+  const limit = parseInt(searchParams.get('limit') || '0', 10);
 
-  let filteredPairs = TRADING_PAIRS;
+  // Load tokens from local JSON file
+  const tokenList = getTokenList();
+  let tradingPairs = generateTradingPairs(tokenList);
 
-  // Filter by symbol if provided
+  // Filter by specific symbol
   if (symbol) {
-    filteredPairs = TRADING_PAIRS.filter(
-      p => `${p.base}${p.quote}` === symbol.toUpperCase()
+    tradingPairs = tradingPairs.filter(
+      p => `${p.base}${p.quote}`.toUpperCase() === symbol.toUpperCase()
     );
   }
 
-  // Filter by symbols array if provided
+  // Filter by symbols array
   if (symbols) {
     try {
       const symbolList = JSON.parse(symbols) as string[];
       const upperSymbols = symbolList.map(s => s.toUpperCase());
-      filteredPairs = TRADING_PAIRS.filter(
-        p => upperSymbols.includes(`${p.base}${p.quote}`)
+      tradingPairs = tradingPairs.filter(
+        p => upperSymbols.includes(`${p.base}${p.quote}`.toUpperCase())
       );
     } catch {
       // Invalid JSON, ignore filter
     }
+  }
+
+  // Filter by base asset
+  if (baseAsset) {
+    tradingPairs = tradingPairs.filter(
+      p => p.base.toUpperCase() === baseAsset.toUpperCase()
+    );
+  }
+
+  // Filter by quote asset
+  if (quoteAsset) {
+    tradingPairs = tradingPairs.filter(
+      p => p.quote.toUpperCase() === quoteAsset.toUpperCase()
+    );
+  }
+
+  // Apply limit
+  if (limit > 0) {
+    tradingPairs = tradingPairs.slice(0, limit);
   }
 
   const exchangeInfo: BinanceExchangeInfo = {
@@ -240,7 +242,10 @@ export async function GET(req: NextRequest) {
         limit: 6100,
       },
     ],
-    symbols: filteredPairs.map(createSymbolInfo),
+    symbols: tradingPairs.map(createSymbolInfo),
+    // Extended info
+    totalSymbols: tradingPairs.length,
+    tokenCount: tokenList.length,
   };
 
   return NextResponse.json(exchangeInfo);
