@@ -129,13 +129,20 @@ export default function PerpetualsSection() {
 
   const getPlatformColor = (platform: string) => {
     const colors: { [key: string]: string } = {
-      'Drift Protocol': 'bg-blue-100 text-blue-800',
-      'Mango Markets': 'bg-orange-100 text-orange-800',
-      'Zeta Markets': 'bg-purple-100 text-purple-800',
-      'Cypher Protocol': 'bg-green-100 text-green-800',
-      'Solana Perps': 'bg-red-100 text-red-800'
+      'Drift Protocol': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'Drift': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+      'Jupiter Perps': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+      'Jupiter': 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
+      'Flash Trade': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'Flash': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+      'Mango Markets': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'Mango': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      'Zeta Markets': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      'Zeta': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
+      'Cypher Protocol': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+      'Solana Perps': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
     };
-    return colors[platform] || 'bg-gray-100 text-gray-800';
+    return colors[platform] || 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200';
   };
 
   const getFundingRateColor = (rate: number) => {
@@ -148,8 +155,10 @@ export default function PerpetualsSection() {
     const now = new Date();
     const funding = new Date(nextFunding);
     const diff = funding.getTime() - now.getTime();
+    if (diff <= 0) return 'Now';
     const hours = Math.floor(diff / (1000 * 60 * 60));
     const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+    if (hours === 0) return `${minutes}m`;
     return `${hours}h ${minutes}m`;
   };
 
@@ -282,7 +291,7 @@ export default function PerpetualsSection() {
 
           <select
             value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
+            onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
             className="px-4 py-2 border rounded-lg bg-background"
           >
             <option value="volume">Sort by Volume</option>
@@ -331,9 +340,9 @@ export default function PerpetualsSection() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredAndSortedMarkets.map((market) => (
-                    <tr 
-                      key={market.symbol} 
+                  {filteredAndSortedMarkets.map((market, idx) => (
+                    <tr
+                      key={`${market.symbol}-${market.platform}-${idx}`}
                       className={`border-t hover:bg-muted/30 transition-colors cursor-pointer ${
                         selectedMarket === market.symbol ? 'bg-muted/50' : ''
                       }`}
@@ -430,19 +439,27 @@ export default function PerpetualsSection() {
                 </div>
               </Card>
 
-              {/* Trading Actions */}
+              {/* Trading Info */}
               <Card className="p-4">
                 <h3 className="font-semibold mb-3">Trade {selectedMarketData.baseAsset}</h3>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Trade {selectedMarketData.symbol} on {selectedMarketData.platform} with up to {selectedMarketData.maxLeverage}x leverage.
+                </p>
                 <div className="space-y-2">
-                  <Button className="w-full" variant="default">
-                    Long {selectedMarketData.baseAsset}
-                  </Button>
-                  <Button className="w-full" variant="destructive">
-                    Short {selectedMarketData.baseAsset}
-                  </Button>
-                  <Button className="w-full" variant="outline">
-                    View Chart
-                  </Button>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Platform:</span>
+                    <span className="font-medium">{selectedMarketData.platform}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Max Leverage:</span>
+                    <span className="font-medium">{selectedMarketData.maxLeverage}x</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span>Status:</span>
+                    <span className={`font-medium ${selectedMarketData.isActive ? 'text-green-600' : 'text-red-600'}`}>
+                      {selectedMarketData.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
                 </div>
               </Card>
             </>

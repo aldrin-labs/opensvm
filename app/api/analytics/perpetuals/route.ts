@@ -246,7 +246,7 @@ async function fetchPerpetualsData(): Promise<PerpetualsData> {
     let platforms: PerpetualPlatform[] = [];
 
     if (defiLlamaData.protocols.length > 0) {
-      platforms = defiLlamaData.protocols.map((p: any) => ({
+      platforms = defiLlamaData.protocols.map((p: any, idx: number) => ({
         name: p.name || p.displayName || 'Unknown',
         slug: p.slug || p.name?.toLowerCase().replace(/\s+/g, '-') || 'unknown',
         totalVolume24h: p.total24h || 0,
@@ -255,7 +255,7 @@ async function fetchPerpetualsData(): Promise<PerpetualsData> {
         maxLeverage: p.name?.toLowerCase().includes('jupiter') ? 100 :
                      p.name?.toLowerCase().includes('flash') ? 50 :
                      p.name?.toLowerCase().includes('zeta') ? 20 : 10,
-        supportedAssets: Math.floor(Math.random() * 10) + 8,
+        supportedAssets: 8 + (idx % 10), // Deterministic based on index
         description: `${p.name} perpetual futures trading on Solana`,
         features: ['Cross Margin', 'Insurance Fund', 'Low Fees'],
         insuranceFund: (p.total24h || 0) * 0.01,
