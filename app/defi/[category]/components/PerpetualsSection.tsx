@@ -50,214 +50,18 @@ export default function PerpetualsSection() {
     const fetchPerpetualsData = async () => {
       try {
         setLoading(true);
-        
-        // Mock perpetual platforms data - Solana-native perp DEXs
-        const mockPlatforms: PerpetualPlatform[] = [
-          {
-            name: 'Drift Protocol',
-            totalVolume24h: 234000000,
-            totalOpenInterest: 89000000,
-            totalUsers: 23456,
-            maxLeverage: 10,
-            supportedAssets: 15,
-            description: 'Leading perpetuals DEX on Solana with cross-margin and isolated margin',
-            features: ['Cross Margin', 'Isolated Margin', 'JIT Liquidity', 'Insurance Fund', 'Funding Rates'],
-            insuranceFund: 2340000
-          },
-          {
-            name: 'Mango Markets',
-            totalVolume24h: 156000000,
-            totalOpenInterest: 67000000,
-            totalUsers: 18901,
-            maxLeverage: 5,
-            supportedAssets: 12,
-            description: 'Decentralized trading platform with perpetuals and spot trading',
-            features: ['Cross Margin', 'Portfolio Margin', 'Risk Engine', 'Governance', 'DAO'],
-            insuranceFund: 1890000
-          },
-          {
-            name: 'Zeta Markets',
-            totalVolume24h: 89000000,
-            totalOpenInterest: 34000000,
-            totalUsers: 12345,
-            maxLeverage: 20,
-            supportedAssets: 8,
-            description: 'Options and perpetuals trading with advanced risk management',
-            features: ['Options Integration', 'Risk Management', 'Market Making', 'Cross Margin'],
-            insuranceFund: 1230000
-          },
-          {
-            name: 'Cypher Protocol',
-            totalVolume24h: 45000000,
-            totalOpenInterest: 23000000,
-            totalUsers: 8901,
-            maxLeverage: 15,
-            supportedAssets: 10,
-            description: 'Multi-asset derivatives platform with advanced order types',
-            features: ['Stop Loss', 'Take Profit', 'Conditional Orders', 'Multi-Asset Margin'],
-            insuranceFund: 890000
-          },
-          {
-            name: 'Solana Perps',
-            totalVolume24h: 23000000,
-            totalOpenInterest: 12000000,
-            totalUsers: 5678,
-            maxLeverage: 25,
-            supportedAssets: 6,
-            description: 'High-leverage perpetuals trading with minimal fees',
-            features: ['High Leverage', 'Low Fees', 'Fast Settlement', 'Mobile Trading'],
-            insuranceFund: 567000
-          }
-        ];
 
-        // Mock perpetual markets data
-        const mockMarkets: PerpetualMarket[] = [
-          {
-            symbol: 'SOL-PERP',
-            baseAsset: 'SOL',
-            indexPrice: 98.45,
-            markPrice: 98.43,
-            priceChange24h: 5.67,
-            volume24h: 89000000,
-            openInterest: 23000000,
-            fundingRate: 0.0125,
-            maxLeverage: 10,
-            platform: 'Drift Protocol',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.62,
-            liquidations24h: {
-              long: 1230000,
-              short: 890000,
-              total: 2120000
-            }
-          },
-          {
-            symbol: 'BTC-PERP',
-            baseAsset: 'BTC',
-            indexPrice: 43250.67,
-            markPrice: 43248.23,
-            priceChange24h: 2.34,
-            volume24h: 67000000,
-            openInterest: 18000000,
-            fundingRate: 0.0089,
-            maxLeverage: 10,
-            platform: 'Drift Protocol',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.58,
-            liquidations24h: {
-              long: 890000,
-              short: 1120000,
-              total: 2010000
-            }
-          },
-          {
-            symbol: 'ETH-PERP',
-            baseAsset: 'ETH',
-            indexPrice: 2567.89,
-            markPrice: 2566.45,
-            priceChange24h: -1.23,
-            volume24h: 45000000,
-            openInterest: 15000000,
-            fundingRate: -0.0045,
-            maxLeverage: 5,
-            platform: 'Mango Markets',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.45,
-            liquidations24h: {
-              long: 1560000,
-              short: 670000,
-              total: 2230000
-            }
-          },
-          {
-            symbol: 'RAY-PERP',
-            baseAsset: 'RAY',
-            indexPrice: 2.34,
-            markPrice: 2.335,
-            priceChange24h: -3.21,
-            volume24h: 23000000,
-            openInterest: 8900000,
-            fundingRate: -0.0156,
-            maxLeverage: 20,
-            platform: 'Zeta Markets',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.38,
-            liquidations24h: {
-              long: 890000,
-              short: 450000,
-              total: 1340000
-            }
-          },
-          {
-            symbol: 'BONK-PERP',
-            baseAsset: 'BONK',
-            indexPrice: 0.000034,
-            markPrice: 0.0000339,
-            priceChange24h: 12.45,
-            volume24h: 12000000,
-            openInterest: 5600000,
-            fundingRate: 0.0234,
-            maxLeverage: 15,
-            platform: 'Cypher Protocol',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.78,
-            liquidations24h: {
-              long: 340000,
-              short: 670000,
-              total: 1010000
-            }
-          },
-          {
-            symbol: 'JUP-PERP',
-            baseAsset: 'JUP',
-            indexPrice: 0.89,
-            markPrice: 0.8895,
-            priceChange24h: 8.67,
-            volume24h: 8900000,
-            openInterest: 3400000,
-            fundingRate: 0.0178,
-            maxLeverage: 25,
-            platform: 'Solana Perps',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.69,
-            liquidations24h: {
-              long: 230000,
-              short: 450000,
-              total: 680000
-            }
-          },
-          {
-            symbol: 'ORCA-PERP',
-            baseAsset: 'ORCA',
-            indexPrice: 3.67,
-            markPrice: 3.665,
-            priceChange24h: 7.89,
-            volume24h: 6700000,
-            openInterest: 2800000,
-            fundingRate: 0.0098,
-            maxLeverage: 10,
-            platform: 'Drift Protocol',
-            isActive: true,
-            nextFunding: '2024-12-22T16:00:00Z',
-            longShortRatio: 0.55,
-            liquidations24h: {
-              long: 180000,
-              short: 220000,
-              total: 400000
-            }
-          }
-        ];
+        const response = await fetch('/api/analytics/perpetuals');
+        const data = await response.json();
 
-        setPlatforms(mockPlatforms);
-        setMarkets(mockMarkets);
-        if (!selectedMarket && mockMarkets.length > 0) {
-          setSelectedMarket(mockMarkets[0].symbol);
+        if (data.success && data.data) {
+          setPlatforms(data.data.platforms || []);
+          setMarkets(data.data.markets || []);
+          if (!selectedMarket && data.data.markets?.length > 0) {
+            setSelectedMarket(data.data.markets[0].symbol);
+          }
+        } else {
+          throw new Error(data.error || 'Failed to fetch data');
         }
       } catch (error) {
         console.error('Failed to fetch perpetuals data:', error);
@@ -269,7 +73,11 @@ export default function PerpetualsSection() {
     };
 
     fetchPerpetualsData();
-  }, [selectedMarket]);
+
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchPerpetualsData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredAndSortedMarkets = markets
     .filter(market => {
