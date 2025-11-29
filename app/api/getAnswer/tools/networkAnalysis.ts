@@ -27,7 +27,20 @@ export const networkAnalysisTool: Tool = {
         try {
             // 1) Network TPS / load
             if (qLower.includes("tps") || qLower.includes("transactions per second") || qLower.includes("network load")) {
-                const samples = await conn.getRecentPerformanceSamples(20);
+                let samples;
+                try {
+                    samples = await conn.getRecentPerformanceSamples(20);
+                } catch (rpcError: any) {
+                    console.warn('[WARN] getRecentPerformanceSamples RPC error:', rpcError.message || rpcError);
+                    // Fallback to estimation based on recent blocks
+                    return {
+                        handled: true,
+                        response: new Response("Network performance data temporarily unavailable from RPC. Try checking recent blocks for TPS estimation.", {
+                            status: 200,
+                            headers: { "Content-Type": "text/plain" }
+                        })
+                    };
+                }
                 const valid = (samples || []).filter(s => s && typeof (s as any).numTransactions === "number" && (s as any).samplePeriodSecs > 0);
 
                 if (valid.length === 0) {
