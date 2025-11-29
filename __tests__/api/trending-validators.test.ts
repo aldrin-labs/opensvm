@@ -92,19 +92,25 @@ const mockConnection = {
   getBalance: jest.fn().mockResolvedValue(5_000_000_000)
 };
 
-// Alias mocks (the route uses these)
-jest.mock('@/lib/cache', () => ({ memoryCache: memoryCacheMock }));
-jest.mock('@/lib/rate-limiter', () => ({
+// Alias mocks - using the ACTUAL import paths from the route
+jest.mock('@/lib/caching/cache', () => ({
+  cache: {
+    get: memoryCacheMock.get,
+    set: memoryCacheMock.set,
+    del: memoryCacheMock.delete
+  }
+}));
+jest.mock('@/lib/api/rate-limiter', () => ({
   generalRateLimiter: generalRateLimiterMock,
   burnRateLimiter: burnRateLimiterMock
 }));
 jest.mock('@/lib/utils/client-ip', () => ({
   getClientIP: jest.fn(() => '127.0.0.1')
 }));
-jest.mock('@/lib/mutex', () => ({
+jest.mock('@/lib/utils/mutex', () => ({
   boostMutex: boostMutexMock
 }));
-jest.mock('@/lib/solana-connection-server', () => ({
+jest.mock('@/lib/solana/solana-connection-server', () => ({
   getConnection: jest.fn(() => Promise.resolve(mockConnection))
 }));
 jest.mock('@/lib/config/tokens', () => ({
@@ -113,8 +119,14 @@ jest.mock('@/lib/config/tokens', () => ({
   MAX_BURN_AMOUNTS: { SVMAI: MAX_BURN }
 }));
 
-// Also mock potential relative imports just in case (ensure same instances)
-jest.mock('../../lib/cache', () => ({ memoryCache: memoryCacheMock }));
+// Also mock re-export paths (ensure same instances)
+jest.mock('../../lib/cache', () => ({
+  cache: {
+    get: memoryCacheMock.get,
+    set: memoryCacheMock.set,
+    del: memoryCacheMock.delete
+  }
+}));
 jest.mock('../../lib/rate-limiter', () => ({
   generalRateLimiter: generalRateLimiterMock,
   burnRateLimiter: burnRateLimiterMock
@@ -458,7 +470,7 @@ describe('/api/analytics/trending-validators', () => {
       const body = await getJSON(res);
       expect(res.status).toBe(400);
       expect(body.success).toBe(false);
-      expect(body.error).toContain('failed on-chain');
+      expect(body.error).toContain('Transaction failed on-chain');
     });
 
     it('rejects wrong token mint', async () => {

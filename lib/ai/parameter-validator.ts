@@ -191,19 +191,25 @@ export function extractSolanaData(text: string): {
   const addresses: AccountValidationResult[] = [];
   const signatures: SignatureValidationResult[] = [];
 
+  // Extract potential signatures first (87-88 chars)
+  const signatureMatches = text.match(/\b[1-9A-HJ-NP-Za-km-z]{87,88}\b/g) || [];
+
+  for (const match of signatureMatches) {
+    const sigResult = validateTransactionSignature(match);
+    if (sigResult.valid) {
+      signatures.push(sigResult);
+    }
+  }
+
   // Extract potential addresses (32-44 chars)
   const addressMatches = text.match(/\b[1-9A-HJ-NP-Za-km-z]{32,44}\b/g) || [];
-  
+
   for (const match of addressMatches) {
-    // Check if it's likely a signature first
-    if (match.length >= 87) {
-      const sigResult = validateTransactionSignature(match);
-      if (sigResult.valid) {
-        signatures.push(sigResult);
-        continue;
-      }
+    // Skip if it's already been captured as part of a signature
+    if (signatureMatches.some(sig => sig.includes(match))) {
+      continue;
     }
-    
+
     // Try as address
     const addrResult = validateAccountAddress(match);
     if (addrResult.valid) {
@@ -225,11 +231,18 @@ export function validateAccountAnalysisParams(params: any): {
 } {
   const errors: string[] = [];
   const warnings: string[] = [];
-  const normalized: any = { ...params };
+  const normalized: any = {};
 
-  // Validate account address
-  if (params.account || params.address || params.accountAddress) {
-    const addressField = params.account || params.address || params.accountAddress;
+  // Normalize all keys by trimming whitespace
+  const normalizedParams: Record<string, any> = {};
+  for (const key of Object.keys(params)) {
+    normalizedParams[key.trim()] = params[key];
+  }
+
+  // Validate account address - check various field names
+  const addressField = normalizedParams.account || normalizedParams.address ||
+                       normalizedParams.accountAddress || normalizedParams.walletAddress;
+  if (addressField) {
     const validation = validateAccountAddress(String(addressField));
     
     if (!validation.valid) {

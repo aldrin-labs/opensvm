@@ -9,6 +9,7 @@ import { useTradingTerminal } from '@/components/hooks/trading/useTradingTermina
 import { useKeyboardShortcuts } from '@/components/hooks/trading/useKeyboardShortcuts';
 import { useMarketData } from '@/components/hooks/trading/useMarketData';
 import { useWalletConnection } from '@/components/hooks/trading/useWalletConnection';
+import { useLayoutPreset } from '@/components/hooks/trading/useLayoutPreset';
 
 // Dynamically import components with no SSR to avoid hydration issues
 const TradingChart = dynamic(() => import('./TradingChart'), { ssr: false });
@@ -23,6 +24,10 @@ const MarketNewsWidget = dynamic(() => import('./MarketNewsWidget'), { ssr: fals
 const WatchlistWidget = dynamic(() => import('./WatchlistWidget'), { ssr: false });
 const PerformanceWidget = dynamic(() => import('./PerformanceWidget'), { ssr: false });
 const EnhancedAIChatWidget = dynamic(() => import('./EnhancedAIChatWidget'), { ssr: false });
+const RightPanelTabs = dynamic(() => import('./RightPanelTabs'), { ssr: false });
+const LayoutPresetSelector = dynamic(() => import('./LayoutPresetSelector'), { ssr: false });
+const CommandPalette = dynamic(() => import('./CommandPalette'), { ssr: false });
+const VibeMeterWidget = dynamic(() => import('./VibeMeterWidget'), { ssr: false });
 import { ChevronDown, ChevronUp, Keyboard, Settings, HelpCircle } from 'lucide-react';
 import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
 import { KeyboardShortcutsSettings } from '@/components/KeyboardShortcutsSettings';
@@ -43,12 +48,29 @@ export default function TradingTerminalView() {
   const terminal = useTradingTerminal(initialMarket);
   const marketData = useMarketData(terminal.selectedMarket);
   const wallet = useWalletConnection();
-  
+  const layoutPreset = useLayoutPreset();
+
   // Settings modal state
   const [showSettings, setShowSettings] = React.useState(false);
-  
+
+  // Command palette state
+  const [showCommandPalette, setShowCommandPalette] = React.useState(false);
+
   // Tutorial state - temporarily disabled during testing
   // const { showTutorial, startTutorial, closeTutorial } = useTutorial(TUTORIAL_STORAGE_KEY);
+
+  // Global keyboard shortcut for command palette (Cmd+K / Ctrl+K)
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setShowCommandPalette(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Update page title and URL when market changes
   React.useEffect(() => {
@@ -134,13 +156,18 @@ export default function TradingTerminalView() {
       />
 
       {/* Compact Header */}
-      <header 
+      <header
         className="trading-header flex items-center justify-between px-4 py-1.5 bg-card border-b border-border flex-shrink-0 h-12 z-10"
         data-ai-section="header"
         data-ai-current-market={selectedMarket}
       >
         <div className="flex items-center gap-3">
           <h1 className="text-base font-bold text-primary">Trading Terminal</h1>
+          {/* Layout Preset Selector */}
+          <LayoutPresetSelector
+            currentPresetId={layoutPreset.currentPresetId}
+            onPresetChange={layoutPreset.changePreset}
+          />
           {/* Data Source Indicator */}
           {marketData.dataSource && (
             <DataSourceIndicator
@@ -341,12 +368,29 @@ export default function TradingTerminalView() {
                   </button>
                 </div>
                 <div className="flex-1 overflow-hidden">
-                  <EnhancedAIChatWidget 
-                    market={selectedMarket} 
+                  <EnhancedAIChatWidget
+                    market={selectedMarket}
                     walletConnected={walletConnected}
                     onTradeExecute={handleTradeExecute}
                     marketData={marketData}
                   />
+                </div>
+              </div>
+            )}
+            {maximizedTile === 'vibe' && (
+              <div className="flex-1 flex flex-col" data-tile-id="vibe">
+                <div className="flex items-center justify-between px-4 py-2 bg-card border-b border-border">
+                  <span className="text-sm font-semibold text-primary">VIBE METER</span>
+                  <button
+                    onClick={restoreAllTiles}
+                    className="p-1 hover:bg-border rounded"
+                    title="Restore (Esc)"
+                  >
+                    <ChevronDown size={16} className="text-foreground" />
+                  </button>
+                </div>
+                <div className="flex-1 overflow-auto">
+                  <VibeMeterWidget market={selectedMarket} />
                 </div>
               </div>
             )}
@@ -529,216 +573,18 @@ export default function TradingTerminalView() {
               </div>
             </div>
 
-            {/* Right Panel - Market Depth, Trades, News, Positions, and AI Chat */}
+            {/* Right Panel - Tabbed Interface (Market Data, Portfolio, AI Assistant) */}
             <aside className="right-panel flex-shrink-0 flex flex-col bg-background overflow-hidden min-h-0 w-full lg:w-96 xl:w-[480px] h-full" aria-label="Market Data" data-ai-section="market-data-panel">
-              {/* Market Depth Section */}
-              <section 
-                data-tile-id="depth"
-                className={`depth-section flex flex-col border-b border-border ${isSectionExpanded('depth') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'depth' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                aria-label="Market Depth"
-                data-ai-widget="market-depth"
-                data-ai-market={selectedMarket}
-              >
-                <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
-                  onClick={() => toggleSection('depth')}
-                  role="button"
-                  tabIndex={0}
-                >
-                  <span className="text-xs font-semibold text-primary">MARKET DEPTH</span>
-                  <button className="p-1 hover:bg-border rounded">
-                    {isSectionExpanded('depth') ? (
-                      <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
-                    ) : (
-                      <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
-                    )}
-                  </button>
-                </div>
-                {isSectionExpanded('depth') && (
-                  <div className="flex-1 min-h-0 overflow-hidden">
-                    <MarketDepthWidget market={selectedMarket} />
-                  </div>
-                )}
-              </section>
-
-              {/* Recent Trades Section */}
-              <section 
-                data-tile-id="trades"
-                className={`trades-section flex flex-col border-b border-border ${isSectionExpanded('trades') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'trades' ? 'ring-2 ring-primary ring-inset' : ''}`}
-                aria-label="Recent Trades"
-                data-ai-widget="recent-trades"
-                data-ai-market={selectedMarket}
-              >
-                <div 
-                  className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
-                  onClick={() => toggleSection('trades')}
-                  role="button"
-                  aria-expanded={isSectionExpanded('trades')}
-                  aria-controls="trades-content"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      toggleSection('trades');
-                    }
-                  }}
-                >
-                  <span className="text-xs font-semibold text-primary">RECENT TRADES</span>
-                  <div className="flex items-center gap-1">
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleMaximize('trades');
-                      }}
-                      className="p-1 hover:bg-border rounded"
-                      title="Maximize (Shift+3)"
-                    >
-                      <ChevronUp size={14} className="text-foreground" />
-                    </button>
-                    <button 
-                      className="p-1 hover:bg-border rounded"
-                      aria-label={isSectionExpanded('trades') ? 'Collapse trades' : 'Expand trades'}
-                    >
-                      {isSectionExpanded('trades') ? (
-                        <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
-                      ) : (
-                        <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
-                      )}
-                    </button>
-                  </div>
-                </div>
-                {isSectionExpanded('trades') && (
-                  <div id="trades-content" className="flex-1 min-h-0 overflow-hidden">
-                    <TradeHistory market={selectedMarket} isLoading={isLoadingMarketData} />
-                  </div>
-                )}
-              </section>
-
-          {/* Market News Section */}
-          <section 
-            data-tile-id="news"
-            className={`news-section flex flex-col border-b border-border ${isSectionExpanded('news') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'news' ? 'ring-2 ring-primary ring-inset' : ''}`}
-            aria-label="Market News"
-            data-ai-widget="market-news"
-            data-ai-market={selectedMarket}
-          >
-            <div 
-              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
-              onClick={() => toggleSection('news')}
-              role="button"
-              tabIndex={0}
-            >
-              <span className="text-xs font-semibold text-primary">MARKET NEWS</span>
-              <button className="p-1 hover:bg-border rounded">
-                {isSectionExpanded('news') ? (
-                  <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
-                ) : (
-                  <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
-                )}
-              </button>
-            </div>
-            {isSectionExpanded('news') && (
-              <div className="flex-1 min-h-0 overflow-hidden">
-                <MarketNewsWidget market={selectedMarket} />
-              </div>
-            )}
-          </section>
-
-          {/* Positions Section */}
-          <section 
-            data-tile-id="positions"
-            className={`positions-section flex flex-col ${isSectionExpanded('positions') ? 'flex-1 min-h-0' : 'flex-shrink-0 h-10'} transition-all duration-300 overflow-hidden ${focusedTile === 'positions' ? 'ring-2 ring-primary ring-inset' : ''}`}
-            aria-label="Trading Positions"
-            data-ai-widget="trading-positions"
-            data-ai-market={selectedMarket}
-          >
-            <div 
-              className="section-header flex items-center justify-between px-4 py-1.5 bg-card cursor-pointer hover:bg-muted transition-colors duration-150"
-              onClick={() => toggleSection('positions')}
-              role="button"
-              aria-expanded={isSectionExpanded('positions')}
-              aria-controls="positions-content"
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  toggleSection('positions');
-                }
-              }}
-            >
-              <span className="text-xs font-semibold text-primary">POSITIONS</span>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggleMaximize('positions');
-                  }}
-                  className="p-1 hover:bg-border rounded"
-                  title="Maximize (Shift+4)"
-                >
-                  <ChevronUp size={14} className="text-foreground" />
-                </button>
-                <button 
-                  className="p-1 hover:bg-border rounded"
-                  aria-label={isSectionExpanded('positions') ? 'Collapse positions' : 'Expand positions'}
-                >
-                  {isSectionExpanded('positions') ? (
-                    <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
-                  ) : (
-                    <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
-                  )}
-                </button>
-              </div>
-            </div>
-            {isSectionExpanded('positions') && (
-              <div id="positions-content" className="flex-1 min-h-0 overflow-hidden">
-                <PositionsPanel market={selectedMarket} />
-              </div>
-            )}
-          </section>
-
-          {/* AI Chat Trading Assistant - Expandable to fill available space */}
-          <div 
-            data-tile-id="aichat"
-            className={`ai-chat-section border-t border-border flex flex-col ${focusedTile === 'aichat' ? 'ring-2 ring-primary ring-inset' : ''} ${aiChatMinimized ? 'flex-shrink-0' : 'flex-1 min-h-0'}`}
-            style={!aiChatMinimized ? { minHeight: '300px', maxHeight: '50vh' } : { height: '42px' }}
-            data-ai-widget="ai-chat-trading"
-            data-ai-market={selectedMarket}
-          >
-            <div 
-              className="flex items-center justify-between px-3 py-2 bg-card border-b border-border cursor-pointer hover:bg-muted transition-colors duration-150 h-[42px] flex-shrink-0"
-              onClick={() => setAIChatMinimized(!aiChatMinimized)}
-              role="button"
-              aria-expanded={!aiChatMinimized}
-              title={aiChatMinimized ? 'Expand AI Assistant' : 'Minimize AI Assistant'}
-            >
-              <span className="text-xs font-semibold text-primary">AI ASSISTANT</span>
-              <button 
-                className="p-1 hover:bg-border rounded"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setAIChatMinimized(!aiChatMinimized);
-                }}
-              >
-                {aiChatMinimized ? (
-                  <ChevronUp size={14} className="text-foreground transition-transform duration-200" />
-                ) : (
-                  <ChevronDown size={14} className="text-foreground transition-transform duration-200" />
-                )}
-              </button>
-            </div>
-            {!aiChatMinimized && (
-              <div className="flex-1 flex flex-col overflow-hidden min-h-0">
-                <EnhancedAIChatWidget 
-                  market={selectedMarket} 
-                  walletConnected={walletConnected}
-                  onTradeExecute={handleTradeExecute}
-                  marketData={marketData}
-                />
-              </div>
-            )}
-          </div>
-        </aside>
+              <RightPanelTabs
+                selectedMarket={selectedMarket}
+                isLoadingMarketData={isLoadingMarketData}
+                walletConnected={walletConnected}
+                marketData={marketData}
+                onTradeExecute={handleTradeExecute}
+                focusedTile={focusedTile}
+                toggleMaximize={toggleMaximize}
+              />
+            </aside>
       </>
     )}
   </div>
@@ -843,6 +689,10 @@ export default function TradingTerminalView() {
               
               <div className="col-span-2 text-xs font-semibold text-primary uppercase mt-3 mb-2">General</div>
               <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Command Palette</span>
+                <kbd className="px-2 py-1 bg-background border border-border rounded font-mono text-primary text-xs">Cmd+K</kbd>
+              </div>
+              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Show Help</span>
                 <kbd className="px-2 py-1 bg-background border border-border rounded font-mono text-primary text-xs">?</kbd>
               </div>
@@ -872,9 +722,22 @@ export default function TradingTerminalView() {
 
       {/* Keyboard Shortcuts Settings Modal */}
       <ErrorBoundary>
-        <KeyboardShortcutsSettings 
+        <KeyboardShortcutsSettings
           isOpen={showSettings}
           onClose={() => setShowSettings(false)}
+        />
+      </ErrorBoundary>
+
+      {/* Command Palette */}
+      <ErrorBoundary>
+        <CommandPalette
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          selectedMarket={selectedMarket}
+          onMarketChange={setSelectedMarket}
+          onLayoutChange={layoutPreset.changePreset}
+          onTradeExecute={handleTradeExecute}
+          onMaximizeTile={toggleMaximize}
         />
       </ErrorBoundary>
 
