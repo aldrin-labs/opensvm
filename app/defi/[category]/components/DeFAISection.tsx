@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatNumber } from '@/lib/utils';
-import { ExternalLink, TrendingUp, TrendingDown, Bot, Brain, Zap, BarChart3, Search, Star, Users, DollarSign } from 'lucide-react';
+import { ExternalLink, TrendingUp, TrendingDown, Bot, Brain, Zap, BarChart3, Search, Star, Users, DollarSign, RefreshCw } from 'lucide-react';
 
 interface DeFAITool {
   name: string;
@@ -38,216 +38,31 @@ export default function DeFAISection() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'tvl' | 'users' | 'accuracy' | 'rating'>('tvl');
 
-  useEffect(() => {
-    async function fetchDeFAIData() {
-      try {
-        // Simulate API call - in real implementation this would fetch from analytics API
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  const fetchDeFAIData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/defai');
+      const data = await response.json();
 
-        const defaiTools: DeFAITool[] = [
-          {
-            name: 'Nosana AI',
-            category: 'AI Computing',
-            description: 'Decentralized AI inference network powered by Solana for DeFi applications',
-            website: 'https://nosana.io',
-            tvl: 45000000,
-            users: 2800,
-            aiFeatures: ['Model Inference', 'GPU Sharing', 'AI Training', 'Prediction Markets'],
-            pricing: 'Pay-per-compute',
-            accuracy: 94.5,
-            trades24h: 1200,
-            revenue24h: 28000,
-            change24h: 8.4,
-            rating: 4.6,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: true
-          },
-          {
-            name: 'Pyth AI Oracle',
-            category: 'Price Prediction',
-            description: 'AI-enhanced price feeds with machine learning predictions for Solana DeFi protocols',
-            website: 'https://pyth.network',
-            tvl: 128000000,
-            users: 8900,
-            aiFeatures: ['Price Prediction', 'Volatility Analysis', 'Market Sentiment', 'Risk Assessment'],
-            pricing: 'Subscription',
-            accuracy: 91.2,
-            trades24h: 45000,
-            revenue24h: 89000,
-            change24h: 5.2,
-            rating: 4.8,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: false
-          },
-          {
-            name: 'Drift AI',
-            category: 'Trading Bot',
-            description: 'AI-powered perpetual futures trading with automated strategies',
-            website: 'https://drift.trade',
-            tvl: 67000000,
-            users: 3400,
-            aiFeatures: ['Auto Trading', 'Strategy Optimization', 'Risk Management', 'Market Analysis'],
-            pricing: 'Performance Fee',
-            accuracy: 87.3,
-            trades24h: 8900,
-            revenue24h: 156000,
-            change24h: 12.8,
-            rating: 4.4,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: true
-          },
-          {
-            name: 'Solend AI',
-            category: 'Lending Optimization',
-            description: 'AI-driven lending and borrowing optimization with dynamic interest rates',
-            website: 'https://solend.fi',
-            tvl: 89000000,
-            users: 5600,
-            aiFeatures: ['Interest Rate Optimization', 'Risk Scoring', 'Liquidation Prevention', 'Yield Farming'],
-            pricing: 'Protocol Fees',
-            accuracy: 92.8,
-            trades24h: 2300,
-            revenue24h: 67000,
-            change24h: -3.2,
-            rating: 4.5,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: false
-          },
-          {
-            name: 'Jupiter AI Router',
-            category: 'DEX Aggregation',
-            description: 'AI-powered trade routing for optimal swap execution across Solana DEXes',
-            website: 'https://jup.ag',
-            tvl: 234000000,
-            users: 15600,
-            aiFeatures: ['Route Optimization', 'Slippage Prediction', 'MEV Protection', 'Price Impact Analysis'],
-            pricing: 'Free',
-            accuracy: 96.7,
-            trades24h: 67000,
-            revenue24h: 234000,
-            change24h: 18.9,
-            rating: 4.9,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: true
-          },
-          {
-            name: 'Mango AI Markets',
-            category: 'Market Making',
-            description: 'AI-powered market making and liquidity optimization for trading pairs',
-            website: 'https://mango.markets',
-            tvl: 56000000,
-            users: 2100,
-            aiFeatures: ['Liquidity Optimization', 'Spread Management', 'Volume Prediction', 'Arbitrage Detection'],
-            pricing: 'Trading Fees',
-            accuracy: 89.1,
-            trades24h: 12000,
-            revenue24h: 123000,
-            change24h: 7.6,
-            rating: 4.3,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: false
-          },
-          {
-            name: 'Meteora Dynamic',
-            category: 'AMM Optimization',
-            description: 'AI-driven automated market maker with dynamic parameter adjustment',
-            website: 'https://meteora.ag',
-            tvl: 78000000,
-            users: 4200,
-            aiFeatures: ['Parameter Optimization', 'Fee Adjustment', 'Liquidity Prediction', 'Impermanent Loss Minimization'],
-            pricing: 'Performance Fee',
-            accuracy: 93.4,
-            trades24h: 5600,
-            revenue24h: 89000,
-            change24h: 15.2,
-            rating: 4.7,
-            status: 'active',
-            supportedChains: ['Solana'],
-            apiAvailable: false,
-            freeTier: false
-          },
-          {
-            name: 'Tensor AI NFT',
-            category: 'NFT Analytics',
-            description: 'AI-powered NFT market analysis and trading recommendations',
-            website: 'https://tensor.trade',
-            tvl: 23000000,
-            users: 1800,
-            aiFeatures: ['Price Prediction', 'Rarity Analysis', 'Market Trends', 'Collection Scoring'],
-            pricing: 'Subscription',
-            accuracy: 85.6,
-            trades24h: 890,
-            revenue24h: 34000,
-            change24h: -5.8,
-            rating: 4.2,
-            status: 'beta',
-            supportedChains: ['Solana'],
-            apiAvailable: true,
-            freeTier: true
-          },
-          {
-            name: 'Solana AI Agents',
-            category: 'Portfolio Management',
-            description: 'Autonomous AI agents for DeFi portfolio management and rebalancing',
-            website: 'https://solana-agents.com',
-            tvl: 34000000,
-            users: 1200,
-            aiFeatures: ['Portfolio Rebalancing', 'Risk Management', 'Yield Optimization', 'Tax Optimization'],
-            pricing: 'Management Fee',
-            accuracy: 88.9,
-            trades24h: 1500,
-            revenue24h: 45000,
-            change24h: 9.3,
-            rating: 4.1,
-            status: 'beta',
-            supportedChains: ['Solana'],
-            apiAvailable: false,
-            freeTier: false
-          },
-          {
-            name: 'DeAI Protocol',
-            category: 'Decentralized AI',
-            description: 'Decentralized AI marketplace for Solana DeFi applications and smart contracts',
-            website: 'https://deai.io',
-            tvl: 12000000,
-            users: 450,
-            aiFeatures: ['Model Marketplace', 'Smart Contract AI', 'Governance AI', 'Security Analysis'],
-            pricing: 'Token-based',
-            accuracy: 81.2,
-            trades24h: 120,
-            revenue24h: 8900,
-            change24h: 22.4,
-            rating: 3.9,
-            status: 'coming-soon',
-            supportedChains: ['Solana'],
-            apiAvailable: false,
-            freeTier: true
-          }
-        ];
-
-        setTools(defaiTools.sort((a, b) => b.tvl - a.tvl));
-      } catch (err) {
-        console.error('Error fetching DeFAI data:', err);
-        setError('Failed to load DeFAI tools data');
-      } finally {
-        setLoading(false);
+      if (data.success && data.data) {
+        setTools(data.data.tools || []);
+        setError(null);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
+    } catch (err) {
+      console.error('Error fetching DeFAI data:', err);
+      setError('Failed to load DeFAI tools data');
+    } finally {
+      setLoading(false);
     }
-
-    fetchDeFAIData();
   }, []);
+
+  useEffect(() => {
+    fetchDeFAIData();
+    const interval = setInterval(() => fetchDeFAIData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchDeFAIData]);
 
   const categories = ['all', 'AI Computing', 'Price Prediction', 'Trading Bot', 'Lending Optimization', 'DEX Aggregation', 'Market Making', 'AMM Optimization', 'NFT Analytics', 'Portfolio Management', 'Decentralized AI'];
 
@@ -271,7 +86,7 @@ export default function DeFAISection() {
   if (error) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={() => {
           if (typeof window !== 'undefined') {
             window.location.reload();
@@ -305,18 +120,22 @@ export default function DeFAISection() {
               />
             </div>
             <div className="flex gap-2 flex-wrap">
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-                aria-label="Filter by category"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="sr-only" htmlFor="category-filter">Filter by category</label>
+                <select
+                  id="category-filter"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  aria-label="Filter by category"
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>
+                      {category === 'all' ? 'All Categories' : category}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button
                 variant={sortBy === 'tvl' ? 'default' : 'outline'}
                 size="sm"
@@ -353,6 +172,10 @@ export default function DeFAISection() {
               >
                 Rating
               </Button>
+              <Button variant="outline" size="sm" onClick={() => fetchDeFAIData(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -363,7 +186,7 @@ export default function DeFAISection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Bot className="h-5 w-5 text-blue-500" />
+              <Bot className="h-5 w-5 text-info" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Tools</p>
                 <p className="text-2xl font-bold">{tools.length}</p>
@@ -374,7 +197,7 @@ export default function DeFAISection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-5 w-5 text-green-500" />
+              <DollarSign className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm text-muted-foreground">Total TVL</p>
                 <p className="text-2xl font-bold">${formatNumber(tools.reduce((sum, tool) => sum + tool.tvl, 0))}</p>
@@ -385,7 +208,7 @@ export default function DeFAISection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Users className="h-5 w-5 text-purple-500" />
+              <Users className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Users</p>
                 <p className="text-2xl font-bold">{formatNumber(tools.reduce((sum, tool) => sum + tool.users, 0))}</p>
@@ -396,7 +219,7 @@ export default function DeFAISection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-orange-500" />
+              <BarChart3 className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm text-muted-foreground">Avg Accuracy</p>
                 <p className="text-2xl font-bold">{(tools.reduce((sum, tool) => sum + tool.accuracy, 0) / tools.length).toFixed(1)}%</p>
@@ -479,7 +302,7 @@ export default function DeFAISection() {
                     TVL
                   </div>
                   <p className="font-bold text-lg">${formatNumber(tool.tvl)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${tool.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                  <div className={`flex items-center gap-1 text-xs ${tool.change24h >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                     {tool.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(tool.change24h).toFixed(1)}%
@@ -491,7 +314,7 @@ export default function DeFAISection() {
                     <Zap className="h-3 w-3" />
                     Accuracy
                   </div>
-                  <p className="font-bold text-lg text-green-500">{tool.accuracy.toFixed(1)}%</p>
+                  <p className="font-bold text-lg text-success">{tool.accuracy.toFixed(1)}%</p>
                   <p className="text-xs text-muted-foreground">
                     {formatNumber(tool.trades24h)} trades
                   </p>

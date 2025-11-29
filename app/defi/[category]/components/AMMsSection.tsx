@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { ArrowUpDown, TrendingUp, DollarSign, Users, Droplets, ExternalLink, RefreshCw } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -50,189 +50,32 @@ export default function AMMsSection() {
   const [sortBy, setSortBy] = useState<'liquidity' | 'volume' | 'apr' | 'fees'>('liquidity');
   const [minLiquidity, setMinLiquidity] = useState<number>(0);
 
-  useEffect(() => {
-    const fetchAMMData = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock AMM platforms data - Solana-native AMMs
-        const mockPlatforms: AMMPlatform[] = [
-          {
-            name: 'Raydium',
-            totalLiquidity: 1200000000,
-            totalVolume24h: 450000000,
-            totalPools: 1850,
-            totalFees24h: 1350000,
-            description: 'Leading AMM and liquidity provider on Solana',
-            website: 'https://raydium.io'
-          },
-          {
-            name: 'Orca',
-            totalLiquidity: 890000000,
-            totalVolume24h: 320000000,
-            totalPools: 1240,
-            totalFees24h: 960000,
-            description: 'User-friendly AMM with concentrated liquidity',
-            website: 'https://orca.so'
-          },
-          {
-            name: 'Meteora',
-            totalLiquidity: 456000000,
-            totalVolume24h: 180000000,
-            totalPools: 680,
-            totalFees24h: 540000,
-            description: 'Multi-pool AMM with dynamic fee structures',
-            website: 'https://meteora.ag'
-          },
-          {
-            name: 'Lifinity',
-            totalLiquidity: 234000000,
-            totalVolume24h: 89000000,
-            totalPools: 340,
-            totalFees24h: 267000,
-            description: 'Proactive market maker with delta-neutral liquidity',
-            website: 'https://lifinity.io'
-          },
-          {
-            name: 'Aldrin',
-            totalLiquidity: 167000000,
-            totalVolume24h: 67000000,
-            totalPools: 280,
-            totalFees24h: 201000,
-            description: 'Advanced AMM with limit orders and analytics',
-            website: 'https://aldrin.com'
-          }
-        ];
+  const fetchAMMData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/amms');
+      const data = await response.json();
 
-        // Mock pool data - Solana token pairs
-        const mockPools: PoolData[] = [
-          {
-            id: '1',
-            tokenA: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-            tokenB: { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-            platform: 'Raydium',
-            liquidity: 245000000,
-            volume24h: 89000000,
-            fees24h: 267000,
-            apr: 24.5,
-            fee: 0.25,
-            lpTokenSupply: 125000000,
-            priceImpact: 0.02,
-            reserves: { tokenA: 2500000, tokenB: 245000000 }
-          },
-          {
-            id: '2',
-            tokenA: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-            tokenB: { symbol: 'RAY', mint: '4k3Dyjzvzp8eMZWUXbBCjEvwSkkk59S5iCNLY3QrkX6R' },
-            platform: 'Raydium',
-            liquidity: 134000000,
-            volume24h: 45000000,
-            fees24h: 135000,
-            apr: 18.7,
-            fee: 0.30,
-            lpTokenSupply: 67000000,
-            priceImpact: 0.05,
-            reserves: { tokenA: 1400000, tokenB: 890000000 }
-          },
-          {
-            id: '3',
-            tokenA: { symbol: 'ORCA', mint: 'orcaEKTdK7LKz57vaAYr9QeNsVEPfiu6QeMU1kektZE' },
-            tokenB: { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-            platform: 'Orca',
-            liquidity: 89000000,
-            volume24h: 23000000,
-            fees24h: 69000,
-            apr: 15.2,
-            fee: 0.30,
-            lpTokenSupply: 45000000,
-            priceImpact: 0.08,
-            reserves: { tokenA: 25000000, tokenB: 89000000 }
-          },
-          {
-            id: '4',
-            tokenA: { symbol: 'WIF', mint: '7vfCXTUXx5WJV5JADk17DUJ4ksgau7utNKj4b963voxs' },
-            tokenB: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-            platform: 'Orca',
-            liquidity: 67000000,
-            volume24h: 34000000,
-            fees24h: 102000,
-            apr: 45.6,
-            fee: 0.30,
-            lpTokenSupply: 34000000,
-            priceImpact: 0.12,
-            reserves: { tokenA: 28000000, tokenB: 680000 }
-          },
-          {
-            id: '5',
-            tokenA: { symbol: 'BONK', mint: 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263' },
-            tokenB: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-            platform: 'Meteora',
-            liquidity: 45000000,
-            volume24h: 28000000,
-            fees24h: 84000,
-            apr: 67.8,
-            fee: 0.30,
-            lpTokenSupply: 23000000,
-            priceImpact: 0.18,
-            reserves: { tokenA: 1200000000000, tokenB: 450000 }
-          },
-          {
-            id: '6',
-            tokenA: { symbol: 'USDT', mint: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB' },
-            tokenB: { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-            platform: 'Lifinity',
-            liquidity: 123000000,
-            volume24h: 67000000,
-            fees24h: 67000,
-            apr: 5.4,
-            fee: 0.10,
-            lpTokenSupply: 123000000,
-            priceImpact: 0.01,
-            reserves: { tokenA: 61500000, tokenB: 61500000 }
-          },
-          {
-            id: '7',
-            tokenA: { symbol: 'MNGO', mint: 'MangoCzJ36AjZyKwVj3VnYU4GTonjfVEnJmvvWaxLac' },
-            tokenB: { symbol: 'USDC', mint: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v' },
-            platform: 'Aldrin',
-            liquidity: 23000000,
-            volume24h: 8900000,
-            fees24h: 26700,
-            apr: 42.3,
-            fee: 0.30,
-            lpTokenSupply: 12000000,
-            priceImpact: 0.25,
-            reserves: { tokenA: 510000000, tokenB: 23000000 }
-          },
-          {
-            id: '8',
-            tokenA: { symbol: 'JUP', mint: 'JUPyiwrYJFskUPiHa7hkeR8VUtAeFoSYbKedZNsDvCN' },
-            tokenB: { symbol: 'SOL', mint: 'So11111111111111111111111111111111111111112' },
-            platform: 'Raydium',
-            liquidity: 78000000,
-            volume24h: 34000000,
-            fees24h: 102000,
-            apr: 38.9,
-            fee: 0.30,
-            lpTokenSupply: 39000000,
-            priceImpact: 0.09,
-            reserves: { tokenA: 89000000, tokenB: 790000 }
-          }
-        ];
-
-        setPlatforms(mockPlatforms);
-        setPools(mockPools);
-      } catch (error) {
-        console.error('Failed to fetch AMM data:', error);
-        setPlatforms([]);
-        setPools([]);
-      } finally {
-        setLoading(false);
+      if (data.success && data.data) {
+        setPlatforms(data.data.platforms || []);
+        setPools(data.data.pools || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
-
-    fetchAMMData();
+    } catch (error) {
+      console.error('Failed to fetch AMM data:', error);
+      setPlatforms([]);
+      setPools([]);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchAMMData();
+    const interval = setInterval(() => fetchAMMData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchAMMData]);
 
   const filteredAndSortedPools = pools
     .filter(pool => {
@@ -272,13 +115,13 @@ export default function AMMsSection() {
 
   const getPlatformColor = (platform: string) => {
     const colors: { [key: string]: string } = {
-      'Raydium': 'bg-blue-100 text-blue-800',
-      'Orca': 'bg-purple-100 text-purple-800',
-      'Meteora': 'bg-orange-100 text-orange-800',
-      'Lifinity': 'bg-green-100 text-green-800',
-      'Aldrin': 'bg-red-100 text-red-800'
+      'Raydium': 'bg-info/10 text-info',
+      'Orca': 'bg-primary/10 text-primary',
+      'Meteora': 'bg-warning/10 text-warning',
+      'Lifinity': 'bg-success/10 text-success',
+      'Aldrin': 'bg-destructive/10 text-destructive'
     };
-    return colors[platform] || 'bg-gray-100 text-gray-800';
+    return colors[platform] || 'bg-muted text-muted-foreground';
   };
 
   if (loading) {
@@ -322,7 +165,7 @@ export default function AMMsSection() {
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>24h Fees:</span>
-                  <span className="font-medium text-green-600">{formatCurrency(platform.totalFees24h)}</span>
+                  <span className="font-medium text-success">{formatCurrency(platform.totalFees24h)}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span>Total Pools:</span>
@@ -342,7 +185,7 @@ export default function AMMsSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Liquidity</p>
               <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalLiquidity, 0))}</p>
             </div>
-            <Droplets className="h-8 w-8 text-blue-500" />
+            <Droplets className="h-8 w-8 text-info" />
           </div>
         </Card>
 
@@ -352,7 +195,7 @@ export default function AMMsSection() {
               <p className="text-sm font-medium text-muted-foreground">24h Volume</p>
               <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalVolume24h, 0))}</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-green-500" />
+            <TrendingUp className="h-8 w-8 text-success" />
           </div>
         </Card>
 
@@ -362,7 +205,7 @@ export default function AMMsSection() {
               <p className="text-sm font-medium text-muted-foreground">24h Fees</p>
               <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalFees24h, 0))}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-purple-500" />
+            <DollarSign className="h-8 w-8 text-primary" />
           </div>
         </Card>
 
@@ -372,7 +215,7 @@ export default function AMMsSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Pools</p>
               <p className="text-2xl font-bold">{platforms.reduce((sum, p) => sum + p.totalPools, 0)}</p>
             </div>
-            <Users className="h-8 w-8 text-orange-500" />
+            <Users className="h-8 w-8 text-warning" />
           </div>
         </Card>
       </div>
@@ -380,36 +223,48 @@ export default function AMMsSection() {
       {/* Filters and Controls */}
       <Card className="p-4">
         <div className="flex flex-col md:flex-row gap-4 items-center">
-          <select
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg bg-background"
-          >
-            <option value="all">All Platforms</option>
-            {platforms.map((platform) => (
-              <option key={platform.name} value={platform.name}>
-                {platform.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="platform-filter">Filter by platform</label>
+            <select
+              id="platform-filter"
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="px-4 py-2 border rounded-lg bg-background"
+              aria-label="Filter by platform"
+            >
+              <option value="all">All Platforms</option>
+              {platforms.map((platform) => (
+                <option key={platform.name} value={platform.name}>
+                  {platform.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-4 py-2 border rounded-lg bg-background"
-          >
-            <option value="liquidity">Sort by Liquidity</option>
-            <option value="volume">Sort by Volume</option>
-            <option value="apr">Sort by APR</option>
-            <option value="fees">Sort by Fees</option>
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="sort-by">Sort pools by</label>
+            <select
+              id="sort-by"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="px-4 py-2 border rounded-lg bg-background"
+              aria-label="Sort pools by"
+            >
+              <option value="liquidity">Sort by Liquidity</option>
+              <option value="volume">Sort by Volume</option>
+              <option value="apr">Sort by APR</option>
+              <option value="fees">Sort by Fees</option>
+            </select>
+          </div>
 
           <div className="flex items-center gap-2">
-            <label className="text-sm">Min Liquidity:</label>
+            <label className="text-sm" htmlFor="min-liquidity">Min Liquidity:</label>
             <select
+              id="min-liquidity"
               value={minLiquidity}
               onChange={(e) => setMinLiquidity(Number(e.target.value))}
               className="px-3 py-2 border rounded-lg bg-background"
+              aria-label="Minimum liquidity filter"
             >
               <option value={0}>All</option>
               <option value={1000000}>$1M+</option>
@@ -419,7 +274,7 @@ export default function AMMsSection() {
             </select>
           </div>
 
-          <Button variant="outline" className="ml-auto">
+          <Button variant="outline" className="ml-auto" onClick={() => fetchAMMData(true)}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -474,11 +329,11 @@ export default function AMMsSection() {
                   <td className="p-4 text-right font-mono">
                     {formatCurrency(pool.volume24h)}
                   </td>
-                  <td className="p-4 text-right font-mono text-green-600">
+                  <td className="p-4 text-right font-mono text-success">
                     {formatCurrency(pool.fees24h)}
                   </td>
                   <td className="p-4 text-right">
-                    <span className="font-medium text-blue-600">{pool.apr.toFixed(1)}%</span>
+                    <span className="font-medium text-info">{pool.apr.toFixed(1)}%</span>
                   </td>
                   <td className="p-4 text-right">
                     <span className="text-sm">{pool.fee}%</span>

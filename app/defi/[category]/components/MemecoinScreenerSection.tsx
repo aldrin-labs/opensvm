@@ -246,11 +246,11 @@ export default function MemecoinScreenerSection() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'low': return 'text-green-600 bg-green-100';
-      case 'medium': return 'text-yellow-600 bg-yellow-100';
-      case 'high': return 'text-orange-600 bg-orange-100';
-      case 'extreme': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'low': return 'text-success bg-success/10';
+      case 'medium': return 'text-warning bg-warning/10';
+      case 'high': return 'text-warning bg-warning/10';
+      case 'extreme': return 'text-destructive bg-destructive/10';
+      default: return 'text-muted-foreground bg-muted';
     }
   };
 
@@ -278,7 +278,7 @@ export default function MemecoinScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Memecoins</p>
               <p className="text-2xl font-bold">{memecoins.length}</p>
             </div>
-            <Zap className="h-8 w-8 text-purple-500" />
+            <Zap className="h-8 w-8 text-primary" />
           </div>
         </Card>
 
@@ -288,7 +288,7 @@ export default function MemecoinScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Trending</p>
               <p className="text-2xl font-bold">{memecoins.filter(c => c.isTrending).length}</p>
             </div>
-            <Flame className="h-8 w-8 text-orange-500" />
+            <Flame className="h-8 w-8 text-warning" />
           </div>
         </Card>
 
@@ -298,7 +298,7 @@ export default function MemecoinScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">New Listings</p>
               <p className="text-2xl font-bold">{memecoins.filter(c => c.isNewListing).length}</p>
             </div>
-            <Crown className="h-8 w-8 text-yellow-500" />
+            <Crown className="h-8 w-8 text-warning" />
           </div>
         </Card>
 
@@ -308,7 +308,7 @@ export default function MemecoinScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Volume 24h</p>
               <p className="text-2xl font-bold">{formatCurrency(memecoins.reduce((sum, coin) => sum + coin.volume24h, 0))}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-green-500" />
+            <DollarSign className="h-8 w-8 text-success" />
           </div>
         </Card>
       </div>
@@ -389,8 +389,8 @@ export default function MemecoinScreenerSection() {
                       <div>
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{coin.symbol}</span>
-                          {coin.isTrending && <Flame className="h-3 w-3 text-orange-500" />}
-                          {coin.isNewListing && <Crown className="h-3 w-3 text-yellow-500" />}
+                          {coin.isTrending && <Flame className="h-3 w-3 text-warning" />}
+                          {coin.isNewListing && <Crown className="h-3 w-3 text-warning" />}
                         </div>
                         <p className="text-xs text-muted-foreground">{coin.name}</p>
                       </div>
@@ -402,7 +402,7 @@ export default function MemecoinScreenerSection() {
                   <td className="p-4 text-right">
                     <div className="space-y-1">
                       <span className={`flex items-center justify-end gap-1 text-sm ${
-                        coin.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'
+                        coin.priceChange24h >= 0 ? 'text-success' : 'text-destructive'
                       }`}>
                         {coin.priceChange24h >= 0 ? (
                           <TrendingUp className="h-3 w-3" />
@@ -412,7 +412,7 @@ export default function MemecoinScreenerSection() {
                         {coin.priceChange24h >= 0 ? '+' : ''}{coin.priceChange24h.toFixed(1)}%
                       </span>
                       <span className={`text-xs ${
-                        coin.priceChange7d >= 0 ? 'text-green-600' : 'text-red-600'
+                        coin.priceChange7d >= 0 ? 'text-success' : 'text-destructive'
                       }`}>
                         {coin.priceChange7d >= 0 ? '+' : ''}{coin.priceChange7d.toFixed(1)}%
                       </span>
@@ -459,14 +459,14 @@ export default function MemecoinScreenerSection() {
       )}
 
       {/* Risk Warning */}
-      <Card className="p-4 border-yellow-200 bg-yellow-50">
+      <Card className="p-4 border-warning/20 bg-warning/5">
         <div className="flex items-start gap-3">
-          <div className="w-6 h-6 rounded-full bg-yellow-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span className="text-white text-xs font-bold">!</span>
+          <div className="w-6 h-6 rounded-full bg-warning flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-warning-foreground text-xs font-bold">!</span>
           </div>
           <div>
-            <h4 className="font-medium text-yellow-800 mb-1">High Risk Warning</h4>
-            <p className="text-sm text-yellow-700">
+            <h4 className="font-medium text-warning mb-1">High Risk Warning</h4>
+            <p className="text-sm text-muted-foreground">
               Memecoins are extremely volatile and speculative investments. Many are pump-and-dump schemes or rug pulls. 
               Only invest what you can afford to lose and always do your own research.
             </p>

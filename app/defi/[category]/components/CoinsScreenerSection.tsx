@@ -219,7 +219,7 @@ export default function CoinsScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Tokens</p>
               <p className="text-2xl font-bold">{tokens.length}</p>
             </div>
-            <BarChart3 className="h-8 w-8 text-blue-500" />
+            <BarChart3 className="h-8 w-8 text-info" />
           </div>
         </Card>
 
@@ -229,7 +229,7 @@ export default function CoinsScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Volume 24h</p>
               <p className="text-2xl font-bold">{formatCurrency(tokens.reduce((sum, token) => sum + token.volume24h, 0))}</p>
             </div>
-            <Volume2 className="h-8 w-8 text-green-500" />
+            <Volume2 className="h-8 w-8 text-success" />
           </div>
         </Card>
 
@@ -239,7 +239,7 @@ export default function CoinsScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Market Cap</p>
               <p className="text-2xl font-bold">{formatCurrency(tokens.reduce((sum, token) => sum + token.marketCap, 0))}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-purple-500" />
+            <DollarSign className="h-8 w-8 text-primary" />
           </div>
         </Card>
 
@@ -249,7 +249,7 @@ export default function CoinsScreenerSection() {
               <p className="text-sm font-medium text-muted-foreground">Trending</p>
               <p className="text-2xl font-bold">{tokens.filter(t => t.trending).length}</p>
             </div>
-            <TrendingUp className="h-8 w-8 text-orange-500" />
+            <TrendingUp className="h-8 w-8 text-warning" />
           </div>
         </Card>
       </div>
@@ -317,10 +317,10 @@ export default function CoinsScreenerSection() {
                         <div className="flex items-center gap-2">
                           <span className="font-medium">{token.symbol}</span>
                           {token.verified && (
-                            <span className="px-1.5 py-0.5 text-xs bg-green-100 text-green-800 rounded">✓</span>
+                            <span className="px-1.5 py-0.5 text-xs bg-success/10 text-success rounded">✓</span>
                           )}
                           {token.trending && (
-                            <TrendingUp className="h-3 w-3 text-orange-500" />
+                            <TrendingUp className="h-3 w-3 text-warning" />
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground">{token.name}</p>
@@ -332,7 +332,7 @@ export default function CoinsScreenerSection() {
                   </td>
                   <td className="p-4 text-right">
                     <span className={`flex items-center justify-end gap-1 ${
-                      token.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'
+                      token.priceChange24h >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                       {token.priceChange24h >= 0 ? (
                         <TrendingUp className="h-3 w-3" />
@@ -355,7 +355,7 @@ export default function CoinsScreenerSection() {
                     {formatNumber(token.holders)}
                   </td>
                   <td className="p-4 text-center">
-                    <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded">
+                    <span className="px-2 py-1 text-xs bg-info/10 text-info rounded">
                       {token.program}
                     </span>
                   </td>

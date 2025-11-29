@@ -254,34 +254,34 @@ export default function ToolsSection() {
 
   const getCategoryColor = (category: string) => {
     switch (category) {
-      case 'Portfolio Tracker': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'Analytics': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Tax Tools': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'Wallet': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'Infrastructure': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      case 'Security': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'Developer': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-      case 'Governance': return 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Portfolio Tracker': return 'bg-info/10 text-info';
+      case 'Analytics': return 'bg-success/10 text-success';
+      case 'Tax Tools': return 'bg-primary/10 text-primary';
+      case 'Wallet': return 'bg-warning/10 text-warning';
+      case 'Infrastructure': return 'bg-destructive/10 text-destructive';
+      case 'Security': return 'bg-warning/10 text-warning';
+      case 'Developer': return 'bg-primary/10 text-primary';
+      case 'Governance': return 'bg-info/10 text-info';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'Free': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Freemium': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'Paid': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'Enterprise': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Free': return 'bg-success/10 text-success';
+      case 'Freemium': return 'bg-info/10 text-info';
+      case 'Paid': return 'bg-warning/10 text-warning';
+      case 'Enterprise': return 'bg-primary/10 text-primary';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Beta': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'Coming Soon': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Active': return 'bg-success/10 text-success';
+      case 'Beta': return 'bg-warning/10 text-warning';
+      case 'Coming Soon': return 'bg-muted text-muted-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -383,7 +383,7 @@ export default function ToolsSection() {
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
+                  <Users className="h-4 w-4 text-info" />
                   <div>
                     <div className="text-sm text-muted-foreground">Users</div>
                     <div className="font-semibold">{tool.users}</div>
@@ -391,7 +391,7 @@ export default function ToolsSection() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <TrendingUp className="h-4 w-4 text-success" />
                   <div>
                     <div className="text-sm text-muted-foreground">Rating</div>
                     <div className="font-semibold">{tool.rating}/5.0</div>
@@ -399,7 +399,7 @@ export default function ToolsSection() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-600" />
+                  <Activity className="h-4 w-4 text-primary" />
                   <div>
                     <div className="text-sm text-muted-foreground">Integrations</div>
                     <div className="font-semibold">{tool.integrations.toLocaleString()}</div>
@@ -407,7 +407,7 @@ export default function ToolsSection() {
                 </div>
                 
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-orange-600" />
+                  <Target className="h-4 w-4 text-warning" />
                   <div>
                     <div className="text-sm text-muted-foreground">Pricing</div>
                     <div className="font-semibold text-xs">{tool.pricing}</div>

@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatNumber } from '@/lib/utils';
-import { ExternalLink, TrendingUp, TrendingDown, Bot, Zap, Users, MessageCircle, Search, Star, Shield, DollarSign } from 'lucide-react';
+import { ExternalLink, TrendingUp, TrendingDown, Bot, Zap, Users, MessageCircle, Search, Star, Shield, DollarSign, RefreshCw } from 'lucide-react';
 
 interface BotData {
   name: string;
@@ -381,11 +381,11 @@ export default function TGBotsSection() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'Low': return 'text-green-500';
-      case 'Medium': return 'text-yellow-500';
-      case 'High': return 'text-orange-500';
-      case 'Extreme': return 'text-red-500';
-      default: return 'text-gray-500';
+      case 'Low': return 'text-success';
+      case 'Medium': return 'text-warning';
+      case 'High': return 'text-warning';
+      case 'Extreme': return 'text-destructive';
+      default: return 'text-muted-foreground';
     }
   };
 
@@ -409,7 +409,7 @@ export default function TGBotsSection() {
   if (error) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={() => {
           if (typeof window !== 'undefined') {
             window.location.reload();
@@ -441,18 +441,23 @@ export default function TGBotsSection() {
                 className="pl-10"
               />
             </div>
-            <div className="flex gap-2">
-              <select
-                value={typeFilter}
-                onChange={(e) => setTypeFilter(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-              >
-                {botTypes.map(type => (
-                  <option key={type} value={type}>
-                    {type === 'all' ? 'All Types' : type}
-                  </option>
-                ))}
-              </select>
+            <div className="flex gap-2 flex-wrap">
+              <div>
+                <label className="sr-only" htmlFor="type-filter">Filter by bot type</label>
+                <select
+                  id="type-filter"
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+                  aria-label="Filter by bot type"
+                >
+                  {botTypes.map(type => (
+                    <option key={type} value={type}>
+                      {type === 'all' ? 'All Types' : type}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button
                 variant={sortBy === 'users' ? 'default' : 'outline'}
                 size="sm"
@@ -474,6 +479,10 @@ export default function TGBotsSection() {
               >
                 Success Rate
               </Button>
+              <Button variant="outline" size="sm" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -492,7 +501,7 @@ export default function TGBotsSection() {
                   <div>
                     <div className="flex items-center gap-2">
                       <CardTitle className="text-lg">{bot.name}</CardTitle>
-                      {bot.isVerified && <Shield className="h-4 w-4 text-green-500" />}
+                      {bot.isVerified && <Shield className="h-4 w-4 text-success" />}
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="outline">{bot.type}</Badge>
@@ -528,7 +537,7 @@ export default function TGBotsSection() {
                     Users
                   </div>
                   <p className="font-bold text-lg">{formatNumber(bot.users)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${bot.change24h >= 0 ? 'text-green-500' : 'text-red-500'
+                  <div className={`flex items-center gap-1 text-xs ${bot.change24h >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                     {bot.change24h >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(bot.change24h).toFixed(1)}%
@@ -553,7 +562,7 @@ export default function TGBotsSection() {
                     <Zap className="h-3 w-3" />
                     Success Rate
                   </div>
-                  <p className="font-bold text-lg text-green-500">{bot.successRate.toFixed(1)}%</p>
+                  <p className="font-bold text-lg text-success">{bot.successRate.toFixed(1)}%</p>
                   <p className="text-xs text-muted-foreground">
                     Response: {bot.responseTime}ms
                   </p>
@@ -565,7 +574,7 @@ export default function TGBotsSection() {
                       <TrendingUp className="h-3 w-3" />
                       Avg Return
                     </div>
-                    <p className="font-bold text-lg text-blue-500">{bot.avgReturn.toFixed(1)}%</p>
+                    <p className="font-bold text-lg text-info">{bot.avgReturn.toFixed(1)}%</p>
                     <p className={`text-xs font-medium ${getRiskColor(bot.riskLevel)}`}>
                       {bot.riskLevel} Risk
                     </p>
@@ -637,7 +646,7 @@ export default function TGBotsSection() {
                 )}
                 <div className="flex justify-between items-center text-sm mt-1">
                   <span className="text-muted-foreground">Auto Execution:</span>
-                  <span className={`font-medium ${bot.autoExecution ? 'text-green-500' : 'text-gray-500'}`}>
+                  <span className={`font-medium ${bot.autoExecution ? 'text-success' : 'text-muted-foreground'}`}>
                     {bot.autoExecution ? 'Yes' : 'No'}
                   </span>
                 </div>

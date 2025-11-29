@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import { formatNumber } from '@/lib/utils';
-import { ExternalLink, TrendingUp, TrendingDown, BarChart3, Search, Route, Timer, Shield, Target } from 'lucide-react';
+import { ExternalLink, TrendingUp, TrendingDown, BarChart3, Search, Route, Timer, Shield, Target, RefreshCw } from 'lucide-react';
 
 interface AggregatorData {
   name: string;
@@ -43,218 +43,31 @@ export default function AggregatorsSection() {
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'volume24h' | 'trades24h' | 'avgSavings' | 'successRate'>('volume24h');
 
-  useEffect(() => {
-    async function fetchAggregatorData() {
-      try {
-        // Simulate API call - in real implementation this would fetch from analytics API
-        await new Promise(resolve => setTimeout(resolve, 1000));
+  const fetchAggregatorData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/aggregators');
+      const data = await response.json();
 
-        const aggregatorsList: AggregatorData[] = [
-          {
-            name: 'Jupiter',
-            description: 'Leading DEX aggregator on Solana with smart routing across all major DEXes',
-            website: 'https://jup.ag',
-            volume24h: 234000000,
-            volumeChange: 18.9,
-            trades24h: 67000,
-            uniqueUsers24h: 15600,
-            avgSavings: 2.8,
-            supportedDexes: ['Raydium', 'Orca', 'Aldrin', 'Serum', 'Meteora', 'Lifinity', 'Phoenix', 'Saber'],
-            supportedChains: ['Solana'],
-            maxSplits: 7,
-            avgExecutionTime: 1.2,
-            successRate: 98.7,
-            fees: 'Free',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Universal Aggregator',
-            features: ['Smart Routing', 'Price Impact Minimization', 'MEV Protection', 'Limit Orders'],
-            gasOptimization: true,
-            mevProtection: true,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Solana Swap Router',
-            description: 'Native Solana aggregator with advanced routing algorithms optimized for speed',
-            website: 'https://solana-swap.com',
-            volume24h: 89000000,
-            volumeChange: 12.4,
-            trades24h: 28000,
-            uniqueUsers24h: 8900,
-            avgSavings: 3.2,
-            supportedDexes: ['Raydium', 'Orca', 'Serum', 'Aldrin', 'Meteora'],
-            supportedChains: ['Solana'],
-            maxSplits: 5,
-            avgExecutionTime: 1.8,
-            successRate: 96.2,
-            fees: '0.1%',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Universal Aggregator',
-            features: ['Smart Routing', 'MEV Protection', 'Low Latency', 'Multi-source'],
-            gasOptimization: true,
-            mevProtection: true,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Mango Router',
-            description: 'Intelligent routing for Mango Markets with focus on minimal slippage',
-            website: 'https://mango.markets',
-            volume24h: 45000000,
-            volumeChange: -5.8,
-            trades24h: 12000,
-            uniqueUsers24h: 3400,
-            avgSavings: 1.9,
-            supportedDexes: ['Mango', 'Serum', 'Raydium', 'Orca'],
-            supportedChains: ['Solana'],
-            maxSplits: 3,
-            avgExecutionTime: 0.9,
-            successRate: 97.8,
-            fees: 'Platform Fee',
-            apiAvailable: true,
-            sdkAvailable: false,
-            category: 'Specialized Router',
-            features: ['Margin Trading', 'Leverage Routes', 'Perp Integration', 'Cross Margin'],
-            gasOptimization: false,
-            mevProtection: false,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Solana Swap Aggregator',
-            description: 'Native Solana aggregator focusing on speed and low fees',
-            website: 'https://swap.solana.com',
-            volume24h: 67000000,
-            volumeChange: 8.3,
-            trades24h: 23000,
-            uniqueUsers24h: 6700,
-            avgSavings: 2.1,
-            supportedDexes: ['Raydium', 'Orca', 'Meteora', 'Lifinity', 'Aldrin'],
-            supportedChains: ['Solana'],
-            maxSplits: 4,
-            avgExecutionTime: 0.8,
-            successRate: 99.1,
-            fees: 'Free',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Native Aggregator',
-            features: ['Lightning Fast', 'Zero Fees', 'Smart Splitting', 'Real-time Pricing'],
-            gasOptimization: true,
-            mevProtection: false,
-            limitOrders: false,
-            crossChain: false
-          },
-          {
-            name: 'Orca Whirlpool Router',
-            description: 'Advanced routing for Orca concentrated liquidity pools',
-            website: 'https://orca.so',
-            volume24h: 34000000,
-            volumeChange: 4.7,
-            trades24h: 8900,
-            uniqueUsers24h: 2800,
-            avgSavings: 1.6,
-            supportedDexes: ['Orca', 'Raydium', 'Meteora'],
-            supportedChains: ['Solana'],
-            maxSplits: 2,
-            avgExecutionTime: 1.1,
-            successRate: 98.9,
-            fees: '0.05%',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Pool-specific Router',
-            features: ['Concentrated Liquidity', 'Capital Efficiency', 'Dynamic Fees', 'Range Orders'],
-            gasOptimization: true,
-            mevProtection: false,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Drift Router',
-            description: 'Perpetuals-focused routing with spot market integration',
-            website: 'https://drift.trade',
-            volume24h: 28000000,
-            volumeChange: 15.2,
-            trades24h: 5600,
-            uniqueUsers24h: 1900,
-            avgSavings: 2.4,
-            supportedDexes: ['Drift', 'Mango', 'Phoenix', 'Serum'],
-            supportedChains: ['Solana'],
-            maxSplits: 2,
-            avgExecutionTime: 1.0,
-            successRate: 97.2,
-            fees: 'Trading Fee',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Perp-focused Router',
-            features: ['Perp Integration', 'Spot-Perp Arbitrage', 'Insurance Fund', 'Dynamic Funding'],
-            gasOptimization: false,
-            mevProtection: true,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Phoenix Router',
-            description: 'High-frequency trading optimized routing with advanced order types',
-            website: 'https://phoenix.trade',
-            volume24h: 19000000,
-            volumeChange: -2.1,
-            trades24h: 3400,
-            uniqueUsers24h: 890,
-            avgSavings: 1.8,
-            supportedDexes: ['Phoenix', 'Serum', 'Mango'],
-            supportedChains: ['Solana'],
-            maxSplits: 2,
-            avgExecutionTime: 0.6,
-            successRate: 98.4,
-            fees: '0.02%',
-            apiAvailable: true,
-            sdkAvailable: false,
-            category: 'HFT Router',
-            features: ['Ultra Low Latency', 'Advanced Orders', 'Maker Rebates', 'Pro Trading'],
-            gasOptimization: true,
-            mevProtection: true,
-            limitOrders: true,
-            crossChain: false
-          },
-          {
-            name: 'Solana Bridge Router',
-            description: 'Specialized in Solana bridge optimization and cross-ecosystem swaps',
-            website: 'https://solana-bridge.com',
-            volume24h: 56000000,
-            volumeChange: 22.8,
-            trades24h: 8900,
-            uniqueUsers24h: 4200,
-            avgSavings: 4.1,
-            supportedDexes: ['Raydium', 'Orca', 'Wormhole', 'AllBridge', 'Portal'],
-            supportedChains: ['Solana'],
-            maxSplits: 3,
-            avgExecutionTime: 2.5,
-            successRate: 94.8,
-            fees: '0.3%',
-            apiAvailable: true,
-            sdkAvailable: true,
-            category: 'Bridge Aggregator',
-            features: ['Wormhole Integration', 'Portal Bridge', 'Multi-hop Routes', 'Fast Finality'],
-            gasOptimization: true,
-            mevProtection: false,
-            limitOrders: false,
-            crossChain: false
-          }
-        ];
-
-        setAggregators(aggregatorsList.sort((a, b) => b.volume24h - a.volume24h));
-      } catch (err) {
-        console.error('Error fetching aggregator data:', err);
-        setError('Failed to load aggregator data');
-      } finally {
-        setLoading(false);
+      if (data.success && data.data) {
+        setAggregators(data.data.aggregators || []);
+        setError(null);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
+    } catch (err) {
+      console.error('Error fetching aggregator data:', err);
+      setError('Failed to load aggregator data');
+    } finally {
+      setLoading(false);
     }
-
-    fetchAggregatorData();
   }, []);
+
+  useEffect(() => {
+    fetchAggregatorData();
+    const interval = setInterval(() => fetchAggregatorData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchAggregatorData]);
 
   const categories = ['all', 'Universal Aggregator', 'Specialized Router', 'Native Aggregator', 'Pool-specific Router', 'Perp-focused Router', 'HFT Router', 'Bridge Aggregator'];
 
@@ -278,7 +91,7 @@ export default function AggregatorsSection() {
   if (error) {
     return (
       <div className="text-center py-20">
-        <p className="text-red-500 mb-4">{error}</p>
+        <p className="text-destructive mb-4">{error}</p>
         <Button onClick={() => {
           if (typeof window !== 'undefined') {
             window.location.reload();
@@ -312,17 +125,22 @@ export default function AggregatorsSection() {
               />
             </div>
             <div className="flex gap-2 flex-wrap">
-              <select
-                value={categoryFilter}
-                onChange={(e) => setCategoryFilter(e.target.value)}
-                className="px-3 py-2 border border-input bg-background rounded-md text-sm"
-              >
-                {categories.map(category => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
-                  </option>
-                ))}
-              </select>
+              <div>
+                <label className="sr-only" htmlFor="category-filter">Filter by category</label>
+                <select
+                  id="category-filter"
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
+                  className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+                  aria-label="Filter by category"
+                >
+                  {categories.map(category => (
+                    <option key={category} value={category}>
+                      {category === 'all' ? 'All Categories' : category}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <Button
                 variant={sortBy === 'volume24h' ? 'default' : 'outline'}
                 size="sm"
@@ -351,6 +169,10 @@ export default function AggregatorsSection() {
               >
                 Success Rate
               </Button>
+              <Button variant="outline" size="sm" onClick={() => fetchAggregatorData(true)}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -361,7 +183,7 @@ export default function AggregatorsSection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Route className="h-5 w-5 text-blue-500" />
+              <Route className="h-5 w-5 text-info" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Aggregators</p>
                 <p className="text-2xl font-bold">{aggregators.length}</p>
@@ -372,7 +194,7 @@ export default function AggregatorsSection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5 text-green-500" />
+              <BarChart3 className="h-5 w-5 text-success" />
               <div>
                 <p className="text-sm text-muted-foreground">Total Volume 24h</p>
                 <p className="text-2xl font-bold">${formatNumber(aggregators.reduce((sum, agg) => sum + agg.volume24h, 0))}</p>
@@ -383,7 +205,7 @@ export default function AggregatorsSection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Target className="h-5 w-5 text-purple-500" />
+              <Target className="h-5 w-5 text-primary" />
               <div>
                 <p className="text-sm text-muted-foreground">Avg Savings</p>
                 <p className="text-2xl font-bold">{(aggregators.reduce((sum, agg) => sum + agg.avgSavings, 0) / aggregators.length).toFixed(1)}%</p>
@@ -394,7 +216,7 @@ export default function AggregatorsSection() {
         <Card>
           <CardContent className="p-6">
             <div className="flex items-center gap-2">
-              <Shield className="h-5 w-5 text-orange-500" />
+              <Shield className="h-5 w-5 text-warning" />
               <div>
                 <p className="text-sm text-muted-foreground">Avg Success Rate</p>
                 <p className="text-2xl font-bold">{(aggregators.reduce((sum, agg) => sum + agg.successRate, 0) / aggregators.length).toFixed(1)}%</p>
@@ -452,7 +274,7 @@ export default function AggregatorsSection() {
                     Volume 24h
                   </div>
                   <p className="font-bold text-lg">${formatNumber(aggregator.volume24h)}</p>
-                  <div className={`flex items-center gap-1 text-xs ${aggregator.volumeChange >= 0 ? 'text-green-500' : 'text-red-500'
+                  <div className={`flex items-center gap-1 text-xs ${aggregator.volumeChange >= 0 ? 'text-success' : 'text-destructive'
                     }`}>
                     {aggregator.volumeChange >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                     {Math.abs(aggregator.volumeChange).toFixed(1)}%
@@ -464,7 +286,7 @@ export default function AggregatorsSection() {
                     <Target className="h-3 w-3" />
                     Avg Savings
                   </div>
-                  <p className="font-bold text-lg text-green-500">{aggregator.avgSavings.toFixed(1)}%</p>
+                  <p className="font-bold text-lg text-success">{aggregator.avgSavings.toFixed(1)}%</p>
                   <p className="text-xs text-muted-foreground">
                     vs direct swaps
                   </p>
@@ -486,7 +308,7 @@ export default function AggregatorsSection() {
                     <Shield className="h-3 w-3" />
                     Success Rate
                   </div>
-                  <p className="font-bold text-lg text-green-500">{aggregator.successRate.toFixed(1)}%</p>
+                  <p className="font-bold text-lg text-success">{aggregator.successRate.toFixed(1)}%</p>
                   <p className="text-xs text-muted-foreground">
                     {formatNumber(aggregator.uniqueUsers24h)} users
                   </p>
