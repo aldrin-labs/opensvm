@@ -6,40 +6,46 @@ import { GET as explainGET } from '@/app/api/transaction/[signature]/explain/rou
 import { GET as metricsGET } from '@/app/api/transaction/[signature]/metrics/route';
 import { POST as batchPOST } from '@/app/api/transaction/batch/route';
 
-// Mock dependencies
+// Mock dependencies - use correct paths that match actual imports
 jest.mock('@/lib/solana', () => ({
   getTransactionDetails: jest.fn()
 }));
 
-jest.mock('@/lib/instruction-parser-service', () => ({
+jest.mock('@/lib/blockchain/instruction-parser-service', () => ({
   parseInstructions: jest.fn()
 }));
 
-jest.mock('@/lib/account-changes-analyzer', () => ({
+jest.mock('@/lib/blockchain/account-changes-analyzer', () => ({
   analyzeAccountChanges: jest.fn()
 }));
 
-jest.mock('@/lib/transaction-metrics-calculator', () => ({
+jest.mock('@/lib/blockchain/transaction-metrics-calculator', () => ({
   calculateTransactionMetrics: jest.fn()
 }));
 
-jest.mock('@/lib/transaction-failure-analyzer', () => ({
+jest.mock('@/lib/blockchain/transaction-failure-analyzer', () => ({
   analyzeTransactionFailure: jest.fn()
 }));
 
-jest.mock('@/lib/related-transaction-finder', () => ({
-  findRelatedTransactions: jest.fn()
+jest.mock('@/lib/blockchain/related-transaction-finder', () => ({
+  findRelatedTransactions: jest.fn(),
+  RelatedTransactionFinder: jest.fn().mockImplementation(() => ({
+    findRelatedTransactions: jest.fn()
+  }))
 }));
 
-jest.mock('@/lib/relationship-strength-scorer', () => ({
+jest.mock('@/lib/blockchain/relationship-strength-scorer', () => ({
   scoreRelationshipStrength: jest.fn()
 }));
 
-jest.mock('@/lib/ai-transaction-analyzer', () => ({
-  analyzeTransactionWithAI: jest.fn()
+jest.mock('@/lib/ai/ai-transaction-analyzer', () => ({
+  analyzeTransactionWithAI: jest.fn(),
+  AITransactionAnalyzer: jest.fn().mockImplementation(() => ({
+    analyzeTransaction: jest.fn()
+  }))
 }));
 
-jest.mock('@/lib/transaction-cache-server', () => ({
+jest.mock('@/lib/caching/transaction-cache-server', () => ({
   cacheHelpersServer: {
     get: jest.fn(),
     set: jest.fn(),
@@ -84,10 +90,10 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Analysis Endpoint', () => {
     it('should return transaction analysis for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { parseInstructions } = require('@/lib/instruction-parser-service');
-      const { analyzeAccountChanges } = require('@/lib/account-changes-analyzer');
-      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { parseInstructions } = require('@/lib/blockchain/instruction-parser-service');
+      const { analyzeAccountChanges } = require('@/lib/blockchain/account-changes-analyzer');
+      const { calculateTransactionMetrics } = require('@/lib/blockchain/transaction-metrics-calculator');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       parseInstructions.mockResolvedValue([{
@@ -139,7 +145,7 @@ describe('Transaction Analysis Endpoints', () => {
 
     it('should return 404 for non-existent transaction', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
       
       getTransactionDetails.mockResolvedValue(null);
       cacheHelpersServer.get.mockReturnValue(null);
@@ -154,7 +160,7 @@ describe('Transaction Analysis Endpoints', () => {
     });
 
     it('should return cached data when available', async () => {
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
       
       const cachedData = {
         ...mockTransaction,
@@ -177,9 +183,9 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Related Transactions Endpoint', () => {
     it('should return related transactions for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { findRelatedTransactions } = require('@/lib/related-transaction-finder');
-      const { scoreRelationshipStrength } = require('@/lib/relationship-strength-scorer');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { findRelatedTransactions } = require('@/lib/blockchain/related-transaction-finder');
+      const { scoreRelationshipStrength } = require('@/lib/blockchain/relationship-strength-scorer');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       findRelatedTransactions.mockResolvedValue([{
@@ -207,8 +213,8 @@ describe('Transaction Analysis Endpoints', () => {
   describe('AI Explanation Endpoint', () => {
     it('should return AI explanation for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { analyzeTransactionWithAI } = require('@/lib/ai/ai-transaction-analyzer');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockResolvedValue({
@@ -232,8 +238,8 @@ describe('Transaction Analysis Endpoints', () => {
 
     it('should handle different explanation levels', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { analyzeTransactionWithAI } = require('@/lib/ai/ai-transaction-analyzer');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockResolvedValue({
@@ -259,8 +265,8 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Metrics Endpoint', () => {
     it('should return transaction metrics for valid signature', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { calculateTransactionMetrics } = require('@/lib/transaction-metrics-calculator');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { calculateTransactionMetrics } = require('@/lib/blockchain/transaction-metrics-calculator');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       calculateTransactionMetrics.mockResolvedValue({
@@ -289,7 +295,7 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Batch Processing Endpoint', () => {
     it('should process multiple transactions in batch', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       cacheHelpersServer.get.mockReturnValue(null);
@@ -361,7 +367,7 @@ describe('Transaction Analysis Endpoints', () => {
   describe('Error Handling', () => {
     it('should handle service errors gracefully', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
       
       getTransactionDetails.mockRejectedValue(new Error('Service unavailable'));
       cacheHelpersServer.get.mockReturnValue(null);
@@ -377,8 +383,8 @@ describe('Transaction Analysis Endpoints', () => {
 
     it('should handle AI service rate limits', async () => {
       const { getTransactionDetails } = require('@/lib/solana');
-      const { analyzeTransactionWithAI } = require('@/lib/ai-transaction-analyzer');
-      const { cacheHelpersServer } = require('@/lib/transaction-cache-server');
+      const { analyzeTransactionWithAI } = require('@/lib/ai/ai-transaction-analyzer');
+      const { cacheHelpersServer } = require('@/lib/caching/transaction-cache-server');
 
       getTransactionDetails.mockResolvedValue(mockTransaction);
       analyzeTransactionWithAI.mockRejectedValue(new Error('rate limit exceeded'));
