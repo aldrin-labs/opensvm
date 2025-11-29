@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,197 +44,65 @@ export default function OraclesSection() {
   const [filterType, setFilterType] = useState<string>('All');
   const [filterNetwork, setFilterNetwork] = useState<string>('All');
 
-  useEffect(() => {
-    const fetchOracleData = async () => {
-      setLoading(true);
-      try {
-        // Simulate API call with realistic oracle data
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockData: Oracle[] = [
-          {
-            id: '1',
-            name: 'Pyth Network',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 380,
-            updateFrequency: '400ms',
-            deviation: 0.1,
-            uptime: 99.8,
-            marketCap: '1.2B',
-            volume24h: '8.5B',
-            nodes: 95,
-            reputation: 92,
-            securityScore: 90,
-            status: 'Active',
-            features: ['High Frequency', 'Financial Data', 'Pull Model', 'Low Latency'],
-            supportedAssets: ['Stocks', 'Forex', 'Crypto', 'Commodities'],
-            description: 'High-frequency oracle network designed for financial market data with sub-second updates on Solana.'
-          },
-          {
-            id: '2',
-            name: 'Switchboard',
-            type: 'Custom API',
-            network: ['Solana'],
-            priceFeeds: 180,
-            updateFrequency: '1-30 seconds',
-            deviation: 0.7,
-            uptime: 99.0,
-            marketCap: '42M',
-            volume24h: '680M',
-            nodes: 28,
-            reputation: 78,
-            securityScore: 83,
-            status: 'Active',
-            features: ['Permissionless', 'Custom Functions', 'TEE Support', 'Multi-source'],
-            supportedAssets: ['Solana Native', 'Custom Data Sources'],
-            description: 'Permissionless oracle protocol enabling developers to build custom oracle functions on Solana.'
-          },
-          {
-            id: '3',
-            name: 'Chainlink on Solana',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 45,
-            updateFrequency: '30-60 seconds',
-            deviation: 0.5,
-            uptime: 99.5,
-            marketCap: '150M',
-            volume24h: '2.1B',
-            nodes: 15,
-            reputation: 85,
-            securityScore: 88,
-            status: 'Active',
-            features: ['Established Network', 'Reliable Feeds', 'Cross-chain Bridge', 'Proven Security'],
-            supportedAssets: ['Major Crypto', 'Traditional Assets', 'Commodities'],
-            description: 'Chainlink price feeds bridged to Solana ecosystem with proven reliability and security.'
-          },
-          {
-            id: '4',
-            name: 'Flux Protocol',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 25,
-            updateFrequency: '1-5 minutes',
-            deviation: 0.8,
-            uptime: 98.5,
-            marketCap: '8M',
-            volume24h: '125M',
-            nodes: 12,
-            reputation: 70,
-            securityScore: 75,
-            status: 'Active',
-            features: ['Community Driven', 'Low Cost', 'Solana Native', 'Open Source'],
-            supportedAssets: ['Solana Tokens', 'Basic Price Feeds'],
-            description: 'Community-driven oracle protocol native to Solana with focus on accessibility and low costs.'
-          },
-          {
-            id: '5',
-            name: 'DIA on Solana',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 150,
-            updateFrequency: '2 minutes',
-            deviation: 0.8,
-            uptime: 99.1,
-            marketCap: '12M',
-            volume24h: '180M',
-            nodes: 8,
-            reputation: 72,
-            securityScore: 80,
-            status: 'Active',
-            features: ['Open Source', 'NFT Floor Prices', 'DeFi Metrics', 'Transparent'],
-            supportedAssets: ['Solana Tokens', 'NFTs', 'DeFi Metrics'],
-            description: 'Open-source oracle providing transparent and verified data for Solana ecosystem.'
-          },
-          {
-            id: '6',
-            name: 'Solana Price Oracle',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 80,
-            updateFrequency: '10-30 seconds',
-            deviation: 0.6,
-            uptime: 98.8,
-            marketCap: '5M',
-            volume24h: '95M',
-            nodes: 6,
-            reputation: 68,
-            securityScore: 72,
-            status: 'Active',
-            features: ['Native Integration', 'Fast Updates', 'Low Fees', 'SPL Token Support'],
-            supportedAssets: ['SPL Tokens', 'Major Crypto', 'Stablecoins'],
-            description: 'Native Solana oracle focused on SPL token price feeds with fast updates and low fees.'
-          },
-          {
-            id: '7',
-            name: 'Solend Oracle',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 35,
-            updateFrequency: '1-2 minutes',
-            deviation: 0.4,
-            uptime: 99.2,
-            marketCap: '3M',
-            volume24h: '450M',
-            nodes: 5,
-            reputation: 75,
-            securityScore: 78,
-            status: 'Active',
-            features: ['Lending Focused', 'Liquidation Safe', 'High Accuracy', 'DeFi Integration'],
-            supportedAssets: ['Lending Assets', 'Collateral Tokens'],
-            description: 'Oracle infrastructure powering Solend lending protocol with focus on accurate liquidation prices.'
-          },
-          {
-            id: '8',
-            name: 'Serum Price Oracle',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 60,
-            updateFrequency: '5-15 seconds',
-            deviation: 0.3,
-            uptime: 98.9,
-            marketCap: '4M',
-            volume24h: '320M',
-            nodes: 8,
-            reputation: 73,
-            securityScore: 76,
-            status: 'Active',
-            features: ['DEX Integration', 'Market Data', 'Real-time', 'Order Book Based'],
-            supportedAssets: ['Serum Markets', 'DEX Pairs', 'Trading Data'],
-            description: 'Oracle system integrated with Serum DEX providing real-time market data and price feeds.'
-          },
-          {
-            id: '9',
-            name: 'Orca Price Feeds',
-            type: 'Price Feed',
-            network: ['Solana'],
-            priceFeeds: 40,
-            updateFrequency: '10-30 seconds',
-            deviation: 0.5,
-            uptime: 99.0,
-            marketCap: '2M',
-            volume24h: '280M',
-            nodes: 4,
-            reputation: 71,
-            securityScore: 74,
-            status: 'Active',
-            features: ['AMM Integration', 'LP Token Prices', 'Concentrated Liquidity', 'Whirlpool Data'],
-            supportedAssets: ['Orca Pools', 'LP Tokens', 'Whirlpool Positions'],
-            description: 'Oracle service providing accurate pricing for Orca AMM pools and concentrated liquidity positions.'
-          }
-        ];
+  const formatValue = (value: number): string => {
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+    return value.toFixed(0);
+  };
 
-        setOracles(mockData);
-      } catch (error) {
-        console.error('Error fetching oracle data:', error);
-      } finally {
-        setLoading(false);
+  const getOracleType = (name: string): Oracle['type'] => {
+    if (name.includes('Switchboard')) return 'Custom API';
+    if (name.includes('Chainlink')) return 'Cross-Chain';
+    return 'Price Feed';
+  };
+
+  const fetchOracleData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/oracles');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const providers = data.data.providers || [];
+        const transformed: Oracle[] = providers.map((p: any, idx: number) => {
+          const confidence = Math.min(100, Math.max(0, p.avgConfidence || 99));
+          return {
+            id: p.slug || String(idx + 1),
+            name: p.name,
+            type: getOracleType(p.name),
+            network: ['Solana'],
+            priceFeeds: p.totalFeeds || 0,
+            updateFrequency: p.avgUpdateFrequency || 'Unknown',
+            deviation: Math.max(0, (100 - confidence) * 10),
+            uptime: Math.min(99.9, Math.max(95, 98 + (confidence - 98))),
+            marketCap: formatValue((p.totalSubscribers || 0) * 0.5),
+            volume24h: formatValue((p.totalSubscribers || 0) * 2),
+            nodes: p.dataSourceCount || 0,
+            reputation: Math.round(confidence * 0.95),
+            securityScore: Math.round(confidence * 0.92),
+            status: (p.activeFeeds || 0) > (p.totalFeeds || 1) * 0.9 ? 'Active' : 'Maintenance' as Oracle['status'],
+            features: p.features || [],
+            supportedAssets: ['Crypto', 'DeFi Tokens', 'Stablecoins'],
+            description: p.description || ''
+          };
+        });
+        setOracles(transformed);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
-
-    fetchOracleData();
+    } catch (error) {
+      console.error('Error fetching oracle data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOracleData();
+    const interval = setInterval(() => fetchOracleData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchOracleData]);
 
   const filteredAndSortedOracles = oracles
     .filter(oracle => 
@@ -264,21 +132,21 @@ export default function OraclesSection() {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Maintenance': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'Deprecated': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Active': return 'bg-success/10 text-success';
+      case 'Maintenance': return 'bg-warning/10 text-warning';
+      case 'Deprecated': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'Price Feed': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'VRF': return 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300';
-      case 'Automation': return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-300';
-      case 'Cross-Chain': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Custom API': return 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Price Feed': return 'bg-info/10 text-info';
+      case 'VRF': return 'bg-primary/10 text-primary';
+      case 'Automation': return 'bg-warning/10 text-warning';
+      case 'Cross-Chain': return 'bg-success/10 text-success';
+      case 'Custom API': return 'bg-accent text-accent-foreground';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -314,20 +182,26 @@ export default function OraclesSection() {
         </div>
         
         <div className="flex gap-2">
+          <label className="sr-only" htmlFor="filter-type">Filter by type</label>
           <select
+            id="filter-type"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by oracle type"
           >
             {types.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          
+
+          <label className="sr-only" htmlFor="filter-network">Filter by network</label>
           <select
+            id="filter-network"
             value={filterNetwork}
             onChange={(e) => setFilterNetwork(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by network"
           >
             {networks.map(network => (
               <option key={network} value={network}>{network}</option>
@@ -371,31 +245,31 @@ export default function OraclesSection() {
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-green-600" />
+                  <Activity className="h-4 w-4 text-success" />
                   <div>
                     <div className="text-sm text-muted-foreground">Uptime</div>
                     <div className="font-semibold">{oracle.uptime}%</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-blue-600" />
+                  <Clock className="h-4 w-4 text-info" />
                   <div>
                     <div className="text-sm text-muted-foreground">Update Freq</div>
                     <div className="font-semibold text-xs">{oracle.updateFrequency}</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4 text-purple-600" />
+                  <Shield className="h-4 w-4 text-primary" />
                   <div>
                     <div className="text-sm text-muted-foreground">Security</div>
                     <div className="font-semibold">{oracle.securityScore}/100</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-orange-600" />
+                  <TrendingUp className="h-4 w-4 text-warning" />
                   <div>
                     <div className="text-sm text-muted-foreground">Reputation</div>
                     <div className="font-semibold">{oracle.reputation}/100</div>

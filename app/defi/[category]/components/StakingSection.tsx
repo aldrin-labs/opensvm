@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -41,179 +41,53 @@ export default function StakingSection() {
   const [filterNetwork, setFilterNetwork] = useState<string>('All');
   const [filterType, setFilterType] = useState<string>('All');
 
-  useEffect(() => {
-    const fetchStakingData = async () => {
-      setLoading(true);
-      try {
-        // Simulate API call with realistic staking data
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockData: StakingPool[] = [
-          {
-            id: '1',
-            name: 'Marinade Finance',
-            network: 'Solana',
-            type: 'Liquid Staking',
-            apy: 6.4,
-            commission: 8.0,
-            minStake: '0.01 SOL',
-            lockPeriod: 'No lock',
-            uptime: 99.5,
-            totalStaked: '6.8M SOL',
-            delegators: 125000,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['Liquid Staking', 'mSOL Token', 'Auto-delegation', 'Yield Optimization'],
-            description: 'Native liquid staking protocol for Solana ecosystem with mSOL token.'
-          },
-          {
-            id: '2',
-            name: 'Lido for Solana',
-            network: 'Solana',
-            type: 'Liquid Staking',
-            apy: 6.1,
-            commission: 10.0,
-            minStake: '0.001 SOL',
-            lockPeriod: 'No lock',
-            uptime: 99.7,
-            totalStaked: '4.2M SOL',
-            delegators: 85000,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['stSOL Token', 'Instant Liquidity', 'DeFi Integration', 'No Minimum'],
-            description: 'Lido liquid staking protocol for Solana with stSOL token and DeFi integration.'
-          },
-          {
-            id: '3',
-            name: 'Jito Staking',
-            network: 'Solana',
-            type: 'Liquid Staking',
-            apy: 7.2,
-            commission: 7.0,
-            minStake: '0.01 SOL',
-            lockPeriod: 'No lock',
-            uptime: 99.3,
-            totalStaked: '2.8M SOL',
-            delegators: 45000,
-            riskLevel: 'Medium',
-            status: 'Active',
-            features: ['MEV Rewards', 'JitoSOL Token', 'High Performance', 'MEV Protection'],
-            description: 'Solana liquid staking with MEV rewards and enhanced validator performance.'
-          },
-          {
-            id: '4',
-            name: 'Coinbase Validator',
-            network: 'Solana',
-            type: 'Validator',
-            apy: 5.8,
-            commission: 5.0,
-            minStake: '1 SOL',
-            lockPeriod: '1 epoch',
-            uptime: 99.8,
-            totalStaked: '1.2M SOL',
-            delegators: 12500,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['Institutional Grade', 'High Security', 'Professional Operation', '24/7 Monitoring'],
-            description: 'Professional Solana validator service by Coinbase with institutional security.'
-          },
-          {
-            id: '5',
-            name: 'Everstake',
-            network: 'Solana',
-            type: 'Validator',
-            apy: 6.8,
-            commission: 4.0,
-            minStake: '0.5 SOL',
-            lockPeriod: '1 epoch',
-            uptime: 99.6,
-            totalStaked: '890K SOL',
-            delegators: 8900,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['Low Commission', 'High Performance', 'Community Focused', 'Governance Active'],
-            description: 'Community-focused Solana validator with low commission and high performance.'
-          },
-          {
-            id: '6',
-            name: 'Figment Networks',
-            network: 'Solana',
-            type: 'Validator',
-            apy: 6.2,
-            commission: 8.0,
-            minStake: '1 SOL',
-            lockPeriod: '1 epoch',
-            uptime: 99.9,
-            totalStaked: '1.8M SOL',
-            delegators: 15600,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['Professional Operation', 'Research Team', 'High Uptime', 'Institutional'],
-            description: 'Professional Solana validator with institutional-grade infrastructure and research.'
-          },
-          {
-            id: '7',
-            name: 'Stakewiz',
-            network: 'Solana',
-            type: 'Validator',
-            apy: 7.1,
-            commission: 3.0,
-            minStake: '0.1 SOL',
-            lockPeriod: '1 epoch',
-            uptime: 99.4,
-            totalStaked: '650K SOL',
-            delegators: 6700,
-            riskLevel: 'Medium',
-            status: 'Active',
-            features: ['Low Commission', 'Community Driven', 'Educational Content', 'Transparent'],
-            description: 'Community-driven Solana validator with educational focus and transparent operations.'
-          },
-          {
-            id: '8',
-            name: 'Chorus One',
-            network: 'Solana',
-            type: 'Validator',
-            apy: 6.5,
-            commission: 6.0,
-            minStake: '1 SOL',
-            lockPeriod: '1 epoch',
-            uptime: 99.7,
-            totalStaked: '1.1M SOL',
-            delegators: 9800,
-            riskLevel: 'Low',
-            status: 'Active',
-            features: ['Multi-chain Expertise', 'Professional Team', 'High Reliability', 'Governance'],
-            description: 'Professional Solana validator with multi-chain expertise and governance participation.'
-          },
-          {
-            id: '9',
-            name: 'SolBlaze',
-            network: 'Solana',
-            type: 'Liquid Staking',
-            apy: 6.9,
-            commission: 9.0,
-            minStake: '0.001 SOL',
-            lockPeriod: 'No lock',
-            uptime: 99.2,
-            totalStaked: '1.5M SOL',
-            delegators: 23000,
-            riskLevel: 'Medium',
-            status: 'Active',
-            features: ['blazeSOL Token', 'Auto-compound', 'DeFi Ready', 'Performance Focus'],
-            description: 'Performance-focused Solana liquid staking with blazeSOL token and auto-compounding.'
-          }
-        ];
+  const formatStaked = (value: number): string => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M SOL`;
+    if (value >= 1000) return `${(value / 1000).toFixed(0)}K SOL`;
+    return `${value.toFixed(0)} SOL`;
+  };
 
-        setStakingPools(mockData);
-      } catch (error) {
-        console.error('Error fetching staking data:', error);
-      } finally {
-        setLoading(false);
+  const fetchStakingData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/staking');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        // Transform API data to match component interface
+        const pools = (data.data.pools || []).map((p: any) => ({
+          id: p.id,
+          name: p.name,
+          network: 'Solana',
+          type: p.type,
+          apy: p.apy,
+          commission: p.commission,
+          minStake: `${p.minStake} SOL`,
+          lockPeriod: p.lockPeriod,
+          uptime: p.uptime,
+          totalStaked: formatStaked(p.totalStaked),
+          delegators: p.delegators,
+          riskLevel: p.riskLevel,
+          status: p.status,
+          features: p.features,
+          description: p.description
+        }));
+        setStakingPools(pools);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
-
-    fetchStakingData();
+    } catch (error) {
+      console.error('Error fetching staking data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStakingData();
+    const interval = setInterval(() => fetchStakingData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchStakingData]);
 
   const filteredAndSortedPools = stakingPools
     .filter(pool => 
@@ -243,19 +117,19 @@ export default function StakingSection() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'Low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'High': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Low': return 'bg-success/10 text-success';
+      case 'Medium': return 'bg-warning/10 text-warning';
+      case 'High': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'Active': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Inactive': return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
-      case 'Jailed': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Active': return 'bg-success/10 text-success';
+      case 'Inactive': return 'bg-muted text-muted-foreground';
+      case 'Jailed': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
@@ -291,20 +165,26 @@ export default function StakingSection() {
         </div>
         
         <div className="flex gap-2">
+          <label className="sr-only" htmlFor="filter-network">Filter by network</label>
           <select
+            id="filter-network"
             value={filterNetwork}
             onChange={(e) => setFilterNetwork(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by network"
           >
             {networks.map(network => (
               <option key={network} value={network}>{network}</option>
             ))}
           </select>
-          
+
+          <label className="sr-only" htmlFor="filter-type">Filter by type</label>
           <select
+            id="filter-type"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by pool type"
           >
             {types.map(type => (
               <option key={type} value={type}>{type}</option>
@@ -346,31 +226,31 @@ export default function StakingSection() {
               {/* Key Metrics */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="h-4 w-4 text-green-600" />
+                  <TrendingUp className="h-4 w-4 text-success" />
                   <div>
                     <div className="text-sm text-muted-foreground">APY</div>
                     <div className="font-semibold">{pool.apy}%</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <DollarSign className="h-4 w-4 text-blue-600" />
+                  <DollarSign className="h-4 w-4 text-info" />
                   <div>
                     <div className="text-sm text-muted-foreground">Commission</div>
                     <div className="font-semibold">{pool.commission}%</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-purple-600" />
+                  <Activity className="h-4 w-4 text-primary" />
                   <div>
                     <div className="text-sm text-muted-foreground">Uptime</div>
                     <div className="font-semibold">{pool.uptime}%</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-orange-600" />
+                  <Users className="h-4 w-4 text-warning" />
                   <div>
                     <div className="text-sm text-muted-foreground">Delegators</div>
                     <div className="font-semibold">{pool.delegators.toLocaleString()}</div>

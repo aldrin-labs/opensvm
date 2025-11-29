@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Target, DollarSign, Calendar, Users, RefreshCw, Calculator } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,232 +58,32 @@ export default function OptionsSection() {
   const [moneynessFilter, setMoneynessFilter] = useState<string>('all');
   const [sortBy, setSortBy] = useState<'volume' | 'openInterest' | 'premium' | 'expiry'>('volume');
 
-  useEffect(() => {
-    const fetchOptionsData = async () => {
-      try {
-        setLoading(true);
-        
-        // Mock options platforms data - Solana-native options platforms
-        const mockPlatforms: OptionsPlatform[] = [
-          {
-            name: 'Zeta Markets',
-            totalVolume24h: 45000000,
-            totalOpenInterest: 23000000,
-            totalContracts: 1250,
-            supportedAssets: ['SOL', 'BTC', 'ETH', 'RAY', 'ORCA'],
-            description: 'Leading options and perpetuals platform on Solana',
-            features: ['American Options', 'European Options', 'Portfolio Margin', 'Risk Management'],
-            maxExpiry: '3 months',
-            minStrike: 0.1
-          },
-          {
-            name: 'Cypher Protocol',
-            totalVolume24h: 23000000,
-            totalOpenInterest: 12000000,
-            totalContracts: 890,
-            supportedAssets: ['SOL', 'BTC', 'ETH', 'JUP'],
-            description: 'Multi-asset derivatives platform with options and futures',
-            features: ['Binary Options', 'Vanilla Options', 'Cross Margin', 'Auto Exercise'],
-            maxExpiry: '6 months',
-            minStrike: 0.01
-          },
-          {
-            name: 'Drift Options',
-            totalVolume24h: 12000000,
-            totalOpenInterest: 8900000,
-            totalContracts: 567,
-            supportedAssets: ['SOL', 'RAY', 'BONK'],
-            description: 'Options trading integrated with Drift Protocol',
-            features: ['JIT Options', 'Dynamic Pricing', 'Liquidity Mining', 'Governance'],
-            maxExpiry: '2 months',
-            minStrike: 1.0
-          },
-          {
-            name: 'Solana Options',
-            totalVolume24h: 8900000,
-            totalOpenInterest: 5600000,
-            totalContracts: 345,
-            supportedAssets: ['SOL', 'USDC'],
-            description: 'Specialized Solana native options trading platform',
-            features: ['Weekly Options', 'Monthly Options', 'Low Fees', 'Fast Settlement'],
-            maxExpiry: '1 month',
-            minStrike: 5.0
-          }
-        ];
+  const fetchOptionsData = useCallback(async (isRefresh = false) => {
+    try {
+      if (!isRefresh) setLoading(true);
 
-        // Mock underlying assets data
-        const mockUnderlyingAssets: UnderlyingAsset[] = [
-          {
-            symbol: 'SOL',
-            currentPrice: 98.45,
-            priceChange24h: 5.67,
-            impliedVolatility: 0.85,
-            totalCallOI: 15000000,
-            totalPutOI: 8900000,
-            putCallRatio: 0.59
-          },
-          {
-            symbol: 'BTC',
-            currentPrice: 43250.67,
-            priceChange24h: 2.34,
-            impliedVolatility: 0.72,
-            totalCallOI: 12000000,
-            totalPutOI: 9800000,
-            putCallRatio: 0.82
-          },
-          {
-            symbol: 'ETH',
-            currentPrice: 2567.89,
-            priceChange24h: -1.23,
-            impliedVolatility: 0.78,
-            totalCallOI: 8900000,
-            totalPutOI: 11200000,
-            putCallRatio: 1.26
-          },
-          {
-            symbol: 'RAY',
-            currentPrice: 2.34,
-            priceChange24h: -3.21,
-            impliedVolatility: 1.23,
-            totalCallOI: 3400000,
-            totalPutOI: 2800000,
-            putCallRatio: 0.82
-          }
-        ];
+      const response = await fetch('/api/analytics/options');
+      const data = await response.json();
 
-        // Mock options contracts data
-        const mockOptions: OptionContract[] = [
-          {
-            id: '1',
-            underlying: 'SOL',
-            type: 'call',
-            strike: 100,
-            expiry: '2024-12-29T08:00:00Z',
-            premium: 3.45,
-            impliedVolatility: 0.85,
-            delta: 0.62,
-            gamma: 0.045,
-            theta: -0.12,
-            vega: 0.23,
-            openInterest: 2340000,
-            volume24h: 890000,
-            platform: 'Zeta Markets',
-            isActive: true,
-            moneyness: 'ITM',
-            timeToExpiry: 7
-          },
-          {
-            id: '2',
-            underlying: 'SOL',
-            type: 'put',
-            strike: 95,
-            expiry: '2024-12-29T08:00:00Z',
-            premium: 1.89,
-            impliedVolatility: 0.78,
-            delta: -0.38,
-            gamma: 0.035,
-            theta: -0.08,
-            vega: 0.19,
-            openInterest: 1890000,
-            volume24h: 567000,
-            platform: 'Zeta Markets',
-            isActive: true,
-            moneyness: 'OTM',
-            timeToExpiry: 7
-          },
-          {
-            id: '3',
-            underlying: 'BTC',
-            type: 'call',
-            strike: 45000,
-            expiry: '2025-01-31T08:00:00Z',
-            premium: 1250.67,
-            impliedVolatility: 0.72,
-            delta: 0.45,
-            gamma: 0.002,
-            theta: -2.34,
-            vega: 12.45,
-            openInterest: 1200000,
-            volume24h: 234000,
-            platform: 'Cypher Protocol',
-            isActive: true,
-            moneyness: 'OTM',
-            timeToExpiry: 40
-          },
-          {
-            id: '4',
-            underlying: 'ETH',
-            type: 'put',
-            strike: 2500,
-            expiry: '2025-01-15T08:00:00Z',
-            premium: 89.34,
-            impliedVolatility: 0.82,
-            delta: -0.52,
-            gamma: 0.008,
-            theta: -1.23,
-            vega: 4.56,
-            openInterest: 890000,
-            volume24h: 156000,
-            platform: 'Cypher Protocol',
-            isActive: true,
-            moneyness: 'ATM',
-            timeToExpiry: 24
-          },
-          {
-            id: '5',
-            underlying: 'SOL',
-            type: 'call',
-            strike: 110,
-            expiry: '2024-12-25T08:00:00Z',
-            premium: 0.78,
-            impliedVolatility: 1.05,
-            delta: 0.23,
-            gamma: 0.028,
-            theta: -0.15,
-            vega: 0.12,
-            openInterest: 567000,
-            volume24h: 123000,
-            platform: 'Drift Options',
-            isActive: true,
-            moneyness: 'OTM',
-            timeToExpiry: 3
-          },
-          {
-            id: '6',
-            underlying: 'RAY',
-            type: 'call',
-            strike: 2.5,
-            expiry: '2024-12-27T08:00:00Z',
-            premium: 0.12,
-            impliedVolatility: 1.23,
-            delta: 0.34,
-            gamma: 0.15,
-            theta: -0.05,
-            vega: 0.08,
-            openInterest: 345000,
-            volume24h: 89000,
-            platform: 'Solana Options',
-            isActive: true,
-            moneyness: 'OTM',
-            timeToExpiry: 5
-          }
-        ];
-
-        setPlatforms(mockPlatforms);
-        setUnderlyingAssets(mockUnderlyingAssets);
-        setOptions(mockOptions);
-      } catch (error) {
-        console.error('Failed to fetch options data:', error);
-        setPlatforms([]);
-        setUnderlyingAssets([]);
-        setOptions([]);
-      } finally {
-        setLoading(false);
+      if (data.success && data.data) {
+        setPlatforms(data.data.platforms || []);
+        setUnderlyingAssets(data.data.underlyingAssets || []);
+        setOptions(data.data.options || []);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
-
-    fetchOptionsData();
+    } catch (error) {
+      console.error('Failed to fetch options data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchOptionsData();
+    const interval = setInterval(() => fetchOptionsData(true), 30000);
+    return () => clearInterval(interval);
+  }, [fetchOptionsData]);
 
   const filteredAndSortedOptions = options
     .filter(option => {
@@ -309,6 +109,7 @@ export default function OptionsSection() {
     });
 
   const formatCurrency = (value: number) => {
+    if (!Number.isFinite(value) || value < 0) return '$0.00';
     if (value >= 1e9) return `$${(value / 1e9).toFixed(2)}B`;
     if (value >= 1e6) return `$${(value / 1e6).toFixed(2)}M`;
     if (value >= 1e3) return `$${(value / 1e3).toFixed(2)}K`;
@@ -325,25 +126,26 @@ export default function OptionsSection() {
 
   const getPlatformColor = (platform: string) => {
     const colors: { [key: string]: string } = {
-      'Zeta Markets': 'bg-purple-100 text-purple-800',
-      'Cypher Protocol': 'bg-green-100 text-green-800',
-      'Drift Options': 'bg-blue-100 text-blue-800',
-      'Solana Options': 'bg-orange-100 text-orange-800'
+      'Zeta Markets': 'bg-primary/10 text-primary',
+      'Dual Finance': 'bg-success/10 text-success',
+      'PsyOptions': 'bg-info/10 text-info',
+      'Cypher Protocol': 'bg-info/10 text-info',
+      'Drift Options': 'bg-warning/10 text-warning'
     };
-    return colors[platform] || 'bg-gray-100 text-gray-800';
+    return colors[platform] || 'bg-muted text-muted-foreground';
   };
 
   const getMoneynessColor = (moneyness: string) => {
     switch (moneyness) {
-      case 'ITM': return 'text-green-600 bg-green-100';
-      case 'ATM': return 'text-blue-600 bg-blue-100';
-      case 'OTM': return 'text-orange-600 bg-orange-100';
-      default: return 'text-gray-600 bg-gray-100';
+      case 'ITM': return 'text-success bg-success/10';
+      case 'ATM': return 'text-info bg-info/10';
+      case 'OTM': return 'text-warning bg-warning/10';
+      default: return 'text-muted-foreground bg-muted';
     }
   };
 
   const getTypeColor = (type: string) => {
-    return type === 'call' ? 'text-green-600' : 'text-red-600';
+    return type === 'call' ? 'text-success' : 'text-destructive';
   };
 
   if (loading) {
@@ -410,7 +212,7 @@ export default function OptionsSection() {
             <div key={asset.symbol} className="p-3 border rounded-lg">
               <div className="flex justify-between items-start mb-2">
                 <span className="font-medium">{asset.symbol}</span>
-                <span className={`text-sm ${asset.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <span className={`text-sm ${asset.priceChange24h >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {asset.priceChange24h >= 0 ? '+' : ''}{asset.priceChange24h.toFixed(2)}%
                 </span>
               </div>
@@ -446,7 +248,7 @@ export default function OptionsSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Volume 24h</p>
               <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalVolume24h, 0))}</p>
             </div>
-            <DollarSign className="h-8 w-8 text-green-500" />
+            <DollarSign className="h-8 w-8 text-success" />
           </div>
         </Card>
 
@@ -456,7 +258,7 @@ export default function OptionsSection() {
               <p className="text-sm font-medium text-muted-foreground">Open Interest</p>
               <p className="text-2xl font-bold">{formatCurrency(platforms.reduce((sum, p) => sum + p.totalOpenInterest, 0))}</p>
             </div>
-            <Target className="h-8 w-8 text-blue-500" />
+            <Target className="h-8 w-8 text-info" />
           </div>
         </Card>
 
@@ -466,7 +268,7 @@ export default function OptionsSection() {
               <p className="text-sm font-medium text-muted-foreground">Total Contracts</p>
               <p className="text-2xl font-bold">{platforms.reduce((sum, p) => sum + p.totalContracts, 0)}</p>
             </div>
-            <Calendar className="h-8 w-8 text-purple-500" />
+            <Calendar className="h-8 w-8 text-primary" />
           </div>
         </Card>
 
@@ -476,7 +278,7 @@ export default function OptionsSection() {
               <p className="text-sm font-medium text-muted-foreground">Platforms</p>
               <p className="text-2xl font-bold">{platforms.length}</p>
             </div>
-            <Users className="h-8 w-8 text-orange-500" />
+            <Users className="h-8 w-8 text-warning" />
           </div>
         </Card>
       </div>
@@ -484,65 +286,90 @@ export default function OptionsSection() {
       {/* Filters */}
       <Card className="p-4">
         <div className="grid grid-cols-2 md:grid-cols-6 gap-4 items-center">
-          <select
-            value={platformFilter}
-            onChange={(e) => setPlatformFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg bg-background text-sm"
-          >
-            <option value="all">All Platforms</option>
-            {platforms.map((platform) => (
-              <option key={platform.name} value={platform.name}>
-                {platform.name}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="platform-filter">Filter by platform</label>
+            <select
+              id="platform-filter"
+              value={platformFilter}
+              onChange={(e) => setPlatformFilter(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+              aria-label="Filter by platform"
+            >
+              <option value="all">All Platforms</option>
+              {platforms.map((platform) => (
+                <option key={platform.name} value={platform.name}>
+                  {platform.name}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={underlyingFilter}
-            onChange={(e) => setUnderlyingFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg bg-background text-sm"
-          >
-            <option value="all">All Assets</option>
-            {underlyingAssets.map((asset) => (
-              <option key={asset.symbol} value={asset.symbol}>
-                {asset.symbol}
-              </option>
-            ))}
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="asset-filter">Filter by asset</label>
+            <select
+              id="asset-filter"
+              value={underlyingFilter}
+              onChange={(e) => setUnderlyingFilter(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+              aria-label="Filter by underlying asset"
+            >
+              <option value="all">All Assets</option>
+              {underlyingAssets.map((asset) => (
+                <option key={asset.symbol} value={asset.symbol}>
+                  {asset.symbol}
+                </option>
+              ))}
+            </select>
+          </div>
 
-          <select
-            value={typeFilter}
-            onChange={(e) => setTypeFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg bg-background text-sm"
-          >
-            <option value="all">All Types</option>
-            <option value="call">Calls</option>
-            <option value="put">Puts</option>
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="type-filter">Filter by option type</label>
+            <select
+              id="type-filter"
+              value={typeFilter}
+              onChange={(e) => setTypeFilter(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+              aria-label="Filter by option type"
+            >
+              <option value="all">All Types</option>
+              <option value="call">Calls</option>
+              <option value="put">Puts</option>
+            </select>
+          </div>
 
-          <select
-            value={moneynessFilter}
-            onChange={(e) => setMoneynessFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg bg-background text-sm"
-          >
-            <option value="all">All Moneyness</option>
-            <option value="ITM">In the Money</option>
-            <option value="ATM">At the Money</option>
-            <option value="OTM">Out of the Money</option>
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="moneyness-filter">Filter by moneyness</label>
+            <select
+              id="moneyness-filter"
+              value={moneynessFilter}
+              onChange={(e) => setMoneynessFilter(e.target.value)}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+              aria-label="Filter by moneyness"
+            >
+              <option value="all">All Moneyness</option>
+              <option value="ITM">In the Money</option>
+              <option value="ATM">At the Money</option>
+              <option value="OTM">Out of the Money</option>
+            </select>
+          </div>
 
-          <select
-            value={sortBy}
-            onChange={(e) => setSortBy(e.target.value as any)}
-            className="px-3 py-2 border rounded-lg bg-background text-sm"
-          >
-            <option value="volume">Sort by Volume</option>
-            <option value="openInterest">Sort by OI</option>
-            <option value="premium">Sort by Premium</option>
-            <option value="expiry">Sort by Expiry</option>
-          </select>
+          <div>
+            <label className="sr-only" htmlFor="sort-by">Sort options by</label>
+            <select
+              id="sort-by"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="w-full px-3 py-2 border rounded-lg bg-background text-sm"
+              aria-label="Sort options by"
+            >
+              <option value="volume">Sort by Volume</option>
+              <option value="openInterest">Sort by OI</option>
+              <option value="premium">Sort by Premium</option>
+              <option value="expiry">Sort by Expiry</option>
+            </select>
+          </div>
 
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => fetchOptionsData(true)}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -605,7 +432,7 @@ export default function OptionsSection() {
                     {(option.impliedVolatility * 100).toFixed(0)}%
                   </td>
                   <td className="p-3 text-right">
-                    <span className={option.delta >= 0 ? 'text-green-600' : 'text-red-600'}>
+                    <span className={option.delta >= 0 ? 'text-success' : 'text-destructive'}>
                       {option.delta.toFixed(3)}
                     </span>
                   </td>
@@ -646,15 +473,15 @@ export default function OptionsSection() {
       )}
 
       {/* Options Info */}
-      <Card className="p-4 border-blue-200 bg-blue-50">
+      <Card className="p-4 border-info/20 bg-info/5">
         <div className="flex items-start gap-3">
-          <div className="w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0 mt-0.5">
-            <span className="text-white text-xs font-bold">i</span>
+          <div className="w-6 h-6 rounded-full bg-info flex items-center justify-center flex-shrink-0 mt-0.5">
+            <span className="text-info-foreground text-xs font-bold">i</span>
           </div>
           <div>
-            <h4 className="font-medium text-blue-800 mb-1">Options Trading Information</h4>
-            <p className="text-sm text-blue-700">
-              Options are complex financial instruments that can result in significant losses. ITM = In the Money, 
+            <h4 className="font-medium text-foreground mb-1">Options Trading Information</h4>
+            <p className="text-sm text-muted-foreground">
+              Options are complex financial instruments that can result in significant losses. ITM = In the Money,
               ATM = At the Money, OTM = Out of the Money. Greeks measure option sensitivities to various factors.
               Always understand the risks before trading options.
             </p>

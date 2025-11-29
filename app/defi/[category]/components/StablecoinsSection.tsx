@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -44,206 +44,64 @@ export default function StablecoinsSection() {
   const [filterType, setFilterType] = useState<string>('All');
   const [filterStability, setFilterStability] = useState<string>('All');
 
-  useEffect(() => {
-    const fetchStablecoinData = async () => {
-      setLoading(true);
-      try {
-        // Simulate API call with realistic stablecoin data
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockData: Stablecoin[] = [
-          {
-            id: '1',
-            name: 'USD Coin (Solana)',
-            symbol: 'USDC',
-            type: 'Fiat-Collateralized',
-            currentPrice: 1.0001,
-            pegDeviation: 0.01,
-            marketCap: '3.2B',
-            volume24h: '450M',
-            circulatingSupply: '3.2B',
-            collateralRatio: 100,
-            transparencyScore: 95,
-            riskLevel: 'Low',
-            pegStability: 'Excellent',
-            backing: ['USD Cash', 'Treasury Bills', 'Commercial Paper'],
-            issuer: 'Centre (Coinbase & Circle)',
-            audits: 12,
-            features: ['Native SPL Token', 'Regulated', 'High Liquidity', 'DeFi Integration'],
-            description: 'Native Solana version of USDC with full USD backing and regulatory compliance.'
-          },
-          {
-            id: '2',
-            name: 'Tether (Solana)',
-            symbol: 'USDT',
-            type: 'Fiat-Collateralized',
-            currentPrice: 0.9998,
-            pegDeviation: -0.02,
-            marketCap: '1.8B',
-            volume24h: '320M',
-            circulatingSupply: '1.8B',
-            collateralRatio: 100,
-            transparencyScore: 78,
-            riskLevel: 'Medium',
-            pegStability: 'Good',
-            backing: ['USD', 'Commercial Paper', 'Corporate Bonds', 'Treasury Bills'],
-            issuer: 'Tether Limited',
-            audits: 4,
-            features: ['SPL Token', 'High Liquidity', 'Wide Adoption', 'Cross-chain Bridge'],
-            description: 'Solana version of the most widely used stablecoin with diversified backing.'
-          },
-          {
-            id: '3',
-            name: 'USDH',
-            symbol: 'USDH',
-            type: 'Crypto-Collateralized',
-            currentPrice: 1.0012,
-            pegDeviation: 0.12,
-            marketCap: '180M',
-            volume24h: '25M',
-            circulatingSupply: '180M',
-            collateralRatio: 110,
-            transparencyScore: 88,
-            riskLevel: 'Medium',
-            pegStability: 'Good',
-            backing: ['SOL', 'ETH', 'BTC', 'USDC', 'SRM'],
-            issuer: 'Hubble Protocol',
-            audits: 6,
-            features: ['Native Solana', 'Over-collateralized', 'Multi-asset Backing', 'Kamino Integration'],
-            description: 'Native Solana stablecoin by Hubble Protocol backed by diverse crypto assets.'
-          },
-          {
-            id: '4',
-            name: 'UXD',
-            symbol: 'UXD',
-            type: 'Hybrid',
-            currentPrice: 0.9989,
-            pegDeviation: -0.11,
-            marketCap: '95M',
-            volume24h: '8.5M',
-            circulatingSupply: '95M',
-            collateralRatio: 100,
-            transparencyScore: 82,
-            riskLevel: 'Medium',
-            pegStability: 'Good',
-            backing: ['SOL Perpetuals', 'Delta-neutral Positions', 'Insurance Fund'],
-            issuer: 'UXD Protocol',
-            audits: 5,
-            features: ['Delta-neutral', 'Perp-backed', 'Native Solana', 'Algorithmic Rebalancing'],
-            description: 'Innovative Solana stablecoin backed by delta-neutral perpetual positions.'
-          },
-          {
-            id: '5',
-            name: 'Cashio Dollar (Deprecated)',
-            symbol: 'CASH',
-            type: 'Fiat-Collateralized',
-            currentPrice: 0.0001,
-            pegDeviation: -99.99,
-            marketCap: '1M',
-            volume24h: '0.1M',
-            circulatingSupply: '1B',
-            collateralRatio: 0,
-            transparencyScore: 15,
-            riskLevel: 'High',
-            pegStability: 'Poor',
-            backing: ['Exploited/Deprecated'],
-            issuer: 'Cashio Protocol',
-            audits: 1,
-            features: ['Failed Project', 'Exploit History', 'Deprecated', 'Historical Interest'],
-            description: 'Deprecated Solana stablecoin that suffered from infinite mint exploit in 2022.'
-          },
-          {
-            id: '6',
-            name: 'PAI',
-            symbol: 'PAI',
-            type: 'Crypto-Collateralized',
-            currentPrice: 1.0045,
-            pegDeviation: 0.45,
-            marketCap: '42M',
-            volume24h: '3.2M',
-            circulatingSupply: '42M',
-            collateralRatio: 150,
-            transparencyScore: 75,
-            riskLevel: 'Medium',
-            pegStability: 'Fair',
-            backing: ['SOL', 'SRM', 'RAY', 'USDC'],
-            issuer: 'Parrot Protocol',
-            audits: 3,
-            features: ['Native Solana', 'Multi-collateral', 'Governance Token', 'Yield Farming'],
-            description: 'Solana-native stablecoin by Parrot Protocol with multiple crypto collateral types.'
-          },
-          {
-            id: '7',
-            name: 'NIRV',
-            symbol: 'NIRV',
-            type: 'Algorithmic',
-            currentPrice: 0.9876,
-            pegDeviation: -1.24,
-            marketCap: '28M',
-            volume24h: '1.8M',
-            circulatingSupply: '28M',
-            collateralRatio: 0,
-            transparencyScore: 70,
-            riskLevel: 'High',
-            pegStability: 'Fair',
-            backing: ['Algorithmic Mechanism', 'ANA Token', 'Protocol Revenue'],
-            issuer: 'Nirvana Protocol',
-            audits: 2,
-            features: ['Algorithmic', 'Meta-stable', 'Native Solana', 'Deflationary Mechanics'],
-            description: 'Algorithmic meta-stable token on Solana with unique deflationary mechanisms.'
-          },
-          {
-            id: '8',
-            name: 'USH',
-            symbol: 'USH',
-            type: 'Crypto-Collateralized',
-            currentPrice: 1.0008,
-            pegDeviation: 0.08,
-            marketCap: '15M',
-            volume24h: '1.2M',
-            circulatingSupply: '15M',
-            collateralRatio: 120,
-            transparencyScore: 85,
-            riskLevel: 'Medium',
-            pegStability: 'Good',
-            backing: ['SOL', 'mSOL', 'stSOL', 'USDC'],
-            issuer: 'Hedge Protocol',
-            audits: 4,
-            features: ['Native Solana', 'Liquid Staking Backed', 'Yield-bearing', 'Auto-rebalancing'],
-            description: 'Solana stablecoin backed by liquid staking tokens and yield-bearing assets.'
-          },
-          {
-            id: '9',
-            name: 'RATIO',
-            symbol: 'RATIO',
-            type: 'Hybrid',
-            currentPrice: 0.9995,
-            pegDeviation: -0.05,
-            marketCap: '12M',
-            volume24h: '0.8M',
-            circulatingSupply: '12M',
-            collateralRatio: 110,
-            transparencyScore: 78,
-            riskLevel: 'Medium',
-            pegStability: 'Good',
-            backing: ['USDC', 'SOL', 'Yield Strategies', 'Protocol Fees'],
-            issuer: 'Ratio Finance',
-            audits: 3,
-            features: ['Yield-optimized', 'Auto-compounding', 'Native Solana', 'Strategy Vaults'],
-            description: 'Yield-optimized stablecoin on Solana with automated strategy execution.'
-          }
-        ];
+  const formatValue = (value: number): string => {
+    if (value >= 1e9) return `${(value / 1e9).toFixed(1)}B`;
+    if (value >= 1e6) return `${(value / 1e6).toFixed(0)}M`;
+    if (value >= 1e3) return `${(value / 1e3).toFixed(0)}K`;
+    return value.toFixed(0);
+  };
 
-        setStablecoins(mockData);
-      } catch (error) {
-        console.error('Error fetching stablecoin data:', error);
-      } finally {
-        setLoading(false);
+  const getPegStability = (deviation: number): 'Excellent' | 'Good' | 'Fair' | 'Poor' => {
+    const absDeviation = Math.abs(deviation);
+    if (absDeviation < 0.001) return 'Excellent';
+    if (absDeviation < 0.005) return 'Good';
+    if (absDeviation < 0.02) return 'Fair';
+    return 'Poor';
+  };
+
+  const fetchStablecoinData = useCallback(async (isRefresh = false) => {
+    if (!isRefresh) setLoading(true);
+    try {
+      const response = await fetch('/api/analytics/stablecoins');
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        const coins = (data.data.stablecoins || []).map((c: any, idx: number) => ({
+          id: String(idx + 1),
+          name: c.name,
+          symbol: c.symbol,
+          type: c.type === 'Fiat-backed' ? 'Fiat-Collateralized' : c.type === 'Crypto-backed' ? 'Crypto-Collateralized' : c.type,
+          currentPrice: c.currentPrice,
+          pegDeviation: c.pegDeviation * 100,
+          marketCap: formatValue(c.marketCap),
+          volume24h: formatValue(c.volume24h),
+          circulatingSupply: formatValue(c.circulatingSupply),
+          collateralRatio: 100,
+          transparencyScore: c.auditStatus === 'Audited' ? 90 : c.auditStatus === 'Partial' ? 75 : 50,
+          riskLevel: c.type === 'Algorithmic' ? 'High' : c.type === 'Fiat-backed' ? 'Low' : 'Medium',
+          pegStability: getPegStability(c.pegDeviation),
+          backing: [c.backing],
+          issuer: c.issuer,
+          audits: c.auditStatus === 'Audited' ? 6 : c.auditStatus === 'Partial' ? 2 : 0,
+          features: ['Native SPL Token', 'DeFi Integration', ...c.chains.slice(0, 2)],
+          description: c.description
+        }));
+        setStablecoins(coins);
+      } else {
+        throw new Error(data.error || 'Failed to fetch data');
       }
-    };
-
-    fetchStablecoinData();
+    } catch (error) {
+      console.error('Error fetching stablecoin data:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchStablecoinData();
+    const interval = setInterval(() => fetchStablecoinData(true), 60000);
+    return () => clearInterval(interval);
+  }, [fetchStablecoinData]);
 
   const filteredAndSortedCoins = stablecoins
     .filter(coin => 
@@ -273,29 +131,29 @@ export default function StablecoinsSection() {
 
   const getRiskColor = (risk: string) => {
     switch (risk) {
-      case 'Low': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Medium': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'High': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Low': return 'bg-success/10 text-success';
+      case 'Medium': return 'bg-warning/10 text-warning';
+      case 'High': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getStabilityColor = (stability: string) => {
     switch (stability) {
-      case 'Excellent': return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300';
-      case 'Good': return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300';
-      case 'Fair': return 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300';
-      case 'Poor': return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300';
-      default: return 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-300';
+      case 'Excellent': return 'bg-success/10 text-success';
+      case 'Good': return 'bg-info/10 text-info';
+      case 'Fair': return 'bg-warning/10 text-warning';
+      case 'Poor': return 'bg-destructive/10 text-destructive';
+      default: return 'bg-muted text-muted-foreground';
     }
   };
 
   const getPegDeviationColor = (deviation: number) => {
     const abs = Math.abs(deviation);
-    if (abs <= 0.1) return 'text-green-600';
-    if (abs <= 0.5) return 'text-yellow-600';
-    if (abs <= 2.0) return 'text-orange-600';
-    return 'text-red-600';
+    if (abs <= 0.1) return 'text-success';
+    if (abs <= 0.5) return 'text-warning';
+    if (abs <= 2.0) return 'text-warning';
+    return 'text-destructive';
   };
 
   if (loading) {
@@ -330,20 +188,26 @@ export default function StablecoinsSection() {
         </div>
         
         <div className="flex gap-2">
+          <label className="sr-only" htmlFor="filter-type">Filter by type</label>
           <select
+            id="filter-type"
             value={filterType}
             onChange={(e) => setFilterType(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by stablecoin type"
           >
             {types.map(type => (
               <option key={type} value={type}>{type}</option>
             ))}
           </select>
-          
+
+          <label className="sr-only" htmlFor="filter-stability">Filter by stability</label>
           <select
+            id="filter-stability"
             value={filterStability}
             onChange={(e) => setFilterStability(e.target.value)}
             className="px-3 py-2 border border-input bg-background rounded-md text-sm"
+            aria-label="Filter by peg stability"
           >
             {stabilities.map(stability => (
               <option key={stability} value={stability}>{stability}</option>
@@ -387,17 +251,17 @@ export default function StablecoinsSection() {
               {/* Price and Peg */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2">
-                  <Target className="h-4 w-4 text-blue-600" />
+                  <Target className="h-4 w-4 text-info" />
                   <div>
                     <div className="text-sm text-muted-foreground">Current Price</div>
                     <div className="font-semibold">${coin.currentPrice.toFixed(4)}</div>
                   </div>
                 </div>
-                
+
                 <div className="flex items-center gap-2">
-                  {coin.pegDeviation >= 0 ? 
-                    <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                    <TrendingDown className="h-4 w-4 text-red-600" />
+                  {coin.pegDeviation >= 0 ?
+                    <TrendingUp className="h-4 w-4 text-success" /> :
+                    <TrendingDown className="h-4 w-4 text-destructive" />
                   }
                   <div>
                     <div className="text-sm text-muted-foreground">Peg Deviation</div>
