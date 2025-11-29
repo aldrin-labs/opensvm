@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { FeedEvent } from '@/types/feed-events';
+import { SocialFeedEvent as FeedEvent } from '@/lib/user/feed-events';
 import { BarChart3, TrendingUp, Users, Heart } from 'lucide-react';
 
 interface FeedChartsProps {
