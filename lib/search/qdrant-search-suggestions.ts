@@ -31,26 +31,24 @@ const COLLECTIONS = {
   USER_PROFILES: 'user_profiles'
 };
 
-export interface SearchSuggestion {
-  type: 'user_history' | 'global_match' | 'popular' | 'recent_global';
-  value: string;
-  label: string;
-  name?: string;
-  score?: number;
-  timestamp?: number;
-  usageCount?: number;
-  metadata?: {
-    section?: string;
-    sectionTitle?: string;
-    sectionIcon?: string;
-    sectionDescription?: string;
-    userId?: string;
-    isRecent?: boolean;
-    scope?: 'user' | 'global';
-    expandable?: boolean;
-    [key: string]: any;
-  };
-}
+// Import and re-export the canonical SearchSuggestion type from components
+// This ensures type consistency across the codebase
+import type { SearchSuggestion } from '@/components/search/types';
+export type { SearchSuggestion };
+
+/**
+ * Qdrant suggestion source to canonical UI type mapping:
+ *
+ * Internal Source      -> Canonical UI Type  -> UI Styling
+ * ---------------      -------------------   -----------
+ * user's own browsing  -> 'recent_user'      -> user history styling
+ * similar from others  -> 'recent_global'    -> community styling
+ * most visited pages   -> 'recent_global'    -> community styling
+ * recent activity      -> 'recent_global'    -> community styling
+ *
+ * Canonical types defined in components/search/types.ts:
+ * address, transaction, token, program, recent_global, recent_user
+ */
 
 export interface SuggestionGroup {
   title: string;
@@ -195,7 +193,7 @@ async function getUserHistorySuggestions(
 
     const suggestions: SearchSuggestion[] = results
       .map(result => ({
-        type: 'user_history' as const,
+        type: 'recent_user' as const,
         value: String(result.payload?.path || ''),
         label: String(result.payload?.path || 'Recent Page Visit'),
         name: String(result.payload?.pageTitle || 'Page Visit'),
@@ -267,7 +265,7 @@ async function getGlobalMatchedSuggestions(
 
     const suggestions: SearchSuggestion[] = results
       .map(result => ({
-        type: 'global_match' as const,
+        type: 'recent_global' as const,
         value: String(result.payload?.path || ''),
         label: String(result.payload?.path || 'Page Visit'),
         name: String(result.payload?.pageTitle || 'Community Activity'),
@@ -339,7 +337,7 @@ async function getPopularSuggestions(limit: number = 5): Promise<SearchSuggestio
       .slice(0, limit);
 
     const suggestions: SearchSuggestion[] = sortedPaths.map(([path, data]) => ({
-      type: 'popular' as const,
+      type: 'recent_global' as const,
       value: path,
       label: path,
       name: String(data.latestEntry.payload?.pageTitle || 'Popular Page'),

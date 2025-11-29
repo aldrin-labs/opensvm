@@ -11,7 +11,7 @@ jest.mock('next/navigation', () => ({
   useRouter: jest.fn(),
 }));
 jest.mock('@/lib/utils');
-jest.mock('@/lib/qdrant');
+jest.mock('@/lib/search/qdrant');
 jest.mock('@/components/vtable', () => ({
   VTableWrapper: ({ columns, data, loading, onSort, selectedRowId, onRowSelect, renderRowAction, pinnedRowIds, onLoadMore, infiniteScroll, virtualScrolling, maxRows, initialLoadSize, scrollThreshold, responsive, 'aria-busy': ariaBusy }: any) => (
     <div data-testid="vtable-wrapper">

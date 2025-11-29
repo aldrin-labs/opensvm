@@ -23,7 +23,15 @@ const AIChatSidebar = ({ isOpen }: { isOpen: boolean }) => (
   </div>
 );// Mock next/navigation
 jest.mock('next/navigation', () => ({
-  useRouter: jest.fn(),
+  useRouter: jest.fn(() => ({
+    push: jest.fn(),
+    replace: jest.fn(),
+    prefetch: jest.fn(),
+    back: jest.fn(),
+  })),
+  usePathname: jest.fn(() => '/'),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  useParams: jest.fn(() => ({})),
 }));
 
 // Mock Solana wallet adapter to avoid provider errors
@@ -58,6 +66,17 @@ const mockUseAIChatSidebar = {
 
 jest.mock('@/contexts/AIChatSidebarContext', () => ({
   useAIChatSidebar: () => mockUseAIChatSidebar,
+}));
+
+// Mock AuthContext
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuthContext: () => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: jest.fn(),
+    logout: jest.fn(),
+  }),
 }));
 
 jest.mock('@/components/ai/AIChatSidebar', () => ({

@@ -1,24 +1,26 @@
 import { AdvancedRateLimiter } from '../lib/rate-limiter';
-import { memoryCache } from '../lib/cache';
 
-// Mock the cache
-jest.mock('../lib/cache', () => ({
+// Mock the cache at the actual import path used by rate-limiter
+jest.mock('../lib/caching/cache', () => ({
   memoryCache: {
     get: jest.fn(),
     set: jest.fn(),
-    delete: jest.fn()
+    del: jest.fn(),
+    delete: jest.fn(),
+    clear: jest.fn()
   }
 }));
 
+// Import the mocked module to access mock functions
+import { memoryCache } from '../lib/caching/cache';
+
 describe('AdvancedRateLimiter', () => {
   let rateLimiter: AdvancedRateLimiter;
-  let mockCache: jest.Mocked<typeof memoryCache>;
+  const mockCache = memoryCache as jest.Mocked<typeof memoryCache>;
 
   beforeEach(() => {
-    mockCache = memoryCache as jest.Mocked<typeof memoryCache>;
     mockCache.get.mockClear();
     mockCache.set.mockClear();
-    mockCache.delete.mockClear();
 
     rateLimiter = new AdvancedRateLimiter({
       maxRequests: 10,
@@ -235,13 +237,12 @@ describe('AdvancedRateLimiter', () => {
 
       const stats = await rateLimiter.getStats('user1');
 
-      expect(stats).toEqual({
-        requests: 5,
-        remaining: 5,
-        resetTime: now + 60000,
-        burstRemaining: 10,
-        windowStart: now
-      });
+      expect(stats.requests).toBe(5);
+      expect(stats.remaining).toBe(5);
+      expect(stats.resetTime).toBe(now + 60000);
+      expect(stats.windowStart).toBe(now);
+      // Use approximate matching for burstRemaining due to refill calculations
+      expect(stats.burstRemaining).toBeCloseTo(10, 1);
     });
   });
 

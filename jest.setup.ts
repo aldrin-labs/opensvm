@@ -2,6 +2,9 @@ import '@testing-library/jest-dom';
 import { TextDecoder as NodeTextDecoder, TextEncoder as NodeTextEncoder } from 'util';
 import { jest, expect } from '@jest/globals';
 
+// Mock server-only package to allow tests to run
+jest.mock('server-only', () => ({}));
+
 // Polyfills for Next.js and Web APIs
 global.TextEncoder = NodeTextEncoder as unknown as typeof global.TextEncoder;
 global.TextDecoder = NodeTextDecoder as typeof global.TextDecoder;
@@ -404,9 +407,25 @@ const mockRouter = {
 };
 
 jest.mock('next/navigation', () => ({
-  useRouter: () => mockRouter,
-  useSearchParams: () => new URLSearchParams(),
-  usePathname: () => '',
+  useRouter: jest.fn(() => mockRouter),
+  useSearchParams: jest.fn(() => new URLSearchParams()),
+  usePathname: jest.fn(() => '/'),
+  useParams: jest.fn(() => ({})),
+  redirect: jest.fn(),
+  notFound: jest.fn(),
+}));
+
+// Mock AuthContext globally
+jest.mock('@/contexts/AuthContext', () => ({
+  useAuthContext: jest.fn(() => ({
+    user: null,
+    isAuthenticated: false,
+    isLoading: false,
+    login: jest.fn(),
+    logout: jest.fn(),
+    walletAddress: null,
+  })),
+  AuthProvider: ({ children }: { children: React.ReactNode }) => children,
 }));
 
 // Mock Solana Connection - fix initialization order
@@ -575,7 +594,7 @@ const mockRateLimit = {
   check: jest.fn<AsyncFunction<boolean>>().mockResolvedValue(true),
 };
 
-jest.mock('@/lib/rate-limit', () => ({
+jest.mock('@/lib/middleware/rate-limit', () => ({
   rateLimit: () => mockRateLimit,
 }));
 

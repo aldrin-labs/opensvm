@@ -65,12 +65,20 @@ jest.mock('../lib/program-registry', () => ({
   })
 }));
 
-// Mock the transaction analysis cache
+// Create shared mock for transaction analysis cache
+const mockTransactionAnalysisCache = {
+  getCachedInstructionDefinition: jest.fn(() => Promise.resolve(null)),
+  cacheInstructionDefinition: jest.fn(() => Promise.resolve())
+};
+
+// Mock the transaction analysis cache at the path used by the parser service
+jest.mock('../lib/blockchain/transaction-analysis-cache', () => ({
+  transactionAnalysisCache: mockTransactionAnalysisCache
+}));
+
+// Also mock the re-export path used in the test
 jest.mock('../lib/transaction-analysis-cache', () => ({
-  transactionAnalysisCache: {
-    getCachedInstructionDefinition: jest.fn(() => Promise.resolve(null)),
-    cacheInstructionDefinition: jest.fn(() => Promise.resolve())
-  }
+  transactionAnalysisCache: mockTransactionAnalysisCache
 }));
 
 // Mock Qdrant client to avoid ES module issues

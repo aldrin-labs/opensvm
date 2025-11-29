@@ -493,7 +493,7 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
               <div key={sectionKey}>
                 {/* Section Items */}
                 {section.suggestions.map((suggestion, _index) => {
-                  const { primaryMetadata, secondaryMetadata, detailMetadata: _detailMetadata } = renderSuggestionMetadata(suggestion);
+                  const { primaryMetadata, secondaryMetadata, detailMetadata } = renderSuggestionMetadata(suggestion);
                   const globalIndex = suggestion.originalIndex;
                   const isHovered = hoveredIndex === globalIndex;
 
@@ -538,12 +538,12 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                               <span className="text-sm">{suggestion.metadata.icon}</span>
                             )}
                             {suggestion.metadata?.trending && (
-                              <span className="text-xs bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 px-1.5 py-0.5 rounded font-medium">
+                              <span className="text-xs bg-destructive/10 text-destructive border border-destructive/30 px-1.5 py-0.5 rounded font-medium">
                                 TRENDING
                               </span>
                             )}
                             {suggestion.metadata?.timeAgo && (
-                              <span className="text-xs text-gray-500 dark:text-gray-400">
+                              <span className="text-xs text-muted-foreground">
                                 {suggestion.metadata.timeAgo}
                               </span>
                             )}
@@ -570,10 +570,10 @@ export const SearchSuggestions: React.FC<SearchSuggestionsProps> = ({
                             )}
                           </div>
 
-                          {/* Primary and secondary metadata combined */}
-                          {(primaryMetadata.length > 0 || secondaryMetadata.length > 0) && (
+                          {/* Combined metadata */}
+                          {(primaryMetadata.length > 0 || secondaryMetadata.length > 0 || detailMetadata.length > 0) && (
                             <div className="flex flex-wrap gap-2 mt-1 text-xs text-muted-foreground">
-                              {[...primaryMetadata, ...secondaryMetadata].map((item, idx) => (
+                              {[...primaryMetadata, ...secondaryMetadata, ...detailMetadata.slice(0, 2)].map((item, idx) => (
                                 <span key={idx}>{item}</span>
                               ))}
                             </div>

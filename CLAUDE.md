@@ -95,3 +95,54 @@ npm run install:force
 # Qdrant connection issues
 npm run fix-qdrant
 ```
+
+## MANDATORY: End Every Response with "What's Next" Suggestions
+
+**After completing any task, report, or analysis, you MUST provide exactly 5 suggestions for what to do next, ordered from reasonable to radical:**
+
+```markdown
+## What's Next? (5 Paths Forward)
+
+### 1️⃣ REASONABLE - [Title]
+**What:** [Brief description]
+**Impact:** [Expected outcome]
+**Timeline:** [Estimated time]
+**Why:** [Rationale for this approach]
+
+### 2️⃣ PRAGMATIC - [Title]
+**What:** [Brief description]
+**Impact:** [Expected outcome]
+**Timeline:** [Estimated time]
+**Why:** [Rationale for this approach]
+
+### 3️⃣ INSIGHTFUL - [Title]
+**What:** [Brief description]
+**Impact:** [Expected outcome]
+**Timeline:** [Estimated time]
+**Why:** [Rationale for this approach]
+
+### 4️⃣ UNHINGED - [Title]
+**What:** [Brief description]
+**Impact:** [Expected outcome]
+**Timeline:** [Estimated time]
+**Why:** [Rationale for this approach]
+
+### 5️⃣ RADICAL - [Title]
+**What:** [Brief description]
+**Impact:** [Expected outcome]
+**Timeline:** [Estimated time]
+**Why:** [Rationale for this approach]
+```
+
+**Guidelines for Suggestions:**
+- **REASONABLE**: Safe, obvious next step. Low risk, moderate reward.
+- **PRAGMATIC**: Practical but requires some effort. Good ROI, well-tested approach.
+- **INSIGHTFUL**: Non-obvious but high-leverage. Requires deep thinking, big potential.
+- **UNHINGED**: Unconventional, risky, but could be game-changing. Breaks norms.
+- **RADICAL**: Extreme rethink. Questions fundamental assumptions. Maximum disruption potential.
+
+**Each suggestion must have:**
+- Clear action items (not vague ideas)
+- Realistic impact assessment (don't oversell)
+- Honest timeline (include learning curve)
+- Strategic rationale (why this matters)

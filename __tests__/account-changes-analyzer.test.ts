@@ -7,12 +7,20 @@ import type {
 } from '../lib/account-changes-analyzer';
 import type { DetailedTransactionInfo } from '../lib/solana';
 
-// Mock the transaction analysis cache
+// Create mock cache functions that can be shared across paths
+const mockTransactionAnalysisCache = {
+  getCachedAccountChanges: jest.fn(() => Promise.resolve(null)),
+  cacheAccountChanges: jest.fn(() => Promise.resolve())
+};
+
+// Mock the transaction analysis cache at the path used by the analyzer
+jest.mock('../lib/blockchain/transaction-analysis-cache', () => ({
+  transactionAnalysisCache: mockTransactionAnalysisCache
+}));
+
+// Also mock the re-export path used by the test
 jest.mock('../lib/transaction-analysis-cache', () => ({
-  transactionAnalysisCache: {
-    getCachedAccountChanges: jest.fn(() => Promise.resolve(null)),
-    cacheAccountChanges: jest.fn(() => Promise.resolve())
-  }
+  transactionAnalysisCache: mockTransactionAnalysisCache
 }));
 
 describe('AccountChangesAnalyzer', () => {

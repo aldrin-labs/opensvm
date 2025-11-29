@@ -1,6 +1,6 @@
 export const dynamic = 'force-dynamic';
 import { NextResponse } from 'next/server';
-import { getSearchSuggestions, storeSearchQuery } from '@/lib/search/qdrant-search-suggestions';
+import { getSearchSuggestions, storeSearchQuery, type SearchSuggestion } from '@/lib/search/qdrant-search-suggestions';
 
 // Lightweight base58 check (characters only)
 const BASE58_REGEX = /^[1-9A-HJ-NP-Za-km-z]+$/;
@@ -9,25 +9,29 @@ function isLikelyBase58(str: string) {
   return BASE58_REGEX.test(str);
 }
 
-// Check if query is a specific blockchain entity
-function isBlockchainEntity(query: string): boolean {
-  const trimmed = query.trim().toLowerCase();
-  
-  // Check for base58 addresses/transactions (32+ chars)
+// Token symbol pattern (3-5 uppercase chars like SOL, USDC, BONK)
+const TOKEN_SYMBOL_REGEX = /^[A-Z]{3,5}$/;
+
+// Check if query is a specific blockchain entity for optimized routing
+function isBlockchainEntity(query: string): { isEntity: boolean; type: 'address' | 'token' | 'block' | 'keyword' | null } {
+  const trimmed = query.trim();
+  const lowercased = trimmed.toLowerCase();
+
+  // Check for base58 addresses/transactions (32+ chars) - case sensitive check
   if (trimmed.length >= 32 && isLikelyBase58(trimmed)) {
-    return true;
+    return { isEntity: true, type: 'address' };
   }
-  
+
   // Check for block/slot numbers
   if (/^\d+$/.test(trimmed) && parseInt(trimmed) > 0) {
-    return true;
+    return { isEntity: true, type: 'block' };
   }
-  
+
   // Check for common token symbols (3-5 uppercase chars)
-  if (/^[A-Z]{3,5}$/.test(query.trim())) {
-    return true;
+  if (TOKEN_SYMBOL_REGEX.test(trimmed)) {
+    return { isEntity: true, type: 'token' };
   }
-  
+
   // Check for blockchain/protocol keywords
   const blockchainKeywords = [
     'solana', 'sol', 'jupiter', 'raydium', 'orca', 'serum', 'marinade', 'lido',
@@ -35,43 +39,12 @@ function isBlockchainEntity(query: string): boolean {
     'srm', 'ftt', 'rope', 'atlas', 'polis', 'tulip', 'sunny', 'saber',
     'aldrin', 'mercurial', 'port', 'socean', 'larix', 'quarry', 'friktion'
   ];
-  
-  if (blockchainKeywords.some(keyword => trimmed === keyword || trimmed.includes(keyword))) {
-    return true;
+
+  if (blockchainKeywords.some(keyword => lowercased === keyword || lowercased.includes(keyword))) {
+    return { isEntity: true, type: 'keyword' };
   }
-  
-  return false;
-}
 
-// Call AI assistant for general queries
-async function getAIResponse(query: string): Promise<any> {
-  try {
-    const response = await fetch('http://localhost:3000/api/getAnswer', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        question: query
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`AI API error: ${response.status}`);
-    }
-
-    // /api/getAnswer returns raw markdown text, not JSON
-    const aiResponseText = await response.text();
-    
-    // Return in a format that matches what the calling code expects
-    return {
-      response: aiResponseText,
-      answer: aiResponseText // Alternative format for compatibility
-    };
-  } catch (error) {
-    console.error('Failed to get AI response:', error);
-    return null;
-  }
+  return { isEntity: false, type: null };
 }
 
 export async function GET(request: Request) {
@@ -88,11 +61,39 @@ export async function GET(request: Request) {
       return NextResponse.json([]);
     }
 
+    // Detect if query is a blockchain entity for optimized handling
+    const entityCheck = isBlockchainEntity(query);
+
+    // Log network context for observability (multi-chain filtering to be implemented)
+    if (networks.length > 0 && networks[0] !== 'solana') {
+      console.log(`Search suggestions requested for networks: ${networks.join(', ')}`);
+    }
+
     const nowIso = new Date().toISOString();
-    
-    // If it looks like a long base58 string, provide immediate address/transaction suggestions
-    if (query.length >= 32 && isLikelyBase58(query)) {
-      const suggestions = [
+
+    // For token symbols, provide token-specific suggestions
+    if (entityCheck.isEntity && entityCheck.type === 'token') {
+      const suggestions: SearchSuggestion[] = [
+        {
+          type: 'token',
+          value: query.toUpperCase(),
+          label: query.toUpperCase(),
+          name: `${query.toUpperCase()} Token`,
+          lastUpdate: nowIso,
+          metadata: {
+            section: 'token',
+            sectionTitle: 'Token Lookup',
+            sectionIcon: '🪙',
+            sectionDescription: 'Search for token information'
+          }
+        }
+      ];
+      return NextResponse.json(suggestions);
+    }
+
+    // For base58 addresses/transactions, provide immediate lookup suggestions
+    if (entityCheck.isEntity && entityCheck.type === 'address') {
+      const suggestions: SearchSuggestion[] = [
         {
           type: 'address',
           value: query,
@@ -145,7 +146,7 @@ export async function GET(request: Request) {
       }
 
       // Flatten the grouped suggestions into the format expected by the UI
-      const flattenedSuggestions: any[] = [];
+      const flattenedSuggestions: SearchSuggestion[] = [];
       
       for (const group of suggestionGroups) {
         // Add up to maxVisible suggestions from each group
@@ -180,7 +181,7 @@ export async function GET(request: Request) {
       console.error('Qdrant search failed, falling back to existing user history:', qdrantError);
       
       // Try to get suggestions from existing user history in other Qdrant collections
-      const fallbackSuggestions = [];
+      const fallbackSuggestions: SearchSuggestion[] = [];
       
       try {
         // Try to search existing user_history collection for any data
@@ -196,7 +197,7 @@ export async function GET(request: Request) {
         for (const result of historyResults) {
           if (result.payload?.query) {
             fallbackSuggestions.push({
-              type: 'user_history',
+              type: 'recent_user',
               value: String(result.payload.query),
               label: String(result.payload.query),
               name: String(result.payload.query),
@@ -243,10 +244,7 @@ export async function GET(request: Request) {
         console.error('Fallback search also failed:', fallbackError);
       }
 
-      // No AI responses in suggestions - those go to the result page only
-      console.log('Suggestions API only shows Qdrant-based results, not AI responses');
-
-      // Return empty if no real data found - no echoing user's query
+      // Return empty if no real data found
       if (fallbackSuggestions.length === 0) {
         return NextResponse.json([]);
       }
@@ -256,24 +254,8 @@ export async function GET(request: Request) {
 
   } catch (err) {
     console.error('Error in suggestions API:', err);
-    
-    // Emergency fallback - basic search option without echoing query
-    const nowIso = new Date().toISOString();
-    
-    return NextResponse.json([{
-      type: 'recent_global',
-      value: '',
-      label: 'Search across Solana blockchain',
-      name: 'Basic Search',
-      usageCount: 1,
-      lastUpdate: nowIso,
-      metadata: {
-        scope: 'global',
-        section: 'search',
-        sectionTitle: 'Search',
-        sectionIcon: '🔍',
-        sectionDescription: 'Search transactions, blocks, programs, and tokens'
-      }
-    }]);
+
+    // Emergency fallback - return empty array to let UI handle gracefully
+    return NextResponse.json([]);
   }
 }

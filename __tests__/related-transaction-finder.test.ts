@@ -7,12 +7,20 @@ import type {
 } from '../lib/related-transaction-finder';
 import type { DetailedTransactionInfo } from '../lib/solana';
 
-// Mock the transaction analysis cache
+// Create shared mock for transaction analysis cache
+const mockTransactionAnalysisCache = {
+  getCachedRelatedTransactions: jest.fn(() => Promise.resolve(null)),
+  cacheRelatedTransactions: jest.fn(() => Promise.resolve())
+};
+
+// Mock the transaction analysis cache at the path used by the finder
+jest.mock('../lib/caching/transaction-analysis-cache', () => ({
+  transactionAnalysisCache: mockTransactionAnalysisCache
+}));
+
+// Also mock the re-export path used in the test
 jest.mock('../lib/transaction-analysis-cache', () => ({
-  transactionAnalysisCache: {
-    getCachedRelatedTransactions: jest.fn(() => Promise.resolve(null)),
-    cacheRelatedTransactions: jest.fn(() => Promise.resolve())
-  }
+  transactionAnalysisCache: mockTransactionAnalysisCache
 }));
 
 // Import after mocking

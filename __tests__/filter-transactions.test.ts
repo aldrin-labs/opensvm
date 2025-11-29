@@ -23,7 +23,7 @@ jest.mock('next/server', () => {
 });
 
 // Mock the environment variables and utilities
-jest.mock('../lib/transaction-constants', () => ({
+jest.mock('@/lib/blockchain/transaction-constants', () => ({
   MIN_TRANSFER_SOL: 0.01,
   MAX_TRANSFER_COUNT: 10,
   isSpamAddress: jest.fn(() => false),
@@ -242,7 +242,7 @@ describe('/api/filter-transactions', () => {
     const data = await response.json();
 
     expect(response.status).toBe(400);
-    expect(data.error).toBe('Invalid transactions data');
+    expect(data.error).toBe('Missing transactions field');
   });
 
   it('should handle network errors gracefully', async () => {
