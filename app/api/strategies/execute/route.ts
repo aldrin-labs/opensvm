@@ -6,8 +6,7 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { Jupiter } from '@jup-ag/core';
+import { Connection, PublicKey, Transaction, VersionedTransaction, Keypair } from '@solana/web3.js';
 
 // Types for strategies (would normally import from shared types)
 interface DCAStrategy {
@@ -199,11 +198,13 @@ async function fetchBankWallet(walletAddress: string): Promise<any> {
 }
 
 /**
- * Execute token swap via Jupiter Aggregator
+ * Execute token swap via Jupiter Quote API v6
+ *
+ * Uses Jupiter's Quote API directly (no SDK required)
  */
 async function executeJupiterSwap(params: {
   connection: Connection;
-  wallet: any;
+  wallet: Keypair;
   inputMint: PublicKey;
   outputMint: PublicKey;
   amount: number;
@@ -211,38 +212,76 @@ async function executeJupiterSwap(params: {
 }): Promise<string> {
   const { connection, wallet, inputMint, outputMint, amount, slippageBps } = params;
 
-  // Initialize Jupiter
-  const jupiter = await Jupiter.load({
-    connection,
-    cluster: 'mainnet-beta',
-    user: wallet.publicKey,
-  });
+  // Convert amount to lamports (assuming USDC with 6 decimals)
+  const amountLamports = Math.floor(amount * 1e6);
 
-  // Get routes
-  const routes = await jupiter.computeRoutes({
-    inputMint,
-    outputMint,
-    amount: amount * 1e6, // Convert to lamports/decimals
-    slippageBps,
-    feeBps: 50, // 0.5% platform fee (optional)
-  });
+  // Step 1: Get quote from Jupiter
+  const quoteResponse = await fetch(
+    `https://quote-api.jup.ag/v6/quote?` +
+    `inputMint=${inputMint.toString()}&` +
+    `outputMint=${outputMint.toString()}&` +
+    `amount=${amountLamports}&` +
+    `slippageBps=${slippageBps}&` +
+    `onlyDirectRoutes=false&` +
+    `asLegacyTransaction=false`
+  );
 
-  if (!routes.routesInfos.length) {
-    throw new Error('No routes found');
+  if (!quoteResponse.ok) {
+    throw new Error(`Jupiter quote failed: ${quoteResponse.statusText}`);
   }
 
-  // Execute best route
-  const { execute } = await jupiter.exchange({
-    routeInfo: routes.routesInfos[0],
-  });
+  const quoteData = await quoteResponse.json();
 
-  const swapResult = await execute();
-
-  if (swapResult.error) {
-    throw new Error(swapResult.error);
+  if (!quoteData || quoteData.error) {
+    throw new Error(`No routes found: ${quoteData?.error || 'Unknown error'}`);
   }
 
-  return swapResult.txid;
+  // Step 2: Get swap transaction
+  const swapResponse = await fetch('https://quote-api.jup.ag/v6/swap', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      quoteResponse: quoteData,
+      userPublicKey: wallet.publicKey.toString(),
+      wrapAndUnwrapSol: true,
+      computeUnitPriceMicroLamports: 'auto', // Auto priority fee
+    }),
+  });
+
+  if (!swapResponse.ok) {
+    throw new Error(`Jupiter swap failed: ${swapResponse.statusText}`);
+  }
+
+  const { swapTransaction } = await swapResponse.json();
+
+  if (!swapTransaction) {
+    throw new Error('No swap transaction returned');
+  }
+
+  // Step 3: Deserialize and sign transaction
+  const swapTransactionBuf = Buffer.from(swapTransaction, 'base64');
+  const transaction = VersionedTransaction.deserialize(swapTransactionBuf);
+
+  // Sign transaction
+  transaction.sign([wallet]);
+
+  // Step 4: Send transaction
+  const rawTransaction = transaction.serialize();
+  const txid = await connection.sendRawTransaction(rawTransaction, {
+    skipPreflight: false,
+    maxRetries: 3,
+  });
+
+  // Step 5: Confirm transaction
+  const confirmation = await connection.confirmTransaction(txid, 'confirmed');
+
+  if (confirmation.value.err) {
+    throw new Error(`Transaction failed: ${JSON.stringify(confirmation.value.err)}`);
+  }
+
+  return txid;
 }
 
 /**
