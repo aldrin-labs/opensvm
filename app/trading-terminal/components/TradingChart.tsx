@@ -1,9 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
-import { TrendingUp, TrendingDown, BarChart3, Activity, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, BarChart3, Activity } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTradingWebSocket } from '@/hooks/useTradingWebSocket';
+import ConnectionStatusIndicator from './ConnectionStatusIndicator';
 
 interface TradingChartProps {
   market: string;
@@ -710,18 +711,11 @@ export default function TradingChart({ market, isLoading = false }: TradingChart
           </div>
 
           {/* WebSocket Connection Status */}
-          <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs border"
-               style={{
-                 backgroundColor: status.connected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                 borderColor: status.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-                 color: status.connected ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'
-               }}
-               title={status.connected ? 'WebSocket Connected' : 'WebSocket Disconnected'}>
-            {status.connected ? <Wifi size={12} /> : <WifiOff size={12} />}
-            <span className="font-medium">
-              {status.connected ? 'Live' : (status.reconnecting ? 'Reconnecting...' : 'Offline')}
-            </span>
-          </div>
+          <ConnectionStatusIndicator
+            connected={status.connected}
+            reconnecting={status.reconnecting}
+            size="sm"
+          />
 
           {/* Chart Type Selector */}
           <div className="flex items-center gap-1 bg-background rounded p-1">

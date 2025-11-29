@@ -26,6 +26,7 @@ const EnhancedAIChatWidget = dynamic(() => import('./EnhancedAIChatWidget'), { s
 import { ChevronDown, ChevronUp, Keyboard, Settings, HelpCircle } from 'lucide-react';
 import { DemoModeBanner } from '@/components/ui/demo-mode-banner';
 import { KeyboardShortcutsSettings } from '@/components/KeyboardShortcutsSettings';
+import DataSourceIndicator from './DataSourceIndicator';
 // Temporarily disabled during testing
 // import { TutorialTour, useTutorial } from '@/components/TutorialTour';
 // import { TRADING_TERMINAL_TUTORIAL_STEPS, TUTORIAL_STORAGE_KEY } from '@/lib/trading-terminal-tutorial';
@@ -105,9 +106,6 @@ export default function TradingTerminalView() {
   // Extract loading state from marketData
   const isLoadingMarketData = marketData.isLoading;
 
-  // Suppress unused variable warnings (will be used when integrating real data)
-  void focusedTile;
-
   if (isLoading) {
     return (
       <div className="trading-terminal h-full w-full flex items-center justify-center bg-background text-foreground">
@@ -145,21 +143,11 @@ export default function TradingTerminalView() {
           <h1 className="text-base font-bold text-primary">Trading Terminal</h1>
           {/* Data Source Indicator */}
           {marketData.dataSource && (
-            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded text-xs border"
-                 style={{
-                   backgroundColor: marketData.isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                   borderColor: marketData.isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
-                   color: marketData.isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                 }}
-                 title={marketData.dataSource}>
-              <span className="w-1.5 h-1.5 rounded-full"
-                    style={{
-                      backgroundColor: marketData.isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                    }}></span>
-              <span className="font-medium">
-                {marketData.isRealData ? 'Live Data' : 'Demo Mode'}
-              </span>
-            </div>
+            <DataSourceIndicator
+              isRealData={marketData.isRealData}
+              dataSource={marketData.dataSource}
+              size="md"
+            />
           )}
         </div>
         <MarketStats market={selectedMarket} />

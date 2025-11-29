@@ -139,16 +139,9 @@ const nextConfig = {
         ...config.optimization.splitChunks,
         cacheGroups: {
           ...config.optimization.splitChunks.cacheGroups,
-          // Split Three.js into separate chunk
-          three: {
-            test: /[\\/]node_modules[\\/](three)[\\/]/,
-            name: 'three',
-            chunks: 'all',
-            priority: 30,
-          },
           // Split visualization libraries
           charts: {
-            test: /[\\/]node_modules[\\/](chart\.js|recharts|d3|cytoscape|react-force-graph)[\\/]/,
+            test: /[\\/]node_modules[\\/](chart\.js|recharts|d3|cytoscape)[\\/]/,
             name: 'charts',
             chunks: 'all',
             priority: 25,

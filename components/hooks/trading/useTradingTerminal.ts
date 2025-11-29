@@ -8,6 +8,7 @@
  */
 
 import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
 
 export interface Section {
   id: string;
@@ -148,17 +149,18 @@ export const useTradingTerminal = (
    */
   const handleTradeExecute = useCallback((command: TradeCommand) => {
     console.log('AI Trade Execution:', command);
-    
+
     // Placeholder for actual trade execution logic
     // Would involve:
     // 1. Wallet signature request
     // 2. DEX smart contract interaction
     // 3. Transaction confirmation
     // 4. Update positions and trade history
-    
-    alert(
-      `Trade executed: ${command.action.toUpperCase()} ${command.amount} ${command.token} at ${command.orderType} price`
-    );
+
+    toast.success(`Trade Executed`, {
+      description: `${command.action.toUpperCase()} ${command.amount} ${command.token} at ${command.orderType} price`,
+      duration: 5000,
+    });
   }, []);
 
   /**

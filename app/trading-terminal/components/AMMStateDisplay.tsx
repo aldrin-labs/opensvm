@@ -117,14 +117,14 @@ export default function AMMStateDisplay({ ammState, market }: AMMStateDisplayPro
               <div className="text-xs text-muted-foreground">Buy Impact</div>
               <div className="flex items-center justify-between bg-muted/30 rounded px-2 py-1">
                 <span className="text-xs">$100</span>
-                <span className="text-xs font-mono text-green-500">
+                <span className="text-xs font-mono text-success">
                   <TrendingUp className="inline w-3 h-3 mr-1" />
                   {formatPercent(ammState.priceImpact.buy100)}
                 </span>
               </div>
               <div className="flex items-center justify-between bg-muted/30 rounded px-2 py-1">
                 <span className="text-xs">$1000</span>
-                <span className="text-xs font-mono text-green-500">
+                <span className="text-xs font-mono text-success">
                   <TrendingUp className="inline w-3 h-3 mr-1" />
                   {formatPercent(ammState.priceImpact.buy1000)}
                 </span>
@@ -136,14 +136,14 @@ export default function AMMStateDisplay({ ammState, market }: AMMStateDisplayPro
               <div className="text-xs text-muted-foreground">Sell Impact</div>
               <div className="flex items-center justify-between bg-muted/30 rounded px-2 py-1">
                 <span className="text-xs">$100</span>
-                <span className="text-xs font-mono text-red-500">
+                <span className="text-xs font-mono text-destructive">
                   <TrendingDown className="inline w-3 h-3 mr-1" />
                   {formatPercent(ammState.priceImpact.sell100)}
                 </span>
               </div>
               <div className="flex items-center justify-between bg-muted/30 rounded px-2 py-1">
                 <span className="text-xs">$1000</span>
-                <span className="text-xs font-mono text-red-500">
+                <span className="text-xs font-mono text-destructive">
                   <TrendingDown className="inline w-3 h-3 mr-1" />
                   {formatPercent(ammState.priceImpact.sell1000)}
                 </span>

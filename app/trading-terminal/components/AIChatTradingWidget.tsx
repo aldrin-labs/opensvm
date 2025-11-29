@@ -285,7 +285,7 @@ export default function AIChatTradingWidget({
           <Bot size={16} className="text-primary" />
           <span className="text-sm font-semibold">AI Trading Assistant</span>
           {!walletConnected && (
-            <span className="text-xs px-2 py-0.5 bg-yellow-500/20 text-yellow-500 rounded">
+            <span className="text-xs px-2 py-0.5 bg-warning/20 text-warning rounded">
               Wallet Not Connected
             </span>
           )}
@@ -308,22 +308,22 @@ export default function AIChatTradingWidget({
           >
             {message.role !== 'user' && (
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                message.role === 'assistant' ? 'bg-primary/20' : 'bg-yellow-500/20'
+                message.role === 'assistant' ? 'bg-primary/20' : 'bg-warning/20'
               }`}>
                 {message.role === 'assistant' ? (
                   <Bot size={16} className="text-primary" />
                 ) : (
-                  <AlertCircle size={16} className="text-yellow-500" />
+                  <AlertCircle size={16} className="text-warning" />
                 )}
               </div>
             )}
             
             <div className={`flex flex-col max-w-[80%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`px-3 py-2 rounded-lg ${
-                message.role === 'user' 
+                message.role === 'user'
                   ? 'bg-primary text-primary-foreground'
                   : message.role === 'system'
-                  ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
+                  ? 'bg-warning/10 text-warning border border-warning/30'
                   : 'bg-card border border-border'
               }`}>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -376,11 +376,11 @@ export default function AIChatTradingWidget({
 
       {/* Trade Confirmation Modal */}
       {pendingTrade && (
-        <div className="px-4 py-3 bg-yellow-500/10 border-t border-yellow-500/30">
+        <div className="px-4 py-3 bg-warning/10 border-t border-warning/30">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <AlertCircle size={16} className="text-yellow-500" />
-              <span className="text-xs text-yellow-500 font-semibold">
+              <AlertCircle size={16} className="text-warning" />
+              <span className="text-xs text-warning font-semibold">
                 Confirm trade execution?
               </span>
             </div>
@@ -388,14 +388,14 @@ export default function AIChatTradingWidget({
               <button
                 onClick={handleConfirmTrade}
                 disabled={!walletConnected}
-                className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
+                className="px-3 py-1 text-xs bg-success text-success-foreground rounded hover:bg-success/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1"
               >
                 <CheckCircle size={12} />
                 Confirm
               </button>
               <button
                 onClick={handleCancelTrade}
-                className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600 flex items-center gap-1"
+                className="px-3 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:bg-destructive/90 flex items-center gap-1"
               >
                 <X size={12} />
                 Cancel
@@ -403,7 +403,7 @@ export default function AIChatTradingWidget({
             </div>
           </div>
           {!walletConnected && (
-            <p className="text-xs text-yellow-500 mt-2">
+            <p className="text-xs text-warning mt-2">
               Please connect your wallet to execute trades
             </p>
           )}
@@ -438,9 +438,9 @@ export default function AIChatTradingWidget({
         <p className="text-xs text-muted-foreground mt-2">
           Current market: <span className="font-semibold text-primary">{market}</span>
           {walletConnected ? (
-            <span className="ml-2 text-green-500">● Connected</span>
+            <span className="ml-2 text-success">● Connected</span>
           ) : (
-            <span className="ml-2 text-yellow-500">● Not connected</span>
+            <span className="ml-2 text-warning">● Not connected</span>
           )}
         </p>
       </div>

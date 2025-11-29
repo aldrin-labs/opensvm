@@ -25,9 +25,9 @@ interface AccountVisualizationProps {
   isLoading?: boolean;
 }
 
-const AccountVisualization: React.FC<AccountVisualizationProps> = ({ 
-  accountData, 
-  isLoading = false 
+const AccountVisualization: React.FC<AccountVisualizationProps> = ({
+  accountData,
+  isLoading = false
 }) => {
   if (isLoading) {
     return (

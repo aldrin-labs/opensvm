@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { TrendingUp, TrendingDown, RotateCw, Wifi, WifiOff } from 'lucide-react';
+import { TrendingUp, TrendingDown, RotateCw } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useTradingWebSocket } from '@/hooks/useTradingWebSocket';
 import { getTokenMint } from '@/lib/trading/token-utils';
+import ConnectionStatusIndicator from './ConnectionStatusIndicator';
 
 interface TradeHistoryProps {
   market: string;
@@ -147,16 +148,11 @@ export default function TradeHistory({ market, isLoading = false }: TradeHistory
               <RotateCw size={12} className="animate-spin text-primary" />
             )}
             {/* WebSocket Connection Status */}
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border"
-                 style={{
-                   backgroundColor: status.connected ? 'rgba(34, 197, 94, 0.1)' : 'rgba(239, 68, 68, 0.1)',
-                   borderColor: status.connected ? 'rgba(34, 197, 94, 0.3)' : 'rgba(239, 68, 68, 0.3)',
-                   color: status.connected ? 'rgb(34, 197, 94)' : 'rgb(239, 68, 68)'
-                 }}
-                 title={status.connected ? 'WebSocket Connected' : 'WebSocket Disconnected'}>
-              {status.connected ? <Wifi size={10} /> : <WifiOff size={10} />}
-              <span>{status.connected ? 'Live' : (status.reconnecting ? 'Reconnecting...' : 'Offline')}</span>
-            </div>
+            <ConnectionStatusIndicator
+              connected={status.connected}
+              reconnecting={status.reconnecting}
+              size="sm"
+            />
             {/* Trade Count */}
             {trades.length > 0 && (
               <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border border-primary/30 text-primary">

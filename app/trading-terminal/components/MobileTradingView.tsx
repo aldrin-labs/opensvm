@@ -82,7 +82,7 @@ export default function MobileTradingView() {
             className="flex-1 mx-4 text-center"
           >
             <div className="font-bold text-lg">{selectedMarket}</div>
-            <div className={`text-sm ${isPositive ? 'text-green-500' : 'text-red-500'}`}>
+            <div className={`text-sm ${isPositive ? 'text-success' : 'text-destructive'}`}>
               {isPositive ? '+' : ''}{priceChange.toFixed(2)}%
             </div>
           </button>
@@ -90,8 +90,8 @@ export default function MobileTradingView() {
           <button
             onClick={() => wallet.isConnected ? wallet.disconnect() : wallet.connect()}
             className={`p-2 rounded-lg ${
-              wallet.isConnected 
-                ? 'bg-green-500/10 text-green-500' 
+              wallet.isConnected
+                ? 'bg-success/10 text-success'
                 : 'bg-primary/10 text-primary'
             }`}
             aria-label={wallet.isConnected ? 'Disconnect wallet' : 'Connect wallet'}

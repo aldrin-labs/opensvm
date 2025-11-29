@@ -286,12 +286,12 @@ export default function EnhancedAIChatWidget({
           <Bot size={16} className="text-primary" />
           <span className="text-sm font-semibold">AI Trading Agent</span>
           {autonomousMode && (
-            <span className="text-xs px-2 py-0.5 bg-green-500/20 text-green-500 rounded animate-pulse">
+            <span className="text-xs px-2 py-0.5 bg-success/20 text-success rounded animate-pulse">
               AUTO
             </span>
           )}
           {agentState !== AgentState.IDLE && (
-            <span className="text-xs px-2 py-0.5 bg-blue-500/20 text-blue-500 rounded">
+            <span className="text-xs px-2 py-0.5 bg-info/20 text-info rounded">
               {agentState}
             </span>
           )}
@@ -307,7 +307,7 @@ export default function EnhancedAIChatWidget({
           {autonomousMode ? (
             <button
               onClick={handleStopAutonomous}
-              className="p-1 hover:bg-border rounded text-red-500"
+              className="p-1 hover:bg-border rounded text-destructive"
               title="Stop autonomous mode"
             >
               <Pause size={14} />
@@ -315,7 +315,7 @@ export default function EnhancedAIChatWidget({
           ) : (
             <button
               onClick={() => handleStartAutonomous('start scalping')}
-              className="p-1 hover:bg-border rounded text-green-500"
+              className="p-1 hover:bg-border rounded text-success"
               title="Start autonomous mode"
             >
               <Play size={14} />
@@ -333,27 +333,27 @@ export default function EnhancedAIChatWidget({
           >
             {message.role !== 'user' && (
               <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-                message.role === 'agent' ? 'bg-primary/20' : 
-                message.role === 'system' ? 'bg-yellow-500/20' : 'bg-blue-500/20'
+                message.role === 'agent' ? 'bg-primary/20' :
+                message.role === 'system' ? 'bg-warning/20' : 'bg-info/20'
               }`}>
                 {message.role === 'agent' ? (
                   <Bot size={16} className="text-primary" />
                 ) : message.role === 'system' ? (
-                  <AlertCircle size={16} className="text-yellow-500" />
+                  <AlertCircle size={16} className="text-warning" />
                 ) : (
-                  <Zap size={16} className="text-blue-500" />
+                  <Zap size={16} className="text-info" />
                 )}
               </div>
             )}
             
             <div className={`flex flex-col max-w-[80%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
               <div className={`px-3 py-2 rounded-lg ${
-                message.role === 'user' 
+                message.role === 'user'
                   ? 'bg-primary text-primary-foreground'
                   : message.role === 'system'
-                  ? 'bg-yellow-500/10 text-yellow-500 border border-yellow-500/30'
+                  ? 'bg-warning/10 text-warning border border-warning/30'
                   : message.role === 'agent'
-                  ? 'bg-blue-500/10 text-blue-500 border border-blue-500/30'
+                  ? 'bg-info/10 text-info border border-info/30'
                   : 'bg-card border border-border'
               }`}>
                 <p className="text-sm whitespace-pre-wrap">{message.content}</p>
@@ -363,14 +363,14 @@ export default function EnhancedAIChatWidget({
                   <div className="mt-2 pt-2 border-t border-border flex gap-2">
                     <button
                       onClick={handleApprovePlan}
-                      className="px-3 py-1 text-xs bg-green-500 text-white rounded hover:bg-green-600"
+                      className="px-3 py-1 text-xs bg-success text-success-foreground rounded hover:bg-success/90"
                     >
                       <CheckCircle size={12} className="inline mr-1" />
                       Approve
                     </button>
                     <button
                       onClick={handleRejectPlan}
-                      className="px-3 py-1 text-xs bg-red-500 text-white rounded hover:bg-red-600"
+                      className="px-3 py-1 text-xs bg-destructive text-destructive-foreground rounded hover:bg-destructive/90"
                     >
                       <X size={12} className="inline mr-1" />
                       Reject
@@ -435,9 +435,9 @@ export default function EnhancedAIChatWidget({
           <p className="text-xs text-muted-foreground">
             Market: <span className="font-semibold text-primary">{market}</span>
             {walletConnected ? (
-              <span className="ml-2 text-green-500">● Connected</span>
+              <span className="ml-2 text-success">● Connected</span>
             ) : (
-              <span className="ml-2 text-yellow-500">● Not connected</span>
+              <span className="ml-2 text-warning">● Not connected</span>
             )}
           </p>
           <div className="flex items-center gap-2 text-xs">

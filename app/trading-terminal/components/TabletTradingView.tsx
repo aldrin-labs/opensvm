@@ -62,7 +62,7 @@ export default function TabletTradingView() {
               onClick={() => wallet.isConnected ? wallet.disconnect() : wallet.connect()}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
                 wallet.isConnected
-                  ? 'bg-green-500/10 text-green-500 hover:bg-green-500/20'
+                  ? 'bg-success/10 text-success hover:bg-success/20'
                   : 'bg-primary/10 text-primary hover:bg-primary/20'
               }`}
             >
@@ -101,7 +101,7 @@ export default function TabletTradingView() {
               </div>
               <div>
                 <div className="text-muted-foreground">24h Change</div>
-                <div className={`font-bold ${marketData.stats.change24h >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                <div className={`font-bold ${marketData.stats.change24h >= 0 ? 'text-success' : 'text-destructive'}`}>
                   {marketData.stats.change24h >= 0 ? '+' : ''}{marketData.stats.change24h.toFixed(2)}%
                 </div>
               </div>

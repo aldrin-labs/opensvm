@@ -3,24 +3,6 @@
  * This helps reduce initial bundle size and improves build performance
  */
 
-// Lazy load Three.js and related 3D dependencies
-export const loadThreeJS = async () => {
-  try {
-    const [THREE, OrbitControlsModule] = await Promise.all([
-      import('three'),
-      import('three/examples/jsm/controls/OrbitControls.js')
-    ]);
-    
-    return {
-      THREE,
-      OrbitControls: (OrbitControlsModule as any).OrbitControls
-    };
-  } catch (error) {
-    console.warn('Three.js not available:', error);
-    return { THREE: null, OrbitControls: null };
-  }
-};
-
 // Lazy load chart libraries
 export const loadChartLibraries = async () => {
   const [

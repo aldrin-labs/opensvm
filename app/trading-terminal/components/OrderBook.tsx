@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Droplets, TrendingUp, TrendingDown, Activity } from 'lucide-react';
+import DataSourceIndicator from './DataSourceIndicator';
 
 interface OrderBookProps {
   market: string;
@@ -219,18 +220,7 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
               </span>
             )}
             {dataSource && (
-              <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border"
-                   style={{
-                     backgroundColor: isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                     borderColor: isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
-                     color: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                   }}>
-                <span className="w-1 h-1 rounded-full"
-                      style={{
-                        backgroundColor: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                      }}></span>
-                <span>{isRealData ? 'Live' : 'Demo'}</span>
-              </div>
+              <DataSourceIndicator isRealData={isRealData} dataSource={dataSource} size="sm" />
             )}
           </div>
           {ammState && (
@@ -275,19 +265,19 @@ export default function OrderBook({ market, isLoading = false }: OrderBookProps)
               <div className="text-muted-foreground mb-1">Price Impact:</div>
               <div className="grid grid-cols-2 gap-1">
                 <div className="flex items-center gap-1">
-                  <TrendingUp size={10} className="text-green-500" />
+                  <TrendingUp size={10} className="text-success" />
                   <span className="text-[10px]">Buy $100: {ammState.priceImpact.buy100.toFixed(3)}%</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <TrendingUp size={10} className="text-green-500" />
+                  <TrendingUp size={10} className="text-success" />
                   <span className="text-[10px]">Buy $1k: {ammState.priceImpact.buy1000.toFixed(3)}%</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <TrendingDown size={10} className="text-red-500" />
+                  <TrendingDown size={10} className="text-destructive" />
                   <span className="text-[10px]">Sell $100: {ammState.priceImpact.sell100.toFixed(3)}%</span>
                 </div>
                 <div className="flex items-center gap-1">
-                  <TrendingDown size={10} className="text-red-500" />
+                  <TrendingDown size={10} className="text-destructive" />
                   <span className="text-[10px]">Sell $1k: {ammState.priceImpact.sell1000.toFixed(3)}%</span>
                 </div>
               </div>

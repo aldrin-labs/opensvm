@@ -42,9 +42,9 @@ export default function TradingControls({ market, walletConnected = false }: Tra
     <div className="trading-controls bg-background">
       {/* Wallet Connection Warning */}
       {!walletConnected && (
-        <div className="mb-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-sm flex items-center gap-2">
-          <Wallet className="h-4 w-4 text-yellow-500" />
-          <span className="text-yellow-500 font-medium">Connect wallet to enable trading</span>
+        <div className="mb-2 p-2 bg-warning/10 border border-warning/30 rounded text-sm flex items-center gap-2">
+          <Wallet className="h-4 w-4 text-warning" />
+          <span className="text-warning font-medium">Connect wallet to enable trading</span>
         </div>
       )}
       

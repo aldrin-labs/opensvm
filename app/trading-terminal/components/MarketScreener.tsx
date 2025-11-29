@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, TrendingUp, Users, Eye, Star, Fish, Filter, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
+import DataSourceIndicator from './DataSourceIndicator';
 
 interface MarketScreenerProps {
   selectedMarket: string;
@@ -227,19 +228,7 @@ export default function MarketScreener({ selectedMarket, onMarketChange, isExpan
         <div className="flex items-center gap-2">
           <h2 className="text-sm font-bold text-primary">Market Screener</h2>
           {dataSource && !isLoadingData && (
-            <div className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] border"
-                 style={{
-                   backgroundColor: isRealData ? 'rgba(34, 197, 94, 0.1)' : 'rgba(234, 179, 8, 0.1)',
-                   borderColor: isRealData ? 'rgba(34, 197, 94, 0.3)' : 'rgba(234, 179, 8, 0.3)',
-                   color: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                 }}
-                 title={dataSource}>
-              <span className="w-1 h-1 rounded-full"
-                    style={{
-                      backgroundColor: isRealData ? 'rgb(34, 197, 94)' : 'rgb(234, 179, 8)'
-                    }}></span>
-              <span>{isRealData ? 'Live' : 'Demo'}</span>
-            </div>
+            <DataSourceIndicator isRealData={isRealData} dataSource={dataSource} size="sm" />
           )}
         </div>
         <div className="flex items-center gap-1">
