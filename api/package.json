@@ -30,6 +30,8 @@
     "dev:opensvm": "bun run src/opensvm-mcp.ts",
     "build": "npx smithery build",
     "test": "bun test",
+    "test:opensvm": "bun run tests/integration/test-opensvm-mcp.ts",
+    "test:mcp": "bun run tests/integration/test-opensvm-mcp.ts",
     "serve": "bun run src/web-server.ts",
     "deploy": "netlify deploy --prod --dir=public"
   },
