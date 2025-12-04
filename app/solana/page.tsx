@@ -6,6 +6,8 @@ export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useState } from "react";
 import { Connection, SystemProgram } from "@solana/web3.js";
+import { TrendingTokens } from "@/components/TrendingTokens";
+import { DEXAnalytics } from "@/components/DEXAnalytics";
 
 const HELIUS_RPC = "https://mainnet.helius-rpc.com/?api-key=2eb1ae21-40d0-4b6d-adde-ccb3d56ad570";
 
@@ -85,53 +87,73 @@ export default function SolanaExplorer() {
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 p-2">
-      <div className="p-3 bg-white rounded-md shadow">
-        <h2 className="text-lg font-semibold mb-2">SOL Supply Stats</h2>
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <div className="space-y-1">
-            <p>Circulating Supply: {supplyStats?.circulating.toFixed(2)} SOL</p>
-            <p>Non-circulating Supply: {supplyStats?.nonCirculating.toFixed(2)} SOL</p>
-          </div>
-        )}
+    <div className="space-y-6 p-4">
+      {/* Network Overview */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">SOL Supply Stats</h2>
+          {loading ? (
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-gray-700 dark:text-gray-300">
+                Circulating Supply: <span className="font-mono">{supplyStats?.circulating.toFixed(2)} SOL</span>
+              </p>
+              <p className="text-gray-700 dark:text-gray-300">
+                Non-circulating Supply: <span className="font-mono">{supplyStats?.nonCirculating.toFixed(2)} SOL</span>
+              </p>
+            </div>
+          )}
+        </div>
+
+        <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+          <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Network Stats</h2>
+          {loading ? (
+            <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-gray-700 dark:text-gray-300">
+                Current TPS: <span className="font-mono font-bold text-blue-600 dark:text-blue-400">{networkStats?.tps}</span>
+              </p>
+              <p className="text-gray-700 dark:text-gray-300">
+                Block Height: <span className="font-mono">{networkStats?.blockHeight?.toLocaleString()}</span>
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
-      <div className="p-3 bg-white rounded-md shadow">
-        <h2 className="text-lg font-semibold mb-2">Network Stats</h2>
-        {loading ? (
-          <p>Loading...</p>
-        ) : (
-          <div className="space-y-1">
-            <p>Current TPS: {networkStats?.tps}</p>
-            <p>Block Height: {networkStats?.blockHeight}</p>
-          </div>
-        )}
-      </div>
+      {/* DEX Analytics */}
+      <DEXAnalytics />
 
-      <div className="p-3 bg-white rounded-md shadow col-span-full mt-2">
-        <h2 className="text-lg font-semibold mb-2">Latest Transactions</h2>
+      {/* Trending Tokens */}
+      <TrendingTokens />
+
+      {/* Recent Transactions */}
+      <div className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow">
+        <h2 className="text-lg font-semibold mb-3 text-gray-900 dark:text-gray-100">Latest Transactions</h2>
         {loading ? (
-          <p>Loading...</p>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full border-collapse">
               <thead>
-                <tr>
-                  <th className="px-3 py-1 border text-left">Signature</th>
-                  <th className="px-3 py-1 border text-left">Timestamp</th>
-                  <th className="px-3 py-1 border text-left">Block</th>
-                  <th className="px-3 py-1 border text-left">Type</th>
+                <tr className="border-b border-gray-200 dark:border-gray-700">
+                  <th className="px-4 py-2 text-left text-gray-900 dark:text-gray-100">Signature</th>
+                  <th className="px-4 py-2 text-left text-gray-900 dark:text-gray-100">Timestamp</th>
+                  <th className="px-4 py-2 text-left text-gray-900 dark:text-gray-100">Block</th>
+                  <th className="px-4 py-2 text-left text-gray-900 dark:text-gray-100">Type</th>
                 </tr>
               </thead>
               <tbody>
                 {transactions.map((tx, index) => (
-                  <tr key={index} className="hover:bg-gray-50">
-                    <td className="px-3 py-1 border">{tx.signature}</td>
-                    <td className="px-3 py-1 border">{tx.timestamp}</td>
-                    <td className="px-3 py-1 border">{tx.block}</td>
-                    <td className="px-3 py-1 border">{tx.type}</td>
+                  <tr key={index} className="border-b border-gray-100 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-700">
+                    <td className="px-4 py-2 font-mono text-sm text-gray-700 dark:text-gray-300 truncate max-w-xs">
+                      {tx.signature}
+                    </td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{tx.timestamp}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{tx.block.toLocaleString()}</td>
+                    <td className="px-4 py-2 text-sm text-gray-600 dark:text-gray-400">{tx.type}</td>
                   </tr>
                 ))}
               </tbody>
