@@ -1,0 +1,415 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Prediction Market Metadata API",
+    "version": "1.0",
+    "description": "API for retrieving prediction‑market metadata and live data"
+  },
+  "paths": {
+    "/api/v1/event/{event_id}": {
+      "get": {
+        "summary": "Get Event",
+        "description": "Returns a single event by its ticker; optional nested markets included【151304811711481†L141-L150】.",
+        "parameters": [
+          {
+            "name": "event_id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" },
+            "description": "Event ticker"【151304811711481†L230-L236】
+          },
+          {
+            "name": "withNestedMarkets",
+            "in": "query",
+            "required": false,
+            "schema": { "type": "boolean" },
+            "description": "Include nested markets"【151304811711481†L238-L244】
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Event metadata including series ticker, subtitle, markets, strike information and volume"【151304811711481†L186-L227】,
+            "content": {
+              "application/json": {
+                "schema": { "type": "object" }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/events": {
+      "get": {
+        "summary": "Get Events",
+        "description": "Returns a paginated list of all events"【924091713944885†L146-L152】,
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "required": false, "description": "Max number of events"【924091713944885†L236-L243】 },
+          { "name": "cursor", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "required": false, "description": "Pagination cursor"【924091713944885†L248-L252】 },
+          { "name": "withNestedMarkets", "in": "query", "schema": { "type": "boolean" }, "required": false, "description": "Include nested markets"【924091713944885†L244-L246】 },
+          { "name": "seriesTickers", "in": "query", "schema": { "type": "string" }, "required": false, "description": "Filter by series tickers"【924091713944885†L254-L256】 },
+          { "name": "isInitialized", "in": "query", "schema": { "type": "boolean" }, "required": false, "description": "Filter by initialization status"【924091713944885†L258-L260】 },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "required": false, "description": "Filter by event status"【924091713944885†L262-L264】 },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["volume","volume24h","liquidity","openInterest","startDate"] }, "required": false, "description": "Sort field"【924091713944885†L266-L280】 }
+        ],
+        "responses": {
+          "200": {
+            "description": "Array of event objects and optional pagination cursor"【924091713944885†L284-L300】,
+            "content": { "application/json": { "schema": { "type": "object" } } }
+          }
+        }
+      }
+    },
+    "/api/v1/event/{series_ticker}/{event_id}/forecast_percentile_history": {
+      "get": {
+        "summary": "Get Event Forecast Percentile History",
+        "description": "Returns historical raw and formatted forecast numbers for an event at specified percentiles"【820372309441990†L104-L108】,
+        "parameters": [
+          { "name": "series_ticker", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Series ticker"【820372309441990†L161-L165】 },
+          { "name": "event_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Event ticker"【820372309441990†L169-L173】 },
+          { "name": "percentiles", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Comma‑separated percentile list"【820372309441990†L175-L181】 },
+          { "name": "startTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Start timestamp"【820372309441990†L183-L189】 },
+          { "name": "endTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "End timestamp"【820372309441990†L191-L197】 },
+          { "name": "periodInterval", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Sampling interval"【820372309441990†L199-L205】 }
+        ],
+        "responses": {
+          "200": { "description": "Forecast percentile history", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      }
+    },
+    "/api/v1/event/by-mint/{mint_address}/forecast_percentile_history": {
+      "get": {
+        "summary": "Get Event Forecast Percentile History by Mint",
+        "description": "Looks up the event using a market mint address and returns forecast history"【242722163153634†L104-L107】,
+        "parameters": [
+          { "name": "mint_address", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Market mint address"【242722163153634†L161-L167】 },
+          { "name": "percentiles", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Percentiles list"【242722163153634†L169-L175】 },
+          { "name": "startTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Start timestamp"【242722163153634†L177-L183】 },
+          { "name": "endTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "End timestamp"【242722163153634†L185-L191】 },
+          { "name": "periodInterval", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Sampling interval"【242722163153634†L193-L199】 }
+        ],
+        "responses": {
+          "200": { "description": "Forecast percentile history", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      }
+    },
+    "/api/v1/event/{ticker}/candlesticks": {
+      "get": {
+        "summary": "Get Event Candlesticks",
+        "description": "Relays event candlesticks from the Kalshi API; resolves series_ticker automatically"【365810889341648†L104-L109】,
+        "parameters": [
+          { "name": "ticker", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Event ticker"【365810889341648†L158-L164】 },
+          { "name": "startTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Start timestamp"【365810889341648†L168-L174】 },
+          { "name": "endTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "End timestamp"【365810889341648†L176-L182】 },
+          { "name": "periodInterval", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Interval size"【365810889341648†L184-L190】 }
+        ],
+        "responses": {
+          "200": { "description": "Event candlesticks", "content": { "application/json": { "schema": { "type": "object" } } } }
+        }
+      }
+    },
+    "/api/v1/market/{market_id}": {
+      "get": {
+        "summary": "Get Market",
+        "description": "Returns details of a market by ticker"【676157890335712†L125-L129】,
+        "parameters": [
+          { "name": "market_id", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Market ticker"【676157890335712†L194-L200】 }
+        ],
+        "responses": { "200": { "description": "Market object", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/market/by-mint/{mint_address}": {
+      "get": {
+        "summary": "Get Market by Mint",
+        "description": "Returns a market by looking up its mint address"【746177970184084†L126-L130】,
+        "parameters": [ { "name": "mint_address", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Ledger or outcome mint"【746177970184084†L201-L207】 } ],
+        "responses": { "200": { "description": "Market object", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/markets": {
+      "get": {
+        "summary": "Get Markets",
+        "description": "Returns a paginated list of markets"【150760383530060†L130-L132】,
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Number of markets"【150760383530060†L200-L204】 },
+          { "name": "cursor", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Pagination cursor"【150760383530060†L208-L212】 },
+          { "name": "isInitialized", "in": "query", "schema": { "type": "boolean" }, "description": "Filter by initialization status"【150760383530060†L214-L217】 },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status"【150760383530060†L218-L220】 },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["volume","volume24h","liquidity","openInterest","startDate"] }, "description": "Sort field"【150760383530060†L222-L236】 }
+        ],
+        "responses": { "200": { "description": "Markets list and cursor"【150760383530060†L238-L256】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/markets/batch": {
+      "post": {
+        "summary": "Get Markets Batch",
+        "description": "Returns multiple markets by tickers and/or mint addresses; up to 100 results"【860636028258184†L139-L143】,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "mints": { "type": "array", "items": { "type": "string" } },
+                  "tickers": { "type": "array", "items": { "type": "string" } }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": { "200": { "description": "Markets batch with cursor"【860636028258184†L192-L221】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/outcome_mints": {
+      "get": {
+        "summary": "Get Outcome Mints",
+        "description": "Returns a flat list of yes and no outcome mint pubkeys"【345903666749789†L103-L106】,
+        "parameters": [ { "name": "minCloseTs", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Filter by minimum close timestamp"【345903666749789†L147-L154】 } ],
+        "responses": { "200": { "description": "List of mint addresses"【345903666749789†L155-L163】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/filter_outcome_mints": {
+      "post": {
+        "summary": "Filter Outcome Mints",
+        "description": "Filters a list of addresses and returns only outcome mints"【359811853305457†L112-L117】,
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "addresses": { "type": "array", "items": { "type": "string" }, "maxItems": 200 }
+                },
+                "required": ["addresses"]
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": { "200": { "description": "Outcome mint addresses"【359811853305457†L177-L187】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/market/{ticker}/candlesticks": {
+      "get": {
+        "summary": "Get Market Candlesticks",
+        "description": "Relays market candlesticks; resolves series ticker automatically"【544608147066439†L104-L108】,
+        "parameters": [
+          { "name": "ticker", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Market ticker"【544608147066439†L158-L163】 },
+          { "name": "startTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Start timestamp"【544608147066439†L168-L174】 },
+          { "name": "endTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "End timestamp"【544608147066439†L176-L182】 },
+          { "name": "periodInterval", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Interval size"【544608147066439†L184-L190】 }
+        ],
+        "responses": { "200": { "description": "Market candlesticks", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/market/by-mint/{mint_address}/candlesticks": {
+      "get": {
+        "summary": "Get Market Candlesticks by Mint",
+        "description": "Looks up market by mint and returns candlesticks"【21155147644785†L104-L108】,
+        "parameters": [
+          { "name": "mint_address", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Mint address"【21155147644785†L161-L167】 },
+          { "name": "startTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Start timestamp"【21155147644785†L169-L175】 },
+          { "name": "endTs", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "End timestamp"【21155147644785†L177-L185】 },
+          { "name": "periodInterval", "in": "query", "required": true, "schema": { "type": "integer", "minimum": 0 }, "description": "Interval size"【21155147644785†L187-L193】 }
+        ],
+        "responses": { "200": { "description": "Market candlesticks", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/trades": {
+      "get": {
+        "summary": "Get Trades",
+        "description": "Returns a paginated list of trades across markets"【601839118187896†L117-L121】,
+        "parameters": [
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Number of trades"【601839118187896†L175-L181】 },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Pagination cursor"【601839118187896†L183-L186】 },
+          { "name": "ticker", "in": "query", "schema": { "type": "string" }, "description": "Filter by market ticker"【601839118187896†L187-L189】 },
+          { "name": "minTs", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Minimum timestamp"【601839118187896†L191-L195】 },
+          { "name": "maxTs", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Maximum timestamp"【601839118187896†L197-L201】 }
+        ],
+        "responses": { "200": { "description": "Trades list with cursor"【601839118187896†L97-L112】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/trades/by-mint/{mint_address}": {
+      "get": {
+        "summary": "Get Trades by Mint",
+        "description": "Returns a paginated list of trades for a market identified by a mint address"【641730965667314†L120-L124】,
+        "parameters": [
+          { "name": "mint_address", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Mint address"【641730965667314†L189-L195】 },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Number of trades"【641730965667314†L197-L203】 },
+          { "name": "cursor", "in": "query", "schema": { "type": "string" }, "description": "Pagination cursor"【641730965667314†L205-L208】 },
+          { "name": "minTs", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Minimum timestamp"【641730965667314†L209-L213】 },
+          { "name": "maxTs", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Maximum timestamp"【641730965667314†L213-L219】 }
+        ],
+        "responses": { "200": { "description": "Trades list with cursor"【641730965667314†L172-L187】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/live_data": {
+      "get": {
+        "summary": "Get Live Data",
+        "description": "Relays live data from the Kalshi API for milestones"【849905306508582†L101-L106】,
+        "parameters": [ { "name": "milestoneIds", "in": "query", "schema": { "type": "array", "items": { "type": "string" } }, "required": true, "description": "Milestone IDs"【849905306508582†L143-L149】 } ],
+        "responses": { "200": { "description": "Live data payload", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/live_data/by-event/{event_ticker}": {
+      "get": {
+        "summary": "Get Live Data by Event",
+        "description": "Returns live data for all milestones of an event"【602896932201811†L104-L107】,
+        "parameters": [
+          { "name": "event_ticker", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Event ticker"【602896932201811†L154-L160】 },
+          { "name": "minimumStartDate", "in": "query", "schema": { "type": "string" }, "description": "Filter milestones after this date"【602896932201811†L162-L168】 },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category"【602896932201811†L168-L170】 },
+          { "name": "competition", "in": "query", "schema": { "type": "string" }, "description": "Filter by competition"【602896932201811†L172-L174】 },
+          { "name": "sourceId", "in": "query", "schema": { "type": "string" }, "description": "Filter by data source"【602896932201811†L176-L178】 },
+          { "name": "type", "in": "query", "schema": { "type": "string" }, "description": "Filter by milestone type"【602896932201811†L180-L182】 }
+        ],
+        "responses": { "200": { "description": "Live data for event", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/live_data/by-mint/{mint_address}": {
+      "get": {
+        "summary": "Get Live Data by Mint",
+        "description": "Looks up an event from a market mint address and returns live data"【739360228609644†L104-L109】,
+        "parameters": [
+          { "name": "mint_address", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Mint address"【739360228609644†L157-L163】 },
+          { "name": "minimumStartDate", "in": "query", "schema": { "type": "string" }, "description": "Filter milestones after date"【739360228609644†L165-L169】 },
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by category"【739360228609644†L169-L171】 },
+          { "name": "competition", "in": "query", "schema": { "type": "string" }, "description": "Filter by competition"【739360228609644†L173-L177】 },
+          { "name": "sourceId", "in": "query", "schema": { "type": "string" }, "description": "Filter by source"【739360228609644†L179-L181】 },
+          { "name": "type", "in": "query", "schema": { "type": "string" }, "description": "Filter by type"【739360228609644†L183-L186】 }
+        ],
+        "responses": { "200": { "description": "Live data for mint", "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/series": {
+      "get": {
+        "summary": "Get Series",
+        "description": "Returns all series templates"【73805143277701†L127-L131】,
+        "parameters": [
+          { "name": "category", "in": "query", "schema": { "type": "string" }, "description": "Filter by series category"【73805143277701†L195-L199】 },
+          { "name": "tags", "in": "query", "schema": { "type": "string" }, "description": "Filter by tags"【73805143277701†L201-L203】 },
+          { "name": "isInitialized", "in": "query", "schema": { "type": "boolean" }, "description": "Filter by initialization"【73805143277701†L205-L207】 },
+          { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by series status"【73805143277701†L209-L210】 }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of series with metadata"【73805143277701†L97-L121】,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeriesList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/series/{series_ticker}": {
+      "get": {
+        "summary": "Get Series by Ticker",
+        "description": "Returns a single series by its ticker"【776981416303650†L124-L128】,
+        "parameters": [ { "name": "series_ticker", "in": "path", "required": true, "schema": { "type": "string" }, "description": "Series ticker"【776981416303650†L192-L199】 } ],
+        "responses": {
+          "200": {
+            "description": "Series object with metadata"【776981416303650†L168-L190】,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Series"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tags_by_categories": {
+      "get": {
+        "summary": "Get Tags by Categories",
+        "description": "Returns a mapping of series categories to tags"【396611440073784†L103-L106】,
+        "responses": { "200": { "description": "Object mapping categories to tag arrays"【396611440073784†L146-L154】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/filters_by_sports": {
+      "get": {
+        "summary": "Get Filters by Sports",
+        "description": "Returns filtering options for each sport including scopes and competitions"【62114395044438†L106-L110】,
+        "responses": { "200": { "description": "Filters by sports with sport ordering"【62114395044438†L146-L169】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "summary": "Search Events",
+        "description": "Searches events with nested markets by title or ticker"【205249513812871†L148-L151】,
+        "parameters": [
+          { "name": "q", "in": "query", "required": true, "schema": { "type": "string" }, "description": "Search query"【205249513812871†L236-L242】 },
+          { "name": "sort", "in": "query", "schema": { "type": "string", "enum": ["volume","volume24h","liquidity","openInterest","startDate"] }, "description": "Sort field"【205249513812871†L244-L258】 },
+          { "name": "order", "in": "query", "schema": { "type": "string", "enum": ["desc","asc"] }, "description": "Sort order"【205249513812871†L260-L268】 },
+          { "name": "limit", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Number of results"【205249513812871†L270-L274】 },
+          { "name": "cursor", "in": "query", "schema": { "type": "integer", "minimum": 0 }, "description": "Pagination cursor"【205249513812871†L276-L280】 },
+          { "name": "withNestedMarkets", "in": "query", "schema": { "type": "boolean" }, "description": "Include nested markets"【205249513812871†L282-L285】 },
+          { "name": "withMarketAccounts", "in": "query", "schema": { "type": "boolean" }, "description": "Include market accounts"【205249513812871†L286-L289】 }
+        ],
+        "responses": { "200": { "description": "Search results with events and cursor"【205249513812871†L296-L306】, "content": { "application/json": { "schema": { "type": "object" } } } } }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Series": {
+        "type": "object",
+        "properties": {
+          "additionalProhibitions": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "Additional prohibitions or trading restrictions"
+          },
+          "category": { "type": "string", "description": "Category of the series" },
+          "contractTermsUrl": { "type": "string", "format": "uri", "description": "URL to contract terms" },
+          "contractUrl": { "type": "string", "format": "uri", "description": "URL to contract details" },
+          "feeMultiplier": { "type": "number", "description": "Fee multiplier for pricing" },
+          "feeType": { "type": "string", "description": "Type of fee" },
+          "frequency": { "type": "string", "description": "Frequency of the recurring event" },
+          "productMetadata": { "type": "object", "description": "Additional product metadata, structure unspecified" },
+          "settlementSources": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": { "type": "string" },
+                "url": { "type": "string", "format": "uri" }
+              }
+            },
+            "description": "Sources used for settlement"
+          },
+          "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags associated with the series" },
+          "ticker": { "type": "string", "description": "Ticker for the series" },
+          "title": { "type": "string", "description": "Title of the series" }
+        },
+        "required": [
+          "category",
+          "contractTermsUrl",
+          "contractUrl",
+          "feeMultiplier",
+          "feeType",
+          "frequency",
+          "settlementSources",
+          "tags",
+          "ticker",
+          "title"
+        ]
+      },
+      "SeriesList": {
+        "type": "object",
+        "properties": {
+          "series": {
+            "type": "array",
+            "items": { "$ref": "#/components/schemas/Series" }
+          }
+        }
+      }
+    }
+  }
+}

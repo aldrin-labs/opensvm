@@ -1,0 +1,2730 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DFlow MCP Server | OpenSVM</title>
+    <meta name="description" content="Access Kalshi prediction market data through MCP. 23 tools for events, markets, trades, forecasts, and live data. CFTC-regulated exchange.">
+    <meta name="keywords" content="MCP, Model Context Protocol, Kalshi, prediction markets, DFlow, OpenSVM, API, trading">
+    <meta name="author" content="OpenSVM">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://dflow.opensvm.com/">
+    <meta property="og:title" content="DFlow MCP Server | OpenSVM">
+    <meta property="og:description" content="Access Kalshi prediction market data through MCP. 23 tools for events, markets, trades, forecasts, and live data.">
+    <meta property="og:image" content="https://dflow.opensvm.com/icon.svg">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary">
+    <meta property="twitter:url" content="https://dflow.opensvm.com/">
+    <meta property="twitter:title" content="DFlow MCP Server | OpenSVM">
+    <meta property="twitter:description" content="Access Kalshi prediction market data through MCP. 23 tools for events, markets, trades, forecasts, and live data.">
+    <meta property="twitter:image" content="https://dflow.opensvm.com/icon.svg">
+    <style>
+        body {
+            background: #000000;
+            color: #ffffff;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+
+        .logo-text {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .logo-ai {
+            opacity: 0.7;
+            font-size: 13px;
+            vertical-align: super;
+        }
+
+        .nav-link {
+            color: #888888;
+            text-decoration: none;
+            font-size: 14px;
+            padding: 8px 16px;
+            transition: all 0.2s ease;
+            display: inline-block;
+        }
+
+        .nav-link:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .nav-link.active {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        .hero-title {
+            font-size: 42px;
+            font-weight: 600;
+            line-height: 1.2;
+            margin: 0;
+        }
+
+        .hero-subtitle {
+            color: #888888;
+            font-size: 16px;
+            line-height: 1.5;
+            margin: 16px auto 32px auto;
+            max-width: 600px;
+        }
+
+        .code-block {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            color: #ffffff;
+            overflow-x: auto;
+            margin: 24px 0;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #ffffff 0%, #f0f0f0 100%);
+            color: #000000;
+            border: none;
+            padding: 14px 32px;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 2px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(4, 63, 198, 0.1) 100%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .btn-primary:hover::before {
+            opacity: 1;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(255, 255, 255, 0.3);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+            box-shadow: 0 2px 8px rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-secondary {
+            background: transparent;
+            color: #ffffff;
+            border: 1.5px solid rgba(255, 255, 255, 0.25);
+            padding: 13px 30px;
+            font-size: 15px;
+            font-weight: 500;
+            text-decoration: none;
+            display: inline-block;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            border-radius: 2px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-secondary::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 0;
+            height: 0;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            transform: translate(-50%, -50%);
+            transition: width 0.5s, height 0.5s;
+        }
+
+        .btn-secondary:hover::after {
+            width: 300px;
+            height: 300px;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.4);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:active {
+            transform: translateY(0);
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .glossy-icon {
+            display: inline-block;
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.4);
+            position: relative;
+            margin-bottom: 12px;
+        }
+
+        .glossy-icon::before {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            right: 2px;
+            height: 40%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.2) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 6px 6px 16px 16px;
+        }
+
+        .glossy-icon.building {
+            background: linear-gradient(135deg, rgba(4, 63, 198, 0.3) 0%, rgba(4, 63, 198, 0.1) 100%);
+            border-color: rgba(4, 63, 198, 0.4);
+        }
+
+        .glossy-icon.globe {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.3) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-color: rgba(16, 185, 129, 0.4);
+        }
+
+        .glossy-icon.robot {
+            background: linear-gradient(135deg, rgba(138, 92, 246, 0.3) 0%, rgba(138, 92, 246, 0.1) 100%);
+            border-color: rgba(138, 92, 246, 0.4);
+        }
+
+        .glossy-icon-small {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 3px;
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.4) 0%, rgba(16, 185, 129, 0.2) 100%);
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            position: relative;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        .glossy-icon-small::before {
+            content: '';
+            position: absolute;
+            top: 1px;
+            left: 1px;
+            right: 1px;
+            height: 40%;
+            background: linear-gradient(180deg, rgba(255, 255, 255, 0.3) 0%, rgba(255, 255, 255, 0) 100%);
+            border-radius: 2px;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 0 16px;
+            }
+
+            .hero {
+                padding: 40px 0 30px 0;
+            }
+
+            .hero-title {
+                font-size: 28px;
+            }
+
+            .hero-subtitle {
+                font-size: 14px;
+                padding: 0 8px;
+            }
+
+            .partnership-banner {
+                padding: 12px 16px;
+                margin: 0 0 32px 0;
+            }
+
+            .partnership-logos {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .partnership-separator {
+                display: none;
+            }
+
+            .partner-logo {
+                font-size: 18px;
+            }
+
+            .partnership-tagline {
+                font-size: 12px;
+            }
+
+            .stats {
+                flex-direction: column;
+                gap: 20px;
+            }
+
+            .stat-number {
+                font-size: 20px;
+            }
+
+            .stat-label {
+                font-size: 12px;
+            }
+
+            .btn-primary, .btn-secondary {
+                display: block;
+                width: 100%;
+                margin: 8px 0 !important;
+                text-align: center;
+            }
+
+            .tool-card {
+                padding: 16px;
+            }
+
+            .tool-card h4 {
+                font-size: 14px;
+            }
+
+            .tool-card p {
+                font-size: 12px;
+            }
+
+            .install-section {
+                padding: 32px 16px;
+                margin: 32px 0;
+            }
+
+            .install-tabs {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .install-tab {
+                width: 100%;
+                text-align: center;
+            }
+
+            .playground {
+                padding: 24px 16px;
+            }
+
+            .playground h2 {
+                font-size: 20px;
+            }
+
+            .tool-selector {
+                flex-direction: column;
+            }
+
+            .tool-btn {
+                width: 100%;
+            }
+
+            .param-group {
+                grid-template-columns: 1fr;
+            }
+
+            .nav {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            .code-block {
+                font-size: 11px;
+                padding: 12px;
+                overflow-x: auto;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .hero-title {
+                font-size: 24px;
+            }
+
+            .partnership-tagline {
+                font-size: 11px;
+            }
+
+            .tools-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .hero {
+            padding: 60px 0 40px 0;
+            text-align: center;
+        }
+
+        .partnership-banner {
+            background: linear-gradient(135deg, rgba(4, 63, 198, 0.1) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border: 1px solid rgba(4, 63, 198, 0.3);
+            padding: 16px 32px;
+            margin: 0 0 48px 0;
+            text-align: center;
+        }
+
+        .partnership-logos {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            flex-wrap: wrap;
+            margin: 12px 0;
+        }
+
+        .partner-logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: #ffffff;
+            opacity: 0.9;
+            transition: opacity 0.2s;
+        }
+
+        .partner-logo:hover {
+            opacity: 1;
+        }
+
+        .kalshi-accent {
+            color: #043FC6;
+        }
+
+        .dflow-accent {
+            color: #10B981;
+        }
+
+        .partnership-separator {
+            color: #888888;
+            font-size: 16px;
+            font-weight: 300;
+        }
+
+        .partnership-tagline {
+            color: #888888;
+            font-size: 13px;
+            margin-top: 8px;
+        }
+
+        .install-section {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 48px 32px;
+            margin: 48px 0;
+        }
+
+        .install-section h2 {
+            font-size: 28px;
+            font-weight: 600;
+            margin: 0 0 24px 0;
+            text-align: center;
+        }
+
+        .install-tabs {
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            margin-bottom: 32px;
+        }
+
+        .install-tab {
+            background: transparent;
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            color: #888888;
+            padding: 12px 28px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 4px;
+            font-weight: 500;
+            position: relative;
+        }
+
+        .install-tab::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            width: 0;
+            height: 2px;
+            background: #10B981;
+            transform: translateX(-50%);
+            transition: width 0.3s;
+        }
+
+        .install-tab.active {
+            background: rgba(16, 185, 129, 0.08);
+            border-color: rgba(16, 185, 129, 0.4);
+            color: #10B981;
+        }
+
+        .install-tab.active::after {
+            width: 60%;
+        }
+
+        .install-tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #ffffff;
+        }
+
+        .install-content {
+            display: none;
+        }
+
+        .install-content.active {
+            display: block;
+        }
+
+        .badge {
+            display: inline-block;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            color: #10B981;
+            padding: 4px 12px;
+            font-size: 12px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        .tools-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 1000;
+            padding: 24px;
+            overflow-y: auto;
+        }
+
+        .tools-modal.active {
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 40px;
+        }
+
+        .tools-modal-content {
+            background: #000000;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 900px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            padding: 32px;
+            position: relative;
+        }
+
+        .tools-modal-close {
+            position: absolute;
+            top: 16px;
+            right: 16px;
+            background: transparent;
+            border: none;
+            color: #888888;
+            font-size: 32px;
+            cursor: pointer;
+            padding: 8px;
+            line-height: 1;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .tools-modal-close:hover {
+            color: #ffffff;
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .tools-search {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 12px 16px;
+            font-size: 14px;
+            margin-bottom: 24px;
+            box-sizing: border-box;
+        }
+
+        .tools-search::placeholder {
+            color: #666666;
+        }
+
+        .tools-search:focus {
+            outline: none;
+            border-color: rgba(16, 185, 129, 0.5);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .tools-browse-btn {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+            color: #10B981;
+            padding: 14px 32px;
+            font-size: 15px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 600;
+            margin-bottom: 24px;
+            border-radius: 4px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tools-browse-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(16, 185, 129, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .tools-browse-btn:hover::before {
+            left: 100%;
+        }
+
+        .tools-browse-btn:hover {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2) 0%, rgba(16, 185, 129, 0.1) 100%);
+            border-color: rgba(16, 185, 129, 0.5);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.3);
+        }
+
+        .tools-browse-btn:active {
+            transform: scale(0.98);
+        }
+
+        .tools-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 16px;
+            margin: 32px 0;
+        }
+
+        .tool-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            transition: all 0.2s;
+        }
+
+        .tool-card:hover {
+            background: rgba(255, 255, 255, 0.05);
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .tool-card h4 {
+            color: #10B981;
+            margin: 0 0 8px 0;
+            font-size: 16px;
+            font-family: monospace;
+        }
+
+        .tool-card p {
+            color: #888888;
+            font-size: 13px;
+            line-height: 1.5;
+            margin: 0;
+        }
+
+        .features-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 32px 0;
+        }
+
+        .features-table th,
+        .features-table td {
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            text-align: left;
+        }
+
+        .features-table th {
+            background: rgba(255, 255, 255, 0.05);
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .features-table td {
+            color: #888888;
+        }
+
+        .check-mark {
+            color: #10B981;
+            font-size: 18px;
+        }
+
+        .stats {
+            display: flex;
+            justify-content: center;
+            gap: 48px;
+            margin: 48px 0;
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-number {
+            font-size: 24px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .stat-label {
+            color: #888888;
+            font-size: 13px;
+            margin-top: 4px;
+        }
+
+        .playground {
+            margin: 64px 0;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 32px;
+        }
+
+        .playground h2 {
+            font-size: 24px;
+            font-weight: 600;
+            margin: 0 0 24px 0;
+            text-align: center;
+        }
+
+        .tool-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+        }
+
+        .tool-btn {
+            background: rgba(255, 255, 255, 0.05);
+            color: #888888;
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            font-weight: 500;
+            position: relative;
+        }
+
+        .tool-btn.active {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.15) 0%, rgba(16, 185, 129, 0.08) 100%);
+            color: #10B981;
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        .tool-btn:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.3);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(255, 255, 255, 0.1);
+        }
+
+        .tool-btn:active {
+            transform: scale(0.98);
+        }
+
+        .tool-params {
+            display: none;
+            margin-bottom: 24px;
+        }
+
+        .tool-params.active {
+            display: block;
+        }
+
+        .param-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .param-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .param-item label {
+            color: #888888;
+            font-size: 14px;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .param-item input {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 12px 14px;
+            font-size: 14px;
+            border-radius: 4px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .param-item input:focus {
+            outline: none;
+            border-color: rgba(16, 185, 129, 0.5);
+            background: rgba(255, 255, 255, 0.08);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .param-item input:hover:not(:focus) {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .response-section {
+            margin-top: 24px;
+        }
+
+        .response-section h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0 0 12px 0;
+            color: #ffffff;
+        }
+
+        .response-content {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1.5px solid rgba(255, 255, 255, 0.15);
+            padding: 20px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 12px;
+            color: #ffffff;
+            white-space: pre-wrap;
+            max-height: 450px;
+            overflow-y: auto;
+            display: none;
+            position: relative;
+            border-radius: 6px;
+            animation: fadeIn 0.4s ease-out;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .response-content.active {
+            display: block;
+        }
+
+        .response-content.error {
+            border-color: rgba(255, 100, 100, 0.4);
+            background: linear-gradient(135deg, rgba(255, 100, 100, 0.08) 0%, rgba(255, 100, 100, 0.03) 100%);
+        }
+
+        .response-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .response-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 4px;
+        }
+
+        .response-content::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.3);
+            border-radius: 4px;
+            transition: background 0.3s;
+        }
+
+        .response-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.5);
+        }
+
+        .json-key {
+            color: #9cdcfe;
+        }
+
+        .json-string {
+            color: #ce9178;
+        }
+
+        .json-number {
+            color: #b5cea8;
+        }
+
+        .json-boolean {
+            color: #569cd6;
+        }
+
+        .json-null {
+            color: #569cd6;
+        }
+
+        .collapsible {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .collapsible::before {
+            content: '▼ ';
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+
+        .collapsible.collapsed::before {
+            transform: rotate(-90deg);
+        }
+
+        .json-content.collapsed {
+            display: none;
+        }
+
+        .metadata-box {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.03) 100%);
+            border: 1.5px solid rgba(16, 185, 129, 0.25);
+            padding: 20px;
+            margin-bottom: 20px;
+            display: none;
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.1);
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .metadata-box.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .metadata-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+            margin-top: 12px;
+        }
+
+        .metadata-item {
+            text-align: center;
+        }
+
+        .metadata-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #10B981;
+        }
+
+        .metadata-label {
+            font-size: 11px;
+            color: #888888;
+            margin-top: 4px;
+        }
+
+        .copy-btn {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+            color: #10B981;
+            padding: 6px 14px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 3px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .copy-btn:hover {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: rgba(16, 185, 129, 0.5);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(16, 185, 129, 0.2);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .chart-container {
+            margin-top: 24px;
+            display: none;
+        }
+
+        .chart-container.active {
+            display: block;
+        }
+
+        .chart-bar {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.25) 0%, rgba(16, 185, 129, 0.05) 100%);
+            border-left: 4px solid #10B981;
+            padding: 12px 16px;
+            margin: 10px 0;
+            position: relative;
+            border-radius: 0 4px 4px 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        .chart-bar:hover {
+            background: linear-gradient(90deg, rgba(16, 185, 129, 0.35) 0%, rgba(16, 185, 129, 0.1) 100%);
+            transform: translateX(4px);
+            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.2);
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .chart-label {
+            font-size: 13px;
+            color: #ffffff;
+            font-weight: 500;
+            padding-right: 80px;
+            line-height: 1.4;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .chart-value {
+            font-size: 13px;
+            color: #10B981;
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 700;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 4px;
+            backdrop-filter: blur(4px);
+        }
+
+        .call-btn {
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #ffffff;
+            border: none;
+            padding: 14px 40px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .call-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .call-btn:hover::before {
+            left: 100%;
+        }
+
+        .call-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+        }
+
+        .call-btn:active {
+            transform: scale(0.98);
+        }
+
+        .call-btn:disabled {
+            background: linear-gradient(135deg, #444444 0%, #333333 100%);
+            color: #888888;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .call-btn:disabled::before {
+            display: none;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-indicator.idle {
+            background: #888888;
+        }
+
+        .status-indicator.loading {
+            background: #ffaa00;
+            animation: pulse 1.5s infinite;
+        }
+
+        .status-indicator.success {
+            background: #10B981;
+        }
+
+        .status-indicator.error {
+            background: #ff0000;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .endpoint-info {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 16px;
+            margin-bottom: 24px;
+            font-size: 14px;
+        }
+
+        .endpoint-info code {
+            color: #10B981;
+            font-family: monospace;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: linear-gradient(135deg, #10B981 0%, #059669 100%);
+            color: #ffffff;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            z-index: 9999;
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast.error {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.4);
+        }
+
+        /* Loading spinner */
+        .loading-spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: #ffffff;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-right: 8px;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 32px;
+            color: #666666;
+            font-size: 14px;
+        }
+
+        .empty-state-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            opacity: 0.5;
+        }
+
+        /* Keyboard hint */
+        .kbd {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 11px;
+            font-family: monospace;
+            margin-left: 8px;
+            color: #888888;
+        }
+
+        /* Smooth page transitions */
+        .fade-in {
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        /* Focus styles for accessibility */
+        button:focus-visible,
+        input:focus-visible,
+        a:focus-visible {
+            outline: 2px solid #10B981;
+            outline-offset: 2px;
+        }
+
+        /* Better scrollbar for modal */
+        .tools-modal-content::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .tools-modal-content::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+
+        .tools-modal-content::-webkit-scrollbar-thumb {
+            background: rgba(16, 185, 129, 0.3);
+            border-radius: 4px;
+        }
+
+        .tools-modal-content::-webkit-scrollbar-thumb:hover {
+            background: rgba(16, 185, 129, 0.5);
+        }
+
+        /* Method Dropdown */
+        .method-selector-container {
+            margin-bottom: 24px;
+        }
+
+        .method-dropdown {
+            width: 100%;
+            padding: 14px 16px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .method-dropdown:hover {
+            border-color: rgba(16, 185, 129, 0.5);
+        }
+
+        .method-dropdown:focus {
+            outline: none;
+            border-color: #10B981;
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        .method-dropdown option {
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 8px;
+        }
+
+        .method-dropdown optgroup {
+            background: #0a0a0a;
+            color: #10B981;
+            font-weight: 600;
+        }
+
+        /* Dynamic Parameters */
+        .dynamic-params {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 6px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 60px;
+        }
+
+        .param-row {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 12px;
+        }
+
+        .param-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .param-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .param-field label {
+            color: #888888;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .param-field label .required {
+            color: #ef4444;
+        }
+
+        .param-field input,
+        .param-field select {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1.5px solid rgba(255, 255, 255, 0.2);
+            color: #ffffff;
+            padding: 10px 12px;
+            font-size: 14px;
+            border-radius: 4px;
+            transition: all 0.3s;
+        }
+
+        .param-field input:focus,
+        .param-field select:focus {
+            outline: none;
+            border-color: rgba(16, 185, 129, 0.5);
+            box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+        }
+
+        /* Token Dashboard */
+        .token-dashboard {
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.08) 0%, rgba(16, 185, 129, 0.02) 100%);
+            border: 1.5px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            padding: 24px;
+            margin-bottom: 24px;
+        }
+
+        .token-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .token-stat {
+            text-align: center;
+            padding: 16px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 6px;
+        }
+
+        .token-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: #10B981;
+            font-family: 'Monaco', monospace;
+        }
+
+        .token-label {
+            font-size: 12px;
+            color: #888888;
+            margin-top: 4px;
+        }
+
+        .token-chart {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 6px;
+            padding: 16px;
+            margin-bottom: 16px;
+            min-height: 150px;
+        }
+
+        .token-bar {
+            display: flex;
+            align-items: center;
+            margin: 8px 0;
+            gap: 12px;
+        }
+
+        .token-bar-label {
+            width: 140px;
+            font-size: 11px;
+            color: #888888;
+            text-overflow: ellipsis;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        .token-bar-container {
+            flex: 1;
+            height: 24px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .token-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10B981 0%, #059669 100%);
+            border-radius: 4px;
+            transition: width 0.5s ease-out;
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding-right: 8px;
+        }
+
+        .token-bar-value {
+            font-size: 11px;
+            font-weight: 600;
+            color: #ffffff;
+        }
+
+        .optimization-tips {
+            background: rgba(255, 193, 7, 0.1);
+            border: 1px solid rgba(255, 193, 7, 0.3);
+            border-radius: 6px;
+            padding: 16px;
+        }
+
+        .optimization-tips h4 {
+            color: #ffc107;
+            margin: 0 0 12px 0;
+            font-size: 14px;
+        }
+
+        .optimization-tips ul {
+            margin: 0;
+            padding-left: 20px;
+            color: #cccccc;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .optimization-tips li {
+            margin: 4px 0;
+        }
+
+        /* Response token badge */
+        .token-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: rgba(16, 185, 129, 0.15);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+            color: #10B981;
+            font-weight: 600;
+            margin-left: 12px;
+        }
+
+        .token-badge-icon {
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <nav class="nav">
+            <div class="logo-text">
+                OpenSVM<span class="logo-ai">[ai]</span>
+            </div>
+            <div>
+                <a href="#" class="nav-link active">DFlow MCP</a>
+                <a href="https://opensvm.com" class="nav-link">Explore</a>
+                <a href="https://github.com/openSVM/dflow-mcp" class="nav-link">GitHub</a>
+            </div>
+        </nav>
+
+        <div class="partnership-banner">
+            <div class="partnership-logos">
+                <span class="partner-logo">OpenSVM<span style="opacity: 0.5; font-size: 13px; vertical-align: super;">[ai]</span></span>
+                <span class="partnership-separator">×</span>
+                <span class="partner-logo kalshi-accent">Kalshi</span>
+                <span class="partnership-separator">×</span>
+                <span class="partner-logo dflow-accent">DFlow</span>
+            </div>
+            <div class="partnership-tagline">
+                Bringing regulated prediction markets to AI agents • Trade on anything with MCP
+            </div>
+        </div>
+
+        <div class="hero">
+            <h1 class="hero-title">DFlow MCP Server</h1>
+            <p class="hero-subtitle">
+                Access <span class="kalshi-accent" style="font-weight: 600;">Kalshi's</span> regulated prediction market data through <span class="dflow-accent" style="font-weight: 600;">DFlow's</span> API. Built for Claude Desktop and MCP clients.
+            </p>
+
+            <div style="background: rgba(16, 185, 129, 0.05); border: 1px solid rgba(16, 185, 129, 0.2); padding: 16px; margin: 24px auto; max-width: 600px; border-radius: 4px;">
+                <div style="font-size: 13px; color: #888888; margin-bottom: 8px;"><span class="glossy-icon-small"></span>HOSTED WEB MCP • ZERO SETUP</div>
+                <div style="font-family: monospace; color: #10B981; font-size: 14px;">https://dflow.opensvm.com/api/mcp</div>
+            </div>
+
+            <div style="margin: 32px 0;">
+                <a href="https://github.com/openSVM/dflow-mcp" class="btn-primary" style="margin-right: 12px;">
+                    View Source Code
+                </a>
+                <a href="https://smithery.ai/server/dflow-mcp-server" class="btn-secondary">
+                    Browse on Smithery
+                </a>
+            </div>
+        </div>
+
+        <div class="install-section">
+            <h2>Quick Start <span class="badge">EASY SETUP</span></h2>
+
+            <div class="install-tabs">
+                <button class="install-tab active" onclick="showInstall('hosted')"><span class="glossy-icon-small"></span>Hosted (Instant)</button>
+                <button class="install-tab" onclick="showInstall('smithery')">Smithery</button>
+                <button class="install-tab" onclick="showInstall('manual')">Manual Install</button>
+                <button class="install-tab" onclick="showInstall('config')">Config Only</button>
+            </div>
+
+            <div id="install-hosted" class="install-content active">
+                <p style="text-align: center; color: #888888; margin-bottom: 16px;">
+                    <span class="glossy-icon-small"></span><strong style="color: #10B981;">Already deployed and ready to use!</strong> No installation needed.
+                </p>
+                <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.3); padding: 20px; margin-bottom: 24px; text-align: center;">
+                    <div style="color: #888888; font-size: 12px; margin-bottom: 8px;">WEB MCP ENDPOINT</div>
+                    <div style="color: #10B981; font-size: 18px; font-weight: 600; font-family: monospace;">
+                        https://dflow.opensvm.com/api/mcp
+                    </div>
+                    <div style="color: #888888; font-size: 12px; margin-top: 8px;">Use this URL directly in any MCP client that supports HTTP endpoints</div>
+                </div>
+                <div class="code-block">
+{
+  "mcpServers": {
+    "dflow-mcp": {
+      "url": "https://dflow.opensvm.com/api/mcp"
+    }
+  }
+}
+                </div>
+                <p style="text-align: center; color: #888888; font-size: 13px; margin-top: 16px;">
+                    Zero setup required • Production-ready • Always online • Try the playground below!
+                </p>
+            </div>
+
+            <div id="install-smithery" class="install-content">
+                <p style="text-align: center; color: #888888; margin-bottom: 24px;">
+                    Install locally via Smithery for offline usage
+                </p>
+                <div class="code-block">
+npx @smithery/cli install dflow-mcp-server --client claude
+                </div>
+                <p style="text-align: center; color: #888888; font-size: 13px; margin-top: 16px;">
+                    This automatically configures the server for Claude Desktop. Restart Claude Desktop and you're done!
+                </p>
+            </div>
+
+            <div id="install-manual" class="install-content">
+                <p style="text-align: center; color: #888888; margin-bottom: 24px;">
+                    Clone the repository and run locally for development
+                </p>
+                <div class="code-block">
+git clone https://github.com/openSVM/dflow-mcp.git
+cd dflow-mcp
+bun install
+bun run dev
+                </div>
+                <p style="text-align: center; color: #888888; font-size: 13px; margin-top: 16px;">
+                    For local development and testing. Or just use the hosted version above!
+                </p>
+            </div>
+
+            <div id="install-config" class="install-content">
+                <p style="text-align: center; color: #888888; margin-bottom: 24px;">
+                    Manual stdio configuration (if you prefer local over hosted)
+                </p>
+                <div class="code-block">
+{
+  "mcpServers": {
+    "dflow-mcp": {
+      "command": "bun",
+      "args": ["run", "/path/to/dflow-mcp/src/index.ts"]
+    }
+  }
+}
+                </div>
+                <p style="text-align: center; color: #888888; font-size: 13px; margin-top: 16px;">
+                    Replace <code style="color: #10B981;">/path/to/dflow-mcp</code> with your actual installation path. But seriously, just use the hosted endpoint!
+                </p>
+            </div>
+        </div>
+
+        <div class="stats">
+            <div class="stat">
+                <div class="stat-number">24</div>
+                <div class="stat-label">MCP Tools</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number" style="color: #043FC6;">CFTC</div>
+                <div class="stat-label">Regulated Markets</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">100%</div>
+                <div class="stat-label">API Coverage</div>
+            </div>
+            <div class="stat">
+                <div class="stat-number">TypeScript</div>
+                <div class="stat-label">Type Safe</div>
+            </div>
+        </div>
+
+        <div style="margin: 64px 0; padding: 48px 32px; background: rgba(4, 63, 198, 0.05); border: 1px solid rgba(4, 63, 198, 0.2);">
+            <h2 style="font-size: 28px; font-weight: 600; text-align: center; margin-bottom: 16px;">
+                Why <span class="kalshi-accent">Kalshi</span> × <span class="dflow-accent">DFlow</span>?
+            </h2>
+            <p style="text-align: center; color: #888888; margin-bottom: 48px; max-width: 700px; margin-left: auto; margin-right: auto;">
+                The only CFTC-regulated prediction market, now accessible to AI agents through MCP
+            </p>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 32px;">
+                <div style="text-align: center;">
+                    <div style="display: flex; justify-content: center;"><div class="glossy-icon building"></div></div>
+                    <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 8px;">CFTC Regulated</h3>
+                    <p style="color: #888888; font-size: 14px; line-height: 1.6;">
+                        Trade on the only legal prediction market in the US, fully regulated and compliant
+                    </p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="display: flex; justify-content: center;"><div class="glossy-icon globe"></div></div>
+                    <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 8px;">Trade on Anything</h3>
+                    <p style="color: #888888; font-size: 14px; line-height: 1.6;">
+                        Politics, sports, crypto, economics - comprehensive coverage of real-world events
+                    </p>
+                </div>
+                <div style="text-align: center;">
+                    <div style="display: flex; justify-content: center;"><div class="glossy-icon robot"></div></div>
+                    <h3 style="color: #ffffff; font-size: 18px; margin-bottom: 8px;">AI-Native Access</h3>
+                    <p style="color: #888888; font-size: 14px; line-height: 1.6;">
+                        Purpose-built for Claude and MCP clients - bring prediction markets to your AI workflow
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <div class="playground">
+            <h2><span class="glossy-icon-small"></span>Live MCP API Playground</h2>
+
+            <div class="endpoint-info" style="background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.3);">
+                <div style="margin-bottom: 8px;"><span class="glossy-icon-small"></span><strong>Hosted Web MCP Endpoint</strong> (use this URL in your MCP clients)</div>
+                <code style="font-size: 15px;">https://dflow.opensvm.com/api/mcp</code>
+                <div style="margin-top: 8px; font-size: 12px; color: #888888;">Test the live API below or use this endpoint directly in Claude Desktop, Cursor, or any MCP client</div>
+            </div>
+
+            <!-- Token Analytics Dashboard -->
+            <div id="tokenDashboard" class="token-dashboard" style="display: none;">
+                <h3 style="margin: 0 0 16px 0; color: #10B981;">Token Usage Analytics</h3>
+                <div class="token-stats">
+                    <div class="token-stat">
+                        <div class="token-value" id="totalTokens">0</div>
+                        <div class="token-label">Total Tokens</div>
+                    </div>
+                    <div class="token-stat">
+                        <div class="token-value" id="avgTokens">0</div>
+                        <div class="token-label">Avg per Call</div>
+                    </div>
+                    <div class="token-stat">
+                        <div class="token-value" id="callCount">0</div>
+                        <div class="token-label">API Calls</div>
+                    </div>
+                </div>
+                <div id="tokenChart" class="token-chart"></div>
+                <div id="optimizationTips" class="optimization-tips"></div>
+                <button class="btn-secondary" onclick="clearTokenHistory()" style="margin-top: 12px;">Clear History</button>
+            </div>
+
+            <div style="margin-bottom: 24px;">
+                <button class="btn-secondary" onclick="copyFile('llms.txt')">Copy llms.txt</button>
+                <button class="btn-secondary" onclick="copyFile('llms_dflow.json')">Copy llms_dflow.json</button>
+            </div>
+
+            <!-- Method Selector Dropdown -->
+            <div class="method-selector-container">
+                <label style="color: #888888; font-size: 14px; margin-bottom: 8px; display: block;">Select Method</label>
+                <select id="methodSelector" class="method-dropdown" onchange="selectMethod(this.value)">
+                    <optgroup label="System">
+                        <option value="tools.list" selected>tools.list - List all available tools</option>
+                    </optgroup>
+                    <optgroup label="Events">
+                        <option value="get_event">get_event - Get single event by ticker</option>
+                        <option value="get_events">get_events - Get paginated events list</option>
+                        <option value="search_events">search_events - Search events by query</option>
+                    </optgroup>
+                    <optgroup label="Markets">
+                        <option value="get_market">get_market - Get market by ticker</option>
+                        <option value="get_market_by_mint">get_market_by_mint - Get market by mint address</option>
+                        <option value="get_markets">get_markets - Get paginated markets list</option>
+                        <option value="get_markets_batch">get_markets_batch - Get multiple markets</option>
+                    </optgroup>
+                    <optgroup label="Trades">
+                        <option value="get_trades">get_trades - Get paginated trades</option>
+                        <option value="get_trades_by_mint">get_trades_by_mint - Get trades by mint</option>
+                    </optgroup>
+                    <optgroup label="Forecasts">
+                        <option value="get_forecast_percentile_history">get_forecast_percentile_history - Forecast history</option>
+                        <option value="get_forecast_percentile_history_by_mint">get_forecast_percentile_history_by_mint - Forecast by mint</option>
+                    </optgroup>
+                    <optgroup label="Candlesticks">
+                        <option value="get_event_candlesticks">get_event_candlesticks - Event OHLC data</option>
+                        <option value="get_market_candlesticks">get_market_candlesticks - Market OHLC data</option>
+                        <option value="get_market_candlesticks_by_mint">get_market_candlesticks_by_mint - OHLC by mint</option>
+                    </optgroup>
+                    <optgroup label="Live Data">
+                        <option value="get_live_data">get_live_data - Get live milestones</option>
+                        <option value="get_live_data_by_event">get_live_data_by_event - Live data for event</option>
+                        <option value="get_live_data_by_mint">get_live_data_by_mint - Live data by mint</option>
+                    </optgroup>
+                    <optgroup label="Series">
+                        <option value="get_series">get_series - Get all series templates</option>
+                        <option value="get_series_by_ticker">get_series_by_ticker - Get series by ticker</option>
+                    </optgroup>
+                    <optgroup label="Utilities">
+                        <option value="get_outcome_mints">get_outcome_mints - Get outcome mint addresses</option>
+                        <option value="filter_outcome_mints">filter_outcome_mints - Filter addresses</option>
+                        <option value="get_tags_by_categories">get_tags_by_categories - Category-tag mapping</option>
+                        <option value="get_filters_by_sports">get_filters_by_sports - Sports filter options</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <!-- Dynamic Parameters Container -->
+            <div id="dynamicParams" class="dynamic-params"></div>
+
+            <button class="call-btn" onclick="callAPI()" id="mainCallBtn">
+                <span class="status-indicator idle" id="status"></span>
+                Call API
+            </button>
+
+            <div class="response-section">
+                <h3>cURL Command</h3>
+                <div id="curl-command" class="response-content" style="display: block; background: rgba(16, 185, 129, 0.05); border-color: rgba(16, 185, 129, 0.2);"></div>
+                <button class="btn-secondary" onclick="copyCurl()" style="margin-top: 12px; display: none;" id="copy-curl-btn">
+                    Copy cURL Command
+                </button>
+            </div>
+
+            <div class="response-section">
+                <h3>Response Metadata</h3>
+                <div id="metadata" class="metadata-box"></div>
+            </div>
+
+            <div class="response-section">
+                <h3>Response Data</h3>
+                <div id="response" class="response-content"></div>
+            </div>
+
+            <div class="response-section">
+                <h3>Data Visualization</h3>
+                <div id="charts" class="chart-container"></div>
+            </div>
+        </div>
+
+        <div class="footer" style="margin-top: 96px; padding: 48px 0; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 48px; margin-bottom: 48px;">
+                <div>
+                    <div class="logo-text" style="margin-bottom: 16px;">
+                        OpenSVM<span class="logo-ai">[ai]</span>
+                    </div>
+                    <p style="color: #666666; font-size: 14px; line-height: 1.6; margin: 0;">
+                        Building AI-native tools for prediction markets. Partnership with Kalshi and DFlow brings regulated markets to AI agents.
+                    </p>
+                </div>
+                <div>
+                    <h4 style="color: #ffffff; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Partners</h4>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a href="https://kalshi.com" class="nav-link" style="padding: 0; color: #043FC6;">Kalshi - Regulated Markets</a>
+                        <a href="https://dflow.net" class="nav-link" style="padding: 0; color: #10B981;">DFlow - Prediction API</a>
+                        <a href="https://opensvm.com" class="nav-link" style="padding: 0;">OpenSVM - AI Infrastructure</a>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="color: #ffffff; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Resources</h4>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a href="https://github.com/openSVM/dflow-mcp" class="nav-link" style="padding: 0;">GitHub Repository</a>
+                        <a href="https://github.com/openSVM/dflow-mcp/blob/main/README.md" class="nav-link" style="padding: 0;">Documentation</a>
+                        <a href="https://smithery.ai/server/dflow-mcp-server" class="nav-link" style="padding: 0;">Smithery Registry</a>
+                        <a href="https://prediction-markets-api.dflow.net" class="nav-link" style="padding: 0;">API Endpoint</a>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="color: #ffffff; font-size: 14px; font-weight: 600; margin: 0 0 16px 0;">Connect</h4>
+                    <div style="display: flex; flex-direction: column; gap: 12px;">
+                        <a href="https://twitter.com/Kalshi" class="nav-link" style="padding: 0;">Kalshi Twitter</a>
+                        <a href="https://twitter.com/openSVM" class="nav-link" style="padding: 0;">OpenSVM Twitter</a>
+                        <a href="https://discord.gg/opensvm" class="nav-link" style="padding: 0;">Discord Community</a>
+                    </div>
+                </div>
+            </div>
+            <div style="text-align: center; padding-top: 32px; border-top: 1px solid rgba(255, 255, 255, 0.1);">
+                <div style="font-size: 13px; color: #666666; margin-bottom: 8px;">
+                    <span class="partner-logo" style="font-size: 14px;">OpenSVM</span>
+                    <span class="partnership-separator" style="margin: 0 8px;">×</span>
+                    <span class="partner-logo kalshi-accent" style="font-size: 14px;">Kalshi</span>
+                    <span class="partnership-separator" style="margin: 0 8px;">×</span>
+                    <span class="partner-logo dflow-accent" style="font-size: 14px;">DFlow</span>
+                </div>
+                <div style="font-size: 13px; color: #666666;">
+                    Bringing regulated prediction markets to AI • MIT License © 2024 OpenSVM
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tools Modal -->
+    <div class="tools-modal" id="toolsModal" onclick="if(event.target === this) toggleToolsModal()">
+        <div class="tools-modal-content">
+            <button class="tools-modal-close" onclick="toggleToolsModal()" title="Close (ESC)">×</button>
+            <h2 style="font-size: 28px; font-weight: 600; margin: 0 0 16px 0; padding-right: 40px;">Available Tools <span class="kbd">ESC to close</span></h2>
+            <p style="color: #888888; margin-bottom: 24px;">
+                Comprehensive access to prediction market data through 24 specialized tools across 8 categories.
+            </p>
+            <input type="text" class="tools-search" id="toolsSearch" placeholder="Search tools... (e.g. events, markets, trades)" oninput="searchTools()">
+
+            <div class="tools-grid" id="toolsGrid">
+                <div class="tool-card" data-name="get_events" data-description="paginated list prediction market events filtering">
+                    <h4>get_events</h4>
+                    <p>Get paginated list of all prediction market events with optional filtering</p>
+                </div>
+                <div class="tool-card" data-name="get_event" data-description="detailed information single event ticker nested markets">
+                    <h4>get_event</h4>
+                    <p>Get detailed information about a single event by ticker with nested markets</p>
+                </div>
+                <div class="tool-card" data-name="search_events" data-description="search events title ticker sorting pagination support">
+                    <h4>search_events</h4>
+                    <p>Search events by title or ticker with sorting and pagination support</p>
+                </div>
+                <div class="tool-card" data-name="get_markets" data-description="paginated list markets volume liquidity data">
+                    <h4>get_markets</h4>
+                    <p>Get paginated list of all markets with volume and liquidity data</p>
+                </div>
+                <div class="tool-card" data-name="get_market" data-description="detailed market information ticker symbol">
+                    <h4>get_market</h4>
+                    <p>Get detailed market information by ticker symbol</p>
+                </div>
+                <div class="tool-card" data-name="get_market_by_mint" data-description="retrieve market details solana mint address">
+                    <h4>get_market_by_mint</h4>
+                    <p>Retrieve market details using Solana mint address</p>
+                </div>
+                <div class="tool-card" data-name="get_markets_batch" data-description="fetch multiple markets single request 100">
+                    <h4>get_markets_batch</h4>
+                    <p>Fetch multiple markets in a single request (up to 100)</p>
+                </div>
+                <div class="tool-card" data-name="get_trades" data-description="trade history across all markets filtering">
+                    <h4>get_trades</h4>
+                    <p>Get trade history across all markets with filtering</p>
+                </div>
+                <div class="tool-card" data-name="get_trades_by_mint" data-description="trade history specific market mint address">
+                    <h4>get_trades_by_mint</h4>
+                    <p>Get trade history for a specific market by mint address</p>
+                </div>
+                <div class="tool-card" data-name="get_forecast_percentile_history" data-description="historical forecast percentile data time series analysis">
+                    <h4>get_forecast_percentile_history</h4>
+                    <p>Historical forecast percentile data for time series analysis</p>
+                </div>
+                <div class="tool-card" data-name="get_forecast_percentile_history_by_mint" data-description="forecast history mint address customizable time ranges">
+                    <h4>get_forecast_percentile_history_by_mint</h4>
+                    <p>Forecast history by mint address with customizable time ranges</p>
+                </div>
+                <div class="tool-card" data-name="get_event_candlesticks" data-description="ohlc candlestick data event-level price action">
+                    <h4>get_event_candlesticks</h4>
+                    <p>OHLC candlestick data for event-level price action</p>
+                </div>
+                <div class="tool-card" data-name="get_market_candlesticks" data-description="market-level candlestick data technical analysis">
+                    <h4>get_market_candlesticks</h4>
+                    <p>Market-level candlestick data for technical analysis</p>
+                </div>
+                <div class="tool-card" data-name="get_market_candlesticks_by_mint" data-description="candlestick data retrieval mint addresses">
+                    <h4>get_market_candlesticks_by_mint</h4>
+                    <p>Candlestick data retrieval using mint addresses</p>
+                </div>
+                <div class="tool-card" data-name="get_live_data" data-description="real-time milestone information live data feeds">
+                    <h4>get_live_data</h4>
+                    <p>Real-time milestone information and live data feeds</p>
+                </div>
+                <div class="tool-card" data-name="get_live_data_by_event" data-description="live data specific events milestones">
+                    <h4>get_live_data_by_event</h4>
+                    <p>Live data for specific events and milestones</p>
+                </div>
+                <div class="tool-card" data-name="get_live_data_by_mint" data-description="real-time data retrieval mint address">
+                    <h4>get_live_data_by_mint</h4>
+                    <p>Real-time data retrieval by mint address</p>
+                </div>
+                <div class="tool-card" data-name="get_series" data-description="series templates category definitions">
+                    <h4>get_series</h4>
+                    <p>Get all series templates and category definitions</p>
+                </div>
+                <div class="tool-card" data-name="get_series_by_ticker" data-description="retrieve specific series information ticker">
+                    <h4>get_series_by_ticker</h4>
+                    <p>Retrieve specific series information by ticker</p>
+                </div>
+                <div class="tool-card" data-name="get_outcome_mints" data-description="outcome mint addresses prediction markets">
+                    <h4>get_outcome_mints</h4>
+                    <p>Get outcome mint addresses for prediction markets</p>
+                </div>
+                <div class="tool-card" data-name="filter_outcome_mints" data-description="filter addresses identify outcome mints">
+                    <h4>filter_outcome_mints</h4>
+                    <p>Filter addresses to identify outcome mints</p>
+                </div>
+                <div class="tool-card" data-name="get_tags_by_categories" data-description="category-tag mapping market organization">
+                    <h4>get_tags_by_categories</h4>
+                    <p>Category-tag mapping for market organization</p>
+                </div>
+                <div class="tool-card" data-name="get_filters_by_sports" data-description="sports-specific filtering options metadata">
+                    <h4>get_filters_by_sports</h4>
+                    <p>Sports-specific filtering options and metadata</p>
+                </div>
+                <div class="tool-card" data-name="candlestick_chart" data-description="generate ascii candlestick charts visualization">
+                    <h4>candlestick_chart</h4>
+                    <p>Generate ASCII candlestick charts for visualization</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        let currentTool = 'tools.list';
+        let requestId = 1;
+
+        // Token tracking
+        let tokenHistory = [];
+
+        // Method parameter definitions
+        const METHOD_PARAMS = {
+            'tools.list': [],
+            'get_event': [
+                { name: 'event_id', type: 'string', required: true, placeholder: 'e.g. PRES-2024' },
+                { name: 'withNestedMarkets', type: 'boolean', required: false }
+            ],
+            'get_events': [
+                { name: 'limit', type: 'number', required: false, placeholder: '5' },
+                { name: 'cursor', type: 'number', required: false, placeholder: '0' }
+            ],
+            'search_events': [
+                { name: 'q', type: 'string', required: true, placeholder: 'Search query' },
+                { name: 'limit', type: 'number', required: false, placeholder: '10' },
+                { name: 'sort', type: 'select', options: ['volume', 'volume24h', 'liquidity', 'openInterest', 'startDate'], required: false },
+                { name: 'order', type: 'select', options: ['desc', 'asc'], required: false }
+            ],
+            'get_market': [
+                { name: 'market_id', type: 'string', required: true, placeholder: 'Market ticker' }
+            ],
+            'get_market_by_mint': [
+                { name: 'mint_address', type: 'string', required: true, placeholder: 'Mint address' }
+            ],
+            'get_markets': [
+                { name: 'limit', type: 'number', required: false, placeholder: '5' },
+                { name: 'cursor', type: 'number', required: false, placeholder: '0' }
+            ],
+            'get_markets_batch': [
+                { name: 'tickers', type: 'string', required: true, placeholder: 'Comma-separated tickers' }
+            ],
+            'get_trades': [
+                { name: 'limit', type: 'number', required: false, placeholder: '5' },
+                { name: 'cursor', type: 'string', required: false }
+            ],
+            'get_trades_by_mint': [
+                { name: 'mint_address', type: 'string', required: true, placeholder: 'Mint address' },
+                { name: 'limit', type: 'number', required: false, placeholder: '10' }
+            ],
+            'get_forecast_percentile_history': [
+                { name: 'series_ticker', type: 'string', required: true, placeholder: 'Series ticker' },
+                { name: 'event_id', type: 'string', required: true, placeholder: 'Event ID' },
+                { name: 'percentiles', type: 'string', required: false, placeholder: '25,50,75' }
+            ],
+            'get_forecast_percentile_history_by_mint': [
+                { name: 'mint_address', type: 'string', required: true, placeholder: 'Mint address' },
+                { name: 'percentiles', type: 'string', required: false, placeholder: '25,50,75' }
+            ],
+            'get_event_candlesticks': [
+                { name: 'event_id', type: 'string', required: true, placeholder: 'Event ID' },
+                { name: 'period_interval', type: 'number', required: false, placeholder: '3600' }
+            ],
+            'get_market_candlesticks': [
+                { name: 'market_id', type: 'string', required: true, placeholder: 'Market ticker' },
+                { name: 'period_interval', type: 'number', required: false, placeholder: '3600' }
+            ],
+            'get_market_candlesticks_by_mint': [
+                { name: 'mint_address', type: 'string', required: true, placeholder: 'Mint address' },
+                { name: 'period_interval', type: 'number', required: false, placeholder: '3600' }
+            ],
+            'get_live_data': [
+                { name: 'milestone', type: 'string', required: false, placeholder: 'Milestone ID' }
+            ],
+            'get_live_data_by_event': [
+                { name: 'event_id', type: 'string', required: true, placeholder: 'Event ID' }
+            ],
+            'get_live_data_by_mint': [
+                { name: 'mint_address', type: 'string', required: true, placeholder: 'Mint address' }
+            ],
+            'get_series': [
+                { name: 'category', type: 'string', required: false, placeholder: 'Category filter' },
+                { name: 'status', type: 'string', required: false, placeholder: 'Status filter' }
+            ],
+            'get_series_by_ticker': [
+                { name: 'series_ticker', type: 'string', required: true, placeholder: 'Series ticker' }
+            ],
+            'get_outcome_mints': [
+                { name: 'minCloseTs', type: 'number', required: false, placeholder: 'Min close timestamp' }
+            ],
+            'filter_outcome_mints': [
+                { name: 'addresses', type: 'string', required: true, placeholder: 'Comma-separated addresses' }
+            ],
+            'get_tags_by_categories': [],
+            'get_filters_by_sports': []
+        };
+
+        // Token estimation (rough estimate: ~4 chars per token)
+        function estimateTokens(text) {
+            if (!text) return 0;
+            const str = typeof text === 'string' ? text : JSON.stringify(text);
+            return Math.ceil(str.length / 4);
+        }
+
+        // Update token dashboard
+        function updateTokenDashboard() {
+            const dashboard = document.getElementById('tokenDashboard');
+            if (tokenHistory.length === 0) {
+                dashboard.style.display = 'none';
+                return;
+            }
+
+            dashboard.style.display = 'block';
+
+            const totalTokens = tokenHistory.reduce((sum, h) => sum + h.tokens, 0);
+            const avgTokens = Math.round(totalTokens / tokenHistory.length);
+
+            document.getElementById('totalTokens').textContent = totalTokens.toLocaleString();
+            document.getElementById('avgTokens').textContent = avgTokens.toLocaleString();
+            document.getElementById('callCount').textContent = tokenHistory.length;
+
+            // Build token chart
+            const maxTokens = Math.max(...tokenHistory.map(h => h.tokens));
+            const chartHtml = tokenHistory.slice(-10).map(h => {
+                const width = Math.max((h.tokens / maxTokens) * 100, 5);
+                return `
+                    <div class="token-bar">
+                        <div class="token-bar-label" title="${h.method}">${h.method}</div>
+                        <div class="token-bar-container">
+                            <div class="token-bar-fill" style="width: ${width}%">
+                                <span class="token-bar-value">${h.tokens.toLocaleString()}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+            document.getElementById('tokenChart').innerHTML = chartHtml || '<div style="color: #888; text-align: center;">No data yet</div>';
+
+            // Generate optimization tips
+            generateOptimizationTips();
+        }
+
+        function generateOptimizationTips() {
+            const tips = [];
+            const avgTokens = tokenHistory.reduce((sum, h) => sum + h.tokens, 0) / tokenHistory.length;
+
+            // Find high-token methods
+            const highTokenMethods = tokenHistory.filter(h => h.tokens > avgTokens * 1.5);
+            if (highTokenMethods.length > 0) {
+                tips.push(`<li><strong>Use limit parameter:</strong> Methods like ${highTokenMethods.map(h => h.method).slice(0, 3).join(', ')} return large responses. Add <code>limit</code> to reduce token usage.</li>`);
+            }
+
+            // Check for repeated calls
+            const methodCounts = {};
+            tokenHistory.forEach(h => {
+                methodCounts[h.method] = (methodCounts[h.method] || 0) + 1;
+            });
+            const repeated = Object.entries(methodCounts).filter(([m, c]) => c > 2);
+            if (repeated.length > 0) {
+                tips.push(`<li><strong>Cache responses:</strong> You've called ${repeated.map(([m]) => m).join(', ')} multiple times. Consider caching results.</li>`);
+            }
+
+            // General tips
+            if (avgTokens > 2000) {
+                tips.push(`<li><strong>Request specific fields:</strong> Your average response is ${Math.round(avgTokens)} tokens. Use specific IDs instead of listing all items.</li>`);
+            }
+
+            tips.push(`<li><strong>Use batch endpoints:</strong> <code>get_markets_batch</code> is more efficient than multiple <code>get_market</code> calls.</li>`);
+
+            const tipsHtml = tips.length > 0 ?
+                `<h4>Optimization Recommendations</h4><ul>${tips.join('')}</ul>` :
+                '<h4>Optimization Recommendations</h4><p style="color: #888;">Make some API calls to see optimization tips.</p>';
+
+            document.getElementById('optimizationTips').innerHTML = tipsHtml;
+        }
+
+        function clearTokenHistory() {
+            tokenHistory = [];
+            updateTokenDashboard();
+            showToast('Token history cleared');
+        }
+
+        // Render dynamic parameters for selected method
+        function renderParams(method) {
+            const params = METHOD_PARAMS[method] || [];
+            const container = document.getElementById('dynamicParams');
+
+            if (params.length === 0) {
+                container.innerHTML = '<div style="color: #888; font-size: 14px;">No parameters required for this method.</div>';
+                return;
+            }
+
+            let html = '<div class="param-row">';
+            params.forEach((param, i) => {
+                if (i > 0 && i % 2 === 0) {
+                    html += '</div><div class="param-row">';
+                }
+
+                const requiredBadge = param.required ? '<span class="required">*</span>' : '';
+
+                if (param.type === 'select') {
+                    html += `
+                        <div class="param-field">
+                            <label>${param.name} ${requiredBadge}</label>
+                            <select id="param_${param.name}">
+                                <option value="">-- Select --</option>
+                                ${param.options.map(opt => `<option value="${opt}">${opt}</option>`).join('')}
+                            </select>
+                        </div>
+                    `;
+                } else if (param.type === 'boolean') {
+                    html += `
+                        <div class="param-field">
+                            <label>${param.name} ${requiredBadge}</label>
+                            <select id="param_${param.name}">
+                                <option value="">-- Select --</option>
+                                <option value="true">true</option>
+                                <option value="false">false</option>
+                            </select>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="param-field">
+                            <label>${param.name} ${requiredBadge}</label>
+                            <input type="${param.type === 'number' ? 'number' : 'text'}"
+                                   id="param_${param.name}"
+                                   placeholder="${param.placeholder || ''}">
+                        </div>
+                    `;
+                }
+            });
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // Select method from dropdown
+        function selectMethod(method) {
+            currentTool = method;
+            renderParams(method);
+            document.getElementById('response').classList.remove('active');
+            document.getElementById('metadata').classList.remove('active');
+            document.getElementById('charts').classList.remove('active');
+            resetStatus();
+        }
+
+        // Initialize with default method params
+        document.addEventListener('DOMContentLoaded', () => {
+            renderParams('tools.list');
+        });
+
+        // Toast notification system
+        function showToast(message, isError = false) {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = isError ? 'toast error show' : 'toast show';
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function toggleToolsModal() {
+            const modal = document.getElementById('toolsModal');
+            modal.classList.toggle('active');
+            if (modal.classList.contains('active')) {
+                document.body.style.overflow = 'hidden';
+                setTimeout(() => document.getElementById('toolsSearch').focus(), 100);
+            } else {
+                document.body.style.overflow = 'auto';
+            }
+        }
+
+        // Keyboard support
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('toolsModal');
+                if (modal.classList.contains('active')) {
+                    toggleToolsModal();
+                }
+            }
+        });
+
+        function searchTools() {
+            const searchTerm = document.getElementById('toolsSearch').value.toLowerCase();
+            const toolCards = document.querySelectorAll('.tool-card');
+            let visibleCount = 0;
+
+            toolCards.forEach(card => {
+                const name = card.getAttribute('data-name').toLowerCase();
+                const description = card.getAttribute('data-description').toLowerCase();
+
+                if (name.includes(searchTerm) || description.includes(searchTerm)) {
+                    card.style.display = 'block';
+                    visibleCount++;
+                } else {
+                    card.style.display = 'none';
+                }
+            });
+
+            const grid = document.getElementById('toolsGrid');
+            let emptyState = grid.querySelector('.empty-state');
+            if (visibleCount === 0 && searchTerm) {
+                if (!emptyState) {
+                    emptyState = document.createElement('div');
+                    emptyState.className = 'empty-state';
+                    emptyState.innerHTML = '<div class="empty-state-icon">🔍</div>No tools match your search';
+                    grid.appendChild(emptyState);
+                }
+                emptyState.style.display = 'block';
+            } else if (emptyState) {
+                emptyState.style.display = 'none';
+            }
+        }
+
+        function showInstall(tab) {
+            document.querySelectorAll('.install-tab').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.install-content').forEach(content => content.classList.remove('active'));
+            document.getElementById(`install-${tab}`).classList.add('active');
+        }
+
+        function selectTool(toolName) {
+            currentTool = toolName;
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            document.querySelectorAll('.tool-params').forEach(section => section.classList.remove('active'));
+            document.getElementById(toolName).classList.add('active');
+            document.getElementById('response').classList.remove('active');
+            resetStatus();
+        }
+
+        function resetStatus() {
+            const indicator = document.getElementById('status');
+            indicator.className = 'status-indicator idle';
+        }
+
+        function setLoading() {
+            const indicator = document.getElementById('status');
+            indicator.className = 'status-indicator loading';
+        }
+
+        function setSuccess() {
+            const indicator = document.getElementById('status');
+            indicator.className = 'status-indicator success';
+        }
+
+        function setError() {
+            const indicator = document.getElementById('status');
+            indicator.className = 'status-indicator error';
+        }
+
+        let currentCurlCommand = '';
+
+        function generateCurlCommand(url, requestData) {
+            const jsonData = JSON.stringify(requestData, null, 2);
+            const escapedData = jsonData.replace(/'/g, "'\\''");
+            return `curl -X POST '${url}' \\
+  -H 'Content-Type: application/json' \\
+  -d '${escapedData}'`;
+        }
+
+        function copyCurl() {
+            navigator.clipboard.writeText(currentCurlCommand).then(() => {
+                showToast('cURL command copied to clipboard');
+            }).catch(() => {
+                showToast('Failed to copy to clipboard', true);
+            });
+        }
+
+        async function callAPI() {
+            const responseDiv = document.getElementById('response');
+            const curlDiv = document.getElementById('curl-command');
+            const copyCurlBtn = document.getElementById('copy-curl-btn');
+            const mainBtn = document.getElementById('mainCallBtn');
+
+            // Disable button and show loading
+            mainBtn.disabled = true;
+            mainBtn.innerHTML = '<span class="loading-spinner"></span>Loading...';
+            setLoading();
+
+            let requestData, url;
+
+            if (currentTool === 'tools.list') {
+                requestData = {
+                    jsonrpc: "2.0",
+                    id: ++requestId,
+                    method: "tools/list",
+                    params: {}
+                };
+            } else {
+                // Collect parameters from dynamic form
+                const methodParams = METHOD_PARAMS[currentTool] || [];
+                const args = {};
+
+                for (const param of methodParams) {
+                    const el = document.getElementById(`param_${param.name}`);
+                    if (el && el.value) {
+                        let value = el.value;
+                        if (param.type === 'number') {
+                            value = parseFloat(value);
+                        } else if (param.type === 'boolean') {
+                            value = value === 'true';
+                        } else if (param.name === 'addresses' || param.name === 'tickers') {
+                            // Handle comma-separated arrays
+                            value = value.split(',').map(s => s.trim());
+                        }
+                        args[param.name] = value;
+                    }
+                }
+
+                // Validate required params
+                const missingRequired = methodParams
+                    .filter(p => p.required && !args[p.name])
+                    .map(p => p.name);
+
+                if (missingRequired.length > 0) {
+                    showToast(`Missing required: ${missingRequired.join(', ')}`, true);
+                    mainBtn.disabled = false;
+                    mainBtn.innerHTML = '<span class="status-indicator idle" id="status"></span>Call API';
+                    return;
+                }
+
+                requestData = {
+                    jsonrpc: "2.0",
+                    id: ++requestId,
+                    method: "tools/call",
+                    params: {
+                        name: currentTool,
+                        arguments: args
+                    }
+                };
+            }
+
+            url = 'https://dflow.opensvm.com/api/mcp';
+
+            // Generate and display curl command
+            currentCurlCommand = generateCurlCommand(url, requestData);
+            curlDiv.textContent = currentCurlCommand;
+            curlDiv.style.display = 'block';
+            copyCurlBtn.style.display = 'inline-block';
+
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(requestData)
+                });
+
+                const result = await response.text();
+
+                if (response.ok) {
+                    const data = JSON.parse(result);
+
+                    // Track token usage
+                    const tokens = estimateTokens(result);
+                    tokenHistory.push({
+                        method: currentTool,
+                        tokens: tokens,
+                        timestamp: Date.now()
+                    });
+                    updateTokenDashboard();
+
+                    displayPrettifiedResponse(data, tokens);
+                    setSuccess();
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${result}`);
+                }
+
+            } catch (error) {
+                let errorMessage = error.message || 'An unexpected error occurred';
+
+                // Try to get more details from response
+                try {
+                    if (typeof response !== 'undefined') {
+                        const errorData = await response.json().catch(() => null);
+                        if (errorData && errorData.error) {
+                            errorMessage = `MCP Error: ${errorData.error.message}`;
+
+                            if (errorData.error.message.includes('fetch failed')) {
+                                errorMessage += '\n\nThe external API may be temporarily unavailable. Try "List Tools" to verify the MCP server is working.';
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Ignore parse errors
+                }
+
+                responseDiv.innerHTML = `<div style="color: #ef4444; padding: 16px;">
+                    <div style="font-weight: 600; margin-bottom: 8px;">Request Failed</div>
+                    <div style="font-size: 13px; opacity: 0.9;">${errorMessage}</div>
+                </div>`;
+                responseDiv.classList.add('error');
+                responseDiv.classList.add('active');
+                setError();
+                showToast('API request failed', true);
+            }
+
+            // Re-enable button
+            mainBtn.disabled = false;
+            mainBtn.innerHTML = '<span class="status-indicator idle" id="status"></span>Call API';
+
+            // Reset status after 2 seconds
+            setTimeout(() => {
+                resetStatus();
+            }, 2000);
+        }
+
+        function restoreButtonLabels() {
+            const labels = {
+                'tools.list': 'Call API',
+                'get_events': 'Get Events',
+                'get_markets': 'Get Markets',
+                'get_trades': 'Get Trades'
+            };
+
+            document.querySelectorAll('.tool-params').forEach(section => {
+                const btn = section.querySelector('.call-btn');
+                const id = section.id;
+                if (btn && labels[id]) {
+                    btn.innerHTML = `<span class="status-indicator idle" id="status"></span>${labels[id]}`;
+                }
+            });
+        }
+
+        function copyFile(filename) {
+            fetch(filename)
+                .then(response => response.text())
+                .then(text => {
+                    navigator.clipboard.writeText(text).then(() => {
+                        showToast(`${filename} copied to clipboard`);
+                    });
+                })
+                .catch(() => {
+                    showToast(`Failed to copy ${filename}`, true);
+                });
+        }
+
+        let lastResponseData = null;
+
+        function copyResponse() {
+            if (lastResponseData) {
+                navigator.clipboard.writeText(JSON.stringify(lastResponseData, null, 2)).then(() => {
+                    showToast('Response copied to clipboard');
+                }).catch(() => {
+                    showToast('Failed to copy response', true);
+                });
+            }
+        }
+
+        function displayPrettifiedResponse(data, tokens = 0) {
+            lastResponseData = data;
+            const responseDiv = document.getElementById('response');
+            const metadataDiv = document.getElementById('metadata');
+            const chartsDiv = document.getElementById('charts');
+
+            // Optimize JSON rendering - truncate if too large
+            const jsonString = JSON.stringify(data, null, 2);
+            const maxLength = 50000; // 50KB limit for display
+            let displayJson = jsonString;
+            let truncated = false;
+
+            if (jsonString.length > maxLength) {
+                displayJson = jsonString.substring(0, maxLength) + '\n\n... (response truncated for performance, use Copy button to get full response)';
+                truncated = true;
+            }
+
+            // Token badge
+            const tokenBadge = tokens > 0 ? `<span class="token-badge"><span class="token-badge-icon">⚡</span>${tokens.toLocaleString()} tokens</span>` : '';
+
+            // Add copy button, token badge and render JSON
+            responseDiv.innerHTML = `<button class="copy-btn" onclick="copyResponse()"><span class="glossy-icon-small" style="background: linear-gradient(135deg, #10B981, #059669); margin-right: 6px;"></span>Copy Response</button>${tokenBadge}` +
+                                   '<pre>' + displayJson + '</pre>';
+            responseDiv.classList.remove('error');
+            responseDiv.classList.add('active');
+
+            // ALWAYS extract and display metadata and charts
+            if (data.result && data.result.content && data.result.content[0]) {
+                try {
+                    const content = JSON.parse(data.result.content[0].text);
+                    showMetadata(content, metadataDiv);
+                    showCharts(content, chartsDiv);
+                } catch (e) {
+                    console.log('Could not parse content for metadata');
+                    // Even if parsing fails, try to show basic metadata
+                    showMetadata(data.result, metadataDiv);
+                }
+            } else {
+                // For tools.list or other responses without content field
+                showMetadata(data.result || data, metadataDiv);
+            }
+        }
+
+        function showMetadata(data, container) {
+            let html = '<h4 style="margin: 0 0 12px 0">Response Summary</h4><div class="metadata-grid">';
+
+            if (data.events) {
+                const totalVolume = data.events.reduce((sum, e) => sum + (e.volume || 0), 0);
+                const avgVolume = Math.round(totalVolume / data.events.length);
+                html += `
+                    <div class="metadata-item">
+                        <div class="metadata-value">${data.events.length}</div>
+                        <div class="metadata-label">Events</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${(totalVolume / 1000000).toFixed(1)}M</div>
+                        <div class="metadata-label">Total Volume</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${(avgVolume / 1000).toFixed(0)}K</div>
+                        <div class="metadata-label">Avg Volume</div>
+                    </div>
+                `;
+            } else if (data.markets) {
+                const totalLiq = data.markets.reduce((sum, m) => sum + (m.liquidity || 0), 0);
+                const totalVol = data.markets.reduce((sum, m) => sum + (m.volume || 0), 0);
+                html += `
+                    <div class="metadata-item">
+                        <div class="metadata-value">${data.markets.length}</div>
+                        <div class="metadata-label">Markets</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${(totalLiq / 1000000).toFixed(1)}M</div>
+                        <div class="metadata-label">Total Liquidity</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${(totalVol / 1000000).toFixed(1)}M</div>
+                        <div class="metadata-label">Total Volume</div>
+                    </div>
+                `;
+            } else if (data.trades) {
+                const totalVol = data.trades.reduce((sum, t) => sum + (parseFloat(t.amount || t.size || 0)), 0);
+                const avgVol = totalVol / data.trades.length;
+                html += `
+                    <div class="metadata-item">
+                        <div class="metadata-value">${data.trades.length}</div>
+                        <div class="metadata-label">Trades</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${(totalVol / 1000).toFixed(1)}K</div>
+                        <div class="metadata-label">Total Volume</div>
+                    </div>
+                    <div class="metadata-item">
+                        <div class="metadata-value">$${avgVol.toFixed(2)}</div>
+                        <div class="metadata-label">Avg Trade Size</div>
+                    </div>
+                `;
+            } else if (data.tools) {
+                html += `
+                    <div class="metadata-item">
+                        <div class="metadata-value">${data.tools.length}</div>
+                        <div class="metadata-label">Available Tools</div>
+                    </div>
+                `;
+            }
+
+            html += '</div>';
+            container.innerHTML = html;
+            container.classList.add('active');
+        }
+
+        function formatValue(value, type = 'currency') {
+            if (value === null || value === undefined || isNaN(value)) {
+                return 'N/A';
+            }
+
+            if (type === 'currency') {
+                if (value >= 1000000) {
+                    return `$${(value / 1000000).toFixed(2)}M`;
+                } else if (value >= 1000) {
+                    return `$${(value / 1000).toFixed(1)}K`;
+                } else {
+                    return `$${value.toFixed(2)}`;
+                }
+            }
+
+            return value.toString();
+        }
+
+        function showCharts(data, container) {
+            let html = '';
+            const maxCharts = 5;
+
+            if (data.events && data.events.length > 0) {
+                // Filter events with valid volume and sort by volume
+                const validEvents = data.events
+                    .filter(e => e.volume !== null && e.volume !== undefined && e.volume > 0)
+                    .sort((a, b) => (b.volume || 0) - (a.volume || 0))
+                    .slice(0, maxCharts);
+
+                if (validEvents.length === 0) {
+                    return; // No valid data to chart
+                }
+
+                const maxVolume = Math.max(...validEvents.map(e => e.volume));
+
+                html = `<h4 style="margin: 0 0 16px 0; font-weight: 600; color: #10B981;">📊 Top ${validEvents.length} Events by Volume</h4>`;
+                validEvents.forEach((event, index) => {
+                    const volume = event.volume || 0;
+                    const width = Math.max((volume / maxVolume * 100), 15);
+                    const title = (event.title || event.ticker || 'Event').substring(0, 50);
+                    const formattedValue = formatValue(volume);
+
+                    html += `
+                        <div class="chart-bar" style="width: ${width}%; animation-delay: ${index * 0.1}s">
+                            <div class="chart-label" title="${event.title || event.ticker}">${title}${title.length >= 50 ? '...' : ''}</div>
+                            <div class="chart-value">${formattedValue}</div>
+                        </div>
+                    `;
+                });
+            } else if (data.markets && data.markets.length > 0) {
+                // Filter markets with valid liquidity or volume and sort
+                const validMarkets = data.markets
+                    .filter(m => {
+                        const liq = m.liquidity || 0;
+                        const vol = m.volume || 0;
+                        return (liq > 0 || vol > 0);
+                    })
+                    .sort((a, b) => {
+                        const aVal = Math.max(a.liquidity || 0, a.volume || 0);
+                        const bVal = Math.max(b.liquidity || 0, b.volume || 0);
+                        return bVal - aVal;
+                    })
+                    .slice(0, maxCharts);
+
+                if (validMarkets.length === 0) {
+                    return; // No valid data to chart
+                }
+
+                const maxVal = Math.max(...validMarkets.map(m => Math.max(m.liquidity || 0, m.volume || 0)));
+                const useVolume = validMarkets.every(m => (m.volume || 0) > (m.liquidity || 0));
+
+                html = `<h4 style="margin: 0 0 16px 0; font-weight: 600; color: #10B981;">📊 Top ${validMarkets.length} Markets by ${useVolume ? 'Volume' : 'Liquidity'}</h4>`;
+                validMarkets.forEach((market, index) => {
+                    const value = useVolume ? (market.volume || 0) : (market.liquidity || 0);
+                    const width = Math.max((value / maxVal * 100), 15);
+                    const title = (market.title || market.ticker || 'Market').substring(0, 50);
+                    const formattedValue = formatValue(value);
+
+                    html += `
+                        <div class="chart-bar" style="width: ${width}%; animation-delay: ${index * 0.1}s">
+                            <div class="chart-label" title="${market.title || market.ticker}">${title}${title.length >= 50 ? '...' : ''}</div>
+                            <div class="chart-value">${formattedValue}</div>
+                        </div>
+                    `;
+                });
+            } else if (data.trades && data.trades.length > 0) {
+                // Filter trades with valid size and sort
+                const validTrades = data.trades
+                    .filter(t => {
+                        const size = parseFloat(t.amount || t.size || 0);
+                        return size > 0 && !isNaN(size);
+                    })
+                    .sort((a, b) => {
+                        const aSize = parseFloat(a.amount || a.size || 0);
+                        const bSize = parseFloat(b.amount || b.size || 0);
+                        return bSize - aSize;
+                    })
+                    .slice(0, maxCharts);
+
+                if (validTrades.length === 0) {
+                    return; // No valid data to chart
+                }
+
+                const maxSize = Math.max(...validTrades.map(t => parseFloat(t.amount || t.size || 0)));
+
+                html = `<h4 style="margin: 0 0 16px 0; font-weight: 600; color: #10B981;">📊 Top ${validTrades.length} Trades by Size</h4>`;
+                validTrades.forEach((trade, index) => {
+                    const size = parseFloat(trade.amount || trade.size || 0);
+                    const width = Math.max((size / maxSize * 100), 15);
+                    const title = (trade.ticker || trade.market || trade.market_ticker || 'Trade').substring(0, 50);
+                    const formattedValue = formatValue(size);
+
+                    html += `
+                        <div class="chart-bar" style="width: ${width}%; animation-delay: ${index * 0.1}s">
+                            <div class="chart-label" title="${title}">${title}${title.length >= 50 ? '...' : ''}</div>
+                            <div class="chart-value">${formattedValue}</div>
+                        </div>
+                    `;
+                });
+            } else {
+                return;
+            }
+
+            container.innerHTML = html;
+            container.classList.add('active');
+        }
+    </script>
+</body>
+</html>

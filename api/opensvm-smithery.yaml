@@ -1,0 +1,23 @@
+runtime: typescript
+name: "OpenSVM MCP Server"
+displayName: "OpenSVM - Solana Blockchain Explorer"
+description: "AI-powered Solana blockchain explorer with 17 tools for transactions, accounts, tokens, blocks, and analytics. Get transaction details, analyze wallets, query market data, find wallet connections, and ask AI questions about Solana. Built by OpenSVM (https://osvm.ai)."
+homepage: "https://osvm.ai"
+icon: "https://osvm.ai/icon.png"
+startCommand:
+  type: http
+  configSchema:
+    type: object
+    required: []
+    properties:
+      apiUrl:
+        type: string
+        title: "API URL"
+        description: "Base URL for the OpenSVM API"
+        default: "https://osvm.ai"
+      requestTimeout:
+        type: number
+        title: "Request Timeout"
+        description: "Timeout for API requests in milliseconds"
+        default: 30000
+    additionalProperties: false

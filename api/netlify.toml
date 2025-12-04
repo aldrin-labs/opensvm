@@ -1,0 +1,83 @@
+[build]
+command = "npm install"
+publish = "public"
+
+[functions]
+  directory = "netlify/functions"
+  node_bundler = "esbuild"
+
+# Use the known working mcp.js function
+[[redirects]]
+  from = "/api/mcp"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/mcp/*"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/mcp"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/mcp/*"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/mcp/v2/bootstrap"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/sse"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/health"
+  to = "/.netlify/functions/mcp"
+  status = 200
+  force = true
+
+# OpenSVM MCP Server endpoints
+[[redirects]]
+  from = "/api/opensvm-mcp"
+  to = "/.netlify/functions/opensvm-mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/opensvm-mcp/*"
+  to = "/.netlify/functions/opensvm-mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/opensvm"
+  to = "/.netlify/functions/opensvm-mcp"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/opensvm/*"
+  to = "/.netlify/functions/opensvm-mcp"
+  status = 200
+  force = true
+
+# Headers for CORS
+[[headers]]
+  for = "/*"
+  [headers.values]
+    Access-Control-Allow-Origin = "*"
+    Access-Control-Allow-Methods = "GET, POST, OPTIONS"
+    Access-Control-Allow-Headers = "Content-Type, Authorization, x-api-key"
