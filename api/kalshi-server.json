@@ -1,0 +1,95 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-v1.2025-10-17.json",
+  "name": "ai.osvm/kalshi-mcp",
+  "title": "Kalshi Trade API MCP",
+  "description": "Comprehensive MCP server for Kalshi prediction markets. Provides 70+ tools for exchange status, markets, events, orders, portfolio management, RFQ/quotes, and live data. Supports RSA-PSS authentication for trading operations.",
+  "version": "2.0.0",
+  "websiteUrl": "https://osvm.ai/kalshi",
+  "repository": {
+    "url": "https://github.com/aldrin-labs/opensvm",
+    "source": "github",
+    "subfolder": "api"
+  },
+  "icons": [
+    {
+      "src": "https://osvm.ai/kalshi-icon.svg",
+      "mimeType": "image/svg+xml"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@opensvm/kalshi-mcp",
+      "version": "2.0.0",
+      "runtimeHint": "bun",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "http",
+      "url": "https://api.elections.kalshi.com/trade-api/v2",
+      "description": "Kalshi Trade API v2"
+    }
+  ],
+  "config": {
+    "env": {
+      "KALSHI_API_URL": {
+        "description": "Kalshi API base URL",
+        "default": "https://api.elections.kalshi.com/trade-api/v2",
+        "required": false
+      },
+      "KALSHI_API_KEY_ID": {
+        "description": "Kalshi API key ID for authenticated requests",
+        "required": false
+      },
+      "KALSHI_PRIVATE_KEY": {
+        "description": "RSA private key (PEM format) for signing requests",
+        "required": false
+      }
+    }
+  },
+  "_meta": {
+    "category": "trading",
+    "tags": ["prediction-markets", "trading", "kalshi", "forecasts", "events", "derivatives", "cftc-regulated"],
+    "capabilities": {
+      "tools": 70,
+      "prompts": 5,
+      "resources": 3
+    },
+    "auth": {
+      "type": "rsa-pss",
+      "description": "RSA-PSS signatures via KALSHI-ACCESS-KEY/SIGNATURE/TIMESTAMP headers"
+    },
+    "endpoints": {
+      "exchange": ["status", "announcements", "schedule", "user_data_timestamp"],
+      "markets": ["list", "get", "orderbook", "trades", "candlesticks", "search"],
+      "events": ["list", "get", "metadata", "multivariate", "candlesticks", "forecast_percentile_history"],
+      "series": ["list", "get", "fee_changes"],
+      "portfolio": ["balance", "positions", "fills", "settlements", "resting_order_value"],
+      "orders": ["list", "get", "create", "cancel", "amend", "decrease", "batch_create", "batch_cancel", "queue_position", "queue_positions"],
+      "order_groups": ["list", "create", "get", "delete", "reset"],
+      "communications": {
+        "rfqs": ["list", "create", "get", "delete"],
+        "quotes": ["list", "create", "get", "delete", "accept", "confirm"]
+      },
+      "collections": ["list", "get", "create_market", "lookup"],
+      "api_keys": ["list", "create", "generate", "delete"],
+      "milestones": ["list", "get", "live_data", "batch_live_data"],
+      "incentives": ["programs", "structured_targets"],
+      "fcm": ["orders", "positions"],
+      "search": ["tags_by_categories", "filters_by_sports"]
+    },
+    "features": {
+      "market_data": "Real-time prices, orderbooks, and trades from Kalshi API",
+      "trading": "Full order management with limit/market orders and batch operations",
+      "portfolio": "Track positions, fills, settlements, and P&L",
+      "rfq_quotes": "Request for Quote and Quote management for large trades",
+      "analysis": "AI-powered market analysis with 5 specialized prompts",
+      "live_data": "Milestone tracking and live data feeds",
+      "collections": "Multivariate event collection management"
+    }
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-v1.2025-10-17.json",
+  "name": "ai.osvm/prediction-markets",
+  "title": "Multi-Platform Prediction Markets MCP",
+  "description": "Trade across Kalshi, Polymarket, and Manifold Markets with AI. Paper trading, alerts, automated strategies, and cross-platform arbitrage detection. 25 tools for comprehensive market access.",
+  "version": "1.0.0",
+  "websiteUrl": "https://osvm.ai/prediction-markets",
+  "repository": {
+    "url": "https://github.com/aldrin-labs/opensvm",
+    "source": "github",
+    "subfolder": "api"
+  },
+  "icons": [
+    {
+      "src": "https://osvm.ai/prediction-markets-icon.svg",
+      "mimeType": "image/svg+xml"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@opensvm/prediction-markets-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "bun",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "http",
+      "url": "https://api.elections.kalshi.com/trade-api/v2",
+      "description": "Kalshi API (CFTC-regulated markets)"
+    },
+    {
+      "type": "http",
+      "url": "https://gamma-api.polymarket.com",
+      "description": "Polymarket API (crypto-native markets)"
+    },
+    {
+      "type": "http",
+      "url": "https://api.manifold.markets/v0",
+      "description": "Manifold Markets API (play money)"
+    },
+    {
+      "type": "http",
+      "url": "https://osvm.ai/api/bank",
+      "description": "OpenSVM Bank API (Solana settlement)"
+    }
+  ],
+  "_meta": {
+    "category": "markets",
+    "tags": [
+      "prediction-markets",
+      "trading",
+      "kalshi",
+      "polymarket",
+      "manifold",
+      "arbitrage",
+      "paper-trading",
+      "solana",
+      "defi"
+    ],
+    "capabilities": {
+      "tools": 25,
+      "prompts": 3,
+      "resources": 0
+    },
+    "features": {
+      "paper_trading": "Virtual $10K accounts for risk-free practice",
+      "multi_platform": "Aggregate markets from Kalshi, Polymarket, Manifold",
+      "alerts": "Price and volume alerts with real-time monitoring",
+      "strategies": "Automated arbitrage and mean reversion strategies",
+      "arbitrage": "Cross-platform price discrepancy detection",
+      "portfolio": "Full portfolio tracking with PnL calculation",
+      "leaderboard": "Compete with other paper traders"
+    },
+    "tool_categories": {
+      "paper_trading": [
+        "paper_create_account",
+        "paper_deposit",
+        "paper_buy",
+        "paper_sell",
+        "paper_get_portfolio",
+        "paper_get_positions",
+        "paper_get_trades",
+        "paper_leaderboard"
+      ],
+      "market_data": [
+        "markets_list",
+        "markets_search",
+        "markets_best_prices",
+        "markets_stats"
+      ],
+      "alerts": [
+        "alert_create",
+        "alert_remove",
+        "alert_list_active",
+        "alert_list_triggered",
+        "alert_check"
+      ],
+      "strategies": [
+        "strategy_create_arbitrage",
+        "strategy_create_mean_reversion",
+        "strategy_enable",
+        "strategy_disable",
+        "strategy_run_arbitrage",
+        "strategy_run_mean_reversion",
+        "strategy_list",
+        "strategy_performance"
+      ]
+    }
+  }
+}

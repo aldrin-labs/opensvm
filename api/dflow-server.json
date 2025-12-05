@@ -1,0 +1,45 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-v1.2025-10-17.json",
+  "name": "ai.osvm/dflow-mcp",
+  "title": "DFlow Prediction Markets MCP",
+  "description": "Prediction market metadata and live data API. Provides 23 tools for accessing events, markets, trades, forecasts, and candlestick data from prediction markets.",
+  "version": "1.0.0",
+  "websiteUrl": "https://dflow.opensvm.com",
+  "repository": {
+    "url": "https://github.com/aldrin-labs/opensvm",
+    "source": "github",
+    "subfolder": "api"
+  },
+  "icons": [
+    {
+      "src": "https://dflow.opensvm.com/icon.svg",
+      "mimeType": "image/svg+xml"
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@opensvm/dflow-mcp",
+      "version": "1.0.0",
+      "runtimeHint": "bun",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "http",
+      "url": "https://prediction-markets-api.dflow.net"
+    }
+  ],
+  "_meta": {
+    "category": "markets",
+    "tags": ["prediction-markets", "trading", "forecasts", "kalshi", "solana"],
+    "capabilities": {
+      "tools": 23,
+      "prompts": 2,
+      "resources": 3
+    }
+  }
+}

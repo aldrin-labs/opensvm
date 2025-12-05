@@ -1,0 +1,115 @@
+{
+  "name": "prediction-markets-gateway",
+  "version": "1.2.0",
+  "description": "Unified Prediction Markets MCP Gateway - Market data, paper trading, AI analysis, multi-agent debate, DeFi on-chain features, LP strategy advisor, and real-time streaming",
+  "command": "bun",
+  "args": ["run", "bin/prediction-gateway-mcp.ts"],
+  "env": {
+    "TOGETHER_API_KEY": "${TOGETHER_API_KEY}"
+  },
+  "tools": [
+    {
+      "category": "Market Data",
+      "tools": [
+        "get_markets",
+        "search_markets",
+        "get_market",
+        "find_arbitrage",
+        "get_trending"
+      ]
+    },
+    {
+      "category": "Paper Trading",
+      "tools": [
+        "create_trading_account",
+        "get_portfolio",
+        "place_trade",
+        "get_trade_history",
+        "run_strategy"
+      ]
+    },
+    {
+      "category": "Alerts",
+      "tools": [
+        "create_alert",
+        "get_alerts",
+        "check_alerts",
+        "delete_alert"
+      ]
+    },
+    {
+      "category": "AI Intelligence",
+      "tools": [
+        "analyze_market",
+        "compare_platforms",
+        "generate_report"
+      ]
+    },
+    {
+      "category": "Multi-Agent Debate",
+      "tools": [
+        "debate_market",
+        "debate_question"
+      ]
+    },
+    {
+      "category": "DeFi / On-Chain",
+      "tools": [
+        "connect_wallet",
+        "get_wallet_balance",
+        "get_all_wallets",
+        "track_lp_position",
+        "get_lp_positions",
+        "get_lp_portfolio_stats",
+        "simulate_add_liquidity",
+        "calculate_impermanent_loss",
+        "find_cross_chain_arbitrage",
+        "get_bridge_costs",
+        "get_arbitrage_route",
+        "record_oracle_update",
+        "get_oracle_price"
+      ]
+    },
+    {
+      "category": "LP Strategy Advisor",
+      "tools": [
+        "analyze_lp_position",
+        "analyze_lp_portfolio",
+        "analyze_lp_entry",
+        "get_quick_lp_recommendation"
+      ]
+    },
+    {
+      "category": "DeFi Streaming",
+      "tools": [
+        "start_defi_stream",
+        "stop_defi_stream",
+        "get_stream_stats"
+      ]
+    }
+  ],
+  "resources": [
+    "prediction://markets/overview",
+    "prediction://arbitrage/opportunities",
+    "prediction://reports/daily"
+  ],
+  "claude_desktop_config": {
+    "mcpServers": {
+      "prediction-markets": {
+        "command": "bun",
+        "args": ["run", "/path/to/opensvm/api/bin/prediction-gateway-mcp.ts"],
+        "env": {
+          "TOGETHER_API_KEY": "your-api-key"
+        }
+      }
+    }
+  },
+  "cursor_config": {
+    "mcpServers": {
+      "prediction-markets": {
+        "command": "bun",
+        "args": ["run", "/path/to/opensvm/api/bin/prediction-gateway-mcp.ts"]
+      }
+    }
+  }
+}

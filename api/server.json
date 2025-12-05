@@ -1,0 +1,71 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-v1.2025-10-17.json",
+  "name": "ai.osvm/opensvm-mcp",
+  "title": "OpenSVM MCP Server",
+  "description": "Solana blockchain explorer with AI-powered analytics. Provides 34 tools for transaction analysis, wallet forensics, token data, and autonomous blockchain investigations.",
+  "version": "2.0.0",
+  "websiteUrl": "https://osvm.ai",
+  "repository": {
+    "url": "https://github.com/aldrin-labs/opensvm",
+    "source": "github"
+  },
+  "icons": [
+    {
+      "src": "https://osvm.ai/icon.svg",
+      "mimeType": "image/svg+xml"
+    },
+    {
+      "src": "https://osvm.ai/icon.png",
+      "mimeType": "image/png",
+      "sizes": ["192x192"]
+    }
+  ],
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@opensvm/mcp-server",
+      "version": "2.0.0",
+      "runtimeHint": "bun",
+      "transport": {
+        "type": "stdio"
+      },
+      "environmentVariables": [
+        {
+          "name": "OPENSVM_API_KEY",
+          "description": "OpenSVM API key for authenticated requests (optional)",
+          "required": false,
+          "secret": true
+        }
+      ]
+    }
+  ],
+  "remotes": [
+    {
+      "type": "http",
+      "url": "https://osvm.ai/api/mcp"
+    },
+    {
+      "type": "sse",
+      "url": "https://osvm.ai/api/mcp/stream"
+    }
+  ],
+  "_meta": {
+    "category": "blockchain",
+    "tags": ["solana", "blockchain", "explorer", "ai", "forensics", "defi", "nft"],
+    "capabilities": {
+      "tools": 34,
+      "prompts": 4,
+      "resources": 3
+    },
+    "features": [
+      "Transaction analysis",
+      "Wallet forensics",
+      "Token metadata",
+      "AI-powered insights",
+      "Autonomous investigations",
+      "Batch execution",
+      "Tool pipelines",
+      "Context compression"
+    ]
+  }
+}

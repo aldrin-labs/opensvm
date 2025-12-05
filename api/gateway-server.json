@@ -1,0 +1,51 @@
+{
+  "$schema": "https://modelcontextprotocol.io/schemas/server-v1.2025-10-17.json",
+  "name": "ai.osvm/mcp-gateway",
+  "title": "OpenSVM MCP Gateway",
+  "description": "Unified MCP gateway aggregating tools from multiple servers. Provides 62+ tools from OpenSVM and DFlow with automatic discovery, health checking, and intelligent routing.",
+  "version": "1.0.0",
+  "websiteUrl": "https://osvm.ai/gateway",
+  "repository": {
+    "url": "https://github.com/aldrin-labs/opensvm",
+    "source": "github",
+    "subfolder": "api"
+  },
+  "packages": [
+    {
+      "registryType": "npm",
+      "identifier": "@opensvm/mcp-gateway",
+      "version": "1.0.0",
+      "runtimeHint": "bun",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ],
+  "remotes": [
+    {
+      "type": "http",
+      "url": "https://osvm.ai/api/gateway"
+    }
+  ],
+  "_meta": {
+    "category": "infrastructure",
+    "tags": ["gateway", "registry", "aggregator", "discovery"],
+    "capabilities": {
+      "tools": 62,
+      "prompts": 6,
+      "resources": 6
+    },
+    "features": [
+      "Server registry",
+      "Auto-discovery",
+      "Health checking",
+      "Failover",
+      "Tool routing",
+      "Cross-server pipelines"
+    ],
+    "aggregatedServers": [
+      "ai.osvm/opensvm-mcp",
+      "ai.osvm/dflow-mcp"
+    ]
+  }
+}
