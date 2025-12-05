@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { qdrantClient } from '@/lib/search/qdrant';
 import { getSessionFromCookie } from '@/lib/api-auth/auth-server';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
-import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { TOKEN_PROGRAM_ID, TOKEN_2022_PROGRAM_ID } from '@solana/spl-token';
+import { PriceAggregator, fetchTokenMetadata } from '@/lib/bank/price-aggregator';
 
 const COLLECTION_NAME = 'svm_bank_wallets';
 
@@ -11,8 +12,10 @@ interface TokenBalance {
   amount: string;
   decimals: number;
   uiAmount: number;
+  usdValue: number;
   symbol?: string;
   name?: string;
+  logoURI?: string;
 }
 
 interface WalletBalance {
@@ -39,17 +42,27 @@ async function fetchWalletBalances(address: string): Promise<{ balance: number; 
   try {
     const connection = getSolanaConnection();
     const publicKey = new PublicKey(address);
-    
-    // Get SOL balance
-    const lamports = await connection.getBalance(publicKey);
+
+    // Get SOL balance and token accounts in parallel
+    const [lamports, tokenAccounts, token2022Accounts] = await Promise.all([
+      connection.getBalance(publicKey),
+      connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_PROGRAM_ID
+      }),
+      connection.getParsedTokenAccountsByOwner(publicKey, {
+        programId: TOKEN_2022_PROGRAM_ID
+      })
+    ]);
+
     const balance = lamports / LAMPORTS_PER_SOL;
-    
-    // Get token accounts
-    const tokenAccounts = await connection.getParsedTokenAccountsByOwner(publicKey, {
-      programId: TOKEN_PROGRAM_ID
-    });
-    
-    const tokens: TokenBalance[] = tokenAccounts.value
+
+    // Combine accounts from both token programs
+    const allAccounts = [
+      ...tokenAccounts.value,
+      ...token2022Accounts.value
+    ];
+
+    const tokens: TokenBalance[] = allAccounts
       .map((accountInfo) => {
         const parsedInfo = accountInfo.account.data.parsed.info;
         return {
@@ -57,12 +70,14 @@ async function fetchWalletBalances(address: string): Promise<{ balance: number; 
           amount: parsedInfo.tokenAmount.amount,
           decimals: parsedInfo.tokenAmount.decimals,
           uiAmount: parsedInfo.tokenAmount.uiAmount || 0,
-          symbol: undefined, // Will be enriched later if needed
-          name: undefined
+          usdValue: 0, // Will be enriched with price data
+          symbol: undefined,
+          name: undefined,
+          logoURI: undefined
         };
       })
-      .filter((token) => token.uiAmount > 0); // Only include tokens with balance
-    
+      .filter((token) => token.uiAmount > 0);
+
     return { balance, tokens };
   } catch (error) {
     console.error(`Error fetching balances for ${address}:`, error);
@@ -104,16 +119,23 @@ export async function POST(req: NextRequest) {
     if (results.points.length === 0) {
       return NextResponse.json({
         wallets: [],
-        total: 0
+        total: 0,
+        portfolio: {
+          totalSOL: 0,
+          totalTokenTypes: 0,
+          totalWallets: 0,
+          totalUsdValue: 0,
+          solPrice: 0
+        }
       });
     }
-    
-    // Fetch balances for each wallet
+
+    // Fetch balances for each wallet in parallel
     const walletsWithBalances: WalletBalance[] = await Promise.all(
       results.points.map(async (point: any) => {
         const walletData = point.payload;
         const { balance, tokens } = await fetchWalletBalances(walletData.address);
-        
+
         return {
           id: walletData.id,
           address: walletData.address,
@@ -124,20 +146,69 @@ export async function POST(req: NextRequest) {
         };
       })
     );
-    
-    // Calculate total portfolio value
+
+    // Collect all unique mints for price fetching
+    const allMints = new Set<string>();
+    walletsWithBalances.forEach(wallet => {
+      wallet.tokens.forEach(token => allMints.add(token.mint));
+    });
+
+    // Fetch prices and metadata in parallel
+    const priceAggregator = new PriceAggregator();
+    const [priceData, tokenMetadata, solPrice] = await Promise.all([
+      priceAggregator.fetchReliablePrices(Array.from(allMints)),
+      fetchTokenMetadata(Array.from(allMints)),
+      priceAggregator.fetchSolPrice()
+    ]);
+
+    // Enrich tokens with prices and metadata
+    let totalUsdValue = 0;
+    for (const wallet of walletsWithBalances) {
+      // Add SOL value
+      const walletSolValue = wallet.balance * solPrice;
+      totalUsdValue += walletSolValue;
+
+      for (const token of wallet.tokens) {
+        // Add metadata
+        const meta = tokenMetadata.get(token.mint);
+        if (meta) {
+          token.symbol = meta.symbol;
+          token.name = meta.name;
+          token.logoURI = meta.logoURI;
+        } else {
+          token.symbol = token.mint.slice(0, 4) + '...' + token.mint.slice(-4);
+          token.name = 'Unknown Token';
+        }
+
+        // Add price
+        const price = priceData.get(token.mint);
+        if (price) {
+          token.usdValue = token.uiAmount * price.price;
+        } else {
+          token.usdValue = 0;
+        }
+        totalUsdValue += token.usdValue;
+      }
+
+      // Sort tokens by USD value (highest first)
+      wallet.tokens.sort((a, b) => b.usdValue - a.usdValue);
+    }
+
+    // Calculate portfolio metrics
     const totalSOL = walletsWithBalances.reduce((sum, wallet) => sum + wallet.balance, 0);
     const totalTokenTypes = new Set(
       walletsWithBalances.flatMap(wallet => wallet.tokens.map(t => t.mint))
     ).size;
-    
+
     return NextResponse.json({
       wallets: walletsWithBalances,
       total: walletsWithBalances.length,
       portfolio: {
         totalSOL,
         totalTokenTypes,
-        totalWallets: walletsWithBalances.length
+        totalWallets: walletsWithBalances.length,
+        totalUsdValue,
+        solPrice
       }
     });
     
