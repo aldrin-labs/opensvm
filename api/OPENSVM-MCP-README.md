@@ -6,18 +6,54 @@ AI-powered Solana blockchain explorer exposed as an MCP (Model Context Protocol)
 
 - **25 specialized tools** for Solana blockchain exploration
 - **Autonomous investigation agent** for forensics and anomaly detection
+- **Real-time streaming** via WebSocket and SSE transports
 - **Authentication support** with API keys and wallet sessions
 - **4 pre-built prompts** for common analysis workflows
 - **3 live resources** for network data
 - Works with Claude Desktop, Cursor, and other MCP clients
 
-## Quick Start
+## Unified MCP Server (NEW)
 
-### Via Smithery (Recommended)
+The **OpenSVM Unified MCP Server** consolidates all 8 MCP servers into a single server with **87 namespaced tools**:
 
-```bash
-npx @smithery/cli install opensvm-mcp-server --client claude
+| Namespace | Description | Tools |
+|-----------|-------------|-------|
+| `solana:*` | Blockchain exploration | 14 |
+| `dflow:*` | DFlow prediction markets | 21 |
+| `kalshi:*` | Kalshi prediction markets | 22 |
+| `lp:*` | Liquidity mining | 15 |
+| `governance:*` | Governance timelock | 15 |
+| `bank:*` | OpenSVM Bank | 3 |
+
+### Quick Start (Unified)
+
+```json
+{
+  "mcpServers": {
+    "opensvm-unified": {
+      "command": "bun",
+      "args": ["run", "/path/to/opensvm/api/src/opensvm-mcp-unified.ts"]
+    }
+  }
+}
 ```
+
+### Available Prompts
+
+- `investigate_wallet` - Comprehensive wallet investigation
+- `analyze_market` - Prediction market analysis
+- `optimize_liquidity` - LP position optimization
+- `governance_review` - Governance action review
+- `portfolio_overview` - Combined portfolio summary
+
+### Available Resources
+
+- `opensvm://namespaces` - List all namespaces
+- `opensvm://tools/summary` - Tool summary by namespace
+- `opensvm://solana/network-status` - Solana network status
+- `opensvm://kalshi/exchange-status` - Kalshi exchange status
+
+## Quick Start
 
 ### Manual Installation
 
@@ -242,15 +278,97 @@ curl https://osvm.ai/api/check-token?address=YOUR_WALLET
 }
 ```
 
+## Streaming Server (WebSocket + SSE)
+
+For real-time updates and long-running investigations, use the streaming server:
+
+### Start Streaming Server
+
+```bash
+cd api
+bun run start:streaming  # Default port 3001
+
+# Or with hot reload
+bun run dev:streaming
+```
+
+### Transports
+
+| Transport | URL | Use Case |
+|-----------|-----|----------|
+| **WebSocket** | `ws://localhost:3001/ws` | Bidirectional MCP communication |
+| **SSE** | `http://localhost:3001/stream/:id` | Subscribe to investigation events |
+| **JSON-RPC** | `http://localhost:3001/` | Standard request/response |
+
+### Streaming Investigation
+
+Start an investigation with real-time event streaming:
+
+```bash
+# Using curl with SSE
+curl -N -X POST http://localhost:3001/investigate/stream \
+  -H "Content-Type: application/json" \
+  -d '{"target": "EPjFWdd5...", "type": "wallet_forensics"}'
+```
+
+Events returned:
+- `start` - Investigation started
+- `progress` - Status updates
+- `tool_call` - Tool being called
+- `tool_result` - Tool results
+- `anomaly` - Suspicious activity detected
+- `finding` - Investigation finding
+- `report` - Final report generated
+- `complete` - Investigation finished
+- `error` - Error occurred
+
+### WebSocket Example
+
+```javascript
+const ws = new WebSocket('ws://localhost:3001/ws');
+
+// List tools
+ws.send(JSON.stringify({
+  jsonrpc: '2.0',
+  id: 1,
+  method: 'tools/list'
+}));
+
+// Subscribe to investigation
+ws.send(JSON.stringify({
+  jsonrpc: '2.0',
+  id: 2,
+  method: 'subscribe',
+  params: { investigationId: 'inv_123' }
+}));
+
+// Receive events
+ws.onmessage = (event) => {
+  const msg = JSON.parse(event.data);
+  console.log(msg);
+};
+```
+
+### Client Examples
+
+See `examples/` directory for complete client examples:
+- `websocket-client.ts` - WebSocket client
+- `sse-client.ts` - SSE streaming client
+- `curl-examples.sh` - curl command examples
+
 ## Development
 
 ```bash
-# Run the MCP server locally
+# Run the stdio MCP server locally
 cd api
 bun run start:opensvm
 
 # Or with hot reload
 bun run dev:opensvm
+
+# Run streaming server (WebSocket + SSE)
+bun run start:streaming
+bun run dev:streaming
 ```
 
 ## API Base URL

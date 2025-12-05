@@ -196,3 +196,170 @@ export interface AgentContext {
   apiBaseUrl: string;
   timeout: number;
 }
+
+/**
+ * Stream event types for real-time investigation updates
+ */
+export type StreamEventType =
+  | 'start'
+  | 'planning'
+  | 'progress'
+  | 'tool_call'
+  | 'tool_result'
+  | 'anomaly'
+  | 'finding'
+  | 'analysis'
+  | 'report'
+  | 'complete'
+  | 'error'
+  // Graph visualization events
+  | 'graph_node'
+  | 'graph_edge'
+  | 'graph_update'
+  | 'graph_highlight'
+  | 'graph_layout'
+  // Narration events
+  | 'narration';
+
+export interface StreamEvent {
+  type: StreamEventType;
+  timestamp: number;
+  investigationId: string;
+  data: any;
+}
+
+export type StreamCallback = (event: StreamEvent) => void;
+
+/**
+ * Graph visualization types for real-time rendering
+ */
+export type GraphNodeType =
+  | 'wallet'
+  | 'transaction'
+  | 'token'
+  | 'program'
+  | 'unknown';
+
+export type GraphNodeStatus =
+  | 'normal'
+  | 'suspicious'
+  | 'flagged'
+  | 'highlighted'
+  | 'source'
+  | 'target';
+
+export interface GraphNode {
+  id: string;
+  type: GraphNodeType;
+  label: string;
+  status: GraphNodeStatus;
+  metadata?: {
+    address?: string;
+    signature?: string;
+    symbol?: string;
+    balance?: number;
+    valueUsd?: number;
+    riskScore?: number;
+    [key: string]: any;
+  };
+  position?: {
+    x: number;
+    y: number;
+  };
+}
+
+export type GraphEdgeType =
+  | 'transfer'
+  | 'interaction'
+  | 'token_flow'
+  | 'program_call'
+  | 'related';
+
+export interface GraphEdge {
+  id: string;
+  source: string;
+  target: string;
+  type: GraphEdgeType;
+  label?: string;
+  weight?: number;
+  metadata?: {
+    amount?: number;
+    symbol?: string;
+    valueUsd?: number;
+    timestamp?: number;
+    signature?: string;
+    [key: string]: any;
+  };
+  animated?: boolean;
+}
+
+export interface GraphState {
+  nodes: Map<string, GraphNode>;
+  edges: Map<string, GraphEdge>;
+  focusNodeId?: string;
+  layout?: GraphLayoutType;
+}
+
+/**
+ * Graph layout types optimized for different investigation patterns
+ */
+export type GraphLayoutType =
+  | 'force'        // General purpose, good for exploring connections
+  | 'dagre'        // Directed acyclic graph, good for transaction flows
+  | 'hierarchical' // Top-down hierarchy, good for token holder analysis
+  | 'circular'     // Circular layout, good for connection mapping
+  | 'radial'       // Radial from center, good for wallet forensics
+  | 'timeline';    // Time-based horizontal layout
+
+export interface GraphLayoutConfig {
+  type: GraphLayoutType;
+  direction?: 'TB' | 'BT' | 'LR' | 'RL';  // For dagre/hierarchical
+  spacing?: number;
+  animate?: boolean;
+  centerNodeId?: string;  // For radial/force layouts
+}
+
+/**
+ * Layout recommendations based on investigation type
+ */
+export const LAYOUT_RECOMMENDATIONS: Record<string, GraphLayoutConfig> = {
+  wallet_forensics: {
+    type: 'radial',
+    animate: true,
+    // Center on target wallet
+  },
+  transaction_tracing: {
+    type: 'dagre',
+    direction: 'LR',
+    animate: true,
+  },
+  token_flow_analysis: {
+    type: 'hierarchical',
+    direction: 'TB',
+    animate: true,
+  },
+  anomaly_detection: {
+    type: 'force',
+    animate: true,
+    // Suspicious nodes will cluster together
+  },
+  connection_mapping: {
+    type: 'circular',
+    animate: true,
+  },
+  full_investigation: {
+    type: 'force',
+    animate: true,
+  },
+};
+
+/**
+ * Narration event for AI-powered graph storytelling
+ */
+export interface NarrationEvent {
+  text: string;
+  emphasis?: 'normal' | 'important' | 'critical';
+  relatedNodeIds?: string[];
+  relatedEdgeIds?: string[];
+  timestamp: number;
+}

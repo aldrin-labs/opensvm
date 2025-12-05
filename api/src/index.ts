@@ -20,6 +20,7 @@ import {
   Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { z } from 'zod';
+import { analytics } from './mcp-analytics.js';
 
 /**
  * Configuration schema for Smithery
@@ -1080,6 +1081,10 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   // Ensure args is defined
   const toolArgs = args || {};
 
+  // Track analytics
+  const startTime = Date.now();
+  const inputSize = JSON.stringify(toolArgs).length;
+
   try {
     let result: any;
 
@@ -1198,16 +1203,42 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
     }
 
+    // Record successful call to analytics
+    const outputText = JSON.stringify(result, null, 2);
+    const duration = Date.now() - startTime;
+
+    analytics.recordToolCall({
+      serverId: 'dflow-mcp',
+      toolName: name,
+      duration,
+      success: true,
+      inputSize,
+      outputSize: outputText.length,
+    });
+
     return {
       content: [
         {
           type: 'text',
-          text: JSON.stringify(result, null, 2),
+          text: outputText,
         },
       ],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
+    const duration = Date.now() - startTime;
+
+    // Record failed call to analytics
+    analytics.recordToolCall({
+      serverId: 'dflow-mcp',
+      toolName: name,
+      duration,
+      success: false,
+      errorType: error instanceof Error ? error.constructor.name : 'UnknownError',
+      inputSize,
+      outputSize: 0,
+    });
+
     return {
       content: [
         {

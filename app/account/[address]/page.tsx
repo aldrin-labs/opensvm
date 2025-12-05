@@ -208,8 +208,8 @@ export default function AccountPage({ params, searchParams }: PageProps) {
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>('account-transfers');
   const [currentAddress, setCurrentAddress] = useState<string>('');
-  const [graphKey] = useState<string>(() => 'graph-static');
-  const initialGraphAccountRef = useRef<string | null>(null);
+  // Track the account address for the graph - update when navigating
+  const [graphAccount, setGraphAccount] = useState<string>('');
   const graphRef = useRef<HTMLDivElement>(null);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -286,10 +286,8 @@ export default function AccountPage({ params, searchParams }: PageProps) {
       if (signal?.aborted) return;
 
       setAccountInfo(accountData);
-      // Capture initial graph account once; keep graph mounted with static initial account
-      if (initialGraphAccountRef.current === null) {
-        initialGraphAccountRef.current = accountData.address;
-      }
+      // Update graph account to trigger graph data refresh
+      setGraphAccount(accountData.address);
       setCurrentAddress(cleanAddress);
 
     } catch (err) {
@@ -530,15 +528,15 @@ export default function AccountPage({ params, searchParams }: PageProps) {
           <GraphErrorBoundary>
             <PerformanceWrapper priority="normal" fallback={<Skeleton className="w-full h-full" />}>
               <TransactionGraphLazy
-                key={graphKey}
-                initialAccount={initialGraphAccountRef.current || accountInfo.address}
+                initialAccount={graphAccount || accountInfo.address}
                 onTransactionSelect={(signature: string) => {
                   // Client-side navigation to transaction page
                   router.push(`/tx/${signature}`);
                 }}
                 onAccountSelect={(accountAddress: string) => {
-                  // Smooth client-side navigation to account page
-                  if (accountAddress !== accountInfo.address) {
+                  // Smooth client-side navigation - update graph account directly
+                  if (accountAddress !== graphAccount) {
+                    setGraphAccount(accountAddress);
                     navigateToAccount(accountAddress);
                   }
                 }}

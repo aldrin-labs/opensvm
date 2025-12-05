@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from 'react';
-import { Loader2, User } from 'lucide-react';
+import { Loader2, User, Wallet, TrendingUp, Coins } from 'lucide-react';
 import { type TokenAccount } from '../lib/solana';
 import AccountExplorerLinks from './AccountExplorerLinks';
 import { useTheme } from '../lib/design-system/theme-provider';
@@ -43,8 +43,85 @@ export default function AccountOverview({
     tokenTransfers: number | null;
   }>({ totalTransactions: null, tokenTransfers: null });
   const [statsLoading, setStatsLoading] = useState(true);
+  const [solPrice, setSolPrice] = useState<number>(180); // Optimistic default
+  const [tokenPrices, setTokenPrices] = useState<Map<string, number>>(new Map());
   const { config, resolvedTheme } = useTheme();
   const router = useRouter();
+
+  // Fetch SOL price
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const response = await fetch('https://price.jup.ag/v6/price?ids=So11111111111111111111111111111111111112');
+        if (response.ok) {
+          const data = await response.json();
+          const price = data?.data?.['So11111111111111111111111111111111111112']?.price;
+          if (typeof price === 'number' && price > 0) {
+            setSolPrice(price);
+          }
+        }
+      } catch {
+        // Keep optimistic default
+      }
+    };
+    fetchSolPrice();
+  }, []);
+
+  // Fetch token prices for all tokens
+  useEffect(() => {
+    const fetchTokenPrices = async () => {
+      if (tokenAccounts.length === 0) return;
+      
+      try {
+        const mints = tokenAccounts.map(t => t.mint).filter(Boolean).join(',');
+        if (!mints) return;
+        
+        const response = await fetch(`https://price.jup.ag/v6/price?ids=${mints}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data?.data) {
+            const prices = new Map<string, number>();
+            for (const [mint, priceData] of Object.entries(data.data)) {
+              const price = (priceData as any)?.price;
+              if (typeof price === 'number') {
+                prices.set(mint, price);
+              }
+            }
+            setTokenPrices(prices);
+          }
+        }
+      } catch {
+        // Keep empty map
+      }
+    };
+    fetchTokenPrices();
+  }, [tokenAccounts]);
+
+  // Calculate total account worth
+  const totalWorth = useMemo(() => {
+    const solValue = solBalance * solPrice;
+    let tokenValue = 0;
+    
+    tokenAccounts.forEach(token => {
+      if (token.mint && token.uiAmount > 0) {
+        const price = tokenPrices.get(token.mint) || 0;
+        tokenValue += token.uiAmount * price;
+      }
+    });
+    
+    // Estimate rent locked in token accounts (~0.00203928 SOL per account)
+    const rentPerAccount = 0.00203928;
+    const totalRentSOL = tokenAccounts.length * rentPerAccount;
+    const rentValue = totalRentSOL * solPrice;
+    
+    return {
+      solValue,
+      tokenValue,
+      rentSOL: totalRentSOL,
+      rentValue,
+      total: solValue + tokenValue + rentValue
+    };
+  }, [solBalance, solPrice, tokenAccounts, tokenPrices]);
 
   useEffect(() => {
     async function fetchAccountStats() {
@@ -140,23 +217,22 @@ export default function AccountOverview({
     const themeColors = getThemeAwareColors(config.variant);
     const data: PortfolioItem[] = [];
 
-    const SOL_PRICE = 235.19;
     if (solBalance > 0) {
       data.push({
         name: 'SOL',
         value: solBalance,
-        usdValue: solBalance * SOL_PRICE,
+        usdValue: solBalance * solPrice,
         color: themeColors[0]
       });
     }
 
     tokenAccounts.forEach((token, index) => {
       if (token.uiAmount > 0) {
-        const mockPrice = Math.random() * 1000 + 10;
+        const price = token.mint ? (tokenPrices.get(token.mint) || 0) : 0;
         data.push({
           name: token.symbol || `${token.mint?.slice(0, 4)}...${token.mint?.slice(-4)}` || 'Unknown',
           value: token.uiAmount,
-          usdValue: token.uiAmount * mockPrice,
+          usdValue: token.uiAmount * price,
           color: themeColors[(index + 1) % themeColors.length]
         });
       }
@@ -184,7 +260,7 @@ export default function AccountOverview({
     }
 
     return data;
-  }, [solBalance, tokenAccounts, config.variant]);
+  }, [solBalance, solPrice, tokenAccounts, tokenPrices, config.variant]);
 
   return (
     <div className="rounded-lg border bg-card text-card-foreground">
@@ -192,11 +268,39 @@ export default function AccountOverview({
         <h2 className="text-xl font-semibold mb-4">Overview</h2>
 
         <div className="space-y-4">
+          {/* Total Account Worth Banner */}
+          <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 via-cyan-500/10 to-blue-500/10 border border-emerald-500/30">
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="h-4 w-4 text-emerald-500" />
+              <span className="text-sm text-muted-foreground">Estimated Account Worth</span>
+            </div>
+            <p className="text-2xl font-bold bg-gradient-to-r from-emerald-500 to-cyan-500 bg-clip-text text-transparent">
+              ${totalWorth.total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </p>
+            <div className="flex flex-wrap gap-4 mt-2 text-xs">
+              <div className="flex items-center gap-1">
+                <TrendingUp className="h-3 w-3 text-blue-500" />
+                <span className="text-muted-foreground">SOL:</span>
+                <span className="font-medium">${totalWorth.solValue.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <Coins className="h-3 w-3 text-purple-500" />
+                <span className="text-muted-foreground">Tokens:</span>
+                <span className="font-medium">${totalWorth.tokenValue.toFixed(2)}</span>
+              </div>
+              <div className="flex items-center gap-1">
+                <span className="text-muted-foreground">Rent:</span>
+                <span className="font-medium text-emerald-500">${totalWorth.rentValue.toFixed(2)}</span>
+                <span className="text-muted-foreground">({totalWorth.rentSOL.toFixed(4)} SOL)</span>
+              </div>
+            </div>
+          </div>
+
           <div>
             <div className="text-sm text-muted-foreground">SOL Balance</div>
             <div className="flex items-center gap-2">
               <div className="text-lg">{solBalance.toFixed(4)} SOL</div>
-              <div className="text-sm text-muted-foreground">(${(solBalance * 235.19).toFixed(2)})</div>
+              <div className="text-sm text-muted-foreground">(${(solBalance * solPrice).toFixed(2)})</div>
             </div>
           </div>
 
@@ -204,12 +308,15 @@ export default function AccountOverview({
             <div className="text-sm text-muted-foreground">Token Balance</div>
             <div className="flex items-center gap-2">
               <div className="text-lg">{tokenAccounts.length} Tokens</div>
-              <div className="text-sm text-muted-foreground">($0.00)</div>
+              <div className="text-sm text-muted-foreground">(${totalWorth.tokenValue.toFixed(2)})</div>
             </div>
             {tokenAccounts && tokenAccounts.length > 0 && (
               <div className="mt-2 space-y-2">
                 {/* Display top 3 tokens with proper formatting */}
-                {tokenAccounts.slice(0, 3).map((token, index) => (
+                {tokenAccounts.slice(0, 3).map((token, index) => {
+                  const tokenPrice = token.mint ? (tokenPrices.get(token.mint) || 0) : 0;
+                  const tokenUsdValue = token.uiAmount * tokenPrice;
+                  return (
                   <div key={token.mint || index} className="bg-muted rounded-lg p-3">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -230,12 +337,13 @@ export default function AccountOverview({
                           {token.uiAmount?.toLocaleString() || '0'}
                         </div>
                         <div className="text-xs text-muted-foreground">
-                          {token.usdValue ? `$${token.usdValue.toFixed(2)}` : '$0.00'}
+                          {tokenUsdValue > 0 ? `$${tokenUsdValue.toFixed(2)}` : (token.usdValue ? `$${token.usdValue.toFixed(2)}` : '$0.00')}
                         </div>
                       </div>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {tokenAccounts.length > 3 && (
                   <div className="text-xs text-muted-foreground text-center py-2">
                     + {tokenAccounts.length - 3} more tokens

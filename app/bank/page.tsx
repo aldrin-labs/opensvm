@@ -7,10 +7,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { 
-  Wallet, 
-  Plus, 
-  RefreshCw, 
+import {
+  Wallet,
+  Plus,
+  RefreshCw,
   ArrowLeftRight,
   TrendingUp,
   Shield,
@@ -31,11 +31,25 @@ import {
   AlertTriangle,
   Sparkles,
   Network,
-  ArrowRightLeft
+  ArrowRightLeft,
+  Trash2,
+  Pencil,
+  Key,
+  X
 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { WalletFlowVisualization } from '@/components/bank/WalletFlowVisualization';
 import { AssetFlowTimeline } from '@/components/bank/AssetFlowTimeline';
 import { PortfolioHeatmap } from '@/components/bank/PortfolioHeatmap';
+import { SolIncinerator } from '@/components/bank/SolIncinerator';
+import { TransferModal } from '@/components/bank/TransferModal';
+import { HardwareWalletSettings } from '@/components/bank/HardwareWalletSettings';
+import { TransactionHistory } from '@/components/bank/TransactionHistory';
+import { SweepModal } from '@/components/bank/SweepModal';
+import { ScheduledTransfers } from '@/components/bank/ScheduledTransfers';
+import { DCAOrders } from '@/components/bank/DCAOrders';
+import { ConditionalTriggers } from '@/components/bank/ConditionalTriggers';
+import { KalshiTrading } from '@/components/bank/KalshiTrading';
 
 interface ManagedWallet {
   id: string;
@@ -68,12 +82,68 @@ export default function BankPage() {
   const [showPrivateKeys, setShowPrivateKeys] = useState<Record<string, boolean>>({});
   const [copiedAddress, setCopiedAddress] = useState<string | null>(null);
   const [showInsights, setShowInsights] = useState(true);
+  const [solPrice, setSolPrice] = useState<number>(180); // Optimistic default, updates on fetch
+
+  // CRUD state
+  const [editingWallet, setEditingWallet] = useState<string | null>(null);
+  const [editName, setEditName] = useState('');
+  const [deletingWallet, setDeletingWallet] = useState<string | null>(null);
+  const [exportingWallet, setExportingWallet] = useState<string | null>(null);
+  const [exportChallenge, setExportChallenge] = useState<string | null>(null);
+  const [exportedKey, setExportedKey] = useState<string | null>(null);
+  const [actionLoading, setActionLoading] = useState(false);
+
+  // Transfer state
+  const [transferWallet, setTransferWallet] = useState<ManagedWallet | null>(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+
+  // Settings state
+  const [expandedWalletSettings, setExpandedWalletSettings] = useState<string | null>(null);
+
+  // History, Sweep, Scheduled, DCA, Triggers state
+  const [historyWallet, setHistoryWallet] = useState<ManagedWallet | null>(null);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [showSweepModal, setShowSweepModal] = useState(false);
+  const [showScheduledModal, setShowScheduledModal] = useState(false);
+  const [showDCAModal, setShowDCAModal] = useState(false);
+  const [showTriggersModal, setShowTriggersModal] = useState(false);
+  const [showKalshiModal, setShowKalshiModal] = useState(false);
+
+  // Migration state
+  const [migrationStatus, setMigrationStatus] = useState<{
+    needsMigration: boolean;
+    v1Count: number;
+    v2Count: number;
+  } | null>(null);
+  const [migrating, setMigrating] = useState(false);
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/');
     }
   }, [isAuthenticated, authLoading, router]);
+
+  // Fetch SOL price - optimistic UI, updates in background
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      try {
+        const response = await fetch('https://price.jup.ag/v6/price?ids=So11111111111111111111111111111111111112');
+        if (response.ok) {
+          const data = await response.json();
+          const price = data?.data?.['So11111111111111111111111111111111111112']?.price;
+          if (typeof price === 'number' && price > 0) {
+            setSolPrice(price);
+          }
+        }
+      } catch {
+        // Silent failure - keep current price (optimistic default)
+      }
+    };
+    fetchSolPrice();
+    // Refresh every 60 seconds
+    const interval = setInterval(fetchSolPrice, 60000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const fetchWallets = async () => {
@@ -260,6 +330,150 @@ export default function BankPage() {
     setTimeout(() => setCopiedAddress(null), 2000);
   };
 
+  // Rename wallet handler
+  const handleRenameWallet = async (walletId: string) => {
+    if (!editName.trim()) return;
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bank/wallets/${walletId}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim() })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setWallets(wallets.map(w =>
+          w.id === walletId ? { ...w, name: data.wallet.name } : w
+        ));
+        setEditingWallet(null);
+        setEditName('');
+      }
+    } catch (error) {
+      console.error('Failed to rename wallet:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Delete wallet handler
+  const handleDeleteWallet = async (walletId: string) => {
+    setActionLoading(true);
+    try {
+      const response = await fetch(`/api/bank/wallets/${walletId}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        setWallets(wallets.filter(w => w.id !== walletId));
+        setDeletingWallet(null);
+      }
+    } catch (error) {
+      console.error('Failed to delete wallet:', error);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Export private key - Step 1: Get challenge
+  const handleExportKeyStart = async (walletId: string) => {
+    setExportingWallet(walletId);
+    setExportChallenge(null);
+    setExportedKey(null);
+    setActionLoading(true);
+
+    try {
+      const response = await fetch(`/api/bank/wallets/${walletId}/export`, {
+        credentials: 'include'
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setExportChallenge(data.challenge);
+      } else {
+        const error = await response.json();
+        console.error('Failed to get export challenge:', error);
+        setExportingWallet(null);
+      }
+    } catch (error) {
+      console.error('Failed to get export challenge:', error);
+      setExportingWallet(null);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Export private key - Step 2: Sign and submit
+  const handleExportKeySign = async () => {
+    if (!exportingWallet || !exportChallenge) return;
+
+    // This would need wallet adapter's signMessage function
+    // For now, we show instructions
+    alert('To export your private key:\n\n1. Copy the challenge message\n2. Sign it with your wallet\n3. Submit the signature\n\nThis feature requires wallet adapter integration.');
+  };
+
+  // Cancel export
+  const handleExportCancel = () => {
+    setExportingWallet(null);
+    setExportChallenge(null);
+    setExportedKey(null);
+  };
+
+  // Open transfer modal
+  const handleOpenTransfer = (wallet: ManagedWallet) => {
+    setTransferWallet(wallet);
+    setShowTransferModal(true);
+  };
+
+  // Check migration status
+  const checkMigrationStatus = async () => {
+    try {
+      const response = await fetch('/api/bank/wallets/migrate', {
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setMigrationStatus({
+          needsMigration: data.needsMigration,
+          v1Count: data.v1Count,
+          v2Count: data.v2Count
+        });
+      }
+    } catch (error) {
+      console.error('Failed to check migration status:', error);
+    }
+  };
+
+  // Run migration
+  const handleMigrateEncryption = async () => {
+    setMigrating(true);
+    try {
+      const response = await fetch('/api/bank/wallets/migrate', {
+        method: 'POST',
+        credentials: 'include'
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Migration result:', data);
+        // Refresh migration status
+        await checkMigrationStatus();
+      }
+    } catch (error) {
+      console.error('Migration failed:', error);
+    } finally {
+      setMigrating(false);
+    }
+  };
+
+  // Check migration status on load
+  useEffect(() => {
+    if (wallets.length > 0) {
+      checkMigrationStatus();
+    }
+  }, [wallets.length]);
+
   if (authLoading || loading) {
     return (
       <div className="min-h-screen bg-background p-4 md:p-8">
@@ -304,7 +518,53 @@ export default function BankPage() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button
+                  onClick={() => setShowScheduledModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Clock className="h-4 w-4" />
+                  Scheduled
+                </Button>
+                <Button
+                  onClick={() => setShowSweepModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                  disabled={wallets.length < 2}
+                >
+                  <Zap className="h-4 w-4" />
+                  Sweep
+                </Button>
+                <Button
+                  onClick={() => setShowDCAModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  DCA
+                </Button>
+                <Button
+                  onClick={() => setShowTriggersModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2"
+                >
+                  <Target className="h-4 w-4" />
+                  Triggers
+                </Button>
+                <Button
+                  onClick={() => setShowKalshiModal(true)}
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 bg-indigo-500/10 border-indigo-500/30 hover:bg-indigo-500/20"
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  Kalshi
+                </Button>
                 <Button
                   onClick={() => setShowInsights(!showInsights)}
                   variant="outline"
@@ -545,6 +805,9 @@ export default function BankPage() {
                 <h3 className="font-semibold text-blue-600 dark:text-blue-400 mb-1 flex items-center gap-2">
                   Enterprise-Grade Security
                   <Badge variant="outline" className="text-xs border-blue-500/30">AES-256-GCM</Badge>
+                  <span title="Learn more about our security measures">
+                    <Info className="h-4 w-4 text-blue-400 cursor-help" />
+                  </span>
                 </h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">
                   All private keys are encrypted using military-grade AES-256-GCM encryption with PBKDF2 key derivation (100,000 iterations). 
@@ -554,6 +817,9 @@ export default function BankPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* Sol Incinerator - Reclaim SOL from empty token accounts */}
+        <SolIncinerator />
 
         {/* Wallets List or Empty State */}
         {wallets.length === 0 ? (
@@ -630,6 +896,10 @@ export default function BankPage() {
                                 )}
                               </div>
                               <div className="flex items-center gap-2 mt-1">
+                                <span className="text-xs text-muted-foreground flex items-center gap-1" title="Created">
+                                  <Clock className="h-3 w-3" />
+                                  {new Date(wallet.createdAt).toLocaleDateString()}
+                                </span>
                                 <code className="text-xs bg-muted px-2 py-0.5 rounded font-mono">
                                   {wallet.address.slice(0, 8)}...{wallet.address.slice(-8)}
                                 </code>
@@ -705,7 +975,7 @@ export default function BankPage() {
                             </div>
                           </div>
                           <div className="text-right">
-                            <p className="text-sm text-muted-foreground">≈ ${(wallet.balance * 50).toFixed(2)}</p>
+                            <p className="text-sm text-muted-foreground">≈ ${(wallet.balance * solPrice).toFixed(2)}</p>
                           </div>
                         </div>
                       </div>
@@ -748,69 +1018,241 @@ export default function BankPage() {
                       )}
 
                       {/* Wallet Actions */}
-                      <div className="flex gap-2 pt-2 border-t">
+                      <div className="flex flex-wrap gap-2 pt-2 border-t">
                         <Button
-                          variant="outline"
+                          variant="default"
                           size="sm"
-                          className="flex-1 gap-2"
-                          onClick={() => togglePrivateKey(wallet.id)}
+                          className="gap-2 bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600"
+                          onClick={() => handleOpenTransfer(wallet)}
                         >
-                          {showPrivateKeys[wallet.id] ? (
-                            <>
-                              <EyeOff className="h-4 w-4" />
-                              Hide Key
-                            </>
-                          ) : (
-                            <>
-                              <Eye className="h-4 w-4" />
-                              Show Key
-                            </>
-                          )}
+                          <ArrowLeftRight className="h-4 w-4" />
+                          Transfer
                         </Button>
                         <Button
                           variant="outline"
                           size="sm"
                           className="gap-2"
-                          disabled
+                          onClick={() => {
+                            setEditingWallet(wallet.id);
+                            setEditName(wallet.name);
+                          }}
                         >
-                          <ArrowLeftRight className="h-4 w-4" />
-                          Transfer
+                          <Pencil className="h-4 w-4" />
+                          Rename
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => handleExportKeyStart(wallet.id)}
+                          disabled={actionLoading && exportingWallet === wallet.id}
+                        >
+                          <Key className="h-4 w-4" />
+                          Export Key
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => {
+                            setHistoryWallet(wallet);
+                            setShowHistoryModal(true);
+                          }}
+                        >
+                          <Clock className="h-4 w-4" />
+                          History
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => setExpandedWalletSettings(
+                            expandedWalletSettings === wallet.id ? null : wallet.id
+                          )}
+                        >
+                          <Shield className="h-4 w-4" />
+                          Security
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="gap-2 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          onClick={() => setDeletingWallet(wallet.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
                         </Button>
                       </div>
 
-                      {/* Private Key Display */}
-                      {showPrivateKeys[wallet.id] && (
-                        <div className="p-4 rounded-lg bg-red-500/5 border border-red-500/20">
-                          <div className="flex items-start gap-2 mb-2">
-                            <AlertCircle className="h-4 w-4 text-red-500 mt-0.5 flex-shrink-0" />
+                      {/* Hardware Wallet Settings (Expanded) */}
+                      {expandedWalletSettings === wallet.id && (
+                        <div className="pt-4">
+                          <HardwareWalletSettings
+                            walletId={wallet.id}
+                            walletAddress={wallet.address}
+                            walletName={wallet.name}
+                            onUpdate={handleRefreshBalances}
+                          />
+                        </div>
+                      )}
+
+                      {/* Rename Dialog */}
+                      {editingWallet === wallet.id && (
+                        <div className="p-4 rounded-lg bg-blue-500/5 border border-blue-500/20">
+                          <div className="flex items-center gap-2 mb-3">
+                            <Pencil className="h-4 w-4 text-blue-500" />
+                            <span className="text-sm font-semibold text-blue-600 dark:text-blue-400">
+                              Rename Wallet
+                            </span>
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              value={editName}
+                              onChange={(e) => setEditName(e.target.value)}
+                              placeholder="Enter new name"
+                              className="flex-1 h-9"
+                              maxLength={50}
+                            />
+                            <Button
+                              size="sm"
+                              onClick={() => handleRenameWallet(wallet.id)}
+                              disabled={actionLoading || !editName.trim()}
+                            >
+                              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingWallet(null);
+                                setEditName('');
+                              }}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Delete Confirmation */}
+                      {deletingWallet === wallet.id && (
+                        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+                          <div className="flex items-start gap-2 mb-3">
+                            <AlertTriangle className="h-5 w-5 text-red-500 flex-shrink-0" />
                             <div className="flex-1">
-                              <p className="text-xs font-semibold text-red-600 dark:text-red-400">
-                                Private Key - Keep Secure!
+                              <p className="text-sm font-semibold text-red-600 dark:text-red-400">
+                                Delete Wallet?
                               </p>
                               <p className="text-xs text-muted-foreground mt-1">
-                                Never share this key. Anyone with access can control your funds.
+                                This will permanently remove this wallet from your account.
+                                Make sure to export your private key first if you need it.
                               </p>
                             </div>
                           </div>
-                          <div className="mt-3 p-3 rounded bg-background border border-border">
-                            <div className="flex items-center justify-between gap-2">
-                              <code className="text-xs font-mono break-all flex-1">
-                                [Encrypted - Contact API to decrypt]
-                              </code>
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => handleDeleteWallet(wallet.id)}
+                              disabled={actionLoading}
+                              className="gap-2"
+                            >
+                              {actionLoading ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4" />
+                              )}
+                              Delete Forever
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => setDeletingWallet(null)}
+                            >
+                              Cancel
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Export Key Dialog */}
+                      {exportingWallet === wallet.id && (
+                        <div className="p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                          <div className="flex items-start gap-2 mb-3">
+                            <Key className="h-5 w-5 text-amber-500 flex-shrink-0" />
+                            <div className="flex-1">
+                              <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                                Export Private Key
+                              </p>
+                              <p className="text-xs text-muted-foreground mt-1">
+                                Sign the challenge message below with your wallet to prove ownership.
+                              </p>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0"
+                              onClick={handleExportCancel}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          {exportChallenge && !exportedKey && (
+                            <div className="space-y-3">
+                              <div className="p-3 rounded bg-background border border-border">
+                                <p className="text-xs text-muted-foreground mb-2">Challenge to sign:</p>
+                                <code className="text-xs font-mono break-all whitespace-pre-wrap">
+                                  {exportChallenge}
+                                </code>
+                              </div>
+                              <div className="flex gap-2">
+                                <Button
+                                  size="sm"
+                                  className="gap-2"
+                                  onClick={() => copyToClipboard(exportChallenge, `challenge-${wallet.id}`)}
+                                >
+                                  {copiedAddress === `challenge-${wallet.id}` ? (
+                                    <CheckCircle2 className="h-4 w-4" />
+                                  ) : (
+                                    <Copy className="h-4 w-4" />
+                                  )}
+                                  Copy Challenge
+                                </Button>
+                              </div>
+                              <p className="text-xs text-muted-foreground">
+                                After signing, submit the signature via the API endpoint or use a wallet adapter integration.
+                              </p>
+                            </div>
+                          )}
+
+                          {exportedKey && (
+                            <div className="space-y-3">
+                              <div className="p-3 rounded bg-red-500/10 border border-red-500/30">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <AlertCircle className="h-4 w-4 text-red-500" />
+                                  <span className="text-xs font-semibold text-red-500">
+                                    Your Private Key
+                                  </span>
+                                </div>
+                                <code className="text-xs font-mono break-all">
+                                  {exportedKey}
+                                </code>
+                              </div>
                               <Button
-                                variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 flex-shrink-0"
-                                onClick={() => copyToClipboard('[ENCRYPTED_KEY]', `key-${wallet.id}`)}
+                                className="gap-2"
+                                onClick={() => copyToClipboard(exportedKey, `exported-${wallet.id}`)}
                               >
-                                {copiedAddress === `key-${wallet.id}` ? (
-                                  <CheckCircle2 className="h-4 w-4 text-green-500" />
+                                {copiedAddress === `exported-${wallet.id}` ? (
+                                  <CheckCircle2 className="h-4 w-4" />
                                 ) : (
                                   <Copy className="h-4 w-4" />
                                 )}
+                                Copy Private Key
                               </Button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </CardContent>
@@ -820,7 +1262,109 @@ export default function BankPage() {
             </div>
           </div>
         )}
+
+        {/* Migration Banner */}
+        {migrationStatus?.needsMigration && (
+          <div className="mt-6 p-4 rounded-lg bg-amber-500/10 border border-amber-500/30">
+            <div className="flex items-start gap-3">
+              <Shield className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-amber-600 dark:text-amber-400">
+                  Security Upgrade Available
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {migrationStatus.v1Count} wallet(s) can be upgraded to improved encryption (v2).
+                  This adds random salt to each encrypted key for better security.
+                </p>
+                <Button
+                  size="sm"
+                  onClick={handleMigrateEncryption}
+                  disabled={migrating}
+                  className="mt-3 gap-2 bg-amber-600 hover:bg-amber-700"
+                >
+                  {migrating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Upgrading...
+                    </>
+                  ) : (
+                    <>
+                      <Shield className="h-4 w-4" />
+                      Upgrade Encryption
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Transfer Modal */}
+      {transferWallet && (
+        <TransferModal
+          isOpen={showTransferModal}
+          onClose={() => {
+            setShowTransferModal(false);
+            setTransferWallet(null);
+          }}
+          sourceWallet={transferWallet}
+          availableWallets={wallets}
+          solPrice={solPrice}
+          onTransferComplete={() => {
+            refreshBalances();
+          }}
+        />
+      )}
+
+      {/* Transaction History Modal */}
+      {historyWallet && (
+        <TransactionHistory
+          walletId={historyWallet.id}
+          walletAddress={historyWallet.address}
+          walletName={historyWallet.name}
+          isOpen={showHistoryModal}
+          onClose={() => {
+            setShowHistoryModal(false);
+            setHistoryWallet(null);
+          }}
+        />
+      )}
+
+      {/* Sweep Modal */}
+      <SweepModal
+        isOpen={showSweepModal}
+        onClose={() => setShowSweepModal(false)}
+        wallets={wallets}
+        onSweepComplete={() => handleRefreshBalances()}
+      />
+
+      {/* Scheduled Transfers Modal */}
+      <ScheduledTransfers
+        wallets={wallets}
+        isOpen={showScheduledModal}
+        onClose={() => setShowScheduledModal(false)}
+      />
+
+      {/* DCA Orders Modal */}
+      <DCAOrders
+        wallets={wallets}
+        isOpen={showDCAModal}
+        onClose={() => setShowDCAModal(false)}
+      />
+
+      {/* Conditional Triggers Modal */}
+      <ConditionalTriggers
+        wallets={wallets}
+        isOpen={showTriggersModal}
+        onClose={() => setShowTriggersModal(false)}
+      />
+
+      {/* Kalshi Trading Modal */}
+      <KalshiTrading
+        isOpen={showKalshiModal}
+        onClose={() => setShowKalshiModal(false)}
+      />
     </div>
   );
 }
