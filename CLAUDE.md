@@ -13,6 +13,7 @@ npm run build:fast       # Quick build without optimizations
 # Testing
 npm test                 # Jest unit tests (uses 4GB heap)
 npm test -- path/to/test # Run specific test file
+npm run test:api         # DEX aggregator API tests
 npm run test:e2e         # Playwright E2E tests
 npm run test:e2e:ui      # Playwright interactive UI
 
@@ -20,17 +21,27 @@ npm run test:e2e:ui      # Playwright interactive UI
 npm run lint             # ESLint
 ```
 
+## Environment Setup
+
+Copy `.example.env` to `.env.local` and configure required keys:
+- `TOGETHER_API_KEY` - Primary AI service
+- `ANTHROPIC_API_KEY` - Fallback AI service
+- `BIRDEYE_API_KEY` - Market data for DEX APIs
+- `QDRANT_URL`, `QDRANT_API_KEY` - Vector database
+
 ## Architecture Overview
 
 OpenSVM is a Solana blockchain explorer with AI-powered analytics, built on Next.js 15 App Router.
 
 ### Directory Structure
-- `/app/` - Next.js pages and API routes (60+ API endpoints)
+- `/app/` - Next.js pages and API routes (100+ API endpoints)
 - `/app/api/` - Backend APIs for blockchain data, AI services, analytics
 - `/components/` - React components with feature-based organization
 - `/components/transaction-graph/` - GPU-accelerated WebGL graph visualization
 - `/lib/` - Core utilities: Solana integration, caching, AI services
 - `/types/` - Shared TypeScript definitions
+- `/__tests__/` - Jest test suites
+- `/e2e/` - Playwright E2E tests
 
 ### Key Technical Stack
 - **Blockchain**: @solana/web3.js with connection pooling, SPL Token, Anchor
@@ -59,9 +70,11 @@ Routes in `/app/api/` follow REST conventions:
 - Implement error boundaries for fault tolerance
 
 ### Styling
-- Use theme-aware semantic colors: `text-success`, `bg-info/10`, `text-destructive`
-- Never use hardcoded Tailwind colors like `text-green-600` or `bg-blue-100`
-- 5 themes available: high-contrast, paper, dos-blue, cyberpunk, solarized
+- Use theme-aware semantic colors from CSS variables, never hardcoded Tailwind colors
+- Available semantic colors: `primary`, `secondary`, `muted`, `accent`, `destructive`, `success`, `warning`, `info`
+- Usage patterns: `text-success`, `bg-info/10`, `border-destructive`, `text-muted-foreground`
+- Never use: `text-green-600`, `bg-blue-100`, `text-red-500` (breaks theming)
+- 5 themes: high-contrast, paper, dos-blue, cyberpunk, solarized
 
 ### Netlify Deployment
 - Never add CORS headers unless explicitly requested
@@ -94,6 +107,12 @@ npm run install:force
 
 # Qdrant connection issues
 npm run fix-qdrant
+
+# Port already in use
+lsof -ti:3000 | xargs kill -9
+
+# Run dev on different port
+npm run dev -- -p 3004
 ```
 
 ## MANDATORY: End Every Response with "What's Next" Suggestions
