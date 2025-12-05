@@ -22,6 +22,8 @@ module.exports = {
   },
   moduleNameMapper: {
     "^@/(.*)$": "<rootDir>/$1",
+    // Map relative .js imports to .ts files in api/src (for ESM compatibility)
+    "^(\\.{1,2}/.*)\\.js$": "$1",
     // Mock problematic ESM modules
     "^react-markdown$": "<rootDir>/__mocks__/react-markdown.js",
     "^react-force-graph-3d$": "<rootDir>/__mocks__/react-force-graph-3d.js",
