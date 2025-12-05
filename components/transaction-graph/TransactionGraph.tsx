@@ -30,8 +30,10 @@ import {
   useCloudView,
   useLayoutManager,
   useGraphInitialization,
-  useNavigationHistory
+  useNavigationHistory,
+  useAccountGraphCache
 } from './hooks';
+import { MultiAccountPanel } from './MultiAccountPanel';
 import { useHoverCache } from './hooks/useHoverCache';
 
 // Constants
@@ -225,6 +227,21 @@ const CytoscapeContainer = React.memo(() => {
     runLayout,
     cleanupLayout
   } = useLayoutManager();
+
+  // Account graph caching for instant navigation
+  const {
+    getCachedGraph,
+    saveCurrentState,
+    restoreFromCache,
+    hasCachedGraph,
+    isMorphing,
+    multiAccountView,
+    addAccountToMultiView,
+    removeAccountFromMultiView,
+    toggleMultiAccountView,
+    calculateMultiAccountConnections,
+    buildMultiAccountGraph
+  } = useAccountGraphCache();
   // Graph initialization hook
   const {
     cyRef,
@@ -1462,9 +1479,7 @@ const CytoscapeContainer = React.memo(() => {
 
         if (!cytoscapeContainer || !isMounted) {
           debugLog('Cytoscape container not found or component unmounted');
-          if (isMounted) {
-            setError('Graph container could not be initialized. This may be expected in some test environments.');
-          }
+          // Don't show error - just wait for container to be ready or retry
           return;
         }
 
@@ -1680,6 +1695,68 @@ const CytoscapeContainer = React.memo(() => {
     };
   }, [initialSignature, initialAccount, isInitialized, useGPUGraph, isCloudView, initializeGraph, processTransactionData, wrappedOnTransactionSelect, wrappedOnAccountSelect, updateGPUGraphData, runLayoutWithProgress, cyRef, fetchAccountData, fetchData, initialTransactionData, hideEdgeTooltip, hoverCache, saveViewportState, showEdgeTooltip, trackHoverPerformance]);
 
+  // Handle account changes - refetch data when initialAccount prop changes
+  // Uses caching for instant back-navigation and morphing transitions
+  const prevAccountRef = useRef<string | null>(null);
+  useEffect(() => {
+    // Skip if not initialized or no account provided
+    if (!isInitialized || !initialAccount || isCloudView) return;
+
+    // Skip if this is the initial load (handled by initialization effect)
+    if (prevAccountRef.current === null) {
+      prevAccountRef.current = initialAccount;
+      return;
+    }
+
+    // Skip if account hasn't changed
+    if (prevAccountRef.current === initialAccount) return;
+
+    const previousAccount = prevAccountRef.current;
+    debugLog('Account changed, checking cache:', {
+      from: previousAccount,
+      to: initialAccount
+    });
+
+    prevAccountRef.current = initialAccount;
+
+    // Save current state to cache before switching
+    if (cyRef.current && previousAccount) {
+      debugLog('Saving current state to cache for:', previousAccount);
+      saveCurrentState(previousAccount, cyRef.current);
+    }
+
+    // Check if we have cached data for the new account
+    const hasCached = hasCachedGraph(initialAccount);
+    debugLog('Cache check for new account:', { account: initialAccount, hasCached });
+
+    if (hasCached && cyRef.current) {
+      // Restore from cache with morphing animation
+      debugLog('Restoring from cache with morphing animation');
+      restoreFromCache(initialAccount, cyRef.current, true).then((restored) => {
+        if (restored) {
+          debugLog('Successfully restored from cache');
+          updateGPUGraphData(cyRef.current!);
+        } else {
+          // Fallback to fetch if restore failed
+          debugLog('Cache restore failed, fetching fresh data');
+          if (cyRef.current) {
+            cyRef.current.elements().remove();
+            updateGPUGraphData(cyRef.current);
+          }
+          fetchAccountData(initialAccount);
+        }
+      });
+    } else {
+      // No cache - clear and fetch new data
+      debugLog('No cache available, fetching fresh data');
+      if (cyRef.current) {
+        cyRef.current.elements().remove();
+        updateGPUGraphData(cyRef.current);
+      }
+      fetchAccountData(initialAccount);
+    }
+  }, [initialAccount, isInitialized, isCloudView, fetchAccountData, updateGPUGraphData, cyRef, hasCachedGraph, restoreFromCache, saveCurrentState]);
+
   // Enhanced timeout protection for loading with recovery
   useEffect(() => {
     if (!isLoading) return;
@@ -1704,10 +1781,12 @@ const CytoscapeContainer = React.memo(() => {
             // Force GPU graph update using existing hook function
             updateGPUGraphData(currentCy);
           } else {
-            setError('Graph loading timed out. No data could be loaded. This may be expected for accounts with limited activity.');
+            // Don't show error for accounts that might just have no data yet
+            debugLog('Graph loading timed out with no data');
           }
         } else {
-          setError('Graph container not initialized. This may be expected during page load.');
+          // Don't show alarming error - just log it
+          debugLog('Graph container not ready during timeout');
         }
       }
     }, 20000); // Increased to 20 seconds for test stability
@@ -1916,6 +1995,43 @@ const CytoscapeContainer = React.memo(() => {
           onStopTracking={stopTrackingAddress}
         />
       ) : null}
+
+      {/* Morphing transition overlay */}
+      {isMorphing && (
+        <div className="absolute inset-0 bg-background/30 backdrop-blur-[1px] z-15 pointer-events-none flex items-center justify-center">
+          <div className="px-4 py-2 bg-background/90 rounded-lg border border-border shadow-lg">
+            <div className="flex items-center gap-2">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-sm text-muted-foreground">Transitioning...</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Multi-Account View Panel */}
+      <MultiAccountPanel
+        multiAccountView={multiAccountView}
+        currentAccount={initialAccount || ''}
+        onAddAccount={(account) => {
+          addAccountToMultiView(account);
+          // Pre-fetch data for the added account
+          if (!hasCachedGraph(account)) {
+            // We could optionally pre-fetch here
+          }
+        }}
+        onRemoveAccount={removeAccountFromMultiView}
+        onToggleView={toggleMultiAccountView}
+        onBuildMultiView={() => {
+          if (cyRef.current && multiAccountView.accounts.length >= 2) {
+            // Calculate connections between accounts
+            calculateMultiAccountConnections(multiAccountView.accounts);
+            // Build the merged multi-account graph
+            buildMultiAccountGraph(cyRef.current, multiAccountView.accounts);
+            updateGPUGraphData(cyRef.current);
+          }
+        }}
+        className="hidden lg:block"
+      />
 
       {/* Graph Controls */}
       <GraphControls
