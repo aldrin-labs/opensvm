@@ -6,6 +6,9 @@ import { TrackingStatsPanel } from './TrackingStatsPanel';
 import TransactionGraphClouds from './TransactionGraphClouds';
 import { GraphStateCache } from '@/lib/caching/graph-state-cache';
 
+// Import CSS for graph features
+import './graph-features.css';
+
 
 
 import type { TransactionGraphProps, AccountData } from './types';
@@ -31,9 +34,27 @@ import {
   useLayoutManager,
   useGraphInitialization,
   useNavigationHistory,
-  useAccountGraphCache
+  useAccountGraphCache,
+  useGraphKeyboardShortcuts,
+  usePrefetchAccounts,
+  usePathFinding,
+  useRealtimeGraphUpdates,
+  useGraphExport,
+  useGraphFiltering,
+  useClusterDetection,
+  useGraphAnalytics,
+  useDataEnrichment,
+  useInvestigationTools,
+  useAISearch
 } from './hooks';
 import { MultiAccountPanel } from './MultiAccountPanel';
+import { PathFindingPanel } from './PathFindingPanel';
+import { RealtimePanel } from './RealtimePanel';
+import { AnalyticsPanel } from './AnalyticsPanel';
+import { FilterPanel } from './FilterPanel';
+import { ExportPanel } from './ExportPanel';
+import { InvestigationPanel } from './InvestigationPanel';
+import { AISearchPanel } from './AISearchPanel';
 import { useHoverCache } from './hooks/useHoverCache';
 
 // Constants
@@ -242,6 +263,136 @@ const CytoscapeContainer = React.memo(() => {
     calculateMultiAccountConnections,
     buildMultiAccountGraph
   } = useAccountGraphCache();
+
+  // Prefetch accounts on hover for instant navigation
+  const {
+    isPrefetched,
+    getPrefetchedData,
+    onAccountHoverStart,
+    onAccountHoverEnd,
+    prefetchMultiple
+  } = usePrefetchAccounts();
+
+  // Path finding between accounts
+  const {
+    isPathFindingMode,
+    sourceAccount: pathSource,
+    targetAccount: pathTarget,
+    paths: foundPaths,
+    isSearching: isPathSearching,
+    error: pathError,
+    togglePathFindingMode,
+    exitPathFindingMode,
+    handleNodeClickInPathMode,
+    searchPaths,
+    highlightPath,
+    clearHighlights,
+    swapSourceTarget,
+    clearSelection: clearPathSelection
+  } = usePathFinding();
+
+  // Real-time WebSocket updates
+  const {
+    isConnected: wsConnected,
+    isSubscribed: wsSubscribed,
+    subscribedAccounts: wsSubscribedAccounts,
+    pendingTransactions: wsPendingTx,
+    lastUpdate: wsLastUpdate,
+    error: wsError,
+    stats: wsStats,
+    connect: wsConnect,
+    disconnect: wsDisconnect,
+    toggleRealtimeForAccount,
+    setCytoscapeRef: setWsCyRef,
+    clearPendingTransactions
+  } = useRealtimeGraphUpdates();
+
+  // Graph export functionality
+  const {
+    exportPNG,
+    exportSVG,
+    exportJSON,
+    importJSON,
+    copyAddresses,
+    copySignatures,
+    generateShareURL
+  } = useGraphExport();
+
+  // Advanced graph filtering
+  const {
+    advancedFilters,
+    availableTokens,
+    isPlayingTimeline,
+    currentFrame,
+    totalFrames,
+    playbackSpeed,
+    updateAdvancedFilter,
+    toggleToken,
+    applyAdvancedFilters,
+    resetAdvancedFilters,
+    startTimelinePlayback,
+    stopTimelinePlayback,
+    setTimelineFrame,
+    setTimelinePlaybackSpeed
+  } = useGraphFiltering();
+
+  // Cluster detection
+  const {
+    clusters,
+    superNodes,
+    isDetecting: isDetectingClusters,
+    detectClusters,
+    highlightCluster,
+    collapseCluster,
+    expandCluster,
+    clearClusters
+  } = useClusterDetection();
+
+  // Graph analytics
+  const {
+    graphMetrics,
+    isCalculatingMetrics,
+    calculateMetrics,
+    colorByMetric,
+    sizeByMetric,
+    highlightNodeByMetric
+  } = useGraphAnalytics();
+
+  // Data enrichment
+  const {
+    enrichedNodes,
+    isEnriching,
+    enrichGraph,
+    getEntityLabel,
+    getWhaleStatus,
+    getRiskLevel
+  } = useDataEnrichment();
+
+  // Investigation tools
+  const {
+    walletProfile,
+    washTradingResults,
+    mevResults,
+    firstFunderResult,
+    isInvestigating,
+    profileWallet,
+    detectWashTrading,
+    detectMEV,
+    traceFirstFunder,
+    clearInvestigation
+  } = useInvestigationTools();
+
+  // AI Search
+  const {
+    isSearching: isAISearching,
+    lastSearchResult,
+    searchHistory: aiSearchHistory,
+    suggestions: aiSuggestions,
+    performSearch: performAISearch,
+    clearSearch: clearAISearch,
+    getSuggestions: getAISuggestions
+  } = useAISearch();
+
   // Graph initialization hook
   const {
     cyRef,
@@ -353,6 +504,45 @@ const CytoscapeContainer = React.memo(() => {
       }
     }
   });
+
+  // Keyboard shortcuts for power users
+  useGraphKeyboardShortcuts({
+    onNavigateBack: canGoBack ? navigateBack : undefined,
+    onNavigateForward: canGoForward ? navigateForward : undefined,
+    onGoHome: goHome,
+    onToggleMultiView: toggleMultiAccountView,
+    onToggleFullscreen: toggleFullscreen,
+    onZoomIn: () => {
+      if (cyRef.current) {
+        cyRef.current.zoom({
+          level: cyRef.current.zoom() * 1.2,
+          renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 }
+        });
+      }
+    },
+    onZoomOut: () => {
+      if (cyRef.current) {
+        cyRef.current.zoom({
+          level: cyRef.current.zoom() * 0.8,
+          renderedPosition: { x: cyRef.current.width() / 2, y: cyRef.current.height() / 2 }
+        });
+      }
+    },
+    onFitGraph: () => cyRef.current?.fit(),
+    onResetView: () => cyRef.current?.reset(),
+    onTogglePathFinding: togglePathFindingMode,
+    onEscapePathFinding: exitPathFindingMode,
+    isPathFindingMode,
+    onSelectAll: () => cyRef.current?.nodes().select(),
+    onDeselectAll: () => cyRef.current?.elements().unselect()
+  });
+
+  // Set cytoscape ref for WebSocket real-time updates
+  React.useEffect(() => {
+    if (cyRef.current) {
+      setWsCyRef(cyRef.current);
+    }
+  }, [cyRef.current, setWsCyRef]);
 
   // Wrapper for GPU node click that adds to history
   const handleGPUNodeClickWithHistory = (node: any) => {
@@ -1905,36 +2095,98 @@ const CytoscapeContainer = React.memo(() => {
         </div>
       )}
 
-      {/* Enhanced Loading overlay with better animations */}
+      {/* Enhanced Loading overlay with progress phases and better UX */}
       {isLoading && !useGPUGraph ? (
         <div
           key="loading-overlay"
           className="absolute inset-0 bg-gradient-to-br from-background/90 to-background/80 backdrop-blur-sm z-20 flex items-center justify-center"
+          data-testid="graph-loading-overlay"
         >
-          <div className="text-center bg-card/95 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-border/50 max-w-sm">
-            <div className="relative mb-6">
-              <div className="w-12 h-12 border-4 border-primary/20 rounded-full"></div>
-              <div className="absolute inset-0 w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-center bg-card/95 backdrop-blur-sm p-8 rounded-xl shadow-2xl border border-border/50 max-w-md w-full mx-4">
+            {/* Dual spinner animation */}
+            <div className="relative mb-6 mx-auto w-16 h-16">
+              <div className="absolute inset-0 w-16 h-16 border-4 border-primary/20 rounded-full animate-pulse"></div>
+              <div className="absolute inset-0 w-16 h-16 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute inset-2 w-12 h-12 border-4 border-primary/30 border-b-transparent rounded-full animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
             </div>
+
             <h3 className="text-lg font-semibold text-foreground mb-2">Processing Graph</h3>
-            <p className="text-sm text-muted-foreground mb-4">{progressMessage}</p>
+
+            {/* Phase indicator */}
+            <div className="flex justify-center gap-3 mb-4">
+              {['Fetching', 'Processing', 'Rendering'].map((phase, i) => {
+                const currentPhase = progress < 30 ? 0 : progress < 70 ? 1 : 2;
+                return (
+                  <div key={phase} className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full transition-all duration-300 ${
+                      i < currentPhase ? 'bg-success' :
+                      i === currentPhase ? 'bg-primary animate-pulse' :
+                      'bg-muted'
+                    }`} />
+                    <span className={`text-xs ${i === currentPhase ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                      {phase}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+
+            <p className="text-sm text-muted-foreground mb-4">{progressMessage || 'Loading transaction data...'}</p>
+
+            {/* Enhanced progress bar with shimmer */}
             {progress > 0 && (
-              <div className="w-64 h-3 bg-muted rounded-full mt-4 overflow-hidden">
-                <div
-                  className="h-full bg-gradient-to-r from-primary to-primary/80 rounded-full transition-all duration-500 ease-out"
-                  style={{ width: `${progress}%` }}
-                ></div>
-                <p className="text-xs text-center mt-2 font-medium">{progress}%</p>
+              <div className="w-full mb-4">
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-primary via-primary/80 to-primary rounded-full transition-all duration-500 ease-out relative"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1.5">
+                  <span className="text-xs text-muted-foreground">{progress}% complete</span>
+                  {progress > 0 && progress < 95 && (
+                    <span className="text-xs text-muted-foreground">
+                      ~{Math.max(1, Math.ceil((100 - progress) / 12))}s remaining
+                    </span>
+                  )}
+                </div>
               </div>
             )}
+
+            {/* Account processing stats */}
             {expandedNodesCount > 0 && (
-              <div className="mt-4 p-3 bg-muted/50 rounded-lg">
-                <p className="text-xs text-muted-foreground">
-                  Processed <span className="font-semibold text-foreground">{expandedNodesCount}</span> of{' '}
-                  <span className="font-semibold text-foreground">{totalAccountsToLoad || '?'}</span> accounts
-                </p>
+              <div className="p-3 bg-muted/50 rounded-lg mb-4">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Accounts processed</p>
+                  <p className="text-sm font-semibold text-foreground">
+                    {expandedNodesCount} / {totalAccountsToLoad || '?'}
+                  </p>
+                </div>
+                <div className="h-1 bg-muted rounded-full mt-2 overflow-hidden">
+                  <div
+                    className="h-full bg-success rounded-full transition-all duration-300"
+                    style={{ width: `${totalAccountsToLoad ? Math.min(100, (expandedNodesCount / totalAccountsToLoad) * 100) : 50}%` }}
+                  />
+                </div>
               </div>
             )}
+
+            {/* Tips while loading */}
+            <p className="text-xs text-muted-foreground/70 italic mb-3">
+              Complex accounts with many transactions may take longer
+            </p>
+
+            {/* Cancel button */}
+            <button
+              onClick={() => {
+                setIsLoading(false);
+                setProgress(0);
+                setProgressMessage('');
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors underline-offset-2 hover:underline"
+            >
+              Cancel loading
+            </button>
           </div>
         </div>
       ) : null}
@@ -2031,6 +2283,234 @@ const CytoscapeContainer = React.memo(() => {
           }
         }}
         className="hidden lg:block"
+      />
+
+      {/* Path Finding Panel */}
+      <PathFindingPanel
+        isActive={isPathFindingMode}
+        sourceAccount={pathSource}
+        targetAccount={pathTarget}
+        paths={foundPaths}
+        isSearching={isPathSearching}
+        error={pathError}
+        onToggle={togglePathFindingMode}
+        onExit={exitPathFindingMode}
+        onSearch={(mode) => {
+          if (cyRef.current) {
+            searchPaths(cyRef.current, mode);
+          }
+        }}
+        onSwap={swapSourceTarget}
+        onClear={() => {
+          clearPathSelection();
+          if (cyRef.current) {
+            clearHighlights(cyRef.current);
+          }
+        }}
+        onHighlightPath={(index) => {
+          if (cyRef.current) {
+            highlightPath(cyRef.current, index);
+          }
+        }}
+      />
+
+      {/* Real-time Updates Panel */}
+      <RealtimePanel
+        isConnected={wsConnected}
+        isSubscribed={wsSubscribed}
+        subscribedAccounts={wsSubscribedAccounts}
+        pendingTransactions={wsPendingTx}
+        lastUpdate={wsLastUpdate}
+        error={wsError}
+        stats={wsStats}
+        currentAccount={initialAccount || ''}
+        onConnect={wsConnect}
+        onDisconnect={wsDisconnect}
+        onToggleAccount={toggleRealtimeForAccount}
+        onClearTransactions={clearPendingTransactions}
+      />
+
+      {/* Analytics Panel */}
+      <AnalyticsPanel
+        metrics={graphMetrics}
+        isCalculating={isCalculatingMetrics}
+        onCalculate={() => {
+          if (cyRef.current) {
+            calculateMetrics(cyRef.current);
+          }
+        }}
+        onColorByMetric={(metric) => {
+          if (cyRef.current) {
+            colorByMetric(cyRef.current, metric);
+          }
+        }}
+        onSizeByMetric={(metric) => {
+          if (cyRef.current) {
+            sizeByMetric(cyRef.current, metric);
+          }
+        }}
+        onHighlightNode={(nodeId) => {
+          if (cyRef.current) {
+            highlightNodeByMetric(cyRef.current, nodeId);
+          }
+        }}
+      />
+
+      {/* Advanced Filter Panel */}
+      <FilterPanel
+        filters={advancedFilters}
+        availableTokens={availableTokens}
+        isPlaying={isPlayingTimeline}
+        currentFrame={currentFrame}
+        totalFrames={totalFrames}
+        playbackSpeed={playbackSpeed}
+        onUpdateFilter={updateAdvancedFilter}
+        onToggleToken={toggleToken}
+        onApplyFilters={() => {
+          if (cyRef.current) {
+            applyAdvancedFilters(cyRef.current);
+          }
+        }}
+        onResetFilters={() => {
+          if (cyRef.current) {
+            resetAdvancedFilters(cyRef.current);
+          }
+        }}
+        onStartPlayback={() => {
+          if (cyRef.current) {
+            startTimelinePlayback(cyRef.current);
+          }
+        }}
+        onStopPlayback={stopTimelinePlayback}
+        onSetFrame={(frame) => {
+          if (cyRef.current) {
+            setTimelineFrame(cyRef.current, frame);
+          }
+        }}
+        onSetPlaybackSpeed={setTimelinePlaybackSpeed}
+      />
+
+      {/* Export Panel */}
+      <ExportPanel
+        onExportPNG={(options) => {
+          if (cyRef.current) {
+            exportPNG(cyRef.current, options);
+          }
+        }}
+        onExportSVG={() => {
+          if (cyRef.current) {
+            exportSVG(cyRef.current);
+          }
+        }}
+        onExportJSON={(includeMetadata) => {
+          if (cyRef.current) {
+            exportJSON(cyRef.current, includeMetadata);
+          }
+        }}
+        onImportJSON={(file) => {
+          if (cyRef.current) {
+            importJSON(cyRef.current, file);
+          }
+        }}
+        onCopyAddresses={() => {
+          if (cyRef.current) {
+            copyAddresses(cyRef.current);
+          }
+        }}
+        onCopySignatures={() => {
+          if (cyRef.current) {
+            copySignatures(cyRef.current);
+          }
+        }}
+        onGenerateShareURL={() => {
+          if (cyRef.current) {
+            return generateShareURL(cyRef.current);
+          }
+          return '';
+        }}
+      />
+
+      {/* Investigation Panel */}
+      <InvestigationPanel
+        walletProfile={walletProfile}
+        washTradingResults={washTradingResults}
+        mevResults={mevResults}
+        firstFunderResult={firstFunderResult}
+        clusters={clusters}
+        isInvestigating={isInvestigating}
+        isDetectingClusters={isDetectingClusters}
+        currentAccount={initialAccount || ''}
+        onProfileWallet={(address) => {
+          if (cyRef.current) {
+            profileWallet(cyRef.current, address);
+          }
+        }}
+        onDetectWashTrading={() => {
+          if (cyRef.current) {
+            detectWashTrading(cyRef.current);
+          }
+        }}
+        onDetectMEV={() => {
+          if (cyRef.current) {
+            detectMEV(cyRef.current);
+          }
+        }}
+        onTraceFirstFunder={(address) => {
+          if (cyRef.current) {
+            traceFirstFunder(cyRef.current, address);
+          }
+        }}
+        onDetectClusters={() => {
+          if (cyRef.current) {
+            detectClusters(cyRef.current);
+          }
+        }}
+        onHighlightCluster={(clusterId) => {
+          if (cyRef.current) {
+            highlightCluster(cyRef.current, clusterId);
+          }
+        }}
+        onCollapseCluster={(clusterId) => {
+          if (cyRef.current) {
+            collapseCluster(cyRef.current, clusterId);
+          }
+        }}
+        onExpandCluster={(clusterId) => {
+          if (cyRef.current) {
+            expandCluster(cyRef.current, clusterId);
+          }
+        }}
+        onClearInvestigation={clearInvestigation}
+        onClearClusters={() => {
+          if (cyRef.current) {
+            clearClusters(cyRef.current);
+          }
+        }}
+        onEnrichGraph={() => {
+          if (cyRef.current) {
+            enrichGraph(cyRef.current);
+          }
+        }}
+      />
+
+      {/* AI Search Panel */}
+      <AISearchPanel
+        isSearching={isAISearching}
+        lastResult={lastSearchResult}
+        searchHistory={aiSearchHistory}
+        suggestions={aiSuggestions}
+        onSearch={(query) => {
+          if (cyRef.current) {
+            performAISearch(cyRef.current, query);
+          }
+        }}
+        onClearSearch={clearAISearch}
+        onGetSuggestions={() => {
+          if (cyRef.current) {
+            return getAISuggestions(cyRef.current);
+          }
+          return [];
+        }}
       />
 
       {/* Graph Controls */}
