@@ -185,6 +185,35 @@ Add to MCP settings:
 | `stop_defi_stream` | Stop DeFi event stream | - |
 | `get_stream_stats` | Get stream statistics | - |
 
+### Auto-Exit Bot Tools
+
+| Tool | Description | Parameters |
+|------|-------------|------------|
+| `create_exit_rule` | Create custom exit rule with conditions | `name`, `conditions`, `logic`, `action`, `exitPercent?`, `priority?`, `cooldownMs?` |
+| `list_exit_rules` | List all configured rules | `enabledOnly?` |
+| `toggle_exit_rule` | Enable/disable a rule | `ruleId`, `enabled` |
+| `delete_exit_rule` | Delete a rule | `ruleId` |
+| `test_exit_rule` | Test rule against position | `ruleId`, `positionId` |
+| `create_preset_rules` | Create standard preset rules | - |
+| `start_exit_bot` | Start autonomous monitoring | `dryRun?`, `checkIntervalMs?`, `maxActionsPerHour?`, `webhookUrl?` |
+| `stop_exit_bot` | Stop the bot | - |
+| `get_exit_bot_stats` | Get bot status and stats | - |
+| `get_trigger_history` | View rule trigger history | `limit?` |
+| `reset_circuit_breaker` | Reset safety circuit breaker | - |
+
+**Condition Fields:** `impermanentLoss`, `pnlPercent`, `apy`, `feesEarned`, `totalValue`, `daysHeld`, `yesPrice`, `noPrice`, `priceDeviation`, `feesVsIL`
+
+**Operators:** `gt` (>), `gte` (>=), `lt` (<), `lte` (<=), `eq` (=), `neq` (!=), `between`, `outside`
+
+**Actions:** `exit_full`, `exit_partial`, `reduce_to_breakeven`, `alert_only`, `pause_monitoring`
+
+**Safety Features:**
+- Circuit breaker trips after 10 actions/hour
+- Max 5 actions per hour (configurable)
+- Max 20 actions per day
+- Dry run mode (default) - simulates only
+- Per-position cooldowns prevent rapid re-triggers
+
 ## SSE Streaming Endpoint
 
 Real-time Server-Sent Events for DeFi monitoring:

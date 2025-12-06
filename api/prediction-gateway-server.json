@@ -1,7 +1,7 @@
 {
   "name": "prediction-markets-gateway",
-  "version": "1.2.0",
-  "description": "Unified Prediction Markets MCP Gateway - Market data, paper trading, AI analysis, multi-agent debate, DeFi on-chain features, LP strategy advisor, and real-time streaming",
+  "version": "1.3.0",
+  "description": "Unified Prediction Markets MCP Gateway - Market data, paper trading, AI analysis, multi-agent debate, DeFi, LP advisor, streaming, and autonomous auto-exit bot",
   "command": "bun",
   "args": ["run", "bin/prediction-gateway-mcp.ts"],
   "env": {
@@ -85,6 +85,22 @@
         "start_defi_stream",
         "stop_defi_stream",
         "get_stream_stats"
+      ]
+    },
+    {
+      "category": "Auto-Exit Bot",
+      "tools": [
+        "create_exit_rule",
+        "list_exit_rules",
+        "toggle_exit_rule",
+        "delete_exit_rule",
+        "test_exit_rule",
+        "create_preset_rules",
+        "start_exit_bot",
+        "stop_exit_bot",
+        "get_exit_bot_stats",
+        "get_trigger_history",
+        "reset_circuit_breaker"
       ]
     }
   ],

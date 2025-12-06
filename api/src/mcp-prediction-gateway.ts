@@ -31,6 +31,7 @@ import {
 } from './prediction-defi.js';
 import { DeFiEventStream } from './prediction-defi-streaming.js';
 import { LPStrategyAdvisor } from './prediction-lp-advisor.js';
+import { AutoExitBot, type ExitRule, type RuleCondition } from './prediction-auto-exit-bot.js';
 
 // ============================================================================
 // Types
@@ -908,6 +909,15 @@ const oracleNetwork = new OracleNetwork();
 const defiStream = new DeFiEventStream(lpAnalytics, crossChainArb, oracleNetwork);
 const lpAdvisor = new LPStrategyAdvisor(lpAnalytics);
 
+// Auto-exit bot
+const autoExitBot = new AutoExitBot(lpAnalytics, lpAdvisor, {
+  enabled: false,
+  dryRun: true, // Safe default - only simulate actions
+  checkIntervalMs: 60000,
+  maxActionsPerDay: 20,
+  maxActionsPerHour: 5,
+});
+
 // ============================================================================
 // Tool Definitions
 // ============================================================================
@@ -1374,6 +1384,139 @@ const TOOLS = [
   {
     name: 'get_stream_stats',
     description: 'Get DeFi stream statistics and configuration',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+
+  // === Auto-Exit Bot Tools ===
+  {
+    name: 'create_exit_rule',
+    description: 'Create a new auto-exit rule with configurable conditions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: 'Rule name' },
+        description: { type: 'string', description: 'Rule description' },
+        conditions: {
+          type: 'array',
+          description: 'Array of conditions: [{field, operator, value, value2?}]',
+          items: {
+            type: 'object',
+            properties: {
+              field: { type: 'string', enum: ['impermanentLoss', 'pnlPercent', 'apy', 'feesEarned', 'totalValue', 'daysHeld', 'yesPrice', 'noPrice', 'priceDeviation', 'feesVsIL'] },
+              operator: { type: 'string', enum: ['gt', 'gte', 'lt', 'lte', 'eq', 'neq', 'between', 'outside'] },
+              value: { type: 'number' },
+              value2: { type: 'number', description: 'Second value for between/outside operators' },
+            },
+            required: ['field', 'operator', 'value'],
+          },
+        },
+        logic: { type: 'string', enum: ['AND', 'OR'], description: 'How to combine conditions' },
+        action: { type: 'string', enum: ['exit_full', 'exit_partial', 'reduce_to_breakeven', 'alert_only', 'pause_monitoring'] },
+        exitPercent: { type: 'number', description: 'For exit_partial action (default 50)' },
+        priority: { type: 'number', description: 'Lower = higher priority (default 5)' },
+        cooldownMs: { type: 'number', description: 'Cooldown between triggers in ms (default 3600000 = 1hr)' },
+      },
+      required: ['name', 'conditions', 'logic', 'action'],
+    },
+  },
+  {
+    name: 'list_exit_rules',
+    description: 'List all configured exit rules',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        enabledOnly: { type: 'boolean', description: 'Only show enabled rules' },
+      },
+    },
+  },
+  {
+    name: 'toggle_exit_rule',
+    description: 'Enable or disable an exit rule',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ruleId: { type: 'string', description: 'Rule ID' },
+        enabled: { type: 'boolean', description: 'Enable or disable' },
+      },
+      required: ['ruleId', 'enabled'],
+    },
+  },
+  {
+    name: 'delete_exit_rule',
+    description: 'Delete an exit rule',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ruleId: { type: 'string', description: 'Rule ID to delete' },
+      },
+      required: ['ruleId'],
+    },
+  },
+  {
+    name: 'test_exit_rule',
+    description: 'Test if a rule would trigger for a specific position',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ruleId: { type: 'string', description: 'Rule ID to test' },
+        positionId: { type: 'string', description: 'Position ID to test against' },
+      },
+      required: ['ruleId', 'positionId'],
+    },
+  },
+  {
+    name: 'create_preset_rules',
+    description: 'Create standard preset exit rules (High IL Exit, Take Profit, Low APY Exit, etc.)',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'start_exit_bot',
+    description: 'Start the auto-exit bot monitoring',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        dryRun: { type: 'boolean', description: 'If true, only simulate actions (default true)' },
+        checkIntervalMs: { type: 'number', description: 'Check interval in ms (default 60000)' },
+        maxActionsPerHour: { type: 'number', description: 'Max actions per hour (default 5)' },
+        webhookUrl: { type: 'string', description: 'Webhook URL for notifications' },
+      },
+    },
+  },
+  {
+    name: 'stop_exit_bot',
+    description: 'Stop the auto-exit bot',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'get_exit_bot_stats',
+    description: 'Get auto-exit bot status and statistics',
+    inputSchema: {
+      type: 'object',
+      properties: {},
+    },
+  },
+  {
+    name: 'get_trigger_history',
+    description: 'Get history of rule triggers and actions',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        limit: { type: 'number', description: 'Max triggers to return (default 50)' },
+      },
+    },
+  },
+  {
+    name: 'reset_circuit_breaker',
+    description: 'Reset the circuit breaker if it was tripped',
     inputSchema: {
       type: 'object',
       properties: {},
@@ -2037,6 +2180,196 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             ilWarningThreshold: `${stats.config.ilWarningThreshold}%`,
             arbMinProfit: `$${stats.config.arbMinProfit}`,
           },
+        };
+        break;
+      }
+
+      // Auto-Exit Bot Tools
+      case 'create_exit_rule': {
+        const ruleEngine = autoExitBot.getRuleEngine();
+        const rule = ruleEngine.addRule({
+          name: a.name,
+          description: a.description || '',
+          enabled: false, // New rules start disabled for safety
+          priority: a.priority || 5,
+          conditions: a.conditions as RuleCondition[],
+          logic: a.logic,
+          action: a.action,
+          actionParams: a.exitPercent ? { exitPercent: a.exitPercent } : undefined,
+          cooldownMs: a.cooldownMs || 3600000,
+        });
+        result = {
+          created: true,
+          ruleId: rule.id,
+          name: rule.name,
+          enabled: rule.enabled,
+          conditions: rule.conditions.length,
+          action: rule.action,
+          note: 'Rule created but disabled. Use toggle_exit_rule to enable.',
+        };
+        break;
+      }
+
+      case 'list_exit_rules': {
+        const ruleEngine = autoExitBot.getRuleEngine();
+        const rules = a.enabledOnly
+          ? ruleEngine.getEnabledRules()
+          : ruleEngine.getAllRules();
+        result = {
+          count: rules.length,
+          rules: rules.map(r => ({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            enabled: r.enabled,
+            priority: r.priority,
+            conditions: r.conditions.map(c => `${c.field} ${c.operator} ${c.value}${c.value2 ? `-${c.value2}` : ''}`),
+            logic: r.logic,
+            action: r.action,
+            cooldown: `${r.cooldownMs / 60000} min`,
+          })),
+        };
+        break;
+      }
+
+      case 'toggle_exit_rule': {
+        const ruleEngine = autoExitBot.getRuleEngine();
+        const success = ruleEngine.toggleRule(a.ruleId, a.enabled);
+        if (!success) {
+          result = { error: 'Rule not found' };
+        } else {
+          result = {
+            ruleId: a.ruleId,
+            enabled: a.enabled,
+            message: a.enabled ? 'Rule enabled' : 'Rule disabled',
+          };
+        }
+        break;
+      }
+
+      case 'delete_exit_rule': {
+        const ruleEngine = autoExitBot.getRuleEngine();
+        const success = ruleEngine.deleteRule(a.ruleId);
+        result = success
+          ? { deleted: true, ruleId: a.ruleId }
+          : { error: 'Rule not found' };
+        break;
+      }
+
+      case 'test_exit_rule': {
+        const testResult = await autoExitBot.testRule(a.ruleId, a.positionId);
+        result = {
+          wouldTrigger: testResult.wouldTrigger,
+          action: testResult.action,
+          conditions: testResult.conditions.map(c => ({
+            field: c.field,
+            expected: c.expected,
+            actual: c.actual.toFixed(2),
+            passed: c.passed ? 'YES' : 'NO',
+          })),
+        };
+        break;
+      }
+
+      case 'create_preset_rules': {
+        const presets = autoExitBot.createPresets();
+        result = {
+          created: presets.length,
+          rules: presets.map(r => ({
+            id: r.id,
+            name: r.name,
+            description: r.description,
+            action: r.action,
+            enabled: r.enabled,
+          })),
+          note: 'All preset rules created but disabled. Enable the ones you want.',
+        };
+        break;
+      }
+
+      case 'start_exit_bot': {
+        if (a.dryRun !== undefined || a.checkIntervalMs || a.maxActionsPerHour || a.webhookUrl) {
+          autoExitBot.setConfig({
+            dryRun: a.dryRun ?? true,
+            checkIntervalMs: a.checkIntervalMs || 60000,
+            maxActionsPerHour: a.maxActionsPerHour || 5,
+            webhookUrl: a.webhookUrl,
+          });
+        }
+        autoExitBot.start();
+        const stats = autoExitBot.getStats();
+        result = {
+          status: 'started',
+          dryRun: autoExitBot.getConfig().dryRun,
+          rulesEnabled: stats.enabledRulesCount,
+          positionsMonitored: stats.positionsMonitored,
+          checkInterval: `${autoExitBot.getConfig().checkIntervalMs / 1000}s`,
+          warning: autoExitBot.getConfig().dryRun
+            ? 'Running in DRY RUN mode - actions are simulated only'
+            : 'LIVE MODE - real actions will be executed!',
+        };
+        break;
+      }
+
+      case 'stop_exit_bot': {
+        autoExitBot.stop();
+        result = {
+          status: 'stopped',
+          message: 'Auto-exit bot stopped',
+        };
+        break;
+      }
+
+      case 'get_exit_bot_stats': {
+        const stats = autoExitBot.getStats();
+        const config = autoExitBot.getConfig();
+        result = {
+          running: stats.running,
+          dryRun: config.dryRun,
+          rulesTotal: stats.rulesCount,
+          rulesEnabled: stats.enabledRulesCount,
+          positionsMonitored: stats.positionsMonitored,
+          triggersToday: stats.triggersToday,
+          triggersThisHour: stats.triggersThisHour,
+          circuitBreakerTripped: stats.circuitBreakerTripped,
+          uptime: stats.uptime > 0 ? `${Math.floor(stats.uptime / 60000)} min` : 'not started',
+          limits: {
+            maxActionsPerHour: config.maxActionsPerHour,
+            maxActionsPerDay: config.maxActionsPerDay,
+            circuitBreakerThreshold: config.circuitBreakerThreshold,
+          },
+        };
+        break;
+      }
+
+      case 'get_trigger_history': {
+        const triggers = autoExitBot.getTriggerHistory(a.limit || 50);
+        result = {
+          count: triggers.length,
+          triggers: triggers.map(t => ({
+            id: t.id,
+            timestamp: new Date(t.timestamp).toISOString(),
+            rule: t.ruleName,
+            position: t.positionId,
+            action: t.action,
+            executed: t.executed,
+            result: t.executionResult?.message,
+            conditions: t.conditions.map(c => ({
+              field: c.field,
+              expected: c.expected,
+              actual: c.actual.toFixed(2),
+              passed: c.passed,
+            })),
+          })),
+        };
+        break;
+      }
+
+      case 'reset_circuit_breaker': {
+        autoExitBot.resetCircuitBreaker();
+        result = {
+          reset: true,
+          message: 'Circuit breaker reset. Hourly action count cleared.',
         };
         break;
       }

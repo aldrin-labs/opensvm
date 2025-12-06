@@ -37,7 +37,8 @@ async function testTool(
     }
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 30000);
+    // 60 second timeout for heavier RPC operations
+    const timeout = setTimeout(() => controller.abort(), 60000);
     options.signal = controller.signal;
 
     const response = await fetch(url, options);
@@ -80,11 +81,13 @@ async function testTool(
   }
 }
 
-// Test addresses
-const TEST_WALLET = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC mint
+// Test addresses - use less active accounts for reliability
+// Raydium Authority V4 - stable account with moderate activity (not millions of txs)
+const TEST_WALLET = '5Q544fKrFoe6tsEbD7S8EmxGTJYAKtTVhAW5Q5pge4j1';
 const TEST_TX = '5J7Hz6JnWfPJsaB4G5VQ4MoZsXLWxXKuqMDCxbRhPMkZqWqJKXqVVyNaVdXKyqZpqjqVVyNaVdXKyqZpqjqV'; // Example
 const TEST_MINT = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC
-const TEST_PROGRAM = 'TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA'; // Token Program
+// Use a smaller program like Memo Program instead of Token Program (which is massive)
+const TEST_PROGRAM = 'MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr'; // Memo Program v2
 
 async function runTests() {
   console.log('🧪 OpenSVM MCP Integration Tests');
