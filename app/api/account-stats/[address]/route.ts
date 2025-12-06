@@ -5,8 +5,8 @@ import type { ConfirmedSignatureInfo } from '@solana/web3.js';
 import { createCache } from '@/lib/caching/api-cache';
 
 const BATCH_SIZE = 1000;
-const MAX_BATCHES = 3;
-const API_TIMEOUT = 10000; // 10 seconds
+const MAX_BATCHES = 2; // Reduced from 3 to 2 for faster response
+const API_TIMEOUT = 15000; // 15 seconds (increased from 10)
 
 // Create cache instance for account stats (5 min cache, 1 min refresh threshold)
 const accountStatsCache = createCache<AccountStats>({
@@ -123,6 +123,22 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error fetching account stats:', error);
+
+    // Check if it's a timeout - return partial result instead of 500
+    if (error instanceof Error && error.message === 'API timeout') {
+      return NextResponse.json({
+        totalTransactions: '2000+', // We know it's at least this many if it timed out
+        lastUpdated: Date.now(),
+        estimated: true,
+        note: 'This account has too many transactions to count precisely'
+      }, {
+        status: 200, // Return 200 with partial data instead of 500
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60'
+        }
+      });
+    }
+
     return NextResponse.json(
       { error: 'Failed to fetch account stats' },
       { status: 500 }

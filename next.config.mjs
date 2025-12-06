@@ -43,7 +43,7 @@ const nextConfig = {
   experimental: {
     // Server actions are enabled by default in Next.js 14+
     optimizeCss: true,
-    optimizePackageImports: ['lodash', 'date-fns', 'chart.js'],
+    optimizePackageImports: ['lodash', 'date-fns', 'chart.js', 'lucide-react'],
   },
   // Set default timeout for all API routes to 120 seconds
   // This prevents 504 timeout errors on slow RPC responses

@@ -38,14 +38,22 @@ export async function GET(
       );
     }
 
+    // Don't serialize full program data - it can be massive (e.g., Token Program is ~250KB)
+    // Only include first 256 bytes as preview for large programs
+    const MAX_DATA_PREVIEW = 256;
+    const dataPreview = accountInfo.data.length > MAX_DATA_PREVIEW
+      ? Array.from(accountInfo.data.slice(0, MAX_DATA_PREVIEW)).map(b => Number(b))
+      : Array.from(accountInfo.data).map(b => Number(b));
+
     const programData = {
       address: programId.toBase58(),
       executable: accountInfo.executable,
       owner: accountInfo.owner.toBase58(),
       lamports: accountInfo.lamports || 0,
       rentEpoch: accountInfo.rentEpoch || 0,
-      data: Array.from(accountInfo.data).map(b => Number(b)),
-      dataSize: accountInfo.data.length
+      dataPreview, // Only first 256 bytes for preview
+      dataSize: accountInfo.data.length,
+      dataTruncated: accountInfo.data.length > MAX_DATA_PREVIEW
     };
 
     const serializedAccountInfo = {
@@ -53,7 +61,8 @@ export async function GET(
       owner: accountInfo.owner.toBase58(),
       lamports: (accountInfo.lamports || 0).toString(),
       rentEpoch: (accountInfo.rentEpoch || 0).toString(),
-      data: Array.from(accountInfo.data).map(b => Number(b))
+      dataSize: accountInfo.data.length
+      // data field removed - too large for many programs
     };
 
     return NextResponse.json(

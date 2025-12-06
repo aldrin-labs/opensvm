@@ -276,6 +276,9 @@ export const NavbarInteractive: React.FC<NavbarInteractiveProps> = ({ children }
               <SimpleDropdownItem asChild>
                 <Link href="/validators">Validators</Link>
               </SimpleDropdownItem>
+              <SimpleDropdownItem asChild>
+                <Link href="/investigation">Investigation Mode</Link>
+              </SimpleDropdownItem>
             </SimpleDropdown>
 
             {/* Tokens Dropdown */}
