@@ -23,9 +23,8 @@ test.describe('Account Page - Transaction Graph', () => {
     // Wait for any heading to load (using .first() to avoid strict mode violation)
     await expect(page.locator('h2').first()).toBeVisible({ timeout: 15000 });
 
-    // Check if the page loaded successfully (not an error page)
-    const pageContent = await page.textContent('body');
-    expect(pageContent).not.toContain('404');
+    // Check for account info section which indicates successful load
+    await expect(page.locator('text=Account Info').first()).toBeVisible({ timeout: 10000 });
 
     // Take screenshot
     await page.screenshot({ path: 'test-results/account-page-loaded.png', fullPage: true });
