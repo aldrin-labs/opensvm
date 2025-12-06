@@ -12,13 +12,20 @@ const TEST_ADDRESSES = {
 
 test.describe('Account Page - Transaction Graph', () => {
   test.beforeEach(async ({ page }) => {
-    // Increase timeout for blockchain data loading
-    test.setTimeout(60000);
+    // Increase timeout for blockchain data loading + Next.js cold-start compilation
+    test.setTimeout(90000);
   });
 
   test('should load account page and display transaction graph', async ({ page }) => {
     // Navigate to account page with Jupiter address
-    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`);
+    // Use domcontentloaded instead of load to handle slow cold-starts
+    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
+
+    // Wait for loading state to complete (page shows "Loading account information..." initially)
+    await expect(page.locator('text=Loading account information')).toBeHidden({ timeout: 30000 });
 
     // Wait for any heading to load (using .first() to avoid strict mode violation)
     await expect(page.locator('h2').first()).toBeVisible({ timeout: 15000 });
@@ -33,7 +40,10 @@ test.describe('Account Page - Transaction Graph', () => {
   });
 
   test('should render transaction graph component', async ({ page }) => {
-    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`);
+    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
 
     // Wait for the graph container to appear
     // The graph might be in a tab or expandable section
@@ -73,10 +83,16 @@ test.describe('Account Page - Transaction Graph', () => {
 
   test('should load account data from API', async ({ page }) => {
     // Navigate to page first to use relative URLs
-    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`);
+    await page.goto(`/account/${TEST_ADDRESSES.jupiter}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
 
     // Test the account-stats API endpoint (more reliable)
-    const response = await page.request.get(`/api/account-stats/${TEST_ADDRESSES.jupiter}`);
+    // Increase timeout for cold-start API compilation
+    const response = await page.request.get(`/api/account-stats/${TEST_ADDRESSES.jupiter}`, {
+      timeout: 30000
+    });
 
     // Accept 200 or 404 (endpoint might not exist), but not 500
     expect(response.status()).toBeLessThan(500);
@@ -93,7 +109,10 @@ test.describe('Account Page - Transaction Graph', () => {
   });
 
   test('should handle graph interactions', async ({ page }) => {
-    await page.goto(`/account/${TEST_ADDRESSES.raydium}`);
+    await page.goto(`/account/${TEST_ADDRESSES.raydium}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
 
     // Wait for page to stabilize and graph to potentially load
     await page.waitForTimeout(5000);
@@ -140,8 +159,15 @@ test.describe('Account Page - Transaction Graph', () => {
 });
 
 test.describe('Account Overview Component', () => {
+  test.beforeEach(async () => {
+    test.setTimeout(90000);
+  });
+
   test('should display account overview', async ({ page }) => {
-    await page.goto(`/account/${TEST_ADDRESSES.marinade}`);
+    await page.goto(`/account/${TEST_ADDRESSES.marinade}`, {
+      waitUntil: 'domcontentloaded',
+      timeout: 45000
+    });
 
     // Wait for account data to load
     await page.waitForTimeout(3000);
