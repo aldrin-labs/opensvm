@@ -100,3 +100,6 @@ server.pid
 manual-search-qa-results.json
 search-qa-results.json
 minimax-qa.md
+
+# Temporary test files
+temp-tests/
