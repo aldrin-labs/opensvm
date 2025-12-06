@@ -983,8 +983,10 @@ const TransactionGraphFilters: React.FC<TransactionGraphFiltersProps> = ({
                   filters,
                   customization
                 };
-                // In a real implementation, this would save to localStorage or backend
-                console.log('Custom preset created:', customPreset);
+                // Save to localStorage
+                const savedPresets = JSON.parse(localStorage.getItem('graphFilterPresets') || '[]');
+                savedPresets.push(customPreset);
+                localStorage.setItem('graphFilterPresets', JSON.stringify(savedPresets));
                 setCustomPresetName('');
               }
             }}

@@ -166,7 +166,6 @@ const CytoscapeContainer = React.memo(() => {
             }
           });
           document.dispatchEvent(containerReadyEvent);
-          console.log('Cytoscape container ready event dispatched');
           resolve();
         });
 
@@ -2061,7 +2060,6 @@ const CytoscapeContainer = React.memo(() => {
         const cy = (cytoscapeContainer as any)._cytoscape;
         if (cy && typeof cy.destroy === 'function') {
           try {
-            console.log('Cleaning up cytoscape instance...');
             cy.destroy();
             (cytoscapeContainer as any)._cytoscape = null;
             (cytoscapeContainer as any)._cytoscapeInitialized = false;
@@ -2286,10 +2284,13 @@ const CytoscapeContainer = React.memo(() => {
           <TransactionGraphClouds
             graphs={GraphStateCache.getSavedGraphs()}
             onLoadState={(state) => {
-              console.log('Loading saved graph state', state);
+              // Load saved graph state - trigger navigation to the saved account
+              if (state?.address) {
+                setCurrentGraphAddress?.(state.address);
+              }
             }}
             onSaveCurrentState={() => {
-              console.log('Saving current graph state');
+              // Save current state is handled by GraphStateCache internally
             }}
           />
         </div>
