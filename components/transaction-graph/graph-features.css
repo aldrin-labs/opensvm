@@ -1,0 +1,559 @@
+/* Graph Features Styles */
+/* Comprehensive styling for all graph investigation features */
+
+/* ========================================
+   CLUSTER DETECTION STYLES
+   ======================================== */
+
+/* Cluster highlighting */
+.cluster-highlighted {
+  z-index: 100 !important;
+}
+
+.cluster-dimmed {
+  opacity: 0.15 !important;
+  pointer-events: none !important;
+}
+
+/* Cluster node colors - applied dynamically */
+.cluster-node {
+  transition: all 0.3s ease !important;
+}
+
+/* Super-node (collapsed cluster) */
+.super-node {
+  width: 60px !important;
+  height: 60px !important;
+  shape: hexagon !important;
+  border-width: 3px !important;
+  border-style: double !important;
+  font-size: 12px !important;
+  font-weight: bold !important;
+  text-valign: center !important;
+  text-halign: center !important;
+}
+
+/* Collapsed nodes hidden */
+.cluster-collapsed {
+  display: none !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+}
+
+/* Bridge node indicator */
+.bridge-node {
+  border-width: 3px !important;
+  border-color: hsl(var(--warning)) !important;
+  border-style: dashed !important;
+}
+
+/* ========================================
+   SEARCH RESULT STYLES
+   ======================================== */
+
+.search-result {
+  border-width: 3px !important;
+  border-color: hsl(var(--primary)) !important;
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.5) !important;
+  z-index: 50 !important;
+}
+
+.search-result-edge {
+  line-color: hsl(var(--primary)) !important;
+  width: 4px !important;
+  line-style: solid !important;
+}
+
+/* ========================================
+   FILTER STYLES
+   ======================================== */
+
+.filtered-out {
+  opacity: 0.1 !important;
+  pointer-events: none !important;
+  transition: opacity 0.3s ease !important;
+}
+
+.timeline-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  transition: opacity 0.2s ease !important;
+}
+
+.filter-match {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ========================================
+   PATH FINDING STYLES
+   ======================================== */
+
+.path-highlighted {
+  z-index: 200 !important;
+}
+
+.path-highlighted[data-type="account"] {
+  border-width: 4px !important;
+  border-color: hsl(var(--chart-1)) !important;
+  box-shadow: 0 0 20px hsl(var(--chart-1) / 0.6) !important;
+}
+
+.path-highlighted[data-type="edge"] {
+  line-color: hsl(var(--chart-1)) !important;
+  width: 5px !important;
+  line-style: solid !important;
+  target-arrow-color: hsl(var(--chart-1)) !important;
+}
+
+.path-source {
+  background-color: hsl(var(--success)) !important;
+  border-color: hsl(var(--success)) !important;
+}
+
+.path-target {
+  background-color: hsl(var(--info)) !important;
+  border-color: hsl(var(--info)) !important;
+}
+
+/* Path animation */
+@keyframes path-pulse {
+  0%, 100% {
+    opacity: 1;
+    line-width: 4px;
+  }
+  50% {
+    opacity: 0.7;
+    line-width: 6px;
+  }
+}
+
+.path-animated {
+  animation: path-pulse 1.5s ease-in-out infinite !important;
+}
+
+/* ========================================
+   ENRICHMENT STYLES
+   ======================================== */
+
+/* Entity types */
+.enriched-cex {
+  background-color: hsl(210, 70%, 50%) !important;
+  border-width: 3px !important;
+  border-color: hsl(210, 70%, 30%) !important;
+}
+
+.enriched-dex {
+  background-color: hsl(160, 70%, 50%) !important;
+  border-width: 3px !important;
+  border-color: hsl(160, 70%, 30%) !important;
+}
+
+.enriched-bridge {
+  background-color: hsl(280, 70%, 50%) !important;
+  border-width: 3px !important;
+  border-color: hsl(280, 70%, 30%) !important;
+}
+
+.enriched-scam {
+  background-color: hsl(0, 80%, 50%) !important;
+  border-width: 4px !important;
+  border-color: hsl(0, 80%, 30%) !important;
+  border-style: dashed !important;
+}
+
+.enriched-whale {
+  width: 50px !important;
+  height: 50px !important;
+  border-width: 3px !important;
+  border-color: hsl(45, 100%, 50%) !important;
+}
+
+.enriched-program {
+  shape: diamond !important;
+  background-color: hsl(var(--muted)) !important;
+}
+
+.is-whale {
+  min-width: 40px !important;
+  min-height: 40px !important;
+}
+
+/* Risk levels */
+.risk-low {
+  border-color: hsl(var(--success)) !important;
+}
+
+.risk-medium {
+  border-color: hsl(var(--warning)) !important;
+}
+
+.risk-high {
+  border-color: hsl(30, 100%, 50%) !important;
+}
+
+.risk-critical {
+  border-color: hsl(0, 100%, 50%) !important;
+  animation: risk-pulse 1s ease-in-out infinite !important;
+}
+
+@keyframes risk-pulse {
+  0%, 100% {
+    box-shadow: 0 0 5px hsl(0, 100%, 50%);
+  }
+  50% {
+    box-shadow: 0 0 20px hsl(0, 100%, 50%);
+  }
+}
+
+/* ========================================
+   REAL-TIME STYLES
+   ======================================== */
+
+.realtime-edge {
+  line-color: hsl(var(--success)) !important;
+  width: 3px !important;
+  line-style: solid !important;
+}
+
+.realtime-new {
+  animation: realtime-appear 0.5s ease-out !important;
+}
+
+@keyframes realtime-appear {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.realtime-pulse {
+  animation: realtime-pulse 0.3s ease-in-out !important;
+}
+
+@keyframes realtime-pulse {
+  0% {
+    line-width: 3px;
+    line-color: hsl(var(--success));
+  }
+  50% {
+    line-width: 6px;
+    line-color: hsl(var(--chart-2));
+  }
+  100% {
+    line-width: 3px;
+    line-color: hsl(var(--success));
+  }
+}
+
+/* ========================================
+   ANALYTICS VISUALIZATION STYLES
+   ======================================== */
+
+/* PageRank coloring - applied via JS */
+.pagerank-low {
+  background-color: hsl(240, 70%, 50%) !important;
+}
+
+.pagerank-medium {
+  background-color: hsl(60, 70%, 50%) !important;
+}
+
+.pagerank-high {
+  background-color: hsl(0, 70%, 50%) !important;
+}
+
+/* Centrality indicators */
+.high-centrality {
+  border-width: 4px !important;
+  border-style: double !important;
+}
+
+/* ========================================
+   INVESTIGATION TOOL STYLES
+   ======================================== */
+
+/* Wash trading cycle highlight */
+.wash-trading-cycle {
+  border-color: hsl(var(--destructive)) !important;
+  border-width: 3px !important;
+  border-style: dotted !important;
+}
+
+.wash-trading-edge {
+  line-color: hsl(var(--destructive)) !important;
+  line-style: dashed !important;
+  width: 3px !important;
+}
+
+/* First funder chain */
+.funder-chain-node {
+  border-color: hsl(var(--chart-3)) !important;
+  border-width: 2px !important;
+}
+
+.funder-chain-edge {
+  line-color: hsl(var(--chart-3)) !important;
+  width: 3px !important;
+  target-arrow-shape: triangle !important;
+}
+
+.original-funder {
+  background-color: hsl(var(--chart-3)) !important;
+  width: 45px !important;
+  height: 45px !important;
+}
+
+/* Common ancestor */
+.common-ancestor {
+  background-color: hsl(var(--chart-4)) !important;
+  border-width: 4px !important;
+  border-color: hsl(var(--chart-4) / 0.5) !important;
+}
+
+/* ========================================
+   MULTI-ACCOUNT VIEW STYLES
+   ======================================== */
+
+.account-group-1 { background-color: hsl(var(--chart-1)) !important; }
+.account-group-2 { background-color: hsl(var(--chart-2)) !important; }
+.account-group-3 { background-color: hsl(var(--chart-3)) !important; }
+.account-group-4 { background-color: hsl(var(--chart-4)) !important; }
+.account-group-5 { background-color: hsl(var(--chart-5)) !important; }
+
+.shared-node {
+  border-width: 4px !important;
+  border-style: double !important;
+  width: 45px !important;
+  height: 45px !important;
+}
+
+.multi-view-connection {
+  line-color: hsl(var(--success)) !important;
+  width: 4px !important;
+  line-style: dashed !important;
+}
+
+/* ========================================
+   MORPHING TRANSITION STYLES
+   ======================================== */
+
+.morphing-node {
+  transition: all 0.4s ease-in-out !important;
+}
+
+.morphing-edge {
+  transition: opacity 0.3s ease !important;
+}
+
+.morph-fade-out {
+  opacity: 0 !important;
+  transform: scale(0.8) !important;
+}
+
+.morph-fade-in {
+  animation: morph-appear 0.3s ease-out !important;
+}
+
+@keyframes morph-appear {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+/* ========================================
+   HOVER & INTERACTION STYLES
+   ======================================== */
+
+.hover {
+  z-index: 10 !important;
+}
+
+.hover[data-type="account"] {
+  border-width: 2px !important;
+  box-shadow: 0 0 10px hsl(var(--primary) / 0.3) !important;
+}
+
+.hover[data-type="edge"] {
+  width: 3px !important;
+  z-index: 5 !important;
+}
+
+.active {
+  border-color: hsl(var(--primary)) !important;
+  border-width: 3px !important;
+}
+
+.selected {
+  border-color: hsl(var(--primary)) !important;
+  border-width: 4px !important;
+  box-shadow: 0 0 15px hsl(var(--primary) / 0.5) !important;
+}
+
+/* ========================================
+   TOOLTIP STYLES
+   ======================================== */
+
+.graph-tooltip {
+  position: absolute;
+  background: hsl(var(--background));
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  z-index: 1000;
+  pointer-events: none;
+  box-shadow: 0 4px 12px hsl(var(--foreground) / 0.1);
+  max-width: 300px;
+}
+
+.graph-tooltip-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+  color: hsl(var(--foreground));
+}
+
+.graph-tooltip-content {
+  color: hsl(var(--muted-foreground));
+  line-height: 1.4;
+}
+
+.graph-tooltip-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  margin-right: 4px;
+}
+
+.graph-tooltip-badge.cex { background: hsl(210, 70%, 50%); color: white; }
+.graph-tooltip-badge.dex { background: hsl(160, 70%, 50%); color: white; }
+.graph-tooltip-badge.whale { background: hsl(45, 100%, 50%); color: black; }
+.graph-tooltip-badge.scam { background: hsl(0, 80%, 50%); color: white; }
+
+/* ========================================
+   LEGEND STYLES
+   ======================================== */
+
+.graph-legend {
+  position: absolute;
+  bottom: 16px;
+  left: 16px;
+  background: hsl(var(--background) / 0.95);
+  backdrop-filter: blur(8px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 8px;
+  padding: 12px;
+  font-size: 11px;
+  z-index: 50;
+  max-width: 200px;
+}
+
+.graph-legend-title {
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: hsl(var(--foreground));
+  font-size: 12px;
+}
+
+.graph-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.graph-legend-color {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.graph-legend-color.outline {
+  background: transparent;
+  border: 2px solid currentColor;
+}
+
+.graph-legend-color.diamond {
+  transform: rotate(45deg);
+  width: 10px;
+  height: 10px;
+}
+
+.graph-legend-label {
+  color: hsl(var(--muted-foreground));
+}
+
+/* ========================================
+   RESPONSIVE ADJUSTMENTS
+   ======================================== */
+
+@media (max-width: 768px) {
+  .graph-tooltip {
+    max-width: 200px;
+    font-size: 11px;
+  }
+
+  .graph-legend {
+    bottom: 8px;
+    left: 8px;
+    padding: 8px;
+    max-width: 160px;
+  }
+
+  .super-node {
+    width: 45px !important;
+    height: 45px !important;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+   ======================================== */
+
+@media print {
+  .graph-tooltip,
+  .graph-legend {
+    display: none !important;
+  }
+
+  .cluster-dimmed {
+    opacity: 0.3 !important;
+  }
+
+  .filtered-out {
+    opacity: 0.2 !important;
+  }
+}
+
+/* ========================================
+   REDUCED MOTION
+   ======================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  .morphing-node,
+  .morphing-edge,
+  .realtime-new,
+  .realtime-pulse,
+  .path-animated,
+  .risk-critical {
+    animation: none !important;
+    transition: none !important;
+  }
+}

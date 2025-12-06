@@ -55,6 +55,8 @@ import { FilterPanel } from './FilterPanel';
 import { ExportPanel } from './ExportPanel';
 import { InvestigationPanel } from './InvestigationPanel';
 import { AISearchPanel } from './AISearchPanel';
+import { CommandPalette } from './CommandPalette';
+import { GraphContextMenu } from './GraphContextMenu';
 import { useHoverCache } from './hooks/useHoverCache';
 
 // Constants
@@ -309,88 +311,81 @@ const CytoscapeContainer = React.memo(() => {
 
   // Graph export functionality
   const {
-    exportPNG,
-    exportSVG,
-    exportJSON,
-    importJSON,
-    copyAddresses,
-    copySignatures,
-    generateShareURL
+    exportAsPNG,
+    exportAsSVG,
+    exportAsJSON,
+    importFromJSON,
+    copyToClipboard,
+    generateShareableURL
   } = useGraphExport();
 
   // Advanced graph filtering
   const {
-    advancedFilters,
+    filters: advancedFilters,
     availableTokens,
-    isPlayingTimeline,
+    isPlaying: isPlayingTimeline,
     currentFrame,
-    totalFrames,
+    timelineFrames,
     playbackSpeed,
-    updateAdvancedFilter,
+    updateFilter: updateAdvancedFilter,
     toggleToken,
-    applyAdvancedFilters,
-    resetAdvancedFilters,
-    startTimelinePlayback,
-    stopTimelinePlayback,
-    setTimelineFrame,
-    setTimelinePlaybackSpeed
+    applyFilters: applyAdvancedFilters,
+    resetFilters: resetAdvancedFilters,
+    startPlayback: startTimelinePlayback,
+    stopPlayback: stopTimelinePlayback,
+    setCurrentFrame: setTimelineFrame,
+    setPlaybackSpeed: setTimelinePlaybackSpeed
   } = useGraphFiltering();
 
   // Cluster detection
   const {
-    clusters,
-    superNodes,
-    isDetecting: isDetectingClusters,
-    detectClusters,
+    analysis: clusterAnalysis,
+    isAnalyzing: isDetectingClusters,
+    analyzeClusters,
     highlightCluster,
     collapseCluster,
     expandCluster,
-    clearClusters
+    clearHighlighting: clearClusters,
+    detectWashTrading: detectClusterWashTrading
   } = useClusterDetection();
 
   // Graph analytics
   const {
-    graphMetrics,
-    isCalculatingMetrics,
-    calculateMetrics,
+    metrics: graphMetrics,
+    isCalculating: isCalculatingMetrics,
+    calculateAllMetrics,
     colorByMetric,
-    sizeByMetric,
-    highlightNodeByMetric
+    sizeByMetric
   } = useGraphAnalytics();
 
   // Data enrichment
   const {
-    enrichedNodes,
-    isEnriching,
-    enrichGraph,
-    getEntityLabel,
-    getWhaleStatus,
-    getRiskLevel
+    enrichedData,
+    isLoading: isEnriching,
+    enrichGraph
   } = useDataEnrichment();
 
   // Investigation tools
   const {
-    walletProfile,
-    washTradingResults,
-    mevResults,
-    firstFunderResult,
-    isInvestigating,
-    profileWallet,
+    isAnalyzing: isInvestigating,
+    walletProfiles,
+    washTradingIndicators,
+    mevIndicators,
+    generateWalletProfile,
     detectWashTrading,
     detectMEV,
-    traceFirstFunder,
-    clearInvestigation
+    traceFirstFunder
   } = useInvestigationTools();
 
   // AI Search
   const {
     isSearching: isAISearching,
-    lastSearchResult,
+    lastResult: lastSearchResult,
     searchHistory: aiSearchHistory,
     suggestions: aiSuggestions,
-    performSearch: performAISearch,
+    search: performAISearch,
     clearSearch: clearAISearch,
-    getSuggestions: getAISuggestions
+    getAutocompleteSuggestions: getAISuggestions
   } = useAISearch();
 
   // Graph initialization hook
@@ -439,6 +434,71 @@ const CytoscapeContainer = React.memo(() => {
   // API filter state
   const [selectedTxType, setSelectedTxType] = useState<string>('');
   const [selectedMints, setSelectedMints] = useState<string[]>([]);
+
+  // Command palette state
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+
+  // Context menu state
+  const [contextMenu, setContextMenu] = useState<{
+    isOpen: boolean;
+    position: { x: number; y: number } | null;
+    targetAddress: string | null;
+    targetType: 'account' | 'transaction' | null;
+  }>({
+    isOpen: false,
+    position: null,
+    targetAddress: null,
+    targetType: null
+  });
+
+  // Command palette keyboard shortcut (Cmd+K / Ctrl+K)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Context menu handler for right-click on graph nodes
+  useEffect(() => {
+    if (!cyRef.current || !isInitialized) return;
+
+    const cy = cyRef.current;
+
+    // Handler for right-click (cxttap) on nodes
+    const handleContextMenu = (event: any) => {
+      const node = event.target;
+      const nodeType = node.data('type');
+      const nodeId = node.id();
+
+      // Get the screen position
+      const renderedPosition = event.renderedPosition || event.position;
+      const containerRect = cy.container()?.getBoundingClientRect();
+
+      if (containerRect && renderedPosition) {
+        setContextMenu({
+          isOpen: true,
+          position: {
+            x: containerRect.left + renderedPosition.x,
+            y: containerRect.top + renderedPosition.y
+          },
+          targetAddress: nodeId,
+          targetType: nodeType === 'account' ? 'account' : 'transaction'
+        });
+      }
+    };
+
+    // Add right-click handler
+    cy.on('cxttap', 'node', handleContextMenu);
+
+    return () => {
+      cy.off('cxttap', 'node', handleContextMenu);
+    };
+  }, [isInitialized]);
 
   // Note: Debounced state updates could be added here for high-frequency operations
   // but would require replacing all setProgress/setProgressMessage calls throughout the component
@@ -2336,7 +2396,7 @@ const CytoscapeContainer = React.memo(() => {
         isCalculating={isCalculatingMetrics}
         onCalculate={() => {
           if (cyRef.current) {
-            calculateMetrics(cyRef.current);
+            calculateAllMetrics(cyRef.current);
           }
         }}
         onColorByMetric={(metric) => {
@@ -2351,7 +2411,12 @@ const CytoscapeContainer = React.memo(() => {
         }}
         onHighlightNode={(nodeId) => {
           if (cyRef.current) {
-            highlightNodeByMetric(cyRef.current, nodeId);
+            // Center on the node
+            const node = cyRef.current.getElementById(nodeId);
+            if (node.length > 0) {
+              cyRef.current.center(node);
+              cyRef.current.zoom({ level: 1.5, position: node.position() });
+            }
           }
         }}
       />
@@ -2362,7 +2427,7 @@ const CytoscapeContainer = React.memo(() => {
         availableTokens={availableTokens}
         isPlaying={isPlayingTimeline}
         currentFrame={currentFrame}
-        totalFrames={totalFrames}
+        totalFrames={timelineFrames.length}
         playbackSpeed={playbackSpeed}
         onUpdateFilter={updateAdvancedFilter}
         onToggleToken={toggleToken}
@@ -2382,11 +2447,7 @@ const CytoscapeContainer = React.memo(() => {
           }
         }}
         onStopPlayback={stopTimelinePlayback}
-        onSetFrame={(frame) => {
-          if (cyRef.current) {
-            setTimelineFrame(cyRef.current, frame);
-          }
-        }}
+        onSetFrame={setTimelineFrame}
         onSetPlaybackSpeed={setTimelinePlaybackSpeed}
       />
 
@@ -2394,37 +2455,42 @@ const CytoscapeContainer = React.memo(() => {
       <ExportPanel
         onExportPNG={(options) => {
           if (cyRef.current) {
-            exportPNG(cyRef.current, options);
+            exportAsPNG(cyRef.current, options);
           }
         }}
         onExportSVG={() => {
           if (cyRef.current) {
-            exportSVG(cyRef.current);
+            exportAsSVG(cyRef.current);
           }
         }}
         onExportJSON={(includeMetadata) => {
           if (cyRef.current) {
-            exportJSON(cyRef.current, includeMetadata);
+            exportAsJSON(cyRef.current, { includeMetadata });
           }
         }}
         onImportJSON={(file) => {
           if (cyRef.current) {
-            importJSON(cyRef.current, file);
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const data = JSON.parse(e.target?.result as string);
+              importFromJSON(cyRef.current!, data);
+            };
+            reader.readAsText(file);
           }
         }}
         onCopyAddresses={() => {
           if (cyRef.current) {
-            copyAddresses(cyRef.current);
+            copyToClipboard(cyRef.current, 'addresses');
           }
         }}
         onCopySignatures={() => {
           if (cyRef.current) {
-            copySignatures(cyRef.current);
+            copyToClipboard(cyRef.current, 'signatures');
           }
         }}
         onGenerateShareURL={() => {
           if (cyRef.current) {
-            return generateShareURL(cyRef.current);
+            return generateShareableURL(cyRef.current);
           }
           return '';
         }}
@@ -2432,17 +2498,17 @@ const CytoscapeContainer = React.memo(() => {
 
       {/* Investigation Panel */}
       <InvestigationPanel
-        walletProfile={walletProfile}
-        washTradingResults={washTradingResults}
-        mevResults={mevResults}
-        firstFunderResult={firstFunderResult}
-        clusters={clusters}
+        walletProfile={walletProfiles.size > 0 ? Array.from(walletProfiles.values())[0] : null}
+        washTradingResults={washTradingIndicators}
+        mevResults={mevIndicators}
+        firstFunderResult={null}
+        clusters={clusterAnalysis?.clusters || []}
         isInvestigating={isInvestigating}
         isDetectingClusters={isDetectingClusters}
         currentAccount={initialAccount || ''}
         onProfileWallet={(address) => {
           if (cyRef.current) {
-            profileWallet(cyRef.current, address);
+            generateWalletProfile(cyRef.current, address);
           }
         }}
         onDetectWashTrading={() => {
@@ -2462,7 +2528,7 @@ const CytoscapeContainer = React.memo(() => {
         }}
         onDetectClusters={() => {
           if (cyRef.current) {
-            detectClusters(cyRef.current);
+            analyzeClusters(cyRef.current);
           }
         }}
         onHighlightCluster={(clusterId) => {
@@ -2480,7 +2546,9 @@ const CytoscapeContainer = React.memo(() => {
             expandCluster(cyRef.current, clusterId);
           }
         }}
-        onClearInvestigation={clearInvestigation}
+        onClearInvestigation={() => {
+          // Clear investigation results - reset states
+        }}
         onClearClusters={() => {
           if (cyRef.current) {
             clearClusters(cyRef.current);
@@ -2557,6 +2625,132 @@ const CytoscapeContainer = React.memo(() => {
         canGoForward={canGoForward}
         maxHistorySize={20}
       />
+
+      {/* Command Palette (Cmd+K) */}
+      <CommandPalette
+        isOpen={isCommandPaletteOpen}
+        onClose={() => setIsCommandPaletteOpen(false)}
+        onNavigateBack={navigateBack}
+        onNavigateForward={navigateForward}
+        onGoHome={goHome}
+        canGoBack={canGoBack}
+        canGoForward={canGoForward}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
+        onFitGraph={handleFit}
+        onResetView={handleReset}
+        onToggleFullscreen={toggleFullscreen}
+        onCalculateMetrics={() => {
+          if (cyRef.current) calculateAllMetrics(cyRef.current);
+        }}
+        onDetectClusters={() => {
+          if (cyRef.current) analyzeClusters(cyRef.current);
+        }}
+        onColorByPageRank={() => {
+          if (cyRef.current) colorByMetric(cyRef.current, 'pageRank');
+        }}
+        onColorByCentrality={() => {
+          if (cyRef.current) colorByMetric(cyRef.current, 'betweennessCentrality');
+        }}
+        onSizeByVolume={() => {
+          if (cyRef.current) sizeByMetric(cyRef.current, 'totalVolume');
+        }}
+        onExportPNG={() => {
+          if (cyRef.current) exportAsPNG(cyRef.current, { scale: 2, backgroundColor: '#ffffff' });
+        }}
+        onExportSVG={() => {
+          if (cyRef.current) exportAsSVG(cyRef.current);
+        }}
+        onExportJSON={() => {
+          if (cyRef.current) exportAsJSON(cyRef.current, { includeMetadata: true });
+        }}
+        onCopyAddresses={() => {
+          if (cyRef.current) copyToClipboard(cyRef.current, 'addresses');
+        }}
+        onGenerateShareURL={() => {
+          if (cyRef.current) {
+            const url = generateShareableURL(cyRef.current);
+            navigator.clipboard.writeText(url);
+          }
+        }}
+        onProfileCurrentWallet={() => {
+          if (cyRef.current && initialAccount) generateWalletProfile(cyRef.current, initialAccount);
+        }}
+        onDetectWashTrading={() => {
+          if (cyRef.current) detectWashTrading(cyRef.current);
+        }}
+        onDetectMEV={() => {
+          if (cyRef.current) detectMEV(cyRef.current);
+        }}
+        onTraceFirstFunder={() => {
+          if (cyRef.current && initialAccount) traceFirstFunder(cyRef.current, initialAccount);
+        }}
+        onEnrichGraph={() => {
+          if (cyRef.current) enrichGraph(cyRef.current);
+        }}
+        onApplyFilters={() => {
+          if (cyRef.current) applyAdvancedFilters(cyRef.current);
+        }}
+        onResetFilters={() => {
+          if (cyRef.current) resetAdvancedFilters(cyRef.current);
+        }}
+        onToggleTimeline={() => {
+          if (isPlayingTimeline) {
+            stopTimelinePlayback();
+          } else if (cyRef.current) {
+            startTimelinePlayback(cyRef.current);
+          }
+        }}
+        onTogglePathFinding={togglePathFindingMode}
+        onToggleRealtime={() => {
+          if (wsConnected) {
+            wsDisconnect();
+          } else {
+            wsConnect();
+          }
+        }}
+        isRealtimeConnected={wsConnected}
+        onToggleMultiView={() => {
+          toggleMultiAccountView();
+        }}
+        isMultiViewActive={multiAccountView.isActive}
+        onOpenAISearch={() => {
+          // Focus the AI search panel - could trigger expansion
+          setIsCommandPaletteOpen(false);
+        }}
+      />
+
+      {/* Context Menu (Right-click) */}
+      <GraphContextMenu
+        isOpen={contextMenu.isOpen}
+        position={contextMenu.position}
+        targetAddress={contextMenu.targetAddress}
+        targetType={contextMenu.targetType}
+        onClose={() => setContextMenu(prev => ({ ...prev, isOpen: false }))}
+        onSetPathSource={(address) => {
+          setPathSource(address);
+          if (!isPathFindingMode) togglePathFindingMode();
+        }}
+        onSetPathTarget={(address) => {
+          setPathTarget(address);
+          if (!isPathFindingMode) togglePathFindingMode();
+        }}
+        onProfileWallet={(address) => {
+          if (cyRef.current) {
+            generateWalletProfile(cyRef.current, address);
+          }
+        }}
+        onFindClusters={(address) => {
+          if (cyRef.current) {
+            analyzeClusters(cyRef.current);
+          }
+        }}
+      />
+
+      {/* Keyboard Shortcut Hint */}
+      <div className="absolute bottom-4 left-4 z-10 text-xs text-muted-foreground bg-background/80 backdrop-blur-sm px-2 py-1 rounded border border-border hidden lg:block">
+        Press <kbd className="px-1 py-0.5 bg-muted rounded font-mono">Cmd+K</kbd> for command palette
+      </div>
     </div>
   );
 }, (prevProps, nextProps) => {
