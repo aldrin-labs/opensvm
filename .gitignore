@@ -95,3 +95,8 @@ qdrant_storage/
 # Output files
 output*.txt
 server.pid
+
+# Test artifacts
+manual-search-qa-results.json
+search-qa-results.json
+minimax-qa.md
