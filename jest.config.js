@@ -38,7 +38,8 @@ module.exports = {
   ],
   // Prevent Jest from loading canvas module during tests
   modulePathIgnorePatterns: [
-    "<rootDir>/node_modules/canvas"
+    "<rootDir>/node_modules/canvas",
+    "<rootDir>/.next"
   ],
   testPathIgnorePatterns: [
     "<rootDir>/node_modules/",
